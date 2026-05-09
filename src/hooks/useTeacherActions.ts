@@ -27,6 +27,11 @@ const MAX_IMPORT_WORDS = 500;
 
 export interface UseTeacherActionsParams {
   user: AppUser | null;
+  /** The Voca tab the teacher is currently on.  Drives the `subject`
+   *  column written when creating new classes/assignments so the row
+   *  shows up on the right tab.  Null is read as 'english' (the DB
+   *  default and the legacy behaviour). */
+  activeVoca?: "english" | "hebrew" | null;
   classes: ClassData[];
   setClasses: React.Dispatch<React.SetStateAction<ClassData[]>>;
   newClassName: string;
@@ -94,7 +99,7 @@ export interface UseTeacherActionsParams {
 
 export function useTeacherActions(params: UseTeacherActionsParams) {
   const {
-    user, classes, setClasses,
+    user, activeVoca, classes, setClasses,
     newClassName, setNewClassName,
     setCreatedClassCode, setCreatedClassName, setShowCreateClassModal,
     selectedClass, setSelectedClass,
@@ -208,7 +213,17 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     };
 
     try {
-      const { data: docRow, error } = await supabase.from('classes').insert({ name: newClass.name, teacher_uid: newClass.teacherUid, code: newClass.code }).select().single();
+      const subjectForInsert = activeVoca ?? 'english';
+      const { data: docRow, error } = await supabase
+        .from('classes')
+        .insert({
+          name: newClass.name,
+          teacher_uid: newClass.teacherUid,
+          code: newClass.code,
+          subject: subjectForInsert,
+        })
+        .select()
+        .single();
       if (error) throw error;
       setClasses([...classes, mapClass(docRow)]);
       setCreatedClassName(newClass.name);
@@ -598,6 +613,13 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
           createdAt: new Date().toISOString(),
         };
 
+        // Subject is denormalized from the parent class so the
+        // dashboard can filter assignments by Voca tab without a join.
+        // The parent class lookup wins over activeVoca to be robust
+        // against tab-switch races during a long create flow.
+        const parentClass = classes.find((c) => c.id === newAssignment.classId);
+        const subjectForInsert =
+          parentClass?.subject ?? activeVoca ?? 'english';
         const insertPayload: Record<string, unknown> = {
           class_id: newAssignment.classId,
           word_ids: newAssignment.wordIds,
@@ -607,6 +629,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
           created_at: newAssignment.createdAt,
           allowed_modes: newAssignment.allowedModes,
           sentence_difficulty: newAssignment.sentenceDifficulty,
+          subject: subjectForInsert,
         };
         if (newAssignment.sentences.length > 0) {
           insertPayload.sentences = newAssignment.sentences;

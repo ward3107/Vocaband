@@ -280,22 +280,29 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                 <span>{tt.signInWithGoogle}</span>
               </button>
 
-              {/* Microsoft fallback — collapsed to a small text link
-                  below the dominant Google button.  Reduces decision
-                  fatigue at the highest-friction screen.  Same
-                  teacher_allowlist gate applies after redirect. */}
-              <div className="text-center mt-3">
-                <button
-                  type="button"
-                  onClick={handleMicrosoft}
-                  disabled={microsoftSubmitting}
-                  className="inline-flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-800 font-bold transition-colors disabled:opacity-60"
-                >
-                  {microsoftSubmitting && <Loader2 size={12} className="animate-spin" />}
-                  <span>{tt.microsoftFallback}</span>
-                  <span aria-hidden="true">{dir === "rtl" ? "←" : "→"}</span>
-                </button>
-              </div>
+              {/* Microsoft sign-in — same visual treatment as Google so
+                  teachers on Microsoft 365 / @edu.gov.il accounts see an
+                  equally prominent path.  Same teacher_allowlist gate
+                  applies after the OAuth redirect. */}
+              <button
+                type="button"
+                onClick={handleMicrosoft}
+                disabled={microsoftSubmitting}
+                className="w-full mt-3 inline-flex items-center justify-center gap-3 px-5 py-4 rounded-2xl bg-white border-2 border-stone-300 hover:border-primary hover:bg-stone-50 text-stone-900 font-black text-base transition-all shadow-md hover:shadow-lg disabled:opacity-60"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+              >
+                {microsoftSubmitting ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 23 23" aria-hidden="true">
+                    <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+                    <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
+                    <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
+                    <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
+                  </svg>
+                )}
+                <span>{tt.signInWithMicrosoft}</span>
+              </button>
 
               {/* Divider */}
               <div className="flex items-center gap-3 my-5 text-stone-400 text-xs uppercase tracking-widest font-bold">

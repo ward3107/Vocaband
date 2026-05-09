@@ -508,10 +508,14 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
           (public-landing, terms, privacy, accessibility-statement,
           login). Hidden inside games and dashboards per product owner
           request: students mid-game don't need it in their face.
-          Anywhere it's hidden, the panel can still be opened via the
-          'open-a11y-panel' custom event, so footer / nav "Accessibility"
-          links remain functional everywhere. */}
-      {!dismissed && showTrigger && (
+
+          When the user "Hides" the panel (handleDismiss), the trigger
+          stays visible but at 20% opacity — a low-key reminder that
+          the widget is still reachable.  Tapping the ghost trigger
+          un-dismisses it AND opens the panel, so one tap brings
+          everything back without the user having to remember Alt+0
+          or hunt for the footer link. */}
+      {showTrigger && (
         <button
           ref={triggerRef}
           data-a11y-widget
@@ -519,8 +523,21 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
           aria-haspopup="dialog"
           aria-expanded={isOpen}
           aria-controls="a11y-panel"
-          onClick={() => setIsOpen(!isOpen)}
-          className="fixed bottom-6 left-6 z-[110] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
+          onClick={() => {
+            if (dismissed) {
+              // Ghost-trigger click: un-dismiss + open the panel
+              try { sessionStorage.removeItem(DISMISS_KEY); } catch { /* ignore */ }
+              setDismissed(false);
+              setIsOpen(true);
+            } else {
+              setIsOpen(!isOpen);
+            }
+          }}
+          className={`fixed bottom-6 left-6 z-[110] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-all focus:outline-none focus:ring-4 focus:ring-blue-300 ${
+            dismissed
+              ? "opacity-20 hover:opacity-100 hover:scale-110"
+              : "opacity-100 hover:scale-105"
+          }`}
           style={{ touchAction: 'manipulation' }}
         >
           <Accessibility size={24} strokeWidth={2.2} />

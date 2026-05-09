@@ -798,6 +798,27 @@ export default function App() {
   const [, setTeacherAssignmentsLoading] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentData | null>(null);
 
+  // Subject-scoped slices of the teacher's classes + assignments.
+  // The dashboard, classroom, live-challenge picker, and Vocabagrut all
+  // consume these so a teacher on the Hebrew tab never sees English
+  // classes (and vice-versa).  Rows without a `subject` (legacy data
+  // before the migration ran) read as 'english' via mapClass — keeps
+  // the English view a superset for un-migrated DBs.
+  const visibleClasses = useMemo(() => {
+    if (!activeVoca) return classes;
+    return classes.filter((c) => (c.subject ?? "english") === activeVoca);
+  }, [classes, activeVoca]);
+
+  const visibleAssignments = useMemo(() => {
+    if (!activeVoca) return teacherAssignments;
+    // Filter by assignment.subject directly so a teacher who somehow
+    // created an English assignment under a Hebrew class still gets it
+    // routed to the right tab (denormalized field is the source of truth).
+    return teacherAssignments.filter(
+      (a) => (a.subject ?? "english") === activeVoca,
+    );
+  }, [teacherAssignments, activeVoca]);
+
 
   // --- RELIABILITY STATE ---
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -826,7 +847,7 @@ export default function App() {
     fetchScores,
     fetchTeacherAssignments,
   } = useTeacherActions({
-    user, classes, setClasses,
+    user, activeVoca, classes, setClasses,
     newClassName, setNewClassName,
     setCreatedClassCode, setCreatedClassName, setShowCreateClassModal,
     selectedClass, setSelectedClass,
@@ -2722,8 +2743,8 @@ export default function App() {
           ocrCropModal={ocrCropModal}
           showOnboarding={showOnboarding}
           setShowOnboarding={setShowOnboarding}
-          classes={classes}
-          teacherAssignments={teacherAssignments}
+          classes={visibleClasses}
+          teacherAssignments={visibleAssignments}
           pendingStudentsCount={pendingStudents.length}
           copiedCode={copiedCode}
           setCopiedCode={setCopiedCode}
@@ -2983,10 +3004,13 @@ export default function App() {
                 })
                 .join('');
 
-              // Insert the class.
+              // Insert the class.  Tag with the active Voca so it shows
+              // up on the right tab; null/legacy paths fall back to
+              // 'english' (matches the DB default).
+              const onboardingSubject = activeVoca ?? 'english';
               const { data: classRow, error: classErr } = await supabase
                 .from('classes')
-                .insert({ name: result.className, teacher_uid: user.uid, code })
+                .insert({ name: result.className, teacher_uid: user.uid, code, subject: onboardingSubject })
                 .select()
                 .single();
               if (classErr || !classRow) throw classErr ?? new Error('class insert failed');
@@ -2996,7 +3020,7 @@ export default function App() {
               // doesn't reopen on close.
               setClasses(prev => [
                 ...prev,
-                { id: classRow.id, name: classRow.name, code: classRow.code, teacherUid: user.uid },
+                { id: classRow.id, name: classRow.name, code: classRow.code, teacherUid: user.uid, subject: onboardingSubject },
               ]);
 
               // Pick starter words from the chosen pack.  For 'custom'
@@ -3019,6 +3043,7 @@ export default function App() {
                   allowed_modes: result.modes,
                   created_at: new Date().toISOString(),
                   sentence_difficulty: 2,
+                  subject: onboardingSubject,
                 });
               }
 
@@ -3433,8 +3458,8 @@ export default function App() {
       <LazyWrapper loadingMessage="Loading Vocabagrut…">
         <VocabagrutShell
           user={user}
-          classes={classes}
-          teacherAssignments={teacherAssignments}
+          classes={visibleClasses}
+          teacherAssignments={visibleAssignments}
           onExit={() => setView(user.role === 'student' ? 'student-dashboard' : 'teacher-dashboard')}
           showToast={showToast}
         />
@@ -3481,9 +3506,9 @@ export default function App() {
       <LazyWrapper loadingMessage="Loading classroom...">
         <ClassroomView
           user={user}
-          classes={classes}
+          classes={visibleClasses}
           allScores={allScores}
-          teacherAssignments={teacherAssignments}
+          teacherAssignments={visibleAssignments}
           classStudents={classStudents}
           selectedClass={selectedClass}
           setSelectedClass={setSelectedClass}
@@ -3504,7 +3529,7 @@ export default function App() {
       <LazyWrapper loadingMessage="Loading classes...">
         <LiveChallengeClassSelectView
           user={user}
-          classes={classes}
+          classes={visibleClasses}
           socket={socket}
           setView={setView}
           setSelectedClass={setSelectedClass}
