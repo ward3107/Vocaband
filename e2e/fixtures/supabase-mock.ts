@@ -184,11 +184,28 @@ export async function presetLocalStorage(page: Page) {
 
 /**
  * Disable CSS animations/transitions for more reliable tests.
+ *
+ * page.addInitScript runs at the earliest possible moment (before
+ * any DOM exists), so `document.head` is null at that time.  Defer
+ * the actual <style> injection until the DOM is parsed -- otherwise
+ * the script throws "Cannot read properties of null (reading
+ * 'appendChild')" and the page-error listener in smoke.spec.ts
+ * marks the boot as failed.
  */
 export async function disableAnimations(page: Page) {
   await page.addInitScript(() => {
-    const style = document.createElement('style');
-    style.textContent = '*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; animation-delay: 0s !important; transition-delay: 0s !important; }';
-    document.head.appendChild(style);
+    const inject = () => {
+      const style = document.createElement('style');
+      style.textContent = '*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; animation-delay: 0s !important; transition-delay: 0s !important; }';
+      // document.head exists by DOMContentLoaded.  Belt-and-braces
+      // null check covers the (vanishingly rare) case of injection
+      // before <head> closes.
+      (document.head ?? document.documentElement).appendChild(style);
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', inject, { once: true });
+    } else {
+      inject();
+    }
   });
 }
