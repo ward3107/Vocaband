@@ -49,11 +49,14 @@ export default function TeacherClassesSection({
   subject = "english",
 }: TeacherClassesSectionProps) {
   const { language } = useLanguage();
-  const t = teacherDashboardT[language];
-  const sectionTitle =
-    subject === "hebrew" ? "My Hebrew classes" : "My classes";
+  // VocaHebrew is intrinsically a Hebrew product; force the chrome to
+  // Hebrew copy regardless of the teacher's UI-language preference.
+  const effectiveLanguage = subject === "hebrew" ? "he" : language;
+  const t = teacherDashboardT[effectiveLanguage];
+  const isHebrew = subject === "hebrew";
+  const sectionTitle = isHebrew ? "הכיתות שלי" : "My classes";
   return (
-    <div data-tour="my-classes">
+    <div data-tour="my-classes" dir={isHebrew ? "rtl" : undefined}>
       <div className="flex items-center justify-between mb-4 sm:mb-6 px-1">
         <div>
           <h2
@@ -102,10 +105,12 @@ export default function TeacherClassesSection({
             <Users size={24} style={{ color: 'var(--vb-text-muted)' }} />
           </div>
           <p className="font-semibold mb-1" style={{ color: 'var(--vb-text-primary)' }}>
-            No classes yet
+            {isHebrew ? "אין כיתות עדיין" : "No classes yet"}
           </p>
           <p className="text-sm mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
-            Create your first class to get a shareable join code.
+            {isHebrew
+              ? "צרו את הכיתה הראשונה שלכם וקבלו קוד הצטרפות לשיתוף."
+              : "Create your first class to get a shareable join code."}
           </p>
           <button
             onClick={onNewClass}

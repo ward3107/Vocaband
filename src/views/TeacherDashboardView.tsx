@@ -159,8 +159,15 @@ export default function TeacherDashboardView({
   subject = "english",
   hebrewLaunches,
 }: TeacherDashboardViewProps) {
-  const { language, dir } = useLanguage();
-  const t = teacherDashboardT[language];
+  const { language, dir: uiDir } = useLanguage();
+  // VocaHebrew is intrinsically a Hebrew-language product surface — its
+  // dashboard renders in Hebrew (and RTL) regardless of which UI language
+  // the teacher chose at the public-nav level.  When subject is 'english'
+  // we honour the teacher's UI language as before.
+  const isHebrew = subject === "hebrew";
+  const effectiveLanguage = isHebrew ? "he" : language;
+  const dir = isHebrew ? "rtl" : uiDir;
+  const t = teacherDashboardT[effectiveLanguage];
 
   // Time-of-day greeting — small but friendly touch so the teacher feels the
   // app is responsive to them and not a generic admin panel.

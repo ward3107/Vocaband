@@ -2828,10 +2828,11 @@ export default function App() {
               touchAction: "manipulation",
               WebkitTapHighlightColor: "transparent",
             }}
-            className="fixed top-3 right-3 z-50 px-3 py-1.5 rounded-full bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase shadow-lg shadow-indigo-500/30 hover:bg-indigo-600 active:scale-95 transition"
-            title="Switch to another Voca"
+            className={`fixed top-3 ${activeVoca === "hebrew" ? "left-3" : "right-3"} z-50 px-3 py-1.5 rounded-full bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-black tracking-widest shadow-lg shadow-indigo-500/30 hover:bg-indigo-600 active:scale-95 transition`}
+            title={activeVoca === "hebrew" ? "החלף ל-Voca אחר" : "Switch to another Voca"}
+            dir={activeVoca === "hebrew" ? "rtl" : undefined}
           >
-            🇬🇧 EN · Switch
+            {activeVoca === "hebrew" ? "🇮🇱 עב · החלף" : "🇬🇧 EN · SWITCH"}
           </button>
         )}
         <TeacherDashboardView
