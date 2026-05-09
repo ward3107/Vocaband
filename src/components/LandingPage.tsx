@@ -222,7 +222,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   initial={{ opacity: 0, x: isRTL ? 50 : -50, y: 30 }}
                   animate={{ opacity: 1, x: 0, y: 0 }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="relative z-20 text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black font-headline italic leading-tight break-words mb-6"
+                  className="relative z-20 text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black font-headline italic leading-tight break-words mb-6"
                 >
                   <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
                     {t.heroTitleLine1}
@@ -465,7 +465,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         so the card feels substantial on a phone screen
                         (was 4:3 with tighter sizing — read as small).
                         Tablet+: original 4:3 / p-8 / smaller icon. */}
-                    <div className={`p-10 sm:p-8 rounded-[2rem] bg-gradient-to-br ${card.color} shadow-2xl backdrop-blur-sm border border-white/20 aspect-[5/4] sm:aspect-[4/3]`}>
+                    <div className={`p-10 sm:p-6 md:p-8 rounded-[2rem] bg-gradient-to-br ${card.color} shadow-2xl backdrop-blur-sm border border-white/20 aspect-[5/4] sm:aspect-[4/3]`}>
                       <div className="h-full flex flex-col items-center justify-center gap-5 sm:gap-4">
                         <div className="w-28 h-28 sm:w-24 sm:h-24 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
                           {card.icon}
@@ -487,12 +487,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Features Section - 3D Bento Grid */}
-        <section ref={studentsSectionRef} id="students" className="py-12 md:py-20 px-4 md:px-6 relative scroll-mt-20">
+        <section ref={studentsSectionRef} id="students" className="py-8 md:py-20 px-4 md:px-6 relative scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-7xl mx-auto mb-12 text-center"
+            className="max-w-7xl mx-auto mb-8 md:mb-12 text-center"
           >
             <h2 className="text-4xl md:text-6xl font-black font-headline mb-4 text-white drop-shadow-lg">
               {t.studentsSectionH2}
@@ -532,7 +532,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               className="h-full"
               style={{ transformStyle: 'preserve-3d' }}
             >
-              <div onMouseMove={handleSpotlight} className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
+              <div onMouseMove={handleSpotlight} className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
                 {/* Glass overlay */}
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                 {/* Spotlight follows the cursor */}
@@ -550,7 +550,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       <CssAnimation type="game" size={100} />
                     </motion.div>
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-black mb-4 text-center" style={{ transform: 'translateZ(35px)' }}>{t.gameModesTitle}</h3>
+                  <h3 className="text-2xl md:text-4xl font-black mb-3 md:mb-4 text-center" style={{ transform: 'translateZ(35px)' }}>{t.gameModesTitle}</h3>
                   <p className="text-white/80 font-bold mb-6 max-w-md mx-auto text-center" dir={dir} style={{ transform: 'translateZ(20px)' }}>
                     {t.gameModesDesc}
                   </p>
@@ -1089,7 +1089,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* AI Section - Does All the Heavy Lifting */}
-        <section id="ai" className="py-12 md:py-20 px-4 md:px-6 relative isolate overflow-hidden bg-gradient-to-b from-transparent via-violet-950/20 to-transparent scroll-mt-20">
+        <section id="ai" className="py-8 md:py-20 px-4 md:px-6 relative isolate overflow-hidden bg-gradient-to-b from-transparent via-violet-950/20 to-transparent scroll-mt-20">
           {/* Ambient video background — silent, looping.  The brand tint
               overlay below pushes the footage toward Vocaband's violet
               palette so a generic clip still feels on-brand. */}
@@ -1113,7 +1113,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-50px" }}
             transition={{ duration: 0.7, ease: "easeOut" }}
-            className="max-w-6xl mx-auto mb-12 text-center"
+            className="max-w-6xl mx-auto mb-8 md:mb-12 text-center"
           >
             {/* AI Badge */}
             <motion.div
@@ -1144,7 +1144,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileHover={{ y: -8, scale: 1.02 }}
               className="relative group"
             >
-              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500/35 via-teal-500/35 to-cyan-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300">
+              <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500/35 via-teal-500/35 to-cyan-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300">
                 <div className="relative z-10 text-center">
                   <motion.div
                     whileHover={{ scale: 1.1, rotate: [0, -10, 10, 0] }}
@@ -1172,7 +1172,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileHover={{ y: -8, scale: 1.02 }}
               className="relative group"
             >
-              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-violet-500/35 via-purple-500/35 to-fuchsia-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300">
+              <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-violet-500/35 via-purple-500/35 to-fuchsia-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300">
                 <div className="relative z-10 text-center">
                   <motion.div
                     whileHover={{ scale: 1.1 }}
@@ -1200,7 +1200,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileHover={{ y: -8, scale: 1.02 }}
               className="relative group"
             >
-              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-amber-500/35 via-orange-500/35 to-rose-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300">
+              <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-amber-500/35 via-orange-500/35 to-rose-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300">
                 <div className="relative z-10 text-center">
                   <motion.div
                     whileHover={{ scale: 1.1, rotate: [0, 15, -15, 0] }}
@@ -1225,7 +1225,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mt-16"
+            className="text-center mt-10 md:mt-16"
           >
             <p className="text-3xl md:text-4xl font-black text-white drop-shadow-lg">
               {t.aiJustAssign}
@@ -1234,12 +1234,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Teacher Features Section - Why Teachers Love Vocaband */}
-        <section id="teachers" className="py-12 md:py-20 px-4 md:px-6 relative scroll-mt-20">
+        <section id="teachers" className="py-8 md:py-20 px-4 md:px-6 relative scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-7xl mx-auto mb-12 text-center"
+            className="max-w-7xl mx-auto mb-8 md:mb-12 text-center"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -1257,7 +1257,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ type: "spring", stiffness: 35, damping: 18, delay: 0.4 }}
-              className="text-6xl md:text-8xl lg:text-9xl font-black font-headline mb-8 tracking-tight"
+              className="text-5xl md:text-8xl lg:text-9xl font-black font-headline mb-6 md:mb-8 tracking-tight"
             >
               <motion.span
                 animate={{
@@ -1289,7 +1289,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileHover={{ y: -12, scale: 1.02 }}
               className="relative group md:col-span-2"
             >
-              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(14,165,233,0.3)] hover:shadow-[0_30px_80px_rgba(14,165,233,0.4)] transition-all duration-300 overflow-hidden">
+              <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(14,165,233,0.3)] hover:shadow-[0_30px_80px_rgba(14,165,233,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                 <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
                   <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
@@ -1554,7 +1554,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileHover={{ y: -12, scale: 1.02 }}
               className="relative group md:col-span-2"
             >
-              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
+              <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                 <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
                   <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
@@ -1591,7 +1591,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               whileHover={{ y: -12, scale: 1.02 }}
               className="relative group md:col-span-2"
             >
-              <div className="h-full p-8 rounded-[2rem] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
+              <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                 <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
                   <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
@@ -1624,7 +1624,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Interactive Journey Section - Scroll Progress Path */}
-        <section id="curriculum" className="py-12 md:py-20 px-4 md:px-6 relative overflow-hidden scroll-mt-20">
+        <section id="curriculum" className="py-8 md:py-20 px-4 md:px-6 relative overflow-hidden scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1892,7 +1892,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             misrepresent shipped features.  No CTA to buy — just a
             "stay in the loop" mailto link for early-access leads.
             ═══════════════════════════════════════════════════════════ */}
-        <section id="vocas" className="py-12 md:py-20 px-4 md:px-6 relative overflow-hidden scroll-mt-20">
+        <section id="vocas" className="py-8 md:py-20 px-4 md:px-6 relative overflow-hidden scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1923,7 +1923,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               all 5 across.  Padding + emoji size also scale up on
               mobile so each row reads as a real "feature card" not a
               chip. */}
-          <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
+          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5">
             {[
               { name: t.vocaHistoryName, emoji: "📜", color: "from-amber-500 to-orange-600", tag: t.vocaHistoryTag },
               { name: t.vocaScienceName, emoji: "🔬", color: "from-emerald-500 to-teal-600", tag: t.vocaScienceTag },
@@ -1993,7 +1993,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </section>
 
         {/* Final CTA - Epic 3D Card */}
-        <section className="py-12 md:py-24 px-4 md:px-6 bg-violet-950 relative overflow-hidden">
+        <section className="py-8 md:py-24 px-4 md:px-6 bg-violet-950 relative overflow-hidden">
           {/* Cosmic trilingual backdrop — silent looping video.
               Stretches edge-to-edge across the whole CTA strip so the
               violet card below floats inside the universe. */}
@@ -2109,12 +2109,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           push the eye to Pro.
           ═══════════════════════════════════════════════════════════
         */}
-        <section id="pricing" className="py-12 md:py-24 px-4 md:px-6 relative scroll-mt-20">
+        <section id="pricing" className="py-8 md:py-24 px-4 md:px-6 relative scroll-mt-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-5xl mx-auto mb-12 text-center"
+            className="max-w-5xl mx-auto mb-8 md:mb-12 text-center"
           >
             <h2 className="text-3xl md:text-5xl font-black font-headline mb-4 text-white drop-shadow-lg">
               {t.pricingTitle}

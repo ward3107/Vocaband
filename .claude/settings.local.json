@@ -232,7 +232,10 @@
       "mcp__claude_ai_Canva__create-design-from-candidate",
       "Bash(grep -iE \"\\\\.\\(png|jpg|jpeg|webp|gif\\)$\")",
       "PowerShell(Copy-Item *)",
-      "Bash(Select-String \"LandingPage\")"
+      "Bash(Select-String \"LandingPage\")",
+      "Bash(git branch *)",
+      "Bash(gh pr *)",
+      "Bash(npm ls *)"
     ]
   }
 }
