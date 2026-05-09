@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
 import type { View, ShopTab } from "./core/views";
+import { type VocaId, ACTIVE_VOCA_KEY, getEntitledVocas } from "./core/subject";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import type { Word } from "./data/vocabulary";
 import { useVocabularyLazy, getCachedVocabulary } from "./hooks/useVocabularyLazy";
@@ -138,20 +139,6 @@ const TEACHER_VIEWS = new Set<View>([
   "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-synonyms", "vocahebrew-listening",
 ]);
 
-// VocaHebrew — entitlement helpers.  A teacher's subjects_taught array
-// drives whether they see the Voca Picker post-login and which Vocas
-// the picker offers.  Defaults to ['english'] so legacy rows continue
-// working.
-type VocaId = "english" | "hebrew";
-const getEntitledVocas = (u: AppUser | null): VocaId[] => {
-  if (!u || u.role !== "teacher") return [];
-  const raw = (u.subjectsTaught ?? ["english"]) as string[];
-  return raw.filter((s): s is VocaId => s === "english" || s === "hebrew");
-};
-// Where activeVoca lives across page refreshes within the same tab.
-// Session-scoped (not localStorage) so closing the tab clears it and
-// the picker re-shows on next login — matches the spec.
-const ACTIVE_VOCA_KEY = "vocaband:activeVoca";
 const STUDENT_VIEWS = new Set<View>([
   "student-dashboard", "game", "live-challenge",
   "shop", "global-leaderboard", "privacy-settings",
@@ -2688,7 +2675,7 @@ export default function App() {
           user={user}
           onPickVoca={(voca) => {
             setActiveVoca(voca);
-            setView(voca === "hebrew" ? "vocahebrew-dashboard" : "teacher-dashboard");
+            setView("teacher-dashboard");
           }}
         />
       </LazyWrapper>
@@ -2733,7 +2720,11 @@ export default function App() {
       setShowModeSelection(true);
       setView("game");
     } else {
-      setView("vocahebrew-dashboard");
+      // Solo-launch by a Hebrew teacher returns to the unified
+      // dashboard.  The legacy "vocahebrew-dashboard" route is now
+      // unreachable from here; its render block is retained as dead
+      // code until the Phase 4 cleanup step removes it.
+      setView("teacher-dashboard");
     }
   };
 
@@ -2846,6 +2837,13 @@ export default function App() {
         <TeacherDashboardView
           user={user}
           setUser={setUser}
+          subject={activeVoca ?? "english"}
+          hebrewLaunches={{
+            niqqud: () => setView("vocahebrew-niqqud"),
+            shoresh: () => setView("vocahebrew-shoresh"),
+            synonym: () => setView("vocahebrew-synonyms"),
+            listening: () => setView("vocahebrew-listening"),
+          }}
           consentModal={consentModal}
           exitConfirmModal={exitConfirmModal}
           ocrCropModal={ocrCropModal}

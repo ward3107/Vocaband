@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
+import type { VocaId } from "../core/subject";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import ShareClassLinkModal from "./ShareClassLinkModal";
@@ -46,6 +47,10 @@ interface ClassCardProps {
   onPrintAssignmentWorksheet?: (assignment: Assignment) => void;
   openDropdownClassId?: string | null;
   onToggleDropdown?: (classId: string | null) => void;
+  /** Subject of this class.  Drives the "X words" / "X מילים" badge
+   *  on each assignment row.  Defaults to 'english' so cards omitting
+   *  the prop render exactly as before. */
+  subject?: VocaId;
 }
 
 const ClassCard: React.FC<ClassCardProps> = ({
@@ -69,6 +74,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   onPrintAssignmentWorksheet,
   openDropdownClassId,
   onToggleDropdown,
+  subject = "english",
 }) => {
   const { language } = useLanguage();
   const t = teacherDashboardT[language];
@@ -534,7 +540,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   style={{ color: 'var(--vb-text-muted)' }}
                   className="text-xs mt-0.5"
                 >
-                  {assignment.wordIds.length} word{assignment.wordIds.length === 1 ? '' : 's'} · {assignment.deadline ? new Date(assignment.deadline).toLocaleDateString() : 'No deadline'}
+                  {subject === "hebrew"
+                    ? `${assignment.wordIds.length} ${assignment.wordIds.length === 1 ? "מילה" : "מילים"}`
+                    : `${assignment.wordIds.length} word${assignment.wordIds.length === 1 ? "" : "s"}`}
+                  {" · "}
+                  {assignment.deadline ? new Date(assignment.deadline).toLocaleDateString() : "No deadline"}
                 </p>
               </div>
               <div className="flex gap-1.5 flex-shrink-0">

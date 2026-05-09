@@ -10,6 +10,7 @@ import { supabase } from "../core/supabase";
 import TeacherThemeMenu from "../components/dashboard/TeacherThemeMenu";
 import { useTeacherTheme } from "../hooks/useTeacherTheme";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
+import HebrewSoloLaunchStrip, { type HebrewLaunches } from "../components/dashboard/HebrewSoloLaunchStrip";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
 import SavedTasksSection from "../components/dashboard/SavedTasksSection";
 import CreateClassModal from "../components/dashboard/CreateClassModal";
@@ -22,6 +23,7 @@ import ConfirmDialog, { type ConfirmDialogState } from "../components/dashboard/
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
+import type { VocaId } from "../core/subject";
 import type { SavedTask } from "../hooks/useSavedTasks";
 import { isTrialing, isPro, getTrialDaysLeft } from "../core/plan";
 import { Sparkles, Crown } from "lucide-react";
@@ -117,6 +119,19 @@ interface TeacherDashboardViewProps {
   onWizardComplete?: (result: import('../components/onboarding/TeacherOnboardingWizard').WizardResult) => Promise<{ classCode: string } | null>;
   /** Mark the wizard skipped/dismissed so it doesn't reappear. */
   onWizardSkip?: () => void;
+
+  /** Active Voca for this teacher's session.  Drives subject-specific
+   *  copy (TopAppBar subtitle, classes section title, etc.) and which
+   *  quick actions are visible.  Defaults to 'english' so the existing
+   *  English-only experience is preserved when the prop is omitted. */
+  subject?: VocaId;
+
+  /** Launch handlers for the four VocaHebrew native-track games.
+   *  Required when subject === 'hebrew'; ignored otherwise.  Lets a
+   *  Hebrew teacher kick off a solo round without first creating an
+   *  assignment — the Phase 3 entry-point flow preserved on the
+   *  unified dashboard. */
+  hebrewLaunches?: HebrewLaunches;
 }
 
 export default function TeacherDashboardView({
@@ -141,6 +156,8 @@ export default function TeacherDashboardView({
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
   onWizardComplete, onWizardSkip,
+  subject = "english",
+  hebrewLaunches,
 }: TeacherDashboardViewProps) {
   const { language, dir } = useLanguage();
   const t = teacherDashboardT[language];
@@ -224,7 +241,7 @@ export default function TeacherDashboardView({
 
         <TopAppBar
           title="Vocaband"
-          subtitle="CEFR A1–B2 • ESL VOCABULARY"
+          subtitle={subject === "hebrew" ? "כיתות ד–ט · אוצר מילים בעברית" : "CEFR A1–B2 • ESL VOCABULARY"}
           userName={user?.displayName}
           userAvatar={user?.avatar}
           onLogout={() => supabase.auth.signOut()}
@@ -314,17 +331,22 @@ export default function TeacherDashboardView({
             );
           })()}
 
-          <TeacherQuickActions
-            pendingStudentsCount={pendingStudentsCount}
-            onQuickPlayClick={onQuickPlayClick}
-            onClassroomClick={onClassroomClick}
-            onApprovalsClick={onApprovalsClick}
-            onClassShowClick={onClassShowClick}
-            onWorksheetClick={onWorksheetClick}
-            onVocabagrutClick={onVocabagrutClick}
-          />
+          {subject === "hebrew" && hebrewLaunches ? (
+            <HebrewSoloLaunchStrip launches={hebrewLaunches} />
+          ) : (
+            <TeacherQuickActions
+              pendingStudentsCount={pendingStudentsCount}
+              onQuickPlayClick={onQuickPlayClick}
+              onClassroomClick={onClassroomClick}
+              onApprovalsClick={onApprovalsClick}
+              onClassShowClick={onClassShowClick}
+              onWorksheetClick={onWorksheetClick}
+              onVocabagrutClick={onVocabagrutClick}
+            />
+          )}
 
           <TeacherClassesSection
+            subject={subject}
             classes={classes}
             teacherAssignments={teacherAssignments}
             copiedCode={copiedCode}

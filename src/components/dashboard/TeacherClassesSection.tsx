@@ -1,6 +1,7 @@
 import { Users, Plus } from "lucide-react";
 import ClassCard from "../ClassCard";
 import type { ClassData, AssignmentData } from "../../core/supabase";
+import type { VocaId } from "../../core/subject";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
 
@@ -31,6 +32,11 @@ interface TeacherClassesSectionProps {
    *  component now reads colours from CSS custom properties (var(--vb-*))
    *  set by useTeacherTheme() so this prop is unused. */
   isDark?: boolean;
+  /** Active Voca for this teacher's session.  When 'hebrew', the
+   *  section title flips to "Hebrew classes" so a teacher with both
+   *  Vocas can tell at a glance which side they're on.  Defaults to
+   *  'english' for source-compat. */
+  subject?: VocaId;
 }
 
 export default function TeacherClassesSection({
@@ -40,9 +46,12 @@ export default function TeacherClassesSection({
   onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   onProjectAssignmentToClass, onPrintAssignmentWorksheet,
+  subject = "english",
 }: TeacherClassesSectionProps) {
   const { language } = useLanguage();
   const t = teacherDashboardT[language];
+  const sectionTitle =
+    subject === "hebrew" ? "My Hebrew classes" : "My classes";
   return (
     <div data-tour="my-classes">
       <div className="flex items-center justify-between mb-4 sm:mb-6 px-1">
@@ -52,7 +61,7 @@ export default function TeacherClassesSection({
             style={{ color: 'var(--vb-text-primary)' }}
           >
             <Users size={18} style={{ color: 'var(--vb-text-muted)' }} />
-            My classes
+            {sectionTitle}
           </h2>
           <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--vb-text-secondary)' }}>
             {classes.length === 0
@@ -124,6 +133,7 @@ export default function TeacherClassesSection({
             return (
               <ClassCard
                 key={c.id}
+                subject={c.subject ?? subject}
                 name={c.name}
                 code={c.code}
                 avatar={c.avatar}

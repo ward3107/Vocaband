@@ -10,9 +10,8 @@
  */
 import { motion } from "motion/react";
 import type { AppUser } from "../core/supabase";
+import type { VocaId } from "../core/subject";
 import { useLanguage } from "../hooks/useLanguage";
-
-export type VocaId = "english" | "hebrew";
 
 interface VocaCard {
   id: VocaId;
