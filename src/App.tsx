@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
 import type { View, ShopTab } from "./core/views";
+import { type VocaId, ACTIVE_VOCA_KEY, getEntitledVocas } from "./core/subject";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import type { Word } from "./data/vocabulary";
 import { useVocabularyLazy, getCachedVocabulary } from "./hooks/useVocabularyLazy";
@@ -138,20 +139,6 @@ const TEACHER_VIEWS = new Set<View>([
   "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-synonyms", "vocahebrew-listening",
 ]);
 
-// VocaHebrew — entitlement helpers.  A teacher's subjects_taught array
-// drives whether they see the Voca Picker post-login and which Vocas
-// the picker offers.  Defaults to ['english'] so legacy rows continue
-// working.
-type VocaId = "english" | "hebrew";
-const getEntitledVocas = (u: AppUser | null): VocaId[] => {
-  if (!u || u.role !== "teacher") return [];
-  const raw = (u.subjectsTaught ?? ["english"]) as string[];
-  return raw.filter((s): s is VocaId => s === "english" || s === "hebrew");
-};
-// Where activeVoca lives across page refreshes within the same tab.
-// Session-scoped (not localStorage) so closing the tab clears it and
-// the picker re-shows on next login — matches the spec.
-const ACTIVE_VOCA_KEY = "vocaband:activeVoca";
 const STUDENT_VIEWS = new Set<View>([
   "student-dashboard", "game", "live-challenge",
   "shop", "global-leaderboard", "privacy-settings",
