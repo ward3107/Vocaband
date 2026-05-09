@@ -161,6 +161,12 @@ export function useQuickPlayRealtime(params: UseQuickPlayRealtimeParams): void {
 
   // ─── Teacher monitor: progress-table Realtime + polling fallback ───
   useEffect(() => {
+    // Tear down the moment auth disappears — without `user` the polled
+    // SELECT against `progress` fails with 401/permission-denied (RLS
+    // expects an authenticated teacher), and the channel can't auth either.
+    // `setUser(null)` fires synchronously inside the SIGNED_OUT handler, so
+    // this guard runs before view/session state has finished resettling.
+    if (!user) return;
     if (view !== 'quick-play-teacher-monitor' || !quickPlayActiveSession?.id) return;
 
     const sessionId = quickPlayActiveSession.id;
@@ -250,7 +256,7 @@ export function useQuickPlayRealtime(params: UseQuickPlayRealtimeParams): void {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, quickPlayActiveSession?.id]);
+  }, [view, quickPlayActiveSession?.id, user?.uid]);
 
   // ─── Student session/kick watcher (legacy v1 only) ─────────────────
   useEffect(() => {
