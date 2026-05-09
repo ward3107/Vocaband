@@ -2833,6 +2833,7 @@ export default function App() {
         <TeacherDashboardView
           user={user}
           setUser={setUser}
+          subject={activeVoca ?? "english"}
           consentModal={consentModal}
           exitConfirmModal={exitConfirmModal}
           ocrCropModal={ocrCropModal}

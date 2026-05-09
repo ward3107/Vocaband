@@ -22,6 +22,7 @@ import ConfirmDialog, { type ConfirmDialogState } from "../components/dashboard/
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
+import type { VocaId } from "../core/subject";
 import type { SavedTask } from "../hooks/useSavedTasks";
 import { isTrialing, isPro, getTrialDaysLeft } from "../core/plan";
 import { Sparkles, Crown } from "lucide-react";
@@ -117,6 +118,12 @@ interface TeacherDashboardViewProps {
   onWizardComplete?: (result: import('../components/onboarding/TeacherOnboardingWizard').WizardResult) => Promise<{ classCode: string } | null>;
   /** Mark the wizard skipped/dismissed so it doesn't reappear. */
   onWizardSkip?: () => void;
+
+  /** Active Voca for this teacher's session.  Drives subject-specific
+   *  copy (TopAppBar subtitle, classes section title, etc.) and which
+   *  quick actions are visible.  Defaults to 'english' so the existing
+   *  English-only experience is preserved when the prop is omitted. */
+  subject?: VocaId;
 }
 
 export default function TeacherDashboardView({
@@ -141,6 +148,7 @@ export default function TeacherDashboardView({
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
   onWizardComplete, onWizardSkip,
+  subject = "english",
 }: TeacherDashboardViewProps) {
   const { language, dir } = useLanguage();
   const t = teacherDashboardT[language];
@@ -224,7 +232,7 @@ export default function TeacherDashboardView({
 
         <TopAppBar
           title="Vocaband"
-          subtitle="CEFR A1–B2 • ESL VOCABULARY"
+          subtitle={subject === "hebrew" ? "כיתות ד–ט · אוצר מילים בעברית" : "CEFR A1–B2 • ESL VOCABULARY"}
           userName={user?.displayName}
           userAvatar={user?.avatar}
           onLogout={() => supabase.auth.signOut()}
