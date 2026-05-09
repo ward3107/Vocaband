@@ -184,7 +184,6 @@ const baseStyles = (lang: string, accent: string, accentDark: string, settings: 
 
   const ink = settings.inkSaver;
   const headerAccent = ink ? "#111827" : accent;
-  const headerBg = ink ? "#ffffff" : accent;
   const infoBg = ink ? "#ffffff" : "#f3f4f6";
   const infoBorder = ink ? "1.5px solid #111827" : "0";
 
@@ -2226,7 +2225,10 @@ const generateParentHandoutHTML = (pack: TopicPack, words: Word[], lang: string,
 // ---------- React components ----------
 
 interface FreeResourcesViewProps {
-  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq") => void;
+  // Mirrors NavPage in PublicNav.tsx — kept as a literal union here so the
+  // call sites in App.tsx don't need to import the type. Update both when
+  // adding new public pages.
+  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => void;
   onGetStarted: () => void;
   /** Teacher signup — drives PublicNav's "Start free" CTA. */
   onTeacherLogin?: () => void;
@@ -2234,7 +2236,6 @@ interface FreeResourcesViewProps {
 }
 
 interface ResourceCardProps {
-  topicName: string;
   icon: React.ReactNode;
   title: string;
   description: string;
@@ -2261,7 +2262,7 @@ interface ResourceCardProps {
   audioZipTitle: string;
   audioZipDesc: string;
   audioZipDownloadLabel: string;
-  audioZipComingSoonLabel: string;
+  topicWordIds: number[];
   gradient: string;
   delay: number;
   onDownload: () => void;
@@ -2293,7 +2294,6 @@ const CategoryLabel: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 );
 
 const ResourceCard: React.FC<ResourceCardProps> = ({
-  topicName,
   icon,
   title,
   description,
@@ -2320,7 +2320,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
   audioZipTitle,
   audioZipDesc,
   audioZipDownloadLabel,
-  audioZipComingSoonLabel,
+  topicWordIds,
   gradient,
   delay,
   onDownload,
@@ -2539,23 +2539,23 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             />
           </div>
 
-          {/* Audio MP3 zip — disabled stub. The button is wired but the worker
-              route that streams the zip from Supabase Storage is not deployed,
-              so we render a "coming soon" pill instead of letting the click
-              produce a 404. */}
-          <div className="mt-3 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
-            <Music size={18} className="text-white/60 shrink-0" />
+          {/* Audio pack download — fetches all topic MP3s from Supabase Storage
+              via the Cloudflare Worker's /api/audio-pack route, which streams
+              them as a ZIP using client-zip. The Worker handles this at the
+              edge so MP3s never touch Fly.io. */}
+          <a
+            href={`/api/audio-pack?ids=${topicWordIds.join(",")}&name=${encodeURIComponent(title)}`}
+            download
+            aria-label={`${audioZipDownloadLabel} — ${title}`}
+            className="mt-3 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-3"
+          >
+            <Music size={18} className="text-white/70 shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-white text-sm font-bold truncate">{audioZipTitle}</div>
               <div className="text-white/50 text-xs truncate">{audioZipDesc}</div>
             </div>
-            <span
-              className="shrink-0 text-[10px] uppercase tracking-wider font-bold text-white/40 bg-white/5 px-2 py-1 rounded"
-              title={audioZipDownloadLabel}
-            >
-              {audioZipComingSoonLabel}
-            </span>
-          </div>
+            <Download size={14} className="text-white/70 shrink-0" />
+          </a>
         </div>
       </div>
     </motion.div>
@@ -3098,13 +3098,17 @@ const isWorksheetLang = (s: string): s is WorksheetLang =>
   s === "en" || s === "he" || s === "ar";
 
 const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onBack }) => {
-  const { language, dir, textAlign, isRTL } = useLanguage();
+  const { language, dir, isRTL } = useLanguage();
   const t = freeResourcesT[language];
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [previewSource, setPreviewSource] = useState<PreviewSource | null>(null);
   const [settings, setSettings] = useState<WorksheetSettings>(DEFAULT_SETTINGS);
   const [isExporting, setIsExporting] = useState(false);
   const [topicSearch, setTopicSearch] = useState("");
+  // null = collapsed; otherwise the lookup key of the bundle whose format
+  // picker is currently open. Only one bundle is expanded at a time so the
+  // page doesn't grow unboundedly.
+  const [expandedBundle, setExpandedBundle] = useState<string | null>(null);
   const [worksheetLang, setWorksheetLang] = useState<WorksheetLang>(() => {
     if (typeof window === "undefined") return language as WorksheetLang;
     try {
@@ -3228,12 +3232,20 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     const container = document.createElement("div");
     container.innerHTML = preview.html;
 
+    // String fields here are literal unions in the html2pdf.js .d.ts (e.g.
+    // "jpeg" | "png", "mm" | "cm" | "in"), so we need `as const` to stop
+    // TS widening them to plain string and tripping the type guard.
     const opt = {
       margin: 0,
       filename: preview.filename,
-      image: { type: "jpeg", quality: 0.98 },
+      image: { type: "jpeg" as const, quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: settings.orientation, compress: true },
+      jsPDF: {
+        unit: "mm" as const,
+        format: "a4" as const,
+        orientation: settings.orientation,
+        compress: true,
+      },
       pagebreak: { mode: ["css", "legacy"] as const },
     };
 
@@ -3277,7 +3289,11 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
               <span className="text-violet-200 font-bold text-sm">{t.freeResourcesPill}</span>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 font-headline">{t.title}</h1>
-            <p className="text-base md:text-lg text-white/70 max-w-2xl mx-auto" dir={dir} style={{ textAlign }}>
+            <p
+              className="text-base md:text-lg text-white/70 max-w-2xl mx-auto"
+              dir={dir}
+              style={{ textAlign: isRTL ? "right" : "left" }}
+            >
               {t.subtitle}
             </p>
           </motion.div>
@@ -3310,6 +3326,19 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
               ].map((bundle) => {
                 const bundleData = THEMED_BUNDLES.find((b) => b.name === bundle.lookup);
                 const wordCount = bundleData ? new Set(bundleData.ids).size : 0;
+                const isOpen = expandedBundle === bundle.lookup;
+                // Six headline formats per bundle. Worksheet stays the
+                // default direct download; the rest are surfaced when the
+                // teacher expands the picker so the bundle isn't locked
+                // to a single sheet type.
+                const bundleFormats: { key: Format; label: string }[] = [
+                  { key: "worksheet", label: t.download },
+                  { key: "flashcards", label: t.downloadFlashcards },
+                  { key: "quiz", label: t.downloadQuiz },
+                  { key: "crossword", label: t.downloadCrossword },
+                  { key: "wordsearch", label: t.downloadWordSearch },
+                  { key: "bingo", label: t.downloadBingo },
+                ];
                 return (
                   <div
                     key={bundle.lookup}
@@ -3325,15 +3354,40 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                         <span className="text-[10px] uppercase tracking-wider font-bold text-white/60 bg-white/10 px-2 py-1 rounded">
                           {wordCount} words
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => openPreview(bundle.lookup, "worksheet")}
-                          className={`px-3 py-1.5 rounded-lg bg-gradient-to-r ${bundle.gradient} text-white text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-all shadow-md`}
-                        >
-                          <Download size={12} />
-                          {t.bundleDownload}
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openPreview(bundle.lookup, "worksheet")}
+                            className={`px-3 py-1.5 rounded-lg bg-gradient-to-r ${bundle.gradient} text-white text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-all shadow-md`}
+                          >
+                            <Download size={12} />
+                            {t.bundleDownload}
+                          </button>
+                          <button
+                            type="button"
+                            aria-expanded={isOpen}
+                            aria-label={isOpen ? "Hide formats" : "Show more formats"}
+                            onClick={() => setExpandedBundle(isOpen ? null : bundle.lookup)}
+                            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 transition-all"
+                          >
+                            {isOpen ? <ChevronLeft size={14} className="-rotate-90" /> : <ChevronRight size={14} className="rotate-90" />}
+                          </button>
+                        </div>
                       </div>
+                      {isOpen && (
+                        <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-2">
+                          {bundleFormats.map((f) => (
+                            <button
+                              key={f.key}
+                              type="button"
+                              onClick={() => openPreview(bundle.lookup, f.key)}
+                              className="px-2.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/90 text-xs font-bold transition-all truncate"
+                            >
+                              {f.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -3462,7 +3516,6 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                   return (
                     <ResourceCard
                       key={topic.name}
-                      topicName={topic.name}
                       icon={<span className="text-3xl">{topic.icon}</span>}
                       title={topic.name}
                       description={t.topicPackDescription.replace("{count}", wordCount.toString())}
@@ -3489,7 +3542,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                       audioZipTitle={t.audioZipTitle}
                       audioZipDesc={t.audioZipDesc}
                       audioZipDownloadLabel={t.audioZipDownload}
-                      audioZipComingSoonLabel={t.audioZipComingSoon}
+                      topicWordIds={topic.ids}
                       gradient={gradient}
                       delay={Math.min(index * 0.05, 0.5)}
                       onDownload={() => openPreview(topic.name, "worksheet")}
@@ -3523,7 +3576,11 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
           >
             <Rocket size={40} className="mx-auto mb-4 text-violet-400" />
             <h3 className="text-2xl font-bold text-white mb-3">{t.ctaTitle}</h3>
-            <p className="text-white/70 mb-6 max-w-xl mx-auto" dir={dir} style={{ textAlign }}>
+            <p
+              className="text-white/70 mb-6 max-w-xl mx-auto"
+              dir={dir}
+              style={{ textAlign: isRTL ? "right" : "left" }}
+            >
               {t.ctaText}
             </p>
             <motion.button
