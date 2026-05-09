@@ -44,6 +44,10 @@ export interface UseOcrUploadParams {
   setOcrStatus: (v: string) => void;
   setOcrPendingFile: (v: { file: File; inputRef: React.ChangeEvent<HTMLInputElement> | null } | null) => void;
   showToast: (message: string, type: "success" | "error" | "info") => void;
+  /** Optional paywall toast helper — shown when /api/ocr returns 403
+   *  ai_requires_pro.  Falls back to plain showToast when not provided
+   *  (callers that haven't adopted the paywall flow keep working). */
+  showPaywallToast?: (message: string) => void;
   translateWordsBatch: (words: string[]) => Promise<Map<string, { hebrew: string; arabic: string; match: number }>>;
 }
 
@@ -52,7 +56,7 @@ export function useOcrUpload(params: UseOcrUploadParams) {
     classes, setSelectedClass,
     setCustomWords, setSelectedWords, setSelectedLevel, setView,
     setIsOcrProcessing, setOcrProgress, setOcrStatus, setOcrPendingFile,
-    showToast, translateWordsBatch,
+    showToast, showPaywallToast, translateWordsBatch,
   } = params;
 
   // Step 2: User confirms from the preview → run OCR
@@ -116,12 +120,24 @@ export function useOcrUpload(params: UseOcrUploadParams) {
 
       if (!response.ok) {
         let errorMessage = `OCR failed (${response.status})`;
+        let isPaywall = false;
         try {
           const errorData = await response.json();
           // Prefer the detailed 'message' field (which has the actual
           // vendor error reason) over the generic 'error' field.
           errorMessage = errorData.message || errorData.error || errorMessage;
+          isPaywall = response.status === 403 && errorData.error === 'ai_requires_pro';
         } catch { /* response wasn't JSON */ }
+        if (isPaywall && showPaywallToast) {
+          // Surface the upgrade-action toast directly so the user can
+          // act on the paywall without first reading the generic error
+          // toast that the catch block below would otherwise show.
+          showPaywallToast(errorMessage);
+          // Throw a sentinel so the catch knows to skip its own toast.
+          const paywallErr = new Error(errorMessage);
+          (paywallErr as Error & { _paywallShown?: true })._paywallShown = true;
+          throw paywallErr;
+        }
         throw new Error(errorMessage);
       }
 
@@ -208,7 +224,12 @@ export function useOcrUpload(params: UseOcrUploadParams) {
         showToast(successMsg, "success");
       }
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
+      // Paywall toast was already shown above (with Upgrade button) --
+      // skip the generic "...Please try again" toast that would muddle
+      // the message.  The sentinel is set inside the response.ok block.
+      if ((err as { _paywallShown?: true })?._paywallShown) {
+        // already toasted
+      } else if (err instanceof DOMException && err.name === 'AbortError') {
         showToast("OCR timed out — the image may be too complex. Try a clearer photo or a smaller area.", "error");
       } else {
         trackAutoError(err, 'OCR processing failed');

@@ -521,15 +521,36 @@ export default function App() {
   // re-fired on every App render — that was a major contributor
   // to the request-storm incident.  setToasts (from useState) is
   // already stable, so [] is the correct dep list here.
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const showToast = useCallback((
+    message: string,
+    type: 'success' | 'error' | 'info' = 'info',
+    options?: { action?: { label: string; onClick: () => void } },
+  ) => {
     const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type }]);
-    // Errors stay longer so users can read them on mobile
-    const duration = type === 'error' ? 6000 : 3000;
+    setToasts(prev => [...prev, { id, message, type, action: options?.action }]);
+    // Errors and toasts with an action stay longer so the user has time
+    // to read + click before auto-dismissal.
+    const duration = (type === 'error' || options?.action) ? 8000 : 3000;
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, duration);
   }, []);
+
+  // Paywall toast — used when an AI / OCR endpoint returns 403
+  // ai_requires_pro.  Adds an "Upgrade" button that opens the same
+  // mailto the dashboard's trial-expired banner uses.  Until Stripe
+  // payment links are wired (see docs/PRICING-MODEL.md Status), email
+  // is the upgrade channel.
+  const showPaywallToast = useCallback((message: string) => {
+    showToast(message, 'error', {
+      action: {
+        label: 'Upgrade',
+        onClick: () => {
+          window.location.href = 'mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro';
+        },
+      },
+    });
+  }, [showToast]);
 
   // --- CONFIRMATION DIALOG STATE ---
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -631,11 +652,15 @@ export default function App() {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
+      const isPaywall = response.status === 403 && error.error === 'ai_requires_pro';
       // Prefer the human-readable `message` (e.g. paywall text) over the
-      // machine `error` code when both are present.  Server returns
-      // `{error:"ai_requires_pro", message:"AI features require Pro..."}`
-      // for Free-tier callers; this surfaces the message in the toast.
-      throw new Error(error.message || error.error || 'AI generation failed');
+      // machine `error` code when both are present.
+      const msg = error.message || error.error || 'AI generation failed';
+      // Surface the paywall toast (with Upgrade button) directly here
+      // so the action is shown regardless of how the caller handles the
+      // re-thrown Error.
+      if (isPaywall) showPaywallToast(msg);
+      throw new Error(msg);
     }
 
     const data = await response.json();
@@ -705,7 +730,10 @@ export default function App() {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || error.error || 'AI lesson generation failed');
+      const isPaywall = response.status === 403 && error.error === 'ai_requires_pro';
+      const msg = error.message || error.error || 'AI lesson generation failed';
+      if (isPaywall) showPaywallToast(msg);
+      throw new Error(msg);
     }
 
     return await response.json();
@@ -1182,7 +1210,7 @@ export default function App() {
     setSelectedLevel: setSelectedLevel as (v: string) => void,
     setView: setView as (v: string) => void,
     setIsOcrProcessing, setOcrProgress, setOcrStatus, setOcrPendingFile,
-    showToast, translateWordsBatch,
+    showToast, showPaywallToast, translateWordsBatch,
   });
 
   // Adapter for the picker-wiring `onOcrUpload` contract.  The picker
