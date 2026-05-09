@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'node:path';
 
 export default defineConfig({
   testDir: './tests',
@@ -37,6 +38,15 @@ export default defineConfig({
     // verifying anyway.
     command: 'PLAYWRIGHT_TEST=true VITE_SUPABASE_URL="" VITE_SUPABASE_ANON_KEY="" VITE_API_URL="" npm run build && npx vite preview --port 5173 --strictPort',
     port: 5173,
+    // Pin the cwd to the project root.  Playwright's webServer cwd
+    // defaults to the directory of THIS config file (e2e/), so
+    // `npx vite preview` would look for `e2e/dist/` and 404 on every
+    // route -- vite preview resolves outDir relative to its cwd.
+    // `npm run build` happens to work either way because npm walks
+    // up to find package.json, but vite preview doesn't.  This was
+    // the root cause of the smoke-test failures on every PR from
+    // 2026-05-08 onward (network trace showed GET / → 404, body=0).
+    cwd: path.resolve(__dirname, '..'),
     reuseExistingServer: !process.env.CI,
     // Allow up to 3 min for the production build to finish on CI
     // before vite preview comes up.  Local re-runs hit the cache and
