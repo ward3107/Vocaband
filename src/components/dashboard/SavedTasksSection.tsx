@@ -104,7 +104,7 @@ export default function SavedTasksSection({
             </div>
 
             <div className="text-xs mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-              Used {task.timesUsed}× · last {relativeTime(task.lastUsedAt)}
+              {t.usedSummary(task.timesUsed, relativeTime(task.lastUsedAt, t))}
             </div>
 
             <div className="flex gap-2">
