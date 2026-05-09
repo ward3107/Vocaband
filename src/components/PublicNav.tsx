@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Menu, X, LogIn, GraduationCap } from "lucide-react";
+import { Menu, X, LogIn } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
 import NavLanguageToggle from "./NavLanguageToggle";
-import SchoolInquiryModal from "./SchoolInquiryModal";
 
 // The nav lives across two surfaces:
 //
@@ -37,18 +36,11 @@ interface PublicNavProps {
 const PublicNav: React.FC<PublicNavProps> = ({
   currentPage,
   onNavigate,
-  onGetStarted,
   onTeacherLogin,
 }) => {
   const { language, isRTL } = useLanguage();
   const t = landingPageT[language];
   const [mobileOpen, setMobileOpen] = useState(false);
-  // Local modal — every page that mounts PublicNav gets a "For Schools"
-  // CTA in the nav.  Owning the modal here avoids threading a callback
-  // through every sub-page (Terms, FAQ, Privacy, Status, etc.).  The
-  // landing page's pricing-card "Get a quote" CTA still uses its own
-  // separate instance — at most one of the two ever renders visibly.
-  const [schoolModalOpen, setSchoolModalOpen] = useState(false);
 
   // Lock body scroll when the mobile drawer is open — otherwise long
   // landings let the user scroll the page underneath, which makes the
@@ -92,11 +84,6 @@ const PublicNav: React.FC<PublicNavProps> = ({
     onNavigate(page);
   };
 
-  const openSchoolModal = () => {
-    setMobileOpen(false);
-    setSchoolModalOpen(true);
-  };
-
   // Reused for desktop + mobile so copy + accessibility live in one place.
   //
   // ORDER MATTERS — anchors are listed in the same order the matching
@@ -105,15 +92,9 @@ const PublicNav: React.FC<PublicNavProps> = ({
   // means adding it BOTH to the page AND to this array in the right
   // slot; the rule of thumb is "if you can't see it on the page in
   // that order, it doesn't belong in this slot."
-  //
-  // "For Schools" is an action (opens inquiry modal), not an anchor or
-  // page — schools have no public price page per docs/PRICING-MODEL.md.
-  // It and the page links sit AFTER the section anchors so the section
-  // group reads as a contiguous in-page table-of-contents.
   const navItems: Array<
     | { kind: "anchor"; id: string; label: string }
     | { kind: "page"; page: NavPage; label: string }
-    | { kind: "action"; id: string; label: string; onClick: () => void; icon?: React.ReactNode }
   > = [
     { kind: "anchor", id: "students",   label: t.navStudents },
     { kind: "anchor", id: "ai",         label: t.navAi },
@@ -121,7 +102,6 @@ const PublicNav: React.FC<PublicNavProps> = ({
     { kind: "anchor", id: "curriculum", label: t.navCurriculum },
     { kind: "anchor", id: "vocas",      label: t.navVocas },
     { kind: "anchor", id: "pricing",    label: t.navPricing },
-    { kind: "action", id: "schools",    label: t.navForSchools, onClick: openSchoolModal, icon: <GraduationCap size={14} /> },
     { kind: "page",   page: "resources", label: t.navResources },
     { kind: "page",   page: "faq",       label: t.navFaq },
   ];
@@ -165,19 +145,6 @@ const PublicNav: React.FC<PublicNavProps> = ({
                   </button>
                 );
               }
-              if (item.kind === "action") {
-                return (
-                  <button
-                    key={item.id}
-                    onClick={item.onClick}
-                    className="px-3 py-2 text-sm font-bold text-stone-700 hover:text-primary transition-colors rounded-lg hover:bg-primary/5 inline-flex items-center gap-1.5"
-                    type="button"
-                  >
-                    {item.icon}
-                    {item.label}
-                  </button>
-                );
-              }
               return (
                 <button
                   key={item.page}
@@ -207,26 +174,13 @@ const PublicNav: React.FC<PublicNavProps> = ({
             {onTeacherLogin && (
               <button
                 onClick={onTeacherLogin}
-                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-stone-700 hover:text-primary transition-colors rounded-lg hover:bg-primary/5"
+                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-black text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 rounded-lg shadow-md shadow-violet-500/20 hover:shadow-violet-500/40 transition-all"
                 type="button"
               >
                 <LogIn size={15} />
-                {t.navSignIn}
+                {t.heroCtaStart}
               </button>
             )}
-            {/* Primary CTA — "Start free" is the freemium top-of-funnel
-                for TEACHERS (the buyer audience), so it routes to teacher
-                signup, not student signup.  Falls back to onGetStarted
-                only if a host page hasn't wired onTeacherLogin yet — that
-                way we degrade gracefully instead of rendering a dead
-                button on those pages. */}
-            <button
-              onClick={onTeacherLogin ?? onGetStarted}
-              className="hidden md:inline-flex items-center px-4 py-2 text-sm font-black text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 rounded-lg shadow-md shadow-violet-500/20 hover:shadow-violet-500/40 transition-all"
-              type="button"
-            >
-              {t.navStartFree}
-            </button>
 
             {/* Mobile hamburger */}
             <button
@@ -288,19 +242,6 @@ const PublicNav: React.FC<PublicNavProps> = ({
                     </button>
                   );
                 }
-                if (item.kind === "action") {
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={item.onClick}
-                      className="w-full text-start px-3 py-3 text-base font-bold text-stone-800 hover:bg-primary/5 rounded-lg transition-colors inline-flex items-center gap-2"
-                      type="button"
-                    >
-                      {item.icon}
-                      {item.label}
-                    </button>
-                  );
-                }
                 return (
                   <button
                     key={item.page}
@@ -325,34 +266,18 @@ const PublicNav: React.FC<PublicNavProps> = ({
                     setMobileOpen(false);
                     onTeacherLogin();
                   }}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-stone-800 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-black text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-lg shadow-md shadow-violet-500/20"
                   type="button"
                 >
                   <LogIn size={16} />
-                  {t.navSignIn}
+                  {t.heroCtaStart}
                 </button>
               )}
-              <button
-                onClick={() => {
-                  setMobileOpen(false);
-                  // Teacher signup is the freemium target, with student
-                  // signup only as a degraded fallback — see desktop CTA.
-                  (onTeacherLogin ?? onGetStarted)();
-                }}
-                className="w-full inline-flex items-center justify-center px-4 py-3 text-sm font-black text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-lg shadow-md shadow-violet-500/20"
-                type="button"
-              >
-                {t.navStartFree}
-              </button>
             </div>
           </div>
         </div>
       )}
 
-      <SchoolInquiryModal
-        isOpen={schoolModalOpen}
-        onClose={() => setSchoolModalOpen(false)}
-      />
     </>
   );
 };

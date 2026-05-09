@@ -26,7 +26,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
   };
 
   return (
-    <div className="min-h-screen bg-surface" dir={dir}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900" dir={dir}>
       <PublicNav
         currentPage="terms"
         onNavigate={onNavigate}
@@ -40,7 +40,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           {onBack && (
             <button
               onClick={onBack}
-              className="flex items-center gap-2 text-primary font-bold hover:underline transition-all group"
+              className="flex items-center gap-2 text-violet-300 hover:text-violet-200 font-bold hover:underline transition-all group"
             >
               <ArrowLeft size={20} className="transition-transform group-hover:-translate-x-1" />
               <span>{t.footer.backButton}</span>
@@ -51,20 +51,20 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
 
         {/* Header */}
         <section className="mb-12">
-          <h1 className={`text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline ${isRTL ? 'text-right' : ''}`}>
-            {t.title} <span className="text-primary italic">{t.titleHighlight}</span>
+          <h1 className={`text-4xl md:text-5xl font-black text-white tracking-tight mb-4 font-headline drop-shadow-lg ${isRTL ? 'text-right' : ''}`}>
+            {t.title} <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-transparent italic">{t.titleHighlight}</span>
           </h1>
-          <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant font-medium">
+          <div className="flex flex-wrap gap-4 text-sm text-white/70 font-medium">
             <span className="flex items-center gap-2">
-              <FileText size={16} className="text-primary" />
+              <FileText size={16} className="text-violet-300" />
               {t.effective}
             </span>
             <span className="flex items-center gap-2">
-              <Scale size={16} className="text-primary" />
+              <Scale size={16} className="text-violet-300" />
               {t.version}
             </span>
           </div>
-          <p className={`mt-4 text-lg text-on-surface-variant max-w-2xl ${isRTL ? 'text-right' : ''}`}>
+          <p className={`mt-4 text-lg text-white/75 max-w-2xl ${isRTL ? 'text-right' : ''}`}>
             {t.intro}
           </p>
         </section>
@@ -72,12 +72,12 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
         {/* Sections */}
         <div className="space-y-8">
           {/* Section 1: Acceptance */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">1</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">1</span>
               {language === 'en' ? 'Acceptance of Terms' : language === 'he' ? 'קבלת התנאים' : 'قبول الشروط'}
             </h2>
-            <div className={`text-on-surface-variant leading-relaxed space-y-4 ${isRTL ? 'text-right' : ''}`}>
+            <div className={`text-slate-600 leading-relaxed space-y-4 ${isRTL ? 'text-right' : ''}`}>
               <p>
                 {language === 'en' ? 'By accessing or using Vocaband ("the Service"), you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and our Privacy Policy. These Terms constitute a legally binding agreement between you and Vocaband Educational Technologies.' :
                  language === 'he' ? 'על ידי גישה או שימוש ב-Vocaband ("השירות"), אתה מאשר שקראת, הבנת ומסכים להיות מחויב על פי תנאי שירות אלה ומדיניות הפרטיות שלנו. תנאים אלה מהווים הסכם מחייב מבחינה משפטית בינך לבין Vocaband טכנולוגיות חינוכיות.' :
@@ -92,20 +92,20 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 2: Description */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">2</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">2</span>
               {language === 'en' ? 'Description of Service' : language === 'he' ? 'תיאור השירות' : 'وصف الخدمة'}
             </h2>
-            <p className={`text-on-surface-variant leading-relaxed mb-4 ${isRTL ? 'text-right' : ''}`}>
+            <p className={`text-slate-600 leading-relaxed mb-4 ${isRTL ? 'text-right' : ''}`}>
               {language === 'en' ? 'Vocaband is an educational technology platform that helps students practice English vocabulary through interactive games. The Service is:' :
                language === 'he' ? 'Vocaband היא פלטפורמה טכנולוגית חינוכית שעוזרת לתלמידים לתרגל אוצר מילים באנגלית דרך משחקים אינטראקטיביים. השירות הוא:' :
                'Vocaband هي منصة تكنولوجيا تعليمية تساعد الطلاب على ممارسة المفردات الإنجليزية من خلال ألعاب تفاعلية. الخدمة هي:'}
             </p>
-            <ul className={`space-y-2 text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+            <ul className={`space-y-2 text-slate-600 ${isRTL ? 'text-right' : ''}`}>
               {ui.serviceDescription.map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <span className="text-primary mt-1">•</span>
+                  <span className="text-violet-600 mt-1">•</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -113,29 +113,29 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 3: User Accounts */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">3</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">3</span>
               <Users size={20} className="text-primary" />
               {language === 'en' ? 'User Accounts' : language === 'he' ? 'חשבונות משתמש' : 'حسابات المستخدمين'}
             </h2>
 
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-surface-container-low p-5 rounded-xl">
-                <h3 className={`font-bold text-on-surface mb-3 ${isRTL ? 'text-right' : ''}`}>
+              <div className="bg-slate-50 p-5 rounded-xl ring-1 ring-slate-200/60">
+                <h3 className={`font-bold text-slate-900 mb-3 ${isRTL ? 'text-right' : ''}`}>
                   {language === 'en' ? 'Teacher Accounts' : language === 'he' ? 'חשבונות מורים' : 'حسابات المعلمين'}
                 </h3>
-                <ul className={`space-y-2 text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+                <ul className={`space-y-2 text-sm text-slate-600 ${isRTL ? 'text-right' : ''}`}>
                   {ui.teacherAccountRules.map((rule, i) => (
                     <li key={i}>• {rule}</li>
                   ))}
                 </ul>
               </div>
-              <div className="bg-surface-container-low p-5 rounded-xl">
-                <h3 className={`font-bold text-on-surface mb-3 ${isRTL ? 'text-right' : ''}`}>
+              <div className="bg-slate-50 p-5 rounded-xl ring-1 ring-slate-200/60">
+                <h3 className={`font-bold text-slate-900 mb-3 ${isRTL ? 'text-right' : ''}`}>
                   {language === 'en' ? 'Student Accounts' : language === 'he' ? 'חשבונות תלמידים' : 'حسابات الطلاب'}
                 </h3>
-                <ul className={`space-y-2 text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+                <ul className={`space-y-2 text-sm text-slate-600 ${isRTL ? 'text-right' : ''}`}>
                   {ui.studentAccountRules.map((rule, i) => (
                     <li key={i}>• {rule}</li>
                   ))}
@@ -143,15 +143,15 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
               </div>
             </div>
 
-            <p className={`text-on-surface-variant leading-relaxed mt-4 ${isRTL ? 'text-right' : ''}`}>
+            <p className={`text-slate-600 leading-relaxed mt-4 ${isRTL ? 'text-right' : ''}`}>
               <strong>{language === 'en' ? 'School Authorization:' : language === 'he' ? 'אישור בית ספר:' : 'تفويض المدرسة:'}</strong> {ui.schoolAuthorization}
             </p>
           </section>
 
           {/* Section 4: Code of Conduct */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">4</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">4</span>
               <Shield size={20} className="text-primary" />
               {language === 'en' ? 'Code of Conduct' : language === 'he' ? 'קוד התנהגות' : 'قواعد السلوك'}
             </h2>
@@ -162,7 +162,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
                   <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-xs">✓</span>
                   {ui.youAgreeTo}
                 </h3>
-                <ul className={`space-y-2 text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+                <ul className={`space-y-2 text-sm text-slate-600 ${isRTL ? 'text-right' : ''}`}>
                   {ui.acceptableUse.map((item, i) => (
                     <li key={i}>• {item}</li>
                   ))}
@@ -173,7 +173,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
                   <span className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center text-xs">✕</span>
                   {ui.youMustNot}
                 </h3>
-                <ul className={`space-y-2 text-sm text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+                <ul className={`space-y-2 text-sm text-slate-600 ${isRTL ? 'text-right' : ''}`}>
                   {ui.prohibitedUse.map((item, i) => (
                     <li key={i}>• {item}</li>
                   ))}
@@ -183,15 +183,15 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 5: Teacher Responsibilities */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">5</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">5</span>
               {language === 'en' ? 'Teacher Responsibilities' : language === 'he' ? 'אחריות מורים' : 'مسؤوليات المعلم'}
             </h2>
-            <ul className={`space-y-3 text-on-surface-variant ${isRTL ? 'text-right' : ''}`}>
+            <ul className={`space-y-3 text-slate-600 ${isRTL ? 'text-right' : ''}`}>
               {ui.teacherDuties.map((duty, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <span className="text-primary font-bold">•</span>
+                  <span className="text-violet-600 font-bold">•</span>
                   <span><strong>{duty.title}</strong> {duty.desc}</span>
                 </li>
               ))}
@@ -199,12 +199,12 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 6: Intellectual Property */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">6</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">6</span>
               {language === 'en' ? 'Intellectual Property' : language === 'he' ? 'קניין רוחני' : 'الملكية الفكرية'}
             </h2>
-            <div className={`text-on-surface-variant leading-relaxed space-y-4 ${isRTL ? 'text-right' : ''}`}>
+            <div className={`text-slate-600 leading-relaxed space-y-4 ${isRTL ? 'text-right' : ''}`}>
               <p>
                 {language === 'en' ? 'All content on Vocaband—vocabulary lists, game designs, user interface, and software—is the property of Vocaband or its licensors and protected by intellectual property laws.' :
                  language === 'he' ? 'כל התוכן ב-Vocaband - רשימות אוצר מילים, עיצובי משחקים, ממשק משתמש ותוכנה - הוא רכושו של Vocaband או מעניקי הרישיון שלו ומוגן בחוקי קניין רוחני.' :
@@ -219,16 +219,16 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 7: Data Protection */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">7</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">7</span>
               {language === 'en' ? 'Data Protection' : language === 'he' ? 'הגנת נתונים' : 'حماية البيانات'}
             </h2>
-            <p className={`text-on-surface-variant leading-relaxed ${isRTL ? 'text-right' : ''}`}>
+            <p className={`text-slate-600 leading-relaxed ${isRTL ? 'text-right' : ''}`}>
               {language === 'en' ? 'Your use of the Service is governed by our ' :
                language === 'he' ? 'השימוש שלך בשירות כפוף ל-' :
                'يخضع استخدامك للخدمة لـ '}
-              <button onClick={() => onNavigate("privacy")} className="text-primary font-bold hover:underline">
+              <button onClick={() => onNavigate("privacy")} className="text-violet-600 font-bold hover:underline">
                 {t.footer.privacyLink}
               </button>
               {language === 'en' ? ', which describes what data we collect, how we use it, your rights under Israeli Privacy Protection Law (Amendment 13), and how to access, correct, or delete your data.' :
@@ -238,13 +238,13 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 8: Limitation of Liability */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">8</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">8</span>
               <AlertTriangle size={20} className="text-amber-500" />
               {language === 'en' ? 'Limitation of Liability' : language === 'he' ? 'הגבלת אחריות' : 'تحديد المسؤولية'}
             </h2>
-            <p className={`text-on-surface-variant leading-relaxed ${isRTL ? 'text-right' : ''}`}>
+            <p className={`text-slate-600 leading-relaxed ${isRTL ? 'text-right' : ''}`}>
               {language === 'en' ? 'The Service is provided "AS IS" without warranties. We are not liable for indirect, incidental, or consequential damages. Our total liability shall not exceed any amount paid for the Service in the preceding 12 months.' :
                language === 'he' ? 'השירות מסופק "כפי שהוא" ללא אחריות. איננו אחראים לנזקים עקיפים, מקריים או תוצאתיים. סך האחריות שלנו לא יעלה על כל סכום ששולם עבור השירות ב-12 החודשים הקודמים.' :
                'يتم توفير الخدمة "كما هي" بدون ضمانات. نحن غير مسؤولين عن الأضرار غير المباشرة أو العرضية أو الناتجة. مجموع مسؤوليتنا لن يتجاوز أي مبلغ مدفوع مقابل الخدمة في الـ 12 شهرًا السابقة.'}
@@ -252,13 +252,13 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 9: Governing Law */}
-          <section className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm">
-            <h2 className={`text-xl font-black text-on-surface mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
-              <span className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm font-black">9</span>
+          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+            <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
+              <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">9</span>
               <Gavel size={20} className="text-primary" />
               {language === 'en' ? 'Governing Law' : language === 'he' ? 'דין חל' : 'القانون الحاكم'}
             </h2>
-            <p className={`text-on-surface-variant leading-relaxed ${isRTL ? 'text-right' : ''}`}>
+            <p className={`text-slate-600 leading-relaxed ${isRTL ? 'text-right' : ''}`}>
               {language === 'en' ? 'These Terms are governed by the laws of the State of Israel, including the Privacy Protection Law 5741-1981 (Amendment 13). Disputes shall be resolved in the competent courts of Tel Aviv, Israel.' :
                language === 'he' ? 'תנאים אלה כפופים לחוקי מדינת ישראל, לרבות חוק הגנת הפרטיות התשמ"א-1981 (תיקון 13). סכסוכים יפתרו בבתי המשפט המוסמכים בתל אביב, ישראל.' :
                'تخضع هذه الشروط لقوانين دولة إسرائيل، بما في ذلك قانون حماية الخصوصية 5741-1981 (التعديل 13). يتم حل النزاعات في المحاكم المختصة في تل أبيب، إسرائيل.'}
@@ -266,15 +266,15 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 10: Contact */}
-          <section className="bg-surface-container-high/50 p-8 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+          <section className="bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-8 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 text-white shadow-2xl shadow-violet-900/30">
             <div className={isRTL ? 'text-right' : ''}>
-              <h3 className="text-xl font-black font-headline mb-2">{t.footer.questions}</h3>
-              <p className="text-on-surface-variant">{t.footer.contact}</p>
+              <h3 className="text-xl font-black font-headline mb-2 text-white">{t.footer.questions}</h3>
+              <p className="text-white/90">{t.footer.contact}</p>
             </div>
             <div className="flex items-center gap-4">
               <a
                 href="mailto:contact@vocaband.com"
-                className="inline-flex items-center gap-2 bg-on-background text-background px-6 py-3 rounded-xl font-black hover:scale-105 transition-all"
+                className="inline-flex items-center gap-2 bg-white text-violet-700 px-6 py-3 rounded-xl font-black hover:scale-105 transition-all shadow-lg"
               >
                 <Mail size={18} /> contact@vocaband.com
               </a>
@@ -283,12 +283,12 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
         </div>
 
         {/* Footer */}
-        <footer className="mt-16 border-t-2 border-surface-container-high pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
+        <footer className="mt-16 border-t-2 border-white/15 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-4">
             {onBack && (
               <button
                 onClick={onBack}
-                className="flex items-center gap-2 text-primary font-bold hover:underline transition-all group"
+                className="flex items-center gap-2 text-violet-300 hover:text-violet-200 font-bold hover:underline transition-all group"
               >
                 <ArrowLeft size={18} className="transition-transform group-hover:-translate-x-1" />
                 <span>{t.footer.backButton}</span>
@@ -296,7 +296,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
             )}
             <button
               onClick={handlePrint}
-              className="px-6 py-3 bg-surface-container-high text-on-surface font-bold rounded-full flex items-center gap-2 hover:bg-surface-container transition-all"
+              className="px-6 py-3 bg-white/10 hover:bg-white/15 text-white font-bold rounded-full flex items-center gap-2 border border-white/20 transition-all"
             >
               <Printer size={18} /> {t.footer.print}
             </button>

@@ -161,7 +161,7 @@ const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-surface" dir={dir}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900" dir={dir}>
       <PublicNav
         currentPage="security"
         onNavigate={(p) => onNavigate(p as "home" | "terms" | "privacy" | "security")}
@@ -178,50 +178,50 @@ const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({
 
         {/* Header */}
         <section className="mb-10">
-          <h1 className="text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-4 font-headline">
-            {tt.title} <span className="text-primary italic">{tt.titleHighlight}</span>
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4 font-headline drop-shadow-lg">
+            {tt.title} <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-transparent italic">{tt.titleHighlight}</span>
           </h1>
-          <p className="text-lg text-on-surface-variant max-w-2xl mb-6">
+          <p className="text-lg text-white/75 max-w-2xl mb-6">
             {tt.intro}
           </p>
 
-          {/* Trust badges row */}
+          {/* Trust badges row — frosted-glass over the dark page bg */}
           <div className="flex flex-wrap gap-3">
             <a
               href="https://www.ssllabs.com/ssltest/analyze.html?d=vocaband.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold text-sm transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 font-bold text-sm transition-colors"
             >
               <CheckCircle2 size={16} />
               <span>{tt.sslLabsBadge}</span>
               <ExternalLink size={12} className="opacity-60" />
             </a>
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30 font-bold text-sm">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/15 text-blue-200 border border-blue-400/30 font-bold text-sm">
               <Lock size={16} />
               {tt.encrypted}
             </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/30 font-bold text-sm">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/15 text-violet-200 border border-violet-400/30 font-bold text-sm">
               <Globe size={16} />
               {tt.eu}
             </span>
           </div>
         </section>
 
-        {/* 5 cards, one per section */}
+        {/* 5 cards, one per section — light readable cards on dark bg */}
         <div className="space-y-4">
           {sections.map(({ key, icon, gradient }) => (
             <section
               key={key}
-              className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant"
+              className="bg-white p-6 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60"
             >
-              <h2 className="text-lg font-black text-on-surface mb-2 flex items-center gap-3">
-                <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center shrink-0`}>
+              <h2 className="text-lg font-black text-slate-900 mb-2 flex items-center gap-3">
+                <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center shrink-0 shadow-md`}>
                   {icon}
                 </span>
                 {tt.sections[key].title}
               </h2>
-              <p className="text-on-surface-variant leading-relaxed pl-12">
+              <p className="text-slate-600 leading-relaxed pl-12">
                 {tt.sections[key].body}
               </p>
             </section>
@@ -257,14 +257,14 @@ const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({
           <button
             type="button"
             onClick={() => onNavigate("privacy")}
-            className="px-4 py-2 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-bold transition-colors"
+            className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold border border-white/15 transition-colors"
           >
             {tt.bottomLinks.privacy}
           </button>
           <button
             type="button"
             onClick={() => onNavigate("terms")}
-            className="px-4 py-2 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-bold transition-colors"
+            className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold border border-white/15 transition-colors"
           >
             {tt.bottomLinks.terms}
           </button>

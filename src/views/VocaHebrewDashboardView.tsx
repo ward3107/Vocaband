@@ -1,18 +1,22 @@
 /**
- * VocaHebrewDashboardView — placeholder shown when an entitled
- * teacher picks Hebrew on the VocaPicker.  This is a skeleton: the
- * actual Hebrew classes / Niqqud Mode / shoresh content land in
- * follow-up sessions per the VocaHebrew MVP plan.
- *
- * Living here as a real view (not a coming-soon modal) means the
- * routing + entitlement plumbing is fully exercised end-to-end the
- * moment the principal flips a teacher to ['english','hebrew'].
- * The day Hebrew content ships, the only change is what renders
- * inside this file.
+ * VocaHebrewDashboardView — entry hub for the VocaHebrew native
+ * track.  Shown when an entitled teacher picks Hebrew on the
+ * VocaPicker.  Launches the four native-track games against the
+ * 30-lemma seed corpus: Niqqud, Shoresh Hunt, Synonym Match,
+ * Listening.
  */
 import { motion } from "motion/react";
 import type { AppUser } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
+
+interface GameTile {
+  emoji: string;
+  title: string;
+  blurb: string;
+  gradient: string;
+  shadow: string;
+  onLaunch: () => void;
+}
 
 interface VocaHebrewDashboardViewProps {
   user: AppUser;
@@ -21,10 +25,10 @@ interface VocaHebrewDashboardViewProps {
   onSwitchVoca: () => void;
   /** Whether the teacher has 2+ Vocas — drives the switch button. */
   showSwitcher: boolean;
-  /** Launch the Niqqud Mode game.  This is the only shipped mode
-   *  in VocaHebrew at the moment; more land in follow-ups
-   *  (Shoresh Hunt, Synonym Match, etc.). */
   onLaunchNiqqudMode: () => void;
+  onLaunchShoreshHunt: () => void;
+  onLaunchSynonymMatch: () => void;
+  onLaunchListeningMode: () => void;
 }
 
 export default function VocaHebrewDashboardView({
@@ -32,8 +36,46 @@ export default function VocaHebrewDashboardView({
   onSwitchVoca,
   showSwitcher,
   onLaunchNiqqudMode,
+  onLaunchShoreshHunt,
+  onLaunchSynonymMatch,
+  onLaunchListeningMode,
 }: VocaHebrewDashboardViewProps) {
   const { dir } = useLanguage();
+  const tiles: readonly GameTile[] = [
+    {
+      emoji: "נִ",
+      title: "Niqqud Mode",
+      blurb: "Pick the correct vocalization · grades 3–9 · 10 rounds",
+      gradient: "from-amber-400 via-orange-500 to-rose-500",
+      shadow: "shadow-orange-500/20",
+      onLaunch: onLaunchNiqqudMode,
+    },
+    {
+      emoji: "ש",
+      title: "Shoresh Hunt",
+      blurb: "Find the 3 root letters · grades 5–9 · 10 rounds",
+      gradient: "from-emerald-500 via-teal-500 to-cyan-600",
+      shadow: "shadow-emerald-500/20",
+      onLaunch: onLaunchShoreshHunt,
+    },
+    {
+      emoji: "↔",
+      title: "Synonym Match",
+      blurb: "Pair words by meaning · grades 4–9 · 10 rounds",
+      gradient: "from-fuchsia-500 via-pink-500 to-rose-600",
+      shadow: "shadow-fuchsia-500/20",
+      onLaunch: onLaunchSynonymMatch,
+    },
+    {
+      emoji: "🎧",
+      title: "Listening Mode",
+      blurb: "Hear it, pick the niqqud · grades 3–9 · 10 rounds",
+      gradient: "from-violet-500 via-indigo-500 to-blue-600",
+      shadow: "shadow-indigo-500/20",
+      onLaunch: onLaunchListeningMode,
+    },
+  ];
+
   return (
     <div
       dir={dir}
@@ -92,48 +134,29 @@ export default function VocaHebrewDashboardView({
           Available games
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <motion.button
-            type="button"
-            onClick={onLaunchNiqqudMode}
-            whileHover={{ y: -4, scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="relative overflow-hidden rounded-3xl p-6 sm:p-7 text-start bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white shadow-lg shadow-orange-500/20"
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
-            <div className="relative z-10">
-              <div className="text-5xl mb-3 drop-shadow-lg">נִ</div>
-              <h3 className="text-xl font-black mb-1">Niqqud Mode</h3>
-              <p className="text-white/85 font-bold text-xs sm:text-sm mb-4">
-                Pick the correct vocalization · grades 3–9 · 10 rounds
-              </p>
-              <span className="inline-flex items-center gap-1 text-[11px] font-black tracking-widest uppercase">
-                Play <span aria-hidden>→</span>
-              </span>
-            </div>
-          </motion.button>
-
-          <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-white/5 border border-white/10 text-white/60">
-            <div className="text-5xl mb-3">ש</div>
-            <h3 className="text-xl font-black mb-1 text-white/80">Shoresh Hunt</h3>
-            <p className="text-white/50 font-bold text-xs sm:text-sm">
-              Find the 3 root letters · coming next
-            </p>
-          </div>
-          <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-white/5 border border-white/10 text-white/60">
-            <div className="text-5xl mb-3">↔</div>
-            <h3 className="text-xl font-black mb-1 text-white/80">Synonym Match</h3>
-            <p className="text-white/50 font-bold text-xs sm:text-sm">
-              Pair words by meaning · coming next
-            </p>
-          </div>
-          <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-white/5 border border-white/10 text-white/60">
-            <div className="text-5xl mb-3">🎙</div>
-            <h3 className="text-xl font-black mb-1 text-white/80">Hebrew TTS</h3>
-            <p className="text-white/50 font-bold text-xs sm:text-sm">
-              Studio audio per lemma · coming next
-            </p>
-          </div>
+          {tiles.map((tile) => (
+            <motion.button
+              key={tile.title}
+              type="button"
+              onClick={tile.onLaunch}
+              whileHover={{ y: -4, scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className={`relative overflow-hidden rounded-3xl p-6 sm:p-7 text-start bg-gradient-to-br ${tile.gradient} text-white shadow-lg ${tile.shadow}`}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
+              <div className="relative z-10">
+                <div className="text-5xl mb-3 drop-shadow-lg">{tile.emoji}</div>
+                <h3 className="text-xl font-black mb-1">{tile.title}</h3>
+                <p className="text-white/85 font-bold text-xs sm:text-sm mb-4">
+                  {tile.blurb}
+                </p>
+                <span className="inline-flex items-center gap-1 text-[11px] font-black tracking-widest uppercase">
+                  Play <span aria-hidden>→</span>
+                </span>
+              </div>
+            </motion.button>
+          ))}
         </div>
       </div>
     </div>

@@ -44,7 +44,10 @@ export type View =
   // teachers with a single Voca route straight to teacher-dashboard.
   | "voca-picker"
   | "vocahebrew-dashboard"
-  | "vocahebrew-niqqud";
+  | "vocahebrew-niqqud"
+  | "vocahebrew-shoresh"
+  | "vocahebrew-synonyms"
+  | "vocahebrew-listening";
 
 export type ShopTab =
   // "hub" = the Arcade Lobby landing screen (portal tiles + hero +

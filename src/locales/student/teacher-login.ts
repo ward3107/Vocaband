@@ -43,6 +43,15 @@ export interface TeacherLoginT {
   /** Hint shown next to the checkbox so teachers on shared classroom
    *  PCs know to leave it unchecked. */
   rememberMeHint: string;
+  // Two-pane layout — left brand pane copy.
+  welcomeHeading: string;
+  welcomeSubtitle: string;
+  subtitleHint: string;
+  trustOrigin: string;
+  trustEu: string;
+  trustCurriculum: string;
+  /** Smaller Microsoft fallback link under the dominant Google button. */
+  microsoftFallback: string;
 }
 
 export const teacherLoginT: Record<Language, TeacherLoginT> = {
@@ -69,6 +78,13 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     helpText: "We never store passwords. The code expires in 10 minutes.",
     rememberMe: "Remember my email on this device",
     rememberMeHint: "Leave unchecked on shared / classroom computers.",
+    welcomeHeading: "Welcome back, teacher.",
+    welcomeSubtitle: "Curriculum-aligned vocabulary games for Israeli classrooms. Loved by students. Zero prep for teachers.",
+    subtitleHint: "Single sign-on. We never share your email.",
+    trustOrigin: "Built in Israel",
+    trustEu: "EU-hosted",
+    trustCurriculum: "MoE Set 1 / 2 / 3",
+    microsoftFallback: "Sign in with Microsoft instead",
   },
   he: {
     heading: "התחברות ל-Vocaband",
@@ -93,6 +109,13 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     helpText: "אנחנו לא שומרים סיסמאות. הקוד יפוג תוך 10 דקות.",
     rememberMe: "זכור את האימייל שלי במכשיר זה",
     rememberMeHint: "השאר לא מסומן במחשבים משותפים / כיתתיים.",
+    welcomeHeading: "ברוכים השבים, מורים.",
+    welcomeSubtitle: "משחקי אוצר מילים בהתאמה לתוכנית הלימודים, מותאמים לכיתות ישראליות. אהובים על תלמידים. אפס הכנה למורים.",
+    subtitleHint: "כניסה אחת. לא נחלוק את האימייל שלכם לעולם.",
+    trustOrigin: "מיוצר בישראל",
+    trustEu: "מאוחסן באירופה",
+    trustCurriculum: "משרד החינוך 1 / 2 / 3",
+    microsoftFallback: "התחברו עם Microsoft במקום",
   },
   ar: {
     heading: "تسجيل الدخول إلى Vocaband",
@@ -117,5 +140,12 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     helpText: "نحن لا نخزن كلمات المرور أبدًا. ينتهي الرمز خلال 10 دقائق.",
     rememberMe: "تذكر بريدي الإلكتروني على هذا الجهاز",
     rememberMeHint: "اترك بدون تحديد على أجهزة الكمبيوتر المشتركة / الصفية.",
+    welcomeHeading: "مرحبًا بعودتك، أيها المعلم.",
+    welcomeSubtitle: "ألعاب مفردات متوافقة مع المنهج للصفوف الإسرائيلية. يحبها الطلاب. صفر تحضير للمعلمين.",
+    subtitleHint: "تسجيل دخول موحد. لن نشارك بريدك الإلكتروني أبدًا.",
+    trustOrigin: "صُنع في إسرائيل",
+    trustEu: "مستضاف في الاتحاد الأوروبي",
+    trustCurriculum: "وزارة التربية 1 / 2 / 3",
+    microsoftFallback: "سجّل الدخول بحساب Microsoft بدلاً من ذلك",
   },
 };
