@@ -174,6 +174,11 @@ export default function StudentAssignmentCard({
         {/* Title + meta */}
         <div className="flex-1 min-w-0">
           <h3 className="text-base sm:text-lg font-black text-stone-900 leading-tight truncate">
+            {assignment.subject === "hebrew" && (
+              <span className="inline-block mr-1.5 text-[10px] tracking-[0.2em] uppercase font-black text-blue-700 bg-blue-100 rounded-full px-2 py-0.5 align-middle">
+                📖 עברית
+              </span>
+            )}
             {assignment.title}
           </h3>
           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">

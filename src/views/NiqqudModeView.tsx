@@ -123,15 +123,27 @@ interface NiqqudModeViewProps {
   /** Optional grade filter — when provided, only lemmas matching
    *  this band show up.  null/undefined = mix of all grades. */
   gradeBand?: HebrewLemma["gradeBand"] | null;
+  /** Assignment-scoped lemma whitelist.  When provided, only lemmas
+   *  whose id is in this set become rounds — that's how a teacher's
+   *  20-word Hebrew assignment shows the assigned lemmas instead of
+   *  the full 30-row corpus. */
+  lemmaIds?: readonly number[] | null;
+  /** Fires once the session ends.  App.tsx wires this to the
+   *  progress-save RPC so the teacher's gradebook picks it up. */
+  onComplete?: (score: number, total: number) => void;
 }
 
-export default function NiqqudModeView({ onExit, gradeBand }: NiqqudModeViewProps) {
+export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete }: NiqqudModeViewProps) {
   const lemmaPool = useMemo(() => {
-    const pool = gradeBand
+    let pool: readonly HebrewLemma[] = gradeBand
       ? (HEBREW_LEMMAS_BY_GRADE[gradeBand] ?? [])
       : HEBREW_LEMMAS;
+    if (lemmaIds && lemmaIds.length > 0) {
+      const allow = new Set(lemmaIds);
+      pool = pool.filter((l) => allow.has(l.id));
+    }
     return shuffle([...pool]).slice(0, ROUNDS_PER_SESSION);
-  }, [gradeBand]);
+  }, [gradeBand, lemmaIds]);
 
   const [roundIdx, setRoundIdx] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
@@ -166,6 +178,8 @@ export default function NiqqudModeView({ onExit, gradeBand }: NiqqudModeViewProp
       setPicked(null);
       if (roundIdx + 1 >= lemmaPool.length) {
         setDone(true);
+        // Final score includes the just-resolved round.
+        onComplete?.(score + (correct ? 1 : 0), lemmaPool.length);
       } else {
         setRoundIdx((idx) => idx + 1);
       }
@@ -224,7 +238,7 @@ export default function NiqqudModeView({ onExit, gradeBand }: NiqqudModeViewProp
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
             >
-              Back to VocaHebrew
+              Done
             </button>
           </div>
         </motion.div>

@@ -21,6 +21,18 @@ import {
   X,
   Settings,
   PencilLine,
+  Mic,
+  Shuffle,
+  ListChecks,
+  Hash,
+  BookOpen,
+  Pencil,
+  Layers,
+  Palette,
+  Heart,
+  Sparkles,
+  Music,
+  Presentation,
 } from "lucide-react";
 import PublicNav from "../components/PublicNav";
 import html2pdf from "html2pdf.js";
@@ -1187,6 +1199,1030 @@ const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, set
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: sentencePagesHTML + answerKeyHTML });
 };
 
+const generateSpellingTestHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver } = settings;
+  const t = {
+    en: { title: "Spelling Test", instructions: "Listen to your teacher and write each word on the correct line.", studentTitle: "✍️ Student Sheet", callerTitle: "📣 Teacher's Caller List", callerInstructions: "Read each English word aloud. Tick it after you've called it.", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" },
+    he: { title: "מבחן איות", instructions: "הקשיבו למורה וכתבו כל מילה על השורה הנכונה.", studentTitle: "✍️ דף תלמיד", callerTitle: "📣 רשימת הקראה למורה", callerInstructions: "הקריאו כל מילה בקול. סמנו אחרי שהקראתם.", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
+    ar: { title: "اختبار الإملاء", instructions: "استمع للمعلم واكتب كل كلمة على السطر الصحيح.", studentTitle: "✍️ ورقة الطالب", callerTitle: "📣 قائمة المعلم للنداء", callerInstructions: "اقرأ كل كلمة بصوت عالٍ. ضع علامة بعد قراءتها.", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Spelling Test", instructions: "Listen to your teacher and write each word on the correct line.", studentTitle: "✍️ Student Sheet", callerTitle: "📣 Teacher's Caller List", callerInstructions: "Read each English word aloud. Tick it after you've called it.", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" };
+
+  const PER_PAGE = 20;
+  const studentPages = chunk(words, PER_PAGE);
+  const totalPages = studentPages.length + 1; // + caller's list
+
+  const lineColor = inkSaver ? "#000000" : "#94a3b8";
+  const accent = inkSaver ? "#000000" : "#0ea5e9";
+  const accentDark = inkSaver ? "#000000" : "#0369a1";
+
+  const styles =
+    baseStyles(lang, accent, accentDark, settings) +
+    `
+    .instructions { background: ${inkSaver ? "#ffffff" : "#f0f9ff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .spell-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 8mm; row-gap: 4mm; margin-top: 3mm; }
+    .spell-row { display: flex; align-items: baseline; gap: 3mm; padding: 1mm 0; }
+    .spell-num { font-weight: 800; color: ${accent}; min-width: 9mm; text-align: end; }
+    .spell-line { flex: 1; border-bottom: 1.5px solid ${lineColor}; height: 7mm; }
+    .caller-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 6mm; row-gap: 2mm; margin-top: 3mm; }
+    .caller-row { display: flex; align-items: center; gap: 2mm; padding: 2mm 3mm; border: 1px solid ${inkSaver ? "#000000" : "#e0f2fe"}; border-radius: 4px; background: ${inkSaver ? "#ffffff" : "#f0f9ff"}; }
+    .caller-check { width: 4mm; height: 4mm; border: 1.5px solid ${inkSaver ? "#000000" : accent}; border-radius: 2px; flex-shrink: 0; }
+    .caller-num { font-weight: 800; color: ${accent}; min-width: 6mm; }
+    .caller-en { flex: 1; font-weight: 700; color: ${inkSaver ? "#000000" : accentDark}; }
+    .caller-tr { color: #6b7280; font-size: 0.9em; }
+    .caller-qr svg { display: block; width: 12mm; height: 12mm; }
+  `;
+
+  const studentPagesHTML = studentPages
+    .map((rows, pageIdx) => {
+      const startIdx = pageIdx * PER_PAGE;
+      return `
+      <section class="sheet">
+        ${sheetHeader(pack, t.studentTitle)}
+        ${pageIdx === 0
+          ? `<div class="instructions">${escapeHtml(t.instructions)}</div>
+             <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
+               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+             </div>`
+          : ""}
+        <div class="spell-grid">
+          ${rows
+            .map(
+              (_, i) => `
+            <div class="spell-row no-break">
+              <span class="spell-num">${startIdx + i + 1}.</span>
+              <div class="spell-line"></div>
+            </div>`,
+            )
+            .join("")}
+        </div>
+        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
+      </section>`;
+    })
+    .join("");
+
+  const callerHTML = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.callerTitle)}
+      <div class="instructions">${escapeHtml(t.callerInstructions)}</div>
+      <div class="caller-grid">
+        ${words
+          .map(
+            (w, i) => `
+          <div class="caller-row no-break">
+            <span class="caller-check"></span>
+            <span class="caller-num">${i + 1}.</span>
+            <span class="caller-en en">${escapeHtml(applyCasing(w.english, casing))}</span>
+            <span class="caller-tr">${escapeHtml(getTranslation(w, lang))}</span>
+            ${audioQR ? `<span class="caller-qr">${qrSvg(getAudioUrl(w.id), 36)}</span>` : ""}
+          </div>`,
+          )
+          .join("")}
+      </div>
+      ${sheetFooter(totalPages, totalPages, t.page)}
+    </section>`;
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: studentPagesHTML + callerHTML });
+};
+
+const generateWordScrambleHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, inkSaver, showTranslations } = settings;
+  const t = {
+    en: { title: "Word Scramble", instructions: "Unscramble the letters and write the English word on the line. The translation is given as a hint.", letters: "Scrambled", clue: "Hint", answer: "Your answer", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" },
+    he: { title: "ערבוב אותיות", instructions: "סדרו את האותיות וכתבו את המילה באנגלית על השורה. התרגום נתון כרמז.", letters: "מעורבב", clue: "רמז", answer: "התשובה שלך", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
+    ar: { title: "ترتيب الحروف", instructions: "رتب الحروف واكتب الكلمة الإنجليزية على السطر. الترجمة مذكورة كتلميح.", letters: "مخلوط", clue: "تلميح", answer: "إجابتك", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Word Scramble", instructions: "Unscramble the letters and write the English word on the line. The translation is given as a hint.", letters: "Scrambled", clue: "Hint", answer: "Your answer", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" };
+
+  // Filter to single-token alpha words; multi-word entries don't scramble cleanly.
+  const eligible = words.filter((w) => /^[a-zA-Z]+$/.test(w.english) && w.english.length >= 3);
+  const PER_PAGE = 10;
+  const pages = chunk(eligible, PER_PAGE);
+  const totalPages = Math.max(1, pages.length) + 1;
+
+  const accent = inkSaver ? "#000000" : "#16a34a";
+  const accentDark = inkSaver ? "#000000" : "#15803d";
+
+  const styles =
+    baseStyles(lang, accent, accentDark, settings) +
+    `
+    .instructions { background: ${inkSaver ? "#ffffff" : "#f0fdf4"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .scramble-list { display: flex; flex-direction: column; gap: 4mm; margin-top: 3mm; }
+    .scramble-row { display: grid; grid-template-columns: 9mm 1fr; gap: 3mm; align-items: center; padding: 3mm 4mm; background: ${inkSaver ? "#ffffff" : "#f8fafc"}; border: 1.5px solid ${inkSaver ? "#000000" : "#d1fae5"}; border-radius: 6px; }
+    .scramble-num { font-weight: 800; color: ${accent}; font-size: 1.05em; }
+    .scramble-content { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: center; }
+    .scramble-letters { letter-spacing: 4px; font-weight: 800; font-family: 'Courier New', monospace; font-size: 1.15em; color: ${accentDark}; }
+    .scramble-tr { color: #6b7280; font-style: italic; font-size: 0.95em; }
+    .scramble-answer { display: flex; align-items: baseline; gap: 2mm; margin-top: 2mm; grid-column: 1 / -1; }
+    .scramble-answer-label { color: ${accent}; font-weight: 700; font-size: 0.85em; }
+    .scramble-answer-line { flex: 1; border-bottom: 1.5px dotted ${inkSaver ? "#000000" : "#94a3b8"}; height: 5mm; }
+    .answer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm; }
+    .answer-cell { display: flex; gap: 2mm; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.9em; }
+    .answer-num { font-weight: 800; color: ${accent}; min-width: 6mm; }
+  `;
+
+  const scrambleWord = (word: string) => {
+    const letters = word.split("");
+    // Stable seed per-word so the same pack always scrambles identically.
+    const shuffled = seededShuffle(letters, hashString(word));
+    // If shuffle returned the original (rare for short words), rotate by 1 to ensure it differs.
+    if (shuffled.join("") === word && shuffled.length > 1) {
+      shuffled.push(shuffled.shift()!);
+    }
+    return shuffled.join("-").toUpperCase();
+  };
+
+  const pagesHTML = pages
+    .map((group, pageIdx) => {
+      const startIdx = pageIdx * PER_PAGE;
+      return `
+      <section class="sheet">
+        ${sheetHeader(pack, t.title)}
+        ${pageIdx === 0
+          ? `<div class="instructions">${escapeHtml(t.instructions)}</div>
+             <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
+               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+             </div>`
+          : ""}
+        <div class="scramble-list">
+          ${group
+            .map(
+              (w, i) => `
+            <div class="scramble-row no-break">
+              <span class="scramble-num">${startIdx + i + 1}.</span>
+              <div>
+                <div class="scramble-content">
+                  <span class="scramble-letters en">${escapeHtml(scrambleWord(applyCasing(w.english, casing)))}</span>
+                  ${showTranslations ? `<span class="scramble-tr">${escapeHtml(t.clue)}: ${escapeHtml(getTranslation(w, lang))}</span>` : ""}
+                </div>
+                <div class="scramble-answer">
+                  <span class="scramble-answer-label">${escapeHtml(t.answer)}:</span>
+                  <span class="scramble-answer-line"></span>
+                </div>
+              </div>
+            </div>`,
+            )
+            .join("")}
+        </div>
+        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
+      </section>`;
+    })
+    .join("");
+
+  const answerKeyHTML = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.answerKey)}
+      <div class="answer-grid">
+        ${eligible
+          .map(
+            (w, i) => `
+          <div class="answer-cell">
+            <span class="answer-num">${i + 1}.</span>
+            <span class="en" style="font-weight:700;">${escapeHtml(applyCasing(w.english, casing))}</span>
+          </div>`,
+          )
+          .join("")}
+      </div>
+      ${sheetFooter(totalPages, totalPages, t.page)}
+    </section>`;
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: pagesHTML + answerKeyHTML });
+};
+
+const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, inkSaver } = settings;
+  const t = {
+    en: { title: "Vocabulary Quiz", instructions: "Circle the letter (A, B, C or D) of the correct answer.", part1: "Part 1 — Choose the correct translation", part2: "Part 2 — Choose the correct English word", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:", score: "Score:" },
+    he: { title: "מבחן אוצר מילים", instructions: "הקיפו את האות (A, B, C או D) של התשובה הנכונה.", part1: "חלק 1 — בחרו את התרגום הנכון", part2: "חלק 2 — בחרו את המילה הנכונה באנגלית", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:", score: "ציון:" },
+    ar: { title: "اختبار المفردات", instructions: "ضع دائرة حول الحرف (A أو B أو C أو D) للإجابة الصحيحة.", part1: "الجزء 1 — اختر الترجمة الصحيحة", part2: "الجزء 2 — اختر الكلمة الإنجليزية الصحيحة", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:", score: "النتيجة:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Vocabulary Quiz", instructions: "Circle the letter (A, B, C or D) of the correct answer.", part1: "Part 1 — Choose the correct translation", part2: "Part 2 — Choose the correct English word", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:", score: "Score:" };
+
+  // Half EN→translation, half translation→EN. We split the word list so a
+  // student doesn't see the same word answered in both directions.
+  const seed = hashString(pack.name);
+  const shuffled = seededShuffle(words, seed);
+  const half = Math.ceil(shuffled.length / 2);
+  const part1Words = shuffled.slice(0, half); // English prompt
+  const part2Words = shuffled.slice(half); // Translation prompt
+
+  const accent = inkSaver ? "#000000" : "#7c3aed";
+  const accentDark = inkSaver ? "#000000" : "#6d28d9";
+
+  const styles =
+    baseStyles(lang, accent, accentDark, settings) +
+    `
+    .instructions { background: ${inkSaver ? "#ffffff" : "#f5f3ff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .quiz-section-title { font-size: 1.1em; font-weight: 800; color: ${accentDark}; margin: 5mm 0 3mm; padding-bottom: 1mm; border-bottom: 2px solid ${inkSaver ? "#000000" : "#ddd6fe"}; }
+    .quiz-list { display: flex; flex-direction: column; gap: 3mm; }
+    .quiz-q { padding: 2.5mm 4mm; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 5px; background: ${inkSaver ? "#ffffff" : "#fafafa"}; }
+    .quiz-q-prompt { font-weight: 700; color: ${accentDark}; margin-bottom: 2mm; }
+    .quiz-q-num { color: ${accent}; font-weight: 800; }
+    .quiz-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1mm 5mm; }
+    .quiz-option { display: flex; align-items: baseline; gap: 2mm; padding: 0.5mm 0; }
+    .quiz-letter { display: inline-block; width: 5mm; height: 5mm; border: 1.5px solid ${inkSaver ? "#000000" : accent}; border-radius: 50%; text-align: center; font-weight: 800; line-height: 4.5mm; font-size: 0.85em; color: ${inkSaver ? "#000000" : accent}; flex-shrink: 0; }
+    .quiz-text { color: #1f2937; }
+    .answer-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
+    .answer-cell { display: flex; gap: 2mm; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.9em; }
+    .answer-num { font-weight: 800; color: ${accent}; min-width: 6mm; }
+    .answer-letter { font-weight: 800; color: ${accentDark}; }
+  `;
+
+  const LETTERS = ["A", "B", "C", "D"];
+
+  // Build a single MC question. `correct` is the right word; `distractors`
+  // are 3 other words from the same pack — same pool so distractors are
+  // plausibly close (same topic) without being trivially wrong.
+  const buildQuestion = (correct: Word, prompt: string, optionText: (w: Word) => string, qSeed: number) => {
+    const pool = words.filter((w) => w.id !== correct.id);
+    const distractors = seededShuffle(pool, qSeed).slice(0, 3);
+    const options = seededShuffle([correct, ...distractors], qSeed ^ 0x5a5a);
+    const correctIdx = options.findIndex((w) => w.id === correct.id);
+    return { prompt, options, correctIdx, correctLetter: LETTERS[correctIdx] || "A", optionText };
+  };
+
+  const q1 = part1Words.map((w, i) =>
+    buildQuestion(w, applyCasing(w.english, casing), (x) => getTranslation(x, lang), seed ^ (i + 1) * 31),
+  );
+  const q2 = part2Words.map((w, i) =>
+    buildQuestion(w, getTranslation(w, lang), (x) => applyCasing(x.english, casing), seed ^ (i + 100) * 37),
+  );
+
+  const totalPages = 2;
+
+  const renderQuestion = (q: ReturnType<typeof buildQuestion>, idx: number, isEnglish: boolean) => `
+    <div class="quiz-q no-break">
+      <div class="quiz-q-prompt"><span class="quiz-q-num">${idx + 1}.</span> ${
+    isEnglish ? `<span class="en">${escapeHtml(q.prompt)}</span>` : escapeHtml(q.prompt)
+  }</div>
+      <div class="quiz-options">
+        ${q.options
+          .map(
+            (opt, oi) => `
+          <div class="quiz-option">
+            <span class="quiz-letter">${LETTERS[oi]}</span>
+            <span class="quiz-text${isEnglish ? "" : " en"}">${escapeHtml(q.optionText(opt))}</span>
+          </div>`,
+          )
+          .join("")}
+      </div>
+    </div>`;
+
+  const studentPageHTML = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.title)}
+      <div class="instructions">${escapeHtml(t.instructions)}</div>
+      <div class="info-row no-break" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(t.score)}</span><div class="info-input"></div></div>
+      </div>
+      <div class="quiz-section-title">${escapeHtml(t.part1)}</div>
+      <div class="quiz-list">${q1.map((q, i) => renderQuestion(q, i, true)).join("")}</div>
+      <div class="quiz-section-title">${escapeHtml(t.part2)}</div>
+      <div class="quiz-list">${q2.map((q, i) => renderQuestion(q, q1.length + i, false)).join("")}</div>
+      ${sheetFooter(1, totalPages, t.page)}
+    </section>`;
+
+  const answerKeyHTML = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.answerKey)}
+      <div class="answer-grid">
+        ${[...q1, ...q2]
+          .map(
+            (q, i) => `
+          <div class="answer-cell">
+            <span class="answer-num">${i + 1}.</span>
+            <span class="answer-letter">${q.correctLetter}</span>
+          </div>`,
+          )
+          .join("")}
+      </div>
+      ${sheetFooter(2, totalPages, t.page)}
+    </section>`;
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: studentPageHTML + answerKeyHTML });
+};
+
+// Greedy crossword placement. Longest words first, intersect on shared
+// letters where the perpendicular cells around the new word are empty.
+// Words that can't be placed are skipped — better to ship 8 placed words
+// than block on placing all 12.
+type CwPlacement = { word: string; row: number; col: number; horizontal: boolean; number: number; clue: string };
+
+const buildCrossword = (
+  entries: { english: string; clue: string }[],
+  maxWords = 12,
+): { placements: CwPlacement[]; grid: (string | null)[][]; rows: number; cols: number } => {
+  const SIZE = 32;
+  const sorted = entries
+    .filter((e) => /^[a-zA-Z]+$/.test(e.english) && e.english.length >= 3 && e.english.length <= 11)
+    .slice()
+    .sort((a, b) => b.english.length - a.english.length)
+    .slice(0, maxWords);
+
+  if (sorted.length === 0) return { placements: [], grid: [], rows: 0, cols: 0 };
+
+  const grid: (string | null)[][] = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+  const placements: { word: string; row: number; col: number; horizontal: boolean; clue: string }[] = [];
+
+  const canPlace = (word: string, row: number, col: number, horizontal: boolean): boolean => {
+    for (let i = 0; i < word.length; i++) {
+      const r = horizontal ? row : row + i;
+      const c = horizontal ? col + i : col;
+      if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) return false;
+      const existing = grid[r][c];
+      if (existing && existing !== word[i]) return false;
+      if (!existing) {
+        if (horizontal) {
+          if ((r > 0 && grid[r - 1][c]) || (r < SIZE - 1 && grid[r + 1][c])) return false;
+        } else {
+          if ((c > 0 && grid[r][c - 1]) || (c < SIZE - 1 && grid[r][c + 1])) return false;
+        }
+      }
+    }
+    if (horizontal) {
+      if (col > 0 && grid[row][col - 1]) return false;
+      if (col + word.length < SIZE && grid[row][col + word.length]) return false;
+    } else {
+      if (row > 0 && grid[row - 1][col]) return false;
+      if (row + word.length < SIZE && grid[row + word.length][col]) return false;
+    }
+    return true;
+  };
+
+  const placeWord = (word: string, row: number, col: number, horizontal: boolean, clue: string) => {
+    for (let i = 0; i < word.length; i++) {
+      const r = horizontal ? row : row + i;
+      const c = horizontal ? col + i : col;
+      grid[r][c] = word[i];
+    }
+    placements.push({ word, row, col, horizontal, clue });
+  };
+
+  // Seed: place first word horizontally at center.
+  const first = sorted[0].english.toUpperCase();
+  const startCol = Math.floor((SIZE - first.length) / 2);
+  const startRow = Math.floor(SIZE / 2);
+  placeWord(first, startRow, startCol, true, sorted[0].clue);
+
+  for (let idx = 1; idx < sorted.length; idx++) {
+    const word = sorted[idx].english.toUpperCase();
+    const clue = sorted[idx].clue;
+    let placed = false;
+    outer: for (const p of placements) {
+      for (let i = 0; i < p.word.length && !placed; i++) {
+        const r = p.horizontal ? p.row : p.row + i;
+        const c = p.horizontal ? p.col + i : p.col;
+        for (let j = 0; j < word.length && !placed; j++) {
+          if (word[j] !== grid[r][c]) continue;
+          // Cross perpendicular to the existing word.
+          const horizontal = !p.horizontal;
+          const newR = horizontal ? r : r - j;
+          const newC = horizontal ? c - j : c;
+          if (canPlace(word, newR, newC, horizontal)) {
+            placeWord(word, newR, newC, horizontal, clue);
+            placed = true;
+            break outer;
+          }
+        }
+      }
+    }
+    // If we couldn't intersect, skip — crowding the grid creates a worse puzzle.
+  }
+
+  // Trim to actual bounds.
+  let minR = SIZE, maxR = 0, minC = SIZE, maxC = 0;
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (grid[r][c]) {
+        if (r < minR) minR = r;
+        if (r > maxR) maxR = r;
+        if (c < minC) minC = c;
+        if (c > maxC) maxC = c;
+      }
+    }
+  }
+  const rows = maxR - minR + 1;
+  const cols = maxC - minC + 1;
+  const trimmed: (string | null)[][] = Array.from({ length: rows }, (_, r) =>
+    Array.from({ length: cols }, (_, c) => grid[r + minR][c + minC]),
+  );
+
+  // Standard crossword numbering — a cell starts a word if it's at the
+  // edge (no letter immediately before it) and has at least one letter
+  // immediately after it in the same direction.
+  let num = 0;
+  const cellNumbers: Record<string, number> = {};
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (!trimmed[r][c]) continue;
+      const startsAcross = (c === 0 || !trimmed[r][c - 1]) && c + 1 < cols && trimmed[r][c + 1];
+      const startsDown = (r === 0 || !trimmed[r - 1][c]) && r + 1 < rows && trimmed[r + 1][c];
+      if (startsAcross || startsDown) {
+        num += 1;
+        cellNumbers[`${r},${c}`] = num;
+      }
+    }
+  }
+
+  const numbered: CwPlacement[] = placements.map((p) => ({
+    word: p.word,
+    row: p.row - minR,
+    col: p.col - minC,
+    horizontal: p.horizontal,
+    clue: p.clue,
+    number: cellNumbers[`${p.row - minR},${p.col - minC}`] || 0,
+  }));
+
+  return { placements: numbered, grid: trimmed, rows, cols };
+};
+
+const generateCrosswordHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, inkSaver } = settings;
+  const t = {
+    en: { title: "Crossword Puzzle", instructions: "Solve the crossword. Use the translations as clues to find each English word.", across: "Across", down: "Down", solution: "Solution", page: "Page", name: "Name:", date: "Date:" },
+    he: { title: "תשבץ", instructions: "פתרו את התשבץ. השתמשו בתרגומים כרמזים למציאת כל מילה באנגלית.", across: "מאוזן", down: "מאונך", solution: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
+    ar: { title: "لغز الكلمات المتقاطعة", instructions: "حل اللغز. استخدم الترجمات كتلميحات لإيجاد كل كلمة إنجليزية.", across: "أفقي", down: "عمودي", solution: "الحل", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Crossword Puzzle", instructions: "Solve the crossword. Use the translations as clues to find each English word.", across: "Across", down: "Down", solution: "Solution", page: "Page", name: "Name:", date: "Date:" };
+
+  const entries = words.map((w) => ({ english: w.english, clue: getTranslation(w, lang) }));
+  const { placements, grid, rows, cols } = buildCrossword(entries, 12);
+
+  const accent = inkSaver ? "#000000" : "#dc2626";
+  const accentDark = inkSaver ? "#000000" : "#991b1b";
+  const cellBorder = inkSaver ? "#000000" : "#1f2937";
+  const cellBg = inkSaver ? "#ffffff" : "#fafafa";
+
+  // Cell size: scale to fit page width. Print width ≈ 186mm on portrait A4
+  // with 12mm margins; we cap at 12mm per cell so even a 15-wide grid fits.
+  const cellSize = cols > 0 ? Math.min(12, Math.floor(170 / Math.max(cols, 1))) : 10;
+
+  const styles =
+    baseStyles(lang, accent, accentDark, settings) +
+    `
+    .instructions { background: ${inkSaver ? "#ffffff" : "#fef2f2"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .cw-wrap { display: flex; justify-content: center; margin: 4mm 0; }
+    .cw-grid { display: grid; grid-template-columns: repeat(${cols}, ${cellSize}mm); grid-auto-rows: ${cellSize}mm; gap: 0; border: 2px solid ${cellBorder}; }
+    .cw-cell { border: 0.5px solid ${cellBorder}; position: relative; box-sizing: border-box; }
+    .cw-cell.empty { background: ${inkSaver ? "#000000" : "#1f2937"}; border: 0.5px solid ${cellBorder}; }
+    .cw-cell.letter { background: ${cellBg}; }
+    .cw-num { position: absolute; top: 0.3mm; left: 0.5mm; font-size: ${Math.max(5, cellSize - 6)}pt; font-weight: 700; color: ${accentDark}; line-height: 1; }
+    .cw-letter { display: flex; align-items: center; justify-content: center; height: 100%; font-weight: 800; font-size: ${Math.max(8, cellSize - 2)}pt; color: ${cellBorder}; text-transform: uppercase; }
+    .cw-clues { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin-top: 4mm; }
+    .cw-clue-section-title { font-weight: 800; color: ${accentDark}; font-size: 1.05em; margin-bottom: 2mm; padding-bottom: 1mm; border-bottom: 1.5px solid ${inkSaver ? "#000000" : "#fecaca"}; }
+    .cw-clue-list { display: flex; flex-direction: column; gap: 1.5mm; }
+    .cw-clue { display: flex; gap: 2mm; font-size: 0.95em; }
+    .cw-clue-num { font-weight: 800; color: ${accent}; min-width: 7mm; }
+    .cw-empty-msg { padding: 6mm; border: 1.5px dashed ${cellBorder}; border-radius: 6px; text-align: center; color: #6b7280; }
+  `;
+
+  if (placements.length === 0) {
+    // Fallback when the topic has no eligible words (rare — usually a pack
+    // of multi-word phrases). Render a friendly stub so the PDF is still valid.
+    const emptyHTML = `
+      <section class="sheet">
+        ${sheetHeader(pack, t.title)}
+        <div class="cw-empty-msg">${escapeHtml(t.instructions)}</div>
+        ${sheetFooter(1, 1, t.page)}
+      </section>`;
+    return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: emptyHTML });
+  }
+
+  const acrossClues = placements.filter((p) => p.horizontal).sort((a, b) => a.number - b.number);
+  const downClues = placements.filter((p) => !p.horizontal).sort((a, b) => a.number - b.number);
+
+  // Number map for rendering — cells outside the puzzle stay empty/black.
+  const numberAt = (r: number, c: number): number | null => {
+    const p = placements.find((pp) => pp.row === r && pp.col === c);
+    return p ? p.number : null;
+  };
+
+  const renderGrid = (showLetters: boolean) => {
+    const cells: string[] = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const letter = grid[r][c];
+        if (!letter) {
+          cells.push(`<div class="cw-cell empty"></div>`);
+          continue;
+        }
+        const n = numberAt(r, c);
+        cells.push(
+          `<div class="cw-cell letter">${n ? `<span class="cw-num">${n}</span>` : ""}${
+            showLetters ? `<span class="cw-letter en">${escapeHtml(applyCasing(letter, casing))}</span>` : ""
+          }</div>`,
+        );
+      }
+    }
+    return `<div class="cw-wrap"><div class="cw-grid">${cells.join("")}</div></div>`;
+  };
+
+  const renderClueList = (list: typeof acrossClues) =>
+    list
+      .map(
+        (p) => `
+        <div class="cw-clue">
+          <span class="cw-clue-num">${p.number}.</span>
+          <span>${escapeHtml(p.clue)} <span style="color:#9ca3af;">(${p.word.length})</span></span>
+        </div>`,
+      )
+      .join("");
+
+  const puzzleHTML = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.title)}
+      <div class="instructions">${escapeHtml(t.instructions)}</div>
+      <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+      </div>
+      ${renderGrid(false)}
+      <div class="cw-clues">
+        <div>
+          <div class="cw-clue-section-title">⬌ ${escapeHtml(t.across)}</div>
+          <div class="cw-clue-list">${renderClueList(acrossClues)}</div>
+        </div>
+        <div>
+          <div class="cw-clue-section-title">⬍ ${escapeHtml(t.down)}</div>
+          <div class="cw-clue-list">${renderClueList(downClues)}</div>
+        </div>
+      </div>
+      ${sheetFooter(1, 2, t.page)}
+    </section>`;
+
+  const solutionHTML = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.solution)}
+      ${renderGrid(true)}
+      ${sheetFooter(2, 2, t.page)}
+    </section>`;
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: puzzleHTML + solutionHTML });
+};
+
+const generateClozeHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver, showTranslations } = settings;
+  const t = {
+    en: { title: "Cloze Reading", instructions: "Read the passage and fill in each blank with a word from the word bank.", wordBank: "Word Bank", passage: "Passage", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" },
+    he: { title: "קריאה והשלמה", instructions: "קראו את הקטע והשלימו כל חסר במילה מבנק המילים.", wordBank: "בנק מילים", passage: "קטע", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
+    ar: { title: "قراءة وملء الفراغات", instructions: "اقرأ النص واملأ كل فراغ بكلمة من بنك الكلمات.", wordBank: "بنك الكلمات", passage: "النص", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Cloze Reading", instructions: "Read the passage and fill in each blank with a word from the word bank.", wordBank: "Word Bank", passage: "Passage", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" };
+
+  const BLANK = "____________";
+  const seedBase = hashString(pack.name);
+  const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Build sentence items the same way fill-blank does — but instead of a
+  // numbered list we'll join them into paragraphs (5 sentences each) so the
+  // sheet reads like a story passage instead of a quiz.
+  const buildItem = (word: Word, idx: number): { word: Word; sentence: string } => {
+    const re = new RegExp(`\\b${escapeRe(word.english)}\\b`, "i");
+    const curated = FILLBLANK_SENTENCES.get(word.id);
+    if (curated && re.test(curated)) return { word, sentence: curated.replace(re, BLANK) };
+    const candidates = getSentencesForWord(word, 2);
+    const fitting = candidates.filter((s) => re.test(s));
+    if (fitting.length > 0) {
+      const picked = fitting[(seedBase + idx) % fitting.length];
+      return { word, sentence: picked.replace(re, BLANK) };
+    }
+    const fallbacks = [`I see the ${word.english} every day`, `She likes the ${word.english} a lot`, `They use ${word.english} in the lesson`];
+    return { word, sentence: fallbacks[(seedBase + idx) % fallbacks.length].replace(re, BLANK) };
+  };
+
+  const items = words.map(buildItem);
+  // Cap to keep the passage readable. Long packs get split into multiple passages.
+  const PER_PASSAGE = 12;
+  const passages = chunk(items, PER_PASSAGE);
+  const totalPages = passages.length + 1;
+
+  const accent = inkSaver ? "#000000" : "#0891b2";
+  const accentDark = inkSaver ? "#000000" : "#155e75";
+
+  const styles =
+    baseStyles(lang, accent, accentDark, settings) +
+    `
+    .instructions { background: ${inkSaver ? "#ffffff" : "#ecfeff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .word-bank { background: ${inkSaver ? "#ffffff" : "#ecfeff"}; border: 2px solid ${inkSaver ? "#000000" : "#67e8f9"}; border-radius: 8px; padding: 4mm; margin: 4mm 0; }
+    .word-bank-title { font-weight: 800; color: ${accentDark}; margin-bottom: 3mm; text-align: center; font-size: 1.05em; }
+    .word-bank-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
+    .word-bank-item { display: flex; align-items: center; gap: 2mm; padding: 2mm 3mm; background: white; border: 1px solid ${inkSaver ? "#000000" : "#67e8f9"}; border-radius: 4px; font-size: 0.95em; }
+    .word-bank-en { font-weight: 700; color: ${inkSaver ? "#000000" : "#1f2937"}; flex: 1; }
+    .word-bank-tr { color: #6b7280; font-size: 0.85em; }
+    .word-bank-qr svg { display: block; width: 9mm; height: 9mm; }
+    .passage-section { margin-top: 4mm; padding: 5mm 6mm; background: ${inkSaver ? "#ffffff" : "#fafdfd"}; border: 1.5px solid ${inkSaver ? "#000000" : "#cffafe"}; border-radius: 6px; }
+    .passage-title { font-weight: 800; color: ${accentDark}; margin-bottom: 3mm; font-size: 1.05em; }
+    .passage-paragraph { line-height: 2.0; text-align: start; margin-bottom: 3mm; font-size: 1.05em; }
+    .passage-paragraph .blank { display: inline-block; min-width: 22mm; border-bottom: 1.5px solid ${accent}; font-weight: 800; letter-spacing: 1px; color: ${accent}; padding: 0 1mm; text-align: center; }
+    .answer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }
+    .answer-cell { display: flex; gap: 2mm; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.9em; }
+    .answer-num { font-weight: 800; color: ${accent}; min-width: 6mm; }
+  `;
+
+  // Render a sentence with its blank tokenised as a styled span so the
+  // underline + monospace blank survives html2canvas.
+  const renderSentence = (s: string) => escapeHtml(s).replace(BLANK, `<span class="blank">${BLANK}</span>`);
+
+  // Group sentences into paragraphs of 5 — gives the reader a chance to
+  // pause and the visual rhythm of a real reading text.
+  const SENT_PER_PARA = 5;
+  const buildPassage = (group: typeof items) => {
+    const paragraphs = chunk(group, SENT_PER_PARA);
+    return paragraphs
+      .map(
+        (para) =>
+          `<p class="passage-paragraph en">${para.map((it) => renderSentence(it.sentence)).join(" ")}</p>`,
+      )
+      .join("");
+  };
+
+  const bank = seededShuffle(words, seedBase ^ 0xc10ce);
+  const wordBankHTML = `
+    <div class="word-bank no-break">
+      <div class="word-bank-title">📋 ${escapeHtml(t.wordBank)}</div>
+      <div class="word-bank-grid">
+        ${bank
+          .map(
+            (w) => `
+          <div class="word-bank-item">
+            <span class="word-bank-en en">${escapeHtml(applyCasing(w.english, casing))}</span>
+            ${showTranslations ? `<span class="word-bank-tr">${escapeHtml(getTranslation(w, lang))}</span>` : ""}
+            ${audioQR ? `<span class="word-bank-qr">${qrSvg(getAudioUrl(w.id), 32)}</span>` : ""}
+          </div>`,
+          )
+          .join("")}
+      </div>
+    </div>`;
+
+  const passagePagesHTML = passages
+    .map((group, pageIdx) => `
+      <section class="sheet">
+        ${sheetHeader(pack, t.title)}
+        ${pageIdx === 0
+          ? `<div class="instructions">${escapeHtml(t.instructions)}</div>
+             <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
+               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+             </div>
+             ${wordBankHTML}`
+          : ""}
+        <div class="passage-section">
+          <div class="passage-title">📖 ${escapeHtml(t.passage)} ${pageIdx + 1}</div>
+          ${buildPassage(group)}
+        </div>
+        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
+      </section>`)
+    .join("");
+
+  const answerKeyHTML = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.answerKey)}
+      <div class="answer-grid">
+        ${items
+          .map(
+            (item, i) => `
+          <div class="answer-cell">
+            <span class="answer-num">${i + 1}.</span>
+            <span class="en" style="font-weight:700;">${escapeHtml(applyCasing(item.word.english, casing))}</span>
+          </div>`,
+          )
+          .join("")}
+      </div>
+      ${sheetFooter(totalPages, totalPages, t.page)}
+    </section>`;
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: passagePagesHTML + answerKeyHTML });
+};
+
+const generateTracingHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, inkSaver, showTranslations } = settings;
+  const t = {
+    en: { title: "Tracing Practice", instructions: "Trace the dotted letters, then write each word again on the line below.", page: "Page", name: "Name:", date: "Date:" },
+    he: { title: "תרגול כתיבה", instructions: "עברו על האותיות המקווקוות, ואז כתבו את כל מילה שוב על השורה למטה.", page: "עמוד", name: "שם:", date: "תאריך:" },
+    ar: { title: "تمرين الكتابة", instructions: "تتبع الحروف المنقطة، ثم اكتب كل كلمة مرة أخرى على السطر أدناه.", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Tracing Practice", instructions: "Trace the dotted letters, then write each word again on the line below.", page: "Page", name: "Name:", date: "Date:" };
+
+  const PER_PAGE = 6;
+  const pages = chunk(words, PER_PAGE);
+  const totalPages = Math.max(1, pages.length);
+
+  const accent = inkSaver ? "#000000" : "#9333ea";
+  const accentDark = inkSaver ? "#000000" : "#6b21a8";
+  // The "trace" colour must be light enough to disappear once a child writes
+  // over it with a regular pencil, but still visible. Light grey with a
+  // dotted text stroke effect is the closest we can get in HTML/CSS.
+  const traceColor = inkSaver ? "#9ca3af" : "#d8b4fe";
+
+  const styles =
+    baseStyles(lang, accent, accentDark, settings) +
+    `
+    .instructions { background: ${inkSaver ? "#ffffff" : "#faf5ff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .trace-list { display: flex; flex-direction: column; gap: 6mm; margin-top: 4mm; }
+    .trace-row { padding: 4mm 5mm; background: ${inkSaver ? "#ffffff" : "#fdfaff"}; border: 1.5px solid ${inkSaver ? "#000000" : "#e9d5ff"}; border-radius: 6px; }
+    .trace-num { font-weight: 800; color: ${accent}; font-size: 0.95em; margin-bottom: 1mm; }
+    .trace-tr { color: #6b7280; font-size: 0.9em; font-style: italic; margin-bottom: 2mm; }
+    .trace-letters { font-size: 26pt; font-weight: 800; letter-spacing: 4px; color: ${traceColor}; line-height: 1.2; font-family: 'Comic Sans MS', 'Courier New', monospace; }
+    .trace-baseline { border-bottom: 1.5px solid ${inkSaver ? "#000000" : "#cbd5e1"}; height: 14mm; margin-top: 2mm; position: relative; }
+    .trace-midline { position: absolute; top: 50%; left: 0; right: 0; border-bottom: 0.5px dashed ${inkSaver ? "#9ca3af" : "#cbd5e1"}; }
+  `;
+
+  const pagesHTML = pages
+    .map((group, pageIdx) => {
+      const startIdx = pageIdx * PER_PAGE;
+      return `
+      <section class="sheet">
+        ${sheetHeader(pack, t.title)}
+        ${pageIdx === 0
+          ? `<div class="instructions">${escapeHtml(t.instructions)}</div>
+             <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
+               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+             </div>`
+          : ""}
+        <div class="trace-list">
+          ${group
+            .map(
+              (w, i) => `
+            <div class="trace-row no-break">
+              <div class="trace-num">${startIdx + i + 1}.</div>
+              ${showTranslations ? `<div class="trace-tr">${escapeHtml(getTranslation(w, lang))}</div>` : ""}
+              <div class="trace-letters en">${escapeHtml(applyCasing(w.english, casing))}</div>
+              <div class="trace-baseline"><div class="trace-midline"></div></div>
+            </div>`,
+            )
+            .join("")}
+        </div>
+        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
+      </section>`;
+    })
+    .join("");
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: pagesHTML });
+};
+
+const generateMemoryMatchHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver } = settings;
+  const t = {
+    en: { title: "Memory Match Cards", instructions: "Cut along the dashed lines. Place the cards face-down. Take turns flipping two cards — match each English word with its translation to keep the pair.", page: "Page" },
+    he: { title: "כרטיסי משחק זיכרון", instructions: "גזרו לאורך הקווים המקווקוים. הניחו את הכרטיסים הפוכים. סובבו שני כרטיסים בכל תור — התאימו מילה באנגלית עם התרגום שלה כדי לשמור על הזוג.", page: "עמוד" },
+    ar: { title: "بطاقات لعبة الذاكرة", instructions: "قص على طول الخطوط المتقطعة. ضع البطاقات وجهها للأسفل. اقلب بطاقتين في كل دور — طابق كل كلمة إنجليزية مع ترجمتها للاحتفاظ بالزوج.", page: "صفحة" },
+  }[lang as "en" | "he" | "ar"] || { title: "Memory Match Cards", instructions: "Cut along the dashed lines. Place the cards face-down. Take turns flipping two cards — match each English word with its translation to keep the pair.", page: "Page" };
+
+  // 8 pairs × 2 cards = 16 cards per A4 page in 4×4 grid.
+  const PAIRS_PER_PAGE = 8;
+  const pages = chunk(words, PAIRS_PER_PAGE);
+  const totalPages = Math.max(1, pages.length);
+
+  const accent = inkSaver ? "#000000" : "#db2777";
+  const accentDark = inkSaver ? "#000000" : "#9d174d";
+  const cardEnBg = inkSaver ? "#ffffff" : "#fdf2f8";
+  const cardTrBg = inkSaver ? "#ffffff" : "#fef3c7";
+
+  const styles =
+    baseStyles(lang, accent, accentDark, settings) +
+    `
+    .instructions { background: ${inkSaver ? "#ffffff" : "#fdf2f8"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 3mm 0; text-align: center; color: ${accentDark}; font-weight: 600; font-size: 0.9em; }
+    .mm-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 3mm; border: 1.5px dashed ${inkSaver ? "#000000" : "#9ca3af"}; }
+    .mm-card { aspect-ratio: 1 / 1; padding: 3mm; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2mm; border: 1.5px dashed ${inkSaver ? "#000000" : "#9ca3af"}; text-align: center; }
+    .mm-card.en { background: ${cardEnBg}; }
+    .mm-card.tr { background: ${cardTrBg}; }
+    .mm-card-label { font-size: 7pt; font-weight: 700; color: ${inkSaver ? "#000000" : "#9ca3af"}; text-transform: uppercase; letter-spacing: 1px; }
+    .mm-card-text { font-weight: 800; font-size: 11pt; color: ${inkSaver ? "#000000" : accentDark}; line-height: 1.2; }
+    .mm-card-text.en { font-size: 13pt; }
+    .mm-card-qr svg { display: block; width: 12mm; height: 12mm; }
+  `;
+
+  const pagesHTML = pages
+    .map((group, pageIdx) => {
+      // Mix EN cards and translation cards across the grid so when teachers
+      // shuffle them, they're already pre-mixed. Stable per-page seed.
+      const cards: { type: "en" | "tr"; word: Word }[] = group.flatMap((w) => [
+        { type: "en", word: w },
+        { type: "tr", word: w },
+      ]);
+      const shuffled = seededShuffle(cards, hashString(pack.name) ^ pageIdx);
+      return `
+      <section class="sheet">
+        ${sheetHeader(pack, t.title)}
+        ${pageIdx === 0 ? `<div class="instructions">✂️ ${escapeHtml(t.instructions)}</div>` : ""}
+        <div class="mm-grid">
+          ${shuffled
+            .map((c) => {
+              if (c.type === "en") {
+                return `
+            <div class="mm-card en no-break">
+              <div class="mm-card-label">EN</div>
+              <div class="mm-card-text en">${escapeHtml(applyCasing(c.word.english, casing))}</div>
+              ${audioQR ? `<div class="mm-card-qr">${qrSvg(getAudioUrl(c.word.id), 36)}</div>` : ""}
+            </div>`;
+              }
+              return `
+            <div class="mm-card tr no-break">
+              <div class="mm-card-label">${lang === "he" ? "עב" : lang === "ar" ? "عر" : "TR"}</div>
+              <div class="mm-card-text">${escapeHtml(getTranslation(c.word, lang))}</div>
+            </div>`;
+            })
+            .join("")}
+        </div>
+        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
+      </section>`;
+    })
+    .join("");
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: pagesHTML });
+};
+
+const generatePictionaryHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver, showTranslations } = settings;
+  const t = {
+    en: { title: "Pictionary Cards", instructions: "Cut along the dashed lines. Pick a card. Draw the word — your partner guesses!", drawHere: "Draw here", page: "Page" },
+    he: { title: "כרטיסי ציור", instructions: "גזרו לאורך הקווים המקווקוים. בחרו כרטיס. ציירו את המילה — בן הזוג שלכם מנחש!", drawHere: "ציירו כאן", page: "עמוד" },
+    ar: { title: "بطاقات الرسم", instructions: "قص على طول الخطوط المتقطعة. اختر بطاقة. ارسم الكلمة — يخمنها شريكك!", drawHere: "ارسم هنا", page: "صفحة" },
+  }[lang as "en" | "he" | "ar"] || { title: "Pictionary Cards", instructions: "Cut along the dashed lines. Pick a card. Draw the word — your partner guesses!", drawHere: "Draw here", page: "Page" };
+
+  // 4 cards per A4 portrait — 2×2 grid, each card is roughly half-page.
+  const PER_PAGE = 4;
+  const pages = chunk(words, PER_PAGE);
+  const totalPages = Math.max(1, pages.length);
+
+  const accent = inkSaver ? "#000000" : "#0d9488";
+  const accentDark = inkSaver ? "#000000" : "#115e59";
+
+  const styles =
+    baseStyles(lang, accent, accentDark, settings) +
+    `
+    .instructions { background: ${inkSaver ? "#ffffff" : "#f0fdfa"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 3mm 0; text-align: center; color: ${accentDark}; font-weight: 600; font-size: 0.9em; }
+    .pic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 3mm; border: 1.5px dashed ${inkSaver ? "#000000" : "#9ca3af"}; }
+    .pic-card { padding: 5mm 6mm; border: 1.5px dashed ${inkSaver ? "#000000" : "#9ca3af"}; display: flex; flex-direction: column; gap: 3mm; height: 110mm; box-sizing: border-box; }
+    .pic-card-header { display: flex; align-items: center; gap: 3mm; }
+    .pic-card-num { width: 9mm; height: 9mm; border-radius: 50%; background: ${inkSaver ? "#ffffff" : accent}; color: ${inkSaver ? "#000000" : "#ffffff"}; border: ${inkSaver ? "1.5px solid #000000" : "0"}; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95em; flex-shrink: 0; }
+    .pic-card-en { font-weight: 800; font-size: 18pt; color: ${inkSaver ? "#000000" : accentDark}; flex: 1; }
+    .pic-card-qr svg { display: block; width: 13mm; height: 13mm; }
+    .pic-card-draw { flex: 1; border: 2px dashed ${inkSaver ? "#9ca3af" : "#5eead4"}; border-radius: 6px; display: flex; align-items: flex-end; justify-content: center; padding: 3mm; background: ${inkSaver ? "#ffffff" : "#f0fdfa"}; }
+    .pic-card-draw-label { color: ${inkSaver ? "#9ca3af" : "#0d9488"}; font-size: 0.8em; font-style: italic; }
+    .pic-card-tr { transform: rotate(180deg); text-align: center; color: #6b7280; font-size: 0.85em; padding-top: 2mm; border-top: 0.5px dashed #d1d5db; }
+  `;
+
+  const pagesHTML = pages
+    .map((group, pageIdx) => {
+      const startIdx = pageIdx * PER_PAGE;
+      return `
+      <section class="sheet">
+        ${sheetHeader(pack, t.title)}
+        ${pageIdx === 0 ? `<div class="instructions">✂️ ${escapeHtml(t.instructions)}</div>` : ""}
+        <div class="pic-grid">
+          ${group
+            .map(
+              (w, i) => `
+            <div class="pic-card no-break">
+              <div class="pic-card-header">
+                <div class="pic-card-num">${startIdx + i + 1}</div>
+                <div class="pic-card-en en">${escapeHtml(applyCasing(w.english, casing))}</div>
+                ${audioQR ? `<div class="pic-card-qr">${qrSvg(getAudioUrl(w.id), 40)}</div>` : ""}
+              </div>
+              <div class="pic-card-draw"><div class="pic-card-draw-label">${escapeHtml(t.drawHere)}</div></div>
+              ${showTranslations ? `<div class="pic-card-tr">${escapeHtml(getTranslation(w, lang))}</div>` : ""}
+            </div>`,
+            )
+            .join("")}
+        </div>
+        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
+      </section>`;
+    })
+    .join("");
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: pagesHTML });
+};
+
+const generateParentHandoutHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
+  const { casing, audioQR, inkSaver } = settings;
+  // Parent handout is intentionally written FOR THE PARENT, not the student.
+  // Tone is friendly + practical; activities require zero teaching expertise.
+  const t = {
+    en: {
+      title: "Parent's Guide",
+      greeting: "Dear Parent,",
+      intro: "Your child is learning these English words this week. Here are simple, screen-free ways to practise at home — 5 minutes is enough!",
+      wordsTitle: "This week's words",
+      activitiesTitle: "Try these at home",
+      activities: [
+        { emoji: "🗣️", title: "Say it together", desc: "Read each English word aloud with your child. Then say it in your own language. Repeat 3 times — short and fun." },
+        { emoji: "🔍", title: "Spot it around the house", desc: "Walk around your home and find one item for as many words as you can. Point and say the English word." },
+        { emoji: "✏️", title: "Write 3 favourites", desc: "Ask your child to choose 3 words and write each one on a small paper. Stick them on the fridge for a week." },
+      ],
+      qrHint: "Scan the QR codes for pronunciation",
+      footer: "Thank you for supporting your child's learning! ❤️",
+      page: "Page",
+    },
+    he: {
+      title: "מדריך להורה",
+      greeting: "להורה היקר/ה,",
+      intro: "הילד/ה שלכם לומד/ת השבוע את המילים הללו באנגלית. הנה דרכים פשוטות לתרגול בבית — 5 דקות מספיקות!",
+      wordsTitle: "המילים של השבוע",
+      activitiesTitle: "פעילויות לבית",
+      activities: [
+        { emoji: "🗣️", title: "אומרים יחד", desc: "קראו כל מילה באנגלית בקול יחד עם הילד/ה. אחר כך תרגמו לעברית. חיזרו 3 פעמים — קצר וכיף." },
+        { emoji: "🔍", title: "מחפשים בבית", desc: "סובבו בבית ומצאו פריט אחד לכל כמה שיותר מילים. הצביעו ואמרו את המילה באנגלית." },
+        { emoji: "✏️", title: "כותבים 3 אהובות", desc: "בקשו מהילד/ה לבחור 3 מילים ולכתוב כל אחת על דף קטן. הדביקו על המקרר לשבוע." },
+      ],
+      qrHint: "סרקו את קודי ה-QR להגייה",
+      footer: "תודה שאתם תומכים בלמידה של הילד/ה שלכם! ❤️",
+      page: "עמוד",
+    },
+    ar: {
+      title: "دليل ولي الأمر",
+      greeting: "إلى ولي الأمر العزيز،",
+      intro: "يتعلم طفلك هذه الكلمات الإنجليزية هذا الأسبوع. إليك طرق بسيطة للتمرن في المنزل — 5 دقائق تكفي!",
+      wordsTitle: "كلمات هذا الأسبوع",
+      activitiesTitle: "جربوا هذه الأنشطة في المنزل",
+      activities: [
+        { emoji: "🗣️", title: "قولوها معًا", desc: "اقرأوا كل كلمة إنجليزية بصوت عالٍ مع طفلك. ثم قولوها بالعربية. كرروا 3 مرات — قصير وممتع." },
+        { emoji: "🔍", title: "اكتشفوها في المنزل", desc: "تجولوا في المنزل وابحثوا عن غرض واحد لأكبر عدد ممكن من الكلمات. أشيروا واذكروا الكلمة الإنجليزية." },
+        { emoji: "✏️", title: "اكتبوا 3 كلمات مفضلة", desc: "اطلبوا من طفلك اختيار 3 كلمات وكتابة كل واحدة على ورقة صغيرة. الصقوها على الثلاجة لمدة أسبوع." },
+      ],
+      qrHint: "امسحوا رموز QR للنطق",
+      footer: "شكرًا لدعمكم لتعلم طفلكم! ❤️",
+      page: "صفحة",
+    },
+  }[lang as "en" | "he" | "ar"] || {
+    title: "Parent's Guide",
+    greeting: "Dear Parent,",
+    intro: "Your child is learning these English words this week. Here are simple, screen-free ways to practise at home — 5 minutes is enough!",
+    wordsTitle: "This week's words",
+    activitiesTitle: "Try these at home",
+    activities: [
+      { emoji: "🗣️", title: "Say it together", desc: "Read each English word aloud with your child. Then say it in your own language. Repeat 3 times — short and fun." },
+      { emoji: "🔍", title: "Spot it around the house", desc: "Walk around your home and find one item for as many words as you can. Point and say the English word." },
+      { emoji: "✏️", title: "Write 3 favourites", desc: "Ask your child to choose 3 words and write each one on a small paper. Stick them on the fridge for a week." },
+    ],
+    qrHint: "Scan the QR codes for pronunciation",
+    footer: "Thank you for supporting your child's learning! ❤️",
+    page: "Page",
+  };
+
+  const accent = inkSaver ? "#000000" : "#e11d48";
+  const accentDark = inkSaver ? "#000000" : "#9f1239";
+
+  const styles =
+    baseStyles(lang, accent, accentDark, settings) +
+    `
+    .ph-greeting { font-size: 1.1em; font-weight: 700; color: ${accentDark}; margin: 4mm 0 2mm; }
+    .ph-intro { color: ${inkSaver ? "#000000" : "#475569"}; line-height: 1.6; margin-bottom: 4mm; padding: 3mm 4mm; background: ${inkSaver ? "#ffffff" : "#fff1f2"}; border-${lang === "he" || lang === "ar" ? "right" : "left"}: 4px solid ${accent}; border-radius: 4px; }
+    .ph-section-title { font-weight: 800; color: ${accentDark}; font-size: 1.05em; margin: 4mm 0 2mm; padding-bottom: 1mm; border-bottom: 2px solid ${inkSaver ? "#000000" : "#fecdd3"}; }
+    .ph-words-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }
+    .ph-word-item { display: flex; align-items: center; gap: 2mm; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#fff1f2"}; border: 1px solid ${inkSaver ? "#000000" : "#fecdd3"}; border-radius: 4px; font-size: 0.95em; }
+    .ph-word-en { font-weight: 700; color: ${inkSaver ? "#000000" : accentDark}; flex: 1; }
+    .ph-word-tr { color: #6b7280; font-size: 0.85em; }
+    .ph-word-qr svg { display: block; width: 9mm; height: 9mm; }
+    .ph-qr-hint { color: #6b7280; font-size: 0.85em; font-style: italic; margin-top: 1mm; }
+    .ph-activities { display: flex; flex-direction: column; gap: 3mm; margin-top: 2mm; }
+    .ph-activity { padding: 3mm 4mm; background: ${inkSaver ? "#ffffff" : "#ffffff"}; border: 1.5px solid ${inkSaver ? "#000000" : "#fecdd3"}; border-radius: 6px; }
+    .ph-activity-title { font-weight: 800; color: ${accentDark}; margin-bottom: 1mm; }
+    .ph-activity-emoji { margin-${lang === "he" || lang === "ar" ? "left" : "right"}: 2mm; font-size: 1.1em; }
+    .ph-activity-desc { color: ${inkSaver ? "#000000" : "#475569"}; line-height: 1.5; font-size: 0.95em; }
+    .ph-footer { text-align: center; margin-top: 5mm; padding: 3mm; color: ${accentDark}; font-weight: 700; font-style: italic; }
+  `;
+
+  const handoutHTML = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.title)}
+      <div class="ph-greeting">${escapeHtml(t.greeting)}</div>
+      <div class="ph-intro">${escapeHtml(t.intro)}</div>
+
+      <div class="ph-section-title">📚 ${escapeHtml(t.wordsTitle)}</div>
+      <div class="ph-words-grid">
+        ${words
+          .map(
+            (w) => `
+          <div class="ph-word-item no-break">
+            <span class="ph-word-en en">${escapeHtml(applyCasing(w.english, casing))}</span>
+            <span class="ph-word-tr">${escapeHtml(getTranslation(w, lang))}</span>
+            ${audioQR ? `<span class="ph-word-qr">${qrSvg(getAudioUrl(w.id), 32)}</span>` : ""}
+          </div>`,
+          )
+          .join("")}
+      </div>
+      ${audioQR ? `<div class="ph-qr-hint">${escapeHtml(t.qrHint)}</div>` : ""}
+
+      <div class="ph-section-title">💡 ${escapeHtml(t.activitiesTitle)}</div>
+      <div class="ph-activities">
+        ${t.activities
+          .map(
+            (a) => `
+          <div class="ph-activity no-break">
+            <div class="ph-activity-title"><span class="ph-activity-emoji">${a.emoji}</span>${escapeHtml(a.title)}</div>
+            <div class="ph-activity-desc">${escapeHtml(a.desc)}</div>
+          </div>`,
+          )
+          .join("")}
+      </div>
+
+      <div class="ph-footer">${escapeHtml(t.footer)}</div>
+      ${sheetFooter(1, 1, t.page)}
+    </section>`;
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: handoutHTML });
+};
+
 // ---------- React components ----------
 
 interface FreeResourcesViewProps {
@@ -1209,6 +2245,23 @@ interface ResourceCardProps {
   bingoLabel: string;
   wordSearchLabel: string;
   fillBlankLabel: string;
+  spellingTestLabel: string;
+  scrambleLabel: string;
+  quizLabel: string;
+  crosswordLabel: string;
+  clozeLabel: string;
+  tracingLabel: string;
+  memoryLabel: string;
+  pictionaryLabel: string;
+  parentLabel: string;
+  categoryPracticeLabel: string;
+  categoryGamesLabel: string;
+  categoryAssessLabel: string;
+  categoryFamilyLabel: string;
+  audioZipTitle: string;
+  audioZipDesc: string;
+  audioZipDownloadLabel: string;
+  audioZipComingSoonLabel: string;
   gradient: string;
   delay: number;
   onDownload: () => void;
@@ -1217,8 +2270,27 @@ interface ResourceCardProps {
   onBingo: () => void;
   onWordSearch: () => void;
   onFillBlank: () => void;
+  onSpellingTest: () => void;
+  onScramble: () => void;
+  onQuiz: () => void;
+  onCrossword: () => void;
+  onCloze: () => void;
+  onTracing: () => void;
+  onMemory: () => void;
+  onPictionary: () => void;
+  onParent: () => void;
   isDownloading: boolean;
 }
+
+// Faint divider with an uppercase category label centred on it. Keeps each
+// resource card's 14 buttons scannable instead of a wall of colour.
+const CategoryLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex items-center gap-2 mt-3 mb-1 first:mt-1">
+    <div className="h-px flex-1 bg-white/10" />
+    <span className="text-[10px] uppercase tracking-widest font-bold text-white/50">{children}</span>
+    <div className="h-px flex-1 bg-white/10" />
+  </div>
+);
 
 const ResourceCard: React.FC<ResourceCardProps> = ({
   topicName,
@@ -1232,6 +2304,23 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
   bingoLabel,
   wordSearchLabel,
   fillBlankLabel,
+  spellingTestLabel,
+  scrambleLabel,
+  quizLabel,
+  crosswordLabel,
+  clozeLabel,
+  tracingLabel,
+  memoryLabel,
+  pictionaryLabel,
+  parentLabel,
+  categoryPracticeLabel,
+  categoryGamesLabel,
+  categoryAssessLabel,
+  categoryFamilyLabel,
+  audioZipTitle,
+  audioZipDesc,
+  audioZipDownloadLabel,
+  audioZipComingSoonLabel,
   gradient,
   delay,
   onDownload,
@@ -1240,9 +2329,42 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
   onBingo,
   onWordSearch,
   onFillBlank,
+  onSpellingTest,
+  onScramble,
+  onQuiz,
+  onCrossword,
+  onCloze,
+  onTracing,
+  onMemory,
+  onPictionary,
+  onParent,
   isDownloading,
 }) => {
   const { isRTL } = useLanguage();
+
+  // Keeps each button declaration short and consistent. The gradient + text
+  // colour hint at the format's character so teachers can spot favourites.
+  const FormatButton: React.FC<{
+    onClick: () => void;
+    label: string;
+    icon: React.ReactNode;
+    gradient: string;
+    textClass: string;
+    borderClass: string;
+    fullWidth?: boolean;
+  }> = ({ onClick, label, icon, gradient, textClass, borderClass, fullWidth }) => (
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onClick}
+      aria-label={`${label} — ${title}`}
+      className={`py-2.5 rounded-xl bg-gradient-to-r ${gradient} ${textClass} font-bold transition-all flex items-center justify-center gap-1.5 border ${borderClass} text-sm ${fullWidth ? "col-span-2" : ""}`}
+      type="button"
+    >
+      {icon}
+      <span className="truncate">{label}</span>
+    </motion.button>
+  );
 
   return (
     <motion.div
@@ -1287,66 +2409,152 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             )}
           </motion.button>
 
+          <CategoryLabel>{categoryPracticeLabel}</CategoryLabel>
           <div className="grid grid-cols-2 gap-2">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onMatching}
-              aria-label={`${matchingLabel} — ${title}`}
-              className="py-2.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-300 font-bold transition-all flex items-center justify-center gap-1.5 border border-emerald-400/30 text-sm"
-              type="button"
-            >
-              <Gamepad2 size={14} />
-              <span className="truncate">{matchingLabel}</span>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onFlashcards}
-              aria-label={`${flashcardsLabel} — ${title}`}
-              className="py-2.5 rounded-xl bg-gradient-to-r from-blue-500/20 to-indigo-500/20 hover:from-blue-500/30 hover:to-indigo-500/30 text-blue-300 font-bold transition-all flex items-center justify-center gap-1.5 border border-blue-400/30 text-sm"
-              type="button"
-            >
-              <CreditCard size={14} />
-              <span className="truncate">{flashcardsLabel}</span>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onBingo}
-              aria-label={`${bingoLabel} — ${title}`}
-              className="py-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 font-bold transition-all flex items-center justify-center gap-1.5 border border-amber-400/30 text-sm"
-              type="button"
-            >
-              <Grid3x3 size={14} />
-              <span className="truncate">{bingoLabel}</span>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onWordSearch}
-              aria-label={`${wordSearchLabel} — ${title}`}
-              className="py-2.5 rounded-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 hover:from-pink-500/30 hover:to-rose-500/30 text-pink-300 font-bold transition-all flex items-center justify-center gap-1.5 border border-pink-400/30 text-sm"
-              type="button"
-            >
-              <Search size={14} />
-              <span className="truncate">{wordSearchLabel}</span>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <FormatButton
+              onClick={onScramble}
+              label={scrambleLabel}
+              icon={<Shuffle size={14} />}
+              gradient="from-orange-500/20 to-yellow-500/20 hover:from-orange-500/30 hover:to-yellow-500/30"
+              textClass="text-orange-300"
+              borderClass="border-orange-400/30"
+            />
+            <FormatButton
+              onClick={onTracing}
+              label={tracingLabel}
+              icon={<Pencil size={14} />}
+              gradient="from-purple-500/20 to-fuchsia-500/20 hover:from-purple-500/30 hover:to-fuchsia-500/30"
+              textClass="text-purple-300"
+              borderClass="border-purple-400/30"
+            />
+            <FormatButton
+              onClick={onCloze}
+              label={clozeLabel}
+              icon={<BookOpen size={14} />}
+              gradient="from-cyan-500/20 to-teal-500/20 hover:from-cyan-500/30 hover:to-teal-500/30"
+              textClass="text-cyan-300"
+              borderClass="border-cyan-400/30"
+            />
+            <FormatButton
               onClick={onFillBlank}
-              aria-label={`${fillBlankLabel} — ${title}`}
-              className="col-span-2 py-2.5 rounded-xl bg-gradient-to-r from-sky-500/20 to-cyan-500/20 hover:from-sky-500/30 hover:to-cyan-500/30 text-sky-300 font-bold transition-all flex items-center justify-center gap-1.5 border border-sky-400/30 text-sm"
-              type="button"
+              label={fillBlankLabel}
+              icon={<PencilLine size={14} />}
+              gradient="from-sky-500/20 to-cyan-500/20 hover:from-sky-500/30 hover:to-cyan-500/30"
+              textClass="text-sky-300"
+              borderClass="border-sky-400/30"
+            />
+          </div>
+
+          <CategoryLabel>{categoryGamesLabel}</CategoryLabel>
+          <div className="grid grid-cols-2 gap-2">
+            <FormatButton
+              onClick={onMatching}
+              label={matchingLabel}
+              icon={<Gamepad2 size={14} />}
+              gradient="from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30"
+              textClass="text-emerald-300"
+              borderClass="border-emerald-400/30"
+            />
+            <FormatButton
+              onClick={onBingo}
+              label={bingoLabel}
+              icon={<Grid3x3 size={14} />}
+              gradient="from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30"
+              textClass="text-amber-300"
+              borderClass="border-amber-400/30"
+            />
+            <FormatButton
+              onClick={onWordSearch}
+              label={wordSearchLabel}
+              icon={<Search size={14} />}
+              gradient="from-pink-500/20 to-rose-500/20 hover:from-pink-500/30 hover:to-rose-500/30"
+              textClass="text-pink-300"
+              borderClass="border-pink-400/30"
+            />
+            <FormatButton
+              onClick={onCrossword}
+              label={crosswordLabel}
+              icon={<Hash size={14} />}
+              gradient="from-red-500/20 to-rose-500/20 hover:from-red-500/30 hover:to-rose-500/30"
+              textClass="text-red-300"
+              borderClass="border-red-400/30"
+            />
+            <FormatButton
+              onClick={onMemory}
+              label={memoryLabel}
+              icon={<Layers size={14} />}
+              gradient="from-fuchsia-500/20 to-pink-500/20 hover:from-fuchsia-500/30 hover:to-pink-500/30"
+              textClass="text-fuchsia-300"
+              borderClass="border-fuchsia-400/30"
+            />
+            <FormatButton
+              onClick={onPictionary}
+              label={pictionaryLabel}
+              icon={<Palette size={14} />}
+              gradient="from-teal-500/20 to-emerald-500/20 hover:from-teal-500/30 hover:to-emerald-500/30"
+              textClass="text-teal-300"
+              borderClass="border-teal-400/30"
+            />
+          </div>
+
+          <CategoryLabel>{categoryAssessLabel}</CategoryLabel>
+          <div className="grid grid-cols-2 gap-2">
+            <FormatButton
+              onClick={onFlashcards}
+              label={flashcardsLabel}
+              icon={<CreditCard size={14} />}
+              gradient="from-blue-500/20 to-indigo-500/20 hover:from-blue-500/30 hover:to-indigo-500/30"
+              textClass="text-blue-300"
+              borderClass="border-blue-400/30"
+            />
+            <FormatButton
+              onClick={onSpellingTest}
+              label={spellingTestLabel}
+              icon={<Mic size={14} />}
+              gradient="from-lime-500/20 to-green-500/20 hover:from-lime-500/30 hover:to-green-500/30"
+              textClass="text-lime-300"
+              borderClass="border-lime-400/30"
+            />
+            <FormatButton
+              onClick={onQuiz}
+              label={quizLabel}
+              icon={<ListChecks size={14} />}
+              gradient="from-violet-500/20 to-fuchsia-500/20 hover:from-violet-500/30 hover:to-fuchsia-500/30"
+              textClass="text-violet-300"
+              borderClass="border-violet-400/30"
+              fullWidth
+            />
+          </div>
+
+          <CategoryLabel>{categoryFamilyLabel}</CategoryLabel>
+          <div className="grid grid-cols-2 gap-2">
+            <FormatButton
+              onClick={onParent}
+              label={parentLabel}
+              icon={<Heart size={14} />}
+              gradient="from-rose-500/20 to-red-500/20 hover:from-rose-500/30 hover:to-red-500/30"
+              textClass="text-rose-300"
+              borderClass="border-rose-400/30"
+              fullWidth
+            />
+          </div>
+
+          {/* Audio MP3 zip — disabled stub. The button is wired but the worker
+              route that streams the zip from Supabase Storage is not deployed,
+              so we render a "coming soon" pill instead of letting the click
+              produce a 404. */}
+          <div className="mt-3 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
+            <Music size={18} className="text-white/60 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-white text-sm font-bold truncate">{audioZipTitle}</div>
+              <div className="text-white/50 text-xs truncate">{audioZipDesc}</div>
+            </div>
+            <span
+              className="shrink-0 text-[10px] uppercase tracking-wider font-bold text-white/40 bg-white/5 px-2 py-1 rounded"
+              title={audioZipDownloadLabel}
             >
-              <PencilLine size={14} />
-              <span className="truncate">{fillBlankLabel}</span>
-            </motion.button>
+              {audioZipComingSoonLabel}
+            </span>
           </div>
         </div>
       </div>
@@ -1438,9 +2646,16 @@ interface PreviewModalProps {
   closeLabel: string;
   settings: WorksheetSettings;
   onSettingChange: <K extends keyof WorksheetSettings>(key: K, value: WorksheetSettings[K]) => void;
+  /** Language used in the printable's chrome AND translation column.
+   *  Independent of the global UI language so an EN-UI teacher can
+   *  print an AR worksheet without flipping the whole site. */
+  worksheetLang: WorksheetLang;
+  onWorksheetLangChange: (v: WorksheetLang) => void;
   labels: {
     casing: string;
     casingOptions: { value: Casing; label: string }[];
+    worksheetLanguage: string;
+    worksheetLanguageOptions: { value: WorksheetLang; label: string }[];
     audioQR: string;
     settings: string;
     fontSize: string;
@@ -1474,6 +2689,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   closeLabel,
   settings,
   onSettingChange,
+  worksheetLang,
+  onWorksheetLangChange,
   labels,
   onClose,
   onDownload,
@@ -1603,6 +2820,15 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
             id="worksheet-settings-drawer"
             className="bg-violet-50 border-b border-violet-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap gap-x-6 gap-y-3 items-center"
           >
+            <SettingsField label={labels.worksheetLanguage}>
+              <SegmentedControl
+                ariaLabel={labels.worksheetLanguage}
+                options={labels.worksheetLanguageOptions}
+                value={worksheetLang}
+                onChange={(v) => onWorksheetLangChange(v)}
+              />
+            </SettingsField>
+
             <SettingsField label={labels.fontSize}>
               <SegmentedControl
                 ariaLabel={labels.fontSize}
@@ -1744,7 +2970,22 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   );
 };
 
-type Format = "worksheet" | "matching" | "flashcards" | "bingo" | "wordsearch" | "fillblank";
+type Format =
+  | "worksheet"
+  | "matching"
+  | "flashcards"
+  | "bingo"
+  | "wordsearch"
+  | "fillblank"
+  | "spelling"
+  | "scramble"
+  | "quiz"
+  | "crossword"
+  | "cloze"
+  | "tracing"
+  | "memory"
+  | "pictionary"
+  | "parent";
 
 interface PreviewSource {
   pack: TopicPack;
@@ -1761,6 +3002,15 @@ const generators: Record<Format, (pack: TopicPack, words: Word[], lang: string, 
   bingo: generateBingoCardsHTML,
   wordsearch: generateWordSearchHTML,
   fillblank: generateFillBlankHTML,
+  spelling: generateSpellingTestHTML,
+  scramble: generateWordScrambleHTML,
+  quiz: generateVocabQuizHTML,
+  crossword: generateCrosswordHTML,
+  cloze: generateClozeHTML,
+  tracing: generateTracingHTML,
+  memory: generateMemoryMatchHTML,
+  pictionary: generatePictionaryHTML,
+  parent: generateParentHandoutHTML,
 };
 
 const filenameSuffix: Record<Format, string> = {
@@ -1770,7 +3020,82 @@ const filenameSuffix: Record<Format, string> = {
   bingo: "Bingo_Cards",
   wordsearch: "Word_Search",
   fillblank: "Fill_in_the_Blank",
+  spelling: "Spelling_Test",
+  scramble: "Word_Scramble",
+  quiz: "Vocabulary_Quiz",
+  crossword: "Crossword",
+  cloze: "Cloze_Reading",
+  tracing: "Tracing_Practice",
+  memory: "Memory_Match",
+  pictionary: "Pictionary",
+  parent: "Parent_Handout",
 };
+
+// Themed bundles — virtual TopicPacks composed from curated word ids
+// across the existing pack catalogue.  Each bundle behaves exactly
+// like a TopicPack inside the preview modal: same generators, same
+// settings, same download path.  Lookup key is the English `name`
+// field; the dashboard UI shows a localised label from the free-
+// resources locale.  Word ids are sampled from existing TOPIC_PACKS
+// definitions in src/data/vocabulary.ts so we don't duplicate
+// curation effort and the lemmas are guaranteed to exist in
+// ALL_WORDS.  Duplicates are deduped at render time.
+const THEMED_BUNDLES: { name: string; icon: string; ids: number[] }[] = [
+  {
+    name: "Back to School",
+    icon: "🎒",
+    ids: [
+      // School essentials (12)
+      507, 817, 1172, 2173, 2174, 2605, 2628, 3892, 4271, 4275, 4433, 4480,
+      // Family basics (5)
+      582, 785, 1103, 1557, 1580,
+      // Numbers (5)
+      1371, 1384, 1396, 1452, 1654,
+      // Days & months (4)
+      1587, 1739, 2450, 2943,
+    ],
+  },
+  {
+    name: "Winter Holidays",
+    icon: "❄️",
+    ids: [
+      // Weather (12 — full pack)
+      859, 879, 2190, 3625, 3631, 4095, 4245, 4313, 4319, 4914, 4956, 5048,
+      // Feelings (6)
+      87, 179, 516, 1485, 2045, 3556,
+      // Family — for festive lessons (5)
+      582, 785, 1103, 1557, 1580,
+    ],
+  },
+  {
+    name: "End of Year Review",
+    icon: "🎓",
+    ids: [
+      // High-frequency mix across the staple categories so a single
+      // worksheet covers a year's worth of basics for review.
+      // Animals (5)
+      180, 476, 702, 1272, 1643,
+      // Food (5)
+      208, 349, 554, 562, 1212,
+      // Colors (5)
+      481, 498, 532, 1962, 1969,
+      // Numbers (5)
+      1371, 1384, 1396, 1452, 1654,
+      // Body parts (5)
+      232, 1339, 1528, 1532, 1629,
+    ],
+  },
+];
+
+// Worksheet language is decoupled from the global UI language.  An
+// Arabic-speaking teacher whose Vocaband UI is in English should be
+// able to print worksheets in Arabic for her students without
+// flipping the whole site to Arabic — and vice versa.  Persisted to
+// localStorage so the picker sticks across sessions.
+type WorksheetLang = "en" | "he" | "ar";
+const WORKSHEET_LANG_KEY = "vocaband:freeResources:worksheetLang";
+const isWorksheetLang = (s: string): s is WorksheetLang =>
+  s === "en" || s === "he" || s === "ar";
 
 const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onBack }) => {
   const { language, dir, textAlign, isRTL } = useLanguage();
@@ -1780,6 +3105,44 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const [settings, setSettings] = useState<WorksheetSettings>(DEFAULT_SETTINGS);
   const [isExporting, setIsExporting] = useState(false);
   const [topicSearch, setTopicSearch] = useState("");
+  const [worksheetLang, setWorksheetLang] = useState<WorksheetLang>(() => {
+    if (typeof window === "undefined") return language as WorksheetLang;
+    try {
+      const saved = window.localStorage.getItem(WORKSHEET_LANG_KEY);
+      if (saved && isWorksheetLang(saved)) return saved;
+    } catch { /* localStorage blocked; fall through */ }
+    return isWorksheetLang(language) ? language : "en";
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem(WORKSHEET_LANG_KEY, worksheetLang); } catch { /* ignore */ }
+  }, [worksheetLang]);
+
+  // Slides generator state.  Default to the first themed bundle so a
+  // teacher's first click yields something useful with no dropdown
+  // hunting; the rest of the catalogue is one keystroke away.
+  const [slidesPackChoice, setSlidesPackChoice] = useState<string>(THEMED_BUNDLES[0]?.name ?? "");
+  const [isSlidesGenerating, setIsSlidesGenerating] = useState(false);
+  const handleSlidesDownload = async () => {
+    if (isSlidesGenerating || !slidesPackChoice) return;
+    const pack =
+      TOPIC_PACKS.find((p) => p.name === slidesPackChoice) ??
+      THEMED_BUNDLES.find((b) => b.name === slidesPackChoice);
+    if (!pack) return;
+    const uniqueIds = Array.from(new Set(pack.ids));
+    const words = uniqueIds
+      .map((id) => ALL_WORDS.find((w) => w.id === id))
+      .filter((w): w is Word => Boolean(w));
+    if (words.length === 0) return;
+    setIsSlidesGenerating(true);
+    try {
+      const { downloadSlidesPPTX } = await import("../utils/generateSlidesPPTX");
+      await downloadSlidesPPTX(pack.name, words, worksheetLang);
+    } catch (err) {
+      console.error("[Slides] generation failed:", err);
+    } finally {
+      setIsSlidesGenerating(false);
+    }
+  };
 
   // Strip the trailing emoji from pack names so "school" matches "School 📚".
   const filteredPacks = useMemo(() => {
@@ -1796,12 +3159,12 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const preview: PreviewState | null = useMemo(() => {
     if (!previewSource) return null;
     return {
-      html: generators[previewSource.format](previewSource.pack, previewSource.words, language, settings),
+      html: generators[previewSource.format](previewSource.pack, previewSource.words, worksheetLang, settings),
       filename: previewSource.filename,
       topicName: previewSource.topicName,
       format: previewSource.format,
     };
-  }, [previewSource, language, settings]);
+  }, [previewSource, worksheetLang, settings]);
 
   const casingOptions: { value: Casing; label: string }[] = [
     { value: "original", label: t.casingOriginal },
@@ -1833,9 +3196,17 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   ];
 
   const openPreview = (topicName: string, format: Format) => {
-    const pack = TOPIC_PACKS.find((tp) => tp.name === topicName);
+    // Bundles are virtual TopicPacks — fall back to that catalogue if
+    // the name doesn't resolve in the regular pack list.
+    const pack =
+      TOPIC_PACKS.find((tp) => tp.name === topicName) ??
+      THEMED_BUNDLES.find((b) => b.name === topicName);
     if (!pack) return;
-    const words = pack.ids
+    // De-dupe the bundle ids — composing across packs sometimes
+    // overlaps (e.g. Family appearing in two themes) and we don't
+    // want the same lemma rendered twice on a worksheet.
+    const uniqueIds = Array.from(new Set(pack.ids));
+    const words = uniqueIds
       .map((id) => ALL_WORDS.find((w) => w.id === id))
       .filter((w): w is Word => Boolean(w));
     if (words.length === 0) return;
@@ -1909,6 +3280,116 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             <p className="text-base md:text-lg text-white/70 max-w-2xl mx-auto" dir={dir} style={{ textAlign }}>
               {t.subtitle}
             </p>
+          </motion.div>
+
+          {/* Theme bundles — multi-topic curated packs.  Each bundle is
+              a virtual TopicPack (see THEMED_BUNDLES at module scope)
+              that opens in the same preview modal as a regular pack.
+              Bundle names map to THEMED_BUNDLES keys; the UI label is
+              localised via the free-resources locale. */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="mb-12"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                <Sparkles size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">{t.bundlesTitle}</h2>
+                <p className="text-white/60 text-sm">{t.bundlesSubtitle}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { lookup: "Back to School",     label: t.bundleBackToSchool, desc: t.bundleBackToSchoolDesc, gradient: "from-sky-500 to-indigo-500",    emoji: "🎒" },
+                { lookup: "Winter Holidays",    label: t.bundleHolidays,     desc: t.bundleHolidaysDesc,     gradient: "from-rose-500 to-pink-500",     emoji: "❄️" },
+                { lookup: "End of Year Review", label: t.bundleEndOfYear,    desc: t.bundleEndOfYearDesc,    gradient: "from-emerald-500 to-teal-500",  emoji: "🎓" },
+              ].map((bundle) => {
+                const bundleData = THEMED_BUNDLES.find((b) => b.name === bundle.lookup);
+                const wordCount = bundleData ? new Set(bundleData.ids).size : 0;
+                return (
+                  <div
+                    key={bundle.lookup}
+                    className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden hover:border-white/30 transition-all"
+                  >
+                    <div className={`bg-gradient-to-br ${bundle.gradient} p-5 flex items-center gap-3`}>
+                      <span className="text-3xl">{bundle.emoji}</span>
+                      <h3 className="text-lg font-bold text-white truncate">{bundle.label}</h3>
+                    </div>
+                    <div className="p-5">
+                      <p className="text-white/70 text-sm leading-relaxed mb-4 min-h-[3.5rem]">{bundle.desc}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-white/60 bg-white/10 px-2 py-1 rounded">
+                          {wordCount} words
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openPreview(bundle.lookup, "worksheet")}
+                          className={`px-3 py-1.5 rounded-lg bg-gradient-to-r ${bundle.gradient} text-white text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-all shadow-md`}
+                        >
+                          <Download size={12} />
+                          {t.bundleDownload}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* Slides generator — picks any TopicPack/bundle and produces a
+              .pptx via pptxgenjs (lazy-loaded).  Replaces the previous
+              Google-hosted-template link, which required us to maintain
+              a Google Drive file and didn't include the teacher's
+              chosen vocabulary anyway.  This generates a real deck
+              with one slide per word + the active worksheetLang
+              translation.  Opens in PowerPoint, Keynote, or via
+              File → Import Slides in Google Slides. */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className="mb-12"
+          >
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-5 flex flex-wrap items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
+                <Presentation size={22} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <h3 className="text-lg font-bold text-white">{t.slidesTitle}</h3>
+                <p className="text-white/60 text-sm">{t.slidesDesc}</p>
+              </div>
+              <select
+                value={slidesPackChoice}
+                onChange={(e) => setSlidesPackChoice(e.target.value)}
+                aria-label={t.slidesTitle}
+                className="shrink-0 px-3 py-2 rounded-lg bg-slate-900/70 text-white border border-white/20 hover:border-white/30 text-sm font-bold focus:outline-none focus:border-amber-400"
+              >
+                <optgroup label="Bundles">
+                  {THEMED_BUNDLES.map((b) => (
+                    <option key={b.name} value={b.name}>{b.icon} {b.name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Topic packs">
+                  {TOPIC_PACKS.map((p) => (
+                    <option key={p.name} value={p.name}>{p.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+              <button
+                type="button"
+                onClick={handleSlidesDownload}
+                disabled={isSlidesGenerating}
+                className="shrink-0 px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-bold flex items-center gap-1.5 shadow-md transition-all"
+              >
+                <Download size={14} />
+                {isSlidesGenerating ? "..." : t.slidesOpen}
+              </button>
+            </div>
           </motion.div>
 
           <motion.div
@@ -1992,6 +3473,23 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                       bingoLabel={t.downloadBingo}
                       wordSearchLabel={t.downloadWordSearch}
                       fillBlankLabel={t.downloadFillBlank}
+                      spellingTestLabel={t.downloadSpellingTest}
+                      scrambleLabel={t.downloadScramble}
+                      quizLabel={t.downloadQuiz}
+                      crosswordLabel={t.downloadCrossword}
+                      clozeLabel={t.downloadCloze}
+                      tracingLabel={t.downloadTracing}
+                      memoryLabel={t.downloadMemory}
+                      pictionaryLabel={t.downloadPictionary}
+                      parentLabel={t.downloadParent}
+                      categoryPracticeLabel={t.categoryPractice}
+                      categoryGamesLabel={t.categoryGames}
+                      categoryAssessLabel={t.categoryAssess}
+                      categoryFamilyLabel={t.categoryFamily}
+                      audioZipTitle={t.audioZipTitle}
+                      audioZipDesc={t.audioZipDesc}
+                      audioZipDownloadLabel={t.audioZipDownload}
+                      audioZipComingSoonLabel={t.audioZipComingSoon}
                       gradient={gradient}
                       delay={Math.min(index * 0.05, 0.5)}
                       onDownload={() => openPreview(topic.name, "worksheet")}
@@ -2000,6 +3498,15 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                       onBingo={() => openPreview(topic.name, "bingo")}
                       onWordSearch={() => openPreview(topic.name, "wordsearch")}
                       onFillBlank={() => openPreview(topic.name, "fillblank")}
+                      onSpellingTest={() => openPreview(topic.name, "spelling")}
+                      onScramble={() => openPreview(topic.name, "scramble")}
+                      onQuiz={() => openPreview(topic.name, "quiz")}
+                      onCrossword={() => openPreview(topic.name, "crossword")}
+                      onCloze={() => openPreview(topic.name, "cloze")}
+                      onTracing={() => openPreview(topic.name, "tracing")}
+                      onMemory={() => openPreview(topic.name, "memory")}
+                      onPictionary={() => openPreview(topic.name, "pictionary")}
+                      onParent={() => openPreview(topic.name, "parent")}
                       isDownloading={isDownloading}
                     />
                   );
@@ -2059,9 +3566,24 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
           closeLabel={t.closePreview}
           settings={settings}
           onSettingChange={updateSetting}
+          worksheetLang={worksheetLang}
+          onWorksheetLangChange={setWorksheetLang}
           labels={{
             casing: t.casingLabel,
             casingOptions,
+            // Inline because the locale file doesn't carry this yet —
+            // worksheet-language picker is a new feature.  Native
+            // names render the same in any UI language anyway, so the
+            // heading is the only thing that needs translation.
+            worksheetLanguage:
+              language === "he" ? "שפת הגיליון" :
+              language === "ar" ? "لغة الورقة" :
+              "Worksheet language",
+            worksheetLanguageOptions: [
+              { value: "en", label: "English" },
+              { value: "he", label: "עברית" },
+              { value: "ar", label: "العربية" },
+            ],
             audioQR: t.audioQRLabel,
             settings: t.settingsLabel,
             fontSize: t.fontSizeLabel,

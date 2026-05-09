@@ -13,6 +13,7 @@ import {
   type ProgressData,
 } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
+import { HEBREW_LEMMAS } from "../data/vocabulary-hebrew";
 import { getCachedVocabulary } from "./useVocabularyLazy";
 import { chunkArray } from "../utils";
 import { loadMammoth } from "../utils/lazyLoad";
@@ -557,7 +558,24 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       return;
     }
 
-    const allPossibleWords = [...(getCachedVocabulary()?.ALL_WORDS ?? []), ...customWords];
+    // Source of truth for the `words` JSONB column.  English assignments
+    // pull from ALL_WORDS + the teacher's session-scoped custom words.
+    // Hebrew assignments pull from the static HEBREW_LEMMAS corpus —
+    // its row shape (lemmaNiqqud/shoresh/etc.) is intentionally different
+    // from Word; the student-side renderer disambiguates via the
+    // assignment's `subject` column.
+    //
+    // Lemma ids do collide with English Word ids (both start at 1) —
+    // this is fine because the assignment row's subject column is the
+    // single source of truth for which corpus to look up against.
+    const isHebrewClass = selectedClass.subject === 'hebrew';
+    // Lemma/Word objects collapse to a structural { id: number } match
+    // for the dedup + filter step below.  The `unknown` hop is needed
+    // because Word and HebrewLemma don't share a base type, even though
+    // both expose `id`.
+    const allPossibleWords: ReadonlyArray<{ id: number }> = isHebrewClass
+      ? (HEBREW_LEMMAS as unknown as ReadonlyArray<{ id: number }>)
+      : ([...(getCachedVocabulary()?.ALL_WORDS ?? []), ...customWords] as ReadonlyArray<{ id: number }>);
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
     const wordsToCheckSet = new Set(wordsToCheck);
     const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));

@@ -67,6 +67,7 @@ const NiqqudModeView = lazy(() => import("./views/NiqqudModeView"));
 const ShoreshHuntView = lazy(() => import("./views/ShoreshHuntView"));
 const SynonymMatchView = lazy(() => import("./views/SynonymMatchView"));
 const ListeningModeView = lazy(() => import("./views/ListeningModeView"));
+const HebrewModeSelectionView = lazy(() => import("./views/HebrewModeSelectionView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
 import { readQpResumeScore } from "./utils/qpResumeHint";
@@ -2682,35 +2683,108 @@ export default function App() {
       </LazyWrapper>
     );
   }
-  // Niqqud Mode — pick the right vocalization for an unmarked word.
-  if (user?.role === "teacher" && view === "vocahebrew-niqqud") {
+  // Hebrew game views — used by both teachers (solo-launch from the
+  // VocaHebrew dashboard) and students (assignment playback).  When
+  // there's an active assignment with subject==='hebrew', its
+  // wordIds scope the round pool; otherwise the views shuffle the
+  // full corpus.  Exit goes back to whatever route makes sense for
+  // the role: students back to the mode picker, teachers back to
+  // the VocaHebrew dashboard.
+  const inHebrewAssignment = activeAssignment?.subject === "hebrew";
+  const hebrewLemmaIds = inHebrewAssignment ? activeAssignment?.wordIds : undefined;
+  const hebrewExit = () => {
+    if (user?.role === "student" && inHebrewAssignment) {
+      // Re-show the mode picker so the student can pick another
+      // Hebrew game on the same assignment without a full reset.
+      setShowModeSelection(true);
+      setView("game");
+    } else {
+      setView("vocahebrew-dashboard");
+    }
+  };
+
+  // Persist a Hebrew round's final score to the gradebook.  No-op
+  // when there's no active assignment (teacher solo-launch) or no
+  // logged-in user (shouldn't happen, but defensive).  Uses the
+  // same save_student_progress RPC the English flow uses, with
+  // empty mistakes + word_attempts arrays — Hebrew progress doesn't
+  // track per-question detail yet.
+  const saveHebrewScore = async (
+    mode: "niqqud" | "shoresh" | "synonym" | "listening",
+    score: number,
+    total: number,
+  ) => {
+    if (!user || !activeAssignment || !inHebrewAssignment) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const sessionUid = session?.user?.id;
+      const studentUid = sessionUid
+        ? (localStorage.getItem(`vocaband_student_${sessionUid}`) || sessionUid)
+        : user.uid;
+      // Normalise to a 0-100 percentage so the gradebook can compare
+      // Hebrew rounds against English (which already stores capped
+      // points).  Total is always > 0 here (we early-returned at
+      // round-build time when the pool was empty).
+      const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+      await supabase.rpc("save_student_progress", {
+        p_student_name: user.displayName,
+        p_student_uid: studentUid,
+        p_assignment_id: activeAssignment.id,
+        p_class_code: user.classCode || "",
+        p_score: pct,
+        p_mode: mode,
+        p_mistakes: [],
+        p_avatar: user.avatar || "🦊",
+        p_word_attempts: [],
+      });
+    } catch (err) {
+      // Silent — same pattern as the English flow.  The student
+      // shouldn't see a network error after their score screen.
+      console.error("[VocaHebrew] save_student_progress failed:", err);
+    }
+  };
+
+  if (view === "vocahebrew-niqqud") {
     return (
       <LazyWrapper loadingMessage="Loading Niqqud Mode...">
-        <NiqqudModeView onExit={() => setView("vocahebrew-dashboard")} />
+        <NiqqudModeView
+          onExit={hebrewExit}
+          lemmaIds={hebrewLemmaIds}
+          onComplete={(s, t) => saveHebrewScore("niqqud", s, t)}
+        />
       </LazyWrapper>
     );
   }
-  // Shoresh Hunt — pick the 3 root letters from the Hebrew alphabet.
-  if (user?.role === "teacher" && view === "vocahebrew-shoresh") {
+  if (view === "vocahebrew-shoresh") {
     return (
       <LazyWrapper loadingMessage="Loading Shoresh Hunt...">
-        <ShoreshHuntView onExit={() => setView("vocahebrew-dashboard")} />
+        <ShoreshHuntView
+          onExit={hebrewExit}
+          lemmaIds={hebrewLemmaIds}
+          onComplete={(s, t) => saveHebrewScore("shoresh", s, t)}
+        />
       </LazyWrapper>
     );
   }
-  // Synonym Match — pick the synonym or antonym from 4 options.
-  if (user?.role === "teacher" && view === "vocahebrew-synonyms") {
+  if (view === "vocahebrew-synonyms") {
     return (
       <LazyWrapper loadingMessage="Loading Synonym Match...">
-        <SynonymMatchView onExit={() => setView("vocahebrew-dashboard")} />
+        <SynonymMatchView
+          onExit={hebrewExit}
+          lemmaIds={hebrewLemmaIds}
+          onComplete={(s, t) => saveHebrewScore("synonym", s, t)}
+        />
       </LazyWrapper>
     );
   }
-  // Listening Mode — hear the lemma, pick the matching niqqud form.
-  if (user?.role === "teacher" && view === "vocahebrew-listening") {
+  if (view === "vocahebrew-listening") {
     return (
       <LazyWrapper loadingMessage="Loading Listening Mode...">
-        <ListeningModeView onExit={() => setView("vocahebrew-dashboard")} />
+        <ListeningModeView
+          onExit={hebrewExit}
+          lemmaIds={hebrewLemmaIds}
+          onComplete={(s, t) => saveHebrewScore("listening", s, t)}
+        />
       </LazyWrapper>
     );
   }
@@ -3151,6 +3225,26 @@ export default function App() {
 
 
   if (view === "game" && showModeSelection) {
+    // Hebrew assignments get the 4-mode native picker; English ones
+    // get the full GameModeSelectionView.  The branch is on the
+    // assignment's subject column, set when the teacher created it.
+    if (activeAssignment?.subject === "hebrew") {
+      return (
+        <LazyWrapper loadingMessage="Loading Hebrew modes...">
+          <HebrewModeSelectionView
+            activeAssignment={activeAssignment}
+            onPickMode={(mode) => {
+              setShowModeSelection(false);
+              if (mode === "niqqud")    setView("vocahebrew-niqqud");
+              else if (mode === "shoresh")   setView("vocahebrew-shoresh");
+              else if (mode === "synonym")   setView("vocahebrew-synonyms");
+              else if (mode === "listening") setView("vocahebrew-listening");
+            }}
+            onExit={handleExitGame}
+          />
+        </LazyWrapper>
+      );
+    }
     return (
       <LazyWrapper loadingMessage="Loading game modes...">
         <GameModeSelectionView
