@@ -52,7 +52,11 @@ export async function generateAndStoreQuickPlayAiSentences(
       let reason = `HTTP ${res.status}`;
       try {
         const body = await res.json();
-        if (body?.error) reason = `${body.error}${body.message ? ` — ${body.message}` : ""}`;
+        // Free-tier teachers get { error: "ai_requires_pro" } -- not a
+        // bug, just a paywall.  Background job: log + use template
+        // fallback (already configured below).  Never shown to user.
+        if (body?.message) reason = body.message;
+        else if (body?.error) reason = body.error;
       } catch { /* body wasn't JSON */ }
       console.warn(`[QP AI sentences] generation failed (${reason}) — falling back to templates`);
       return;

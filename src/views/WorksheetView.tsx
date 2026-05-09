@@ -224,7 +224,12 @@ export default function WorksheetView({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ words, difficulty: 2 }),
       });
-      if (!res.ok) throw new Error('Failed to generate sentences');
+      if (!res.ok) {
+        // Surface the server's human-readable message (e.g. paywall
+        // text) when present; fall back to a generic string otherwise.
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || body.error || 'Failed to generate sentences');
+      }
       const { sentences } = await res.json();
       // Map sentences back to words by index
       const newSentences: Record<number, string> = {};

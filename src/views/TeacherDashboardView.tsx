@@ -216,6 +216,7 @@ export default function TeacherDashboardView({
         {onWizardComplete && onWizardSkip && (
           <TeacherOnboardingWizard
             open={user?.onboardedAt == null && classes.length === 0}
+            teacherDisplayName={user?.displayName}
             onComplete={onWizardComplete}
             onSkip={onWizardSkip}
           />

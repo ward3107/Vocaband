@@ -222,15 +222,16 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         body: JSON.stringify({ words, difficulty: sentenceDifficulty }),
       });
       if (!res.ok) {
-        // Previously the error was swallowed silently, leaving the
-        // teacher to wonder why nothing happened after clicking
-        // "Generate". Now surface the actual HTTP status + server
-        // message so the console/toast names the problem (401 / 403 /
-        // 503 / 500) and we can diagnose without Render log diving.
+        // Surface the most teacher-friendly message available.  Server
+        // 403 paywall responses include a human-readable `message`
+        // ("AI features require Pro. Upgrade to continue.") that should
+        // win over the machine `error` code.  Fall back to the code,
+        // then to the HTTP status as a last resort.
         let reason = `HTTP ${res.status}`;
         try {
           const body = await res.json();
-          if (body?.error) reason = `${body.error}${body.message ? ` — ${body.message}` : ''}`;
+          if (body?.message) reason = body.message;
+          else if (body?.error) reason = body.error;
         } catch { /* body wasn't JSON */ }
         throw new Error(reason);
       }
