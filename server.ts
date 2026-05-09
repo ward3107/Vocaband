@@ -1422,6 +1422,49 @@ ${JSON.stringify(validWords)}`;
     return { uid };
   }
 
+  // Stricter gate for AI endpoints — auth + teacher + (Pro OR School OR
+  // inside trial window).  Without this, a Free-tier teacher (or anyone
+  // who signs up as a teacher) could bypass the React `isPro(user)` UI
+  // check and call /api/generate-sentences directly via curl/devtools,
+  // burning Gemini quota at our expense.  Reads `plan` + `trial_ends_at`
+  // from public.users via the service-role client, mirroring isPro() in
+  // src/core/plan.ts so the gate stays in lockstep with the UI promise.
+  async function requireProTeacher(req: express.Request, res: express.Response): Promise<{ uid: string } | null> {
+    const baseAuth = await requireAuthenticatedTeacher(req, res);
+    if (!baseAuth) return null;
+    if (!supabaseAdmin) {
+      res.status(503).json({ error: "Supabase not configured" });
+      return null;
+    }
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("users")
+        .select("plan, trial_ends_at")
+        .eq("uid", baseAuth.uid)
+        .maybeSingle();
+      if (error || !data) {
+        res.status(403).json({ error: "ai_requires_pro" });
+        return null;
+      }
+      const plan = data.plan as "free" | "pro" | "school" | null;
+      const trialEndsAt = data.trial_ends_at as string | null;
+      const isPaid = plan === "pro" || plan === "school";
+      const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
+      if (!isPaid && !isTrialing) {
+        res.status(403).json({
+          error: "ai_requires_pro",
+          message: "AI features require Pro. Upgrade to continue.",
+        });
+        return null;
+      }
+      return baseAuth;
+    } catch (err) {
+      console.error("[requireProTeacher] exception:", err);
+      res.status(500).json({ error: "Plan lookup failed" });
+      return null;
+    }
+  }
+
   app.get("/api/ocr/status", async (req, res) => {
     if (!(await requireAuthenticatedTeacher(req, res))) return;
     const key = process.env.GOOGLE_AI_API_KEY || "";
@@ -1908,19 +1951,7 @@ Strict quality rules:
   };
 
   app.post("/api/generate-sentences", aiRateLimiter, async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
-    const token = authHeader.substring(7);
-    const uid = await verifyToken(token);
-    if (!uid) {
-      return res.status(401).json({ error: "Invalid token" });
-    }
-    const userData = await getUserRoleAndClass(uid);
-    if (!userData || userData.role !== "teacher") {
-      return res.status(403).json({ error: "Only teachers can generate sentences" });
-    }
+    if (!(await requireProTeacher(req, res))) return;
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
@@ -2020,19 +2051,8 @@ Examples of good vs bad sentences:
   // AI Vocabulary Generator — Stage 1 of AI Lesson Builder
   // Takes a topic + level + count, returns vocabulary words with translations.
   app.post("/api/ai-generate-words", aiRateLimiter, async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
-    const token = authHeader.substring(7);
-    const uid = await verifyToken(token);
-    if (!uid) {
-      return res.status(401).json({ error: "Invalid token" });
-    }
-    const userData = await getUserRoleAndClass(uid);
-    if (!userData || userData.role !== "teacher") {
-      return res.status(403).json({ error: "Only teachers can generate vocabulary" });
-    }
+    const auth = await requireProTeacher(req, res);
+    if (!auth) return;
 
     const apiKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) {
@@ -2055,7 +2075,7 @@ Examples of good vs bad sentences:
     }
 
     try {
-      console.log(`[AI Words] ${userData.email || uid}: topic="${topic}" level=${level}`);
+      console.log(`[AI Words] uid=${auth.uid}: topic="${topic}" level=${level}`);
 
       // Build the prompt for Gemini (always 20 words, mixed types)
       const exampleHint = examplesToAnchor?.trim()
@@ -2164,19 +2184,8 @@ Example output format:
   // AI Reading Text Processor — Stage 2 of AI Lesson Builder
   // Takes a text + level, extracts key vocabulary and generates comprehension questions.
   app.post("/api/ai-process-text", aiRateLimiter, async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
-    const token = authHeader.substring(7);
-    const uid = await verifyToken(token);
-    if (!uid) {
-      return res.status(401).json({ error: "Invalid token" });
-    }
-    const userData = await getUserRoleAndClass(uid);
-    if (!userData || userData.role !== "teacher") {
-      return res.status(403).json({ error: "Only teachers can process text" });
-    }
+    const auth = await requireProTeacher(req, res);
+    if (!auth) return;
 
     const apiKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) {
@@ -2196,7 +2205,7 @@ Example output format:
     }
 
     try {
-      console.log(`[AI Text] ${userData.email || uid}: processing text (${text.length} chars) level=${level}`);
+      console.log(`[AI Text] uid=${auth.uid}: processing text (${text.length} chars) level=${level}`);
 
       const trimmedText = text.trim();
       const wordCount = trimmedText.split(/\s+/).length;
@@ -2323,7 +2332,7 @@ Output ONLY the JSON, no markdown, no explanations.
         }))
         .slice(0, 10);
 
-      console.log(`[AI Text] ${userData.email || uid}: extracted ${sanitizedVocab.length} words, ${sanitizedQuestions.length} questions`);
+      console.log(`[AI Text] uid=${auth.uid}: extracted ${sanitizedVocab.length} words, ${sanitizedQuestions.length} questions`);
 
       const responsePayload: {
         vocabulary: typeof sanitizedVocab;
@@ -2344,19 +2353,8 @@ Output ONLY the JSON, no markdown, no explanations.
   // Takes selected words + teacher preferences, generates a complete lesson
   // with reading text and various question types.
   app.post("/api/ai-generate-lesson", aiRateLimiter, async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
-    const token = authHeader.substring(7);
-    const uid = await verifyToken(token);
-    if (!uid) {
-      return res.status(401).json({ error: "Invalid token" });
-    }
-    const userData = await getUserRoleAndClass(uid);
-    if (!userData || userData.role !== "teacher") {
-      return res.status(403).json({ error: "Only teachers can generate lessons" });
-    }
+    const auth = await requireProTeacher(req, res);
+    if (!auth) return;
 
     const apiKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) {
@@ -2384,7 +2382,7 @@ Output ONLY the JSON, no markdown, no explanations.
     }
 
     try {
-      console.log(`[AI Lesson] ${userData.email || uid}: ${words.length} words, ${config.wordCount || 200} target words`);
+      console.log(`[AI Lesson] uid=${auth.uid}: ${words.length} words, ${config.wordCount || 200} target words`);
 
       const targetWordCount = config.wordCount || 200;
       const wordList = words.map((w: any) => w.english || w).join(", ");
@@ -2558,7 +2556,7 @@ Important notes:
       // Count words in generated text
       const actualWordCount = sanitizedText.split(/\s+/).length;
 
-      console.log(`[AI Lesson] ${userData.email || uid}: generated ${actualWordCount} words, ${sanitizedQuestions.length} questions`);
+      console.log(`[AI Lesson] uid=${auth.uid}: generated ${actualWordCount} words, ${sanitizedQuestions.length} questions`);
 
       res.json({
         text: sanitizedText,
