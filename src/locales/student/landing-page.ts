@@ -401,11 +401,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     vocaMathTag: "Definitions · formulas",
 
     // Final CTA
-    finalCtaH2Line1: "Ready to Become a",
-    finalCtaH2Line2: "Vocabulary Legend?",
+    finalCtaH2Line1: "Ready to Turn Students Into",
+    finalCtaH2Line2: "Vocabulary Legends?",
     finalCtaSubtitle:
-      "Join thousands of students leveling up their English — one word at a time.",
-    finalCtaStart: "Start Learning Free",
+      "Join thousands of teachers turning vocabulary lessons into a game students actually want to play.",
+    finalCtaStart: "Try the Demo",
     finalCtaTeacher: "Teacher Login",
 
     // AI Does the Heavy Lifting
@@ -618,11 +618,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     vocaMathTag: "הגדרות · נוסחאות",
 
     // Final CTA
-    finalCtaH2Line1: "מוכנים להפוך ל",
-    finalCtaH2Line2: "אגדת אוצר מילים?",
+    finalCtaH2Line1: "מוכנים להפוך תלמידים",
+    finalCtaH2Line2: "לאגדת אוצר מילים?",
     finalCtaSubtitle:
-      "הצטרפו לאלפי תלמידים שמשדרגים את האנגלית שלהם — מילה אחת בכל פעם.",
-    finalCtaStart: "התחילו ללמוד חינם",
+      "הצטרפו לאלפי מורים שהופכים שיעורי אוצר מילים למשחק שתלמידים באמת רוצים לשחק.",
+    finalCtaStart: "נסו את הדמו",
     finalCtaTeacher: "כניסת מורים",
 
     // AI Does the Heavy Lifting
@@ -835,11 +835,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     vocaMathTag: "تعريفات · معادلات",
 
     // Final CTA
-    finalCtaH2Line1: "جاهز لتصبح",
-    finalCtaH2Line2: "أسطورة مفردات؟",
+    finalCtaH2Line1: "جاهزون لتحويل طلابكم",
+    finalCtaH2Line2: "إلى أساطير مفردات؟",
     finalCtaSubtitle:
-      "انضم إلى آلاف الطلاب الذين يطورون إنجليزيتهم — كلمة واحدة في كل مرة.",
-    finalCtaStart: "ابدأ التعلم مجاناً",
+      "انضموا إلى آلاف المعلمين الذين يحوّلون دروس المفردات إلى لعبة يرغب الطلاب فعلاً بلعبها.",
+    finalCtaStart: "جرّبوا العرض التوضيحي",
     finalCtaTeacher: "دخول المعلمين",
 
     // AI Does the Heavy Lifting
