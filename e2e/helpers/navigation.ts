@@ -41,9 +41,22 @@ export async function waitForAppLoad(page: Page) {
  *  indefinitely — preventing the `load` event from ever firing
  *  and blocking page.goto.  React only needs the DOM parsed plus
  *  the JS bundle, both of which are local to vite preview, so
- *  domcontentloaded is the right gate. */
+ *  domcontentloaded is the right gate.
+ *
+ *  Throws fast on non-200 so the next CI failure says "HTTP 404 —
+ *  vite preview not serving dist/?" instead of the misleading
+ *  downstream "React didn't mount?".  See e2e/playwright.config.ts
+ *  webServer.cwd for context on why this used to silently 404. */
 export async function goToLanding(page: Page) {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const response = await page.goto('/', { waitUntil: 'domcontentloaded' });
+  if (!response || !response.ok()) {
+    throw new Error(
+      `Landing page returned HTTP ${response?.status() ?? 'no-response'} — ` +
+      `vite preview likely couldn't find the built bundle. Check ` +
+      `webServer.cwd in e2e/playwright.config.ts and that npm run build ` +
+      `produced ./dist at the project root.`,
+    );
+  }
   await waitForAppLoad(page);
 }
 
