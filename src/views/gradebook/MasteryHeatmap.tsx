@@ -17,7 +17,6 @@
  * layout on a phone.
  */
 import { motion } from "motion/react";
-import type { Word } from "../../data/vocabulary";
 
 export interface MasteryRow {
   wordId: number;
@@ -29,8 +28,12 @@ export interface MasteryRow {
 interface MasteryHeatmapProps {
   /** Aggregated attempts for one student. */
   rows: MasteryRow[];
-  /** Source of English text to render a label per dot. */
-  words: Word[];
+  /** Resolves a wordId to its display label.  Subject-agnostic so the
+   *  same component renders for English assignments (label = word.english)
+   *  and Hebrew assignments (label = lemma.lemmaNiqqud).  Use
+   *  getDisplayLabel from src/data/wordLookup.ts when the subject is
+   *  known; fall back to "#${id}" for unknown ids so dots still render. */
+  getLabel: (wordId: number) => string;
   /** Optional title — e.g. "Unit 5 Fruits" when scoped per-assignment. */
   title?: string;
 }
@@ -50,7 +53,7 @@ const DOT_CLASSES: Record<'none' | 'rose' | 'amber' | 'green', string> = {
   green: 'bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-700 shadow-emerald-300/40',
 };
 
-export default function MasteryHeatmap({ rows, words, title }: MasteryHeatmapProps) {
+export default function MasteryHeatmap({ rows, getLabel, title }: MasteryHeatmapProps) {
   // Merge rows aggregated per (word, mode) into one bucket per word.
   // That matches the grid's "one dot = one word across all modes"
   // mental model. Sum counts rather than averaging so 3 correct out of
@@ -81,8 +84,6 @@ export default function MasteryHeatmap({ rows, words, title }: MasteryHeatmapPro
     const accB = b[1].total === 0 ? 2 : b[1].correct / b[1].total;
     return accA - accB;
   });
-
-  const wordLookup = new Map(words.map(w => [w.id, w]));
 
   // Summary counters — ties directly to the legend at the bottom.
   const counts = { green: 0, amber: 0, rose: 0 };
@@ -119,12 +120,11 @@ export default function MasteryHeatmap({ rows, words, title }: MasteryHeatmapPro
       <div className="flex flex-wrap gap-1.5">
         {entries.map(([wordId, stats], i) => {
           const kind = classifyAccuracy(stats.correct, stats.total);
-          const word = wordLookup.get(wordId);
-          const english = word?.english ?? `#${wordId}`;
+          const label = getLabel(wordId);
           const pct = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
           const tooltip = stats.total === 0
-            ? `${english} — not attempted yet`
-            : `${english} · ${pct}% (${stats.correct}/${stats.total} attempts)`;
+            ? `${label} — not attempted yet`
+            : `${label} · ${pct}% (${stats.correct}/${stats.total} attempts)`;
           return (
             <motion.button
               key={wordId}
@@ -155,9 +155,8 @@ export default function MasteryHeatmap({ rows, words, title }: MasteryHeatmapPro
               .filter(([, s]) => classifyAccuracy(s.correct, s.total) === 'rose')
               .slice(0, 5)
               .map(([wordId, s]) => {
-                const word = wordLookup.get(wordId);
                 const pct = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
-                return `${word?.english ?? `#${wordId}`} (${pct}%)`;
+                return `${getLabel(wordId)} (${pct}%)`;
               })
               .join(' · ')}
           </p>

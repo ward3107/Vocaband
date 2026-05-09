@@ -21,11 +21,16 @@
  * pure and easy to render from multiple entry points (Students tab
  * today, deep-link in Phase 3).
  */
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Gift, Flame, Calendar, Trophy, ChartBar, AlertTriangle } from "lucide-react";
 import AdaptiveDrawer from "../../components/classroom/AdaptiveDrawer";
 import MasteryHeatmap, { type MasteryRow } from "../gradebook/MasteryHeatmap";
-import { ALL_WORDS } from "../../data/vocabulary";
+import {
+  buildWordIdSubjectMap,
+  getDisplayLabel,
+  lookupDisplayWord,
+  type DisplayWord,
+} from "../../data/wordLookup";
 import type { ProgressData, AssignmentData } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDrilldownsT } from "../../locales/teacher/drilldowns";
@@ -116,7 +121,21 @@ export default function StudentProfile({
   // final mastery state).  This gives the teacher visibility into the
   // top words this student gets wrong on first try, regardless of
   // whether they eventually got there.
-  const topMisses = useMemo(() => {
+  // Map of wordId → assignment subject so we look up labels in the
+  // right corpus per-word. Hebrew lemma ids and English word ids are
+  // disjoint by convention; a mixed-Voca student gets the right
+  // primary/secondary text either way.
+  const wordIdSubjectMap = useMemo(
+    () => buildWordIdSubjectMap(teacherAssignments),
+    [teacherAssignments],
+  );
+  const getMasteryLabel = useCallback(
+    (wordId: number) =>
+      getDisplayLabel(wordId, wordIdSubjectMap.get(wordId) ?? "english"),
+    [wordIdSubjectMap],
+  );
+
+  const topMisses = useMemo<Array<{ display: DisplayWord; count: number }>>(() => {
     const byWord = new Map<number, number>();
     scores.forEach(s => {
       (s.mistakes || []).forEach(wid => {
@@ -125,13 +144,16 @@ export default function StudentProfile({
     });
     return Array.from(byWord.entries())
       .map(([wordId, count]) => {
-        const w = ALL_WORDS.find(x => x.id === wordId);
-        return w ? { word: w, count } : null;
+        const display = lookupDisplayWord(
+          wordId,
+          wordIdSubjectMap.get(wordId) ?? "english",
+        );
+        return display ? { display, count } : null;
       })
-      .filter((x): x is { word: typeof ALL_WORDS[number]; count: number } => x !== null)
+      .filter((x): x is { display: DisplayWord; count: number } => x !== null)
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [scores]);
+  }, [scores, wordIdSubjectMap]);
 
   const assignmentTitle = (id: string) =>
     teacherAssignments.find(a => a.id === id)?.title ?? t.fallbackAssignmentLabel;
@@ -260,7 +282,7 @@ export default function StudentProfile({
                 · green = solid, amber = shaky, rose = struggling
               </span>
             </h3>
-            <MasteryHeatmap rows={masteryRows} words={ALL_WORDS} />
+            <MasteryHeatmap rows={masteryRows} getLabel={getMasteryLabel} />
           </section>
 
           {/* ── Struggled with ──────────────────────────────────────────
@@ -283,13 +305,13 @@ export default function StudentProfile({
                 </span>
               </h3>
               <div className="flex flex-wrap gap-2">
-                {topMisses.map(({ word, count }) => (
+                {topMisses.map(({ display, count }) => (
                   <span
-                    key={word.id}
-                    title={t.struggledChipTitle(word.english, count, word.hebrew)}
+                    key={display.id}
+                    title={t.struggledChipTitle(display.primary, count, display.secondary)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs"
                   >
-                    {word.english}
+                    {display.primary}
                     <span className="px-1.5 py-0.5 rounded-md bg-rose-200 text-rose-800 tabular-nums text-[10px]">
                       ×{count}
                     </span>
