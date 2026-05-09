@@ -1613,9 +1613,11 @@ export default function App() {
             }
           } catch { /* localStorage unavailable — non-critical */ }
 
-          // Auto-create teacher account for Google sign-ins only (not anonymous)
-          const isGoogleSignIn = supabaseUser.app_metadata?.provider === 'google';
-          if (isGoogleSignIn) {
+          // Auto-create teacher account for OAuth sign-ins (Google + Microsoft).
+          // Anonymous students take the localStorage path above and skip this branch.
+          const oauthProvider = supabaseUser.app_metadata?.provider;
+          const isOAuthSignIn = oauthProvider === 'google' || oauthProvider === 'azure';
+          if (isOAuthSignIn) {
             // First check if this is an OAuth student (they exist in student_profiles, not users)
             // Narrowed select on 2026-04-28 to match the consumer below.
             const { data: studentProfile } = await supabase
