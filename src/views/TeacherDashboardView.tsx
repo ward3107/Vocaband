@@ -10,6 +10,7 @@ import { supabase } from "../core/supabase";
 import TeacherThemeMenu from "../components/dashboard/TeacherThemeMenu";
 import { useTeacherTheme } from "../hooks/useTeacherTheme";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
+import HebrewSoloLaunchStrip, { type HebrewLaunches } from "../components/dashboard/HebrewSoloLaunchStrip";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
 import SavedTasksSection from "../components/dashboard/SavedTasksSection";
 import CreateClassModal from "../components/dashboard/CreateClassModal";
@@ -124,6 +125,13 @@ interface TeacherDashboardViewProps {
    *  quick actions are visible.  Defaults to 'english' so the existing
    *  English-only experience is preserved when the prop is omitted. */
   subject?: VocaId;
+
+  /** Launch handlers for the four VocaHebrew native-track games.
+   *  Required when subject === 'hebrew'; ignored otherwise.  Lets a
+   *  Hebrew teacher kick off a solo round without first creating an
+   *  assignment — the Phase 3 entry-point flow preserved on the
+   *  unified dashboard. */
+  hebrewLaunches?: HebrewLaunches;
 }
 
 export default function TeacherDashboardView({
@@ -149,6 +157,7 @@ export default function TeacherDashboardView({
   savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
   onWizardComplete, onWizardSkip,
   subject = "english",
+  hebrewLaunches,
 }: TeacherDashboardViewProps) {
   const { language, dir } = useLanguage();
   const t = teacherDashboardT[language];
@@ -322,15 +331,19 @@ export default function TeacherDashboardView({
             );
           })()}
 
-          <TeacherQuickActions
-            pendingStudentsCount={pendingStudentsCount}
-            onQuickPlayClick={onQuickPlayClick}
-            onClassroomClick={onClassroomClick}
-            onApprovalsClick={onApprovalsClick}
-            onClassShowClick={onClassShowClick}
-            onWorksheetClick={onWorksheetClick}
-            onVocabagrutClick={onVocabagrutClick}
-          />
+          {subject === "hebrew" && hebrewLaunches ? (
+            <HebrewSoloLaunchStrip launches={hebrewLaunches} />
+          ) : (
+            <TeacherQuickActions
+              pendingStudentsCount={pendingStudentsCount}
+              onQuickPlayClick={onQuickPlayClick}
+              onClassroomClick={onClassroomClick}
+              onApprovalsClick={onApprovalsClick}
+              onClassShowClick={onClassShowClick}
+              onWorksheetClick={onWorksheetClick}
+              onVocabagrutClick={onVocabagrutClick}
+            />
+          )}
 
           <TeacherClassesSection
             classes={classes}

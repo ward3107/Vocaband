@@ -2675,7 +2675,7 @@ export default function App() {
           user={user}
           onPickVoca={(voca) => {
             setActiveVoca(voca);
-            setView(voca === "hebrew" ? "vocahebrew-dashboard" : "teacher-dashboard");
+            setView("teacher-dashboard");
           }}
         />
       </LazyWrapper>
@@ -2720,7 +2720,11 @@ export default function App() {
       setShowModeSelection(true);
       setView("game");
     } else {
-      setView("vocahebrew-dashboard");
+      // Solo-launch by a Hebrew teacher returns to the unified
+      // dashboard.  The legacy "vocahebrew-dashboard" route is now
+      // unreachable from here; its render block is retained as dead
+      // code until the Phase 4 cleanup step removes it.
+      setView("teacher-dashboard");
     }
   };
 
@@ -2834,6 +2838,12 @@ export default function App() {
           user={user}
           setUser={setUser}
           subject={activeVoca ?? "english"}
+          hebrewLaunches={{
+            niqqud: () => setView("vocahebrew-niqqud"),
+            shoresh: () => setView("vocahebrew-shoresh"),
+            synonym: () => setView("vocahebrew-synonyms"),
+            listening: () => setView("vocahebrew-listening"),
+          }}
           consentModal={consentModal}
           exitConfirmModal={exitConfirmModal}
           ocrCropModal={ocrCropModal}
