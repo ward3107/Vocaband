@@ -630,8 +630,12 @@ export default function App() {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'AI generation failed');
+      const error = await response.json().catch(() => ({}));
+      // Prefer the human-readable `message` (e.g. paywall text) over the
+      // machine `error` code when both are present.  Server returns
+      // `{error:"ai_requires_pro", message:"AI features require Pro..."}`
+      // for Free-tier callers; this surfaces the message in the toast.
+      throw new Error(error.message || error.error || 'AI generation failed');
     }
 
     const data = await response.json();
@@ -700,8 +704,8 @@ export default function App() {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'AI lesson generation failed');
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'AI lesson generation failed');
     }
 
     return await response.json();

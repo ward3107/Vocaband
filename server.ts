@@ -1523,29 +1523,14 @@ ${JSON.stringify(validWords)}`;
       next();
     });
   }, async (req: any, res: any) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
-
-    const token = authHeader.substring(7);
-    const authData = await verifyTokenWithEmail(token);
-    if (!authData) {
-      return res.status(401).json({ error: "Invalid token" });
-    }
-
-    const userData = await getUserRoleAndClass(authData.uid);
-    if (!userData || userData.role !== "teacher") {
-      return res.status(403).json({ error: "Only teachers can use OCR" });
-    }
-
-    const { allowed, error: gateErr } = await isPremiumTeacher(authData.email);
-    if (gateErr) {
-      return res.status(503).json({ error: "Feature gate check failed", message: gateErr });
-    }
-    if (!allowed) {
-      return res.status(403).json({ error: "OCR is a premium feature", message: "Ask the admin to approve your account." });
-    }
+    // OCR is a Pro/trial feature -- same gating as the four AI endpoints
+    // below.  The legacy isPremiumTeacher allowlist (admin-managed
+    // ai_allowlist table) was retired here on 2026-05-09 in favour of
+    // the unified plan check so the UI promise (Pro-only OCR) matches
+    // server enforcement.  Returns the same { error: "ai_requires_pro",
+    // message: "..." } shape the frontend already understands.
+    const auth = await requireProTeacher(req, res);
+    if (!auth) return;
 
     if (!req.file) {
       return res.status(400).json({ error: "No image file uploaded, or invalid file type." });
@@ -1673,7 +1658,7 @@ Strict quality rules:
       }
 
       const sizeKB = Math.round(req.file.size / 1024);
-      console.log(`[OCR] ${authData.email}: Gemini Flash found ${uniqueWords.length} English words (image: ${sizeKB} KB, ${mimeType})`);
+      console.log(`[OCR] uid=${auth.uid}: Gemini Flash found ${uniqueWords.length} English words (image: ${sizeKB} KB, ${mimeType})`);
 
       res.json({
         words: uniqueWords,
