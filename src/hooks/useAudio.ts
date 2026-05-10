@@ -1,23 +1,35 @@
 // Audio hook for playing word pronunciation (motivational sounds removed)
 import { Howl } from 'howler'
 
+// Vocab subject — drives MP3 bucket choice (sound/ vs sound-hebrew/) and
+// browser TTS voice/lang. English is the historical default; Hebrew is
+// the parity-sweep addition. Cache keys are namespaced by audio lang so
+// English wordId 1 and Hebrew lemmaId 1 don't collide.
+type AudioLang = 'en' | 'he'
+type AudioCacheKey = `${AudioLang}-${number}`
+const audioKey = (lang: AudioLang, id: number): AudioCacheKey => `${lang}-${id}`
+
 const MAX_WORD_CACHE_SIZE = 100
-const wordCache: Record<number, Howl> = {}
-const wordCacheOrder: number[] = [] // LRU tracking
+const wordCache: Record<AudioCacheKey, Howl> = {}
+const wordCacheOrder: AudioCacheKey[] = [] // LRU tracking
 const motivationalCache: Record<string, Howl> = {}
-const failedWordIds = new Set<number>() // Track words that failed to load
+const failedWordKeys = new Set<AudioCacheKey>() // Track words that failed to load
 
 // Motivational sounds removed - these are now no-ops
 let currentMotivational: Howl | null = null
 const onMotivationalEndListeners: Array<() => void> = []
 
 // ── Voice Selection for High-Quality TTS ──────────────────────────────────────
-// Cache the selected voice so the same voice is used consistently
-let cachedVoice: SpeechSynthesisVoice | null = null
+// Cache the selected voice per language so the same one is reused across
+// calls. Browser voice lists load asynchronously — voiceschanged listener
+// invalidates the cache on update.
+const cachedVoice: { en: SpeechSynthesisVoice | null; he: SpeechSynthesisVoice | null } = {
+  en: null,
+  he: null,
+};
 
 const getHighQualityEnglishVoice = (): SpeechSynthesisVoice | null => {
-  if (cachedVoice) return cachedVoice;
-
+  if (cachedVoice.en) return cachedVoice.en;
   if (!('speechSynthesis' in window)) return null;
 
   const voices = window.speechSynthesis.getVoices();
@@ -33,23 +45,47 @@ const getHighQualityEnglishVoice = (): SpeechSynthesisVoice | null => {
     voices.find(v => v.lang === 'en-US') ||
     voices.find(v => v.lang.startsWith('en'));
 
-  if (picked) cachedVoice = picked;
+  if (picked) cachedVoice.en = picked;
+  return picked ?? null;
+};
+
+// Hebrew voice picker. iOS ships "Carmit" (he-IL) — the best of the
+// built-in Hebrew voices. Android/Windows quality varies wildly.
+// Eventually pre-generated Azure HilaNeural / Google Wavenet MP3s in
+// sound-hebrew/ replace this fallback for curriculum lemmas.
+const getHighQualityHebrewVoice = (): SpeechSynthesisVoice | null => {
+  if (cachedVoice.he) return cachedVoice.he;
+  if (!('speechSynthesis' in window)) return null;
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+
+  const picked =
+    voices.find(v => v.lang === 'he-IL' && v.name.includes('Carmit')) ||
+    voices.find(v => v.lang === 'he-IL' && v.name.includes('Google')) ||
+    voices.find(v => v.lang === 'he-IL') ||
+    voices.find(v => v.lang.startsWith('he'));
+
+  if (picked) cachedVoice.he = picked;
   return picked ?? null;
 };
 
 // Initialize voice listener - voices load asynchronously in some browsers
 if ('speechSynthesis' in window) {
   const onVoicesChanged = () => {
-    cachedVoice = null;
+    cachedVoice.en = null;
+    cachedVoice.he = null;
     getHighQualityEnglishVoice();
+    getHighQualityHebrewVoice();
   };
   window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
   // Initial voice loading
   getHighQualityEnglishVoice();
+  getHighQualityHebrewVoice();
 }
 
 // Speak text using high-quality TTS voice with enhanced pronunciation
-const speakWithTTS = (text: string): void => {
+const speakWithTTS = (text: string, lang: AudioLang = 'en'): void => {
   if (!('speechSynthesis' in window)) return;
 
   // Cancel any ongoing speech
@@ -57,7 +93,9 @@ const speakWithTTS = (text: string): void => {
 
   let speakText = text;
 
-  // Clean up the text for better pronunciation if enabled
+  // Clean up the text for better pronunciation if enabled. The English
+  // markers ("(n)", "(v)", etc.) don't appear in Hebrew lemmas, so the
+  // cleanup pass is mostly a no-op for Hebrew but harmless.
   if (ttsSettings.cleanText) {
     speakText = text
       // Remove "(n)", "(v)", "(adj)" grammatical markers - pronounce naturally
@@ -71,11 +109,11 @@ const speakWithTTS = (text: string): void => {
       .trim();
   }
 
-  const voice = getHighQualityEnglishVoice();
+  const voice = lang === 'he' ? getHighQualityHebrewVoice() : getHighQualityEnglishVoice();
 
   // Speak the whole phrase smoothly (no word-by-word pauses)
   const utterance = new SpeechSynthesisUtterance(speakText);
-  utterance.lang = 'en-US';
+  utterance.lang = lang === 'he' ? 'he-IL' : 'en-US';
   utterance.rate = ttsSettings.rate;  // Slower rate (0.7) makes it clear naturally
   utterance.pitch = ttsSettings.pitch;
   utterance.volume = ttsSettings.volume;
@@ -84,9 +122,15 @@ const speakWithTTS = (text: string): void => {
   window.speechSynthesis.speak(utterance);
 };
 
-const getAudioUrl = (wordId: number): string => {
+// Per-lang Supabase Storage bucket. English curriculum + custom-word
+// MP3s live at sound/<id>.mp3; Hebrew lemmas at sound-hebrew/<id>.mp3
+// (the bucket is created when the audio pipeline ships its first batch
+// of Azure HilaNeural / Google Wavenet files; until then every fetch
+// 404s and the speak() path falls back to browser TTS).
+const getAudioUrl = (wordId: number, lang: AudioLang = 'en'): string => {
   const base = import.meta.env.VITE_SUPABASE_URL
-  return `${base}/storage/v1/object/public/sound/${wordId}.mp3`
+  const bucket = lang === 'he' ? 'sound-hebrew' : 'sound'
+  return `${base}/storage/v1/object/public/${bucket}/${wordId}.mp3`
 }
 
 const getMotivationalUrl = (key: string): string => {
@@ -252,7 +296,15 @@ export const setForceTTSMode = (force: boolean) => {
 // Export getter to read current state
 export const getForceTTSMode = () => forceTTSMode;
 
-export const useAudio = () => {
+export interface UseAudioOptions {
+  /** Vocab subject — defaults to 'english'. Hebrew callers (VocaHebrew
+   *  game modes, Hebrew Class Show) pass 'hebrew' so the hook fetches
+   *  from sound-hebrew/ and falls back to a Hebrew browser voice. */
+  subject?: 'english' | 'hebrew'
+}
+
+export const useAudio = (options: UseAudioOptions = {}) => {
+  const lang: AudioLang = options.subject === 'hebrew' ? 'he' : 'en'
 
   const preload = (wordId: number) => {
     // Guard against undefined wordId
@@ -260,37 +312,39 @@ export const useAudio = () => {
       return
     }
 
+    const key = audioKey(lang, wordId)
+
     // Skip preloading if this word failed before
-    if (failedWordIds.has(wordId)) {
+    if (failedWordKeys.has(key)) {
       return
     }
 
-    if (!wordCache[wordId]) {
+    if (!wordCache[key]) {
       // Evict oldest entry if cache is full
       if (wordCacheOrder.length >= MAX_WORD_CACHE_SIZE) {
-        const evictId = wordCacheOrder.shift()!
-        wordCache[evictId]?.unload()
-        delete wordCache[evictId]
+        const evictKey = wordCacheOrder.shift()!
+        wordCache[evictKey]?.unload()
+        delete wordCache[evictKey]
       }
-      wordCache[wordId] = new Howl({
-        src: [getAudioUrl(wordId)],
+      wordCache[key] = new Howl({
+        src: [getAudioUrl(wordId, lang)],
         preload: true,
         onloaderror: () => {
-          console.warn(`Audio load failed for wordId ${wordId}`)
-          failedWordIds.add(wordId)
+          console.warn(`Audio load failed for ${key}`)
+          failedWordKeys.add(key)
           // Clean up the failed cache entry
-          delete wordCache[wordId]
-          const idx = wordCacheOrder.indexOf(wordId)
+          delete wordCache[key]
+          const idx = wordCacheOrder.indexOf(key)
           if (idx > -1) {
             wordCacheOrder.splice(idx, 1)
           }
         },
         onplayerror: () => {
-          console.warn(`Audio playback failed for wordId ${wordId}`)
-          failedWordIds.add(wordId)
+          console.warn(`Audio playback failed for ${key}`)
+          failedWordKeys.add(key)
         }
       })
-      wordCacheOrder.push(wordId)
+      wordCacheOrder.push(key)
     }
   }
 
@@ -301,6 +355,8 @@ export const useAudio = () => {
       return
     }
 
+    const key = audioKey(lang, wordId)
+
     // Check both the local variable and window object (for console commands)
     const currentForceTTSMode = forceTTSMode || (typeof window !== 'undefined' && (window as any).__forceTTSMode);
 
@@ -308,7 +364,7 @@ export const useAudio = () => {
     // Force TTS mode - use text-to-speech for all words
     if (currentForceTTSMode) {
       if (fallbackText) {
-        speakWithTTS(fallbackText)
+        speakWithTTS(fallbackText, lang)
       }
       return
     }
@@ -319,9 +375,9 @@ export const useAudio = () => {
     window.speechSynthesis?.cancel()
 
     // If this word failed to load before, use TTS immediately
-    if (failedWordIds.has(wordId)) {
+    if (failedWordKeys.has(key)) {
       if (fallbackText) {
-        speakWithTTS(fallbackText)
+        speakWithTTS(fallbackText, lang)
       }
       return
     }
@@ -330,16 +386,16 @@ export const useAudio = () => {
     // to fall straight to browser TTS. Now they have real MP3s at sound/{id}.mp3
     // generated by /api/tts/custom-words. If the file doesn't exist yet (race
     // with the teacher's generation call), the onloaderror handler will add
-    // this id to failedWordIds and future calls use TTS fallback automatically.
+    // this id to failedWordKeys and future calls use TTS fallback automatically.
     preload(wordId)
 
     // Play immediately if already loaded, otherwise wait for load
-    const sound = wordCache[wordId]
+    const sound = wordCache[key]
     if (!sound) {
       // Should not happen, but fallback to TTS just in case
-      console.warn(`[Audio] No sound found for wordId ${wordId}, using TTS fallback:`, fallbackText)
+      console.warn(`[Audio] No sound found for ${key}, using TTS fallback:`, fallbackText)
       if (fallbackText) {
-        speakWithTTS(fallbackText)
+        speakWithTTS(fallbackText, lang)
       }
       return
     }
@@ -351,9 +407,9 @@ export const useAudio = () => {
 
     // Add error handler for playback failures - fall back to TTS
     const handleAudioError = () => {
-      console.warn(`[Audio] Playback failed for wordId ${wordId}, using TTS fallback:`, fallbackText)
+      console.warn(`[Audio] Playback failed for ${key}, using TTS fallback:`, fallbackText)
       if (fallbackText) {
-        speakWithTTS(fallbackText)
+        speakWithTTS(fallbackText, lang)
       }
     }
 

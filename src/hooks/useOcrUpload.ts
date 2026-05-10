@@ -25,12 +25,12 @@
  * pre-existing useTeacherActions version didn't have.
  */
 import { useCallback } from "react";
-import { supabase, type ClassData } from "../core/supabase";
+import { type ClassData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import { getCachedVocabulary } from "./useVocabularyLazy";
 import { trackAutoError } from "../errorTracking";
-import { compressImageForUpload } from "../utils/compressImage";
 import { requestCustomWordAudio } from "../utils/requestCustomWordAudio";
+import { postOcrImage, isPostOcrImageError } from "../utils/postOcrImage";
 
 export interface UseOcrUploadParams {
   classes: ClassData[];
@@ -66,93 +66,33 @@ export function useOcrUpload(params: UseOcrUploadParams) {
   ) => {
     setOcrPendingFile(null);
     setIsOcrProcessing(true);
-    setOcrProgress(5);
-    setOcrStatus("Compressing image...");
 
     try {
-      const file = await compressImageForUpload(fileToProcess);
-      const fileSizeKB = Math.round(file.size / 1024);
-      setOcrProgress(10);
-      setOcrStatus(`Uploading image... (${fileSizeKB} KB)`);
-
-      // Get auth token for teacher authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { showToast("Please sign in again.", "error"); return; }
-
-      // OCR runs directly in the Cloudflare Worker (same-origin, no Render,
-      // no CORS, no cold starts). The Worker calls Claude Vision API.
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60s
-
-      // Simulate smooth progress during the API call (10% → 85%)
-      let simProgress = 15;
-      setOcrProgress(15);
-      const progressInterval = setInterval(() => {
-        simProgress += (85 - simProgress) * 0.08;
-        setOcrProgress(Math.round(simProgress));
-      }, 400);
-
-      // Update status while waiting
-      const statusTimer1 = setTimeout(() => setOcrStatus("Analyzing with AI..."), 2000);
-      const statusTimer2 = setTimeout(() => setOcrStatus("Extracting words..."), 6000);
-
-      let response: Response;
+      // Shared HTTP plumbing (compression, auth, fetch, error handling)
+      // lives in postOcrImage so the Hebrew pipeline can share it.
+      // English-specific post-processing (translate, cross-check,
+      // custom-word audio gen, navigation) stays here.
+      let ocrResult;
       try {
-        response = await fetch('/api/ocr', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData,
-          signal: controller.signal,
+        ocrResult = await postOcrImage(fileToProcess, "en", {
+          onProgress: setOcrProgress,
+          onStatus: setOcrStatus,
         });
-      } finally {
-        clearTimeout(timeoutId);
-        clearTimeout(statusTimer1);
-        clearTimeout(statusTimer2);
-        clearInterval(progressInterval);
-      }
-
-      setOcrProgress(88);
-      setOcrStatus("Processing results...");
-
-      if (!response.ok) {
-        let errorMessage = `OCR failed (${response.status})`;
-        let isPaywall = false;
-        try {
-          const errorData = await response.json();
-          // Prefer the detailed 'message' field (which has the actual
-          // vendor error reason) over the generic 'error' field.
-          errorMessage = errorData.message || errorData.error || errorMessage;
-          isPaywall = response.status === 403 && errorData.error === 'ai_requires_pro';
-        } catch { /* response wasn't JSON */ }
-        if (isPaywall && showPaywallToast) {
-          // Surface the upgrade-action toast directly so the user can
-          // act on the paywall without first reading the generic error
-          // toast that the catch block below would otherwise show.
-          showPaywallToast(errorMessage);
-          // Throw a sentinel so the catch knows to skip its own toast.
-          const paywallErr = new Error(errorMessage);
-          (paywallErr as Error & { _paywallShown?: true })._paywallShown = true;
-          throw paywallErr;
+      } catch (err) {
+        if (isPostOcrImageError(err)) {
+          if (err.isPaywall && showPaywallToast) {
+            showPaywallToast(err.message);
+            const paywallErr = new Error(err.message);
+            (paywallErr as Error & { _paywallShown?: true })._paywallShown = true;
+            throw paywallErr;
+          }
+          throw new Error(err.message);
         }
-        throw new Error(errorMessage);
+        throw err;
       }
 
-      let ocrData: { words?: string[]; raw_text?: string };
-      try {
-        ocrData = await response.json();
-      } catch {
-        throw new Error('Server returned an invalid response. Please try again.');
-      }
-      setOcrProgress(95);
-
-      // Extract words from the OCR service response
-      // The service already returns English-only words (filtered by regex on server)
-      const extractedWords = ocrData.words || [];
-      const rawText = ocrData.raw_text || '';
+      const extractedWords = ocrResult.words;
+      const rawText = ocrResult.rawText;
 
       // Dictionary cross-check to catch vision-model hallucinations. Any OCR
       // result that matches a curriculum word (ALL_WORDS, ~9k entries) is

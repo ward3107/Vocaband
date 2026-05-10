@@ -1,0 +1,35 @@
+# VocaHebrew lemma generator — seed input file.
+# One Hebrew word per line. Lines starting with # are ignored.
+# Order matters — earlier lines get the lower-id and the lower gradeBand
+# (assumed to be more frequent / easier).
+#
+# Replace this 20-word smoke set with your real frequency list once you
+# have one. For an MoE-curriculum-aligned pull, drop those words here.
+
+# School / classroom
+ספר
+מורה
+תלמיד
+שיעור
+לוח
+
+# Family
+אמא
+אבא
+אח
+אחות
+סבתא
+
+# Animals
+ציפור
+דג
+פרה
+חמור
+ארנב
+
+# Verbs (high-frequency)
+לקרוא
+לכתוב
+ללמוד
+לאכול
+לשתות
