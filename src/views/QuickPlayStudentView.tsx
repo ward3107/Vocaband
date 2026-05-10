@@ -30,6 +30,10 @@ interface QuickPlaySession {
   words: Word[];
   allowedModes?: string[];
   aiSentences?: string[];
+  /** Which corpus wordIds reference. When 'hebrew', the synthetic
+   *  assignment built at join time is tagged so App.tsx routes the
+   *  student to HebrewModeSelectionView + the Hebrew game views. */
+  subject?: 'english' | 'hebrew';
 }
 
 interface QuickPlayStudentViewProps {
@@ -235,6 +239,10 @@ export default function QuickPlayStudentView({
         allowedModes: quickPlayActiveSession.allowedModes || ALL_GAME_MODES,
         sentences: quickPlaySentences,
         sentenceDifficulty: 2,
+        // Forward subject so the mode-selection branch in App.tsx
+        // (`activeAssignment?.subject === "hebrew"`) routes the student
+        // to HebrewModeSelectionView + the 4 Hebrew game views.
+        subject: quickPlayActiveSession.subject ?? 'english',
       });
       setCurrentIndex(0);
       setScore(0);
