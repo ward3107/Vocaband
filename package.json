@@ -33,6 +33,7 @@
     "@anthropic-ai/sdk": "^0.95.0",
     "@floating-ui/react": "^0.27.19",
     "@google/generative-ai": "^0.24.1",
+    "@sentry/node": "^9.47.1",
     "@socket.io/redis-adapter": "^8.3.0",
     "@supabase/supabase-js": "^2.105.3",
     "@tailwindcss/vite": "^4.2.4",
