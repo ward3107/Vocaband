@@ -44,6 +44,7 @@ import pathlib
 import sys
 import time
 from typing import Any
+from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 
 try:
     import requests
@@ -95,9 +96,26 @@ def cache_key(*parts: str) -> pathlib.Path:
     return CACHE_DIR / f"{parts[0]}-{h}.json"
 
 
+_SENSITIVE_QUERY_KEYS = {"key", "api_key", "apikey", "access_token", "token"}
+
+
+def _scrub_url_for_cache(url: str) -> str:
+    """Drop credential-bearing query params before using a URL as a cache key.
+
+    Google APIs put the API key in `?key=...`. We don't want secrets ending up
+    in cache filenames or in the hash input — both are unnecessary, and the
+    second trips CodeQL's clear-text-storage rule (py/clear-text-storage-sensitive-data).
+    """
+    parsed = urlparse(url)
+    safe_qs = [(k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True)
+               if k.lower() not in _SENSITIVE_QUERY_KEYS]
+    return urlunparse(parsed._replace(query=urlencode(safe_qs)))
+
+
 def cached_post(label: str, url: str, payload: dict, *, headers: dict | None = None) -> Any:
     """POST + JSON, cached on disk by (label, url, payload) hash."""
-    path = cache_key(label, url, json.dumps(payload, sort_keys=True, ensure_ascii=False))
+    path = cache_key(label, _scrub_url_for_cache(url),
+                     json.dumps(payload, sort_keys=True, ensure_ascii=False))
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
 
