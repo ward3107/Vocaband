@@ -21,7 +21,7 @@
  *
  * Props contract is preserved; App.tsx doesn't need any changes.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Users, Trophy, GraduationCap, ChevronDown, Download, Gift,
@@ -31,7 +31,7 @@ import TopAppBar from "../components/TopAppBar";
 import { HelpTooltip } from "../components/HelpTooltip";
 import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
 import type { View } from "../core/views";
-import { ALL_WORDS } from "../data/vocabulary";
+import { buildWordIdSubjectMap, getDisplayLabel } from "../data/wordLookup";
 import MasteryHeatmap, { type MasteryRow } from "./gradebook/MasteryHeatmap";
 import { TeacherRewardModal, type StudentInfo } from "../components/dashboard/TeacherRewardModal";
 import StudentProfile from "./classroom/StudentProfile";
@@ -203,6 +203,20 @@ export default function GradebookView({
       setSelectedClassCode(classes[0].code);
     }
   }, [classes, selectedClassCode]);
+
+  // Map of wordId → subject of the assignment that owns it, used to
+  // resolve display labels per dot in the MasteryHeatmap.  Without this,
+  // Hebrew lemma ids would look up against ALL_WORDS (English) and fall
+  // back to "#${id}" tooltips on every dot for Hebrew assignments.
+  const wordIdSubjectMap = useMemo(
+    () => buildWordIdSubjectMap(teacherAssignments),
+    [teacherAssignments],
+  );
+  const getMasteryLabel = useCallback(
+    (wordId: number) =>
+      getDisplayLabel(wordId, wordIdSubjectMap.get(wordId) ?? "english"),
+    [wordIdSubjectMap],
+  );
 
   // RPC-fetched data, keyed by class.
   useEffect(() => {
@@ -728,7 +742,7 @@ export default function GradebookView({
                                 Word mastery
                                 {loadingMastery && ' · loading…'}
                               </h4>
-                              <MasteryHeatmap rows={studentMasteryRows} words={ALL_WORDS} />
+                              <MasteryHeatmap rows={studentMasteryRows} getLabel={getMasteryLabel} />
                             </div>
                           </div>
                         </motion.div>

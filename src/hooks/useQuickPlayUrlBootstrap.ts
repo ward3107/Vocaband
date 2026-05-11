@@ -47,6 +47,9 @@ interface QuickPlaySessionShape {
   words: Word[];
   allowedModes?: string[];
   aiSentences?: string[];
+  /** Which corpus the wordIds reference. Default 'english' for sessions
+   *  created before the 20260510_quick_play_subject migration ran. */
+  subject?: 'english' | 'hebrew';
 }
 
 const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
@@ -194,31 +197,67 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           return;
         }
 
-        // Fetch database words from vocabulary.  Vocabulary is
-        // lazy-loaded via useVocabularyLazy, but Quick Play guests
-        // arrive via direct URL (QR scan) before any view that
-        // triggers the lazy hook — so the cache is empty on first
-        // load and curriculum-only sessions failed with "no words"
-        // and bounced to landing.  Mirror the teacher-restore path
-        // in App.tsx (~line 1232) and dynamic-import the module
-        // when the cache is empty.  Resolves to the same chunk the
-        // hook will use later.
-        let vocab = getCachedVocabulary();
-        if (!vocab) {
+        // Branch on the session's subject before loading vocabulary.
+        // Hebrew sessions store HEBREW_LEMMAS ids in word_ids; the ID
+        // space overlaps with ALL_WORDS so we must NOT fall through to
+        // the English vocabulary lookup. Subject defaults to 'english'
+        // for rows created before the 20260510 migration ran, so this
+        // path stays correct for all legacy data.
+        const sessionSubject: 'english' | 'hebrew' =
+          data.subject === 'hebrew' ? 'hebrew' : 'english';
+
+        let dbWords: Word[] = [];
+        if (sessionSubject === 'hebrew') {
+          // Hebrew lemmas don't fit the Word shape natively (Word.english
+          // is the source language; for Hebrew lemmas the source IS
+          // Hebrew). Project them into Word for downstream code that
+          // expects allWords to be Word[] — the actual gameplay views
+          // (NiqqudModeView etc.) re-load from HEBREW_LEMMAS by id, so
+          // this projection only feeds the join-screen word count + the
+          // mode-selection picker. Setting `level: "Custom"` keeps any
+          // English-only level filters from accidentally hiding them.
           try {
-            const m = await import("../data/vocabulary");
-            vocab = {
-              ALL_WORDS: m.ALL_WORDS,
-              SET_1_WORDS: m.SET_1_WORDS,
-              SET_2_WORDS: m.SET_2_WORDS,
-              SET_3_WORDS: (m as { SET_3_WORDS?: Word[] }).SET_3_WORDS ?? [],
-              TOPIC_PACKS: m.TOPIC_PACKS,
-            };
+            const hebrewMod = await import("../data/vocabulary-hebrew");
+            const wantedIds = new Set<number>(data.word_ids ?? []);
+            dbWords = hebrewMod.HEBREW_LEMMAS
+              .filter((l) => wantedIds.has(l.id))
+              .map((l) => ({
+                id: l.id,
+                english: l.translationEn,
+                hebrew: l.lemmaNiqqud,
+                arabic: l.translationAr,
+                level: "Custom" as const,
+              }));
           } catch (err) {
-            console.error('[Quick Play Load] vocabulary import failed', err);
+            console.error('[Quick Play Load] hebrew lemma import failed', err);
           }
+        } else {
+          // Fetch database words from vocabulary.  Vocabulary is
+          // lazy-loaded via useVocabularyLazy, but Quick Play guests
+          // arrive via direct URL (QR scan) before any view that
+          // triggers the lazy hook — so the cache is empty on first
+          // load and curriculum-only sessions failed with "no words"
+          // and bounced to landing.  Mirror the teacher-restore path
+          // in App.tsx (~line 1232) and dynamic-import the module
+          // when the cache is empty.  Resolves to the same chunk the
+          // hook will use later.
+          let vocab = getCachedVocabulary();
+          if (!vocab) {
+            try {
+              const m = await import("../data/vocabulary");
+              vocab = {
+                ALL_WORDS: m.ALL_WORDS,
+                SET_1_WORDS: m.SET_1_WORDS,
+                SET_2_WORDS: m.SET_2_WORDS,
+                SET_3_WORDS: (m as { SET_3_WORDS?: Word[] }).SET_3_WORDS ?? [],
+                TOPIC_PACKS: m.TOPIC_PACKS,
+              };
+            } catch (err) {
+              console.error('[Quick Play Load] vocabulary import failed', err);
+            }
+          }
+          dbWords = (vocab?.ALL_WORDS ?? []).filter(w => data.word_ids.includes(w.id));
         }
-        const dbWords = (vocab?.ALL_WORDS ?? []).filter(w => data.word_ids.includes(w.id));
 
         // Parse custom words from JSON
         let customWords: Word[] = [];
@@ -264,6 +303,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           // means the AI call hasn't finished yet OR failed — student-side
           // falls back to template sentences when reading.
           aiSentences: Array.isArray(data.ai_sentences) ? data.ai_sentences : undefined,
+          subject: sessionSubject,
         });
 
         // Check if this student already joined this session (page refresh / re-scan)
@@ -307,6 +347,12 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
                     title: "Quick Play",
                     allowedModes: data.allowed_modes || ALL_GAME_MODES,
                     sentences: quickPlaySentences, sentenceDifficulty: 2,
+                    // Tag the synthetic assignment with the session's
+                    // subject so the mode-selection branch in App.tsx
+                    // (`activeAssignment?.subject === "hebrew"`) routes
+                    // the student to HebrewModeSelectionView + the
+                    // 4 Hebrew game views.
+                    subject: sessionSubject,
                   });
                   gameDebug.logGameInit({
                     wordsCount: words.length,
@@ -341,13 +387,36 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
 
               const { data } = await supabase
                 .from('quick_play_sessions')
-                .select('id, session_code, word_ids, allowed_modes, is_active, custom_words')
+                .select('id, session_code, word_ids, allowed_modes, is_active, custom_words, subject')
                 .eq('id', sessionId)
                 .eq('is_active', true)
                 .maybeSingle();
 
               if (data) {
-                const dbWords = (getCachedVocabulary()?.ALL_WORDS ?? []).filter(w => (data.word_ids || []).includes(w.id));
+                // Same Hebrew branch as the QR-scan path — Hebrew lemma
+                // ids must NOT be looked up against ALL_WORDS.
+                const savedSubject: 'english' | 'hebrew' =
+                  (data as { subject?: string }).subject === 'hebrew' ? 'hebrew' : 'english';
+                let dbWords: Word[] = [];
+                if (savedSubject === 'hebrew') {
+                  try {
+                    const hebrewMod = await import("../data/vocabulary-hebrew");
+                    const wantedIds = new Set<number>(data.word_ids || []);
+                    dbWords = hebrewMod.HEBREW_LEMMAS
+                      .filter((l) => wantedIds.has(l.id))
+                      .map((l) => ({
+                        id: l.id,
+                        english: l.translationEn,
+                        hebrew: l.lemmaNiqqud,
+                        arabic: l.translationAr,
+                        level: "Custom" as const,
+                      }));
+                  } catch (err) {
+                    console.error('[Quick Play Resume] hebrew lemma import failed', err);
+                  }
+                } else {
+                  dbWords = (getCachedVocabulary()?.ALL_WORDS ?? []).filter(w => (data.word_ids || []).includes(w.id));
+                }
                 let customWords: Word[] = [];
                 if (data.custom_words) {
                   try {
@@ -365,6 +434,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
                     wordIds: data.word_ids || [],
                     words: allSessionWords,
                     allowedModes: (data as { allowed_modes?: string[] }).allowed_modes || undefined,
+                    subject: savedSubject,
                   });
                   setQuickPlayStudentName(name);
                   setQuickPlayAvatar(avatar || '🦊');
@@ -379,6 +449,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
                     title: "Quick Play",
                     allowedModes: data.allowed_modes || ALL_GAME_MODES,
                     sentences: quickPlaySentences, sentenceDifficulty: 2,
+                    subject: savedSubject,
                   });
                   gameDebug.logGameInit({
                     wordsCount: words.length,

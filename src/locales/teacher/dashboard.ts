@@ -48,6 +48,23 @@ export interface TeacherDashboardT {
   approvalsButtonReview: string;
   approvalsButtonCheck: string;
 
+  // ─── Quick Play hero accents + section headings ────────────────
+  qpInstantBadge: string;
+  qpStartBtn: string;
+  forYourClassesHeading: string;
+  managementHeading: string;
+
+  // ─── Class Show / Worksheet / Vocabagrut tiles ─────────────────
+  classShowTitle: string;
+  classShowDescription: string;
+  classShowTooltip: string;
+  worksheetTitle: string;
+  worksheetDescription: string;
+  worksheetTooltip: string;
+  vocabagrutTitle: string;
+  vocabagrutDescription: string;
+  vocabagrutTooltip: string;
+
   // ─── Classes section ───────────────────────────────────────────
   myClassesHeading: string;
   noClassesYetSubtitle: string;
@@ -121,6 +138,21 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsButtonReview: "Review",
     approvalsButtonCheck: "Check",
 
+    qpInstantBadge: "Instant",
+    qpStartBtn: "Start",
+    forYourClassesHeading: "For your classes",
+    managementHeading: "Management",
+
+    classShowTitle: "Class Show",
+    classShowDescription: "Project to the classroom",
+    classShowTooltip: "Project a vocabulary game on your classroom screen. Students answer by raising their hand or shouting the answer — no phones needed.",
+    worksheetTitle: "Worksheet",
+    worksheetDescription: "Print a sheet for class",
+    worksheetTooltip: "Generate a printable worksheet (word list, scramble, fill-in-the-blank, or match-up) and print or save as PDF. Works without any projector.",
+    vocabagrutTitle: "Vocabagrut",
+    vocabagrutDescription: "Bagrut-style mock exam",
+    vocabagrutTooltip: "Generate a Bagrut-style mock exam from your word list. Looks like the real Israeli MoE Bagrut paper — perfect for format familiarity in grades 7–9.",
+
     myClassesHeading: "My classes",
     noClassesYetSubtitle: "You haven't created any classes yet.",
     classCount: (n) => `${n} class${n === 1 ? '' : 'es'}`,
@@ -189,6 +221,21 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsButtonReview: "סקור",
     approvalsButtonCheck: "בדוק",
 
+    qpInstantBadge: "מיידי",
+    qpStartBtn: "התחל",
+    forYourClassesHeading: "לכיתות שלך",
+    managementHeading: "ניהול",
+
+    classShowTitle: "מצב הקרנה",
+    classShowDescription: "הקרנה לכיתה",
+    classShowTooltip: "הקרינו משחק אוצר מילים על מסך הכיתה. התלמידים עונים בהרמת יד או בקריאה — בלי טלפונים.",
+    worksheetTitle: "דף עבודה",
+    worksheetDescription: "הדפסה לשיעור",
+    worksheetTooltip: "צרו דף עבודה להדפסה (רשימת מילים, ערבוב אותיות, השלמה, או התאמה). אפשר להדפיס או לשמור כ־PDF. עובד גם בלי מקרן.",
+    vocabagrutTitle: "ווקבגרות",
+    vocabagrutDescription: "מבחן בגרות לדוגמה",
+    vocabagrutTooltip: "צרו מבחן בנוסח בגרות מתוך רשימת המילים שלכם. נראה כמו השאלון של משרד החינוך — מצוין להיכרות עם הפורמט בכיתות ז–ט.",
+
     myClassesHeading: "הכיתות שלי",
     noClassesYetSubtitle: "עוד לא יצרת כיתות.",
     classCount: (n) => `${n} ${n === 1 ? "כיתה" : "כיתות"}`,
@@ -256,6 +303,21 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsNoPending: "لا توجد موافقات معلقة",
     approvalsButtonReview: "مراجعة",
     approvalsButtonCheck: "تحقّق",
+
+    qpInstantBadge: "فوري",
+    qpStartBtn: "ابدأ",
+    forYourClassesHeading: "لفصولك",
+    managementHeading: "الإدارة",
+
+    classShowTitle: "عرض الفصل",
+    classShowDescription: "عرض على شاشة الفصل",
+    classShowTooltip: "اعرض لعبة مفردات على شاشة الفصل. يجيب الطلاب برفع الأيدي أو بالنطق — دون الحاجة إلى هواتف.",
+    worksheetTitle: "ورقة عمل",
+    worksheetDescription: "اطبع ورقة للفصل",
+    worksheetTooltip: "أنشئ ورقة عمل قابلة للطباعة (قائمة كلمات، تشويش حروف، ملء فراغ، أو مطابقة) واطبعها أو احفظها كـ PDF. تعمل بدون أي شاشة عرض.",
+    vocabagrutTitle: "ووكاباجروت",
+    vocabagrutDescription: "نموذج اختبار باجروت",
+    vocabagrutTooltip: "أنشئ نموذج اختبار بنمط باجروت من قائمة الكلمات. يبدو مثل ورقة باجروت الإسرائيلية الحقيقية — ممتاز للتعرف على الشكل في الصفوف 7–9.",
 
     myClassesHeading: "فصولي",
     noClassesYetSubtitle: "لم تنشئ أي فصول بعد.",

@@ -14,53 +14,52 @@
  * persists the row.  That function already branches on the parent
  * class's subject and pulls the `words` JSONB from HEBREW_LEMMAS.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import {
-  HEBREW_LEMMAS,
-  HEBREW_LEMMAS_BY_THEME,
-} from "../data/vocabulary-hebrew";
-import type {
-  HebrewLemma,
-  HebrewGradeBand,
-} from "../data/types-hebrew";
+import { ArrowLeft, ArrowRight, Check, BookOpen, Camera, Upload, FolderOpen, Loader2, Pin, Repeat } from "lucide-react";
+import { HEBREW_LEMMAS, HEBREW_LEMMAS_BY_ID } from "../data/vocabulary-hebrew";
+import { HEBREW_PACKS_BY_KIND, lemmasInPack } from "../data/hebrew-packs";
+import type { HebrewLemma } from "../data/types-hebrew";
 import type { ClassData } from "../core/supabase";
+import { runHebrewOcr } from "../utils/hebrewOcr";
+import { useSavedTasks, type SavedTask } from "../hooks/useSavedTasks";
 
-// Hebrew-native mode ids — match the View names in core/views.ts so the
-// student-side router can use a single allowedModes lookup.
+// Hebrew-native mode ids. The first 4 are wired end-to-end. The next 6
+// (classic … scramble) are listed for teachers to see the roadmap and
+// gated with `comingSoon: true` until each game component lands. They
+// match the planned View names in core/views.ts so the wizard schema
+// won't move once the games ship.
+export type HebrewModeId =
+  | "niqqud"
+  | "shoresh"
+  | "synonym"
+  | "listening"
+  | "classic"
+  | "spelling"
+  | "matching"
+  | "memory-flip"
+  | "flashcards"
+  | "scramble";
+
 export const HEBREW_MODE_OPTIONS: ReadonlyArray<{
-  id: "niqqud" | "shoresh" | "synonym" | "listening";
+  id: HebrewModeId;
   emoji: string;
-  title: string;
-  blurb: string;
+  titleHe: string;
+  blurbHe: string;
   gradient: string;
+  comingSoon?: boolean;
 }> = [
-  { id: "niqqud",    emoji: "נִ", title: "Niqqud",    blurb: "Pick the right vocalization", gradient: "from-amber-400 to-rose-500" },
-  { id: "shoresh",   emoji: "ש",  title: "Shoresh",   blurb: "Pick 3 root letters",          gradient: "from-emerald-500 to-teal-600" },
-  { id: "synonym",   emoji: "↔",  title: "Synonym",   blurb: "Pair words by meaning",        gradient: "from-fuchsia-500 to-rose-600" },
-  { id: "listening", emoji: "🎧", title: "Listening", blurb: "Hear it, pick the niqqud",     gradient: "from-violet-500 to-blue-600" },
+  { id: "niqqud",      emoji: "נִ", titleHe: "מצב ניקוד",            blurbHe: "בחרו את הניקוד הנכון",          gradient: "from-amber-400 to-rose-500" },
+  { id: "shoresh",     emoji: "ש",  titleHe: "ציד שורש",             blurbHe: "מצאו את שלוש אותיות השורש",    gradient: "from-emerald-500 to-teal-600" },
+  { id: "synonym",     emoji: "↔",  titleHe: "התאמת מילים נרדפות", blurbHe: "התאימו מילים לפי משמעות",       gradient: "from-fuchsia-500 to-rose-600" },
+  { id: "listening",   emoji: "🎧", titleHe: "מצב האזנה",            blurbHe: "שמעו ובחרו את הניקוד",          gradient: "from-violet-500 to-blue-600" },
+  { id: "classic",     emoji: "🌍", titleHe: "תרגום מילים",          blurbHe: "בחרו את התרגום הנכון",          gradient: "from-sky-500 to-cyan-600",      comingSoon: true },
+  { id: "spelling",    emoji: "⌨️", titleHe: "איות בעברית",          blurbHe: "הקלידו את המילה הנכונה",        gradient: "from-lime-500 to-emerald-600",  comingSoon: true },
+  { id: "matching",    emoji: "🧩", titleHe: "זיווג מילים",          blurbHe: "התאימו מילה לתרגום",            gradient: "from-rose-500 to-pink-600",     comingSoon: true },
+  { id: "memory-flip", emoji: "🃏", titleHe: "משחק זיכרון",          blurbHe: "הפכו כרטיסים ומצאו זוגות",      gradient: "from-purple-500 to-fuchsia-600", comingSoon: true },
+  { id: "flashcards",  emoji: "📇", titleHe: "כרטיסיות",              blurbHe: "סקירת מילים בקצב שלכם",         gradient: "from-orange-500 to-amber-600",  comingSoon: true },
+  { id: "scramble",    emoji: "🔀", titleHe: "ערבוב אותיות",         blurbHe: "סדרו מחדש את האותיות",          gradient: "from-teal-500 to-emerald-600",  comingSoon: true },
 ];
-
-const THEME_LABELS_HE: Readonly<Record<string, string>> = {
-  animals:   "חיות",
-  family:    "משפחה",
-  school:    "בית ספר",
-  weather:   "מזג אוויר",
-  feelings:  "רגשות",
-  verbs:     "פעלים",
-};
-
-const THEME_EMOJI: Readonly<Record<string, string>> = {
-  animals:  "🐾",
-  family:   "👨‍👩‍👧",
-  school:   "📚",
-  weather:  "☀️",
-  feelings: "💛",
-  verbs:    "🏃",
-};
-
-const GRADE_BANDS: readonly HebrewGradeBand[] = ["3-4", "5-6", "7-9"];
 
 export interface HebrewAssignmentWizardProps {
   selectedClass: ClassData;
@@ -90,19 +89,76 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
   } = props;
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [gradeFilter, setGradeFilter] = useState<HebrewGradeBand | null>(null);
+  const [gradePackId, setGradePackId] = useState<string | null>(null);
 
-  // Theme-grouped pool, optionally narrowed to a grade band.
-  const groupedLemmas = useMemo(() => {
-    const out: Record<string, HebrewLemma[]> = {};
-    for (const [theme, lemmas] of Object.entries(HEBREW_LEMMAS_BY_THEME)) {
-      const filtered = gradeFilter
-        ? lemmas.filter((l) => l.gradeBand === gradeFilter)
-        : [...lemmas];
-      if (filtered.length > 0) out[theme] = filtered;
+  // Word-source picker. "packs" is the existing browse-by-theme flow.
+  // "ocr" / "upload" both call /api/ocr with lang=he and pre-select
+  // matched lemma ids. "library" is a slice-3 placeholder.
+  type WordSource = "packs" | "ocr" | "upload" | "library";
+  const [wordSource, setWordSource] = useState<WordSource>("packs");
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [ocrUnmatched, setOcrUnmatched] = useState<string[]>([]);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Saved templates — keyed per teacher uid in localStorage. Filtered to
+  // tasks that contain at least one Hebrew lemma id so English-only
+  // templates from the same teacher don't pollute the picker.
+  const savedTasks = useSavedTasks(selectedClass.teacherUid);
+  const hebrewSavedTasks = useMemo(
+    () =>
+      savedTasks.tasks.filter((t) =>
+        t.wordIds.some((id) => HEBREW_LEMMAS_BY_ID.has(id)),
+      ),
+    [savedTasks.tasks],
+  );
+
+  function loadSavedTask(task: SavedTask) {
+    const matchingIds = task.wordIds.filter((id) => HEBREW_LEMMAS_BY_ID.has(id));
+    setSelectedWords(matchingIds);
+    if (task.modes.length > 0) setAssignmentModes(task.modes);
+    if (task.title && !assignmentTitle.trim()) setAssignmentTitle(task.title);
+    savedTasks.bumpUse(task.id);
+    setWordSource("packs");
+  }
+
+  async function handleOcrFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file) return;
+    setOcrError(null);
+    setOcrBusy(true);
+    try {
+      const result = await runHebrewOcr(file, { onError: setOcrError });
+      if (!result) return;
+      // Pre-select matched ids on top of any existing manual selection.
+      setSelectedWords((prev) => Array.from(new Set([...prev, ...result.matchedIds])));
+      setOcrUnmatched(result.unmatched);
+      // Switch back to packs view so the teacher sees what got selected
+      // (the OCR/upload tabs themselves don't render the lemma grid).
+      setWordSource("packs");
+    } finally {
+      setOcrBusy(false);
     }
-    return out;
-  }, [gradeFilter]);
+  }
+
+  // Theme packs, each narrowed by the optional grade pack filter. The
+  // taxonomy lives in hebrew-packs.ts so adding a new theme/grade is a
+  // single-line change there with no churn here.
+  const themeSections = useMemo(() => {
+    const gradeFilter = gradePackId
+      ? HEBREW_PACKS_BY_KIND.grade.find((p) => p.id === gradePackId)
+      : null;
+    return HEBREW_PACKS_BY_KIND.theme
+      .map((pack) => {
+        const lemmas = lemmasInPack(pack).filter(
+          (l) => !gradeFilter || gradeFilter.filter(l),
+        );
+        return { pack, lemmas };
+      })
+      .filter((s) => s.lemmas.length > 0);
+  }, [gradePackId]);
 
   const selectedSet = useMemo(() => new Set(selectedWords), [selectedWords]);
 
@@ -113,6 +169,8 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
   }
 
   function toggleMode(id: string) {
+    const mode = HEBREW_MODE_OPTIONS.find((m) => m.id === id);
+    if (mode?.comingSoon) return;
     setAssignmentModes(
       assignmentModes.includes(id)
         ? assignmentModes.filter((m) => m !== id)
@@ -120,8 +178,8 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
     );
   }
 
-  function selectAllInTheme(theme: string) {
-    const ids = (groupedLemmas[theme] ?? []).map((l) => l.id);
+  function selectAllInTheme(themeLemmas: readonly HebrewLemma[]) {
+    const ids = themeLemmas.map((l) => l.id);
     const allSelected = ids.every((id) => selectedSet.has(id));
     if (allSelected) {
       setSelectedWords((prev) => prev.filter((x) => !ids.includes(x)));
@@ -143,12 +201,12 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             type="button"
             onClick={onBack}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black tracking-widest uppercase hover:bg-white/15"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black hover:bg-white/15"
           >
-            <ArrowLeft size={14} />
-            Back
+            <ArrowRight size={14} />
+            <span lang="he">חזרה</span>
           </button>
-          <div className="text-blue-200 font-black text-[11px] tracking-[0.25em] uppercase">
+          <div className="text-blue-200 font-black text-[11px] tracking-[0.2em]" lang="he">
             VocaHebrew · {selectedClass.name}
           </div>
         </header>
@@ -177,60 +235,137 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             transition={{ duration: 0.25 }}
           >
             <h1 className="text-2xl sm:text-3xl font-black text-white mb-2" lang="he">
-              בחר מילים לתרגול
+              בחרו מילים לתרגול
             </h1>
-            <p className="text-white/60 font-bold text-sm mb-5">
-              {selectedWords.length} selected
+            <p className="text-white/60 font-bold text-sm mb-5" lang="he">
+              {selectedWords.length} מילים נבחרו
             </p>
 
-            {/* Grade band filter */}
-            <div className="flex gap-2 mb-6 flex-wrap" dir="ltr">
+            {/* ─── Word-source picker ─────────────────────────── */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5" lang="he">
+              <SourceTab active={wordSource === "packs"} onClick={() => setWordSource("packs")} icon={<BookOpen size={18} />} label="מהאוצר" />
+              <SourceTab active={wordSource === "ocr"} onClick={() => { setWordSource("ocr"); cameraInputRef.current?.click(); }} icon={ocrBusy ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />} label="צילום" disabled={ocrBusy} />
+              <SourceTab active={wordSource === "upload"} onClick={() => { setWordSource("upload"); uploadInputRef.current?.click(); }} icon={ocrBusy ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />} label="העלאת תמונה" disabled={ocrBusy} />
+              <SourceTab active={wordSource === "library"} onClick={() => setWordSource("library")} icon={<FolderOpen size={18} />} label="מהספרייה" />
+            </div>
+
+            {/* Hidden inputs — Camera uses capture, Upload doesn't. */}
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handleOcrFile} />
+            <input ref={uploadInputRef} type="file" accept="image/*" hidden onChange={handleOcrFile} />
+
+            {/* Saved-templates library */}
+            {wordSource === "library" && (
+              <div className="mb-5" lang="he">
+                {hebrewSavedTasks.length === 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-white/70 text-sm font-bold">
+                    אין עדיין מטלות שמורות בעברית. שמרו מטלה כדי לראות אותה כאן.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {hebrewSavedTasks.slice(0, 12).map((task) => {
+                      const matchCount = task.wordIds.filter((id) => HEBREW_LEMMAS_BY_ID.has(id)).length;
+                      return (
+                        <button
+                          key={task.id}
+                          type="button"
+                          onClick={() => loadSavedTask(task)}
+                          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                          className="w-full text-start rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 p-3 transition"
+                          lang="he"
+                          dir="rtl"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {task.pinned && <Pin size={14} className="text-amber-400 fill-amber-400 shrink-0" />}
+                              <span className="font-black text-white truncate">
+                                {task.title || "מטלה ללא שם"}
+                              </span>
+                            </div>
+                            <Repeat size={16} className="text-blue-300 shrink-0" />
+                          </div>
+                          <div className="text-white/50 text-xs font-bold mt-1" dir="ltr">
+                            {matchCount} words · {task.modes.length} modes · used {task.timesUsed}×
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* OCR feedback — error toast or "review unmatched" panel. */}
+            {ocrError && (
+              <div className="mb-5 rounded-2xl border border-rose-400/30 bg-rose-500/10 p-3 text-rose-100 text-sm font-bold" lang="he">
+                {ocrError}
+              </div>
+            )}
+            {ocrUnmatched.length > 0 && !ocrError && (
+              <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3" lang="he">
+                <div className="text-amber-100 text-xs font-black mb-2">
+                  {ocrUnmatched.length} מילים מהתמונה לא נמצאו באוצר ויידלגו כעת.
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {ocrUnmatched.slice(0, 20).map((w) => (
+                    <span key={w} className="inline-block px-2 py-0.5 rounded-full bg-white/10 text-white/80 text-xs font-bold" dir="rtl">
+                      {w}
+                    </span>
+                  ))}
+                  {ocrUnmatched.length > 20 && (
+                    <span className="text-white/50 text-xs font-bold">… ועוד {ocrUnmatched.length - 20}</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Grade band filter — pulled from HEBREW_PACKS_BY_KIND.grade */}
+            <div className="flex gap-2 mb-6 flex-wrap" lang="he">
               <button
                 type="button"
-                onClick={() => setGradeFilter(null)}
-                className={`px-3 py-1.5 rounded-full text-xs font-black tracking-wider uppercase transition ${
-                  gradeFilter === null
+                onClick={() => setGradePackId(null)}
+                className={`px-3 py-1.5 rounded-full text-xs font-black transition ${
+                  gradePackId === null
                     ? "bg-white text-indigo-700 shadow"
                     : "bg-white/10 text-white hover:bg-white/15"
                 }`}
               >
-                All grades
+                כל הכיתות
               </button>
-              {GRADE_BANDS.map((band) => (
+              {HEBREW_PACKS_BY_KIND.grade.map((pack) => (
                 <button
-                  key={band}
+                  key={pack.id}
                   type="button"
-                  onClick={() => setGradeFilter(band)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-black tracking-wider transition ${
-                    gradeFilter === band
+                  onClick={() => setGradePackId(pack.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-black transition ${
+                    gradePackId === pack.id
                       ? "bg-white text-indigo-700 shadow"
                       : "bg-white/10 text-white hover:bg-white/15"
                   }`}
                 >
-                  Grades {band}
+                  {pack.labelHe}
                 </button>
               ))}
             </div>
 
             {/* Themed lemma sections */}
             <div className="space-y-6">
-              {Object.entries(groupedLemmas).map(([theme, lemmas]) => {
+              {themeSections.map(({ pack, lemmas }) => {
                 const allSelected = lemmas.every((l) => selectedSet.has(l.id));
                 return (
-                  <section key={theme}>
+                  <section key={pack.id}>
                     <header className="flex items-center justify-between mb-3">
-                      <h2 className="text-white font-black text-lg flex items-center gap-2">
-                        <span aria-hidden>{THEME_EMOJI[theme] ?? "•"}</span>
-                        <span lang="he">{THEME_LABELS_HE[theme] ?? theme}</span>
+                      <h2 className="text-white font-black text-lg flex items-center gap-2" lang="he">
+                        <span aria-hidden>{pack.emoji}</span>
+                        <span>{pack.labelHe}</span>
                         <span className="text-white/40 text-xs">· {lemmas.length}</span>
                       </h2>
                       <button
                         type="button"
-                        onClick={() => selectAllInTheme(theme)}
-                        className="text-xs font-black tracking-wider uppercase text-blue-300 hover:text-blue-200"
-                        dir="ltr"
+                        onClick={() => selectAllInTheme(lemmas)}
+                        className="text-xs font-black text-blue-300 hover:text-blue-200"
+                        lang="he"
                       >
-                        {allSelected ? "Clear" : "Select all"}
+                        {allSelected ? "נקה" : "בחרו הכל"}
                       </button>
                     </header>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -281,7 +416,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
 
             <FooterBar
               primaryDisabled={!canContinueFromStep1}
-              primaryLabel="Continue"
+              primaryLabel="המשך"
               onPrimary={() => setStep(2)}
               countLabel={`${selectedWords.length} / ${HEBREW_LEMMAS.length}`}
             />
@@ -294,29 +429,29 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            dir="ltr"
           >
-            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2 text-right" lang="he" dir="rtl">
+            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2" lang="he">
               פרטי המטלה
             </h1>
-            <p className="text-white/60 font-bold text-sm mb-6 text-right" lang="he" dir="rtl">
-              שם וזמן הגשה (אופציונלי)
+            <p className="text-white/60 font-bold text-sm mb-6" lang="he">
+              שם המטלה ותאריך הגשה (אופציונלי)
             </p>
 
-            <label className="block text-white/70 font-black text-xs tracking-widest uppercase mb-2">
-              Title
+            <label className="block text-white/70 font-black text-xs mb-2" lang="he">
+              שם המטלה
             </label>
             <input
               type="text"
               value={assignmentTitle}
               onChange={(e) => setAssignmentTitle(e.target.value)}
-              placeholder="e.g. שורש פעלים — שיעור 3"
+              placeholder="לדוגמה: שורש פעלים — שיעור 3"
               className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 font-bold text-base focus:outline-none focus:border-blue-400 mb-5"
               dir="auto"
+              lang="he"
             />
 
-            <label className="block text-white/70 font-black text-xs tracking-widest uppercase mb-2">
-              Deadline (optional)
+            <label className="block text-white/70 font-black text-xs mb-2" lang="he">
+              תאריך הגשה (אופציונלי)
             </label>
             <input
               type="date"
@@ -327,9 +462,9 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
 
             <FooterBar
               primaryDisabled={!canContinueFromStep2}
-              primaryLabel="Continue"
+              primaryLabel="המשך"
               onPrimary={() => setStep(3)}
-              secondaryLabel="Back"
+              secondaryLabel="חזרה"
               onSecondary={() => setStep(1)}
             />
           </motion.div>
@@ -341,45 +476,56 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            dir="ltr"
           >
-            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2 text-right" lang="he" dir="rtl">
+            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2" lang="he">
               משחקי תרגול
             </h1>
-            <p className="text-white/60 font-bold text-sm mb-6 text-right" lang="he" dir="rtl">
-              בחר אילו מצבים זמינים לתלמידים
+            <p className="text-white/60 font-bold text-sm mb-6" lang="he">
+              בחרו אילו מצבים יהיו זמינים לתלמידים
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {HEBREW_MODE_OPTIONS.map((mode) => {
                 const picked = assignmentModes.includes(mode.id);
+                const locked = mode.comingSoon === true;
                 return (
                   <button
                     key={mode.id}
                     type="button"
                     onClick={() => toggleMode(mode.id)}
+                    disabled={locked}
                     style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                    className={`relative overflow-hidden rounded-2xl p-5 text-left transition-all ${
-                      picked
-                        ? `bg-gradient-to-br ${mode.gradient} ring-2 ring-white/40 shadow-lg`
-                        : "bg-white/5 hover:bg-white/10 border border-white/10"
+                    className={`relative overflow-hidden rounded-2xl p-5 text-start transition-all ${
+                      locked
+                        ? "bg-white/5 border border-white/10 opacity-60 cursor-not-allowed"
+                        : picked
+                          ? `bg-gradient-to-br ${mode.gradient} ring-2 ring-white/40 shadow-lg`
+                          : "bg-white/5 hover:bg-white/10 border border-white/10"
                     }`}
+                    lang="he"
                   >
+                    {locked && (
+                      <span className="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full bg-white/15 text-white/80 text-[10px] font-black tracking-widest">
+                        בקרוב
+                      </span>
+                    )}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="text-3xl mb-2">{mode.emoji}</div>
-                        <div className="text-white font-black text-lg">{mode.title}</div>
+                        <div className="text-white font-black text-lg">{mode.titleHe}</div>
                         <div className="text-white/70 text-xs sm:text-sm font-bold mt-1">
-                          {mode.blurb}
+                          {mode.blurbHe}
                         </div>
                       </div>
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          picked ? "bg-white text-emerald-600" : "bg-white/10 border border-white/20"
-                        }`}
-                      >
-                        {picked && <Check size={14} strokeWidth={3} />}
-                      </div>
+                      {!locked && (
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            picked ? "bg-white text-emerald-600" : "bg-white/10 border border-white/20"
+                          }`}
+                        >
+                          {picked && <Check size={14} strokeWidth={3} />}
+                        </div>
+                      )}
                     </div>
                   </button>
                 );
@@ -388,15 +534,46 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
 
             <FooterBar
               primaryDisabled={!canSave}
-              primaryLabel={isEditing ? "Update assignment" : "Save assignment"}
+              primaryLabel={isEditing ? "עדכון מטלה" : "שמירת מטלה"}
               onPrimary={() => handleSaveAssignment()}
-              secondaryLabel="Back"
+              secondaryLabel="חזרה"
               onSecondary={() => setStep(2)}
             />
           </motion.div>
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Word-source picker tab ───────────────────────────────────────
+function SourceTab({
+  active, onClick, icon, label, disabled,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl px-3 py-3 text-xs font-black transition ${
+        disabled
+          ? "bg-white/5 text-white/30 cursor-not-allowed"
+          : active
+            ? "bg-white text-indigo-700 shadow"
+            : "bg-white/10 text-white hover:bg-white/15"
+      }`}
+      lang="he"
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }
 
@@ -417,9 +594,9 @@ function FooterBar({
   countLabel?: string;
 }) {
   return (
-    <div className="mt-8 flex items-center justify-between gap-3" dir="ltr">
+    <div className="mt-8 flex items-center justify-between gap-3" dir="rtl">
       {countLabel ? (
-        <div className="text-white/50 font-black text-xs tracking-widest uppercase">{countLabel}</div>
+        <div className="text-white/50 font-black text-xs tracking-widest" dir="ltr">{countLabel}</div>
       ) : (
         <div />
       )}
@@ -430,6 +607,7 @@ function FooterBar({
             onClick={onSecondary}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-sm hover:bg-white/15"
+            lang="he"
           >
             {secondaryLabel}
           </button>
@@ -444,9 +622,10 @@ function FooterBar({
               ? "bg-white/10 text-white/40 cursor-not-allowed"
               : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-indigo-500/30"
           }`}
+          lang="he"
         >
           {primaryLabel}
-          <ArrowRight size={16} />
+          <ArrowLeft size={16} />
         </button>
       </div>
     </div>

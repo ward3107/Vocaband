@@ -2,6 +2,7 @@ import { GraduationCap, UserCircle, Tv2, Printer, Zap, Sparkles } from "lucide-r
 import { HelpTooltip } from "../HelpTooltip";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
+import type { VocaId } from "../../core/subject";
 
 interface TeacherQuickActionsProps {
   pendingStudentsCount: number;
@@ -11,28 +12,35 @@ interface TeacherQuickActionsProps {
   onClassShowClick?: () => void;
   onWorksheetClick?: () => void;
   onVocabagrutClick?: () => void;
+  /** Drives Hebrew-locked locale + RTL when the dashboard is showing a
+   *  Hebrew class context. Defaults to "english" so existing callers
+   *  keep their current behaviour. */
+  subject?: VocaId;
 }
 
 export default function TeacherQuickActions({
   pendingStudentsCount,
   onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick, onWorksheetClick, onVocabagrutClick,
+  subject = "english",
 }: TeacherQuickActionsProps) {
   const { language } = useLanguage();
-  const t = teacherDashboardT[language];
+  // VocaHebrew surfaces lock to Hebrew copy + RTL regardless of the
+  // teacher's UI-language pref — same rule as TeacherDashboardView.
+  const isHebrew = subject === "hebrew";
+  const effectiveLanguage = isHebrew ? "he" : language;
+  const t = teacherDashboardT[effectiveLanguage];
 
   return (
-    <div className="mb-8 sm:mb-10">
+    <div className="mb-8 sm:mb-10" dir={isHebrew ? "rtl" : undefined} lang={isHebrew ? "he" : undefined}>
       {/* ───────────────────────────────────────────── */}
       {/* Quick Play Hero Section — prominent, gradient  */}
       {/* ───────────────────────────────────────────── */}
-      <HelpTooltip
-        content="Create a QR code for students to scan and play selected words — no login required! Perfect for instant classroom engagement."
-      >
+      <HelpTooltip content={t.qpTooltip}>
         <button
           type="button"
           onClick={onQuickPlayClick}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className="group relative w-full rounded-3xl p-6 sm:p-8 text-left overflow-hidden transition-all hover:shadow-xl active:scale-[0.99] mb-6"
+          className={`group relative w-full rounded-3xl p-6 sm:p-8 ${isHebrew ? "text-right" : "text-left"} overflow-hidden transition-all hover:shadow-xl active:scale-[0.99] mb-6`}
           data-tour="quick-play"
         >
           {/* Animated gradient background */}
@@ -49,22 +57,22 @@ export default function TeacherQuickActions({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-xl sm:text-2xl font-black text-white">
-                  Quick Play
+                  {t.qpTitle}
                 </h2>
                 <span className="px-2 py-0.5 bg-white/20 backdrop-blur rounded-full text-xs font-bold text-white">
-                  Instant
+                  {t.qpInstantBadge}
                 </span>
               </div>
               <p className="text-white/90 text-sm sm:text-base max-w-lg">
-                Create a QR code — students scan and play instantly. No setup, no logins.
+                {t.qpDescription}
               </p>
             </div>
 
             {/* CTA Button */}
             <div className="shrink-0 self-center sm:self-auto">
               <div className="flex items-center gap-2 px-6 py-3 bg-[var(--vb-surface)] text-violet-600 rounded-xl font-bold shadow-lg group-hover:shadow-xl group-hover:bg-white/95 transition-all">
-                <span>Start</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span>{t.qpStartBtn}</span>
+                <svg className={`w-5 h-5 ${isHebrew ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </div>
@@ -78,20 +86,21 @@ export default function TeacherQuickActions({
       {/* ───────────────────────────────────────────── */}
       <div className="mb-6">
         <p className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-3 px-1" style={{ color: 'var(--vb-text-muted)' }}>
-          For your classes
+          {t.forYourClassesHeading}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Class Show */}
           {onClassShowClick && (
-            <HelpTooltip className="h-full" content="Project a vocabulary game on your classroom screen. Students answer by raising their hand or shouting the answer - no phones needed.">
+            <HelpTooltip className="h-full" content={t.classShowTooltip}>
               <div className="h-full" data-tour="class-show">
                 <CompactActionCard
                   icon={<Tv2 size={20} />}
                   iconBg="bg-fuchsia-100"
                   iconColor="text-fuchsia-600"
-                  title="Class Show"
-                  description="Project to the classroom"
+                  title={t.classShowTitle}
+                  description={t.classShowDescription}
                   onClick={onClassShowClick}
+                  isHebrew={isHebrew}
                 />
               </div>
             </HelpTooltip>
@@ -99,31 +108,36 @@ export default function TeacherQuickActions({
 
           {/* Worksheet */}
           {onWorksheetClick && (
-            <HelpTooltip className="h-full" content="Generate a printable worksheet (word list, scramble, fill-in-the-blank, or match-up) and print or save as PDF. Works without any projector.">
+            <HelpTooltip className="h-full" content={t.worksheetTooltip}>
               <div className="h-full" data-tour="worksheet">
                 <CompactActionCard
                   icon={<Printer size={20} />}
                   iconBg="bg-emerald-100"
                   iconColor="text-emerald-600"
-                  title="Worksheet"
-                  description="Print a sheet for class"
+                  title={t.worksheetTitle}
+                  description={t.worksheetDescription}
                   onClick={onWorksheetClick}
+                  isHebrew={isHebrew}
                 />
               </div>
             </HelpTooltip>
           )}
 
-          {/* Vocabagrut — Bagrut-style mock exam */}
-          {onVocabagrutClick && (
-            <HelpTooltip className="h-full" content="Generate a Bagrut-style mock exam from your word list. Looks like the real Israeli MoE Bagrut paper — perfect for format familiarity in grades 7–9.">
+          {/* Vocabagrut — Bagrut-style mock exam.
+              English-Bagrut-specific (the Israeli English matriculation
+              paper); no Hebrew analog, so the tile is suppressed entirely
+              on the VocaHebrew dashboard rather than translated. */}
+          {!isHebrew && onVocabagrutClick && (
+            <HelpTooltip className="h-full" content={t.vocabagrutTooltip}>
               <div className="h-full" data-tour="vocabagrut">
                 <CompactActionCard
                   icon={<Sparkles size={20} />}
                   iconBg="bg-violet-100"
                   iconColor="text-violet-600"
-                  title="Vocabagrut"
-                  description="Bagrut-style mock exam"
+                  title={t.vocabagrutTitle}
+                  description={t.vocabagrutDescription}
                   onClick={onVocabagrutClick}
+                  isHebrew={isHebrew}
                 />
               </div>
             </HelpTooltip>
@@ -136,34 +150,36 @@ export default function TeacherQuickActions({
       {/* ───────────────────────────────────────────── */}
       <div>
         <p className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-3 px-1" style={{ color: 'var(--vb-text-muted)' }}>
-          Management
+          {t.managementHeading}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Classroom */}
-          <HelpTooltip className="h-full" content="One place for everything classroom: who needs attention now (Pulse), per-word mastery + weak words (Mastery), and the full per-student records + CSV export (Records).">
+          <HelpTooltip className="h-full" content={t.classroomTooltip}>
             <div className="h-full" data-tour="classroom">
               <CompactActionCard
                 icon={<GraduationCap size={20} />}
                 iconBg="bg-violet-100"
                 iconColor="text-violet-600"
-                title="Classroom"
-                description="Pulse · Mastery · Records"
+                title={t.classroomTitle}
+                description={t.classroomDescription}
                 onClick={onClassroomClick}
+                isHebrew={isHebrew}
               />
             </div>
           </HelpTooltip>
 
           {/* Approvals */}
-          <HelpTooltip className="h-full" content="Approve students who signed up for your classes">
+          <HelpTooltip className="h-full" content={t.approvalsTooltip}>
             <div className="h-full" data-tour="approvals">
               <CompactActionCard
                 icon={<UserCircle size={20} />}
                 iconBg={pendingStudentsCount > 0 ? "bg-rose-100" : "bg-[var(--vb-surface-alt)]"}
                 iconColor={pendingStudentsCount > 0 ? "text-rose-600" : "text-[var(--vb-text-muted)]"}
-                title="Approvals"
-                description={pendingStudentsCount > 0 ? `${pendingStudentsCount} student${pendingStudentsCount === 1 ? '' : 's'} waiting` : "No pending approvals"}
+                title={t.approvalsTitle}
+                description={pendingStudentsCount > 0 ? t.approvalsWaiting(pendingStudentsCount) : t.approvalsNoPending}
                 onClick={onApprovalsClick}
                 badge={pendingStudentsCount > 0 ? pendingStudentsCount : undefined}
+                isHebrew={isHebrew}
               />
             </div>
           </HelpTooltip>
@@ -185,6 +201,8 @@ interface CompactActionCardProps {
   description: string;
   onClick: () => void;
   badge?: number;
+  /** Flip chevron + use start-aligned text in RTL contexts. */
+  isHebrew?: boolean;
 }
 
 const CompactActionCard: React.FC<CompactActionCardProps> = ({
@@ -195,6 +213,7 @@ const CompactActionCard: React.FC<CompactActionCardProps> = ({
   description,
   onClick,
   badge,
+  isHebrew,
 }) => {
   return (
     <button
@@ -206,10 +225,10 @@ const CompactActionCard: React.FC<CompactActionCardProps> = ({
         backgroundColor: 'var(--vb-surface)',
         borderColor: 'var(--vb-border)',
       }}
-      className="group relative w-full rounded-2xl p-4 text-left border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
+      className={`group relative w-full rounded-2xl p-4 ${isHebrew ? "text-right" : "text-left"} border shadow-sm hover:shadow-md active:scale-[0.99] transition-all`}
     >
       {badge != null && badge > 0 && (
-        <span className="absolute top-3 right-3 bg-rose-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center shadow-sm">
+        <span className={`absolute top-3 ${isHebrew ? "left-3" : "right-3"} bg-rose-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center shadow-sm`}>
           {badge}
         </span>
       )}
@@ -225,7 +244,7 @@ const CompactActionCard: React.FC<CompactActionCardProps> = ({
             {description}
           </p>
         </div>
-        <svg className="w-4 h-4 text-[var(--vb-text-muted)] group-hover:text-[var(--vb-accent)] transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`w-4 h-4 text-[var(--vb-text-muted)] group-hover:text-[var(--vb-accent)] transition-colors shrink-0 ${isHebrew ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </div>

@@ -77,7 +77,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
   subject = "english",
 }) => {
   const { language } = useLanguage();
-  const t = teacherDashboardT[language];
+  // Hebrew classes belong to VocaHebrew — force the card chrome to
+  // Hebrew copy so a teacher with English UI still sees Hebrew on
+  // their VocaHebrew classes (matches the unified dashboard rule).
+  const effectiveLanguage = subject === "hebrew" ? "he" : language;
+  const t = teacherDashboardT[effectiveLanguage];
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const showAssignments = openDropdownClassId === code;

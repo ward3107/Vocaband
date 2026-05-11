@@ -28,6 +28,11 @@ export interface DisplayWord {
   /** What to show as the supporting line (translation or alt form).
    *  English: word.hebrew.  Hebrew: lemma.translationEn. */
   secondary: string;
+  /** A third translation when present.  English: word.arabic.
+   *  Hebrew: lemma.translationAr.  Optional because not every row
+   *  carries it (Russian fallback omitted intentionally — the few
+   *  callers that need it can read source). */
+  tertiary?: string;
   /** The underlying source row, in case a caller needs more fields. */
   source: { kind: "english"; word: Word } | { kind: "hebrew"; lemma: HebrewLemma };
 }
@@ -52,6 +57,7 @@ export function lookupDisplayWord(
       id: lemma.id,
       primary: lemma.lemmaNiqqud,
       secondary: lemma.translationEn,
+      tertiary: lemma.translationAr,
       source: { kind: "hebrew", lemma },
     };
   }
@@ -61,6 +67,7 @@ export function lookupDisplayWord(
     id: word.id,
     primary: word.english,
     secondary: word.hebrew,
+    tertiary: word.arabic,
     source: { kind: "english", word },
   };
 }
@@ -73,4 +80,28 @@ export function lookupDisplayWord(
 export function getDisplayLabel(id: number, subject: VocaId): string {
   const found = lookupDisplayWord(id, subject);
   return found?.primary ?? `#${id}`;
+}
+
+/**
+ * Build a per-wordId subject map from a list of assignments.  Used by
+ * gradebook + analytics + classroom views where a single student has
+ * progress across both English and Hebrew assignments — the same
+ * wordId could in principle exist in both corpora (the id spaces are
+ * disjoint by convention but not by constraint).  We tag each id with
+ * its source assignment's subject so per-row lookups know which corpus
+ * to read from.
+ *
+ * Last write wins on collision.  Defaults each assignment's subject
+ * to 'english' if the column is null (legacy rows pre-migration
+ * 20260507204614_voca_subject_flags).
+ */
+export function buildWordIdSubjectMap(
+  assignments: ReadonlyArray<{ wordIds: readonly number[]; subject?: VocaId }>,
+): Map<number, VocaId> {
+  const m = new Map<number, VocaId>();
+  for (const a of assignments) {
+    const subj: VocaId = a.subject ?? "english";
+    for (const id of a.wordIds) m.set(id, subj);
+  }
+  return m;
 }

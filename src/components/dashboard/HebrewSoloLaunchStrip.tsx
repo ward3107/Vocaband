@@ -39,32 +39,32 @@ export default function HebrewSoloLaunchStrip({
   const tiles: readonly Tile[] = [
     {
       emoji: "נִ",
-      title: "Niqqud Mode",
-      blurb: "Pick the correct vocalization · grades 3–9 · 10 rounds",
+      title: "מצב ניקוד",
+      blurb: "בחרו את הניקוד הנכון · כיתות ג–ט · 10 סיבובים",
       gradient: "from-amber-400 via-orange-500 to-rose-500",
       shadow: "shadow-orange-500/20",
       onLaunch: launches.niqqud,
     },
     {
       emoji: "ש",
-      title: "Shoresh Hunt",
-      blurb: "Find the 3 root letters · grades 5–9 · 10 rounds",
+      title: "ציד שורש",
+      blurb: "מצאו את שלוש אותיות השורש · כיתות ה–ט · 10 סיבובים",
       gradient: "from-emerald-500 via-teal-500 to-cyan-600",
       shadow: "shadow-emerald-500/20",
       onLaunch: launches.shoresh,
     },
     {
       emoji: "↔",
-      title: "Synonym Match",
-      blurb: "Pair words by meaning · grades 4–9 · 10 rounds",
+      title: "התאמת מילים נרדפות",
+      blurb: "התאימו מילים לפי משמעות · כיתות ד–ט · 10 סיבובים",
       gradient: "from-fuchsia-500 via-pink-500 to-rose-600",
       shadow: "shadow-fuchsia-500/20",
       onLaunch: launches.synonym,
     },
     {
       emoji: "🎧",
-      title: "Listening Mode",
-      blurb: "Hear it, pick the niqqud · grades 3–9 · 10 rounds",
+      title: "מצב האזנה",
+      blurb: "שמעו ובחרו את הניקוד · כיתות ג–ט · 10 סיבובים",
       gradient: "from-violet-500 via-indigo-500 to-blue-600",
       shadow: "shadow-indigo-500/20",
       onLaunch: launches.listening,
@@ -72,12 +72,12 @@ export default function HebrewSoloLaunchStrip({
   ];
 
   return (
-    <div className="mb-8">
+    <div className="mb-8" dir="rtl">
       <p
-        className="text-[10px] font-black tracking-[0.25em] uppercase mb-3"
+        className="text-[10px] font-black tracking-[0.25em] mb-3"
         style={{ color: "var(--vb-accent)" }}
       >
-        Solo launch · VocaHebrew
+        השקה עצמאית · VocaHebrew
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {tiles.map((tile) => (
@@ -100,8 +100,8 @@ export default function HebrewSoloLaunchStrip({
               <p className="text-white/85 font-bold text-xs sm:text-sm mb-4">
                 {tile.blurb}
               </p>
-              <span className="inline-flex items-center gap-1 text-[11px] font-black tracking-widest uppercase">
-                Play <span aria-hidden>→</span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-black tracking-widest">
+                שחקו <span aria-hidden>←</span>
               </span>
             </div>
           </motion.button>

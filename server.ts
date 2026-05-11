@@ -1569,6 +1569,12 @@ ${JSON.stringify(validWords)}`;
       // mislabelling.
       const mimeType = req.file.mimetype || "image/jpeg";
 
+      // Optional `lang` form field switches the extraction prompt.
+      // Default "en" preserves the existing English-only behaviour
+      // for every existing caller. "he" extracts Hebrew tokens for
+      // VocaHebrew assignment OCR.
+      const lang = (req.body?.lang === "he" ? "he" : "en") as "en" | "he";
+
       // Prompt tuned to minimize hallucinations on mobile photos AND
       // preserve multi-word phrases as single entries. The old version
       // implicitly treated every token as a single word, so teachers
@@ -1580,7 +1586,7 @@ ${JSON.stringify(validWords)}`;
       //   2. Keep phrases together: idioms, phrasal verbs, compound
       //      nouns, fixed expressions — whatever reads as a single
       //      unit on the page.
-      const prompt = `Extract English vocabulary items from this image. Return ONLY a JSON array of lowercase strings, nothing else. Example: ["apple","turn on","ice cream","look forward to"]
+      const englishPrompt = `Extract English vocabulary items from this image. Return ONLY a JSON array of lowercase strings, nothing else. Example: ["apple","turn on","ice cream","look forward to"]
 
 Each array entry is ONE vocabulary item, which may be a single word OR a multi-word phrase. Preserve phrases intact — do not split them.
 
@@ -1608,6 +1614,27 @@ Strict quality rules:
 - Skip numbers, symbols, and non-English text (Hebrew, Arabic, etc.)
 - If no English items are confidently readable, return []`;
 
+      // Hebrew prompt: extract niqqud-stripped lemmas (the consonant-only
+      // form). The wizard's matcher does its own niqqud normalization
+      // against HEBREW_LEMMAS by lemmaPlain, so we don't ask Gemini to
+      // add niqqud (which it does poorly anyway — Dicta-Nakdan is the
+      // right tool for that, run later in the pipeline).
+      const hebrewPrompt = `Extract Hebrew vocabulary items from this image. Return ONLY a JSON array of strings, nothing else. Example: ["ספר","תלמיד","בית ספר"]
+
+Each entry is one Hebrew lemma — usually a single word, occasionally a compound noun (e.g. "בית ספר", "כיתת לימוד") that reads as one unit on the page.
+
+Quality rules:
+- Only include items you can read with high confidence
+- Strip niqqud (vowel marks) — return consonant-only forms
+- If a word appears with niqqud, still return the consonant-only form
+- Skip Latin letters, digits, punctuation, and non-Hebrew text (English, Arabic, etc.)
+- Remove exact duplicates
+- If blurry, cropped, or ambiguous → OMIT
+- NEVER invent or autocomplete words that aren't visibly present
+- If no Hebrew items are confidently readable, return []`;
+
+      const prompt = lang === "he" ? hebrewPrompt : englishPrompt;
+
       const result = await model.generateContent([
         prompt,
         {
@@ -1624,33 +1651,39 @@ Strict quality rules:
       // Entries may be multi-word phrases ("turn on", "ice cream") so
       // we preserve inner whitespace — only collapse runs of spaces
       // and trim the ends.
+      // Hebrew skips lowercase normalization (Hebrew has no case).
       let words: string[] = [];
       try {
         const cleaned = responseText.replace(/```json?\s*|\s*```/g, "").trim();
         const parsed = JSON.parse(cleaned);
         if (Array.isArray(parsed)) {
           words = parsed
-            .filter((w: unknown): w is string => typeof w === "string" && w.trim().length >= 2)
-            .map((w: string) => w.toLowerCase().replace(/\s+/g, " ").trim());
+            .filter((w: unknown): w is string => typeof w === "string" && w.trim().length >= 1)
+            .map((w: string) => {
+              const collapsed = w.replace(/\s+/g, " ").trim();
+              return lang === "he" ? collapsed : collapsed.toLowerCase();
+            });
         }
       } catch {
         // Fallback: Gemini didn't return valid JSON. Split on commas +
         // newlines (the natural item separators), NOT whitespace, so
-        // phrases stay together. Strip surrounding brackets/quotes, then
-        // keep only tokens that look like English text (letters + spaces
-        // + hyphens + apostrophes for contractions).
+        // phrases stay together. The token filter is per-language —
+        // Hebrew uses the U+0590-U+05FF Unicode block.
+        const HEBREW_TOKEN_RE = /^[֐-׿][֐-׿ '\-]{0,}[֐-׿]$/;
+        const ENGLISH_TOKEN_RE = /^[a-z][a-z '\-]{1,}[a-z]$/i;
         words = responseText
           .replace(/[\[\]"`]/g, "")
           .split(/[,\n\r]+/)
-          .map(s => s.trim().toLowerCase())
-          .filter(s => /^[a-z][a-z '\-]{1,}[a-z]$/i.test(s));
+          .map(s => (lang === "he" ? s.trim() : s.trim().toLowerCase()))
+          .filter(s => (lang === "he" ? HEBREW_TOKEN_RE : ENGLISH_TOKEN_RE).test(s));
       }
 
-      // Case-insensitive dedup that keeps the first occurrence's casing.
+      // Dedup: case-insensitive for English (book == Book), exact for
+      // Hebrew (no case).
       const seen = new Set<string>();
       const uniqueWords: string[] = [];
       for (const w of words) {
-        const key = w.toLowerCase();
+        const key = lang === "he" ? w : w.toLowerCase();
         if (!seen.has(key)) {
           seen.add(key);
           uniqueWords.push(w);
@@ -1658,7 +1691,7 @@ Strict quality rules:
       }
 
       const sizeKB = Math.round(req.file.size / 1024);
-      console.log(`[OCR] uid=${auth.uid}: Gemini Flash found ${uniqueWords.length} English words (image: ${sizeKB} KB, ${mimeType})`);
+      console.log(`[OCR] uid=${auth.uid} lang=${lang}: Gemini Flash found ${uniqueWords.length} ${lang === "he" ? "Hebrew" : "English"} items (image: ${sizeKB} KB, ${mimeType})`);
 
       res.json({
         words: uniqueWords,

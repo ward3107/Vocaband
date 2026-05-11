@@ -39,3 +39,7 @@ tmp/
 tmp/
 
 temp-audio/
+
+# Lemma generator artefacts (review-only, merged into vocabulary-hebrew.ts by hand)
+.cache/hebrew-lemmas/
+src/data/vocabulary-hebrew.generated.ts

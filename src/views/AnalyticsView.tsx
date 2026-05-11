@@ -16,7 +16,11 @@ import TopAppBar from "../components/TopAppBar";
 import TeacherRewardModal from "../components/dashboard/TeacherRewardModal";
 import ToastList, { type Toast } from "../components/dashboard/ToastList";
 import { ClassPatternsSection } from "../components/analytics/ClassPatternsSection";
-import { ALL_WORDS } from "../data/vocabulary";
+import {
+  buildWordIdSubjectMap,
+  lookupDisplayWord,
+  type DisplayWord,
+} from "../data/wordLookup";
 import {
   supabase,
   type ProgressData,
@@ -81,6 +85,14 @@ export default function AnalyticsView({
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
   };
 
+  // Map of wordId → assignment subject for subject-aware lookups.
+  // Without this, Hebrew lemma ids would resolve against ALL_WORDS
+  // (English) and rows would render with empty primary/secondary text.
+  const wordIdSubjectMap = useMemo(
+    () => buildWordIdSubjectMap(teacherAssignments),
+    [teacherAssignments],
+  );
+
   // Per-class analytics
   const classAnalytics = useMemo(() => {
     const analytics: Map<string, {
@@ -88,7 +100,7 @@ export default function AnalyticsView({
       avgScore: number;
       totalAttempts: number;
       strugglingCount: number;
-      topMistakes: Array<{ wordId: number; count: number; word: typeof ALL_WORDS[number] }>;
+      topMistakes: Array<{ wordId: number; count: number; word: DisplayWord }>;
       bestMode: string;
       modeCounts: Record<string, number>;
       strugglingStudents: Array<{
@@ -147,12 +159,12 @@ export default function AnalyticsView({
       const topMistakes = Object.entries(mistakeCounts)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 8)
-        .map(([wordId, count]) => ({
-          wordId: parseInt(wordId),
-          count,
-          word: ALL_WORDS.find(w => w.id === parseInt(wordId)),
-        }))
-        .filter(m => m.word !== undefined) as Array<{ wordId: number; count: number; word: typeof ALL_WORDS[number] }>;
+        .map(([wordId, count]) => {
+          const id = parseInt(wordId);
+          const word = lookupDisplayWord(id, wordIdSubjectMap.get(id) ?? "english");
+          return word ? { wordId: id, count, word } : null;
+        })
+        .filter((m): m is { wordId: number; count: number; word: DisplayWord } => m !== null);
 
       // Best mode (most plays with high scores)
       const modeScores: Map<string, { total: number; count: number }> = new Map();
@@ -242,12 +254,12 @@ export default function AnalyticsView({
         const topMistakes = Object.entries(allMistakes)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 8)
-          .map(([wordId, count]) => ({
-            wordId: parseInt(wordId),
-            count,
-            word: ALL_WORDS.find(w => w.id === parseInt(wordId)),
-          }))
-          .filter(m => m.word !== undefined) as Array<{ wordId: number; count: number; word: typeof ALL_WORDS[number] }>;
+          .map(([wordId, count]) => {
+            const id = parseInt(wordId);
+            const word = lookupDisplayWord(id, wordIdSubjectMap.get(id) ?? "english");
+            return word ? { wordId: id, count, word } : null;
+          })
+          .filter((m): m is { wordId: number; count: number; word: DisplayWord } => m !== null);
 
         // Find best mode
         let bestMode = "flashcards";
@@ -636,7 +648,7 @@ export default function AnalyticsView({
                               </div>
 
                               <div className="flex justify-between items-start mb-2 pr-6">
-                                <p className={`font-bold ${isSelected ? 'text-white' : 'text-[var(--vb-text-primary)]'}`}>{word.english}</p>
+                                <p className={`font-bold ${isSelected ? 'text-white' : 'text-[var(--vb-text-primary)]'}`}>{word.primary}</p>
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                                   isSelected
                                     ? 'bg-rose-600 text-white'
@@ -646,9 +658,9 @@ export default function AnalyticsView({
                                 </span>
                               </div>
                               <div className={`flex gap-2 text-sm ${isSelected ? 'text-rose-100' : 'text-[var(--vb-text-muted)]'}`}>
-                                {word.hebrew && <span dir="rtl">{word.hebrew}</span>}
-                                {word.hebrew && word.arabic && <span>•</span>}
-                                {word.arabic && <span dir="rtl">{word.arabic}</span>}
+                                {word.secondary && <span dir="rtl">{word.secondary}</span>}
+                                {word.secondary && word.tertiary && <span>•</span>}
+                                {word.tertiary && <span dir="rtl">{word.tertiary}</span>}
                               </div>
                             </button>
                           );
@@ -771,13 +783,12 @@ export default function AnalyticsView({
         const topMistakes = Object.entries(mistakeCounts)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 5)
-          .map(([wordId, count]) => ({ wordId: parseInt(wordId), count }))
-          .map(({ wordId, count }) => ({
-            wordId,
-            count,
-            word: ALL_WORDS.find(w => w.id === wordId),
-          }))
-          .filter(m => m.word !== undefined);
+          .map(([wordId, count]) => {
+            const id = parseInt(wordId);
+            const word = lookupDisplayWord(id, wordIdSubjectMap.get(id) ?? "english");
+            return word ? { wordId: id, count, word } : null;
+          })
+          .filter((m): m is { wordId: number; count: number; word: DisplayWord } => m !== null);
 
         const avatar = studentScores[0]?.avatar || '🦊';
 
@@ -818,8 +829,8 @@ export default function AnalyticsView({
                     {topMistakes.map(({ word, count }) => (
                       <div key={word.id} className="bg-[var(--vb-surface)] p-3 rounded-xl flex justify-between items-center">
                         <div>
-                          <p className="font-bold text-[var(--vb-text-primary)]">{word.english}</p>
-                          <p className="text-[var(--vb-text-muted)] text-sm">{word.hebrew || ''}</p>
+                          <p className="font-bold text-[var(--vb-text-primary)]">{word.primary}</p>
+                          <p className="text-[var(--vb-text-muted)] text-sm">{word.secondary || ''}</p>
                         </div>
                         <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-sm font-bold">{count}×</span>
                       </div>
@@ -892,11 +903,14 @@ export default function AnalyticsView({
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
                   {selectedScore.mistakes.map((wordId, idx) => {
-                    const word = ALL_WORDS.find(w => w.id === wordId);
+                    const word = lookupDisplayWord(
+                      wordId,
+                      wordIdSubjectMap.get(wordId) ?? "english",
+                    );
                     return (
                       <div key={idx} className="bg-rose-50 p-3 rounded-xl border border-rose-200">
-                        <p className="font-bold text-[var(--vb-text-primary)]">{word?.english || 'Unknown'}</p>
-                        <p className="text-[var(--vb-text-muted)] text-sm">{word?.hebrew || ''}</p>
+                        <p className="font-bold text-[var(--vb-text-primary)]">{word?.primary || 'Unknown'}</p>
+                        <p className="text-[var(--vb-text-muted)] text-sm">{word?.secondary || ''}</p>
                       </div>
                     );
                   })}

@@ -51,7 +51,11 @@ const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginVi
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const ClassShowView = lazy(() => import("./views/ClassShowView"));
+const HebrewClassShowView = lazy(() => import("./views/HebrewClassShowView"));
 const WorksheetView = lazy(() => import("./views/WorksheetView"));
+const HebrewWorksheetView = lazy(() => import("./views/HebrewWorksheetView"));
+const HebrewComingSoonView = lazy(() => import("./views/HebrewComingSoonView"));
+const HebrewQuickPlaySetupView = lazy(() => import("./views/HebrewQuickPlaySetupView"));
 const VocabagrutShell = lazy(() => import("./features/vocabagrut/VocabagrutShell"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
 const LiveChallengeClassSelectView = lazy(() => import("./views/LiveChallengeClassSelectView"));
@@ -2828,22 +2832,17 @@ export default function App() {
               touchAction: "manipulation",
               WebkitTapHighlightColor: "transparent",
             }}
-            className="fixed top-3 right-3 z-50 px-3 py-1.5 rounded-full bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-black tracking-widest uppercase shadow-lg shadow-indigo-500/30 hover:bg-indigo-600 active:scale-95 transition"
-            title="Switch to another Voca"
+            className={`fixed top-3 ${activeVoca === "hebrew" ? "left-3" : "right-3"} z-50 px-3 py-1.5 rounded-full bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-black tracking-widest shadow-lg shadow-indigo-500/30 hover:bg-indigo-600 active:scale-95 transition`}
+            title={activeVoca === "hebrew" ? "החלף ל-Voca אחר" : "Switch to another Voca"}
+            dir={activeVoca === "hebrew" ? "rtl" : undefined}
           >
-            🇬🇧 EN · Switch
+            {activeVoca === "hebrew" ? "🇮🇱 עב · החלף" : "🇬🇧 EN · SWITCH"}
           </button>
         )}
         <TeacherDashboardView
           user={user}
           setUser={setUser}
           subject={activeVoca ?? "english"}
-          hebrewLaunches={{
-            niqqud: () => setView("vocahebrew-niqqud"),
-            shoresh: () => setView("vocahebrew-shoresh"),
-            synonym: () => setView("vocahebrew-synonyms"),
-            listening: () => setView("vocahebrew-listening"),
-          }}
           consentModal={consentModal}
           exitConfirmModal={exitConfirmModal}
           ocrCropModal={ocrCropModal}
@@ -3294,6 +3293,25 @@ export default function App() {
   }
 
   if (view === "live-challenge" && selectedClass) {
+    // VocaHebrew has no Hebrew-native Live Challenge yet — the English
+    // socket session would surface English-only assignment data to the
+    // Hebrew teacher's podium. Real Hebrew Live Challenge needs Hebrew
+    // assignment data + Hebrew student-side play surface; until that
+    // ships, show the same coming-soon screen used by Quick Play.
+    if (selectedClass.subject === "hebrew") {
+      return (
+        <LazyWrapper loadingMessage="טוען…">
+          <HebrewComingSoonView
+            titleHe="אתגר חי"
+            descriptionHe="מצב כיתה חי עם לוח שיא בזמן אמת — בקרוב באוצר המילים העברי."
+            onBack={() => {
+              setIsLiveChallenge(false);
+              setView("teacher-dashboard");
+            }}
+          />
+        </LazyWrapper>
+      );
+    }
     return (
       <LazyWrapper loadingMessage="Loading live challenge...">
         <LiveChallengeView
@@ -3372,6 +3390,88 @@ export default function App() {
   }
 
   if (view === "quick-play-setup") {
+    // VocaHebrew gets a focused Hebrew-only Quick Play setup that
+    // surfaces HEBREW_LEMMAS via HEBREW_PACKS — never ALL_WORDS or
+    // TOPIC_PACKS. Gate on activeVoca (the dashboard's current
+    // subject) rather than selectedClass?.subject because Quick Play
+    // is launched without a class context.
+    //
+    // REQUIRES the 20260510_quick_play_subject migration:
+    //   - quick_play_sessions.subject column
+    //   - create_quick_play_session(p_subject text DEFAULT 'english')
+    // Without it, the RPC call below fails (unknown parameter) and the
+    // teacher sees a "Failed to create session" toast — Hebrew QP
+    // can't function until the migration is applied.
+    if (activeVoca === "hebrew") {
+      return (
+        <LazyWrapper loadingMessage="טוען…">
+          <HebrewQuickPlaySetupView
+            onBack={() => setView("teacher-dashboard")}
+            onOpenMonitor={() => setView("quick-play-teacher-monitor")}
+            onCreateSession={async (lemmaIds, modes, hebrewTitle) => {
+              const { data, error } = await supabase.rpc('create_quick_play_session', {
+                p_word_ids: lemmaIds.length > 0 ? lemmaIds : null,
+                p_custom_words: null,
+                p_allowed_modes: modes,
+                p_subject: 'hebrew',
+              });
+              if (error) {
+                showToast("Failed to create session: " + error.message, "error");
+                throw error;
+              }
+              const session = data as { id: string; session_code: string; allowed_modes?: string[] };
+              const effectiveAllowedModes = session.allowed_modes && session.allowed_modes.length > 0
+                ? session.allowed_modes
+                : modes;
+              // Project Hebrew lemmas into the Word shape the Quick
+              // Play monitor / resume state expects.  Same projection
+              // useQuickPlayUrlBootstrap uses on the student side, so
+              // both ends agree on what the session "words" look like.
+              // Dynamic import keeps the Hebrew corpus out of the
+              // English bundle — by the time we get here the
+              // HebrewQuickPlaySetupView chunk has already loaded it,
+              // so this resolves from cache.
+              const { HEBREW_LEMMAS } = await import("./data/vocabulary-hebrew");
+              const projectedWords = HEBREW_LEMMAS
+                .filter((l) => lemmaIds.includes(l.id))
+                .map((l) => ({
+                  id: l.id,
+                  english: l.translationEn,
+                  hebrew: l.lemmaNiqqud,
+                  arabic: l.translationAr,
+                  level: "Custom" as const,
+                }));
+              setQuickPlaySessionCode(session.session_code);
+              setQuickPlayActiveSession({
+                id: session.id,
+                sessionCode: session.session_code,
+                wordIds: lemmaIds,
+                words: projectedWords,
+                allowedModes: effectiveAllowedModes,
+              });
+              try {
+                sessionStorage.removeItem('vocaband_skip_restore');
+                localStorage.setItem('vocaband_quick_play_session', JSON.stringify({
+                  id: session.id,
+                  words: projectedWords,
+                  allowedModes: effectiveAllowedModes,
+                }));
+              } catch { /* quota exceeded — safe to ignore */ }
+              // Hebrew QP doesn't yet generate AI sentences — the 4
+              // wired Hebrew modes (niqqud, shoresh, synonym, listening)
+              // don't read sentences. Sentence Builder isn't in the
+              // Hebrew mode set, so skipping the AI generation step is
+              // correct, not a gap.
+              // Suppress the unused-param warning — `hebrewTitle` is
+              // accepted by the wizard for future use (when we add a
+              // sessions.title column) but not persisted today.
+              void hebrewTitle;
+              return session.session_code;
+            }}
+          />
+        </LazyWrapper>
+      );
+    }
     return (
       <LazyWrapper loadingMessage="Loading quick play setup...">
       <QuickPlaySetupView
@@ -3494,6 +3594,31 @@ export default function App() {
 
 
   if (view === "class-show") {
+    // Hebrew classes get a focused 2-mode projector view
+    // (HebrewClassShowView). The English ClassShowView is shaped
+    // around Word + 6 English-specific modes; the subject-aware fold
+    // is a future PR — see task 12 in the parity memory.
+    //
+    // Two paths land here: a teacher-selected class (selectedClass set)
+    // OR the dashboard's "Class Show" tile (selectedClass may be stale).
+    // Use activeVoca as the second signal so a Hebrew-tab teacher can't
+    // fall through to the English picker just because no class is
+    // currently selected.
+    if (selectedClass?.subject === "hebrew" || activeVoca === "hebrew") {
+      return (
+        <LazyWrapper loadingMessage="טוען מצב הקרנה…">
+          <HebrewClassShowView
+            initialLemmaIds={classShowAssignment?.wordIds}
+            className={classShowAssignment?.className ?? selectedClass?.name ?? null}
+            onExit={() => {
+              setClassShowAssignment(null);
+              setView("teacher-dashboard");
+            }}
+          />
+        </LazyWrapper>
+      );
+    }
+
     // Build the word-source list: optional pre-filled assignment.
     // The setup panel selects index 0 automatically; if an assignment
     // is pre-filled, it goes first.
@@ -3539,6 +3664,31 @@ export default function App() {
   }
 
   if (view === "worksheet") {
+    // Hebrew classes get a focused single-template worksheet view
+    // (HebrewWorksheetView). The full English builder isn't subject-aware
+    // yet — task 10 in the parity memory tracks the eventual fold so
+    // both subjects share one component.
+    //
+    // Gate on activeVoca too: the dashboard's "Worksheet" tile fires
+    // setView("worksheet") without setting selectedClass, so a Hebrew-tab
+    // teacher with no class currently selected was falling through to
+    // the English builder + ALL_WORDS / TOPIC_PACKS.
+    if (selectedClass?.subject === "hebrew" || activeVoca === "hebrew") {
+      return (
+        <LazyWrapper loadingMessage="טוען בונה דפי עבודה…">
+          <HebrewWorksheetView
+            initialLemmaIds={worksheetAssignment?.wordIds}
+            initialTitle={worksheetAssignment?.title}
+            className={worksheetAssignment?.className ?? selectedClass?.name ?? null}
+            onBack={() => {
+              setWorksheetAssignment(null);
+              setView("teacher-dashboard");
+            }}
+          />
+        </LazyWrapper>
+      );
+    }
+
     const sources: { label: string; description?: string; words: Word[] }[] = [];
     if (worksheetAssignment) {
       const knownWords = ALL_WORDS.filter(w => worksheetAssignment.wordIds.includes(w.id));
@@ -3580,6 +3730,22 @@ export default function App() {
   }
 
   if (view === "vocabagrut" && user) {
+    // Vocabagrut = Israeli English-Bagrut mock exam. There is no Hebrew
+    // analog (Hebrew literature has its own Bagrut, structured nothing
+    // like the English one), so Hebrew-tab teachers shouldn't see it at
+    // all. The TeacherQuickActions tile is also hidden when isHebrew —
+    // this guard catches direct navigation (URL state restore, etc.).
+    if (activeVoca === "hebrew") {
+      return (
+        <LazyWrapper loadingMessage="טוען…">
+          <HebrewComingSoonView
+            titleHe="Vocabagrut"
+            descriptionHe="מבחן מתכונת בסגנון בגרות זמין כרגע רק במסלול האנגלית."
+            onBack={() => setView("teacher-dashboard")}
+          />
+        </LazyWrapper>
+      );
+    }
     return (
       <LazyWrapper loadingMessage="Loading Vocabagrut…">
         <VocabagrutShell
@@ -3651,6 +3817,21 @@ export default function App() {
   }
 
   if (view === "live-challenge-class-select") {
+    // Hebrew teachers landing on the class-select would otherwise see a
+    // picker that leads into the (English-only) socket session. Mirror
+    // the guard at the live-challenge route. Gated on activeVoca because
+    // no class has been selected yet at this stage.
+    if (activeVoca === "hebrew") {
+      return (
+        <LazyWrapper loadingMessage="טוען…">
+          <HebrewComingSoonView
+            titleHe="אתגר חי"
+            descriptionHe="מצב כיתה חי עם לוח שיא בזמן אמת — בקרוב באוצר המילים העברי."
+            onBack={() => setView("teacher-dashboard")}
+          />
+        </LazyWrapper>
+      );
+    }
     return (
       <LazyWrapper loadingMessage="Loading classes...">
         <LiveChallengeClassSelectView
