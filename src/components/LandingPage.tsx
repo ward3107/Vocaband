@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
+import { teacherResourcesT } from "../locales/student/teacher-resources";
 import {
   Rocket,
   Gamepad2,
@@ -53,6 +54,7 @@ import CssAnimation from "./CssAnimation";
 import SubjectRequestModal from "./SubjectRequestModal";
 import FeatureRequestModal from "./FeatureRequestModal";
 import SchoolInquiryModal from "./SchoolInquiryModal";
+import TeacherResourcesSection from "./TeacherResourcesSection";
 
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => void;
@@ -65,6 +67,7 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = landingPageT[language];
+  const tr = teacherResourcesT[language];
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
@@ -2309,6 +2312,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             family — no contrast breaks.
           ═══════════════════════════════════════════════════════════
         */}
+        {/* Teacher resources — card grid linking to the PDFs in /public/docs
+            and the existing FAQ page.  Rendered just above the footer so
+            teachers evaluating the app can pick up the Teacher Guide /
+            Parent Letter / Privacy summary without leaving the landing
+            page.  The same section is rendered on /teacher-login under
+            the auth card so it is discoverable from both entry points. */}
+        <TeacherResourcesSection variant="hero" onOpenFaq={() => onNavigate("faq")} />
+
         <footer className="pt-16 pb-4 md:pt-24 md:pb-6 px-4 md:px-6 relative bg-slate-950 mt-8 md:mt-12">
           <div className="max-w-7xl mx-auto">
 
@@ -2509,6 +2520,56 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     >
                       <FileText size={14} aria-hidden="true" />
                       {t.footerSchoolPdfAr}
+                    </a>
+                  </motion.li>
+
+                  {/* Teacher / parent PDFs — produced by
+                      scripts/teacher-pdfs/build.mjs.  Each link picks the
+                      current-language file (e.g. /docs/teacher-guide-he.pdf)
+                      so the footer mirrors the user's locale without a
+                      separate language selector here. */}
+                  <motion.li variants={footerItemVariant} custom={17}>
+                    <a
+                      href={`/docs/teacher-guide-${language}.pdf`}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <BookOpen size={14} aria-hidden="true" />
+                      {tr.teacherGuideTitle}
+                    </a>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={18}>
+                    <a
+                      href={`/docs/quick-start-${language}.pdf`}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <Zap size={14} aria-hidden="true" />
+                      {tr.quickStartTitle}
+                    </a>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={19}>
+                    <a
+                      href={`/docs/student-guide-${language}.pdf`}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <Gamepad2 size={14} aria-hidden="true" />
+                      {tr.studentGuideTitle}
+                    </a>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={20}>
+                    <a
+                      href={`/docs/parent-letter-${language}.pdf`}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <Mail size={14} aria-hidden="true" />
+                      {tr.parentLetterTitle}
                     </a>
                   </motion.li>
                 </ul>
