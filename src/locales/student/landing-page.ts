@@ -263,6 +263,8 @@ export interface LandingPageT {
   footerFeatureRequest: string;
   footerFreeResources: string;
   footerSchoolDeck: string;
+  footerSchoolPdfHe: string;
+  footerSchoolPdfAr: string;
   footerStatus: string;
   footerCopyright: (year: number) => string;
 }
@@ -480,6 +482,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerFeatureRequest: "Request a Feature",
     footerFreeResources: "Free Resources",
     footerSchoolDeck: "School Pitch Deck",
+    footerSchoolPdfHe: "PDF Hebrew for School",
+    footerSchoolPdfAr: "PDF Arabic for School",
     footerStatus: "System Status",
     footerCopyright: (year) =>
       `© ${year} Vocaband. Made with 💙 for learners everywhere.`,
@@ -697,6 +701,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerFeatureRequest: "הצע פיצ'ר חדש",
     footerFreeResources: "משאבים בחינם",
     footerSchoolDeck: "מצגת מכירות לבתי ספר",
+    footerSchoolPdfHe: "PDF עברית לבית הספר",
+    footerSchoolPdfAr: "PDF ערבית לבית הספר",
     footerStatus: "סטטוס מערכת",
     footerCopyright: (year) =>
       `© ${year} Vocaband. נוצר עם 💙 ללומדים בכל העולם.`,
@@ -914,6 +920,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerFeatureRequest: "اقترح ميزة جديدة",
     footerFreeResources: "موارد مجانية",
     footerSchoolDeck: "عرض المبيعات للمدارس",
+    footerSchoolPdfHe: "PDF بالعبرية للمدرسة",
+    footerSchoolPdfAr: "PDF بالعربية للمدرسة",
     footerStatus: "حالة النظام",
     footerCopyright: (year) =>
       `© ${year} Vocaband. صُنع بحب 💙 للمتعلمين في كل مكان.`,
