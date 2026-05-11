@@ -1,6 +1,6 @@
 # School-visit presentation PDFs
 
-Two 8-page A4 PDFs designed for WhatsApp sharing with school staff:
+Two 7-page A4 PDFs designed for WhatsApp sharing with school staff:
 
 - `dist-presentation/Vocaband-Presentation-HE.pdf` — Hebrew (indigo/violet/fuchsia)
 - `dist-presentation/Vocaband-Presentation-AR.pdf` — Arabic (teal/violet/fuchsia)
@@ -12,8 +12,10 @@ Page flow:
 4. For teachers — OCR camera, Quick Play, auto-grading + quote
 5. For principals — admin overview + security & WCAG compliance
 6. Roadmap — AI Lesson Builder, Hebrew/Arabic L2, science vocab
-7. Pricing — Free / Pro ₪29 / School ₪10–12K + Founding-100 offer
-8. Contact + 3-step start + CTA
+7. Contact + 3-step start + CTA
+
+Pricing is intentionally **excluded** from these decks — those conversations
+happen in person after the demo.
 
 ## Regenerate
 
