@@ -1,4 +1,24 @@
 import "dotenv/config";
+import * as Sentry from "@sentry/node";
+
+// Sentry init — must run BEFORE other modules so the SDK can patch them.
+// Stays disabled in dev (no DSN set locally). Tracing is off to stay
+// within the free-tier 10k events/month budget; flip tracesSampleRate
+// to 0.1 if we want performance insight later.
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  enabled: !!process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV ?? "development",
+  tracesSampleRate: 0,
+  // Drop noisy expected errors — these aren't bugs.
+  ignoreErrors: [
+    "ECONNRESET",
+    "AbortError",
+    /^Request aborted/,
+    /^socket hang up/,
+  ],
+});
+
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -3074,6 +3094,11 @@ Important notes:
   // Stack always logged server-side for debugging; never sent to client.
   // The 4-arg signature is required by Express to register as an error
   // middleware; the unused `next` param is intentional.
+  // Sentry's Express error handler — runs BEFORE our custom handler so
+  // unhandled exceptions get reported, then our handler returns the
+  // 500 response. No-op when SENTRY_DSN isn't set (dev / staging).
+  Sentry.setupExpressErrorHandler(app);
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     // SECURITY: pass req.method and req.path as separate arguments
