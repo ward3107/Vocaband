@@ -3,402 +3,685 @@
 <head>
 <meta charset="utf-8">
 <title>Vocaband — מצגת לבתי ספר</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --indigo: #4f46e5;
+    --violet: #7c3aed;
+    --fuchsia: #c026d3;
+    --rose: #e11d48;
+    --amber: #d97706;
+    --emerald: #059669;
+    --ink: #1f1147;
+    --muted: #6b6792;
+    --bg-soft: #faf7ff;
+  }
   html, body {
-    font-family: "Heebo", "Assistant", "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial, sans-serif;
-    color: #1f1147;
+    font-family: "Heebo", -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial, sans-serif;
+    color: var(--ink);
     background: #fff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  body { font-size: 11.5pt; line-height: 1.55; }
+  body { font-size: 11pt; line-height: 1.55; }
   .page {
     width: 210mm;
     min-height: 297mm;
-    padding: 18mm 16mm 16mm 16mm;
+    padding: 16mm 14mm 12mm 14mm;
     page-break-after: always;
     position: relative;
     overflow: hidden;
   }
   .page:last-child { page-break-after: auto; }
 
-  /* ===== COVER ===== */
+  /* === COVER === */
   .cover {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 45%, #c026d3 100%);
+    background:
+      radial-gradient(circle at 80% 10%, rgba(236,72,153,.4), transparent 50%),
+      radial-gradient(circle at 10% 90%, rgba(124,58,237,.45), transparent 55%),
+      linear-gradient(135deg, #1e1b4b 0%, #4f46e5 45%, #c026d3 100%);
     color: #fff;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    padding: 28mm 22mm;
+  }
+  .cover .top-row {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    text-align: center;
-    padding: 0 18mm;
-  }
-  .cover::before {
-    content: "";
     position: absolute;
-    width: 420px; height: 420px;
-    background: radial-gradient(circle, rgba(255,255,255,.18), transparent 70%);
-    top: -120px; left: -120px;
-    border-radius: 50%;
+    top: 18mm; left: 22mm; right: 22mm;
   }
-  .cover::after {
-    content: "";
-    position: absolute;
-    width: 520px; height: 520px;
-    background: radial-gradient(circle, rgba(236,72,153,.35), transparent 70%);
-    bottom: -180px; right: -180px;
-    border-radius: 50%;
-  }
-  .cover .badge {
-    display: inline-block;
-    padding: 6px 14px;
+  .cover .logo-box {
     background: rgba(255,255,255,.15);
-    border: 1px solid rgba(255,255,255,.35);
-    border-radius: 999px;
-    font-size: 10pt;
-    letter-spacing: .04em;
-    margin-bottom: 32px;
-    z-index: 2;
-  }
-  .cover h1 {
-    font-size: 64pt;
-    font-weight: 900;
-    letter-spacing: -.02em;
-    margin-bottom: 8px;
-    z-index: 2;
-    text-shadow: 0 4px 24px rgba(0,0,0,.18);
-  }
-  .cover .tagline {
-    font-size: 20pt;
-    font-weight: 600;
-    opacity: .95;
-    margin-bottom: 28px;
-    z-index: 2;
-  }
-  .cover .subtitle {
-    font-size: 13pt;
-    opacity: .85;
-    max-width: 380px;
-    line-height: 1.6;
-    z-index: 2;
-  }
-  .cover .footer-cover {
-    position: absolute;
-    bottom: 22mm;
-    font-size: 10pt;
-    opacity: .8;
-    z-index: 2;
+    border: 1px solid rgba(255,255,255,.3);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    padding: 6px 14px;
+    font-weight: 800;
+    font-size: 11pt;
     letter-spacing: .05em;
   }
+  .cover .date-tag {
+    font-size: 10pt;
+    opacity: .7;
+    letter-spacing: .05em;
+  }
+  .cover h1 {
+    font-size: 92pt;
+    font-weight: 900;
+    letter-spacing: -.04em;
+    line-height: .95;
+    margin-bottom: 14px;
+    text-shadow: 0 8px 40px rgba(0,0,0,.25);
+  }
+  .cover .strap {
+    font-size: 22pt;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 24px;
+    max-width: 580px;
+  }
+  .cover .sub {
+    font-size: 13pt;
+    opacity: .85;
+    max-width: 520px;
+    line-height: 1.65;
+    margin-bottom: 40px;
+  }
+  .cover .pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .cover .pill {
+    padding: 8px 16px;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 999px;
+    font-size: 10.5pt;
+    font-weight: 600;
+  }
+  .cover .bottom {
+    position: absolute;
+    bottom: 18mm; left: 22mm; right: 22mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10.5pt;
+    opacity: .85;
+  }
+  .cover .bottom strong { font-weight: 800; letter-spacing: .03em; }
 
-  /* ===== CONTENT PAGES ===== */
-  .header-bar {
+  /* === STANDARD PAGE LAYOUT === */
+  .head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding-bottom: 10px;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
     border-bottom: 2px solid #ede9fe;
   }
-  .brand {
-    font-size: 14pt;
+  .brand-mini {
+    font-size: 13pt;
     font-weight: 900;
-    background: linear-gradient(135deg, #4f46e5, #c026d3);
+    background: linear-gradient(135deg, var(--indigo), var(--fuchsia));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-  .page-num { font-size: 10pt; color: #8b80b8; }
-
-  .section-num {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px; height: 44px;
-    background: linear-gradient(135deg, #4f46e5, #c026d3);
-    color: #fff;
-    border-radius: 14px;
-    font-weight: 900;
-    font-size: 18pt;
-    margin-left: 14px;
-    box-shadow: 0 6px 16px rgba(124,58,237,.28);
+  .page-num {
+    font-size: 9.5pt;
+    color: var(--muted);
+    letter-spacing: .1em;
+    font-weight: 600;
+  }
+  .eyebrow {
+    font-size: 10pt;
+    font-weight: 800;
+    letter-spacing: .15em;
+    color: var(--fuchsia);
+    margin-bottom: 6px;
+    text-transform: uppercase;
   }
   h2 {
-    display: flex;
-    align-items: center;
-    font-size: 22pt;
-    font-weight: 800;
-    color: #1f1147;
+    font-size: 26pt;
+    font-weight: 900;
+    color: var(--ink);
+    line-height: 1.1;
     margin-bottom: 18px;
+    letter-spacing: -.02em;
+  }
+  h2 .accent {
+    background: linear-gradient(135deg, var(--indigo), var(--fuchsia));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   h3 {
     font-size: 13pt;
     font-weight: 800;
-    color: #4f46e5;
-    margin: 14px 0 8px 0;
+    color: var(--indigo);
+    margin: 0 0 8px 0;
   }
-  p { margin-bottom: 8px; }
+  p { margin-bottom: 7px; color: #2b2150; }
+  strong { color: var(--indigo); font-weight: 800; }
+
+  /* === NUMBERS / STATS === */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 14px 0;
+  }
+  .stat {
+    padding: 18px 20px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #faf5ff, #fdf2f8);
+    border: 1px solid #f3e8ff;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat .num {
+    font-size: 38pt;
+    font-weight: 900;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--indigo), var(--fuchsia));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 4px;
+    letter-spacing: -.03em;
+  }
+  .stat .label {
+    font-size: 11pt;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .stat .sub-label {
+    font-size: 9.5pt;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .stat.amber { background: linear-gradient(135deg, #fffbeb, #fff7ed); border-color: #fde68a; }
+  .stat.amber .num { background: linear-gradient(135deg, #d97706, #e11d48); -webkit-background-clip: text; background-clip: text; }
+  .stat.emerald { background: linear-gradient(135deg, #ecfdf5, #f0fdfa); border-color: #a7f3d0; }
+  .stat.emerald .num { background: linear-gradient(135deg, #059669, var(--indigo)); -webkit-background-clip: text; background-clip: text; }
+  .stat.rose { background: linear-gradient(135deg, #fff1f2, #fdf2f8); border-color: #fbcfe8; }
+  .stat.rose .num { background: linear-gradient(135deg, #e11d48, var(--fuchsia)); -webkit-background-clip: text; background-clip: text; }
+
+  /* === CARDS === */
+  .card {
+    background: linear-gradient(135deg, #faf5ff, #fdf2f8);
+    border: 1px solid #f3e8ff;
+    border-radius: 18px;
+    padding: 16px 18px;
+    margin: 10px 0;
+  }
+  .card.amber { background: linear-gradient(135deg, #fffbeb, #fff7ed); border-color: #fde68a; }
+  .card.emerald { background: linear-gradient(135deg, #ecfdf5, #f0fdfa); border-color: #a7f3d0; }
+  .card.rose { background: linear-gradient(135deg, #fff1f2, #fdf2f8); border-color: #fbcfe8; }
+  .card.indigo { background: linear-gradient(135deg, #eef2ff, #f5f3ff); border-color: #c7d2fe; }
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13pt;
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+  .card-title .ico {
+    width: 32px; height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border-radius: 10px;
+    font-size: 16pt;
+    box-shadow: 0 2px 6px rgba(0,0,0,.04);
+  }
   ul { list-style: none; padding: 0; }
   li {
     position: relative;
-    padding-right: 22px;
-    margin-bottom: 7px;
+    padding-right: 20px;
+    margin-bottom: 6px;
+    font-size: 10.5pt;
+    line-height: 1.55;
   }
   li::before {
     content: "";
     position: absolute;
     right: 0;
     top: 9px;
-    width: 8px; height: 8px;
-    background: linear-gradient(135deg, #4f46e5, #c026d3);
+    width: 7px; height: 7px;
+    background: linear-gradient(135deg, var(--indigo), var(--fuchsia));
     border-radius: 50%;
   }
-  strong { color: #4f46e5; font-weight: 800; }
 
-  .card {
-    background: linear-gradient(135deg, #faf5ff, #fdf2f8);
-    border: 1px solid #f3e8ff;
-    border-radius: 16px;
-    padding: 16px 18px;
+  /* === GAME-MODE PILLS === */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .mode-pill {
+    background: #fff;
+    border: 1px solid #e9d5ff;
+    border-radius: 12px;
+    padding: 8px 10px;
+    font-size: 10pt;
+    font-weight: 600;
+    text-align: center;
+    color: var(--ink);
+  }
+  .mode-pill .em { font-size: 14pt; display: block; margin-bottom: 2px; }
+
+  /* === PRICING === */
+  .price-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
     margin: 12px 0;
   }
-  .card.amber {
-    background: linear-gradient(135deg, #fffbeb, #fff7ed);
-    border-color: #fde68a;
-  }
-  .card.emerald {
-    background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
-    border-color: #a7f3d0;
-  }
-  .card.rose {
-    background: linear-gradient(135deg, #fff1f2, #fdf2f8);
-    border-color: #fbcfe8;
-  }
-  .card-title {
-    font-size: 12pt;
-    font-weight: 800;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .card .ico {
-    width: 28px; height: 28px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255,255,255,.7);
-    border-radius: 8px;
-    font-size: 14pt;
-  }
-
-  /* cheat sheet */
-  .cheat {
-    margin-top: 14px;
+  .price-card {
     border-radius: 16px;
-    overflow: hidden;
+    padding: 16px 14px;
     border: 1px solid #ede9fe;
+    background: #fff;
   }
-  .cheat-row {
-    display: flex;
-    border-bottom: 1px solid #ede9fe;
-  }
-  .cheat-row:last-child { border-bottom: 0; }
-  .cheat-row > div {
-    padding: 10px 14px;
-    font-size: 11pt;
-  }
-  .cheat-row .label {
-    width: 30%;
-    font-weight: 800;
-    color: #4f46e5;
-    background: #faf5ff;
-  }
-  .cheat-row .val { flex: 1; }
-
-  .closing {
-    margin-top: 22px;
-    padding: 20px 22px;
-    background: linear-gradient(135deg, #4f46e5, #c026d3);
+  .price-card.featured {
+    background: linear-gradient(135deg, var(--indigo), var(--fuchsia));
     color: #fff;
-    border-radius: 18px;
-    text-align: center;
+    border: 0;
+    box-shadow: 0 8px 24px rgba(124,58,237,.25);
   }
-  .closing .big {
-    font-size: 18pt;
-    font-weight: 900;
+  .price-card .tier {
+    font-size: 10pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
     margin-bottom: 6px;
   }
-  .closing .small { font-size: 11pt; opacity: .92; }
+  .price-card.featured .tier { color: rgba(255,255,255,.85); }
+  .price-card .amt {
+    font-size: 22pt;
+    font-weight: 900;
+    letter-spacing: -.02em;
+  }
+  .price-card .per {
+    font-size: 10pt;
+    opacity: .75;
+    margin-bottom: 8px;
+  }
+  .price-card ul { font-size: 9.5pt; }
+  .price-card li::before { background: var(--indigo); }
+  .price-card.featured li::before { background: #fff; }
+  .price-card.featured li { color: rgba(255,255,255,.95); }
+  .price-card.featured strong { color: #fff9c4; }
+  .price-card .amt bdi { unicode-bidi: isolate; }
+
+  /* === CALL TO ACTION === */
+  .cta {
+    margin-top: 14px;
+    padding: 22px 24px;
+    background: linear-gradient(135deg, var(--indigo), var(--fuchsia));
+    color: #fff;
+    border-radius: 22px;
+    text-align: center;
+    box-shadow: 0 12px 32px rgba(124,58,237,.25);
+  }
+  .cta .big {
+    font-size: 22pt;
+    font-weight: 900;
+    margin-bottom: 6px;
+    letter-spacing: -.01em;
+  }
+  .cta .small {
+    font-size: 11pt;
+    opacity: .92;
+  }
 
   .footer {
     position: absolute;
-    bottom: 8mm;
-    right: 16mm; left: 16mm;
+    bottom: 7mm;
+    right: 14mm; left: 14mm;
     text-align: center;
     font-size: 9pt;
-    color: #8b80b8;
+    color: var(--muted);
+    padding-top: 5px;
     border-top: 1px solid #ede9fe;
-    padding-top: 6px;
+  }
+
+  /* === COMBO LIST === */
+  .check-list li { padding-right: 26px; }
+  .check-list li::before {
+    width: 16px; height: 16px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, var(--indigo), var(--fuchsia));
+    top: 4px;
+  }
+  .check-list li::after {
+    content: "✓";
+    position: absolute;
+    right: 3px; top: 1px;
+    color: #fff;
+    font-size: 11pt;
+    font-weight: 800;
+  }
+
+  /* === QUOTE === */
+  .quote {
+    background: #fff;
+    border-right: 4px solid var(--fuchsia);
+    padding: 14px 18px;
+    margin: 12px 0;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+  }
+  .quote .q {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--ink);
+    font-style: italic;
+    line-height: 1.5;
+  }
+  .quote .who {
+    font-size: 10pt;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* === ROADMAP === */
+  .roadmap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .road-item {
+    padding: 12px 14px;
+    background: #fff;
+    border: 1px dashed #d8b4fe;
+    border-radius: 12px;
+  }
+  .road-item .when {
+    font-size: 9.5pt;
+    font-weight: 800;
+    color: var(--fuchsia);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 3px;
+  }
+  .road-item .what {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: var(--ink);
   }
 </style>
 </head>
 <body>
 
-<!-- COVER -->
+<!-- PAGE 1 — COVER -->
 <section class="page cover">
-  <div class="badge">מצגת לבתי ספר • 2026</div>
+  <div class="top-row">
+    <div class="logo-box">VOCABAND</div>
+    <div class="date-tag">2026 • EDITION עברית</div>
+  </div>
   <h1>Vocaband</h1>
-  <div class="tagline">סוגרים את פער השפה. כיתה אחת בכל פעם.</div>
-  <div class="subtitle">פלטפורמת אוצר-מילים לבתי ספר בישראל — מותאמת לתוכנית משרד החינוך, עם תרגום לעברית ולערבית.</div>
-  <div class="footer-cover">www.vocaband.com</div>
+  <div class="strap">סוגרים את פער אוצר המילים.<br>כיתה אחת בכל פעם.</div>
+  <div class="sub">פלטפורמת למידה לבתי ספר בישראל — בנויה במיוחד למורי אנגלית, מותאמת לתוכנית משרד החינוך, ומדברת עברית, ערבית ורוסית.</div>
+  <div class="pills">
+    <div class="pill">6,482 מילים</div>
+    <div class="pill">15 מצבי משחק</div>
+    <div class="pill">WCAG 2.0 AA</div>
+    <div class="pill">GDPR + תיקון 13</div>
+  </div>
+  <div class="bottom">
+    <div><strong>www.vocaband.com</strong></div>
+    <div>מצגת לבית הספר • 5–7 דקות</div>
+  </div>
 </section>
 
-<!-- PAGE 1 — Problem -->
+<!-- PAGE 2 — NUMBERS + PROBLEM -->
 <section class="page">
-  <div class="header-bar"><div class="brand">Vocaband</div><div class="page-num">01 / 05</div></div>
-  <h2><span class="section-num">1</span>הבעיה — למה Vocaband קיים</h2>
-  <p>בשנים האחרונות אנחנו רואים פערי שפה משמעותיים אצל תלמידים ישראלים. אחרי הקורונה והמלחמה — הפער רק התרחב.</p>
-  <div class="card rose">
-    <div class="card-title"><span class="ico">⚠️</span> המציאות בשטח</div>
+  <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">02 / 08</div></div>
+  <div class="eyebrow">המספרים שמאחורי המוצר</div>
+  <h2>לא עוד אפליקציה — <span class="accent">מערכת שלמה</span></h2>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="num">6,482</div><div class="label">מילים מאוצר משרד החינוך</div><div class="sub-label">Set 1 (4,365) • Set 2 (789) • Set 3 (1,328)</div></div>
+    <div class="stat amber"><div class="num">15</div><div class="label">מצבי משחק שונים</div><div class="sub-label">תרגול בלי שעמום, אותן מילים</div></div>
+    <div class="stat emerald"><div class="num">4</div><div class="label">שפות נתמכות</div><div class="sub-label">אנגלית, עברית, ערבית, רוסית</div></div>
+    <div class="stat rose"><div class="num">100%</div><div class="label">WCAG 2.0 AA</div><div class="sub-label">38 קריטריונים — נגיש לכל תלמיד</div></div>
+  </div>
+
+  <div class="card rose" style="margin-top: 14px;">
+    <div class="card-title"><span class="ico">⚠️</span>הבעיה — לא נעלמת לבד</div>
     <ul>
       <li>תלמידי כיתה ט' מסיימים עם אוצר מילים של כיתה ו'.</li>
-      <li>פערים עצומים בתוך אותה כיתה — חלק קוראים שוטף, חלק עדיין מתקשים באותיות.</li>
-      <li>למורה אין זמן לתת תרגול מותאם אישית ל-30 תלמידים בו זמנית.</li>
+      <li>פערים עצומים בתוך אותה כיתה — חלק קוראים שוטף, חלק מתקשים באותיות.</li>
+      <li>למורה אין זמן לתת תרגול אישי ל-30 תלמידים בו זמנית.</li>
       <li>שיעורי בית של אוצר מילים נופלים בין הכיסאות — אין מי שיבדוק.</li>
     </ul>
   </div>
-  <div class="card">
-    <div class="card-title"><span class="ico">🎯</span> מה Vocaband פותר</div>
-    <p>כלי שמותאם לתוכנית הלימודים של משרד החינוך הישראלי (<strong>Set 1 / Set 2 / Set 3</strong>), עם תרגום מלא לעברית ולערבית — נבנה במיוחד לסביבה הישראלית, לא מתורגם מאפליקציה אמריקאית.</p>
-  </div>
+
   <div class="footer">Vocaband — vocabulary that fits Israeli classrooms</div>
 </section>
 
-<!-- PAGE 2 — Strengths -->
+<!-- PAGE 3 — FOR STUDENTS -->
 <section class="page">
-  <div class="header-bar"><div class="brand">Vocaband</div><div class="page-num">02 / 05</div></div>
-  <h2><span class="section-num">2</span>היתרונות — למה זה עובד</h2>
+  <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">03 / 08</div></div>
+  <div class="eyebrow">לתלמיד</div>
+  <h2>תרגול ש<span class="accent">רוצים</span> לעשות</h2>
 
-  <div class="card">
-    <div class="card-title"><span class="ico">🎮</span> לתלמיד — מוטיבציה אמיתית</div>
+  <p>15 מצבי משחק על אותו אוצר מילים. תלמיד לא משתעמם, מורה לא חוזר על עצמו.</p>
+
+  <div class="mode-grid">
+    <div class="mode-pill"><span class="em">🎴</span>Flashcards</div>
+    <div class="mode-pill"><span class="em">⚡</span>Classic</div>
+    <div class="mode-pill"><span class="em">📝</span>Fill-in-Blank</div>
+    <div class="mode-pill"><span class="em">🎧</span>Listening</div>
+    <div class="mode-pill"><span class="em">🔤</span>Spelling</div>
+    <div class="mode-pill"><span class="em">🃏</span>Matching</div>
+    <div class="mode-pill"><span class="em">🧠</span>Memory Flip</div>
+    <div class="mode-pill"><span class="em">✔️</span>True / False</div>
+    <div class="mode-pill"><span class="em">🔀</span>Scramble</div>
+    <div class="mode-pill"><span class="em">↩️</span>Reverse</div>
+    <div class="mode-pill"><span class="em">🔠</span>Letter Sounds</div>
+    <div class="mode-pill"><span class="em">📚</span>Sentence Builder</div>
+    <div class="mode-pill"><span class="em">🔗</span>Word Chains</div>
+    <div class="mode-pill"><span class="em">💬</span>Idioms</div>
+    <div class="mode-pill"><span class="em">⏱️</span>Speed Round</div>
+  </div>
+
+  <div class="card indigo" style="margin-top: 12px;">
+    <div class="card-title"><span class="ico">🎮</span>מערכת מוטיבציה אמיתית</div>
     <ul>
-      <li><strong>10 מצבי משחק שונים</strong> על אותן מילים — תרגול בלי שעמום.</li>
-      <li>נקודות XP, רצפים יומיים, חנות עם אווטרים ותארים.</li>
-      <li><strong>אתגר חי בכיתה</strong> — לוח תוצאות בזמן אמת על המסך הגדול.</li>
-      <li>שמע מקצועי לכל מילה והגייה נכונה.</li>
-      <li>תרגום מיידי לעברית/ערבית — תלמידים חלשים לא נשארים מאחור.</li>
+      <li><strong>30 אווטרים</strong> ו-<strong>11 ערכות צבעים</strong> בחנות, נקנים בנקודות XP.</li>
+      <li><strong>חיית מחמד שמתפתחת ב-8 שלבים</strong> ככל שהתלמיד צובר ניסיון.</li>
+      <li>4 מסעות תקדים: גן, עיר, חללית, טירה — שכל אחד בנוי מ-10 שלבים.</li>
+      <li><strong>8 דרגות תארים</strong> מ-Beginner ועד Mythic ו-Ascended.</li>
+      <li>רצפים יומיים, אוצרות שבועיים, וכפל XP לזמן מוגבל.</li>
     </ul>
   </div>
+
+  <div class="footer">Vocaband — vocabulary that fits Israeli classrooms</div>
+</section>
+
+<!-- PAGE 4 — FOR TEACHERS -->
+<section class="page">
+  <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">04 / 08</div></div>
+  <div class="eyebrow">למורה</div>
+  <h2>פחות עבודה. <span class="accent">יותר הוראה.</span></h2>
 
   <div class="card emerald">
-    <div class="card-title"><span class="ico">👩‍🏫</span> למורה — פחות עבודה, יותר השפעה</div>
-    <ul>
-      <li>יוצרים כיתה בדקה — תלמידים נכנסים עם <strong>קוד כיתה</strong>, בלי הרשמות.</li>
-      <li>מטלות מוכנות לפי יחידות משרד החינוך — או רשימה מותאמת.</li>
-      <li><strong>בדיקת שיעורי בית אוטומטית</strong> — בודק, נותן ציון, נותן משוב.</li>
-      <li>"Quick Play" — מתחילים פעילות עם QR ב-30 שניות.</li>
-      <li>דוחות אישיים לכל תלמיד — רואים מי במצוקה, מי משתעמם.</li>
+    <div class="card-title"><span class="ico">📸</span>חידוש 2026 — מצלמת OCR לדפי עבודה</div>
+    <p>מצלמים דף עבודה של אוצר מילים → האפליקציה <strong>מחלצת אוטומטית</strong> את כל המילים → מטלה מוכנה לתלמידים. בלי הקלדה ידנית.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="ico">⚡</span>שגרת היום-יום של המורה</div>
+    <ul class="check-list">
+      <li>יצירת כיתה ב-60 שניות — תלמידים נכנסים עם <strong>קוד כיתה</strong>, בלי הרשמות.</li>
+      <li>מטלות מוכנות לפי יחידות משרד החינוך — או רשימת מילים מותאמת.</li>
+      <li><strong>בדיקת שיעורי בית אוטומטית</strong> — האפליקציה בודקת, מציינת, נותנת משוב.</li>
+      <li>"Quick Play" — מתחילים פעילות כיתתית עם QR ב-30 שניות.</li>
+      <li><strong>אתגר חי</strong> — לוח תוצאות בזמן אמת על המסך הגדול בכיתה.</li>
+      <li>אנליטיקס ברמת מקצוע — לא רק XP, אלא מה התלמיד באמת יודע.</li>
     </ul>
   </div>
+
+  <div class="quote">
+    <div class="q">"במקום לבדוק 30 מחברות בערב — אני רואה תוך 10 שניות מי בקושי ומי מוכן למבחן."</div>
+    <div class="who">— הניסיון של מורי האנגלית בשטח</div>
+  </div>
+
+  <div class="footer">Vocaband — vocabulary that fits Israeli classrooms</div>
+</section>
+
+<!-- PAGE 5 — FOR PRINCIPALS + SECURITY -->
+<section class="page">
+  <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">05 / 08</div></div>
+  <div class="eyebrow">למנהל/ת</div>
+  <h2>שליטה. בקרה. <span class="accent">נתונים אמיתיים.</span></h2>
 
   <div class="card amber">
-    <div class="card-title"><span class="ico">🎖️</span> למנהל/ת — שליטה ובקרה</div>
+    <div class="card-title"><span class="ico">🎖️</span>שכבת הניהול</div>
     <ul>
-      <li>מבט-על על כל הכיתות בבית הספר.</li>
-      <li><strong>נתונים אובייקטיביים</strong> — לא רק תחושות בטן של המורה.</li>
-      <li>זיהוי מוקדם של תלמידים בסיכון לפני מבחן המפ"ה.</li>
-      <li>דוחות שמתאימים להצגה להורים ולפיקוח.</li>
+      <li>מבט-על על כל הכיתות בבית הספר במסך אחד.</li>
+      <li><strong>נתוני התקדמות אובייקטיביים</strong> — לא תחושות בטן של המורה.</li>
+      <li>זיהוי מוקדם של תלמידים בסיכון — הרבה לפני מבחן המפ"ה.</li>
+      <li>דוחות שמתאימים להצגה להורים, לפיקוח, ולמשרד החינוך.</li>
+    </ul>
+  </div>
+
+  <div class="card emerald" style="margin-top: 12px;">
+    <div class="card-title"><span class="ico">🔒</span>בטיחות, פרטיות ונגישות — מובנים מההתחלה</div>
+    <ul class="check-list">
+      <li>אחסון <strong>באירופה (פרנקפורט)</strong> — תאימות מלאה ל-GDPR.</li>
+      <li>חוק הגנת הפרטיות הישראלי + <strong>תיקון 13 (2025)</strong>.</li>
+      <li><strong>WCAG 2.0 AA</strong> — כל 38 הקריטריונים. נגיש לתלמידים עם קשיי קריאה ודיסלקציה.</li>
+      <li>הצפנת TLS 1.2+, ציון <strong>CSP A+</strong>, Row-Level Security בכל הטבלאות.</li>
+      <li>יומן ביקורת עם <strong>שמירה לשנתיים</strong>.</li>
+      <li>בדיקות חדירה (pen-test) באופן שוטף — ללא פרסומות, ללא שיתוף עם צד שלישי.</li>
     </ul>
   </div>
 
   <div class="footer">Vocaband — vocabulary that fits Israeli classrooms</div>
 </section>
 
-<!-- PAGE 3 — Safety + Future -->
+<!-- PAGE 6 — ROADMAP -->
 <section class="page">
-  <div class="header-bar"><div class="brand">Vocaband</div><div class="page-num">03 / 05</div></div>
+  <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">06 / 08</div></div>
+  <div class="eyebrow">מה בדרך</div>
+  <h2>אנגלית היום. <span class="accent">כל מקצוע מחר.</span></h2>
 
-  <h2><span class="section-num">3</span>בטיחות ופרטיות</h2>
-  <div class="card emerald">
-    <ul>
-      <li>אחסון באירופה (<strong>פרנקפורט</strong>) — תאימות מלאה ל-GDPR.</li>
-      <li>עומדים בחוק הגנת הפרטיות הישראלי + <strong>תיקון 13</strong>.</li>
-      <li><strong>ללא פרסומות</strong>, ללא איסוף מסחרי, ללא שיתוף עם צד שלישי.</li>
-      <li>נבדק בבדיקות חדירה (pen-test) באופן שוטף.</li>
-    </ul>
+  <p>המנוע של Vocaband מבוסס על תשתית שתומכת בכל מקצוע שדורש שינון והפנמה. כבר היום האנליטיקס מבחין בין מקצועות שונים בכיתה אחת.</p>
+
+  <div class="roadmap" style="margin-top: 14px;">
+    <div class="road-item"><div class="when">קיץ 2026</div><div class="what">AI Lesson Builder — שיעור מלא מנושא בודד</div></div>
+    <div class="road-item"><div class="when">סתיו 2026</div><div class="what">עברית כשפה שנייה — לדוברי ערבית</div></div>
+    <div class="road-item"><div class="when">סתיו 2026</div><div class="what">ערבית — לדוברי עברית</div></div>
+    <div class="road-item"><div class="when">חורף 2027</div><div class="what">אוצר מילים במדעים, היסטוריה, תנ"ך</div></div>
+    <div class="road-item"><div class="when">חורף 2027</div><div class="what">צרפתית, ספרדית, רוסית</div></div>
+    <div class="road-item"><div class="when">2027</div><div class="what">דשבורד פיקוח אזורי</div></div>
   </div>
 
-  <h2 style="margin-top: 22px;"><span class="section-num">4</span>מה בדרך — לא רק אנגלית</h2>
-  <p>אנגלית זה הצעד הראשון. המנוע של Vocaband בנוי כדי להרחיב לעוד תחומים:</p>
-  <div class="card">
-    <ul>
-      <li><strong>עברית כשפה שנייה</strong> — לתלמידים דוברי ערבית.</li>
-      <li><strong>ערבית</strong> — לתלמידים דוברי עברית.</li>
-      <li>אוצר מילים ב<strong>מדעים, היסטוריה ותנ"ך</strong>.</li>
-      <li><strong>שפה שלישית</strong> — צרפתית, ספרדית, רוסית.</li>
-    </ul>
-    <p style="margin-top: 10px;">החזון: <strong>פלטפורמת למידה אחת לכל בית ספר</strong>, לכל מקצוע שדורש שינון והפנמה.</p>
+  <div class="card indigo" style="margin-top: 14px;">
+    <div class="card-title"><span class="ico">🤖</span>AI Lesson Builder — מה זה?</div>
+    <p>המורה מקליד נושא ("Renewable Energy"), והמערכת מייצרת: רשימת מילים מותאמת לרמה → קטע קריאה → שאלות הבנת הנקרא → תרגול במצבי המשחק. <strong>15 דקות הכנה הופכות ל-30 שניות.</strong></p>
   </div>
+
   <div class="footer">Vocaband — vocabulary that fits Israeli classrooms</div>
 </section>
 
-<!-- PAGE 4 — How to start + cheat sheet -->
+<!-- PAGE 7 — PRICING -->
 <section class="page">
-  <div class="header-bar"><div class="brand">Vocaband</div><div class="page-num">04 / 05</div></div>
+  <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">07 / 08</div></div>
+  <div class="eyebrow">תמחור</div>
+  <h2>הוגן. שקוף. <span class="accent">בלי הפתעות.</span></h2>
 
-  <h2><span class="section-num">5</span>איך מתחילים — בלי התחייבות</h2>
-  <div class="card">
-    <ul>
-      <li><strong>ניסיון חינם</strong> לכיתה אחת עם המורה שאתם בוחרים — חודש שלם.</li>
-      <li>אנחנו מקימים את הכיתה איתכם בפגישה הראשונה.</li>
-      <li>עובד — מרחיבים לשאר הכיתות. לא עובד — אין התחייבות.</li>
-    </ul>
+  <div class="price-grid">
+    <div class="price-card">
+      <div class="tier">FREE</div>
+      <div class="amt" dir="ltr">₪0</div>
+      <div class="per">למורה • לתמיד</div>
+      <ul>
+        <li>כיתה אחת</li>
+        <li>עד 30 תלמידים</li>
+        <li>כל מצבי המשחק</li>
+        <li>אישור תלמידים ידני</li>
+      </ul>
+    </div>
+    <div class="price-card featured">
+      <div class="tier">PRO • מומלץ</div>
+      <div class="amt" dir="ltr">₪29</div>
+      <div class="per">למורה לחודש • <span dir="ltr">₪290</span> לשנה</div>
+      <ul>
+        <li><strong>30 יום ניסיון חינם</strong></li>
+        <li>ללא הגבלת כיתות</li>
+        <li>OCR + AI Builder</li>
+        <li>אישור אוטומטי</li>
+        <li>אנליטיקס מתקדם</li>
+      </ul>
+    </div>
+    <div class="price-card">
+      <div class="tier">SCHOOL</div>
+      <div class="amt" dir="ltr">₪10K–12K</div>
+      <div class="per">בית ספר ציבורי שלם / שנה</div>
+      <ul>
+        <li>כל המורים, כל הכיתות</li>
+        <li>דשבורד מנהל</li>
+        <li>הטמעה וליווי</li>
+        <li>חשבונית ספק רשמית</li>
+      </ul>
+    </div>
   </div>
 
-  <h3 style="margin-top: 20px;">משפטי המפתח לפגישה</h3>
-  <div class="cheat">
-    <div class="cheat-row"><div class="label">הבעיה</div><div class="val">תלמיד כיתה ט' עם אוצר מילים של כיתה ו'.</div></div>
-    <div class="cheat-row"><div class="label">הפתרון</div><div class="val">10 משחקים, אותן מילים, בלי שעמום.</div></div>
-    <div class="cheat-row"><div class="label">למורה</div><div class="val">פחות בדיקות, יותר הוראה.</div></div>
-    <div class="cheat-row"><div class="label">למנהל</div><div class="val">נתונים אמיתיים, לא תחושות.</div></div>
-    <div class="cheat-row"><div class="label">בטיחות</div><div class="val">GDPR, תיקון 13, אחסון בפרנקפורט.</div></div>
-    <div class="cheat-row"><div class="label">עתיד</div><div class="val">אנגלית היום — כל מקצוע מחר.</div></div>
+  <div class="card amber" style="margin-top: 12px;">
+    <div class="card-title"><span class="ico">🏆</span>מבצע "Founding 100" — 100 המורים הראשונים</div>
+    <p><strong>שנה ראשונה Pro חינם.</strong> אחרי שנה — <span dir="ltr">₪14.50</span> לחודש לכל החיים (חצי מחיר). מוגבל ל-100 מורים, ואחר כך נסגר.</p>
   </div>
 
-  <div class="closing">
-    <div class="big">כיתה אחת. חודש אחד. חינם.</div>
-    <div class="small">שאלו את עצמכם: כמה זמן המורה משקיע/ה השבוע בבדיקת אוצר מילים?</div>
-  </div>
   <div class="footer">Vocaband — vocabulary that fits Israeli classrooms</div>
 </section>
 
-<!-- PAGE 5 — Contact -->
+<!-- PAGE 8 — CONTACT + CTA -->
 <section class="page">
-  <div class="header-bar"><div class="brand">Vocaband</div><div class="page-num">05 / 05</div></div>
-  <h2>בואו נדבר</h2>
-  <div class="card">
-    <p><strong>אתר:</strong> www.vocaband.com</p>
-    <p><strong>בדיקת תקינות:</strong> www.vocaband.com/api/health</p>
-    <p style="margin-top: 12px;">פתחו את האתר במחשב/טאבלט/טלפון, התחברו כמורה, צרו כיתה — תוך 60 שניות אתם מוכנים לשיעור הראשון.</p>
-  </div>
+  <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">08 / 08</div></div>
+  <div class="eyebrow">בואו נתחיל</div>
+  <h2>כיתה אחת. חודש. <span class="accent">חינם.</span></h2>
 
-  <h3 style="margin-top: 16px;">מה צריך מבית הספר?</h3>
   <div class="card">
-    <ul>
-      <li>חיבור אינטרנט רגיל (לא צריך התקנה).</li>
-      <li>טלפון/טאבלט/מחשב לכל תלמיד (גם בזוגות זה עובד).</li>
-      <li>10 דקות מהמורה כדי ליצור את הכיתה הראשונה.</li>
+    <div class="card-title"><span class="ico">🚀</span>איך מתחילים — 3 צעדים</div>
+    <ul class="check-list">
+      <li><strong>פגישה ראשונה (15 דקות)</strong> — אנחנו בוחרים יחד מורה אחת ואת הכיתה שלה.</li>
+      <li><strong>הקמה (10 דקות)</strong> — מקימים את הכיתה איתכם, מעלים את אוצר המילים הראשון.</li>
+      <li><strong>חודש שלם בחינם</strong> — בלי כרטיס אשראי, בלי התחייבות.</li>
     </ul>
   </div>
 
-  <div class="closing" style="margin-top: 22px;">
-    <div class="big">תודה!</div>
-    <div class="small">מחכים לפגוש אתכם בבית הספר.</div>
+  <h3 style="margin-top: 16px;">מה צריך בית הספר?</h3>
+  <div class="card indigo">
+    <ul>
+      <li>חיבור אינטרנט רגיל. <strong>אין צורך בהתקנה</strong> — האפליקציה רצה בדפדפן.</li>
+      <li>טלפון / טאבלט / מחשב לכל תלמיד (גם בזוגות זה עובד מצוין).</li>
+      <li>10 דקות מהמורה כדי להקים את הכיתה הראשונה. זהו.</li>
+    </ul>
   </div>
-  <div class="footer">Vocaband • 2026 • All rights reserved</div>
+
+  <div class="cta">
+    <div class="big">www.vocaband.com</div>
+    <div class="small">פתחו את האתר בדפדפן → הירשמו כמורה → צרו כיתה → תוך 60 שניות אתם מוכנים לשיעור הראשון.</div>
+  </div>
+
+  <div class="footer" style="margin-top: 10px;">Vocaband • 2026 • All rights reserved • EU-hosted • Made for Israeli classrooms</div>
 </section>
 
 </body>

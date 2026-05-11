@@ -19,13 +19,16 @@ const ctx = await browser.newContext();
 for (const job of jobs) {
   const page = await ctx.newPage();
   const htmlPath = path.join(__dirname, job.html);
-  await page.goto('file://' + htmlPath, { waitUntil: 'networkidle' });
+  await page.goto('file://' + htmlPath, { waitUntil: 'networkidle', timeout: 60000 });
+  // Make sure web fonts are loaded before printing
+  await page.evaluate(() => document.fonts.ready);
   const outPath = path.join(outDir, job.pdf);
   await page.pdf({
     path: outPath,
     format: 'A4',
     printBackground: true,
     margin: { top: 0, right: 0, bottom: 0, left: 0 },
+    preferCSSPageSize: true,
   });
   const size = (fs.statSync(outPath).size / 1024).toFixed(0);
   console.log(`✓ ${job.pdf} (${size} KB)`);
