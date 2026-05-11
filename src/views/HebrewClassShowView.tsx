@@ -20,13 +20,14 @@
  * finished. No scoring, no server round-trips.
  */
 
-import { useMemo, useState } from "react";
-import { ArrowRight, Eye, SkipForward, RotateCcw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Eye, SkipForward, RotateCcw, Volume2 } from "lucide-react";
 import { HEBREW_LEMMAS } from "../data/vocabulary-hebrew";
 import { HEBREW_PACKS_BY_KIND, lemmasInPack } from "../data/hebrew-packs";
 import type { HebrewLemma } from "../data/types-hebrew";
+import { useAudio } from "../hooks/useAudio";
 
-type Mode = "niqqud" | "translation";
+type Mode = "niqqud" | "translation" | "reverse" | "listening" | "flashcards";
 
 type Phase =
   | { kind: "setup" }
@@ -48,6 +49,14 @@ interface HebrewClassShowViewProps {
   onExit: () => void;
 }
 
+const MODE_LABELS_HE: Record<Mode, string> = {
+  niqqud: "ניקוד",
+  translation: "תרגום",
+  reverse: "הפוך",
+  listening: "האזנה",
+  flashcards: "כרטיסיות",
+};
+
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
   for (let i = out.length - 1; i > 0; i--) {
@@ -65,6 +74,21 @@ export default function HebrewClassShowView({
   const [phase, setPhase] = useState<Phase>({ kind: "setup" });
   const [selectedIds, setSelectedIds] = useState<number[]>(initialLemmaIds ?? []);
   const [gradePackId, setGradePackId] = useState<string | null>(null);
+
+  // Hebrew TTS — falls back to browser SpeechSynthesis with Carmit /
+  // Google he-IL voice when no pre-recorded MP3 exists at sound-hebrew/
+  // (the bucket is empty until the audio pipeline ships).
+  const { speak } = useAudio({ subject: "hebrew" });
+
+  // In listening mode, auto-play the lemma each time the cursor moves
+  // to a new word. Reveal/next still works manually.
+  useEffect(() => {
+    if (phase.kind !== "playing") return;
+    if (phase.mode !== "listening") return;
+    const lemma = phase.pool[phase.order[phase.cursor]];
+    if (!lemma) return;
+    speak(lemma.id, lemma.lemmaPlain);
+  }, [phase, speak]);
 
   const themeSections = useMemo(() => {
     const gradeFilter = gradePackId
@@ -176,6 +200,27 @@ export default function HebrewClassShowView({
               onClick={() => startGame("translation")}
               disabled={poolSize() === 0}
             />
+            <ModeCard
+              title="הפוך"
+              blurb="הצגת התרגום באנגלית · לחיצה לחשיפת המילה בעברית"
+              gradient="from-fuchsia-500 to-rose-600"
+              onClick={() => startGame("reverse")}
+              disabled={poolSize() === 0}
+            />
+            <ModeCard
+              title="האזנה"
+              blurb="השמעת המילה · לחיצה לחשיפת הכתיב המנוקד"
+              gradient="from-violet-500 to-blue-600"
+              onClick={() => startGame("listening")}
+              disabled={poolSize() === 0}
+            />
+            <ModeCard
+              title="כרטיסיות"
+              blurb="גלישה חופשית בין מילים · המורה קובע את הקצב"
+              gradient="from-emerald-500 to-teal-600"
+              onClick={() => startGame("flashcards")}
+              disabled={poolSize() === 0}
+            />
           </div>
 
           <section className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4">
@@ -263,7 +308,9 @@ export default function HebrewClassShowView({
   // ─── Playing ───────────────────────────────────────────────────
   if (phase.kind === "playing") {
     const lemma = phase.pool[phase.order[phase.cursor]];
-    const isNiqqud = phase.mode === "niqqud";
+    // Flashcards is a free-flow deck — no reveal/next distinction;
+    // both faces are visible and the teacher just steps through.
+    const isFlashcards = phase.mode === "flashcards";
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex flex-col" dir="rtl" lang="he">
         {/* Top progress strip */}
@@ -272,14 +319,14 @@ export default function HebrewClassShowView({
             ← יציאה
           </button>
           <div>
-            {phase.cursor + 1} / {phase.order.length} · {isNiqqud ? "ניקוד" : "תרגום"}
+            {phase.cursor + 1} / {phase.order.length} · {MODE_LABELS_HE[phase.mode]}
           </div>
         </div>
 
         {/* Stage */}
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center">
-            {isNiqqud ? (
+            {phase.mode === "niqqud" && (
               <>
                 <div className="text-white/40 font-black text-sm tracking-widest mb-4">המילה</div>
                 <div className="text-7xl sm:text-9xl font-black text-white mb-10 leading-none">
@@ -294,7 +341,9 @@ export default function HebrewClassShowView({
                   </>
                 )}
               </>
-            ) : (
+            )}
+
+            {phase.mode === "translation" && (
               <>
                 <div className="text-white/40 font-black text-sm tracking-widest mb-4">המילה</div>
                 <div className="text-7xl sm:text-9xl font-black text-white mb-10 leading-none">
@@ -309,12 +358,82 @@ export default function HebrewClassShowView({
                 )}
               </>
             )}
+
+            {phase.mode === "reverse" && (
+              <>
+                <div className="text-white/40 font-black text-sm tracking-widest mb-4">תרגום</div>
+                <div dir="ltr" className="text-5xl sm:text-7xl font-black text-white mb-2 leading-tight">
+                  {lemma.translationEn}
+                </div>
+                <div dir="ltr" className="text-2xl sm:text-3xl font-bold text-white/60 mb-10">
+                  {lemma.translationAr}
+                </div>
+                {phase.revealed && (
+                  <>
+                    <div className="text-fuchsia-300/60 font-black text-sm tracking-widest mb-3">בעברית</div>
+                    <div className="text-6xl sm:text-8xl font-black bg-gradient-to-br from-fuchsia-200 to-rose-200 bg-clip-text text-transparent leading-none">
+                      {lemma.lemmaNiqqud}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
+            {phase.mode === "listening" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => speak(lemma.id, lemma.lemmaPlain)}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className="inline-flex items-center justify-center w-32 h-32 sm:w-44 sm:h-44 rounded-full bg-gradient-to-br from-violet-500 to-blue-600 text-white shadow-2xl shadow-indigo-500/40 hover:scale-105 active:scale-95 transition mb-8"
+                  aria-label="השמע מחדש"
+                >
+                  <Volume2 size={56} />
+                </button>
+                <div className="text-white/50 font-bold text-sm mb-2">לחצו לחזרה על השמע</div>
+                {phase.revealed && (
+                  <div className="mt-6">
+                    <div className="text-violet-300/60 font-black text-sm tracking-widest mb-3">המילה</div>
+                    <div className="text-6xl sm:text-8xl font-black bg-gradient-to-br from-violet-200 to-blue-200 bg-clip-text text-transparent leading-none">
+                      {lemma.lemmaNiqqud}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {phase.mode === "flashcards" && (
+              <>
+                <div className="rounded-3xl bg-white/95 px-10 sm:px-16 py-10 sm:py-14 shadow-2xl text-slate-900 max-w-xl">
+                  <div className="text-7xl sm:text-9xl font-black mb-6 leading-none">
+                    {lemma.lemmaNiqqud}
+                  </div>
+                  <div className="border-t border-slate-300 pt-4" dir="ltr">
+                    <div className="text-2xl sm:text-3xl font-black text-slate-700">
+                      {lemma.translationEn}
+                    </div>
+                    <div className="text-xl sm:text-2xl font-bold text-slate-500 mt-1">
+                      {lemma.translationAr}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => speak(lemma.id, lemma.lemmaPlain)}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-white text-xs font-black hover:bg-white/15"
+                >
+                  <Volume2 size={14} /> השמע
+                </button>
+              </>
+            )}
           </div>
         </div>
 
         {/* Controls */}
         <div className="px-6 sm:px-10 pb-8 flex items-center justify-center gap-3">
-          {!phase.revealed ? (
+          {/* Flashcards has no reveal step — straight to next/skip */}
+          {!isFlashcards && !phase.revealed ? (
             <button
               type="button"
               onClick={reveal}
@@ -353,7 +472,7 @@ export default function HebrewClassShowView({
         <div className="text-7xl mb-4">🎉</div>
         <h1 className="text-4xl font-black text-white mb-2">סיימנו!</h1>
         <p className="text-white/60 font-bold text-base mb-8">
-          {phase.pool.length} מילים · {phase.mode === "niqqud" ? "מצב ניקוד" : "מצב תרגום"}
+          {phase.pool.length} מילים · מצב {MODE_LABELS_HE[phase.mode]}
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <button

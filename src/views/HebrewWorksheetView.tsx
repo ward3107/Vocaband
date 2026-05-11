@@ -1,24 +1,44 @@
 /**
  * HebrewWorksheetView — minimal Hebrew worksheet builder.
  *
- * STOP-GAP: this is a focused single-template Hebrew worksheet flow so a
- * Hebrew teacher who clicks Worksheet on the dashboard gets a working
- * RTL printable instead of the English-only FreeResourcesView. The
- * proper fold (task 10 in MEMORY) is to make FreeResourcesView itself
- * subject-aware. Until that ships, this view exists.
+ * STOP-GAP: this is a focused Hebrew worksheet flow so a teacher on a
+ * Hebrew class gets a working RTL printable instead of the English-only
+ * FreeResourcesView. Two templates ship today (word list, match-up);
+ * the proper fold (open-issues.md → "worksheet builder stop-gap") is to
+ * make FreeResourcesView itself subject-aware so all 14 English
+ * templates work for Hebrew with the right vocabulary shape.
  *
  * Pattern intentionally lean: lemma picker (filter by grade/theme via
- * HEBREW_PACKS) → settings (font size, show translations) → preview →
- * print/PDF. No bingo, no scramble, no fill-blank — those come with the
- * FreeResourcesView fold.
+ * HEBREW_PACKS) → template choice → settings → preview → print/PDF.
  */
 
 import { useMemo, useRef, useState } from "react";
-import { ArrowRight, Printer, Download } from "lucide-react";
+import { ArrowRight, Printer, Download, ListOrdered, Shuffle } from "lucide-react";
 import html2pdf from "html2pdf.js";
 import { HEBREW_LEMMAS } from "../data/vocabulary-hebrew";
 import { HEBREW_PACKS_BY_KIND, lemmasInPack } from "../data/hebrew-packs";
 import type { HebrewLemma } from "../data/types-hebrew";
+
+type Template = "word-list" | "match-up";
+
+const TEMPLATE_LABELS_HE: Record<Template, string> = {
+  "word-list": "רשימת מילים",
+  "match-up": "התאמה בין עברית לאנגלית",
+};
+
+// Stable pseudo-shuffle keyed off the lemma ids so the same lemma set
+// re-renders the same scramble between print + PDF (otherwise the
+// teacher's print and the saved PDF disagree on what's matched to what).
+function deterministicShuffle<T>(arr: T[], seed: number): T[] {
+  const out = [...arr];
+  let s = seed || 1;
+  for (let i = out.length - 1; i > 0; i--) {
+    s = (s * 9301 + 49297) % 233280;
+    const j = Math.floor((s / 233280) * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 
 interface HebrewWorksheetViewProps {
   /** Optional initial selection — passed when teacher clicks "Print this
@@ -46,6 +66,7 @@ export default function HebrewWorksheetView({
   const [title, setTitle] = useState(initialTitle ?? "דף עבודה — אוצר מילים");
   const [selectedIds, setSelectedIds] = useState<number[]>(initialLemmaIds ?? []);
   const [gradePackId, setGradePackId] = useState<string | null>(null);
+  const [template, setTemplate] = useState<Template>("word-list");
   const [fontSize, setFontSize] = useState<FontSize>("medium");
   const [showTranslations, setShowTranslations] = useState(true);
   const [showNiqqud, setShowNiqqud] = useState(true);
@@ -67,6 +88,19 @@ export default function HebrewWorksheetView({
   const selectedLemmas = useMemo<HebrewLemma[]>(
     () => HEBREW_LEMMAS.filter((l) => selectedIds.includes(l.id)),
     [selectedIds],
+  );
+
+  // Match-up uses a deterministic shuffle of the translation column so
+  // print + PDF render the same arrangement; reseeded only when the
+  // selection changes (so re-rendering the preview after a font tweak
+  // doesn't reshuffle the answer key).
+  const matchSeed = useMemo(
+    () => selectedIds.reduce((s, id) => (s * 31 + id) >>> 0, 17),
+    [selectedIds],
+  );
+  const shuffledTranslations = useMemo(
+    () => deterministicShuffle(selectedLemmas, matchSeed),
+    [selectedLemmas, matchSeed],
   );
 
   function toggleLemma(id: number) {
@@ -209,6 +243,29 @@ export default function HebrewWorksheetView({
             </section>
 
             <section className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+              <div className="text-white/70 font-black text-xs mb-1">סוג הדף</div>
+              <div className="grid grid-cols-2 gap-2">
+                {(["word-list", "match-up"] as const).map((tpl) => {
+                  const Icon = tpl === "word-list" ? ListOrdered : Shuffle;
+                  return (
+                    <button
+                      key={tpl}
+                      type="button"
+                      onClick={() => setTemplate(tpl)}
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-black transition ${
+                        template === tpl ? "bg-white text-indigo-700 shadow" : "bg-white/10 text-white hover:bg-white/15"
+                      }`}
+                    >
+                      <Icon size={14} />
+                      <span>{TEMPLATE_LABELS_HE[tpl]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
               <div className="text-white/70 font-black text-xs mb-1">הגדרות הדפסה</div>
               <div className="flex gap-2">
                 {(["small", "medium", "large"] as const).map((sz) => (
@@ -276,7 +333,7 @@ export default function HebrewWorksheetView({
                 <div className="py-16 text-center text-slate-400 font-bold" lang="he">
                   בחרו מילים מהרשימה כדי ליצור דף עבודה.
                 </div>
-              ) : (
+              ) : template === "word-list" ? (
                 <ol className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 list-decimal pr-6" style={{ fontSize: `${FONT_SIZE_PT[fontSize]}pt` }}>
                   {selectedLemmas.map((l) => (
                     <li key={l.id} className="py-1.5 border-b border-dashed border-slate-200" lang="he">
@@ -293,6 +350,39 @@ export default function HebrewWorksheetView({
                     </li>
                   ))}
                 </ol>
+              ) : (
+                /* Match-up template: Hebrew column on the right (RTL
+                   reading order), shuffled English column on the left.
+                   Students draw lines between matching pairs. */
+                <div lang="he">
+                  <p className="text-sm text-slate-600 font-bold mb-4 text-center">
+                    התאימו כל מילה בעברית לתרגום הנכון באנגלית בעזרת קו מחבר.
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-12 gap-y-3" style={{ fontSize: `${FONT_SIZE_PT[fontSize]}pt` }}>
+                    {/* Right column (RTL): Hebrew lemmas in original order */}
+                    <ol className="space-y-2.5 list-none pr-0" dir="rtl">
+                      {selectedLemmas.map((l, i) => (
+                        <li key={l.id} className="flex items-center gap-3 py-1 border-b border-dashed border-slate-200">
+                          <span className="text-slate-400 font-bold text-xs w-5 shrink-0 text-end">{i + 1}.</span>
+                          <span className="font-black flex-1">
+                            {showNiqqud ? l.lemmaNiqqud : l.lemmaPlain}
+                          </span>
+                          <span className="w-3 h-3 rounded-full border-2 border-slate-400 shrink-0" aria-hidden />
+                        </li>
+                      ))}
+                    </ol>
+                    {/* Left column (LTR): English translations shuffled */}
+                    <ol className="space-y-2.5 list-none pl-0" dir="ltr">
+                      {shuffledTranslations.map((l, i) => (
+                        <li key={l.id} className="flex items-center gap-3 py-1 border-b border-dashed border-slate-200">
+                          <span className="w-3 h-3 rounded-full border-2 border-slate-400 shrink-0" aria-hidden />
+                          <span className="font-black flex-1">{l.translationEn}</span>
+                          <span className="text-slate-400 font-bold text-xs w-5 shrink-0">{String.fromCharCode(64 + i + 1)}.</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
               )}
 
               {selectedLemmas.length > 0 && (
