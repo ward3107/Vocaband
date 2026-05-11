@@ -9,6 +9,8 @@ import helmet from "helmet";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { createClient as createRedisClient } from "redis";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { buildSystemPrompt, buildUserMessage, BAGRUT_TOOL } from "./src/features/vocabagrut/lib/bagrutPrompt";
@@ -246,6 +248,40 @@ async function startServer() {
     pingTimeout: 10000,    // allow 10s for pong response (mobile networks)
     maxHttpBufferSize: 64 * 1024, // 64KB max message size (leaderboard data)
   });
+
+  // Redis adapter — attached BEFORE any namespace is created so cross-VM
+  // broadcasts work for both `/` (Live Challenge) and `/quick-play`.
+  //
+  // Why this exists: in-memory Maps in this file (liveSessions, qpSessions,
+  // students, sockets) are per-process. Once Fly auto-scales beyond one VM,
+  // a teacher on VM-A and a student on VM-B in the same session would never
+  // see each other's events. The Redis pub/sub adapter forwards every
+  // socket.io broadcast across all VMs.
+  //
+  // If REDIS_URL is unset (local dev or pre-rollout prod), the server runs
+  // single-VM as before — no adapter, no error. Set REDIS_URL via
+  // `fly secrets set REDIS_URL=rediss://...` to activate.
+  if (process.env.REDIS_URL) {
+    try {
+      const pubClient = createRedisClient({ url: process.env.REDIS_URL });
+      const subClient = pubClient.duplicate();
+      // Don't crash the process if Redis hiccups — node-redis auto-reconnects.
+      pubClient.on("error", (err) => console.error("[redis-adapter] pub error:", err.message));
+      subClient.on("error", (err) => console.error("[redis-adapter] sub error:", err.message));
+      await Promise.all([pubClient.connect(), subClient.connect()]);
+      io.adapter(createAdapter(pubClient, subClient));
+      console.log("[redis-adapter] attached — multi-VM socket.io broadcasts enabled");
+    } catch (err) {
+      // Boot continues in single-VM mode. Loud log so we notice in Fly logs.
+      console.error(
+        "[redis-adapter] FAILED to connect — falling back to single-VM mode. " +
+        "Multi-VM scaling will NOT work until this is fixed. Error:",
+        err
+      );
+    }
+  } else {
+    console.log("[redis-adapter] REDIS_URL not set — running single-VM (fine for dev / single-instance prod)");
+  }
 
   const PORT = process.env.PORT || 3000;
 
