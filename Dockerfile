@@ -12,7 +12,7 @@
 # Build: `fly deploy` (Fly's builder runs this automatically)
 # Run:   `npm run start`  (= `NODE_ENV=production tsx server.ts`)
 
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 

@@ -9,6 +9,8 @@ import helmet from "helmet";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { createClient as createRedisClient } from "redis";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { buildSystemPrompt, buildUserMessage, BAGRUT_TOOL } from "./src/features/vocabagrut/lib/bagrutPrompt";
@@ -246,6 +248,73 @@ async function startServer() {
     pingTimeout: 10000,    // allow 10s for pong response (mobile networks)
     maxHttpBufferSize: 64 * 1024, // 64KB max message size (leaderboard data)
   });
+
+  // Redis adapter — attached BEFORE any namespace is created so cross-VM
+  // broadcasts work for both `/` (Live Challenge) and `/quick-play`.
+  //
+  // Why this exists: in-memory Maps in this file (liveSessions, qpSessions,
+  // students, sockets) are per-process. Once Fly auto-scales beyond one VM,
+  // a teacher on VM-A and a student on VM-B in the same session would never
+  // see each other's events. The Redis pub/sub adapter forwards every
+  // socket.io broadcast across all VMs.
+  //
+  // If REDIS_URL is unset (local dev or pre-rollout prod), the server runs
+  // single-VM as before — no adapter, no error. Set REDIS_URL via
+  // `fly secrets set REDIS_URL=rediss://...` to activate.
+  let redisPubClient: ReturnType<typeof createRedisClient> | null = null;
+  let redisAdapterStatus: "disabled" | "attached" | "failed" = "disabled";
+  let redisAdapterError: string | null = null;
+  if (process.env.REDIS_URL) {
+    try {
+      const pubClient = createRedisClient({ url: process.env.REDIS_URL });
+      const subClient = pubClient.duplicate();
+      // Don't crash the process if Redis hiccups — node-redis auto-reconnects.
+      pubClient.on("error", (err) => console.error("[redis-adapter] pub error:", err.message));
+      subClient.on("error", (err) => console.error("[redis-adapter] sub error:", err.message));
+      await Promise.all([pubClient.connect(), subClient.connect()]);
+      io.adapter(createAdapter(pubClient, subClient));
+      redisPubClient = pubClient;
+      redisAdapterStatus = "attached";
+      console.log("[redis-adapter] attached — multi-VM socket.io broadcasts enabled");
+
+      // Pub/sub smoke test — proves the actual fan-out path works, not just
+      // that TCP connected. Catches the case where a firewall allows TCP to
+      // Upstash but blocks SUBSCRIBE (rare but real).
+      try {
+        const probeChannel = `vocaband:adapter-probe:${process.pid}:${Date.now()}`;
+        const probePayload = "ping";
+        const probeStart = Date.now();
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error("pub/sub probe timed out after 3s")), 3000);
+          subClient.subscribe(probeChannel, (msg) => {
+            if (msg === probePayload) {
+              clearTimeout(timer);
+              void subClient.unsubscribe(probeChannel).then(() => resolve()).catch(reject);
+            }
+          }).then(() => pubClient.publish(probeChannel, probePayload)).catch(reject);
+        });
+        console.log(`[redis-adapter] pub/sub smoke test passed (${Date.now() - probeStart}ms round-trip)`);
+      } catch (probeErr) {
+        const msg = probeErr instanceof Error ? probeErr.message : String(probeErr);
+        redisAdapterError = `pub/sub probe failed: ${msg}`;
+        console.error(
+          `[redis-adapter] WARNING: ${redisAdapterError}. TCP is up but fan-out may not work. ` +
+          `Check Upstash region and that the connection string uses rediss:// (TLS).`
+        );
+      }
+    } catch (err) {
+      // Boot continues in single-VM mode. Loud log so we notice in Fly logs.
+      redisAdapterStatus = "failed";
+      redisAdapterError = err instanceof Error ? err.message : String(err);
+      console.error(
+        "[redis-adapter] FAILED to connect — falling back to single-VM mode. " +
+        "Multi-VM scaling will NOT work until this is fixed. Error:",
+        err
+      );
+    }
+  } else {
+    console.log("[redis-adapter] REDIS_URL not set — running single-VM (fine for dev / single-instance prod)");
+  }
 
   const PORT = process.env.PORT || 3000;
 
@@ -1271,6 +1340,35 @@ async function startServer() {
       status: "ok",
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // Redis adapter diagnostic — no auth, no secrets in response. Hit this
+  // after `fly secrets set REDIS_URL=...` to confirm the adapter actually
+  // attached and pub/sub round-trips work. Returns 200 in single-VM mode
+  // too (status: "disabled") so monitors don't false-alarm before rollout.
+  app.get("/api/health/redis", async (_req, res) => {
+    const body: {
+      adapter: typeof redisAdapterStatus;
+      error: string | null;
+      ping: string | null;
+      pingLatencyMs: number | null;
+    } = {
+      adapter: redisAdapterStatus,
+      error: redisAdapterError,
+      ping: null,
+      pingLatencyMs: null,
+    };
+    if (redisPubClient && redisAdapterStatus === "attached") {
+      const start = Date.now();
+      try {
+        body.ping = await redisPubClient.ping();
+        body.pingLatencyMs = Date.now() - start;
+      } catch (err) {
+        body.ping = "FAIL";
+        body.error = err instanceof Error ? err.message : String(err);
+      }
+    }
+    res.json(body);
   });
 
   // Translation endpoint — server-side proxy to protect Google API key

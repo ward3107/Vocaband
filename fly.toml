@@ -20,6 +20,26 @@
 app = 'vocaband'
 primary_region = 'fra'
 
+# ─── Required secrets (set with `fly secrets set NAME=value`) ────
+#   SUPABASE_URL                 — Supabase project URL
+#   SUPABASE_SERVICE_ROLE_KEY    — admin key for SECURITY DEFINER paths
+#   GOOGLE_AI_API_KEY            — Gemini OCR + sentence generation
+#   ANTHROPIC_API_KEY            — Bagrut test generation
+#   ALLOWED_ORIGIN               — comma-separated CORS origins (prod)
+#
+# ─── Optional: REDIS_URL (multi-VM scaling) ───────────────────────
+# When set, server.ts attaches @socket.io/redis-adapter so socket.io
+# broadcasts (Live Challenge + Quick Play leaderboards) propagate
+# across every Fly VM. Without it, scaling beyond 1 VM silently
+# breaks live sessions (students on VM-A can't see scores from
+# students on VM-B).
+#
+# Provision an Upstash Redis instance in eu-central-1 (same region
+# as `fra` here for <5ms latency), copy the rediss:// URL, then:
+#   fly secrets set REDIS_URL=rediss://default:<password>@<host>:6380
+# Free tier (10k commands/day) is enough for ~5 simultaneous full
+# classrooms; bump to paid (~$10/mo) for 1000+ concurrent QP players.
+
 [build]
 
 # ─── HTTP service ─────────────────────────────────────────────────
