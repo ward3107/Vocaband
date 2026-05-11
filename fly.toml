@@ -54,17 +54,22 @@ primary_region = 'fra'
   # for a school-hours app.
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  # Keep one VM hot at all times — first request after idle skips
+  # the ~1 s cold-start wake-up. The other provisioned VMs auto-stop
+  # when traffic is low and auto-start when concurrency triggers it.
+  min_machines_running = 1
   processes = ['app']
 
-  # Per-VM concurrency: a single QP class with 30 students translates
-  # to ~30 active socket.io connections + a few teacher observers.
-  # 200 hard / 100 soft gives plenty of headroom for several
-  # simultaneous classrooms before Fly auto-scales to a second VM.
+  # Per-VM concurrency, sized for ~5000 students + 100 teachers.
+  # 1000 soft / 2000 hard per shared-cpu-1x w/ 512 MB:
+  #   ~30 KB/socket × 2000 = 60 MB socket buffer (fits comfortably in 512 MB)
+  #   Fly wakes the next VM once a machine crosses soft_limit (1000).
+  # With `fly scale count 3` provisioned, this gives up to ~6000
+  # concurrent sockets across all VMs — enough for peak Live Challenge.
   [http_service.concurrency]
     type = 'connections'
-    hard_limit = 200
-    soft_limit = 100
+    hard_limit = 2000
+    soft_limit = 1000
 
   # Health check.  server.ts already exposes /api/health.  `grace_period`
   # gives the Node process time to JIT-compile + open the DB pool on
