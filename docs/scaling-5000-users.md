@@ -29,7 +29,7 @@
 | 2.4 | Duplicate permissive policies | ✅ Done 2026-05-11 | – | Migration `20260511170000_consolidate_permissive_policies.sql`. 0 remaining duplicate combos. classes/teacher_rewards consolidated into single OR'd policies; student_profiles INSERT/SELECT/UPDATE combined with semantically-identical WITH CHECK. |
 | 2.5 | Unindexed FKs on `student_profiles` | ✅ Done 2026-05-11 | – | `idx_student_profiles_approved_by`, `idx_student_profiles_auth_uid` added in same migration. |
 | 2.6 | No PK on `class_lookup_rate` | 🔵 Optional | – | Replication-unfriendly. Low impact at our scale. |
-| 2.7 | 22 unused indexes | 🔵 Optional | – | Write amplification. Audit before dropping — some may be for rare admin queries. |
+| 2.7 | Unused indexes — audit + selective drop | ✅ Done 2026-05-11 | – | Migration `20260511180000_drop_redundant_indexes.sql`. Dropped 3 truly redundant indexes (`idx_word_corrections_word_id`, `idx_audit_log_actor`, `idx_quick_play_allowed_modes`). Kept 19+ flagged ones: PK/UNIQUE constraints, FK-covering indexes, and indexes for recently-shipped features. See migration comment for rationale. |
 | 2.8 | Security WARNs (144 lints) | 🔵 Tracked | – | Mostly `function_search_path_mutable` + `auth_leaked_password_protection` toggle. Defer — not scaling-related. |
 | 2.9 | Backup / restore drill | ⏸ Pending | Operator | Verify nightly backup exists, do one test restore |
 
