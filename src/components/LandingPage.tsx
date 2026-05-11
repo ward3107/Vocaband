@@ -2487,6 +2487,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       {t.footerSchoolDeck}
                     </a>
                   </motion.li>
+                  <motion.li variants={footerItemVariant} custom={15}>
+                    <a
+                      href="/Vocaband-Presentation-HE.pdf"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      download
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <FileText size={14} aria-hidden="true" />
+                      {t.footerSchoolPdfHe}
+                    </a>
+                  </motion.li>
+                  <motion.li variants={footerItemVariant} custom={16}>
+                    <a
+                      href="/Vocaband-Presentation-AR.pdf"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      download
+                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                    >
+                      <FileText size={14} aria-hidden="true" />
+                      {t.footerSchoolPdfAr}
+                    </a>
+                  </motion.li>
                 </ul>
               </div>
 
