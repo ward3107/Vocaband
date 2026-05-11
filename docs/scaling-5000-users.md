@@ -26,7 +26,7 @@
 | 2.1 | Connection pooling | ✅ N/A — server uses `supabase-js` → PostgREST, which pools internally. No direct pg connections from Fly. |
 | 2.2 | Quick Play subject migration applied | ✅ Done 2026-05-11 | – | `20260510120000_quick_play_subject.sql` |
 | 2.3 | RLS `auth.uid()` re-eval | ✅ Done 2026-05-11 | – | Migration `20260511160000_rls_initplan_optimization.sql`. 0 remaining init-plan lints. |
-| 2.4 | **Duplicate permissive policies (46 lints)** | ⏸ Pending | – | 6 (table, role, action) combos have 2 policies each. Needs per-pair diff before dropping. Next chunk. |
+| 2.4 | Duplicate permissive policies | ✅ Done 2026-05-11 | – | Migration `20260511170000_consolidate_permissive_policies.sql`. 0 remaining duplicate combos. classes/teacher_rewards consolidated into single OR'd policies; student_profiles INSERT/SELECT/UPDATE combined with semantically-identical WITH CHECK. |
 | 2.5 | Unindexed FKs on `student_profiles` | ✅ Done 2026-05-11 | – | `idx_student_profiles_approved_by`, `idx_student_profiles_auth_uid` added in same migration. |
 | 2.6 | No PK on `class_lookup_rate` | 🔵 Optional | – | Replication-unfriendly. Low impact at our scale. |
 | 2.7 | 22 unused indexes | 🔵 Optional | – | Write amplification. Audit before dropping — some may be for rare admin queries. |
