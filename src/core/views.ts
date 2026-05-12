@@ -10,7 +10,6 @@ export type View =
   | "public-terms"
   | "public-privacy"
   | "public-security"
-  | "public-faq"
   | "public-free-resources"
   | "public-status"
   | "accessibility-statement"

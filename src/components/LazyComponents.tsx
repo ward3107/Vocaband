@@ -24,7 +24,6 @@ export const LazyPublicPrivacyPage = lazy(() => import('./PublicPrivacyPage'));
 export const LazyPublicSecurityPage = lazy(() => import('./PublicSecurityPage'));
 export const LazyDemoMode = lazy(() => import('./DemoMode'));
 export const LazyAccessibilityStatement = lazy(() => import('./AccessibilityStatement'));
-export const LazyFaqView = lazy(() => import('../views/FaqView'));
 export const LazyFreeResourcesView = lazy(() => import('../views/FreeResourcesView'));
 export const LazyStatusView = lazy(() => import('../views/StatusView'));
 
@@ -65,14 +64,6 @@ export const AccessibilityStatementWrapper: ComponentType<any> = (props) => (
   <LazyErrorBoundary fallback={<LoadingFallback message="Loading accessibility statement..." />}>
     <Suspense fallback={<LoadingFallback message="Loading accessibility statement..." />}>
       <LazyAccessibilityStatement {...props} />
-    </Suspense>
-  </LazyErrorBoundary>
-);
-
-export const FaqPageWrapper: ComponentType<any> = (props) => (
-  <LazyErrorBoundary fallback={<LoadingFallback message="Loading FAQ..." />}>
-    <Suspense fallback={<LoadingFallback message="Loading FAQ..." />}>
-      <LazyFaqView {...props} />
     </Suspense>
   </LazyErrorBoundary>
 );
