@@ -362,6 +362,21 @@ export default function QuickPlayStudentView({
         </button>
       </header>
 
+      {/* Reconnecting banner — shown when the socket drops mid-session
+          so the student knows their attempts aren't reaching the
+          teacher instead of silently failing.  Auto-hides once the
+          socket reconnects. */}
+      {quickPlayActiveSession && quickPlaySocket.status === "disconnected" && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-16 left-1/2 -translate-x-1/2 z-50 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-amber-950 font-bold text-sm shadow-lg animate-pulse"
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-900" />
+          Reconnecting…
+        </div>
+      )}
+
       <main id="main-content" className="flex-grow flex flex-col items-center px-4 py-3 sm:py-6 max-w-4xl mx-auto w-full">
           {!quickPlayActiveSession ? (
             <div className="text-center py-12 sm:py-20">
