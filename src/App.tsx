@@ -3055,15 +3055,25 @@ export default function App() {
             // classes (see migration 20260402_add_teacher_class_rls).
             // class_id and class_code never change, so all foreign keys
             // (assignments, progress, student_profiles) are preserved.
+            // School branding fields (added 20260512) are nullable so we
+            // either send a trimmed string or NULL — never an empty
+            // string, which would clutter the DB with meaningless rows.
             const { error } = await supabase
               .from('classes')
-              .update({ name: next.name, avatar: next.avatar })
+              .update({
+                name: next.name,
+                avatar: next.avatar,
+                school_name: next.schoolName?.trim() || null,
+                school_logo_url: next.schoolLogoUrl?.trim() || null,
+              })
               .eq('id', editingClass.id);
             if (error) {
               showToast('Could not save class changes. Please try again.', 'error');
               return;
             }
-            setClasses(prev => prev.map(c => c.id === editingClass.id ? { ...c, name: next.name, avatar: next.avatar } : c));
+            setClasses(prev => prev.map(c => c.id === editingClass.id
+              ? { ...c, name: next.name, avatar: next.avatar, schoolName: next.schoolName?.trim() || null, schoolLogoUrl: next.schoolLogoUrl?.trim() || null }
+              : c));
             setEditingClass(null);
             showToast('Class updated.', 'success');
           }}
@@ -3404,8 +3414,38 @@ export default function App() {
         </LazyWrapper>
       );
     }
+    // Demo-friendly error fallback: a Live Challenge crash mid-pitch is
+    // the worst possible moment.  Default "Failed to load component"
+    // text reads as a hard failure to a watching principal.  This
+    // fallback frames it as a quick reconnect, gives the teacher an
+    // obvious one-tap path back to the dashboard, and keeps the page
+    // colourful + on-brand rather than red-alert.
+    const liveChallengeErrorFallback = (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900 px-6">
+        <div className="max-w-md w-full text-center bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
+          <div className="text-5xl mb-4">⚡</div>
+          <h2 className="text-2xl font-black text-white mb-3">Reconnecting…</h2>
+          <p className="text-white/80 mb-6">
+            The challenge hit a hiccup. Students stay connected — pick the class again to resume.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setIsLiveChallenge(false);
+              setView("teacher-dashboard");
+            }}
+            className="w-full px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
     return (
-      <LazyWrapper loadingMessage="Loading live challenge...">
+      <LazyWrapper
+        loadingMessage="Loading live challenge..."
+        fallback={liveChallengeErrorFallback}
+      >
         <LiveChallengeView
           selectedClass={selectedClass}
           leaderboard={leaderboard}
@@ -3856,8 +3896,32 @@ export default function App() {
       setView("quick-play-setup");
       return null;
     }
+    // Same demo-friendly fallback rationale as Live Challenge — Quick
+    // Play is the other live-classroom screen a teacher might be
+    // showing during a sales demo when the worst-case crash hits.
+    const monitorErrorFallback = (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900 px-6">
+        <div className="max-w-md w-full text-center bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
+          <div className="text-5xl mb-4">⚡</div>
+          <h2 className="text-2xl font-black text-white mb-3">Reconnecting…</h2>
+          <p className="text-white/80 mb-6">
+            The session monitor hit a hiccup. Your active session is safe — return to the dashboard and reopen it.
+          </p>
+          <button
+            type="button"
+            onClick={() => setView(user?.role === 'student' ? 'student-dashboard' : 'teacher-dashboard')}
+            className="w-full px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
     return (
-      <LazyWrapper loadingMessage="Loading session monitor...">
+      <LazyWrapper
+        loadingMessage="Loading session monitor..."
+        fallback={monitorErrorFallback}
+      >
         <QuickPlayTeacherMonitorView
           quickPlayActiveSession={quickPlayActiveSession}
           quickPlayJoinedStudents={quickPlayJoinedStudents}

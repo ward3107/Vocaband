@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
@@ -54,11 +54,17 @@ import Tilt from "react-parallax-tilt";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
 import CssAnimation from "./CssAnimation";
-import SubjectRequestModal from "./SubjectRequestModal";
-import FeatureRequestModal from "./FeatureRequestModal";
-import SchoolInquiryModal from "./SchoolInquiryModal";
 import TeacherResourcesSection from "./TeacherResourcesSection";
 import LazyBgVideo from "./LazyBgVideo";
+
+// The three "request" modals are only opened on click — defer their JS
+// to user action so the landing page's first paint doesn't pay for
+// code that 99% of visitors never trigger.  Conditional render (not
+// just <Suspense>) so the chunks don't even start downloading until
+// the user opens the modal the first time.
+const SubjectRequestModal = lazy(() => import("./SubjectRequestModal"));
+const FeatureRequestModal = lazy(() => import("./FeatureRequestModal"));
+const SchoolInquiryModal = lazy(() => import("./SchoolInquiryModal"));
 
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status") => void;
@@ -174,7 +180,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         onTeacherLogin={onTeacherLogin}
       />
 
-      <main>
+      <main id="main-content">
         {/* Hero Section - Floating 3D Cards + Gradient Mesh */}
         <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative isolate flex items-center justify-center overflow-hidden">
           {/* Hero background video — silent, looping ambience.  Lazy-
@@ -2647,20 +2653,32 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
       <FloatingButtons />
 
-      <SubjectRequestModal
-        isOpen={isSubjectModalOpen}
-        onClose={() => setIsSubjectModalOpen(false)}
-      />
+      {isSubjectModalOpen && (
+        <Suspense fallback={null}>
+          <SubjectRequestModal
+            isOpen
+            onClose={() => setIsSubjectModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
-      <FeatureRequestModal
-        isOpen={isFeatureModalOpen}
-        onClose={() => setIsFeatureModalOpen(false)}
-      />
+      {isFeatureModalOpen && (
+        <Suspense fallback={null}>
+          <FeatureRequestModal
+            isOpen
+            onClose={() => setIsFeatureModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
-      <SchoolInquiryModal
-        isOpen={isSchoolModalOpen}
-        onClose={() => setIsSchoolModalOpen(false)}
-      />
+      {isSchoolModalOpen && (
+        <Suspense fallback={null}>
+          <SchoolInquiryModal
+            isOpen
+            onClose={() => setIsSchoolModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* The floating accessibility button that used to live here has been
           removed — it duplicated the global one rendered by

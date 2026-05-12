@@ -303,7 +303,7 @@ export default function StudentAccountLoginView({
               </div>
             </header>
 
-            <main className="flex-1 flex items-center justify-center px-4 py-6 sm:py-10">
+            <main id="main-content" className="flex-1 flex items-center justify-center px-4 py-6 sm:py-10">
               <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}

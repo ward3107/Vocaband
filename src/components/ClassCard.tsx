@@ -25,6 +25,11 @@ interface ClassCardProps {
   code: string;
   /** Optional emoji avatar; falls back to GraduationCap icon when null. */
   avatar?: string | null;
+  /** Per-class school branding — both null until the teacher fills
+   *  them in via Edit Class.  When present, the school logo + name
+   *  surface as a small strip above the class name. */
+  schoolName?: string | null;
+  schoolLogoUrl?: string | null;
   studentCount?: number;
   onAssign: () => void;
   onCopyCode: () => void;
@@ -57,6 +62,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
   name,
   code,
   avatar,
+  schoolName,
+  schoolLogoUrl,
   studentCount,
   onAssign,
   onCopyCode,
@@ -214,6 +221,31 @@ const ClassCard: React.FC<ClassCardProps> = ({
       }}
       className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow"
     >
+      {/* School branding strip — only rendered when set, so legacy
+          classes (no school configured yet) keep their existing
+          compact header.  Logo is a small 24px square so the strip
+          stays subtle; the name is the focus. */}
+      {(schoolName || schoolLogoUrl) && (
+        <div
+          className="flex items-center gap-2 px-5 pt-4"
+          style={{ color: 'var(--vb-text-secondary)' }}
+        >
+          {schoolLogoUrl && (
+            <img
+              src={schoolLogoUrl}
+              alt=""
+              className="w-6 h-6 rounded object-contain bg-white"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          )}
+          {schoolName && (
+            <span className="text-xs font-bold uppercase tracking-wider truncate">
+              {schoolName}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="p-5 pb-4">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -411,6 +443,23 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 }}
                 className="absolute right-0 top-full mt-1 w-48 rounded-xl border shadow-lg py-1 z-20"
               >
+                {/* Edit class — opens the full EditClassModal (name,
+                    avatar, school branding).  Placed at the top of the
+                    menu because it's the canonical "change anything"
+                    entry point; inline name + avatar editing on the
+                    card itself are shortcuts, but they don't expose
+                    school branding which lives only in the modal. */}
+                {onEdit && (
+                  <button
+                    onClick={() => { onEdit(); setMenuOpen(false); }}
+                    type="button"
+                    style={{ color: 'var(--vb-text-secondary)' }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
+                  >
+                    <Pencil size={14} className="text-violet-600" />
+                    Edit class
+                  </button>
+                )}
                 <button
                   onClick={() => { setShareModalOpen(true); setMenuOpen(false); }}
                   type="button"

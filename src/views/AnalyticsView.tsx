@@ -407,7 +407,7 @@ export default function AnalyticsView({
         />
       )}
 
-      <main className={`${embedded ? 'pt-4' : 'pt-24'} px-4 max-w-5xl mx-auto`}>
+      <main id="main-content" className={`${embedded ? "pt-4" : "pt-24"} px-4 max-w-5xl mx-auto`}>
         {/* Class filter — explicitly labelled as a filter so teachers
             don't read the pills as a second row of tabs ("what does
             clicking my class do?" was the confusion report).  Filter

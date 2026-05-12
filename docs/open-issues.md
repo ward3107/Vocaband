@@ -4,6 +4,129 @@ Tracking known issues with their diagnosis status.
 
 ---
 
+## Beat-Kahoot Roadmap (drafted 2026-05-12)
+
+Strategic roadmap for making Vocaband structurally beat Kahoot in Israeli schools. Grouped by tier — top tiers ship soonest. Discovery notes precede each item.
+
+### Already shipped (verified in code)
+
+- **Personalized review** — `supabase/migrations/20260423_add_word_attempts.sql` tracks every word attempt per student. `TopStrugglingWords.tsx` surfaces this to teachers.
+- **Spaced repetition** — `supabase/migrations/20260507205628_spaced_repetition.sql` provides `review_schedule`, `count_due_reviews`, `get_due_reviews`, `record_review_result`, `schedule_review_words`. Wired through `useDueReviews.ts` → `ReviewQueueCard.tsx` → `ReviewGame.tsx`. Full SRS already live.
+- **QR / nickname join** — Quick Play already exists.
+- **Curriculum labelling structure** — `Set 1 / Set 2 / Set 3 / Custom` type already in place across the codebase.
+
+These items are DONE. Don't rebuild them — surface and market them.
+
+---
+
+### Tier 1 — Ship next (small scope, big leverage)
+
+**1. Class Minute — daily 60-second drill**
+- Teacher dashboard tile + student dashboard tile labelled "Class Minute"
+- 60-second timer, rapid-fire word recognition, pulls from the student's SRS due queue (`useDueReviews`) first, then fills from current assignment
+- Single score at the end + streak ("3 days in a row!"). No XP economy changes — just a daily ritual
+- Reuses: word picker, existing game-mode rendering, `useDueReviews`, streak field on `users`
+- ETA: 1–2 evenings
+- Why now: smallest scope on this list, daily habit = retention moat Kahoot cannot copy
+
+**2. Hot-seat mode (single device, pass-around)**
+- New game mode flag `hotSeat: true` on existing game shells
+- Each round: shows student name → "Pass to {name}" interstitial → 1 question → score → next student
+- Teacher picks the player list (manual names, or roster from class)
+- Solves "not every kid has a phone" — opens lower-income schools
+- ETA: 1–2 evenings
+- Why now: cheap, unblocks a real market segment
+
+**3. Printable PDF certificate (basic)**
+- Reuse the existing `html2pdf` pipeline used by `HebrewWorksheetView`
+- New file: `src/views/certificates/StudentCertificate.tsx` — A4 layout, student name, class, date, "X words mastered", MoE-set label
+- "Print certificate" button on the student profile (teacher view) + end-of-unit
+- ETA: 1 evening for v1
+- Why now: fridge marketing, parent word-of-mouth, no new infra
+
+---
+
+### Tier 2 — Distribution moats
+
+**4. WhatsApp-first homework links**
+- Audit existing share-link flow (commits 829bcae + 594fc76 added per-assignment share + WhatsApp fix). Verify: does the WhatsApp deep-link include `?assignment=<id>` and auto-open the right view?
+- Add: "Send homework on WhatsApp" primary button on every assignment-created success screen
+- Add: opens with localized pre-filled message ("Your English homework: {link}") in HE/AR/EN
+- ETA: 1 evening to audit + polish
+- Why: Israel = WhatsApp country; this is the friction killer
+
+**5. Parent Weekly Report (Friday email)**
+- New Supabase Edge Function: scheduled Friday 16:00 IL time
+- Pulls each student's week stats: words learned, accuracy, class rank, streak
+- Sends to `parent_email` field on `users` (needs new column + opt-in flow)
+- Localized HE/AR/EN template
+- ETA: 1 week (needs email infra decision: Resend already wired per `docs/RESEND-SMTP-SETUP.md` — reuse it)
+- Why: parents become unpaid sales channel; Kahoot has zero parent surface
+
+**6. School-vs-school tournaments**
+- New table `tournaments(id, name, school_a, school_b, starts_at, ends_at, word_set)`
+- New view: real-time scoreboard combining both schools' scores
+- Teacher creates → invites other school by code → 1-week window
+- Leverages existing live-challenge socket layer
+- ETA: 1–2 weeks
+- Why: newsworthy; principal-level engagement; press story potential
+
+---
+
+### Tier 3 — Network / UX moats
+
+**7. Offline-first PWA + LAN mode**
+- Service worker pre-caches SPA shell + active assignment's words + their MP3s
+- IndexedDB queue for `progress` writes when offline → flushes via Background Sync
+- LAN-mode for Live Challenge: WebRTC datachannels with teacher device as host, no internet required for live podium
+- Connection-aware: `navigator.connection.effectiveType === '2g'` → skip MP3s, fall back to `speechSynthesis`
+- ETA: 3–4 weeks (real architectural lift)
+- Why: structural moat; market as "works when Wi-Fi doesn't"
+
+**8. QR-join speed claim**
+- Already exists — task is marketing, not engineering
+- Add side-by-side demo on landing page: "Vocaband: 3 seconds. Kahoot: 12 seconds."
+- ETA: half a day (marketing + measurement)
+
+---
+
+### Tier 4 — Foundational / legal
+
+**9. MoE alignment without copying (legal track)**
+- Hire 2–3 Israeli English teachers as paid consultants to classify the existing Vocaband word bank into Set 1 / Set 2 / Set 3 buckets using their professional judgment based on the publicly-available MoE "Framework for English Language Teaching"
+- Document methodology on the About page: *"Vocaband's word levels are independently classified by experienced Israeli English teachers, aligned to the MoE Framework for English Language Teaching."*
+- Language audit on the site: use "aligned with" / "matches the level of"; never "official MoE list" or "MoE-approved"
+- 1-hour consult with an Israeli IP lawyer (~₪1500) before publishing the claim — confirm: (a) referencing the Framework by name, (b) using "Set 1/2/3" terminology, (c) liability boundary
+- ETA: 3–4 weeks (mostly operator track, not engineering)
+- Why: defensible curriculum claim; the words themselves stay our IP
+
+**10. Hebrew + Arabic as a feature, not a setting**
+- Default the student app to native language detected from class metadata
+- Word translations always visible on the answer screen (not gated behind a tap)
+- Reports + parent emails in HE/AR by default; EN only on request
+- Audit every new feature for `useLanguage().isRTL` correctness
+- Hire one native-Arabic-speaking teacher consultant for translation review
+- ETA: 1–2 weeks engineering + ongoing translation contract
+- Why: Arab-Israeli school market is underserved and Kahoot ignores it
+
+---
+
+### Tier 5 — Explicitly out of scope (per 2026-05-12 decision)
+
+- Voice / pronunciation mode — skipped
+- Free for Israeli public schools — rejected (no free tier)
+- MoE pilot pursuit — deferred
+
+---
+
+### Suggested start: TONIGHT
+
+**Class Minute (#1)** — smallest scope, biggest habit moat, reuses everything we already built (SRS + word picker + streak field). One evening for v1, demoable to a teacher the next morning. After it ships, the daily-drill data informs every other feature on this list.
+
+Fallback if Class Minute feels too big tonight: **Printable PDF Certificate (#3)** — even smaller, even more immediately marketable.
+
+---
+
 ## VocaHebrew — Hebrew-native Quick Play (Phase 2)
 
 **Status:** Code shipped 2026-05-10. Hebrew teachers now get `HebrewQuickPlaySetupView` (lemma picker by `HEBREW_PACKS`, 4 Hebrew modes, success screen with code + share). Bootstrap hook (`useQuickPlayUrlBootstrap`) and `QuickPlayStudentView` branch on `subject==='hebrew'` and load `HEBREW_LEMMAS` instead of `ALL_WORDS`. App.tsx call site passes `p_subject: 'hebrew'` to the RPC.
