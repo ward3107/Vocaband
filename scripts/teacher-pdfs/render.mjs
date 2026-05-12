@@ -5,8 +5,9 @@
  * page plus a list of inner pages.  Each page contains a heading + an
  * ordered list of `blocks` (paragraph, list, callout, table, etc.).
  *
- * Languages: 'en' | 'he' | 'ar'.  HE/AR flip to dir="rtl".  The font
- * family is chosen via `body[lang="..."]` in styles.css.
+ * Languages: 'en' | 'he' | 'ar' | 'ru'.  HE/AR flip to dir="rtl".  The
+ * font family is chosen via `body[lang="..."]` in styles.css (Russian
+ * reuses Inter, which already ships a Cyrillic subset).
  *
  * The render is intentionally string-based — no React, no JSX, no
  * bundler.  Keeps the build pure-Node so we can run it from anywhere

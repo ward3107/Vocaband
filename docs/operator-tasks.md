@@ -79,6 +79,17 @@ Fly Starter has no cold starts but still good belt-and-suspenders.
 
 ---
 
+## 4. Native Russian proofread for the teacher PDFs
+
+The 5 Russian PDFs in `public/docs/*-ru.pdf` were authored without a native reviewer. Before any of them go out to parents or admins, get a native Russian speaker to proof at least:
+
+- `parent-letter-ru.pdf` — goes home to families, highest stakes
+- `privacy-sheet-ru.pdf` — goes to school administrators
+
+The teacher / student / quick-start docs are lower-stakes and can wait. Source text lives in `scripts/teacher-pdfs/content/*.mjs` under the `ru` key; rebuild with `node scripts/teacher-pdfs/build.mjs --ru` after edits.
+
+---
+
 ## ✅ DONE earlier — `claude/fix-points-display-9Q4Dw` merged to main
 
 Branch no longer exists in remote (verified 2026-05-07 via `git branch -r`). All 2026-04-29/30 work (OCR final fix via in-page camera, PWA install banner, 3 new dashboard themes, teacher OTP login, full student i18n) shipped.
