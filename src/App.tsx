@@ -87,6 +87,7 @@ import {
 import { celebrate } from "./utils/celebrate";
 import { compressImageForUpload } from "./utils/compressImage";
 import ImageCropModal from "./components/ImageCropModal";
+import { setGuideStore, type GuideKey } from "./hooks/useFirstTimeGuide";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
@@ -135,7 +136,7 @@ const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 // ─── View constants for shouldPreserveView (O(1) lookup with Sets) ────────
 // Defined at module level to avoid re-creating arrays on every auth restore.
 const PUBLIC_VIEWS = new Set<View>([
-  "public-landing", "public-terms", "public-privacy", "public-security", "public-faq", "public-free-resources", "public-status", "accessibility-statement"
+  "public-landing", "public-terms", "public-privacy", "public-security", "public-free-resources", "public-status", "accessibility-statement"
 ]);
 const TEACHER_VIEWS = new Set<View>([
   "worksheet", "classroom", "class-show", "teacher-approvals",
@@ -216,6 +217,45 @@ export default function App() {
     } catch { /* sessionStorage may be blocked; non-fatal */ }
   }, [activeVoca]);
 
+  // First-time-guide persistence — push the signed-in teacher's
+  // dismissed-guide list into the module-level store consumed by
+  // useFirstTimeGuide.  On dismissal, the hook calls markSeen here
+  // which appends to user.guides_seen + writes it back to Supabase, so
+  // a teacher signing in on a second device never re-sees a guide they
+  // already closed.  Students/guests get null → hook falls back to
+  // localStorage (still works, just per-device).
+  useEffect(() => {
+    if (!user || user.role !== "teacher") {
+      setGuideStore(null);
+      return;
+    }
+    const seen = user.guidesSeen ?? [];
+    setGuideStore({
+      seen,
+      markSeen: async (key: GuideKey) => {
+        if (seen.includes(key)) return;
+        const next = Array.from(new Set([...seen, key]));
+        // Optimistic in-memory update first — the dashboard re-renders
+        // immediately without waiting for the round-trip.
+        setUser(prev => prev ? { ...prev, guidesSeen: next } : prev);
+        const { error } = await supabase
+          .from("users")
+          .update({ guides_seen: next })
+          .eq("uid", user.uid);
+        if (error) {
+          // Roll back the optimistic update so a retry from another
+          // device can re-attempt.  localStorage still suppresses
+          // re-shows on THIS device until storage clears.
+          console.warn("[guides] persist failed; rolling back:", error);
+          setUser(prev => prev ? { ...prev, guidesSeen: seen } : prev);
+        }
+      },
+    });
+    return () => {
+      setGuideStore(null);
+    };
+  }, [user]);
+
   // VocaHebrew routing — when an entitled teacher (subjects_taught
   // length >= 2) lands on teacher-dashboard without an activeVoca
   // chosen yet, redirect to the picker.  Single-Voca teachers get
@@ -262,14 +302,13 @@ export default function App() {
     handleCookieCustomize,
   } = useCookieConsent();
 
-  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => {
+  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status") => {
     const viewMap = {
       home: "public-landing",
       terms: "public-terms",
       privacy: "public-privacy",
       accessibility: "accessibility-statement",
       security: "public-security",
-      faq: "public-faq",
       resources: "public-free-resources",
       status: "public-status",
     } as const;
@@ -292,7 +331,6 @@ export default function App() {
     view === "public-terms" ||
     view === "public-privacy" ||
     view === "public-security" ||
-    view === "public-faq" ||
     view === "public-free-resources" ||
     view === "public-status" ||
     view === "accessibility-statement";

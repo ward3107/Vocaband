@@ -2228,7 +2228,7 @@ interface FreeResourcesViewProps {
   // Mirrors NavPage in PublicNav.tsx — kept as a literal union here so the
   // call sites in App.tsx don't need to import the type. Update both when
   // adding new public pages.
-  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => void;
+  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status") => void;
   onGetStarted: () => void;
   /** Teacher signup — drives PublicNav's "Start free" CTA. */
   onTeacherLogin?: () => void;
