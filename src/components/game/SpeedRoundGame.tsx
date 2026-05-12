@@ -301,6 +301,18 @@ export default function SpeedRoundGame({
         )}
       </AnimatePresence>
 
+      {/* Persistent task label — sits ABOVE the word so it's always clear
+          the displayed English word is what the student must translate.
+          Earlier versions only showed this on Q1 and students forgot the
+          task mid-round. */}
+      <p className="mb-2 text-xs sm:text-sm uppercase tracking-widest font-bold text-stone-400" dir={dir}>
+        {language === "he"
+          ? "תרגם את המילה"
+          : language === "ar"
+          ? "ترجم الكلمة"
+          : "Translate this word"}
+      </p>
+
       {/* Big prompt word */}
       <div className="mb-2 text-center">
         <h2 className="text-4xl sm:text-6xl font-black tracking-tight text-stone-900 dark:text-stone-100">
@@ -317,14 +329,14 @@ export default function SpeedRoundGame({
         {language === "he" ? "השמע שוב" : language === "ar" ? "أعد التشغيل" : "Replay"}
       </button>
 
-      {/* Hint label — tells the student what to do once per round */}
+      {/* Speed nudge — only on Q1, where it nudges without cluttering later */}
       {questionsAnswered === 0 && (
         <p className="mt-3 text-xs sm:text-sm text-stone-500 font-semibold" dir={dir}>
           {language === "he"
-            ? "בחר את התרגום הנכון מהר ככל האפשר"
+            ? "בחר את התשובה הנכונה מהר ככל האפשר"
             : language === "ar"
-            ? "اختر الترجمة الصحيحة بأسرع ما يمكن"
-            : "Pick the correct translation as fast as you can"}
+            ? "اختر الإجابة الصحيحة بأسرع ما يمكن"
+            : "Pick the correct answer as fast as you can"}
         </p>
       )}
 
