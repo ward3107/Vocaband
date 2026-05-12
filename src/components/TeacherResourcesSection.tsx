@@ -44,9 +44,7 @@ const PDF_LANGUAGES: PdfLangSpec[] = [
 ];
 
 // Languages that actually have a generated PDF in public/docs/.
-// Flip 'ru' on once the Russian content is added to
-// scripts/teacher-pdfs/content/*.mjs and the build script is rerun.
-const AVAILABLE_PDF_LANGUAGES: ReadonlySet<PdfLanguage> = new Set(["en", "he", "ar"]);
+const AVAILABLE_PDF_LANGUAGES: ReadonlySet<PdfLanguage> = new Set(["en", "he", "ar", "ru"]);
 
 interface TeacherResourcesSectionProps {
   /** "hero" — big section with eyebrow + heading + subtitle (landing page).

@@ -37,7 +37,7 @@ const root = path.resolve(__dirname, '..', '..');
 const outDir = path.join(root, 'public', 'docs');
 
 const ALL_DOCS = [teacherGuide, quickStart, studentGuide, parentLetter, privacySheet];
-const ALL_LANGS = ['en', 'he', 'ar'];
+const ALL_LANGS = ['en', 'he', 'ar', 'ru'];
 
 function parseArgs(argv) {
   const flags = { langs: new Set(), docs: new Set() };
@@ -45,6 +45,7 @@ function parseArgs(argv) {
     if (a === '--en') flags.langs.add('en');
     else if (a === '--he') flags.langs.add('he');
     else if (a === '--ar') flags.langs.add('ar');
+    else if (a === '--ru') flags.langs.add('ru');
     else if (a.startsWith('--doc=')) flags.docs.add(a.slice('--doc='.length));
   }
   if (flags.langs.size === 0) ALL_LANGS.forEach((l) => flags.langs.add(l));

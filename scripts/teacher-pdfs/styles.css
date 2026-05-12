@@ -42,6 +42,7 @@ html, body {
 body[lang="en"] { font-family: "Inter", -apple-system, "Segoe UI", Arial, sans-serif; }
 body[lang="he"] { font-family: "Heebo", -apple-system, "Segoe UI", Tahoma, Arial, sans-serif; }
 body[lang="ar"] { font-family: "Cairo", -apple-system, "Segoe UI", Tahoma, Arial, sans-serif; }
+body[lang="ru"] { font-family: "Inter", -apple-system, "Segoe UI", Arial, sans-serif; }
 
 .page {
   width: 210mm;
