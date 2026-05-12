@@ -1806,8 +1806,20 @@ export default function App() {
               plan: "free",
               trialEndsAt: freshTrialEndsAt(),
             };
-            // Use upsert to handle race conditions (StrictMode double-mount, retry after partial failure)
-            const { error: insertErr } = await supabase.from('users').upsert(mapUserToDb(newUser), { onConflict: 'uid' });
+            // Use upsert with ignoreDuplicates=true to handle race
+            // conditions (StrictMode double-mount, retry after partial
+            // failure) WITHOUT overwriting an already-paying Pro
+            // teacher's plan/trial_ends_at on every re-sign-in.  The
+            // adjacent comment used to claim this was the case, but the
+            // call previously omitted `ignoreDuplicates`, which made
+            // Supabase default to ON CONFLICT DO UPDATE — silently
+            // downgrading any returning Pro teacher to Free + a fresh
+            // 30-day trial.  Same bug also made it possible for the
+            // tightened users_update RLS (20260602) to reject the
+            // re-sign-in altogether once that migration lands.
+            const { error: insertErr } = await supabase
+              .from('users')
+              .upsert(mapUserToDb(newUser), { onConflict: 'uid', ignoreDuplicates: true });
             if (insertErr) {
               console.error("Teacher profile upsert failed:", insertErr);
             }
