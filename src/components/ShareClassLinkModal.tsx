@@ -12,6 +12,11 @@ interface ShareClassLinkModalProps {
   code: string;
   /** Optional WhatsApp share — if provided, surfaces a button alongside copy. */
   onWhatsApp?: () => void;
+  /** When set, the share link deep-links the student straight into this
+   *  assignment after they log in (URL gets `&assignment=<id>`). */
+  assignmentId?: string;
+  /** Title shown in the modal header when sharing a specific assignment. */
+  assignmentTitle?: string;
 }
 
 /**
@@ -20,15 +25,22 @@ interface ShareClassLinkModalProps {
  * detour, no public-landing CTAs to confuse a 4th-grader who scanned a
  * QR.  See docs/PUBLIC-PAGES-AUDIT-2026-04-28.md for the routing
  * rationale.
+ *
+ * When `assignmentId` is provided the URL also carries `&assignment=<id>`
+ * so App.tsx can auto-open that assignment for the student once they
+ * land on their dashboard.
  */
-function buildJoinUrl(code: string): string {
+function buildJoinUrl(code: string, assignmentId?: string): string {
   // window.location.origin is fine on web; in SSR contexts (none today)
   // we'd fall back to the production domain.
   const origin =
     typeof window !== "undefined" && window.location?.origin
       ? window.location.origin
       : "https://www.vocaband.com";
-  return `${origin}/student?class=${encodeURIComponent(code)}`;
+  const base = `${origin}/student?class=${encodeURIComponent(code)}`;
+  return assignmentId
+    ? `${base}&assignment=${encodeURIComponent(assignmentId)}`
+    : base;
 }
 
 const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
@@ -37,13 +49,16 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
   className,
   code,
   onWhatsApp,
+  assignmentId,
+  assignmentTitle,
 }) => {
   const { language, dir } = useLanguage();
   const t = teacherDashboardT[language];
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  const url = buildJoinUrl(code);
+  const url = buildJoinUrl(code, assignmentId);
+  const isAssignmentShare = Boolean(assignmentId);
 
   // Reset copy chips when the modal closes so a re-open shows the
   // default Copy icons rather than a stale checkmark.
@@ -112,11 +127,15 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                 <X size={18} />
               </button>
               <p className="text-xs font-black uppercase tracking-[0.28em] text-white/70">
-                {t.shareClassLinkEyebrow}
+                {isAssignmentShare ? "Share assignment" : t.shareClassLinkEyebrow}
               </p>
-              <h2 className="mt-1 text-2xl font-black leading-tight">{className}</h2>
+              <h2 className="mt-1 text-2xl font-black leading-tight">
+                {isAssignmentShare ? assignmentTitle ?? className : className}
+              </h2>
               <p className="mt-2 text-sm text-white/85 leading-relaxed">
-                {t.shareClassLinkSubtitle}
+                {isAssignmentShare
+                  ? `Students who open this link join ${className} and go straight to this assignment.`
+                  : t.shareClassLinkSubtitle}
               </p>
             </div>
 

@@ -736,6 +736,18 @@ export default function App() {
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
+  // Captures the `?assignment=<id>` URL param at boot.  When the
+  // student lands on their dashboard with this set, we look up the
+  // matching assignment in `studentAssignments` and drop them straight
+  // into the mode picker for it — teachers share links from the
+  // assignment row so the student should bypass the dashboard step.
+  const [pendingAssignmentId, setPendingAssignmentId] = useState<string | null>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("assignment");
+    } catch {
+      return null;
+    }
+  });
 
   const { speak: speakWordRaw, preloadMany, playWrong, playMotivational } = useAudio();
   const speakWord = speakWordRaw;
@@ -2134,6 +2146,35 @@ export default function App() {
     loadPendingStudents,
     fetchScores,
   });
+
+  // Deep-link to a specific assignment.  When a teacher shares an
+  // assignment via the Share button on its row in ClassCard, the URL
+  // carries `&assignment=<id>`.  After the student logs in and lands
+  // on their dashboard with assignments loaded, drop them straight
+  // into the mode picker for that assignment — skipping the manual
+  // dashboard tap a teacher just shortcut for them.  We only consume
+  // the pending id once; missing matches silently fall back to the
+  // normal dashboard so an outdated link doesn't strand the student.
+  useEffect(() => {
+    if (!pendingAssignmentId) return;
+    if (user?.role !== "student") return;
+    if (view !== "student-dashboard") return;
+    if (studentAssignments.length === 0) return;
+    const match = studentAssignments.find(a => a.id === pendingAssignmentId);
+    if (!match) return;
+    setActiveAssignment(match);
+    setAssignmentWords(match.words ?? []);
+    setShowModeSelection(true);
+    setView("game");
+    setPendingAssignmentId(null);
+    // Strip the consumed param so a refresh or back-nav doesn't
+    // re-trigger the auto-open after the student left the assignment.
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("assignment");
+      window.history.replaceState({}, "", url.toString());
+    } catch { /* history API unavailable — non-fatal */ }
+  }, [pendingAssignmentId, user?.role, view, studentAssignments]);
 
 
   // --- SMART PASTE FUNCTIONS ---
