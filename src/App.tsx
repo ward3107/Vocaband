@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { freshTrialEndsAt, isPro } from "./core/plan";
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
+import { setSentryUser, clearSentryUser } from "./core/sentry";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
 import { getTeacherDashboardTheme } from "./constants/teacherDashboardThemes";
@@ -961,6 +962,18 @@ export default function App() {
   const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
 
   useEffect(() => { userRef.current = user; }, [user]);
+
+  // Pipe the signed-in user to Sentry so any error after this point is
+  // tagged with who hit it ("this crash affected 14 students in class X").
+  // Cleared on logout so a subsequent anonymous error isn't attributed
+  // to the previous session.
+  useEffect(() => {
+    if (user?.uid) {
+      setSentryUser({ uid: user.uid, role: user.role ?? undefined, email: user.email ?? undefined });
+    } else {
+      clearSentryUser();
+    }
+  }, [user?.uid, user?.role, user?.email]);
 
   // Cleanup feedback timeout on unmount. Save-queue unmount-flush is
   // owned by useSaveQueue itself.

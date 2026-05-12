@@ -1,5 +1,6 @@
 import React, { ErrorInfo, ReactNode } from "react";
 import { isChunkLoadError, attemptChunkReload, forceFullRecovery } from "./utils/chunkReload";
+import { reportError } from "./core/sentry";
 
 interface Props {
   children: ReactNode;
@@ -40,12 +41,20 @@ class ErrorBoundary extends React.Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
+    // Chunk-load errors are network/CDN races we already auto-recover
+    // from — don't spam Sentry with those. Everything else is a real
+    // bug we want to know about.
     if (isChunkLoadError(error)) {
       const reloading = attemptChunkReload();
       if (!reloading) {
         // Guard window expired — stop retrying and show the error screen.
         this.setState({ isReloading: false });
       }
+    } else {
+      reportError(error, {
+        componentStack: errorInfo.componentStack ?? "(none)",
+        url: typeof window !== "undefined" ? window.location.href : "(unknown)",
+      });
     }
   }
 
