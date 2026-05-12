@@ -167,20 +167,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
       <main>
         {/* Hero Section - Floating 3D Cards + Gradient Mesh */}
         <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative isolate flex items-center justify-center overflow-hidden">
-          {/* Hero background video — silent, looping ambience.  Tint
-              overlay below pushes the footage toward Vocaband's brand
-              palette so a generic clip still feels on-brand. */}
-          <video
+          {/* Hero background video — silent, looping ambience.  Lazy-
+              loaded via IntersectionObserver: even though the hero is
+              above the fold, deferring the 2 MB fetch by one frame
+              gets the HTML/CSS/text-LCP on screen first, then the
+              video paints in.  Tint overlay below pushes the footage
+              toward Vocaband's brand palette so a generic clip still
+              feels on-brand. */}
+          <LazyBgVideo
+            src="/hero.mp4"
             className="absolute inset-0 w-full h-full object-cover -z-30"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            aria-hidden="true"
-          >
-            <source src="/hero.mp4" type="video/mp4" />
-          </video>
+          />
           <div
             className="absolute inset-0 -z-20 bg-gradient-to-br from-indigo-950/75 via-violet-900/65 to-fuchsia-900/75"
             aria-hidden="true"
