@@ -163,12 +163,14 @@ export default function IdiomGame({
         {language === "he" ? "השמע שוב" : language === "ar" ? "أعد التشغيل" : "Replay"}
       </button>
 
-      {/* Hint label above options */}
+      {/* Hint label above options — the parenthetical reminds HE/AR
+          speakers we want the figurative meaning, not a word-for-word
+          translation (a common point of confusion for younger students). */}
       <p className="mt-5 mb-3 text-center text-sm sm:text-base text-stone-600 font-semibold" dir={dir}>
         {language === "he"
-          ? "מה המשמעות של הביטוי?"
+          ? "מה המשמעות של הביטוי? (לא תרגום מילולי)"
           : language === "ar"
-          ? "ما معنى هذا التعبير؟"
+          ? "ما معنى هذا التعبير؟ (وليس ترجمة حرفية)"
           : "What does this idiom mean?"}
       </p>
 

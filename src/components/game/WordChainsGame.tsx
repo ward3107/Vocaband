@@ -216,9 +216,21 @@ export default function WordChainsGame({
         🔗 {language === "he" ? "שרשרת" : language === "ar" ? "السلسلة" : "Chain"}: {score}
       </div>
 
-      {/* Big current word with last letter highlighted */}
-      <div className="relative mb-2">
-        <div className="text-5xl sm:text-7xl font-black tracking-tight text-stone-900 dark:text-stone-100">
+      {/* "Previous word" — small contextual label so students don't mistake
+          the seed word for the question. The actual TASK below is the big
+          element on the screen. */}
+      <p
+        className="text-xs sm:text-sm uppercase tracking-widest font-bold text-stone-400 mb-1"
+        dir={dir}
+      >
+        {language === "he"
+          ? "המילה הקודמת"
+          : language === "ar"
+          ? "الكلمة السابقة"
+          : "Previous word"}
+      </p>
+      <div className="relative mb-1">
+        <div className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-700 dark:text-stone-300">
           <span>{head}</span>
           <span className={`${theme.pillText}`} style={{ textShadow: "0 0 0 currentColor" }}>
             {tail}
@@ -228,24 +240,31 @@ export default function WordChainsGame({
       <button
         type="button"
         onClick={() => speak(currentWord.id, currentWord.english)}
-        className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-semibold transition"
+        className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-semibold transition"
         aria-label="Replay audio"
       >
-        <Volume2 size={14} /> {language === "he" ? "השמע שוב" : language === "ar" ? "أعد التشغيل" : "Replay"}
+        <Volume2 size={12} /> {language === "he" ? "השמע" : language === "ar" ? "تشغيل" : "Play"}
       </button>
 
-      {/* Hint about what's expected */}
-      <p
-        className="mt-4 text-center text-sm sm:text-base text-stone-600"
+      {/* THE TASK — biggest, most prominent element. Students should never
+          have to guess what to do. The target letter is the hero. */}
+      <div
+        className="mt-6 text-center"
         dir={dir}
       >
-        {language === "he"
-          ? `הקלד מילה שמתחילה ב-`
-          : language === "ar"
-          ? `اكتب كلمة تبدأ بـ `
-          : `Type a word starting with `}
-        <span className={`font-black uppercase ${theme.pillText}`}>{tail}</span>
-      </p>
+        <p className="text-sm sm:text-base text-stone-600 font-semibold mb-2">
+          {language === "he"
+            ? "התור שלך — הקלד מילה כלשהי שמתחילה ב:"
+            : language === "ar"
+            ? "دورك — اكتب أي كلمة تبدأ بـ:"
+            : "Your turn — type any word that starts with:"}
+        </p>
+        <div
+          className={`inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-3xl ${theme.pillBg} ${theme.pillText} shadow-lg`}
+        >
+          <span className="text-5xl sm:text-6xl font-black uppercase">{tail}</span>
+        </div>
+      </div>
 
       {/* Input form */}
       <form
