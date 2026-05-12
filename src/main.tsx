@@ -2,7 +2,12 @@ import {lazy, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.tsx';
 import { runSafariDiagnostics } from './utils/safariDiagnostics';
+import { initSentry } from './core/sentry';
 import './index.css';
+
+// Init Sentry as early as possible so any subsequent throw is captured.
+// No-op in dev (init() short-circuits when import.meta.env.PROD is false).
+initSentry();
 
 // Apply the teacher's saved display scale BEFORE React renders, so
 // the first paint already uses the right rem base.  Without this,
