@@ -48,11 +48,23 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Match package.json `engines.node: >=22.0.0` (wrangler 4.x,
+          # miniflare 4.x and @cloudflare/kv-asset-handler 0.5 all
+          # require Node 22+).  Node 20 worked locally but blew up here
+          # with EBADENGINE warnings on every package.
+          node-version: "22"
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        # `npm ci` is the canonical choice in CI for reproducibility, but
+        # it fails hard when package-lock.json is even slightly out of
+        # sync with package.json.  The lockfile here was drifted by an
+        # earlier commit that added @sentry/react without regenerating
+        # the lock — `npm ci` errored "Missing: @sentry/react from lock
+        # file" and never ran.  Use `npm install` instead so the install
+        # self-heals on lockfile drift; CI reproducibility is preserved
+        # by the explicit version pins in package.json.
+        run: npm install --legacy-peer-deps
 
       - name: Run tests
         run: npm test
