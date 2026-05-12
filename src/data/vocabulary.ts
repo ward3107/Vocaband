@@ -6893,22 +6893,22 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Fruits 🍎",
     icon: "🍎",
-    ids: [208, 349, 1751, 3216, 4859], // 5 fruits
+    ids: [208, 349, 1120, 1751, 1959, 2548, 2818, 2873, 3216, 3350, 3440, 4257, 4859, 4940, 5686, 5827],
   },
   {
     name: "Vegetables 🥕",
     icon: "🥕",
-    ids: [4859, 624, 690, 2858, 3931], // 5 vegetables
+    ids: [407, 577, 623, 624, 690, 1009, 1078, 1368, 2638, 2858, 3192, 3357, 3481, 3931, 4619, 6274],
   },
   {
     name: "Desserts & Sweets 🍰",
     icon: "🍰",
-    ids: [573, 629, 701, 855, 1944], // 5 desserts
+    ids: [573, 629, 662, 701, 793, 855, 995, 1174, 1944, 2176, 2271, 2457, 3398, 4302, 4358],
   },
   {
     name: "Beach & Sea 🏖️",
     icon: "🏖️",
-    ids: [405, 3123, 3226, 3915, 4208], // 5 beach/sea words
+    ids: [405, 868, 1275, 1643, 2419, 3123, 3226, 3860, 3915, 3971, 4208, 4587, 6133, 7828],
   },
   {
     name: "Hobbies & Free Time 🎯",
@@ -6918,12 +6918,12 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Birds 🐦",
     icon: "🐦",
-    ids: [476], // can add more bird words
+    ids: [476, 782, 1322, 2118, 3266, 3310, 3351, 3354, 7111, 8323],
   },
   {
     name: "Farm Animals 🐄",
     icon: "🐄",
-    ids: [782, 892, 1043, 2184, 2945], // 5 farm animals
+    ids: [702, 782, 892, 1043, 1272, 1280, 1322, 1567, 1911, 2184, 2945, 3401, 3613, 7235, 8600],
   },
   {
     name: "Time Expressions ⏰",
@@ -6933,7 +6933,7 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Shapes & Sizes 📐",
     icon: "📐",
-    ids: [4313], // can be expanded
+    ids: [465, 809, 1077, 1421, 2097, 2223, 2576, 2679, 2694, 2868, 4000, 4075, 4195, 4414, 4542, 4545, 4602, 5036, 7966, 8286],
   },
   {
     name: "Greetings & Polite Words 👋",
@@ -6946,7 +6946,7 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Bathroom 🚽",
     icon: "🚽",
-    ids: [184, 185, 2203], // bathroom items
+    ids: [184, 185, 373, 895, 2203, 2922, 4010, 4616, 4636, 4637, 4658, 6314, 7842, 7929],
   },
   {
     name: "Common Verbs 🏃",
@@ -6966,7 +6966,7 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Sky & Space ✨",
     icon: "✨",
-    ids: [2525, 3584, 3666, 4313], // 4 sky words
+    ids: [275, 859, 1346, 2525, 2948, 3417, 3584, 3625, 3627, 3666, 4060, 4152, 4208, 4313, 7986, 8907, 8922, 8962],
   },
   {
     name: "Hot & Cold 🌡️",
