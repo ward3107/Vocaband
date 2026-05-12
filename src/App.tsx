@@ -52,6 +52,7 @@ const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginVi
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const ClassShowView = lazy(() => import("./views/ClassShowView"));
+const HotSeatView = lazy(() => import("./views/HotSeatView"));
 const HebrewClassShowView = lazy(() => import("./views/HebrewClassShowView"));
 const WorksheetView = lazy(() => import("./views/WorksheetView"));
 const HebrewWorksheetView = lazy(() => import("./views/HebrewWorksheetView"));
@@ -3118,6 +3119,7 @@ export default function App() {
           }}
           onWorksheetClick={() => { setWorksheetAssignment(null); setView("worksheet"); }}
           onVocabagrutClick={() => { setView("vocabagrut"); }}
+          onHotSeatClick={() => { setView("hot-seat"); }}
           onPrintAssignmentWorksheet={(a) => {
             setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("worksheet");
@@ -3813,6 +3815,22 @@ export default function App() {
     );
   }
 
+
+  if (view === "hot-seat") {
+    // Pass-around classroom mode — one device, many players.  Owns its
+    // own setup screen + game loop + podium internally; nothing to thread
+    // beyond speakWord (for audio replay on the prompt) and a back
+    // handler (dashboard return).  Scores stay in-memory; no Supabase
+    // writes since the players aren't logged-in users.
+    return (
+      <LazyWrapper loadingMessage="Loading Hot Seat…">
+        <HotSeatView
+          onExit={() => setView("teacher-dashboard")}
+          speak={speakWord}
+        />
+      </LazyWrapper>
+    );
+  }
 
   if (view === "class-show") {
     // Hebrew classes get a focused 2-mode projector view

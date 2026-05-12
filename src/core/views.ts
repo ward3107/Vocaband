@@ -34,6 +34,7 @@ export type View =
   | "quick-play-setup"
   | "quick-play-teacher-monitor"
   | "quick-play-student"
+  | "hot-seat"
   | "class-show"
   | "worksheet"
   | "vocabagrut"
