@@ -17,8 +17,7 @@
 
 import React from "react";
 import { motion } from "motion/react";
-import { BookOpen, Zap, Gamepad2, Mail, ShieldCheck, CircleHelp, Download, ArrowRight } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { CircleHelp, Download, ArrowRight } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherResourcesT } from "../locales/student/teacher-resources";
 
@@ -56,9 +55,8 @@ interface TeacherResourcesSectionProps {
   onOpenFaq?: () => void;
 }
 
-interface CardSpec {
-  key: "teacher-guide" | "quick-start" | "student-guide" | "parent-letter" | "privacy-sheet" | "faq";
-  icon: LucideIcon;
+interface PdfCardSpec {
+  key: "teacher-guide" | "quick-start" | "student-guide" | "parent-letter" | "privacy-sheet";
   emoji: string;
   // Tailwind gradient classes — one palette per card so the row
   // reads as a coloured strip rather than a uniform block.
@@ -66,13 +64,11 @@ interface CardSpec {
   ring: string;
   iconBg: string;
   draft?: boolean;
-  isFaq?: boolean;
 }
 
-const CARDS: CardSpec[] = [
+const PDF_CARDS: PdfCardSpec[] = [
   {
     key: "teacher-guide",
-    icon: BookOpen,
     emoji: "📘",
     gradient: "from-indigo-500 via-violet-600 to-fuchsia-600",
     ring: "ring-indigo-300/40",
@@ -80,7 +76,6 @@ const CARDS: CardSpec[] = [
   },
   {
     key: "quick-start",
-    icon: Zap,
     emoji: "⚡",
     gradient: "from-amber-500 via-orange-500 to-rose-500",
     ring: "ring-amber-300/40",
@@ -88,7 +83,6 @@ const CARDS: CardSpec[] = [
   },
   {
     key: "student-guide",
-    icon: Gamepad2,
     emoji: "🎮",
     gradient: "from-emerald-500 via-teal-500 to-cyan-500",
     ring: "ring-emerald-300/40",
@@ -96,7 +90,6 @@ const CARDS: CardSpec[] = [
   },
   {
     key: "parent-letter",
-    icon: Mail,
     emoji: "✉️",
     gradient: "from-pink-500 via-fuchsia-500 to-purple-600",
     ring: "ring-pink-300/40",
@@ -104,43 +97,31 @@ const CARDS: CardSpec[] = [
   },
   {
     key: "privacy-sheet",
-    icon: ShieldCheck,
     emoji: "🛡️",
     gradient: "from-slate-600 via-slate-700 to-slate-900",
     ring: "ring-slate-300/40",
     iconBg: "from-slate-400 to-slate-600",
     draft: true,
   },
-  {
-    key: "faq",
-    icon: CircleHelp,
-    emoji: "❓",
-    gradient: "from-sky-500 via-blue-600 to-indigo-600",
-    ring: "ring-sky-300/40",
-    iconBg: "from-sky-400 to-blue-500",
-    isFaq: true,
-  },
 ];
 
-function titleFor(card: CardSpec, t: ReturnType<typeof useLocale>) {
+function titleFor(card: PdfCardSpec, t: ReturnType<typeof useLocale>) {
   switch (card.key) {
     case "teacher-guide":  return t.teacherGuideTitle;
     case "quick-start":    return t.quickStartTitle;
     case "student-guide":  return t.studentGuideTitle;
     case "parent-letter":  return t.parentLetterTitle;
     case "privacy-sheet":  return t.privacyTitle;
-    case "faq":            return t.faqTitle;
   }
 }
 
-function blurbFor(card: CardSpec, t: ReturnType<typeof useLocale>) {
+function blurbFor(card: PdfCardSpec, t: ReturnType<typeof useLocale>) {
   switch (card.key) {
     case "teacher-guide":  return t.teacherGuideBlurb;
     case "quick-start":    return t.quickStartBlurb;
     case "student-guide":  return t.studentGuideBlurb;
     case "parent-letter":  return t.parentLetterBlurb;
     case "privacy-sheet":  return t.privacyBlurb;
-    case "faq":            return t.faqBlurb;
   }
 }
 
@@ -202,14 +183,31 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
           </div>
         )}
 
-        {/* Card grid */}
+        {/* Card grid — five downloadable PDFs.  The FAQ used to live in
+            this grid too, but it's an in-app navigation (not a file
+            download) so it now sits in its own strip below where the
+            different affordance reads correctly. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 items-stretch">
-          {CARDS.map((card, i) => {
+          {PDF_CARDS.map((card, i) => {
             const title = titleFor(card, t);
             const blurb = blurbFor(card, t);
 
-            const header = (
-              <>
+            // Move the user's UI language to the top of the per-card
+            // list so the default-language download is always one tap
+            // away even though all four options stay visible.
+            const orderedLanguages = [...PDF_LANGUAGES].sort((a, b) =>
+              a.code === language ? -1 : b.code === language ? 1 : 0,
+            );
+
+            return (
+              <motion.div
+                key={card.key}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: i * 0.05 }}
+                className={`relative overflow-hidden rounded-3xl p-5 md:p-6 h-full bg-gradient-to-br ${card.gradient} text-white shadow-lg shadow-violet-500/10 ring-1 ${card.ring} flex flex-col`}
+              >
                 <div className="flex items-start justify-between mb-4">
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${card.iconBg} flex items-center justify-center text-2xl shadow-md shadow-black/10 ring-1 ring-white/30`}>
                     <span aria-hidden="true">{card.emoji}</span>
@@ -227,78 +225,13 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
                 <p className="text-white/85 text-sm leading-relaxed mb-4 line-clamp-3">
                   {blurb}
                 </p>
-              </>
-            );
-
-            // FAQ card — single in-app action, whole card stays clickable.
-            if (card.isFaq) {
-              const Icon = card.icon;
-              const faqInner = (
-                <motion.div
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ delay: i * 0.05 }}
-                  className={`group relative overflow-hidden rounded-3xl p-5 md:p-6 h-full bg-gradient-to-br ${card.gradient} text-white shadow-lg shadow-violet-500/10 ring-1 ${card.ring}`}
-                >
-                  {header}
-                  <div
-                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/25 text-sm font-bold transition-colors ${isRTL ? "flex-row-reverse" : ""}`}
-                  >
-                    <Icon size={14} aria-hidden="true" />
-                    <span>{t.openFaq}</span>
-                    <ArrowRight size={14} className={isRTL ? "rotate-180" : ""} aria-hidden="true" />
-                  </div>
-                </motion.div>
-              );
-
-              if (onOpenFaq) {
-                return (
-                  <button
-                    key={card.key}
-                    type="button"
-                    onClick={onOpenFaq}
-                    className="text-start"
-                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
-                  >
-                    {faqInner}
-                  </button>
-                );
-              }
-              return (
-                <a
-                  key={card.key}
-                  href="/faq"
-                  className="block"
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
-                >
-                  {faqInner}
-                </a>
-              );
-            }
-
-            // PDF card — each card now exposes ALL language versions as
-            // their own labeled row so a teacher can grab a parent letter
-            // in Russian without leaving their Hebrew-language UI.
-            return (
-              <motion.div
-                key={card.key}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ delay: i * 0.05 }}
-                className={`relative overflow-hidden rounded-3xl p-5 md:p-6 h-full bg-gradient-to-br ${card.gradient} text-white shadow-lg shadow-violet-500/10 ring-1 ${card.ring} flex flex-col`}
-              >
-                {header}
 
                 <div className="mt-auto pt-3 border-t border-white/20">
                   <p className={`text-white/70 text-[10px] font-black uppercase tracking-[0.15em] mb-2 ${isRTL ? "text-right" : "text-left"}`}>
                     {t.downloadInLanguage}
                   </p>
                   <ul className="space-y-1.5">
-                    {PDF_LANGUAGES.map((lang) => {
+                    {orderedLanguages.map((lang) => {
                       const available = AVAILABLE_PDF_LANGUAGES.has(lang.code);
                       const isCurrent = lang.code === language;
                       const href = `/docs/${card.key}-${lang.code}.pdf`;
@@ -315,9 +248,15 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
                           ].join(" ")}
                         >
                           <span className="text-base leading-none" aria-hidden="true">{lang.flag}</span>
-                          <span className={`flex-1 ${available ? "" : "opacity-60"}`} dir={lang.dir}>
+                          <span className={`${available ? "" : "opacity-60"}`} dir={lang.dir}>
                             {lang.name}
                           </span>
+                          {isCurrent && available && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-white/25 text-[9px] font-black uppercase tracking-wider">
+                              {t.recommendedPill}
+                            </span>
+                          )}
+                          <span className="flex-1" />
                           {available ? (
                             <Download size={14} aria-hidden="true" className="opacity-90" />
                           ) : (
@@ -353,8 +292,79 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
             );
           })}
         </div>
+
+        {/* FAQ strip — separate from the download grid because it's an
+            in-app navigation, not a file download.  Wider, shorter card
+            so the different affordance is visually obvious. */}
+        <FaqStrip
+          title={t.faqTitle}
+          blurb={t.faqBlurb}
+          openFaqLabel={t.openFaq}
+          onOpenFaq={onOpenFaq}
+          isRTL={isRTL}
+        />
       </div>
     </section>
+  );
+};
+
+interface FaqStripProps {
+  title: string;
+  blurb: string;
+  openFaqLabel: string;
+  onOpenFaq?: () => void;
+  isRTL: boolean;
+}
+
+const FaqStrip: React.FC<FaqStripProps> = ({ title, blurb, openFaqLabel, onOpenFaq, isRTL }) => {
+  const inner = (
+    <motion.div
+      whileHover={{ scale: 1.005, y: -1 }}
+      whileTap={{ scale: 0.995 }}
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      className={`mt-6 md:mt-8 relative overflow-hidden rounded-3xl p-5 md:p-6 bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-600 text-white shadow-lg shadow-sky-500/15 ring-1 ring-sky-300/40 flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${isRTL ? "md:flex-row-reverse" : ""}`}
+    >
+      <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-2xl shadow-md shadow-black/10 ring-1 ring-white/30 shrink-0">
+          <span aria-hidden="true">❓</span>
+        </div>
+        <div className={isRTL ? "text-right" : "text-left"}>
+          <h3 className="text-lg md:text-xl font-black mb-1 leading-tight">{title}</h3>
+          <p className="text-white/85 text-sm leading-relaxed">{blurb}</p>
+        </div>
+      </div>
+      <div
+        className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/25 text-sm font-bold transition-colors self-start md:self-auto ${isRTL ? "flex-row-reverse" : ""}`}
+      >
+        <CircleHelp size={14} aria-hidden="true" />
+        <span>{openFaqLabel}</span>
+        <ArrowRight size={14} className={isRTL ? "rotate-180" : ""} aria-hidden="true" />
+      </div>
+    </motion.div>
+  );
+
+  if (onOpenFaq) {
+    return (
+      <button
+        type="button"
+        onClick={onOpenFaq}
+        className="block w-full text-start"
+        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <a
+      href="/faq"
+      className="block w-full"
+      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+    >
+      {inner}
+    </a>
   );
 };
 

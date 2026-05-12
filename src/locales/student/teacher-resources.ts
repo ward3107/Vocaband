@@ -22,6 +22,7 @@ export interface TeacherResourcesStrings {
   downloadPdf: string;
   downloadInLanguage: string;
   comingSoon: string;
+  recommendedPill: string;
 
   teacherGuideTitle: string;
   teacherGuideBlurb: string;
@@ -53,6 +54,7 @@ const en: TeacherResourcesStrings = {
   downloadPdf: "Download PDF",
   downloadInLanguage: "Download in",
   comingSoon: "Soon",
+  recommendedPill: "Recommended",
 
   teacherGuideTitle: "Teacher Guide",
   teacherGuideBlurb:
@@ -90,6 +92,7 @@ const he: TeacherResourcesStrings = {
   downloadPdf: "הורידו PDF",
   downloadInLanguage: "הורדה בשפה",
   comingSoon: "בקרוב",
+  recommendedPill: "מומלץ",
 
   teacherGuideTitle: "מדריך למורה",
   teacherGuideBlurb:
@@ -127,6 +130,7 @@ const ar: TeacherResourcesStrings = {
   downloadPdf: "حمّل PDF",
   downloadInLanguage: "حمّل بـ",
   comingSoon: "قريباً",
+  recommendedPill: "موصى به",
 
   teacherGuideTitle: "دليل المعلم",
   teacherGuideBlurb:
