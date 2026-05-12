@@ -178,11 +178,11 @@ export default function GameActiveView({
   // These mappings are intentionally generous so a strong run reads as
   // ≥80 and triggers a streak day; tunable in a follow-up once we have
   // pilot data on average scores.
-  const finishSelfContainedMode = async (rawScore: number, mode: 'idiom' | 'word-chains' | 'speed-round') => {
+  const finishSelfContainedMode = async (rawScore: number, mode: 'idiom' | 'word-chains' | 'speed-round' | 'class-minute') => {
     let normalized: number;
     if (mode === 'idiom') normalized = Math.min(100, Math.max(0, rawScore) * 10);
     else if (mode === 'word-chains') normalized = Math.min(100, Math.max(0, rawScore) * 10);
-    else /* speed-round */ normalized = Math.min(100, Math.max(0, rawScore) * 5);
+    else /* speed-round, class-minute — same SpeedRoundGame mechanics */ normalized = Math.min(100, Math.max(0, rawScore) * 5);
     try {
       await saveScore(normalized, 100);
     } catch {
@@ -321,6 +321,23 @@ export default function GameActiveView({
           targetLanguage={targetLanguage}
           speak={speakWord}
           onFinish={(score) => { finishSelfContainedMode(score, 'speed-round'); }}
+        />
+      );
+    }
+    if (gameMode === "class-minute") {
+      // Daily 60-second drill.  Reuses SpeedRoundGame's mechanics —
+      // gameWords was pre-seeded by App.tsx's onStartClassMinute with
+      // SRS-due words first then assignment fallback, so the same
+      // shell drives a more pedagogically targeted run.  Saves with
+      // mode='class-minute' so the dashboard can detect today's
+      // completion (and tomorrow flip the card back to "ready").
+      return (
+        <SpeedRoundGame
+          gameWords={gameWords}
+          themeColor={modeTheme ?? "amber"}
+          targetLanguage={targetLanguage}
+          speak={speakWord}
+          onFinish={(score) => { finishSelfContainedMode(score, 'class-minute'); }}
         />
       );
     }
