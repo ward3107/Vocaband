@@ -2976,15 +2976,25 @@ export default function App() {
             // classes (see migration 20260402_add_teacher_class_rls).
             // class_id and class_code never change, so all foreign keys
             // (assignments, progress, student_profiles) are preserved.
+            // School branding fields (added 20260512) are nullable so we
+            // either send a trimmed string or NULL — never an empty
+            // string, which would clutter the DB with meaningless rows.
             const { error } = await supabase
               .from('classes')
-              .update({ name: next.name, avatar: next.avatar })
+              .update({
+                name: next.name,
+                avatar: next.avatar,
+                school_name: next.schoolName?.trim() || null,
+                school_logo_url: next.schoolLogoUrl?.trim() || null,
+              })
               .eq('id', editingClass.id);
             if (error) {
               showToast('Could not save class changes. Please try again.', 'error');
               return;
             }
-            setClasses(prev => prev.map(c => c.id === editingClass.id ? { ...c, name: next.name, avatar: next.avatar } : c));
+            setClasses(prev => prev.map(c => c.id === editingClass.id
+              ? { ...c, name: next.name, avatar: next.avatar, schoolName: next.schoolName?.trim() || null, schoolLogoUrl: next.schoolLogoUrl?.trim() || null }
+              : c));
             setEditingClass(null);
             showToast('Class updated.', 'success');
           }}

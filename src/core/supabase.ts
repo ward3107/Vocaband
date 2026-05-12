@@ -99,7 +99,7 @@ export async function handleDbError(
 // ---------------------------------------------------------------------------
 export const USER_COLUMNS =
   'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at,subjects_taught';
-export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar,subject';
+export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar,subject,school_name,school_logo_url';
 export const ASSIGNMENT_COLUMNS =
   'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at,subject';
 export const PROGRESS_COLUMNS =
@@ -178,6 +178,11 @@ export interface ClassData {
    *  legacy row with the column missing reads as English.  See
    *  20260507204614_voca_subject_flags. */
   subject?: 'english' | 'hebrew';
+  /** Per-class school branding (added 20260512_school_branding).  Both
+   *  null until the teacher fills them in via Edit Class.  Displayed
+   *  on the teacher class card and the student class-join screen. */
+  schoolName?: string | null;
+  schoolLogoUrl?: string | null;
 }
 
 export interface AssignmentData {
@@ -275,6 +280,8 @@ export function mapClass(row: any): ClassData {
     teacherUid: row.teacher_uid,
     avatar: row.avatar ?? null,
     subject: row.subject === 'hebrew' ? 'hebrew' : 'english',
+    schoolName: row.school_name ?? null,
+    schoolLogoUrl: row.school_logo_url ?? null,
   };
 }
 

@@ -101,6 +101,33 @@ export default function LiveChallengeView({
         </div>
 
         <div className="text-center mb-6 sm:mb-10">
+          {/* School branding row — when the class has a school logo +
+              name configured, project them prominently at the top so
+              the whole classroom sees their school identity during
+              Live Challenge.  Only renders when set, so unconfigured
+              classes look exactly as before. */}
+          {(selectedClass.schoolLogoUrl || selectedClass.schoolName) && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-3 px-5 py-2 mb-4 rounded-full bg-white/15 backdrop-blur-md border border-white/30"
+            >
+              {selectedClass.schoolLogoUrl && (
+                <img
+                  src={selectedClass.schoolLogoUrl}
+                  alt=""
+                  className="w-8 h-8 rounded object-contain bg-white"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              )}
+              {selectedClass.schoolName && (
+                <span className="font-black text-base sm:text-lg uppercase tracking-wider">
+                  {selectedClass.schoolName}
+                </span>
+              )}
+            </motion.div>
+          )}
+
           <motion.h1
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
