@@ -2281,11 +2281,18 @@ export default function App() {
   // word pool isn't empty when SRS returns thin — the polling effect
   // above tops it up shortly after login, but the very first render
   // can race.
+  //
+  // pendingClassSwitch gate: if the student lands on the deep-link
+  // mid-class-switch flow (ClassSwitchModal asking "stay or switch?"),
+  // wait for that decision before consuming the deep-link.  Otherwise
+  // the round launches under whichever class context happens to be
+  // active at mount time, which may not be what the student picks.
   useEffect(() => {
     if (pendingPlayMode !== 'class-minute') return;
     if (user?.role !== "student") return;
     if (view !== "student-dashboard") return;
     if (ALL_WORDS.length === 0) return;
+    if (pendingClassSwitch) return;
     setPendingPlayMode(null);
     try {
       const url = new URL(window.location.href);
@@ -2293,7 +2300,7 @@ export default function App() {
       window.history.replaceState({}, "", url.toString());
     } catch { /* history API unavailable — non-fatal */ }
     void startClassMinute();
-  }, [pendingPlayMode, user?.role, view, ALL_WORDS.length, startClassMinute]);
+  }, [pendingPlayMode, user?.role, view, ALL_WORDS.length, pendingClassSwitch, startClassMinute]);
 
 
   // --- SMART PASTE FUNCTIONS ---
