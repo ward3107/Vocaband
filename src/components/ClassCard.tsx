@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2 } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
@@ -107,6 +107,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   // opens /poster.html) because teachers usually want to drop a link
   // into a class WhatsApp / email rather than print a sheet.
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareClassMinuteOpen, setShareClassMinuteOpen] = useState(false);
   // Per-assignment share — when set, the share modal opens with this
   // assignment's id baked into the URL so opening the link auto-routes
   // the student straight into this assignment after they join.
@@ -470,6 +471,15 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   {t.shareClassLink}
                 </button>
                 <button
+                  onClick={() => { setShareClassMinuteOpen(true); setMenuOpen(false); }}
+                  type="button"
+                  style={{ color: 'var(--vb-text-secondary)' }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
+                >
+                  <Timer size={14} className="text-amber-600" />
+                  Send Class Minute
+                </button>
+                <button
                   onClick={() => { onWhatsApp(); setMenuOpen(false); }}
                   type="button"
                   style={{ color: 'var(--vb-text-secondary)' }}
@@ -702,6 +712,13 @@ const ClassCard: React.FC<ClassCardProps> = ({
       code={code}
       assignmentId={sharingAssignment?.id}
       assignmentTitle={sharingAssignment?.title}
+    />
+    <ShareClassLinkModal
+      open={shareClassMinuteOpen}
+      onClose={() => setShareClassMinuteOpen(false)}
+      className={name}
+      code={code}
+      playMode="class-minute"
     />
     </>
   );
