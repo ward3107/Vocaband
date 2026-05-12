@@ -15,6 +15,13 @@ export interface Word {
   sentence?: string
   example?: string
   recProd?: "Rec" | "Prod"
+  /** Extension fields populated only for custom words / teacher edits.
+   *  The compact tuple-loaded base vocabulary leaves them undefined. */
+  pos?: string
+  core?: "Core I" | "Core II"
+  isCore?: boolean
+  sentences?: string[]
+  isPhrase?: boolean
 }
 
 // Compact tuple format: [id, english, hebrew, arabic, levelCode]

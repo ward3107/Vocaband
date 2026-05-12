@@ -184,7 +184,7 @@ export interface AssignmentData {
   id: string;
   classId: string;
   wordIds: number[];
-  words?: import('./vocabulary').Word[];
+  words?: import('../data/vocabulary').Word[];
   title: string;
   deadline?: string | null;
   createdAt?: string;

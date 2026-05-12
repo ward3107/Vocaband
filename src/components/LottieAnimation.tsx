@@ -1,6 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLottie } from 'lottie-react';
-import type { AnimationItem } from 'lottie-web';
 
 interface LottieAnimationProps {
   src: string;
@@ -28,7 +27,6 @@ export const LottieAnimation: React.FC<LottieAnimationProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [animationData, setAnimationData] = useState<any>(null);
-  const lottieRef = useRef<AnimationItem | null>(null);
 
   // Load animation from URL
   useEffect(() => {
@@ -38,29 +36,6 @@ export const LottieAnimation: React.FC<LottieAnimationProps> = ({
       .catch((err) => console.error('Failed to load Lottie:', err));
   }, [src]);
 
-  // Update speed based on hover state
-  useEffect(() => {
-    if (lottieRef.current) {
-      const speed = slowMotion ? (isHovered ? 1 : 0.3) : (isHovered ? 1.5 : 1);
-      lottieRef.current.setSpeed(speed);
-    }
-  }, [isHovered, slowMotion]);
-
-  // Handle hover play/pause
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-    if (hoverPlay && lottieRef.current) {
-      lottieRef.current.play();
-    }
-  };
-
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    if (hoverPlay && lottieRef.current) {
-      lottieRef.current.pause();
-    }
-  };
-
   // Use useLottie hook
   const options = {
     animationData: animationData,
@@ -68,7 +43,24 @@ export const LottieAnimation: React.FC<LottieAnimationProps> = ({
     autoplay: !hoverPlay,
   };
 
-  const { View } = useLottie(options, lottieRef);
+  const { View, setSpeed, play, pause } = useLottie(options);
+
+  // Update speed based on hover state
+  useEffect(() => {
+    const speed = slowMotion ? (isHovered ? 1 : 0.3) : (isHovered ? 1.5 : 1);
+    setSpeed(speed);
+  }, [isHovered, slowMotion, setSpeed]);
+
+  // Handle hover play/pause
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (hoverPlay) play();
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (hoverPlay) pause();
+  };
 
   // Show loading state or nothing while loading
   if (!animationData) {

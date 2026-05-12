@@ -1,13 +1,13 @@
 import React from 'react';
 import { ArrowLeft, Shield, Keyboard, Eye, Globe, Palette, Volume2, AlertTriangle, CheckCircle2, Mail } from 'lucide-react';
-import PublicNav from './PublicNav';
+import PublicNav, { NavPage } from './PublicNav';
 import LanguageSwitcher from './LanguageSwitcher';
 import FloatingButtons from './FloatingButtons';
 import { useLanguage } from '../hooks/useLanguage';
 import { accessibilityTranslations } from '../config/translations/legalTranslations';
 
 interface Props {
-  onNavigate: (page: "home" | "terms" | "privacy") => void;
+  onNavigate: (page: NavPage) => void;
   onGetStarted: () => void;
   /** Teacher signup — drives PublicNav's "Start free" CTA. */
   onTeacherLogin?: () => void;
