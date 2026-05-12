@@ -487,7 +487,7 @@ export default function GradebookView({
         />
       )}
 
-      <main className={`${embedded ? 'pt-4' : 'pt-36 sm:pt-32'} px-4 sm:px-6 max-w-5xl mx-auto`}>
+      <main id="main-content" className={`${embedded ? 'pt-4' : 'pt-36 sm:pt-32'} px-4 sm:px-6 max-w-5xl mx-auto`}>
         {/* Class + window selectors — the class picker is the primary
             control on this page (everything else is scoped to it), so
             it gets a branded gradient treatment that catches the eye

@@ -362,7 +362,7 @@ export default function QuickPlayStudentView({
         </button>
       </header>
 
-      <main className="flex-grow flex flex-col items-center px-4 py-3 sm:py-6 max-w-4xl mx-auto w-full">
+      <main id="main-content" className="flex-grow flex flex-col items-center px-4 py-3 sm:py-6 max-w-4xl mx-auto w-full">
           {!quickPlayActiveSession ? (
             <div className="text-center py-12 sm:py-20">
               <Loader2 className="mx-auto animate-spin text-primary mb-4 w-9 h-9 sm:w-12 sm:h-12" />

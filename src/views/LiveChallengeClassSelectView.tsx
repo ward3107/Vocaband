@@ -39,7 +39,7 @@ export default function LiveChallengeClassSelectView({
         onLogout={() => supabase.auth.signOut()}
       />
 
-      <main className="pt-24 px-6 max-w-2xl mx-auto">
+      <main id="main-content" className="pt-24 px-6 max-w-2xl mx-auto">
         {/* Header Card */}
         <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 rounded-2xl p-6 mb-8 text-center shadow-xl">
           <motion.div

@@ -164,7 +164,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         onTeacherLogin={onTeacherLogin}
       />
 
-      <main>
+      <main id="main-content">
         {/* Hero Section - Floating 3D Cards + Gradient Mesh */}
         <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative isolate flex items-center justify-center overflow-hidden">
           {/* Hero background video — silent, looping ambience.  Lazy-
