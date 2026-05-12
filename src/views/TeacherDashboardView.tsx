@@ -96,7 +96,7 @@ interface TeacherDashboardViewProps {
   editingClass: ClassData | null;
   onEditClass: (c: ClassData) => void;
   onCloseEditClass: () => void;
-  onSaveClassEdit: (next: { name: string; avatar: string | null }) => Promise<void>;
+  onSaveClassEdit: (next: { name: string; avatar: string | null; schoolName: string | null; schoolLogoUrl: string | null }) => Promise<void>;
   /** Quick inline name change. */
   onNameChange?: (classId: string, newName: string) => Promise<void>;
   /** Quick inline avatar change. */

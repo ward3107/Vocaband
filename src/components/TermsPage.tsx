@@ -34,7 +34,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
         onTeacherLogin={onTeacherLogin}
       />
 
-      <main className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">
+      <main id="main-content" className="max-w-4xl mx-auto px-6 pt-32 pb-24 mb-20 md:mb-0">
         {/* Back Button & Language Switcher */}
         <div className="flex items-center gap-4 mb-6">
           {onBack && (

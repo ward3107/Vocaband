@@ -707,7 +707,7 @@ export default function QuickPlayMonitor({
       </header>
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-8">
+      <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-8 pb-8">
         {/* ─── Hero: QR + Podium row ──────────────────────────────────────────
             When qrCollapsed is true the QR shrinks to a small floating
             icon button anchored to the right of this row, leaving the

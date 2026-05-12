@@ -160,6 +160,8 @@ export default function TeacherClassesSection({
                 name={c.name}
                 code={c.code}
                 avatar={c.avatar}
+                schoolName={c.schoolName}
+                schoolLogoUrl={c.schoolLogoUrl}
                 copiedCode={copiedCode}
                 assignments={classAssignments}
                 openDropdownClassId={openDropdownClassId}
