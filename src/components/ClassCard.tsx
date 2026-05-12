@@ -443,6 +443,23 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 }}
                 className="absolute right-0 top-full mt-1 w-48 rounded-xl border shadow-lg py-1 z-20"
               >
+                {/* Edit class — opens the full EditClassModal (name,
+                    avatar, school branding).  Placed at the top of the
+                    menu because it's the canonical "change anything"
+                    entry point; inline name + avatar editing on the
+                    card itself are shortcuts, but they don't expose
+                    school branding which lives only in the modal. */}
+                {onEdit && (
+                  <button
+                    onClick={() => { onEdit(); setMenuOpen(false); }}
+                    type="button"
+                    style={{ color: 'var(--vb-text-secondary)' }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
+                  >
+                    <Pencil size={14} className="text-violet-600" />
+                    Edit class
+                  </button>
+                )}
                 <button
                   onClick={() => { setShareModalOpen(true); setMenuOpen(false); }}
                   type="button"
