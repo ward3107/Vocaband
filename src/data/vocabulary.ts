@@ -6511,7 +6511,85 @@ const _ALL_TUPLES: readonly WordTuple[] = [
   [9125,"would appreciate","אעריך","سأقدر",3],
   [9127,"x-ray","צילום רנטגן","أشعة سينية",3],
   [9128,"yawn","לפהק","يتثاءب",3],
-  [9130,"you never know","אף פעם לא יודעים","لا تعرف أبدًا",3]
+  [9130,"you never know","אף פעם לא יודעים","لا تعرف أبدًا",3],
+
+  // ── Bagrut Module E supplement (2026-05-11) ──────────────────────
+  // Advanced academic vocabulary for grade 11-12 Bagrut module E
+  // (B2-C1 CEFR). Added in IDs 9200-9270 to leave a clean gap from
+  // the prior data. All Set 3 (level=3). Translations are HE-MoE
+  // standard and MSA Arabic where possible — review by a native
+  // Hebrew/Arabic teacher recommended before classroom use.
+  [9200,"hypothesize","לשער","يفترض",3],
+  [9201,"synthesize","ליצור סינתזה","يركّب",3],
+  [9202,"refute","להפריך","يدحض",3],
+  [9203,"paradigm","פרדיגמה","نموذج",3],
+  [9204,"perception","תפיסה","إدراك",3],
+  [9205,"consequently","כתוצאה מכך","وبالتالي",3],
+  [9206,"albeit","אם כי","وإن كان",3],
+  [9207,"consensus","קונצנזוס","إجماع",3],
+  [9208,"paradox","פרדוקס","مفارقة",3],
+  [9209,"facilitate","להקל","يسهّل",3],
+  [9210,"emphasize","להדגיש","يؤكد",3],
+  [9211,"advocate","לתמוך","يدعو إلى",3],
+  [9212,"undermine","לערער","يقوّض",3],
+  [9213,"reinforce","לחזק","يعزز",3],
+  [9214,"sustainable","בר קיימא","مستدام",3],
+  [9215,"biodiversity","מגוון ביולוגי","التنوع البيولوجي",3],
+  [9216,"inherent","טבוע","متأصل",3],
+  [9217,"inevitable","בלתי נמנע","حتمي",3],
+  [9218,"arbitrary","שרירותי","اعتباطي",3],
+  [9219,"pragmatic","פרגמטי","براغماتي",3],
+  [9220,"ambiguous","דו משמעי","غامض",3],
+  [9221,"explicit","מפורש","صريح",3],
+  [9222,"implicit","מרומז","ضمني",3],
+  [9223,"emissions","פליטות","انبعاثات",3],
+  [9224,"renewable","מתחדש","متجدد",3],
+  [9225,"depletion","דלדול","استنفاد",3],
+  [9226,"deforestation","כריתת יערות","إزالة الغابات",3],
+  [9227,"algorithm","אלגוריתם","خوارزمية",3],
+  [9228,"automation","אוטומציה","أتمتة",3],
+  [9229,"cybersecurity","אבטחת סייבר","الأمن السيبراني",3],
+  [9230,"breakthrough","פריצת דרך","إنجاز",3],
+  [9231,"disruption","שיבוש","اضطراب",3],
+  [9232,"demographic","דמוגרפי","ديموغرافي",3],
+  [9233,"assimilation","הטמעה","استيعاب",3],
+  [9234,"segregation","הפרדה","فصل عنصري",3],
+  [9235,"inequality","אי שוויון","لامساواة",3],
+  [9236,"equity","שוויון","إنصاف",3],
+  [9237,"marginalize","להדיר","يهمّش",3],
+  [9238,"empower","להעצים","يمكّن",3],
+  [9239,"recession","מיתון","ركود",3],
+  [9240,"inflation","אינפלציה","تضخم",3],
+  [9241,"entrepreneurship","יזמות","ريادة الأعمال",3],
+  [9242,"monopoly","מונופול","احتكار",3],
+  [9243,"subsidy","סובסידיה","إعانة",3],
+  [9244,"deficit","גירעון","عجز",3],
+  [9245,"resilience","חוסן","مرونة",3],
+  [9246,"compassion","חמלה","تعاطف",3],
+  [9247,"introspection","התבוננות פנימית","تأمل ذاتي",3],
+  [9248,"mindfulness","קשיבות","يقظة ذهنية",3],
+  [9249,"ethics","אתיקה","أخلاقيات",3],
+  [9250,"morality","מוסר","أخلاق",3],
+  [9251,"integrity","יושרה","نزاهة",3],
+  [9252,"accountability","אחריותיות","مساءلة",3],
+  [9253,"virtue","מעלה","فضيلة",3],
+  [9254,"ideology","אידיאולוגיה","أيديولوجيا",3],
+  [9255,"pragmatism","פרגמטיזם","براغماتية",3],
+  [9256,"jurisdiction","סמכות שיפוט","اختصاص قضائي",3],
+  [9257,"verdict","פסק דין","حكم",3],
+  [9258,"precedent","תקדים","سابقة",3],
+  [9259,"thereby","בכך","بذلك",3],
+  [9260,"henceforth","מכאן ואילך","من الآن فصاعداً",3],
+  [9261,"ramification","השלכה","تبعات",3],
+  [9262,"controversy","מחלוקת","جدل",3],
+  [9263,"critique","ביקורת","نقد",3],
+  [9264,"reconcile","ליישב","يوفّق",3],
+  [9265,"feasible","בר ביצוע","مجدٍ",3],
+  [9266,"viable","בר קיימא","قابل للتطبيق",3],
+  [9267,"obsolete","מיושן","متقادم",3],
+  [9268,"imminent","ממשמש ובא","وشيك",3],
+  [9269,"subsequent","עוקב","لاحق",3],
+  [9270,"unprecedented","חסר תקדים","غير مسبوق",3]
 ] as const;
 
 export const ALL_WORDS: Word[] = _ALL_TUPLES.map(([id, english, hebrew, arabic, lvl]) => ({
@@ -6528,6 +6606,24 @@ export const SET_3_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 3");
 
 // Topic Packs — curated word groups by category (max 20 words per pack)
 export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
+  // ── Bagrut Module E supplement (advanced/academic, B2-C1 CEFR) ──
+  // Grade 11-12 prep pack covering critical-thinking, abstract,
+  // environment, technology, society, economics, ethics and law
+  // vocabulary commonly tested in the higher Bagrut module.
+  {
+    name: "Academic English 🎓",
+    icon: "🎓",
+    ids: [
+      9200,9201,9202,9203,9204,9205,9206,9207,9208,9209,
+      9210,9211,9212,9213,9214,9215,9216,9217,9218,9219,
+      9220,9221,9222,9223,9224,9225,9226,9227,9228,9229,
+      9230,9231,9232,9233,9234,9235,9236,9237,9238,9239,
+      9240,9241,9242,9243,9244,9245,9246,9247,9248,9249,
+      9250,9251,9252,9253,9254,9255,9256,9257,9258,9259,
+      9260,9261,9262,9263,9264,9265,9266,9267,9268,9269,
+      9270,
+    ],
+  },
   // ── Core Curriculum Packs ────────────────────────────────────────────────────────
   {
     name: "Animals 🐾",
