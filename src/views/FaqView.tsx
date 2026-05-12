@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { faqT } from "../locales/student/faq";
 import { ChevronDown, CircleHelp, Mail, GraduationCap, Users, Globe, ArrowLeft } from "lucide-react";
-import PublicNav from "../components/PublicNav";
+import PublicNav, { NavPage } from "../components/PublicNav";
 
 interface FaqViewProps {
-  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq") => void;
+  onNavigate: (page: NavPage) => void;
   onGetStarted: () => void;
   /** Teacher signup — drives PublicNav's "Start free" CTA. */
   onTeacherLogin?: () => void;
@@ -21,7 +21,7 @@ interface FaqItemProps {
 }
 
 const FaqItem: React.FC<FaqItemProps> = ({ question, answer, isOpen, onToggle }) => {
-  const { dir, textAlign } = useLanguage();
+  const { dir, isRTL } = useLanguage();
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -53,7 +53,7 @@ const FaqItem: React.FC<FaqItemProps> = ({ question, answer, isOpen, onToggle })
             className="overflow-hidden"
           >
             <div className="px-6 pb-5 pt-0">
-              <div className="pl-9 text-white/80 leading-relaxed" dir={dir} style={{ textAlign }}>
+              <div className="pl-9 text-white/80 leading-relaxed" dir={dir} style={{ textAlign: isRTL ? 'right' : 'left' }}>
                 {answer}
               </div>
             </div>
@@ -65,7 +65,7 @@ const FaqItem: React.FC<FaqItemProps> = ({ question, answer, isOpen, onToggle })
 };
 
 const FaqView: React.FC<FaqViewProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onBack }) => {
-  const { language, dir, textAlign, isRTL } = useLanguage();
+  const { language, dir, isRTL } = useLanguage();
   const t = faqT[language];
   const [openItem, setOpenItem] = useState<string | null>(null);
 
@@ -109,7 +109,7 @@ const FaqView: React.FC<FaqViewProps> = ({ onNavigate, onGetStarted, onTeacherLo
             <h1 className="text-4xl md:text-5xl font-black text-white mb-4 font-headline">
               {t.title}
             </h1>
-            <p className="text-lg text-white/70 max-w-2xl mx-auto" dir={dir} style={{ textAlign }}>
+            <p className="text-lg text-white/70 max-w-2xl mx-auto" dir={dir} style={{ textAlign: isRTL ? 'right' : 'left' }}>
               {t.subtitle}
             </p>
           </motion.div>

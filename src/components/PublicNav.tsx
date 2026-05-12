@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Menu, X, LogIn } from "lucide-react";
+import { Menu, X, LogIn, Rocket } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
 import NavLanguageToggle from "./NavLanguageToggle";
@@ -13,7 +13,7 @@ import NavLanguageToggle from "./NavLanguageToggle";
 //
 //   - Page links (Resources, FAQ) — go to dedicated SPA routes via the
 //     `onNavigate` callback the host already wires up.
-type NavPage =
+export type NavPage =
   | "home"
   | "terms"
   | "privacy"
@@ -171,20 +171,32 @@ const PublicNav: React.FC<PublicNavProps> = ({
               meant the hamburger). */}
           <div className="flex items-center gap-3 md:gap-2 flex-shrink-0 mr-12 md:mr-0">
             <NavLanguageToggle />
-            {/* Desktop header CTA — quiet "Sign in" outline button.
-                The hero owns the dominant "Start Free" primary, so the
-                header serves as the persistent affordance for returning
-                teachers without duplicating the primary CTA.  Hidden on
-                mobile (the drawer holds the equivalent action). */}
+            {/* Desktop header CTAs — Sign Up is the DOMINANT button so
+                a teacher / principal scanning the page knows where to
+                start.  Sign in stays as a quieter ghost link beside it
+                for returning teachers.  Both hit the teacher Google
+                OAuth flow (account picker handles new vs returning).
+                Hidden on mobile — the drawer mirrors the same pair. */}
             {onTeacherLogin && (
-              <button
-                onClick={onTeacherLogin}
-                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-stone-700 hover:text-primary border border-stone-300 hover:border-primary/40 rounded-lg hover:bg-primary/5 transition-all"
-                type="button"
-              >
-                <LogIn size={15} />
-                {t.navSignIn}
-              </button>
+              <>
+                <button
+                  onClick={onTeacherLogin}
+                  className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-stone-700 hover:text-primary rounded-lg hover:bg-primary/5 transition-all"
+                  type="button"
+                >
+                  <LogIn size={15} />
+                  {t.navSignIn}
+                </button>
+                <button
+                  onClick={onTeacherLogin}
+                  className="hidden md:inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 hover:from-indigo-600 hover:via-violet-700 hover:to-fuchsia-700 rounded-xl shadow-md shadow-violet-500/30 hover:shadow-lg hover:shadow-violet-500/40 ring-2 ring-violet-300/40 transition-all"
+                  type="button"
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <Rocket size={15} strokeWidth={2.5} />
+                  {t.navStartFree}
+                </button>
+              </>
             )}
 
             {/* Mobile hamburger */}
@@ -265,18 +277,35 @@ const PublicNav: React.FC<PublicNavProps> = ({
             </nav>
 
             <div className="border-t border-stone-200 p-4 space-y-2">
+              {/* Mobile dominant CTA — Sign Up Free, then quieter Sign
+                  in.  Both go through the teacher Google OAuth flow;
+                  the account picker handles new vs returning teacher. */}
               {onTeacherLogin && (
-                <button
-                  onClick={() => {
-                    setMobileOpen(false);
-                    onTeacherLogin();
-                  }}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-black text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-lg shadow-md shadow-violet-500/20"
-                  type="button"
-                >
-                  <LogIn size={16} />
-                  {t.heroCtaStart}
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      onTeacherLogin();
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 text-base font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 rounded-xl shadow-md shadow-violet-500/30 ring-2 ring-violet-300/40"
+                    type="button"
+                    style={{ touchAction: 'manipulation' }}
+                  >
+                    <Rocket size={18} strokeWidth={2.5} />
+                    {t.navStartFree}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      onTeacherLogin();
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-stone-700 border border-stone-300 rounded-xl hover:bg-stone-50 transition-colors"
+                    type="button"
+                  >
+                    <LogIn size={16} />
+                    {t.navSignIn}
+                  </button>
+                </>
               )}
             </div>
           </div>

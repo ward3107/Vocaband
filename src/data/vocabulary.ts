@@ -15,6 +15,13 @@ export interface Word {
   sentence?: string
   example?: string
   recProd?: "Rec" | "Prod"
+  /** Extension fields populated only for custom words / teacher edits.
+   *  The compact tuple-loaded base vocabulary leaves them undefined. */
+  pos?: string
+  core?: "Core I" | "Core II"
+  isCore?: boolean
+  sentences?: string[]
+  isPhrase?: boolean
 }
 
 // Compact tuple format: [id, english, hebrew, arabic, levelCode]
@@ -6768,11 +6775,11 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
       5,65,558,560,572,693,694,825,904,907,
       1029,1096,1157,1404,1613,1625,1678,1802,1810,1820,
       1823,1824,1829,1830,1832,1833,1840,1845,1858,1860,
-      1861,1863,1864,1890,1982,2026,2027,2037,2160,2702,
-      2705,2707,2710,2713,3346,3395,3586,3587,3588,3820,
-      3821,3823,3956,3957,4070,4388,4397,4578,4739,4740,
-      4742,4744,4745,4898,4933,6389,7466,7831,8772,8776,
-      9083,
+      1861,1863,1864,1882,1890,1982,2026,2027,2037,2160,
+      2702,2705,2707,2710,2713,3346,3395,3584,3586,3587,
+      3588,3820,3821,3823,3956,3957,4070,4388,4397,4578,
+      4739,4740,4742,4744,4745,4898,4933,5483,6389,7466,
+      7831,8772,8776,9083,
       // Supplement added 2026-05-11
       9400,9401,9402,9403,9404,9405,9406,9407,9408,9409,
       9410,9411,9412,9413,9414,9415,9416,9417,9418,9419,
@@ -6788,6 +6795,10 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     name: "Idioms & Expressions 💬",
     icon: "💬",
     ids: [
+      // Pre-existing idiom IDs from the former "Common Idioms" pack
+      9, 13, 280, 2316, 2335, 3048, 3079, 3094, 3186, 3770,
+      3771, 4100, 5188, 5292, 5625, 5780, 6231, 6814,
+      // Bagrut idioms + fixed expressions added 2026-05-11
       9300,9301,9302,9303,9304,9305,9306,9307,9308,9309,
       9310,9311,9312,9313,9314,9315,9316,9317,9318,9319,
       9320,9321,9322,9323,9324,9325,9326,9327,9328,9329,
@@ -7040,14 +7051,6 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
 
   // ── 2026-05-07 — language-structure packs (grammar focus, not topic) ──────
   {
-    name: "Phrasal Verbs 🔄",
-    icon: "🔄",
-    // get up, get on/off, give up, give in, go away, grow up, hand in,
-    // look after/for/up, pick up, put away/off/on, run away, set up,
-    // take off, throw away, turn on/off, wake up, find out, fall down
-    ids: [1625, 1829, 1830, 1845, 1861, 1864, 1882, 1982, 2026, 2702, 2705, 2713, 3395, 3584, 3587, 3588, 3820, 3957, 4397, 4578, 4744, 4745, 4898, 5483],
-  },
-  {
     name: "Prepositions 📍",
     icon: "📍",
     // above, across, along, around, at, behind, below, beside, between,
@@ -7085,15 +7088,6 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     // otherwise, since, therefore, unless, when, while, neither, until,
     // whether, despite, nor, so, then, yet, even though
     ids: [143, 146, 173, 415, 522, 609, 1373, 2221, 2282, 3215, 3235, 4031, 4538, 4817, 5013, 5025, 5769, 6119, 6144, 6473, 6797, 6993, 7081, 7170, 7382],
-  },
-  {
-    name: "Common Idioms & Expressions 💭",
-    icon: "💭",
-    // a few, a little bit, at least, in fact, in trouble, never mind,
-    // no problem, not bad, once in a while, right away, right now,
-    // so far, all the best, by the way, in love, of course, at last,
-    // on purpose
-    ids: [9, 13, 280, 2316, 2335, 3048, 3079, 3094, 3186, 3770, 3771, 4100, 5188, 5292, 5625, 5780, 6231, 6814],
   },
   {
     name: "Common Collocations 🧩",

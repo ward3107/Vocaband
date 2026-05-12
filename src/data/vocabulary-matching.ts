@@ -258,27 +258,31 @@ export function filterWords(allWords: Word[], filters: WordFilters): Word[] {
   let filtered = [...allWords];
 
   // Filter by Level (Set 1, Set 2, Set 3, Custom)
-  if (filters.level && filters.level.length > 0) {
-    filtered = filtered.filter(w => w.level && filters.level.includes(w.level));
+  const levels = filters.level;
+  if (levels && levels.length > 0) {
+    filtered = filtered.filter(w => w.level && levels.includes(w.level));
   }
 
   // Filter by Core
-  if (filters.core && filters.core.length > 0) {
-    filtered = filtered.filter(w => w.core && filters.core.includes(w.core));
+  const cores = filters.core;
+  if (cores && cores.length > 0) {
+    filtered = filtered.filter(w => w.core && cores.includes(w.core));
   }
 
   // Filter by Part of Speech
-  if (filters.pos && filters.pos.length > 0) {
+  const posFilters = filters.pos;
+  if (posFilters && posFilters.length > 0) {
     filtered = filtered.filter(w => {
       if (!w.pos) return false;
-      const wordPos = w.pos.split(/[,\s]/).map(p => p.trim());
-      return filters.pos.some(p => wordPos.includes(p));
+      const wordPos = w.pos.split(/[,\s]/).map((p: string) => p.trim());
+      return posFilters.some(p => wordPos.includes(p));
     });
   }
 
   // Filter by Rec/Prod
-  if (filters.recProd && filters.recProd.length > 0) {
-    filtered = filtered.filter(w => w.recProd && filters.recProd.includes(w.recProd));
+  const recProds = filters.recProd;
+  if (recProds && recProds.length > 0) {
+    filtered = filtered.filter(w => w.recProd && recProds.includes(w.recProd));
   }
 
   // Search query (multi-language)

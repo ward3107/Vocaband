@@ -55,6 +55,7 @@ import SubjectRequestModal from "./SubjectRequestModal";
 import FeatureRequestModal from "./FeatureRequestModal";
 import SchoolInquiryModal from "./SchoolInquiryModal";
 import TeacherResourcesSection from "./TeacherResourcesSection";
+import LazyBgVideo from "./LazyBgVideo";
 
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => void;
@@ -166,20 +167,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
       <main>
         {/* Hero Section - Floating 3D Cards + Gradient Mesh */}
         <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative isolate flex items-center justify-center overflow-hidden">
-          {/* Hero background video — silent, looping ambience.  Tint
-              overlay below pushes the footage toward Vocaband's brand
-              palette so a generic clip still feels on-brand. */}
-          <video
+          {/* Hero background video — silent, looping ambience.  Lazy-
+              loaded via IntersectionObserver: even though the hero is
+              above the fold, deferring the 2 MB fetch by one frame
+              gets the HTML/CSS/text-LCP on screen first, then the
+              video paints in.  Tint overlay below pushes the footage
+              toward Vocaband's brand palette so a generic clip still
+              feels on-brand. */}
+          <LazyBgVideo
+            src="/hero.mp4"
             className="absolute inset-0 w-full h-full object-cover -z-30"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            aria-hidden="true"
-          >
-            <source src="/hero.mp4" type="video/mp4" />
-          </video>
+          />
           <div
             className="absolute inset-0 -z-20 bg-gradient-to-br from-indigo-950/75 via-violet-900/65 to-fuchsia-900/75"
             aria-hidden="true"
@@ -1103,20 +1101,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
         {/* AI Section - Does All the Heavy Lifting */}
         <section id="ai" className="py-8 md:py-20 px-4 md:px-6 relative isolate overflow-hidden bg-gradient-to-b from-transparent via-violet-950/20 to-transparent scroll-mt-20">
-          {/* Ambient video background — silent, looping.  The brand tint
-              overlay below pushes the footage toward Vocaband's violet
-              palette so a generic clip still feels on-brand. */}
-          <video
+          {/* Ambient video background — silent, looping.  Lazy-loaded
+              (source attaches when the section nears the viewport) so
+              the 3 MB clip doesn't compete with the hero for bandwidth
+              on first paint.  The brand tint overlay below pushes the
+              footage toward Vocaband's violet palette so a generic
+              clip still feels on-brand. */}
+          <LazyBgVideo
+            src="/ai-bg.mp4"
             className="absolute inset-0 w-full h-full object-cover -z-30"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            aria-hidden="true"
-          >
-            <source src="/ai-bg.mp4" type="video/mp4" />
-          </video>
+          />
           <div
             className="absolute inset-0 -z-20 bg-gradient-to-br from-indigo-950/80 via-violet-900/70 to-fuchsia-900/80"
             aria-hidden="true"
@@ -1734,7 +1728,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         initial={{ width: 0 }}
                         whileInView={{ width: "100%" }}
                         viewport={{ once: true }}
-                        transition={{ duration: 1, ease: "out" }}
+                        transition={{ duration: 1, ease: "easeOut" }}
                         className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
                       />
                     </div>
@@ -1785,7 +1779,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         initial={{ width: 0 }}
                         whileInView={{ width: "75%" }}
                         viewport={{ once: true }}
-                        transition={{ duration: 1, ease: "out" }}
+                        transition={{ duration: 1, ease: "easeOut" }}
                         className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
                       />
                     </div>
@@ -1836,7 +1830,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         initial={{ width: 0 }}
                         whileInView={{ width: "50%" }}
                         viewport={{ once: true }}
-                        transition={{ duration: 1, ease: "out" }}
+                        transition={{ duration: 1, ease: "easeOut" }}
                         className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full"
                       />
                     </div>
@@ -2007,20 +2001,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
         {/* Final CTA - Epic 3D Card */}
         <section className="py-8 md:py-24 px-4 md:px-6 bg-violet-950 relative overflow-hidden">
-          {/* Cosmic trilingual backdrop — silent looping video.
-              Stretches edge-to-edge across the whole CTA strip so the
-              violet card below floats inside the universe. */}
-          <video
+          {/* Cosmic trilingual backdrop — silent looping video.  Lazy-
+              loaded (4.5 MB clip, well below the fold) — the violet
+              section background stays in place while the source
+              attaches as the user scrolls down. */}
+          <LazyBgVideo
+            src="/cta-bg.mp4"
             className="absolute inset-0 w-full h-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            aria-hidden="true"
-          >
-            <source src="/cta-bg.mp4" type="video/mp4" />
-          </video>
+          />
           {/* Section-level darkening overlay so heading + buttons stay
               readable on top of the busy image. */}
           <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
@@ -2498,12 +2486,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       {t.footerSchoolDeck}
                     </a>
                   </motion.li>
+                  {/* School presentation PDFs.  Intentionally NO `download`
+                      attribute: combining it with `target="_blank"` is
+                      inconsistent across browsers (iOS Safari ignores
+                      `download` and just opens the tab, Chrome both
+                      downloads AND opens a tab, Firefox usually just
+                      downloads — teachers ended up confused about whether
+                      anything had happened).  Opening in a new tab lets the
+                      browser's built-in PDF viewer render the deck; the
+                      user can still save from there if they want a local
+                      copy.  Same pattern as the /docs/ PDFs below. */}
                   <motion.li variants={footerItemVariant} custom={15}>
                     <a
                       href="/Vocaband-Presentation-HE.pdf"
                       target="_blank"
                       rel="noreferrer noopener"
-                      download
                       className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       <FileText size={14} aria-hidden="true" />
@@ -2515,7 +2512,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       href="/Vocaband-Presentation-AR.pdf"
                       target="_blank"
                       rel="noreferrer noopener"
-                      download
                       className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       <FileText size={14} aria-hidden="true" />

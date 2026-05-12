@@ -241,7 +241,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteIndex, setAutocompleteIndex] = useState(0);
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
-  const autocompleteRef = useRef<HTMLDivElement>(null);
+  const autocompleteRef = useRef<HTMLInputElement>(null);
   const ocrInputRef = useRef<HTMLInputElement>(null);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
 

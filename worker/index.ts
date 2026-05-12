@@ -122,6 +122,28 @@ export default {
       return fetch(new Request(backendUrl.toString(), request));
     }
 
+    // PDFs (school decks + teacher/parent guides linked from the
+    // landing-page footer).  wrangler.jsonc sets `not_found_handling:
+    // "single-page-application"`, which returns /index.html with a 200
+    // status for any missing asset.  For a `*.pdf` URL that silent
+    // fallback means the browser receives text/html for a PDF request
+    // and either renders the SPA shell in the new tab or shows a
+    // blank page — exactly the "PDFs don't open" symptom teachers
+    // reported.  Turn that into a real 404 so a missing PDF is loud
+    // (and so a deploy gap is visible in monitoring) instead of
+    // masquerading as the homepage.
+    if (url.pathname.toLowerCase().endsWith(".pdf")) {
+      const response = await env.ASSETS.fetch(request);
+      const contentType = response.headers.get("content-type") ?? "";
+      if (response.ok && contentType.toLowerCase().includes("text/html")) {
+        return new Response("PDF not found", {
+          status: 404,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+      return response;
+    }
+
     // Everything else: serve static assets. env.ASSETS handles the SPA
     // fallback (index.html for unknown paths).
     return env.ASSETS.fetch(request);

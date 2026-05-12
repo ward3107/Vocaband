@@ -107,10 +107,8 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
               <button
                 onClick={onClose}
                 type="button"
-                className="w-8 h-8 rounded-full hover:bg-stone-100 flex items-center justify-center transition-colors"
-                aria-label={t.closeAria}
                 className="w-8 h-8 rounded-full hover:bg-[var(--vb-surface-alt)] flex items-center justify-center transition-colors"
-                aria-label="Close"
+                aria-label={t.closeAria}
               >
                 <X size={18} className="text-[var(--vb-text-muted)]" />
               </button>

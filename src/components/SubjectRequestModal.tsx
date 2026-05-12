@@ -162,9 +162,8 @@ Grade Level: ${getGradeLabel()}`;
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="pointer-events-auto"
               transition={{ duration: 0.2 }}
-              className="relative w-full max-w-lg"
+              className="pointer-events-auto relative w-full max-w-lg"
               dir={dir}
             >
               <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">

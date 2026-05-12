@@ -28,7 +28,12 @@
  * Supabase's free-tier rate limit happy (200 req/sec is well below).
  */
 
-import 'dotenv/config';
+import { config as dotenvConfig } from 'dotenv';
+// Project convention: secrets live in .env.local (matches .gitignore +
+// what generate-audio.ts, upload-audio.ts, etc. use). `dotenv/config`
+// alone only reads `.env`, which trips up first-time runs.
+dotenvConfig({ path: '.env.local' });
+dotenvConfig(); // fall through to `.env` for anyone using that convention
 import { createClient } from '@supabase/supabase-js';
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 

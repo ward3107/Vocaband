@@ -75,6 +75,7 @@ import WordChainsGame from "../components/game/WordChainsGame";
 import IdiomGame from "../components/game/IdiomGame";
 import SpeedRoundGame from "../components/game/SpeedRoundGame";
 import ReviewGame from "../components/game/ReviewGame";
+import RelationsGame from "../components/game/RelationsGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -346,7 +347,7 @@ export default function GameActiveView({
       // RELATIONS dataset, not the assignment word pool.
       return (
         <RelationsGame
-          themeColor={modeTheme ?? "fuchsia"}
+          themeColor={modeTheme ?? "violet"}
           speak={speak}
           onFinish={handleExitGame}
         />

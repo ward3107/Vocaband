@@ -560,11 +560,11 @@ if (typeof window !== 'undefined') {
   };
 
   // Convenience functions for common settings
-  (window as any).ttsSlow = () => ttsSettings({ rate: 0.5 });
-  (window as any).ttsNormal = () => ttsSettings({ rate: 0.7 });
-  (window as any).ttsFast = () => ttsSettings({ rate: 1.0 });
-  (window as any).ttsDeep = () => ttsSettings({ pitch: 0.85 });
-  (window as any).ttsHigh = () => ttsSettings({ pitch: 1.15 });
+  (window as any).ttsSlow = () => (window as any).ttsSettings({ rate: 0.5 });
+  (window as any).ttsNormal = () => (window as any).ttsSettings({ rate: 0.7 });
+  (window as any).ttsFast = () => (window as any).ttsSettings({ rate: 1.0 });
+  (window as any).ttsDeep = () => (window as any).ttsSettings({ pitch: 0.85 });
+  (window as any).ttsHigh = () => (window as any).ttsSettings({ pitch: 1.15 });
 
   // TTS debug commands available via browser console:
   // forceTTS(), useMP3(), togglePronunciationMode(), ttsSlow(), ttsNormal(), ttsFast()

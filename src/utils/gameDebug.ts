@@ -86,7 +86,7 @@ class GameDebugger {
   }
 
   // Track pronunciation attempts
-  logPronunciation(data: { wordId: number; word: string; method: 'audio' | 'tts'; success: boolean }) {
+  logPronunciation(data: { wordId: number; word: string; method: 'audio' | 'tts' | 'auto' | 'manual'; success: boolean }) {
     this.log('PRONUNCIATION', data);
   }
 

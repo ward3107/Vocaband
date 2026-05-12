@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Delete } from "lucide-react";
 import type { Word } from "../../data/vocabulary";
@@ -154,7 +154,7 @@ export default function ScrambleGame({
    *  Empty slots show a faint dot; filled slots show the tapped
    *  letter and are themselves tappable to remove. */
   const renderSlots = () => {
-    const slots: JSX.Element[] = [];
+    const slots: React.JSX.Element[] = [];
     for (let i = 0; i < expectedLength; i++) {
       const ch = spellingInput[i] || "";
       const filled = !!ch;

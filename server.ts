@@ -38,7 +38,7 @@ import { validateBagrutTest, computeMcMax, scoreMcAnswers, stripAnswerKey } from
 import { MODULE_SPECS } from "./src/features/vocabagrut/lib/moduleMap";
 import type { BagrutModule, BagrutTest } from "./src/features/vocabagrut/types";
 import { synthesizeSpeechMp3 } from "./tts-common";
-import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload, type UpdateScorePayload } from "./src/core/types";
+import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload } from "./src/core/types";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils";
 import {
   QUICK_PLAY_NS,
@@ -439,7 +439,10 @@ async function startServer() {
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       res.header('Vary', 'Origin');
     }
-    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
     next();
   });
 
@@ -1499,10 +1502,10 @@ ${JSON.stringify(validWords)}`;
         russian.push(item?.russian?.trim() || "");
       }
 
-      res.json({ hebrew, arabic, russian });
+      return res.json({ hebrew, arabic, russian });
     } catch (error: any) {
       console.error("[translate] Gemini error:", error?.message || error);
-      res.status(500).json({ error: "Translation failed", message: (error?.message || "").substring(0, 200) });
+      return res.status(500).json({ error: "Translation failed", message: (error?.message || "").substring(0, 200) });
     }
   });
 
@@ -1910,7 +1913,7 @@ Quality rules:
 
     for (let i = 0; i < words.length; i += BATCH_SIZE) {
       const batch = words.slice(i, i + BATCH_SIZE);
-      await Promise.all(batch.map(async (w) => {
+      await Promise.all(batch.map(async (w: { id: number; english: string }) => {
         const fileName = `${w.id}.mp3`;
         try {
           // Skip if already uploaded (idempotent — safe to call twice).
@@ -1944,7 +1947,7 @@ Quality rules:
       console.warn(`[TTS] failures:`, failures.slice(0, 5));
     }
 
-    res.json({ generated, skipped, failed, total: words.length });
+    return res.json({ generated, skipped, failed, total: words.length });
   });
 
   // AI feature gate — checks if the authenticated teacher has AI access.
@@ -2177,10 +2180,10 @@ Examples of good vs bad sentences:
 
       // Return sentences in the same order as input
       const sentences = validWords.map((w: string) => cached[w.toLowerCase()] || `I like the word ${w}.`);
-      res.json({ sentences });
+      return res.json({ sentences });
     } catch (error: any) {
       console.error("AI generation error:", error?.message || error);
-      res.status(500).json({ error: "AI sentence generation failed" });
+      return res.status(500).json({ error: "AI sentence generation failed" });
     }
   });
 
@@ -2310,10 +2313,10 @@ Example output format:
 
       console.log(`[AI Words] generated ${sanitizedWords.length} words`);
 
-      res.json({ words: sanitizedWords });
+      return res.json({ words: sanitizedWords });
     } catch (error: any) {
       console.error("[AI Words] generation error:", error?.message || error);
-      res.status(500).json({ error: "AI vocabulary generation failed" });
+      return res.status(500).json({ error: "AI vocabulary generation failed" });
     }
   });
 
@@ -2478,10 +2481,10 @@ Output ONLY the JSON, no markdown, no explanations.
         questions: sanitizedQuestions,
       };
 
-      res.json(responsePayload);
+      return res.json(responsePayload);
     } catch (error: any) {
       console.error("[AI Text] processing error:", error?.message || error);
-      res.status(500).json({ error: "AI text processing failed" });
+      return res.status(500).json({ error: "AI text processing failed" });
     }
   });
 
@@ -2540,7 +2543,7 @@ Output ONLY the JSON, no markdown, no explanations.
         sentenceComplete: "sentence completion exercises",
       };
 
-      for (const [key, count] of Object.entries(config.questionTypes)) {
+      for (const [key, count] of Object.entries(config.questionTypes as Record<string, number>)) {
         if (count > 0 && typeMapping[key]) {
           questionTypeSpecs.push(`- ${count} ${typeMapping[key]}`);
         }
@@ -2694,14 +2697,14 @@ Important notes:
 
       console.log(`[AI Lesson] uid=${auth.uid}: generated ${actualWordCount} words, ${sanitizedQuestions.length} questions`);
 
-      res.json({
+      return res.json({
         text: sanitizedText,
         wordCount: actualWordCount,
         questions: sanitizedQuestions,
       });
     } catch (error: any) {
       console.error("[AI Lesson] generation error:", error?.message || error);
-      res.status(500).json({ error: "AI lesson generation failed" });
+      return res.status(500).json({ error: "AI lesson generation failed" });
     }
   });
 
@@ -2896,7 +2899,7 @@ Important notes:
         .then(() => {});
     }
 
-    res.json({ test: validated, cached: false, model });
+    return res.json({ test: validated, cached: false, model });
   });
 
   // Per-student rate limit for bagrut submissions/lookups. A real student
@@ -2995,7 +2998,7 @@ Important notes:
       return res.status(500).json({ error: "Failed to save response" });
     }
 
-    res.json({
+    return res.json({
       mc_score: mcScore,
       mc_max: mcMax,
       // Echo back the test with the answer key included so the student
@@ -3039,7 +3042,7 @@ Important notes:
       return res.status(403).json({ error: "Not enrolled in this class" });
     }
 
-    res.json({
+    return res.json({
       id: testRow.id,
       title: testRow.title,
       module: testRow.module,
@@ -3078,7 +3081,7 @@ Important notes:
       res.type("text/plain").sendFile(path.join(distPath, ".well-known", "security.txt"));
     });
 
-    app.get("*", (req, res) => {
+    app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
