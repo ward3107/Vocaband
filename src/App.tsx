@@ -2668,6 +2668,55 @@ export default function App() {
             setShowModeSelection(false);
             setView("game");
           }}
+          onStartClassMinute={async () => {
+            // Class Minute entry point — 60-second daily drill.  Unlike
+            // Review (which self-fetches its queue), Class Minute uses
+            // SpeedRoundGame which expects gameWords pre-populated.  We
+            // seed assignmentWords with SRS-due words first, falling
+            // back to the student's most-recent assignment's pool when
+            // the SRS queue is too thin to fill 60 seconds (~15 words).
+            const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
+            let seedWords: Word[] = [];
+            try {
+              const { data, error } = await supabase.rpc('get_due_reviews', {
+                p_today_local: today,
+                p_limit: 20,
+              });
+              if (!error && Array.isArray(data)) {
+                const dueIds = (data as Array<{ word_id: number }>).map(r => r.word_id);
+                seedWords = dueIds
+                  .map(id => ALL_WORDS.find(w => w.id === id))
+                  .filter((w): w is Word => Boolean(w));
+              }
+            } catch (err) {
+              console.error('[class-minute] get_due_reviews failed:', err);
+            }
+            if (seedWords.length < 15) {
+              const fallbackPool: Word[] = [];
+              const seen = new Set(seedWords.map(w => w.id));
+              for (const a of studentAssignments) {
+                const pool = a.words ?? a.wordIds.map(id => ALL_WORDS.find(w => w.id === id)).filter((w): w is Word => Boolean(w));
+                for (const w of pool) {
+                  if (seen.has(w.id)) continue;
+                  fallbackPool.push(w);
+                  seen.add(w.id);
+                }
+                if (seedWords.length + fallbackPool.length >= 30) break;
+              }
+              seedWords = [...seedWords, ...fallbackPool];
+            }
+            // Absolute last resort: if the student has zero assignments
+            // and zero SRS history, seed from SET_2_WORDS so the round
+            // still runs instead of bouncing them back to the dashboard.
+            if (seedWords.length < 4) {
+              seedWords = SET_2_WORDS.slice(0, 20);
+            }
+            setAssignmentWords(seedWords);
+            setGameMode("class-minute");
+            setIsFinished(false);
+            setShowModeSelection(false);
+            setView("game");
+          }}
           retention={retention}
           boosters={{
             isXpBoosterActive: boosters.isXpBoosterActive,

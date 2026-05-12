@@ -49,6 +49,7 @@ const ICONS: Record<GameMode, string> = {
   idiom: "💭",
   "speed-round": "⚡",
   review: "🔁",
+  "class-minute": "⏱️",
 };
 
 const withIcons = (m: Record<GameMode, { title: string; steps: string[] }>): Record<GameMode, ModeIntroEntry> => {
@@ -78,6 +79,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       idiom: { title: "Idiom Mode", steps: ["See an English idiom in big letters", "Pick the meaning that matches", "Read the example to learn how to use it!"] },
       "speed-round": { title: "Speed Round", steps: ["You have 60 seconds — answer fast!", "Wrong answers cost 1 second", "3 in a row earns combo bonus points"] },
       review: { title: "Review", steps: ["Words you've struggled with come back", "Answer correctly to retire them", "Strengthen your weak spots"] },
+      "class-minute": { title: "Class Minute", steps: ["60 seconds of today's words", "Built from your review queue first", "Come back daily to keep the streak"] },
     }),
     letsGo: "Let's Go! →",
     backToModes: "← Back to Modes",
@@ -100,6 +102,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       idiom: { title: "מצב ביטויים", steps: ["ראה ביטוי באנגלית באותיות גדולות", "בחר את המשמעות המתאימה", "קרא את הדוגמה ולמד איך להשתמש בו!"] },
       "speed-round": { title: "סבב מהיר", steps: ["יש לך 60 שניות — ענה מהר!", "תשובה שגויה מורידה שנייה", "3 ברצף מזכים בבונוס קומבו"] },
       review: { title: "חזרה", steps: ["מילים שהתקשית בהן חוזרות", "ענה נכון כדי להוציא אותן", "חזק את הנקודות החלשות"] },
+      "class-minute": { title: "דקת כיתה", steps: ["60 שניות עם המילים של היום", "נבנה קודם מתור החזרה שלך", "חזור כל יום כדי לשמור על הרצף"] },
     }),
     letsGo: "קדימה! →",
     backToModes: "← חזרה למצבים",
@@ -122,6 +125,7 @@ export const modeIntroT: Record<Language, ModeIntroStrings> = {
       idiom: { title: "وضع التعابير", steps: ["شاهد تعبيرًا إنجليزيًا بحروف كبيرة", "اختر المعنى المطابق", "اقرأ المثال لتتعلم كيفية استخدامه!"] },
       "speed-round": { title: "جولة سريعة", steps: ["لديك 60 ثانية — أجب بسرعة!", "الإجابة الخاطئة تخصم ثانية", "3 إجابات متتالية تمنحك نقاط مكافأة"] },
       review: { title: "مراجعة", steps: ["الكلمات التي واجهت صعوبة فيها تعود", "أجب بصحة لإزالتها", "قوّ نقاط ضعفك"] },
+      "class-minute": { title: "دقيقة الصف", steps: ["60 ثانية مع كلمات اليوم", "تُبنى أولًا من قائمة مراجعتك", "عُد يوميًا للحفاظ على السلسلة"] },
     }),
     letsGo: "هيا بنا! →",
     backToModes: "← العودة إلى الأوضاع",
