@@ -1,5 +1,6 @@
 // Audio hook for playing word pronunciation (motivational sounds removed)
 import { Howl } from 'howler'
+import { getWordAudioUrl } from '../utils/audioUrl'
 
 // Vocab subject — drives MP3 bucket choice (sound/ vs sound-hebrew/) and
 // browser TTS voice/lang. English is the historical default; Hebrew is
@@ -127,11 +128,14 @@ const speakWithTTS = (text: string, lang: AudioLang = 'en'): void => {
 // (the bucket is created when the audio pipeline ships its first batch
 // of Azure HilaNeural / Google Wavenet files; until then every fetch
 // 404s and the speak() path falls back to browser TTS).
-const getAudioUrl = (wordId: number, lang: AudioLang = 'en'): string => {
-  const base = import.meta.env.VITE_SUPABASE_URL
-  const bucket = lang === 'he' ? 'sound-hebrew' : 'sound'
-  return `${base}/storage/v1/object/public/${bucket}/${wordId}.mp3`
-}
+//
+// Routing — Cloudflare R2 + CDN when VITE_CLOUDFLARE_URL is set,
+// Supabase fallback otherwise. Implementation lives in
+// src/utils/audioUrl.ts and is shared with FreeResourcesView's QR-code
+// generator so the in-app player and printed QR codes always resolve
+// to the same file.
+const getAudioUrl = (wordId: number, lang: AudioLang = 'en'): string =>
+  getWordAudioUrl(wordId, lang);
 
 const getMotivationalUrl = (key: string): string => {
   // Use Cloudflare CDN for motivational audio (better caching)
