@@ -55,6 +55,7 @@ import SubjectRequestModal from "./SubjectRequestModal";
 import FeatureRequestModal from "./FeatureRequestModal";
 import SchoolInquiryModal from "./SchoolInquiryModal";
 import TeacherResourcesSection from "./TeacherResourcesSection";
+import LazyBgVideo from "./LazyBgVideo";
 
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => void;
@@ -1103,20 +1104,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
         {/* AI Section - Does All the Heavy Lifting */}
         <section id="ai" className="py-8 md:py-20 px-4 md:px-6 relative isolate overflow-hidden bg-gradient-to-b from-transparent via-violet-950/20 to-transparent scroll-mt-20">
-          {/* Ambient video background — silent, looping.  The brand tint
-              overlay below pushes the footage toward Vocaband's violet
-              palette so a generic clip still feels on-brand. */}
-          <video
+          {/* Ambient video background — silent, looping.  Lazy-loaded
+              (source attaches when the section nears the viewport) so
+              the 3 MB clip doesn't compete with the hero for bandwidth
+              on first paint.  The brand tint overlay below pushes the
+              footage toward Vocaband's violet palette so a generic
+              clip still feels on-brand. */}
+          <LazyBgVideo
+            src="/ai-bg.mp4"
             className="absolute inset-0 w-full h-full object-cover -z-30"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            aria-hidden="true"
-          >
-            <source src="/ai-bg.mp4" type="video/mp4" />
-          </video>
+          />
           <div
             className="absolute inset-0 -z-20 bg-gradient-to-br from-indigo-950/80 via-violet-900/70 to-fuchsia-900/80"
             aria-hidden="true"
@@ -2007,20 +2004,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
         {/* Final CTA - Epic 3D Card */}
         <section className="py-8 md:py-24 px-4 md:px-6 bg-violet-950 relative overflow-hidden">
-          {/* Cosmic trilingual backdrop — silent looping video.
-              Stretches edge-to-edge across the whole CTA strip so the
-              violet card below floats inside the universe. */}
-          <video
+          {/* Cosmic trilingual backdrop — silent looping video.  Lazy-
+              loaded (4.5 MB clip, well below the fold) — the violet
+              section background stays in place while the source
+              attaches as the user scrolls down. */}
+          <LazyBgVideo
+            src="/cta-bg.mp4"
             className="absolute inset-0 w-full h-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            aria-hidden="true"
-          >
-            <source src="/cta-bg.mp4" type="video/mp4" />
-          </video>
+          />
           {/* Section-level darkening overlay so heading + buttons stay
               readable on top of the busy image. */}
           <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
