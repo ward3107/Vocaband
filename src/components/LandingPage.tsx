@@ -2498,12 +2498,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       {t.footerSchoolDeck}
                     </a>
                   </motion.li>
+                  {/* School presentation PDFs.  Intentionally NO `download`
+                      attribute: combining it with `target="_blank"` is
+                      inconsistent across browsers (iOS Safari ignores
+                      `download` and just opens the tab, Chrome both
+                      downloads AND opens a tab, Firefox usually just
+                      downloads — teachers ended up confused about whether
+                      anything had happened).  Opening in a new tab lets the
+                      browser's built-in PDF viewer render the deck; the
+                      user can still save from there if they want a local
+                      copy.  Same pattern as the /docs/ PDFs below. */}
                   <motion.li variants={footerItemVariant} custom={15}>
                     <a
                       href="/Vocaband-Presentation-HE.pdf"
                       target="_blank"
                       rel="noreferrer noopener"
-                      download
                       className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       <FileText size={14} aria-hidden="true" />
@@ -2515,7 +2524,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       href="/Vocaband-Presentation-AR.pdf"
                       target="_blank"
                       rel="noreferrer noopener"
-                      download
                       className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
                     >
                       <FileText size={14} aria-hidden="true" />
