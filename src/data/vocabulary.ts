@@ -6589,7 +6589,82 @@ const _ALL_TUPLES: readonly WordTuple[] = [
   [9267,"obsolete","מיושן","متقادم",3],
   [9268,"imminent","ממשמש ובא","وشيك",3],
   [9269,"subsequent","עוקב","لاحق",3],
-  [9270,"unprecedented","חסר תקדים","غير مسبوق",3]
+  [9270,"unprecedented","חסר תקדים","غير مسبوق",3],
+
+  // ── Idioms & fixed expressions pack (2026-05-11) ─────────────────
+  // High-value idioms and fixed expressions for grade 7-12. Bagrut
+  // reading-comprehension passages lean heavily on these — students
+  // who lack them lose points even when their academic vocab is
+  // strong. IDs 9300-9365. Mix of Set 2 (more common register) and
+  // Set 3 (figurative idioms). Hebrew/Arabic translations are
+  // pragmatic equivalents, not literal — review by a native teacher
+  // recommended before classroom rollout.
+  [9300,"piece of cake","קלי קלות","أمر سهل",3],
+  [9301,"break a leg","בהצלחה","حظاً سعيداً",3],
+  [9302,"hit the books","לשבת על הספרים","يدرس بجد",3],
+  [9303,"hit the road","לצאת לדרך","يغادر",3],
+  [9304,"under the weather","לא מרגיש טוב","يشعر بتوعك",3],
+  [9305,"on cloud nine","בשמיים השביעיים","في قمة السعادة",3],
+  [9306,"spill the beans","לחשוף סוד","يفشي السر",3],
+  [9307,"cost an arm and a leg","עולה הון","يكلف الكثير",3],
+  [9308,"once in a blue moon","פעם במאה שנה","نادراً جداً",3],
+  [9309,"raining cats and dogs","גשם זלעפות","تمطر بغزارة",3],
+  [9310,"the ball is in your court","הכדור במגרש שלך","الكرة في ملعبك",3],
+  [9311,"cut to the chase","לעבור לעיקר","يدخل في صلب الموضوع",3],
+  [9312,"bite the bullet","לחצות את הרוביקון","يتحمل المرارة",3],
+  [9313,"beat around the bush","להתחמק מהנושא","يلف ويدور",3],
+  [9314,"a blessing in disguise","ברכה מוסווית","نعمة مخفية",3],
+  [9315,"best of both worlds","מיטב משני העולמות","فوائد الجانبين",3],
+  [9316,"speak of the devil","הזכרת אותו","الحاكي بحاكي",3],
+  [9317,"the early bird catches the worm","הקדים תרופה למכה","من بكّر بكّر له",3],
+  [9318,"actions speak louder than words","מעשים מדברים יותר ממילים","الأفعال أبلغ من الأقوال",3],
+  [9319,"better late than never","מוטב מאוחר מאשר אף פעם","أن تأتي متأخراً خير من ألا تأتي",3],
+  [9320,"by the skin of your teeth","בשן ועין","بصعوبة بالغة",3],
+  [9321,"call it a day","לסיים את היום","ينهي يومه",3],
+  [9322,"don't judge a book by its cover","אל תשפוט ספר לפי כריכתו","لا تحكم على الكتاب من غلافه",3],
+  [9323,"hit the nail on the head","לקלוע בול","يصيب كبد الحقيقة",3],
+  [9324,"in hot water","בצרות","في ورطة",3],
+  [9325,"it takes two to tango","שניים לטנגו","الكف لا تصفق بيد واحدة",3],
+  [9326,"keep your chin up","תרים את הראש","ارفع رأسك",3],
+  [9327,"kill two birds with one stone","להרוג שתי ציפורים במכה אחת","يصيب عصفورين بحجر واحد",3],
+  [9328,"let the cat out of the bag","להוציא את החתול מהשק","يكشف السر",3],
+  [9329,"miss the boat","לפספס את ההזדמנות","يفوت الفرصة",3],
+  [9330,"pull yourself together","תתעשת","تماسك نفسك",3],
+  [9331,"so far so good","עד עכשיו הכל בסדר","حتى الآن جيد",3],
+  [9332,"the last straw","הקש האחרון","القشة التي قصمت ظهر البعير",3],
+  [9333,"to make a long story short","בקצרה","باختصار",3],
+  [9334,"under your nose","מתחת לאף","تحت أنفك",3],
+  [9335,"once and for all","אחת ולתמיד","مرة واحدة وللأبد",3],
+  [9336,"by and large","בסך הכל","بشكل عام",3],
+  [9337,"for the most part","ברובו","في معظم الأحوال",3],
+  [9338,"to some extent","במידה מסוימת","إلى حد ما",2],
+  [9339,"in the long run","בטווח הארוך","على المدى الطويل",2],
+  [9340,"in the short run","בטווח הקצר","على المدى القصير",2],
+  [9341,"in light of","לאור","في ضوء",3],
+  [9342,"with respect to","בנוגע ל","فيما يتعلق بـ",3],
+  [9343,"in terms of","מבחינת","من حيث",3],
+  [9344,"given that","בהינתן ש","بالنظر إلى أن",3],
+  [9345,"bear in mind","לזכור","تذكر",3],
+  [9346,"come to terms with","להשלים עם","يتقبل",3],
+  [9347,"get the hang of","לתפוס את העניין","يتقن",3],
+  [9348,"get to the point","להגיע לנקודה","يدخل في الموضوع",3],
+  [9349,"in a nutshell","בקצרה","باختصار",3],
+  [9350,"look on the bright side","להסתכל בצד החיובי","انظر إلى الجانب المشرق",3],
+  [9351,"make ends meet","להגיע לסוף החודש","يدبر أمره",3],
+  [9352,"on second thought","במחשבה שנייה","بعد التفكير",3],
+  [9353,"the bottom line","השורה התחתונה","خلاصة القول",3],
+  [9354,"to be on the safe side","ליתר ביטחון","من باب الاحتياط",3],
+  [9355,"with all due respect","עם כל הכבוד","مع كامل الاحترام",3],
+  [9356,"against the odds","נגד כל הסיכויים","ضد كل التوقعات",3],
+  [9357,"in a row","ברציפות","على التوالي",2],
+  [9358,"in due time","בבוא הזמן","في الوقت المناسب",3],
+  [9359,"by no means","בשום אופן לא","بأي شكل من الأشكال",3],
+  [9360,"with a grain of salt","בערבון מוגבל","مع شيء من الحذر",3],
+  [9361,"a matter of opinion","עניין של דעה","مسألة رأي",3],
+  [9362,"the bigger picture","התמונה הגדולה","الصورة الأكبر",3],
+  [9363,"in the heat of the moment","בלהט הרגע","في خضم اللحظة",3],
+  [9364,"out of the blue","משום מקום","من العدم",3],
+  [9365,"over the moon","מאושר מאוד","في قمة السعادة",3]
 ] as const;
 
 export const ALL_WORDS: Word[] = _ALL_TUPLES.map(([id, english, hebrew, arabic, lvl]) => ({
@@ -6622,6 +6697,22 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
       9250,9251,9252,9253,9254,9255,9256,9257,9258,9259,
       9260,9261,9262,9263,9264,9265,9266,9267,9268,9269,
       9270,
+    ],
+  },
+  // ── Idioms & fixed expressions ───────────────────────────────────
+  // Bagrut reading-comprehension passages lean heavily on idioms;
+  // strong academic vocab + zero idiom knowledge = points lost.
+  {
+    name: "Idioms & Expressions 💬",
+    icon: "💬",
+    ids: [
+      9300,9301,9302,9303,9304,9305,9306,9307,9308,9309,
+      9310,9311,9312,9313,9314,9315,9316,9317,9318,9319,
+      9320,9321,9322,9323,9324,9325,9326,9327,9328,9329,
+      9330,9331,9332,9333,9334,9335,9336,9337,9338,9339,
+      9340,9341,9342,9343,9344,9345,9346,9347,9348,9349,
+      9350,9351,9352,9353,9354,9355,9356,9357,9358,9359,
+      9360,9361,9362,9363,9364,9365,
     ],
   },
   // ── Core Curriculum Packs ────────────────────────────────────────────────────────
