@@ -237,7 +237,9 @@
       "Bash(gh pr *)",
       "Bash(npm ls *)",
       "mcp__claude_ai_Supabase__list_migrations",
-      "mcp__claude_ai_Supabase__execute_sql"
+      "mcp__claude_ai_Supabase__execute_sql",
+      "mcp__2b97ba60-f590-4f65-b1ad-ec7ed00f0638__find_projects",
+      "mcp__2b97ba60-f590-4f65-b1ad-ec7ed00f0638__create_project"
     ]
   }
 }
