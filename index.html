@@ -76,7 +76,21 @@
     <!-- Pre-React boot styles (loader + noscript fallback). External file
          so the page CSP can drop `unsafe-inline` from `style-src-elem`. -->
     <link rel="stylesheet" href="/boot.css" />
-    <!-- Google Fonts -->
+    <!-- Google Fonts — preconnect warms the TLS handshake to both the
+         CSS host (fonts.googleapis.com) and the font-file host
+         (fonts.gstatic.com, hence crossorigin) so the stylesheet +
+         WOFF2s return faster, especially on slower school networks
+         where the initial Google handshake takes 200-500 ms.  We keep
+         a regular blocking <link rel="stylesheet"> because the page
+         CSP (_headers) is strict — no `unsafe-inline` on `script-src`
+         means we can't use the `onload="this.media='all'"` swap trick
+         without ALSO adding an external loader, which is more code +
+         a CSP exception for marginal extra gain.  `display=swap`
+         already lets text paint in fallback fonts while the WOFF2
+         downloads, so first paint isn't actually blocked on bytes —
+         only on the small CSS file. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;700;900&family=Heebo:wght@400;500;600;700;800;900&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <!-- Material Symbols link was removed: the font was loaded on every
          page but never actually rendered (lucide-react is used
@@ -85,8 +99,6 @@
          ERR_FAILED in devtools and wasted a request otherwise. -->
   </head>
   <body>
-    <!-- Kill any existing service workers that may be serving stale content -->
-    <script src="/sw-cleanup.js"></script>
     <!-- WCAG 2.0 AA Skip Navigation Links (2.4.1) -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <a href="#navigation" class="skip-link">Skip to navigation</a>
