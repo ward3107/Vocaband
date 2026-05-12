@@ -279,6 +279,7 @@ export default defineConfig(() => {
           manualChunks(id) {
             if (id.includes('lucide-react')) return 'lucide';
             if (id.includes('src/data/vocabulary')) return 'vocabulary';
+            return undefined;
           },
         },
       },

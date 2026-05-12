@@ -583,7 +583,9 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     const assignmentData = {
       classId: selectedClass.id,
       wordIds: wordsToCheck.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
-      words: wordsToSave,
+      // JSONB column carries either Word[] (English) or HebrewLemma[] (Hebrew);
+      // the subject column disambiguates at read time.
+      words: wordsToSave as unknown as Word[],
       title: assignmentTitle,
       deadline: assignmentDeadline || null,
       allowedModes: modesToCheck,

@@ -3622,7 +3622,7 @@ export default function App() {
         <LazyWrapper loadingMessage="טוען מצב הקרנה…">
           <HebrewClassShowView
             initialLemmaIds={classShowAssignment?.wordIds}
-            className={classShowAssignment?.className ?? selectedClass?.name ?? null}
+            className={selectedClass?.name ?? null}
             onExit={() => {
               setClassShowAssignment(null);
               setView("teacher-dashboard");

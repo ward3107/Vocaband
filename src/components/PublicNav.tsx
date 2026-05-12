@@ -13,7 +13,7 @@ import NavLanguageToggle from "./NavLanguageToggle";
 //
 //   - Page links (Resources, FAQ) — go to dedicated SPA routes via the
 //     `onNavigate` callback the host already wires up.
-type NavPage =
+export type NavPage =
   | "home"
   | "terms"
   | "privacy"

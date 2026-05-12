@@ -1734,7 +1734,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         initial={{ width: 0 }}
                         whileInView={{ width: "100%" }}
                         viewport={{ once: true }}
-                        transition={{ duration: 1, ease: "out" }}
+                        transition={{ duration: 1, ease: "easeOut" }}
                         className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
                       />
                     </div>
@@ -1785,7 +1785,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         initial={{ width: 0 }}
                         whileInView={{ width: "75%" }}
                         viewport={{ once: true }}
-                        transition={{ duration: 1, ease: "out" }}
+                        transition={{ duration: 1, ease: "easeOut" }}
                         className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
                       />
                     </div>
@@ -1836,7 +1836,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         initial={{ width: 0 }}
                         whileInView={{ width: "50%" }}
                         viewport={{ once: true }}
-                        transition={{ duration: 1, ease: "out" }}
+                        transition={{ duration: 1, ease: "easeOut" }}
                         className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full"
                       />
                     </div>
