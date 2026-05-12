@@ -22,6 +22,32 @@ import type { LucideIcon } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherResourcesT } from "../locales/student/teacher-resources";
 
+// PDF download languages. Independent of the UI Language type so we can
+// offer Russian PDFs (for Russian-speaking parents in mixed classrooms)
+// without dragging Russian through the rest of the app's i18n surface.
+type PdfLanguage = "en" | "he" | "ar" | "ru";
+
+interface PdfLangSpec {
+  code: PdfLanguage;
+  name: string;
+  flag: string;
+  /** "rtl" so Hebrew / Arabic names render with the right shaping
+   *  even when the surrounding card is LTR. */
+  dir: "ltr" | "rtl";
+}
+
+const PDF_LANGUAGES: PdfLangSpec[] = [
+  { code: "en", name: "English", flag: "🇬🇧", dir: "ltr" },
+  { code: "he", name: "עברית",   flag: "🇮🇱", dir: "rtl" },
+  { code: "ar", name: "العربية", flag: "🇸🇦", dir: "rtl" },
+  { code: "ru", name: "Русский", flag: "🇷🇺", dir: "ltr" },
+];
+
+// Languages that actually have a generated PDF in public/docs/.
+// Flip 'ru' on once the Russian content is added to
+// scripts/teacher-pdfs/content/*.mjs and the build script is rerun.
+const AVAILABLE_PDF_LANGUAGES: ReadonlySet<PdfLanguage> = new Set(["en", "he", "ar"]);
+
 interface TeacherResourcesSectionProps {
   /** "hero" — big section with eyebrow + heading + subtitle (landing page).
    *  "compact" — slim variant with just the cards (teacher login screen). */
@@ -179,26 +205,13 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
         )}
 
         {/* Card grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 items-stretch">
           {CARDS.map((card, i) => {
-            const Icon = card.icon;
             const title = titleFor(card, t);
             const blurb = blurbFor(card, t);
-            const href = card.isFaq ? undefined : `/docs/${card.key}-${language}.pdf`;
-            const cta = card.isFaq ? t.openFaq : t.downloadPdf;
-            const CtaIcon = card.isFaq ? ArrowRight : Download;
 
-            const inner = (
-              <motion.div
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ delay: i * 0.05 }}
-                className={`group relative overflow-hidden rounded-3xl p-5 md:p-6 h-full bg-gradient-to-br ${card.gradient} text-white shadow-lg shadow-violet-500/10 ring-1 ${card.ring}`}
-              >
-                {/* Frosted emoji medallion */}
+            const header = (
+              <>
                 <div className="flex items-start justify-between mb-4">
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${card.iconBg} flex items-center justify-center text-2xl shadow-md shadow-black/10 ring-1 ring-white/30`}>
                     <span aria-hidden="true">{card.emoji}</span>
@@ -213,23 +226,36 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
                 <h3 className="text-lg md:text-xl font-black mb-1.5 leading-tight">
                   {title}
                 </h3>
-                <p className="text-white/85 text-sm leading-relaxed mb-5 line-clamp-3">
+                <p className="text-white/85 text-sm leading-relaxed mb-4 line-clamp-3">
                   {blurb}
                 </p>
-
-                <div
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/25 text-sm font-bold transition-colors ${isRTL ? "flex-row-reverse" : ""}`}
-                >
-                  <Icon size={14} aria-hidden="true" />
-                  <span>{cta}</span>
-                  <CtaIcon size={14} className={isRTL ? "rotate-180" : ""} aria-hidden="true" />
-                </div>
-              </motion.div>
+              </>
             );
 
-            // Anchor-vs-button: PDFs open in a new tab; the FAQ card
-            // either calls the prop or falls back to a regular href.
+            // FAQ card — single in-app action, whole card stays clickable.
             if (card.isFaq) {
+              const Icon = card.icon;
+              const faqInner = (
+                <motion.div
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ delay: i * 0.05 }}
+                  className={`group relative overflow-hidden rounded-3xl p-5 md:p-6 h-full bg-gradient-to-br ${card.gradient} text-white shadow-lg shadow-violet-500/10 ring-1 ${card.ring}`}
+                >
+                  {header}
+                  <div
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/25 text-sm font-bold transition-colors ${isRTL ? "flex-row-reverse" : ""}`}
+                  >
+                    <Icon size={14} aria-hidden="true" />
+                    <span>{t.openFaq}</span>
+                    <ArrowRight size={14} className={isRTL ? "rotate-180" : ""} aria-hidden="true" />
+                  </div>
+                </motion.div>
+              );
+
               if (onOpenFaq) {
                 return (
                   <button
@@ -239,7 +265,7 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
                     className="text-start"
                     style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                   >
-                    {inner}
+                    {faqInner}
                   </button>
                 );
               }
@@ -250,22 +276,82 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
                   className="block"
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                 >
-                  {inner}
+                  {faqInner}
                 </a>
               );
             }
 
+            // PDF card — each card now exposes ALL language versions as
+            // their own labeled row so a teacher can grab a parent letter
+            // in Russian without leaving their Hebrew-language UI.
             return (
-              <a
+              <motion.div
                 key={card.key}
-                href={href}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="block"
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: i * 0.05 }}
+                className={`relative overflow-hidden rounded-3xl p-5 md:p-6 h-full bg-gradient-to-br ${card.gradient} text-white shadow-lg shadow-violet-500/10 ring-1 ${card.ring} flex flex-col`}
               >
-                {inner}
-              </a>
+                {header}
+
+                <div className="mt-auto pt-3 border-t border-white/20">
+                  <p className={`text-white/70 text-[10px] font-black uppercase tracking-[0.15em] mb-2 ${isRTL ? "text-right" : "text-left"}`}>
+                    {t.downloadInLanguage}
+                  </p>
+                  <ul className="space-y-1.5">
+                    {PDF_LANGUAGES.map((lang) => {
+                      const available = AVAILABLE_PDF_LANGUAGES.has(lang.code);
+                      const isCurrent = lang.code === language;
+                      const href = `/docs/${card.key}-${lang.code}.pdf`;
+
+                      const row = (
+                        <div
+                          className={[
+                            "flex items-center gap-2.5 px-3 py-2 rounded-xl border text-sm font-bold transition-all",
+                            available
+                              ? "bg-white/10 border-white/20 hover:bg-white/25 hover:border-white/40 active:scale-[0.98]"
+                              : "bg-white/5 border-white/10 cursor-not-allowed",
+                            isCurrent && available ? "ring-2 ring-white/60" : "",
+                            isRTL ? "flex-row-reverse" : "",
+                          ].join(" ")}
+                        >
+                          <span className="text-base leading-none" aria-hidden="true">{lang.flag}</span>
+                          <span className={`flex-1 ${available ? "" : "opacity-60"}`} dir={lang.dir}>
+                            {lang.name}
+                          </span>
+                          {available ? (
+                            <Download size={14} aria-hidden="true" className="opacity-90" />
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded-md bg-white/15 text-[9px] font-black uppercase tracking-wider">
+                              {t.comingSoon}
+                            </span>
+                          )}
+                        </div>
+                      );
+
+                      return (
+                        <li key={lang.code}>
+                          {available ? (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="block"
+                              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+                              aria-label={`${title} — ${lang.name} (PDF)`}
+                            >
+                              {row}
+                            </a>
+                          ) : (
+                            <div aria-disabled="true">{row}</div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </motion.div>
             );
           })}
         </div>

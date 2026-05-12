@@ -20,6 +20,8 @@ export interface TeacherResourcesStrings {
   faqCardLabel: string;
   openFaq: string;
   downloadPdf: string;
+  downloadInLanguage: string;
+  comingSoon: string;
 
   teacherGuideTitle: string;
   teacherGuideBlurb: string;
@@ -45,10 +47,12 @@ const en: TeacherResourcesStrings = {
   sectionEyebrow: "For teachers",
   sectionHeading: "Everything you need to start tomorrow",
   sectionSubtitle:
-    "Print, share, or hand out — the essentials for running Vocaband in your classroom, in English, Hebrew, and Arabic.",
+    "Print, share, or hand out — the essentials for running Vocaband in your classroom, in English, Hebrew, Arabic, and Russian.",
   faqCardLabel: "Open",
   openFaq: "Open FAQ",
   downloadPdf: "Download PDF",
+  downloadInLanguage: "Download in",
+  comingSoon: "Soon",
 
   teacherGuideTitle: "Teacher Guide",
   teacherGuideBlurb:
@@ -80,10 +84,12 @@ const he: TeacherResourcesStrings = {
   sectionEyebrow: "למורות ומורים",
   sectionHeading: "כל מה שצריך כדי להתחיל מחר",
   sectionSubtitle:
-    "להדפיס, לשתף או לחלק — האסנטיאלס להפעלת Vocaband בכיתה, בעברית, ערבית ואנגלית.",
+    "להדפיס, לשתף או לחלק — האסנטיאלס להפעלת Vocaband בכיתה, בעברית, ערבית, אנגלית ורוסית.",
   faqCardLabel: "פתחו",
   openFaq: "פתחו שאלות נפוצות",
   downloadPdf: "הורידו PDF",
+  downloadInLanguage: "הורדה בשפה",
+  comingSoon: "בקרוב",
 
   teacherGuideTitle: "מדריך למורה",
   teacherGuideBlurb:
@@ -115,10 +121,12 @@ const ar: TeacherResourcesStrings = {
   sectionEyebrow: "للمعلمين",
   sectionHeading: "كل ما تحتاجه لتبدأ غداً",
   sectionSubtitle:
-    "اطبع، شارك أو وزّع — الأساسيات لتشغيل Vocaband في صفك، بالعربية والعبرية والإنجليزية.",
+    "اطبع، شارك أو وزّع — الأساسيات لتشغيل Vocaband في صفك، بالعربية والعبرية والإنجليزية والروسية.",
   faqCardLabel: "افتح",
   openFaq: "افتح الأسئلة الشائعة",
   downloadPdf: "حمّل PDF",
+  downloadInLanguage: "حمّل بـ",
+  comingSoon: "قريباً",
 
   teacherGuideTitle: "دليل المعلم",
   teacherGuideBlurb:
