@@ -44,8 +44,6 @@ import pathlib
 import sys
 import time
 from typing import Any
-from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
-
 try:
     import requests
 except ImportError:
@@ -65,9 +63,13 @@ for stream in (sys.stdout, sys.stderr):
 DICTA_NAKDAN_URL = "https://nakdan-2-0.loadbalancer.dicta.org.il/api"
 
 GEMINI_MODEL = "gemini-2.5-flash"
-GEMINI_URL_TPL = (
+# Endpoint contains no credentials — the API key is passed via the
+# `x-goog-api-key` header at request time (see call_gemini).  Keeping
+# secrets out of the URL also keeps them out of disk caches, log
+# trails, and CodeQL's clear-text-storage taint chain.
+GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{GEMINI_MODEL}:generateContent?key={{key}}"
+    f"{GEMINI_MODEL}:generateContent"
 )
 
 CACHE_DIR = pathlib.Path(".cache/hebrew-lemmas")
@@ -96,34 +98,56 @@ def cache_key(*parts: str) -> pathlib.Path:
     return CACHE_DIR / f"{parts[0]}-{h}.json"
 
 
-_SENSITIVE_QUERY_KEYS = {"key", "api_key", "apikey", "access_token", "token"}
+_SENSITIVE_KEYS = {
+    "key", "api_key", "apikey", "access_token", "token",
+    "authorization", "secret", "password",
+}
 
 
-def _scrub_url_for_cache(url: str) -> str:
-    """Drop credential-bearing query params before using a URL as a cache key.
+def _strip_sensitive(obj: Any) -> Any:
+    """Recursively drop credential-bearing fields from a JSON-like value.
 
-    Google APIs put the API key in `?key=...`. We don't want secrets ending up
-    in cache filenames or in the hash input — both are unnecessary, and the
-    second trips CodeQL's clear-text-storage rule (py/clear-text-storage-sensitive-data).
+    Defence-in-depth before writing API responses to disk: even though
+    callers route auth via headers (not URLs/payloads), the response
+    body itself can echo a token in error envelopes. This filter is
+    also the explicit sanitiser for CodeQL's
+    py/clear-text-storage-sensitive-data taint flow.
     """
-    parsed = urlparse(url)
-    safe_qs = [(k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True)
-               if k.lower() not in _SENSITIVE_QUERY_KEYS]
-    return urlunparse(parsed._replace(query=urlencode(safe_qs)))
+    if isinstance(obj, dict):
+        return {k: _strip_sensitive(v) for k, v in obj.items()
+                if k.lower() not in _SENSITIVE_KEYS}
+    if isinstance(obj, list):
+        return [_strip_sensitive(v) for v in obj]
+    return obj
 
 
-def cached_post(label: str, url: str, payload: dict, *, headers: dict | None = None) -> Any:
-    """POST + JSON, cached on disk by (label, url, payload) hash."""
-    path = cache_key(label, _scrub_url_for_cache(url),
+def cached_post(label: str, url: str, payload: dict, *, auth_key: str | None = None) -> Any:
+    """POST + JSON, cached on disk by (label, url, payload) hash.
+
+    `auth_key` is sent as `x-goog-api-key` at request time and is
+    deliberately NOT folded into the cache key — secrets must never
+    appear in filenames or the hash input.
+    """
+    path = cache_key(label, url,
                      json.dumps(payload, sort_keys=True, ensure_ascii=False))
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
 
-    r = requests.post(url, json=payload, headers=headers or {}, timeout=30)
+    request_headers: dict[str, str] = {}
+    if auth_key:
+        request_headers["x-goog-api-key"] = auth_key
+    r = requests.post(url, json=payload, headers=request_headers, timeout=30)
     r.raise_for_status()
-    data = r.json()
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    return data
+    safe_data = _strip_sensitive(r.json())
+    # Owner-only mode keeps the cache out of reach of other local users
+    # even if the response body happens to include sensitive fields the
+    # filter above missed.
+    path.write_text(json.dumps(safe_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    return safe_data
 
 
 # ── Dicta Nakdan ─────────────────────────────────────────────────────
@@ -213,10 +237,13 @@ def call_gemini(api_key: str, niqqud: dict[str, Any]) -> dict[str, Any]:
             "temperature": 0.2,
         },
     }
-    url = GEMINI_URL_TPL.format(key=api_key)
-
     try:
-        data = cached_post(f"gemini-{niqqud['lemmaPlain']}", url, payload)
+        data = cached_post(
+            f"gemini-{niqqud['lemmaPlain']}",
+            GEMINI_URL,
+            payload,
+            auth_key=api_key,
+        )
     except requests.HTTPError as e:
         print(f"  ! Gemini error for {niqqud['lemmaPlain']}: {e}", file=sys.stderr)
         return {}

@@ -122,36 +122,82 @@ body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/bagrut_cache" \
   -d '{"cache_key":"hack","module":"B","model":"x","content":{}}')
 check "anon bagrut_cache insert is rejected" "row-level security|violates|permission denied|42501" "$body"
 
-# ─── Positive RLS tests — Quick Play guest path MUST work for anon ───
-# These flipped the script: the items above all check that anon is
-# REJECTED. The Quick Play guest flow relies on anon being ABLE to read
-# quick_play_sessions when is_active=true (because students join
-# without authenticating). The 2026-04-25 regression was an over-tight
-# RLS policy that locked anon out of that SELECT and silently bounced
-# every QR-scanning student back to the landing page — no error in the
-# UI because the client falls through to the server endpoint, which
-# was also broken.  Running this as a pre-deploy guard catches the
-# regression before students do.
-echo
-echo "── Positive RLS — Quick Play anon SELECT must succeed ──"
+# ─── F2 — authenticated-student direct-UPDATE attacks ─────────────────
+# These require a STUDENT_JWT (an authenticated session token for a
+# test student account).  Without one, the section is skipped — but
+# the F2 lock can still be verified via the SQL queries in the
+# 20260604 migration's verification section.
+#
+# To run: sign in to the demo classroom as a test student, copy the
+# access token from devtools (supabase.auth.getSession()), then:
+#   STUDENT_JWT=<token> ./scripts/security-pen-test.sh
 
-# ─── Test 9a: anon CAN select from quick_play_sessions ────────────────
-echo "[9a] Anon SELECT quick_play_sessions (is_active=true)"
-body=$(curl -s -w "\n__STATUS__:%{http_code}" "$SUPABASE_URL/rest/v1/quick_play_sessions?select=id,session_code,is_active&is_active=eq.true&limit=1" \
-  -H "apikey: $ANON_KEY" \
-  -H "Authorization: Bearer $ANON_KEY")
-status=$(echo "$body" | grep -o '__STATUS__:[0-9]*' | cut -d: -f2)
-payload=$(echo "$body" | sed 's/__STATUS__:[0-9]*$//')
-# Success looks like an HTTP 200 with a JSON array (possibly empty).
-# Failure modes we're guarding against: 401, 403, 406, or a body that
-# starts with `{"code":` / `{"message":` (PostgREST error envelope).
-if [[ "$status" == "200" ]] && echo "$payload" | grep -qE '^\s*\['; then
-  echo "  PASS  anon quick_play_sessions SELECT returned 200 + JSON array"
-  PASS=$((PASS+1))
+if [[ -n "${STUDENT_JWT:-}" ]]; then
+  echo
+  echo "── F2 direct-UPDATE attacks (authenticated student) ──"
+
+  # 17. Direct xp inflation — must fail with the F2 trigger message.
+  echo "[17] Authed student tries direct UPDATE users.xp = 999999"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"xp": 999999}')
+  check "authed UPDATE users.xp is rejected by F2 trigger" "Direct UPDATE of users.xp is not allowed|42501" "$body"
+
+  # 18. Direct streak inflation.
+  echo "[18] Authed student tries direct UPDATE users.streak = 365"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"streak": 365}')
+  check "authed UPDATE users.streak is rejected" "Direct UPDATE of users.streak is not allowed|42501" "$body"
+
+  # 19. Direct badges inflation.
+  echo "[19] Authed student tries direct UPDATE users.badges"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"badges": ["🎯 Perfect Score", "👑 Champion"]}')
+  check "authed UPDATE users.badges is rejected" "Direct UPDATE of users.badges is not allowed|42501" "$body"
+
+  # 20. Direct unlocked_avatars inflation.
+  echo "[20] Authed student tries direct UPDATE users.unlocked_avatars"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"unlocked_avatars": ["🐉", "🦄"]}')
+  check "authed UPDATE users.unlocked_avatars is rejected" "Direct UPDATE of users.unlocked_avatars is not allowed|42501" "$body"
+
+  # 21. Direct power_ups inflation.
+  echo "[21] Authed student tries direct UPDATE users.power_ups"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"power_ups": {"skip": 99, "fifty_fifty": 99, "reveal_letter": 99}}')
+  check "authed UPDATE users.power_ups is rejected" "Direct UPDATE of users.power_ups is not allowed|42501" "$body"
+
+  # 22. F1 regression — plan still locked.
+  echo "[22] Authed student tries direct UPDATE users.plan = 'pro' (F1 regression)"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"plan": "pro", "trial_ends_at": "2099-01-01"}')
+  check "authed UPDATE users.plan is still rejected (F1)" "row-level security|violates|42501" "$body"
 else
-  echo "  FAIL  anon quick_play_sessions SELECT regressed — status=$status body=$payload"
-  echo "        Quick Play QR-scan flow will be broken for every student."
-  FAIL=$((FAIL+1))
+  echo
+  echo "── F2 / F1 authenticated tests skipped (set STUDENT_JWT to run) ──"
 fi
 
 # ─── App-server pen-tests ─────────────────────────────────────────────

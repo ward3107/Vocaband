@@ -62,10 +62,18 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
   }
 
   // ── Header ───────────────────────────────────────────────────────────
+  // IMPORTANT: this is a teacher-made practice paper, NOT an official
+  // Israeli Ministry of Education document.  The header, footer, and
+  // any AI-supplied test title MUST NOT carry the word "Bagrut", the
+  // app brand "Vocabagrut", or any phrasing that could imply MoE
+  // endorsement.  `sanitizeTitle` below strips those tokens from the
+  // model output as a defence in depth (the prompt also avoids them,
+  // but cached tests generated before the prompt change still flow
+  // through here).
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
   doc.setTextColor(20, 20, 20);
-  doc.text('English — Practice Bagrut', PAGE_WIDTH / 2, y, { align: 'center' });
+  doc.text('English — Practice Test', PAGE_WIDTH / 2, y, { align: 'center' });
   y += 18;
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
@@ -74,13 +82,13 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
     PAGE_WIDTH / 2, y, { align: 'center' },
   );
   y += 14;
-  drawHebrew(`${spec.hebrewLabel} — ${spec.pointTrack} יחידות לימוד`, PAGE_WIDTH / 2, y, { align: 'center', size: 11 });
+  drawHebrew(`${spec.hebrewLabel} — תרגול באנגלית`, PAGE_WIDTH / 2, y, { align: 'center', size: 11 });
   y += 22;
 
   // Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text(test.title, PAGE_WIDTH / 2, y, { align: 'center' });
+  doc.text(sanitizeTitle(test.title), PAGE_WIDTH / 2, y, { align: 'center' });
   y += 22;
 
   // Name / Class / Date row
@@ -124,7 +132,7 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
     doc.text(`Page ${p} / ${pageCount}`, PAGE_WIDTH - MARGIN, FOOTER_Y + 14, { align: 'right' });
-    doc.text(`${spec.label} · Vocabagrut`, MARGIN, FOOTER_Y + 14);
+    doc.text(`${spec.label} · Practice paper`, MARGIN, FOOTER_Y + 14);
   }
 
   // ── Optional teacher answer key ──────────────────────────────────────
@@ -321,5 +329,19 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
 }
 
 function safeFileName(s: string): string {
-  return s.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_').slice(0, 80) || 'bagrut-test';
+  return s.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_').slice(0, 80) || 'practice-test';
+}
+
+// Strip MoE-adjacent vocabulary from any AI-supplied title before it
+// reaches paper.  Belt-and-braces: the prompt also tells the model not
+// to emit these tokens, but cached tests generated before the prompt
+// update still flow through `exportBagrutPdf`.
+function sanitizeTitle(raw: string): string {
+  return raw
+    .replace(/\bvocabagrut\b/gi, 'Practice')
+    .replace(/\bpractice\s+bagrut\b/gi, 'Practice Test')
+    .replace(/\bbagrut[-\s]?style\b/gi, 'mock')
+    .replace(/\bbagrut\b/gi, 'Practice Test')
+    .replace(/\s{2,}/g, ' ')
+    .trim() || 'Practice Test';
 }

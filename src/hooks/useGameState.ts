@@ -532,13 +532,15 @@ export function useGameState(params: UseGameStateParams) {
     };
 
     try {
-      // Save XP/streak FIRST (idempotent update) so the student's XP is
-      // never lost even if progress RPC fails afterwards. If the progress
-      // RPC fails, we can retry — but we won't lose the XP they earned.
-      const { error: xpError } = await supabase
-        .from("users")
-        .update({ xp: newXp, streak: newStreak })
-        .eq("uid", user.uid);
+      // Save XP/streak FIRST (idempotent) via the award_progress_xp RPC
+      // so it can be locked by the F2 trigger (20260604).  Server clamps
+      // p_xp_delta to ±300 and validates p_new_streak ∈ {0, current,
+      // current+1}.  Done before the progress write so the student's XP
+      // is never lost if the progress RPC fails afterwards.
+      const { error: xpError } = await supabase.rpc('award_progress_xp', {
+        p_xp_delta: xpEarned,
+        p_new_streak: newStreak,
+      });
       if (xpError) {
         console.warn("XP update failed (non-fatal):", xpError);
       }
