@@ -15,6 +15,8 @@ import { motion } from "motion/react";
 import { Sparkles, ChevronRight } from "lucide-react";
 import type { ShopTab } from "../../core/views";
 import { LIMITED_ROTATION } from "../../constants/game";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 function currentLimitedItem() {
   const d = new Date();
@@ -33,6 +35,8 @@ interface DropOfTheWeekCardProps {
 }
 
 export default function DropOfTheWeekCard({ onShopOpen, className = "" }: DropOfTheWeekCardProps) {
+  const { language, dir, isRTL } = useLanguage();
+  const t = studentDashboardT[language];
   const limited = currentLimitedItem();
   const limitedEmoji =
     limited.kind === "avatar" ? limited.itemId :
@@ -51,7 +55,8 @@ export default function DropOfTheWeekCard({ onShopOpen, className = "" }: DropOf
       style={{ touchAction: "manipulation" }}
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
-      className={`relative w-full overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 shadow-xl shadow-violet-500/20 text-left ${className}`}
+      dir={dir}
+      className={`relative w-full overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 shadow-xl shadow-violet-500/20 ${isRTL ? 'text-right' : 'text-left'} ${className}`}
     >
       <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 bg-yellow-300/30 rounded-full blur-3xl" />
       <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-20 w-64 h-64 bg-cyan-400/25 rounded-full blur-3xl" />
@@ -78,17 +83,17 @@ export default function DropOfTheWeekCard({ onShopOpen, className = "" }: DropOf
         </motion.div>
         <div className="flex-1 min-w-0">
           <div className="inline-flex items-center gap-1.5 bg-amber-300 text-rose-900 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-1.5">
-            <Sparkles size={10} /> Drop of the week
+            <Sparkles size={10} /> {t.dropOfTheWeek}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">{limited.tagline}</h1>
           <p className="text-sm text-white/90 mt-1">
             <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5 text-xs font-black">
-              {Math.round(limited.discount * 100)}% OFF
+              {t.dropDiscountChip(Math.round(limited.discount * 100))}
             </span>{" "}
-            this week in the shop
+            {t.dropThisWeekInShop}
           </p>
         </div>
-        <ChevronRight size={24} className="text-white/70 shrink-0 hidden sm:block" />
+        <ChevronRight size={24} className={`text-white/70 shrink-0 hidden sm:block ${isRTL ? 'rotate-180' : ''}`} />
       </div>
     </motion.button>
   );

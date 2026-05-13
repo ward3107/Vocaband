@@ -43,6 +43,18 @@ export interface GameActiveStrings {
   falseLabel: string;
   /** Hint shown below the buttons telling students they can swipe. */
   swipeHint: string;
+
+  // GameView chrome (added Phase 1 i18n)
+  exit: string;
+  playPronunciation: string;
+  trueWithMark: string;
+  falseWithMark: string;
+  noSentencesAdded: string;
+  askTeacherToAddSentences: string;
+  sentenceCounter: (index: number, total: number) => string;
+  listenToSentence: string;
+  tapWordsToBuild: string;
+  waitingForPlayers: string;
 }
 
 export const gameActiveT: Record<Language, GameActiveStrings> = {
@@ -63,6 +75,16 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     trueLabel: "True",
     falseLabel: "False",
     swipeHint: "Swipe right for True, left for False",
+    exit: "Exit",
+    playPronunciation: "Play pronunciation",
+    trueWithMark: "True ✓",
+    falseWithMark: "False ✗",
+    noSentencesAdded: "No sentences were added to this assignment.",
+    askTeacherToAddSentences: "Ask your teacher to add sentences.",
+    sentenceCounter: (i, n) => `Sentence ${i} / ${n}`,
+    listenToSentence: "Listen to sentence",
+    tapWordsToBuild: "Tap words below to build the sentence",
+    waitingForPlayers: "Waiting for players...",
   },
   he: {
     wordOfTotal: (i, n) => `מילה ${i} מתוך ${n}`,
@@ -81,6 +103,16 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     trueLabel: "נכון",
     falseLabel: "לא נכון",
     swipeHint: "החליקו ימינה לנכון, שמאלה לא נכון",
+    exit: "יציאה",
+    playPronunciation: "השמע הגייה",
+    trueWithMark: "נכון ✓",
+    falseWithMark: "לא נכון ✗",
+    noSentencesAdded: "לא נוספו משפטים למטלה הזו.",
+    askTeacherToAddSentences: "בקשו מהמורה להוסיף משפטים.",
+    sentenceCounter: (i, n) => `משפט ${i} / ${n}`,
+    listenToSentence: "האזן למשפט",
+    tapWordsToBuild: "הקישו על המילים למטה כדי לבנות את המשפט",
+    waitingForPlayers: "מחכים לשחקנים...",
   },
   ar: {
     wordOfTotal: (i, n) => `الكلمة ${i} من ${n}`,
@@ -99,5 +131,15 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     trueLabel: "صحيح",
     falseLabel: "خطأ",
     swipeHint: "اسحب يمينًا لصحيح، يسارًا لخطأ",
+    exit: "خروج",
+    playPronunciation: "تشغيل النطق",
+    trueWithMark: "صحيح ✓",
+    falseWithMark: "خطأ ✗",
+    noSentencesAdded: "لم تُضف جمل إلى هذه المهمة.",
+    askTeacherToAddSentences: "اطلب من معلمك إضافة جمل.",
+    sentenceCounter: (i, n) => `الجملة ${i} / ${n}`,
+    listenToSentence: "استمع إلى الجملة",
+    tapWordsToBuild: "اضغط على الكلمات في الأسفل لتكوين الجملة",
+    waitingForPlayers: "في انتظار اللاعبين...",
   },
 };

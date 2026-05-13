@@ -15,6 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "../core/supabase";
+import { useLanguage } from "../hooks/useLanguage";
+import { classRosterT } from "../locales/teacher/roster";
 
 // 32-char alphabet, chosen to be easy to read on paper and easy for a
 // 4th-grader to type on a phone. Excludes I/L/O (look like 1) and 0/1.
@@ -51,6 +53,8 @@ interface Props {
 }
 
 const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) => {
+  const { language, dir, isRTL } = useLanguage();
+  const t = classRosterT[language];
   const [students, setStudents] = useState<RosterStudent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,11 +84,11 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       }));
       setStudents(mapped);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load roster");
+      setError(e instanceof Error ? e.message : t.errorLoadFailed);
     } finally {
       setLoading(false);
     }
-  }, [classCode]);
+  }, [classCode, t]);
 
   useEffect(() => {
     if (!open) return;
@@ -136,10 +140,10 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       setRevealedIds(prev => new Set(prev).add(newRow.id));
       setNewName("");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to add student";
+      const msg = e instanceof Error ? e.message : t.errorAddFailed;
       // Postgres unique-violation surfaces as "duplicate key" — translate.
       if (/duplicate key/i.test(msg)) {
-        setError(`There's already a student named "${trimmed}" in this class. Add a last initial to distinguish them (e.g. "Yossi K", "Yossi M").`);
+        setError(t.errorDuplicateName(trimmed));
       } else {
         setError(msg);
       }
@@ -149,7 +153,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
   };
 
   const handleResetPin = async (s: RosterStudent) => {
-    if (!window.confirm(`Generate a new PIN for ${s.displayName}? Their old PIN will stop working immediately.`)) return;
+    if (!window.confirm(t.confirmResetPin(s.displayName))) return;
     const pin = generatePin();
     setError(null);
     try {
@@ -167,12 +171,12 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       );
       setRevealedIds(prev => new Set(prev).add(s.id));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to reset PIN");
+      setError(e instanceof Error ? e.message : t.errorResetFailed);
     }
   };
 
   const handleDelete = async (s: RosterStudent) => {
-    if (!window.confirm(`Remove ${s.displayName} from the class? Their progress and XP will be permanently deleted.`)) return;
+    if (!window.confirm(t.confirmDelete(s.displayName))) return;
     setError(null);
     try {
       const { error: rpcError } = await supabase.rpc("teacher_delete_roster_student", {
@@ -181,21 +185,21 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       if (rpcError) throw rpcError;
       setStudents(prev => prev.filter(r => r.id !== s.id));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete student");
+      setError(e instanceof Error ? e.message : t.errorDeleteFailed);
     }
   };
 
   const handleCopyAll = async () => {
     const withPins = students.filter(s => s.pin);
     if (withPins.length === 0) {
-      setError("No PINs to copy.");
+      setError(t.errorNoPins);
       return;
     }
     const lines = [
-      `Vocaband — ${className} (${classCode})`,
-      `Class join: https://www.vocaband.com/student?class=${classCode}`,
+      t.copyHeader(className, classCode),
+      t.copyJoinLink(classCode),
       "",
-      "Name\tPIN",
+      `${t.copyNameHeader}\t${t.copyPinHeader}`,
       ...withPins.map(s => `${s.displayName}\t${s.pin}`),
     ].join("\n");
     try {
@@ -203,19 +207,19 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       setCopiedAll(true);
       setTimeout(() => setCopiedAll(false), 2000);
     } catch {
-      setError("Clipboard not available in this browser.");
+      setError(t.errorClipboardUnavailable);
     }
   };
 
   const handlePrint = () => {
     const withPins = students.filter(s => s.pin);
     if (withPins.length === 0) {
-      setError("Add students first.");
+      setError(t.errorAddStudentsFirst);
       return;
     }
     const win = window.open("", "_blank", "noopener,width=800,height=900");
     if (!win) {
-      setError("Pop-up blocked — allow pop-ups for vocaband.com.");
+      setError(t.errorPopupBlocked);
       return;
     }
     const rows = withPins
@@ -224,24 +228,29 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
           `<tr><td>${escapeHtml(s.displayName)}</td><td class="pin">${escapeHtml(s.pin || "")}</td></tr>`,
       )
       .join("");
-    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(className)} — Roster</title>
+    // RTL-aware print sheet — direction follows the teacher's UI
+    // language so Hebrew/Arabic rosters print right-to-left with the
+    // PIN column on the correct side.
+    const docDir = isRTL ? "rtl" : "ltr";
+    const align = isRTL ? "right" : "left";
+    win.document.write(`<!doctype html><html lang="${language}" dir="${docDir}"><head><meta charset="utf-8"><title>${escapeHtml(t.printTitle(className))}</title>
       <style>
         body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 32px; color: #1c1917; }
         h1 { font-size: 22px; margin: 0 0 4px; }
         .meta { color: #57534e; font-size: 13px; margin-bottom: 16px; }
         .code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; }
         table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #e7e5e4; padding: 10px 14px; text-align: left; }
+        th, td { border: 1px solid #e7e5e4; padding: 10px 14px; text-align: ${align}; }
         th { background: #fafaf9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #57534e; }
         td.pin { font-family: ui-monospace, Menlo, monospace; font-weight: 700; letter-spacing: 0.1em; font-size: 15px; }
         .footer { margin-top: 18px; color: #78716c; font-size: 11px; }
         @media print { body { margin: 16mm; } }
       </style>
     </head><body>
-      <h1>${escapeHtml(className)} — Class roster</h1>
-      <p class="meta">Class code <span class="code">${escapeHtml(classCode)}</span> · vocaband.com/student?class=${escapeHtml(classCode)}</p>
-      <table><thead><tr><th>Student</th><th>PIN</th></tr></thead><tbody>${rows}</tbody></table>
-      <p class="footer">Each student logs in at vocaband.com with the class code, picks their name, and types their PIN. Keep this sheet safe.</p>
+      <h1>${escapeHtml(t.printTitle(className))}</h1>
+      <p class="meta">${escapeHtml(t.printClassCodeLabel)} <span class="code">${escapeHtml(classCode)}</span> · vocaband.com/student?class=${escapeHtml(classCode)}</p>
+      <table><thead><tr><th>${escapeHtml(t.copyNameHeader)}</th><th>${escapeHtml(t.copyPinHeader)}</th></tr></thead><tbody>${rows}</tbody></table>
+      <p class="footer">${escapeHtml(t.printInstructions)}</p>
       <script>window.addEventListener('load', () => setTimeout(() => window.print(), 200));</script>
     </body></html>`);
     win.document.close();
@@ -281,6 +290,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.95, y: 20 }}
             onClick={e => e.stopPropagation()}
+            dir={dir}
           >
             {/* Header */}
             <div className="flex items-start justify-between p-6 border-b border-stone-200">
@@ -289,7 +299,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   <Users size={24} className="text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-xl font-black text-stone-900 truncate">Class roster</h2>
+                  <h2 className="text-xl font-black text-stone-900 truncate">{t.title}</h2>
                   <p className="text-xs font-bold text-stone-500 mt-0.5 truncate">
                     {className} · <span className="font-mono tracking-wider">{classCode}</span>
                   </p>
@@ -298,7 +308,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
               <button
                 onClick={onClose}
                 type="button"
-                aria-label="Close"
+                aria-label={t.closeAria}
                 className="w-9 h-9 rounded-lg flex items-center justify-center text-stone-500 hover:bg-stone-100 transition-colors shrink-0"
                 style={{ touchAction: "manipulation" }}
               >
@@ -309,7 +319,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
             {/* Add student */}
             <div className="p-6 pb-3">
               <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2">
-                Add student
+                {t.addStudentLabel}
               </label>
               <div className="flex gap-2">
                 <input
@@ -319,7 +329,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   onKeyDown={e => {
                     if (e.key === "Enter") handleAdd();
                   }}
-                  placeholder='e.g. "Yossi K" (first name + last initial)'
+                  placeholder={t.addStudentPlaceholder}
                   maxLength={60}
                   disabled={adding}
                   className="flex-1 px-4 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-500 outline-none text-sm font-medium disabled:opacity-60"
@@ -332,11 +342,11 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   style={{ touchAction: "manipulation" }}
                 >
                   <Plus size={16} />
-                  Add
+                  {t.addButton}
                 </button>
               </div>
               <p className="text-xs text-stone-500 mt-2">
-                A 6-character PIN is generated automatically. The student logs in with the class code + their name + this PIN.
+                {t.addHelp}
               </p>
             </div>
 
@@ -355,17 +365,17 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
             {/* Roster list */}
             <div className="flex-1 overflow-y-auto px-6 py-4 min-h-[180px]">
               {loading ? (
-                <p className="text-center text-sm text-stone-500 py-8">Loading roster…</p>
+                <p className="text-center text-sm text-stone-500 py-8">{t.loading}</p>
               ) : students.length === 0 ? (
                 <div className="text-center py-10">
                   <p className="text-4xl mb-2">🦊</p>
-                  <p className="text-sm font-bold text-stone-700">No students yet</p>
-                  <p className="text-xs text-stone-500 mt-1">Add your first student above.</p>
+                  <p className="text-sm font-bold text-stone-700">{t.emptyTitle}</p>
+                  <p className="text-xs text-stone-500 mt-1">{t.emptyBody}</p>
                 </div>
               ) : (
                 <>
                   {students.length > 1 && (
-                    <div className="flex justify-end mb-2">
+                    <div className={`flex mb-2 ${isRTL ? 'justify-start' : 'justify-end'}`}>
                       <button
                         onClick={toggleAllReveal}
                         type="button"
@@ -373,7 +383,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                         style={{ touchAction: "manipulation" }}
                       >
                         {allRevealed ? <EyeOff size={12} /> : <Eye size={12} />}
-                        {allRevealed ? "Hide all PINs" : "Show all PINs"}
+                        {allRevealed ? t.hideAllPins : t.showAllPins}
                       </button>
                     </div>
                   )}
@@ -390,9 +400,9 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                             <p className="font-bold text-sm text-stone-900 truncate">{s.displayName}</p>
                             <p className="text-xs text-stone-500 truncate">
                               {s.lastLoginAt
-                                ? `Last seen ${new Date(s.lastLoginAt).toLocaleDateString()}`
-                                : "Hasn't logged in yet"}
-                              {s.xp ? ` · ${s.xp} XP` : ""}
+                                ? t.lastSeen(new Date(s.lastLoginAt).toLocaleDateString())
+                                : t.neverLoggedIn}
+                              {s.xp ? t.xpSuffix(s.xp) : ""}
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
@@ -409,7 +419,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                                   style={{ touchAction: "manipulation" }}
                                 >
                                   <Eye size={12} />
-                                  Show PIN
+                                  {t.showPin}
                                 </button>
                               )
                             ) : (
@@ -418,8 +428,8 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                             <button
                               onClick={() => handleResetPin(s)}
                               type="button"
-                              title="Reset PIN"
-                              aria-label={`Reset PIN for ${s.displayName}`}
+                              title={t.resetPinTitle}
+                              aria-label={t.resetPinAria(s.displayName)}
                               className="w-9 h-9 rounded-lg flex items-center justify-center text-stone-500 hover:bg-amber-50 hover:text-amber-600 transition-colors"
                               style={{ touchAction: "manipulation" }}
                             >
@@ -428,8 +438,8 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                             <button
                               onClick={() => handleDelete(s)}
                               type="button"
-                              title="Remove student"
-                              aria-label={`Remove ${s.displayName}`}
+                              title={t.removeTitle}
+                              aria-label={t.removeAria(s.displayName)}
                               className="w-9 h-9 rounded-lg flex items-center justify-center text-stone-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                               style={{ touchAction: "manipulation" }}
                             >
@@ -447,7 +457,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
             {/* Footer */}
             <div className="p-4 border-t border-stone-200 bg-stone-50 rounded-b-3xl flex items-center justify-between gap-3 flex-wrap">
               <p className="text-xs text-stone-500">
-                {students.length} {students.length === 1 ? "student" : "students"}
+                {t.studentCount(students.length)}
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -456,10 +466,10 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   disabled={students.length === 0}
                   className="px-3.5 py-2 rounded-lg bg-white border border-stone-200 text-stone-700 text-sm font-bold hover:bg-stone-100 active:scale-95 transition-all inline-flex items-center gap-2 disabled:opacity-40"
                   style={{ touchAction: "manipulation" }}
-                  title="Copy roster + PINs to clipboard"
+                  title={t.copyTitle}
                 >
                   {copiedAll ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
-                  {copiedAll ? "Copied" : "Copy"}
+                  {copiedAll ? t.copiedButton : t.copyButton}
                 </button>
                 <button
                   onClick={handlePrint}
@@ -469,7 +479,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   style={{ touchAction: "manipulation" }}
                 >
                   <Printer size={15} />
-                  Print roster
+                  {t.printButton}
                 </button>
               </div>
             </div>

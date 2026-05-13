@@ -2,6 +2,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, Sparkles, X, Gift } from "lucide-react";
 import { PET_MILESTONES, type PetMilestone } from "../../constants/game";
+import { useLanguage } from "../../hooks/useLanguage";
+import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 interface PetCompanionProps {
   /** Student's current XP — drives pet level. */
@@ -32,6 +34,8 @@ interface PetCompanionProps {
 export default function PetCompanion({
   xp, displayName, currentStage, nextStage, claimableMilestone, onClaim,
 }: PetCompanionProps) {
+  const { language, dir } = useLanguage();
+  const t = studentDashboardT[language];
   const [open, setOpen] = useState(false);
 
   // Gradient glow per stage — cycled deterministically from stage index
@@ -74,7 +78,7 @@ export default function PetCompanion({
         whileTap={{ scale: 0.92 }}
         style={{ touchAction: 'manipulation' }}
         className={`fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${glow} shadow-lg flex items-center justify-center border-2 border-white`}
-        aria-label="Open pet companion"
+        aria-label={t.openPetCompanion}
         title={currentStage.stage}
       >
         <motion.span
@@ -106,11 +110,12 @@ export default function PetCompanion({
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', stiffness: 240, damping: 20 }}
             className="fixed bottom-40 right-4 sm:bottom-28 sm:right-6 z-40 w-[calc(100vw-2rem)] sm:w-80 bg-white rounded-2xl border border-stone-200 shadow-xl p-4"
+            dir={dir}
           >
             <button
               onClick={() => setOpen(false)}
               type="button"
-              aria-label="Close"
+              aria-label={t.close}
               className="absolute top-3 right-3 w-7 h-7 rounded-full hover:bg-stone-100 flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors"
             >
               <X size={14} />
@@ -121,9 +126,9 @@ export default function PetCompanion({
                 {currentStage.emoji}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Your companion</p>
+                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{t.yourCompanion}</p>
                 <h4 className="text-lg font-black text-stone-900 leading-tight truncate">{currentStage.stage}</h4>
-                <p className="text-xs text-stone-500">Level {stageIdx + 1}</p>
+                <p className="text-xs text-stone-500">{t.petLevel(stageIdx + 1)}</p>
               </div>
             </div>
 
@@ -145,10 +150,10 @@ export default function PetCompanion({
                     <Gift size={18} className="text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-white/85">Evolution reward</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/85">{t.evolutionReward}</p>
                     <p className="font-black text-sm truncate">{claimableMilestone.reward.label}</p>
                   </div>
-                  <span className="shrink-0 bg-white/25 backdrop-blur-sm px-2 py-1 rounded-lg font-black text-xs border border-white/30">Claim</span>
+                  <span className="shrink-0 bg-white/25 backdrop-blur-sm px-2 py-1 rounded-lg font-black text-xs border border-white/30">{t.petClaim}</span>
                 </div>
               </motion.button>
             )}
@@ -157,8 +162,8 @@ export default function PetCompanion({
             {nextStage ? (
               <>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-bold text-stone-500">Next: {nextStage.emoji} {nextStage.stage}</span>
-                  <span className="text-xs font-bold text-stone-500 tabular-nums">{xp} / {nextStage.xpRequired} XP</span>
+                  <span className="text-xs font-bold text-stone-500">{t.petNext(nextStage.emoji, nextStage.stage)}</span>
+                  <span className="text-xs font-bold text-stone-500 tabular-nums">{t.petXpProgress(xp, nextStage.xpRequired)}</span>
                 </div>
                 <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
                   <motion.div
@@ -170,14 +175,14 @@ export default function PetCompanion({
                 </div>
                 <p className="text-xs text-stone-500 mt-2 flex items-center gap-1">
                   <Sparkles size={12} className="text-amber-500" />
-                  {displayName}, earn {nextStage.xpRequired - xp} more XP — next unlock: <span className="font-bold">{nextStage.reward.label}</span>
+                  {t.petEvolutionTip(displayName, nextStage.xpRequired - xp, nextStage.reward.label)}
                 </p>
               </>
             ) : (
               <div className="bg-gradient-to-r from-fuchsia-50 to-purple-50 border border-fuchsia-200 rounded-xl p-3 flex items-center gap-2">
                 <Heart size={16} className="text-fuchsia-600 fill-fuchsia-300" />
                 <p className="text-xs font-semibold text-fuchsia-800">
-                  Maxed out! You and {currentStage.stage} are unstoppable.
+                  {t.petMaxedOut(currentStage.stage)}
                 </p>
               </div>
             )}
