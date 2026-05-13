@@ -2260,13 +2260,17 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
       transition={{ duration: 0.5, delay }}
       className="bg-white/10 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/20 overflow-hidden group hover:border-white/30 transition-all"
     >
-      <div className={`bg-gradient-to-r ${gradient} p-3 sm:p-6 flex items-center gap-3 sm:gap-4`}>
-        <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white/20 flex items-center justify-center shrink-0 text-xl sm:text-3xl">
+      <div className={`bg-gradient-to-r ${gradient} p-3 sm:p-5 flex items-center gap-3`}>
+        <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white/20 flex items-center justify-center shrink-0 text-lg sm:text-2xl">
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-base sm:text-2xl font-bold text-white truncate leading-tight">{title}</h3>
-          <p className="text-white/90 text-xs sm:text-base font-semibold">{size}</p>
+          {/* No truncate — long pack names like "Family and relationships 👨‍👩‍👧"
+              should wrap to two lines instead of getting clipped to "Family and re…".
+              Smaller font size + tighter leading keeps the card compact even
+              when the title wraps. */}
+          <h3 className="text-sm sm:text-base font-bold text-white leading-tight break-words line-clamp-2">{title}</h3>
+          <p className="text-white/90 text-[11px] sm:text-xs font-semibold mt-0.5">{size}</p>
         </div>
       </div>
 
@@ -2318,13 +2322,17 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             <span>Share online</span>
           </motion.button>
 
-          {/* Mobile-only disclosure. On >=sm we hide this button and always show
-              the full format grid via the `sm:!block` rule on the wrapper below. */}
+          {/* Dropdown disclosure for the full format grid — matches the
+              Theme Bundles section above so the visual language is
+              consistent across the page.  Collapsed by default on every
+              viewport (mobile AND desktop) so a card with 15 buttons +
+              4 dividers no longer dominates the grid; teachers
+              expand only the pack they actually want extra formats for. */}
           <button
             type="button"
             onClick={() => setFormatsOpen((o) => !o)}
             aria-expanded={formatsOpen}
-            className="sm:hidden w-full py-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white font-semibold transition-all flex items-center justify-center gap-2 text-xs"
+            className="w-full py-2 sm:py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white font-semibold transition-all flex items-center justify-center gap-2 text-xs sm:text-sm"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >
             <Layers size={14} />
@@ -2335,7 +2343,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             />
           </button>
 
-        <div className={`${formatsOpen ? "block" : "hidden"} sm:!block`}>
+        <div className={formatsOpen ? "block" : "hidden"}>
           <CategoryLabel>{categoryPracticeLabel}</CategoryLabel>
           <div className="grid grid-cols-2 gap-2">
             <FormatButton
@@ -3305,11 +3313,18 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     }
   };
 
+  // 20 words is the sweet spot for a single-page worksheet AND for a
+  // student to actually memorise in one sitting.  We cap here so EVERY
+  // downstream path — preview, PDF, share link, audio zip — uses the
+  // same 20-word slice.  Slicing at render time would have let the
+  // generators see the full pack and emit multi-page sheets.
+  const TOPIC_PACK_MAX_WORDS = 20;
   // Strip the trailing emoji from pack names so "school" matches "School 📚".
   const filteredPacks = useMemo(() => {
     const q = topicSearch.trim().toLowerCase();
-    if (!q) return TOPIC_PACKS;
-    return TOPIC_PACKS.filter((p) => p.name.toLowerCase().includes(q));
+    const cap = (p: typeof TOPIC_PACKS[number]) => ({ ...p, ids: p.ids.slice(0, TOPIC_PACK_MAX_WORDS) });
+    if (!q) return TOPIC_PACKS.map(cap);
+    return TOPIC_PACKS.filter((p) => p.name.toLowerCase().includes(q)).map(cap);
   }, [topicSearch]);
 
   const updateSetting = <K extends keyof WorksheetSettings>(key: K, value: WorksheetSettings[K]) =>
@@ -3371,10 +3386,12 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
 
   const openPreview = (topicName: string, format: Format) => {
     // Bundles are virtual TopicPacks — fall back to that catalogue if
-    // the name doesn't resolve in the regular pack list.
-    const pack =
-      TOPIC_PACKS.find((tp) => tp.name === topicName) ??
-      THEMED_BUNDLES.find((b) => b.name === topicName);
+    // the name doesn't resolve in the regular pack list.  Regular
+    // packs come in via the 20-word-capped `filteredPacks`; bundles
+    // keep their full curated word list since they're explicitly
+    // designed as multi-topic compilations.
+    const cappedPack = filteredPacks.find((tp) => tp.name === topicName);
+    const pack = cappedPack ?? THEMED_BUNDLES.find((b) => b.name === topicName);
     if (!pack) return;
     // De-dupe the bundle ids — composing across packs sometimes
     // overlaps (e.g. Family appearing in two themes) and we don't
