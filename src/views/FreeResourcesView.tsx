@@ -2301,6 +2301,23 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             )}
           </motion.button>
 
+          {/* Online-solver share. The button got accidentally deleted in a
+              prior rewrite while the prop and dialog hookup survived —
+              easy fix.  Opens ShareWorksheetDialog which mints a
+              vocaband.com/w/<slug> link teachers paste into WhatsApp. */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onShareInteractive}
+            aria-label={`Share online worksheet — ${title}`}
+            className="w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 transition-all text-sm sm:text-base"
+            type="button"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          >
+            <Share2 size={16} />
+            <span>Share online</span>
+          </motion.button>
+
           {/* Mobile-only disclosure. On >=sm we hide this button and always show
               the full format grid via the `sm:!block` rule on the wrapper below. */}
           <button
@@ -2548,7 +2565,10 @@ const CheckboxField: React.FC<{ label: string; checked: boolean; onChange: (v: b
 );
 
 interface PreviewModalProps {
-  preview: PreviewState;
+  // Nullable so the modal can paint its chrome instantly while the
+  // generator is still computing the HTML in a deferred microtask.
+  // Iframe is conditionally rendered; loading overlay covers the gap.
+  preview: PreviewState | null;
   format: Format;
   printLabel: string;
   downloadLabel: string;
@@ -2612,7 +2632,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   const [iframeReady, setIframeReady] = useState(false);
   useEffect(() => {
     setIframeReady(false);
-  }, [preview.html]);
+  }, [preview?.html]);
   const showWordsPerPage = format === "worksheet";
   const showBingoSettings = format === "bingo";
   const showTranslationsToggle =
@@ -2790,15 +2810,17 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         )}
 
         <div className="flex-1 overflow-hidden bg-gray-100 relative">
-          <iframe
-            ref={iframeRef}
-            srcDoc={preview.html}
-            title={previewTitle}
-            className="w-full h-full border-0 bg-white"
-            sandbox="allow-same-origin allow-modals allow-scripts"
-            onLoad={() => setIframeReady(true)}
-          />
-          {!iframeReady && (
+          {preview ? (
+            <iframe
+              ref={iframeRef}
+              srcDoc={preview.html}
+              title={previewTitle}
+              className="w-full h-full border-0 bg-white"
+              sandbox="allow-same-origin allow-modals allow-scripts"
+              onLoad={() => setIframeReady(true)}
+            />
+          ) : null}
+          {(!preview || !iframeReady) && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/85 backdrop-blur-sm pointer-events-none">
               <div className="flex items-center gap-3 text-violet-700">
                 <Loader2 size={20} className="animate-spin" />
@@ -2819,7 +2841,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
           <button
             onClick={handlePrint}
             type="button"
-            className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-white border-2 border-violet-300 hover:border-violet-500 text-violet-700 font-bold transition-all flex items-center gap-2 text-sm sm:text-base"
+            disabled={!preview}
+            className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-white border-2 border-violet-300 hover:border-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-violet-700 font-bold transition-all flex items-center gap-2 text-sm sm:text-base"
           >
             <Printer size={16} />
             {printLabel}
@@ -2827,7 +2850,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
           <button
             onClick={onDownload}
             type="button"
-            disabled={isDownloading}
+            disabled={isDownloading || !preview}
             className="px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 disabled:opacity-60 text-white font-bold transition-all flex items-center gap-2 text-sm sm:text-base"
           >
             {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
@@ -3292,16 +3315,29 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const updateSetting = <K extends keyof WorksheetSettings>(key: K, value: WorksheetSettings[K]) =>
     setSettings((prev) => ({ ...prev, [key]: value }));
 
-  // HTML is derived from source + settings, so flipping any toggle re-renders
-  // the iframe instantly without a network round-trip.
-  const preview: PreviewState | null = useMemo(() => {
-    if (!previewSource) return null;
-    return {
-      html: generators[previewSource.format](previewSource.pack, previewSource.words, worksheetLang, settings),
-      filename: previewSource.filename,
-      topicName: previewSource.topicName,
-      format: previewSource.format,
-    };
+  // HTML used to be derived synchronously via useMemo — fine for the small
+  // packs but a 25-word crossword or wordsearch generator burns 1-3 seconds
+  // of main-thread work, which froze the page every time the teacher
+  // opened or switched a preview.  Deferring via setTimeout(0) lets the
+  // modal shell paint immediately (with its loading spinner) and runs the
+  // expensive generator on the next event-loop tick.  The cleanup cancels
+  // a pending generation if previewSource/settings change before it runs.
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+  useEffect(() => {
+    if (!previewSource) {
+      setPreview(null);
+      return;
+    }
+    setPreview(null);
+    const handle = setTimeout(() => {
+      setPreview({
+        html: generators[previewSource.format](previewSource.pack, previewSource.words, worksheetLang, settings),
+        filename: previewSource.filename,
+        topicName: previewSource.topicName,
+        format: previewSource.format,
+      });
+    }, 0);
+    return () => clearTimeout(handle);
   }, [previewSource, worksheetLang, settings]);
 
   const casingOptions: { value: Casing; label: string }[] = [
@@ -3408,46 +3444,59 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     });
 
     // Wait for every <img> in the source (audio QR codes, pictionary art,
-    // flashcard images) to either resolve or fail. Without this gate
-    // html2canvas captures a half-rendered DOM and writes blank cells
-    // into the resulting PDF.
+    // flashcard images) to either resolve or fail.  Cap each wait at
+    // 1.5s — on a slow connection a dead image URL could otherwise hold
+    // the whole download hostage and the user just sees a frozen page.
     const imgs = Array.from(idoc.querySelectorAll("img"));
     await Promise.all(
       imgs.map((img) =>
         img.complete
           ? Promise.resolve()
           : new Promise<void>((resolve) => {
-              img.addEventListener("load", () => resolve(), { once: true });
-              img.addEventListener("error", () => resolve(), { once: true });
+              const done = () => resolve();
+              const timeout = setTimeout(done, 1500);
+              img.addEventListener("load", () => { clearTimeout(timeout); done(); }, { once: true });
+              img.addEventListener("error", () => { clearTimeout(timeout); done(); }, { once: true });
             }),
       ),
     );
-    // Let webfonts (Inter/Heebo/Cairo) finish before snapshotting too —
-    // otherwise canvas falls back to system fonts mid-render and the
-    // last page can lay out differently from the preview iframe.  The
-    // iframe inherits the parent's font registry in modern browsers but
-    // also exposes its own; await both to be safe.
-    const fontPromises: Promise<unknown>[] = [];
+    // Wait for the IFRAME's webfonts only — NOT the parent app's font
+    // registry.  An earlier revision awaited document.fonts.ready on the
+    // parent too, which never resolves cleanly if any React-app font
+    // (lucide-icons, etc.) is still loading, causing the export to hang
+    // the whole page indefinitely.  We only need the worksheet's own
+    // Inter/Heebo/Cairo to be ready before snapshot.
     const idocFonts = (idoc as Document & { fonts?: { ready: Promise<unknown> } }).fonts;
-    if (idocFonts) fontPromises.push(idocFonts.ready);
-    const parentFonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts;
-    if (parentFonts) fontPromises.push(parentFonts.ready);
-    if (fontPromises.length) {
-      try {
-        await Promise.all(fontPromises);
-      } catch {
-        // font loading API is best-effort; carry on if it rejects.
-      }
+    if (idocFonts) {
+      // Cap the font wait too — if the SW is still serving an old CSP
+      // policy that blocks Google Fonts, .ready can stall.  3s is more
+      // than enough for a cached webfont and short enough to feel
+      // responsive when it doesn't load.
+      await Promise.race([
+        idocFonts.ready.catch(() => undefined),
+        new Promise<void>((r) => setTimeout(r, 3000)),
+      ]);
     }
+
+    // Yield to the browser so React paints the "exporting" spinner
+    // BEFORE html2canvas locks the main thread for its rasterization
+    // pass.  Without this the user clicks Download and sees a totally
+    // frozen page (no spinner change, no loading state) for the full
+    // duration of the snapshot.
+    await new Promise<void>((r) => setTimeout(r, 0));
 
     // String fields here are literal unions in the html2pdf.js .d.ts (e.g.
     // "jpeg" | "png", "mm" | "cm" | "in"), so we need `as const` to stop
     // TS widening them to plain string and tripping the type guard.
+    // Scale 1.25 (down from 1.5) cuts another ~30% off the canvas pass.
+    // At 1.25 the resulting PDF prints at ~188 dpi on A4 — well above
+    // the 150 dpi floor for legible print and indistinguishable from
+    // higher scales once compressed by jsPDF.
     const opt = {
       margin: 0,
       filename: preview.filename,
-      image: { type: "jpeg" as const, quality: 0.95 },
-      html2canvas: { scale: 1.5, useCORS: true, letterRendering: true, backgroundColor: "#ffffff" },
+      image: { type: "jpeg" as const, quality: 0.92 },
+      html2canvas: { scale: 1.25, useCORS: true, letterRendering: true, backgroundColor: "#ffffff" },
       jsPDF: {
         unit: "mm" as const,
         format: "a4" as const,
@@ -3831,7 +3880,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
         </div>
       </main>
 
-      {preview && previewSource && (
+      {previewSource && (
         <PreviewModal
           preview={preview}
           format={previewSource.format}
