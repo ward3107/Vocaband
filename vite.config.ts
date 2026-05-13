@@ -298,6 +298,14 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // html2pdf.js bundles html2canvas v1.x, which doesn't support
+        // CSS oklch() colors — Tailwind v4's entire palette is oklch,
+        // so the certificate rendered as black-on-white nonsense in the
+        // PDF.  html2canvas-pro is a drop-in fork that handles oklch
+        // (plus oklab and color()) correctly.  Aliasing here means
+        // every internal `require('html2canvas')` resolves to the pro
+        // build without forking html2pdf.js itself.
+        'html2canvas': path.resolve(__dirname, 'node_modules/html2canvas-pro'),
       },
     },
     build: {
@@ -312,13 +320,22 @@ export default defineConfig(() => {
       },
     },
     server: {
-      port: 3000,
+      // Vite on 5173 (already on Supabase's OAuth allowlist) so Google
+      // OAuth can bounce back to localhost. 3000/3001 collide with
+      // sibling projects on this dev machine, so we settled on the
+      // Vite default and pushed the backend to 3002 below.
+      port: 5173,
       hmr: process.env.DISABLE_HMR !== 'true',
       host: true,
       proxy: {
         '/api': {
           target: 'http://localhost:3002',
           changeOrigin: true,
+        },
+        '/socket.io': {
+          target: 'http://localhost:3002',
+          changeOrigin: true,
+          ws: true,
         },
       },
     },

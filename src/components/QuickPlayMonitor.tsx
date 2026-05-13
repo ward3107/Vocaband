@@ -279,11 +279,11 @@ export default function QuickPlayMonitor({
       try {
         const storedIp = localStorage.getItem('vocaband_local_ip');
         if (storedIp) {
-          return `http://${storedIp}:3000`;
+          return `http://${storedIp}:5173`;
         }
       } catch (e) {}
       // Fallback: use localhost (teacher can set vocaband_local_ip in localStorage)
-      return 'http://localhost:3000';
+      return 'http://localhost:5173';
     }
     return origin;
   };

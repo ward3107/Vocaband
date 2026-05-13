@@ -671,70 +671,6 @@ export default function App() {
   // word (Auto-translate button). Hook owns the cache + fetch plumbing.
   const { translateWord, translateWordsBatch } = useTranslate();
 
-  // AI Vocabulary Generator — calls /api/ai-generate-words endpoint
-  const handleAiGenerateWords = async (params: {
-    topic: string;
-    level: 'A1' | 'A2' | 'B1' | 'B2';
-    examplesToAnchor?: string;
-    skipCurriculumDuplicates: boolean;
-  }) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) {
-      showToast?.('Authentication required', 'error');
-      throw new Error('No auth token');
-    }
-
-    const response = await fetch('/api/ai-generate-words', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      const isPaywall = response.status === 403 && error.error === 'ai_requires_pro';
-      // Prefer the human-readable `message` (e.g. paywall text) over the
-      // machine `error` code when both are present.
-      const msg = error.message || error.error || 'AI generation failed';
-      // Surface the paywall toast (with Upgrade button) directly here
-      // so the action is shown regardless of how the caller handles the
-      // re-thrown Error.
-      if (isPaywall) showPaywallToast(msg);
-      throw new Error(msg);
-    }
-
-    const data = await response.json();
-
-    // Mark curriculum words by checking against ALL_WORDS
-    const curriculumWords = new Map(
-      ALL_WORDS.map(w => [w.english.toLowerCase(), w])
-    );
-
-    return data.words.map((w: {
-      english: string;
-      hebrew: string;
-      arabic: string;
-      example?: string;
-    }) => {
-      const curriculumMatch = curriculumWords.get(w.english.toLowerCase());
-      if (curriculumMatch) {
-        return {
-          ...w,
-          isFromCurriculum: true,
-          curriculumId: curriculumMatch.id,
-        };
-      }
-      return {
-        ...w,
-        isFromCurriculum: false,
-      };
-    });
-  };
-
   // AI Lesson Generator — calls /api/ai-generate-lesson endpoint
   const handleGenerateLesson = async (params: {
     words: Array<{ english: string; hebrew: string; arabic: string }>;
@@ -3525,7 +3461,6 @@ export default function App() {
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
         isProUser={isPro(user)}
-        onAiGenerateWords={handleAiGenerateWords}
         onGenerateLesson={handleGenerateLesson}
         // Activity-type tabs at the top of the wizard.  When the
         // teacher picks a non-Assignment tab, close the wizard and
@@ -3907,7 +3842,6 @@ export default function App() {
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
         onTranslateWord={translateWord}
-        onAiGenerateWords={handleAiGenerateWords}
         onGenerateLesson={handleGenerateLesson}
         topicPacks={TOPIC_PACKS}
         user={user}
@@ -3999,7 +3933,6 @@ export default function App() {
             onTranslateWord: translateWord,
             onTranslateBatch: translateWordsBatch,
             onOcrUpload: onPickerOcrUpload,
-            onAiGenerateWords: handleAiGenerateWords,
             topicPacks: TOPIC_PACKS,
             // savedGroups: pass [] for now — wiring useSavedWordGroups
             // through App-level state is a future PR.  WordPicker's
@@ -4068,7 +4001,6 @@ export default function App() {
             onTranslateWord: translateWord,
             onTranslateBatch: translateWordsBatch,
             onOcrUpload: onPickerOcrUpload,
-            onAiGenerateWords: handleAiGenerateWords,
             topicPacks: TOPIC_PACKS,
             savedGroups: [],
             showToast,

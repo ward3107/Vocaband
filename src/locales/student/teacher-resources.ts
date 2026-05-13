@@ -40,10 +40,6 @@ export interface TeacherResourcesStrings {
 
   parentLetterTitle: string;
   parentLetterBlurb: string;
-
-  privacyTitle: string;
-  privacyBlurb: string;
-  privacyDraftPill: string;
 }
 
 const en: TeacherResourcesStrings = {
@@ -79,11 +75,6 @@ const en: TeacherResourcesStrings = {
   parentLetterTitle: "Parent Letter",
   parentLetterBlurb:
     "A short, printable letter you can send home — explains the app to parents in plain language.",
-
-  privacyTitle: "Privacy & Data",
-  privacyBlurb:
-    "Plain-English summary for administrators — what we collect, where it lives, how long, who can see it.",
-  privacyDraftPill: "DRAFT",
 };
 
 const he: TeacherResourcesStrings = {
@@ -119,11 +110,6 @@ const he: TeacherResourcesStrings = {
   parentLetterTitle: "מכתב להורים",
   parentLetterBlurb:
     "מכתב קצר להדפסה ולחלוקה — מסביר להורים בשפה פשוטה במה מדובר.",
-
-  privacyTitle: "פרטיות ונתונים",
-  privacyBlurb:
-    "סיכום ברור להנהלה — מה אנחנו אוספים, איפה זה נשמר, כמה זמן, ומי רואה.",
-  privacyDraftPill: "טיוטה",
 };
 
 const ar: TeacherResourcesStrings = {
@@ -159,11 +145,6 @@ const ar: TeacherResourcesStrings = {
   parentLetterTitle: "رسالة للأهل",
   parentLetterBlurb:
     "رسالة قصيرة قابلة للطباعة ترسلها إلى البيت — تشرح للأهل بلغة بسيطة.",
-
-  privacyTitle: "الخصوصية والبيانات",
-  privacyBlurb:
-    "ملخّص واضح للإدارة — ماذا نجمع، أين يُخزَّن، كم يبقى، ومن يصل إليه.",
-  privacyDraftPill: "مسودة",
 };
 
 export const teacherResourcesT: Record<Language, TeacherResourcesStrings> = { en, he, ar };

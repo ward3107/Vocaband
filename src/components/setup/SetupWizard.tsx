@@ -122,20 +122,6 @@ export interface SetupWizardProps {
    *  never sent through this — only synthesized customs that lack
    *  hebrew/arabic. */
   onTranslateBatch?: (words: string[]) => Promise<Map<string, { hebrew: string; arabic: string; match: number }>>;
-  /** AI vocabulary generation — used by WordInputStep2026's AI Lesson Builder. */
-  onAiGenerateWords?: (params: {
-    topic: string;
-    level: 'A1' | 'A2' | 'B1' | 'B2';
-    examplesToAnchor?: string;
-    skipCurriculumDuplicates: boolean;
-  }) => Promise<Array<{
-    english: string;
-    hebrew: string;
-    arabic: string;
-    example?: string;
-    isFromCurriculum?: boolean;
-    curriculumId?: number;
-  }>>;
   /** AI lesson generator — generates reading text + questions from selected words. Used by ReviewStep. */
   onGenerateLesson?: (params: {
     words: Array<{ english: string; hebrew: string; arabic: string }>;
@@ -259,7 +245,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   onPlayWord,
   onTranslateWord,
   onTranslateBatch,
-  onAiGenerateWords,
   onGenerateLesson,
   use2026WordInput = false,
   topicPacks = [],
@@ -515,7 +500,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
                   onDeleteSavedGroup={onDeleteSavedGroup}
                   customWords={customWords}
                   onCustomWordsChange={onCustomWordsChange}
-                  onAiGenerateWords={onAiGenerateWords}
                 />
               ) : (
                 <WordInputStep
