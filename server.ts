@@ -237,7 +237,7 @@ async function isTeacherForClass(uid: string, classCode: string): Promise<boolea
 async function startServer() {
   const app = express();
   const httpServer = createServer(app);
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || "http://localhost:3000";
+  const allowedOrigin = process.env.ALLOWED_ORIGIN || "http://localhost:5173";
   const allowedOrigins = allowedOrigin.split(",").map(o => o.trim());
 
   // Match Cloudflare preview URLs (per-branch + per-version) without having
@@ -336,7 +336,10 @@ async function startServer() {
     console.log("[redis-adapter] REDIS_URL not set — running single-VM (fine for dev / single-instance prod)");
   }
 
-  const PORT = process.env.PORT || 3000;
+  // 3002 in dev so the Vite proxy (on 5173) can reach us without
+  // colliding with sibling projects that already use 3000/3001.
+  // Production still respects $PORT from Fly.io.
+  const PORT = process.env.PORT || 3002;
 
   // Security middleware — applied in production only (Vite dev server handles its own headers)
   if (process.env.NODE_ENV === "production") {

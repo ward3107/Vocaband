@@ -299,13 +299,22 @@ export default defineConfig(() => {
       },
     },
     server: {
-      port: 3000,
+      // Vite on 5173 (already on Supabase's OAuth allowlist) so Google
+      // OAuth can bounce back to localhost. 3000/3001 collide with
+      // sibling projects on this dev machine, so we settled on the
+      // Vite default and pushed the backend to 3002 below.
+      port: 5173,
       hmr: process.env.DISABLE_HMR !== 'true',
       host: true,
       proxy: {
         '/api': {
           target: 'http://localhost:3002',
           changeOrigin: true,
+        },
+        '/socket.io': {
+          target: 'http://localhost:3002',
+          changeOrigin: true,
+          ws: true,
         },
       },
     },
