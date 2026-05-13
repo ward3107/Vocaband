@@ -184,6 +184,41 @@
     margin: 1cm;
     size: A4;
   }
+
+  /* Certificate of Achievement — print B&W on school printers.
+     School printers are usually monochrome, and gold/navy gradients
+     dither into ugly grey noise.  Force a clean black-on-white
+     diploma look, then re-stroke the centrepiece Award icon via SVG
+     so it isn't invisible against the white background.
+     Scoped to `.vb-cert-print` (set by handlePrint in CertificateModal)
+     so the worksheet print path is untouched. */
+  body > .vb-cert-print,
+  body > .vb-cert-print * {
+    background: white !important;
+    background-image: none !important;
+    color: black !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+  body > .vb-cert-print .vb-certificate {
+    border: 2px solid black !important;
+  }
+  /* Gold-ringed corner medallions and the centre seal stay as small
+     filled black discs so the layout still reads as a "diploma" rather
+     than a plain rectangle of text. */
+  body > .vb-cert-print [style*="radial-gradient"] {
+    background: black !important;
+  }
+  /* Re-stroke the Award icon (and any other lucide-react SVG inside
+     the certificate) so it survives the colour wipe above.  The colour
+     wipe sets fill: currentColor; the icons are themed via `text-white`,
+     which after the wipe becomes black-on-black → invisible.  Force
+     stroke/fill back to black explicitly. */
+  body > .vb-cert-print svg {
+    fill: none !important;
+    stroke: black !important;
+    color: black !important;
+  }
 }
 
 /* The print-only containers are hidden from screen rendering — only

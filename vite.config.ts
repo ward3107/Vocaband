@@ -285,6 +285,14 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // html2pdf.js bundles html2canvas v1.x, which doesn't support
+        // CSS oklch() colors — Tailwind v4's entire palette is oklch,
+        // so the certificate rendered as black-on-white nonsense in the
+        // PDF.  html2canvas-pro is a drop-in fork that handles oklch
+        // (plus oklab and color()) correctly.  Aliasing here means
+        // every internal `require('html2canvas')` resolves to the pro
+        // build without forking html2pdf.js itself.
+        'html2canvas': path.resolve(__dirname, 'node_modules/html2canvas-pro'),
       },
     },
     build: {
