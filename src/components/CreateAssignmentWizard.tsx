@@ -142,6 +142,11 @@ export interface CreateAssignmentWizardProps {
     sentenceDifficulty?: SentenceDifficulty;
     sentences?: string[];
   }) => void;
+
+  /** Wires the ActivityTypeTabs strip inside SetupWizard.  When the
+   *  teacher picks a non-Assignment tab, the parent (App.tsx) closes
+   *  the wizard and opens the chosen tool with this class preselected. */
+  onSwitchActivity?: (type: 'class-show' | 'worksheet' | 'hot-seat' | 'vocabagrut') => void;
 }
 
 export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
@@ -197,6 +202,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   onAiGenerateWords,
   onGenerateLesson,
   onSaveTemplate,
+  onSwitchActivity,
 }) => {
   const { language, dir } = useLanguage();
   const t = teacherWizardsT[language];
@@ -460,6 +466,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       onDocxUpload={handleDocxUpload}
       customWords={customWords}
       onCustomWordsChange={setCustomWords}
+      onSwitchActivity={onSwitchActivity}
     />
   );
 };

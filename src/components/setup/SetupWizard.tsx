@@ -15,6 +15,7 @@ import { WordInputStep } from './WordInputStep';
 import { WordInputStep2026 } from './WordInputStep2026';
 import { ConfigureStep } from './ConfigureStep';
 import { ReviewStep } from './ReviewStep';
+import ActivityTypeTabs, { type ActivityType } from './ActivityTypeTabs';
 import { useLanguage } from '../../hooks/useLanguage';
 import { teacherWizardsT } from '../../locales/teacher/wizards';
 import { useFirstTimeGuide } from '../../hooks/useFirstTimeGuide';
@@ -218,6 +219,17 @@ export interface SetupWizardProps {
    *  sentence-generation button is hidden for Free teachers.  Optional
    *  so existing call sites continue to work — defaults to false. */
   isProUser?: boolean;
+
+  /** When set (and `mode === 'assignment'`), renders the
+   *  ActivityTypeTabs strip above the 3-step stepper.  Tapping a
+   *  non-Assignment tab fires this callback; the parent is expected
+   *  to close the wizard and open the chosen tool's view with the
+   *  current class preselected.  Quick Play mode never shows the
+   *  tabs (those activities aren't class-scoped). */
+  onSwitchActivity?: (type: Exclude<ActivityType, 'assignment'>) => void;
+  /** Hide Hot Seat + Vocabagrut tabs.  Pass `true` when the parent
+   *  class is Hebrew (those tools are English-only). */
+  hideEnglishOnlyActivityTabs?: boolean;
 }
 
 export const SetupWizard: React.FC<SetupWizardProps> = ({
@@ -268,6 +280,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   user,
   onLogout,
   isProUser = false,
+  onSwitchActivity,
+  hideEnglishOnlyActivityTabs = false,
 }) => {
   const { language, dir } = useLanguage();
   const t = teacherWizardsT[language];
@@ -425,6 +439,15 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
       />
 
       <div className={`mx-auto ${currentStep === 3 && isQuickPlay ? 'max-w-5xl' : 'max-w-2xl'}`}>
+        {/* Activity type tabs — only on the Assignment flow.  Quick Play
+            is its own un-classed flow and shouldn't surface these. */}
+        {isAssignment && onSwitchActivity && (
+          <ActivityTypeTabs
+            active="assignment"
+            onSwitch={onSwitchActivity}
+            hideEnglishOnlyTabs={hideEnglishOnlyActivityTabs}
+          />
+        )}
         <Stepper currentStep={currentStep} mode={mode} />
 
         <AnimatePresence mode="wait">

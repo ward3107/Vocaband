@@ -1,4 +1,4 @@
-import { GraduationCap, UserCircle, Tv2, Printer, Zap, Sparkles, Users, ClipboardList } from "lucide-react";
+import { GraduationCap, UserCircle, Zap, ClipboardList } from "lucide-react";
 import { HelpTooltip } from "../HelpTooltip";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
@@ -12,12 +12,6 @@ interface TeacherQuickActionsProps {
   /** Optional — only the English dashboard wires this for now, since
    *  interactive worksheets are an English-Set feature. */
   onWorksheetResultsClick?: () => void;
-  onClassShowClick?: () => void;
-  onWorksheetClick?: () => void;
-  onVocabagrutClick?: () => void;
-  /** Pass-around single-device classroom mode.  Optional so the
-   *  VocaHebrew dashboard (no Hebrew analog yet) can omit it. */
-  onHotSeatClick?: () => void;
   /** Drives Hebrew-locked locale + RTL when the dashboard is showing a
    *  Hebrew class context. Defaults to "english" so existing callers
    *  keep their current behaviour. */
@@ -26,7 +20,7 @@ interface TeacherQuickActionsProps {
 
 export default function TeacherQuickActions({
   pendingStudentsCount,
-  onQuickPlayClick, onClassroomClick, onApprovalsClick, onWorksheetResultsClick, onClassShowClick, onWorksheetClick, onVocabagrutClick, onHotSeatClick,
+  onQuickPlayClick, onClassroomClick, onApprovalsClick, onWorksheetResultsClick,
   subject = "english",
 }: TeacherQuickActionsProps) {
   const { language } = useLanguage();
@@ -88,93 +82,11 @@ export default function TeacherQuickActions({
       </HelpTooltip>
 
       {/* ───────────────────────────────────────────── */}
-      {/* For your classes — teaching tools              */}
-      {/* ───────────────────────────────────────────── */}
-      <div className="mb-6">
-        <p className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-3 px-1" style={{ color: 'var(--vb-text-muted)' }}>
-          {t.forYourClassesHeading}
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Class Show */}
-          {onClassShowClick && (
-            <HelpTooltip className="h-full" content={t.classShowTooltip}>
-              <div className="h-full" data-tour="class-show">
-                <CompactActionCard
-                  icon={<Tv2 size={20} />}
-                  iconBg="bg-fuchsia-100"
-                  iconColor="text-fuchsia-600"
-                  title={t.classShowTitle}
-                  description={t.classShowDescription}
-                  onClick={onClassShowClick}
-                  isHebrew={isHebrew}
-                />
-              </div>
-            </HelpTooltip>
-          )}
-
-          {/* Worksheet */}
-          {onWorksheetClick && (
-            <HelpTooltip className="h-full" content={t.worksheetTooltip}>
-              <div className="h-full" data-tour="worksheet">
-                <CompactActionCard
-                  icon={<Printer size={20} />}
-                  iconBg="bg-emerald-100"
-                  iconColor="text-emerald-600"
-                  title={t.worksheetTitle}
-                  description={t.worksheetDescription}
-                  onClick={onWorksheetClick}
-                  isHebrew={isHebrew}
-                />
-              </div>
-            </HelpTooltip>
-          )}
-
-          {/* Hot Seat — single-device pass-around mode.  English-only
-              for now: HotSeatView ships with EN/HE/AR copy internally,
-              but the dashboard tile is gated by !isHebrew to match the
-              Vocabagrut precedent (Hebrew dashboard surfaces only the
-              Hebrew-native flows).  If Hebrew teachers want the tile,
-              just drop the gate. */}
-          {!isHebrew && onHotSeatClick && (
-            <HelpTooltip className="h-full" content={t.hotSeatTooltip}>
-              <div className="h-full" data-tour="hot-seat">
-                <CompactActionCard
-                  icon={<Users size={20} />}
-                  iconBg="bg-orange-100"
-                  iconColor="text-orange-600"
-                  title={t.hotSeatTitle}
-                  description={t.hotSeatDescription}
-                  onClick={onHotSeatClick}
-                  isHebrew={isHebrew}
-                />
-              </div>
-            </HelpTooltip>
-          )}
-
-          {/* Vocabagrut — Bagrut-style mock exam.
-              English-Bagrut-specific (the Israeli English matriculation
-              paper); no Hebrew analog, so the tile is suppressed entirely
-              on the VocaHebrew dashboard rather than translated. */}
-          {!isHebrew && onVocabagrutClick && (
-            <HelpTooltip className="h-full" content={t.vocabagrutTooltip}>
-              <div className="h-full" data-tour="vocabagrut">
-                <CompactActionCard
-                  icon={<Sparkles size={20} />}
-                  iconBg="bg-violet-100"
-                  iconColor="text-violet-600"
-                  title={t.vocabagrutTitle}
-                  description={t.vocabagrutDescription}
-                  onClick={onVocabagrutClick}
-                  isHebrew={isHebrew}
-                />
-              </div>
-            </HelpTooltip>
-          )}
-        </div>
-      </div>
-
-      {/* ───────────────────────────────────────────── */}
       {/* Management — admin tasks                       */}
+      {/* (Class Show / Worksheet / Hot Seat / Vocabagrut */}
+      {/*  are no longer dashboard tiles; they live as    */}
+      {/*  tabs inside the New Activity flow opened from  */}
+      {/*  each class card.)                              */}
       {/* ───────────────────────────────────────────── */}
       <div>
         <p className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-3 px-1" style={{ color: 'var(--vb-text-muted)' }}>

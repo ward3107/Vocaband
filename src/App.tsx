@@ -3165,14 +3165,10 @@ export default function App() {
           }}
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
           onWorksheetResultsClick={activeVoca === "hebrew" ? undefined : () => setView("worksheet-attempts")}
-          onClassShowClick={() => { setClassShowAssignment(null); setView("class-show"); }}
           onProjectAssignmentToClass={(a) => {
             setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("class-show");
           }}
-          onWorksheetClick={() => { setWorksheetAssignment(null); setView("worksheet"); }}
-          onVocabagrutClick={() => { setView("vocabagrut"); }}
-          onHotSeatClick={() => { setView("hot-seat"); }}
           onPrintAssignmentWorksheet={(a) => {
             setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("worksheet");
@@ -3504,6 +3500,27 @@ export default function App() {
         isProUser={isPro(user)}
         onAiGenerateWords={handleAiGenerateWords}
         onGenerateLesson={handleGenerateLesson}
+        // Activity-type tabs at the top of the wizard.  When the
+        // teacher picks a non-Assignment tab, close the wizard and
+        // open the chosen tool's view with this class preselected.
+        // The existing class-aware entry points
+        // (setClassShowAssignment / setWorksheetAssignment) take an
+        // assignment-shaped object — for the empty-state launch we
+        // pass null so the tool opens to its own picker UI but with
+        // the class name pre-filled via selectedClass.
+        onSwitchActivity={(type) => {
+          if (type === 'class-show') {
+            setClassShowAssignment(null);
+            setView('class-show');
+          } else if (type === 'worksheet') {
+            setWorksheetAssignment(null);
+            setView('worksheet');
+          } else if (type === 'hot-seat') {
+            setView('hot-seat');
+          } else if (type === 'vocabagrut') {
+            setView('vocabagrut');
+          }
+        }}
       />
       </LazyWrapper>
     );
