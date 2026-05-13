@@ -1853,6 +1853,27 @@ export default function App() {
           // actually see — they can click "Start Learning" or "Teacher
           // Login" to jump back to their dashboard if they want.
           setLoading(false);
+        } else if (!session?.user) {
+          // FALLBACK: no session here means we're logged out. The
+          // INITIAL_SESSION event fires shortly after with the same data
+          // and its handler clears loading — but on slow mobile networks
+          // (and specifically after a logout-triggered location.replace)
+          // that event can be delayed past the 20s safety timeout, leaving
+          // the teacher staring at a spinner. Clear loading here too, but
+          // only when no OAuth callback or saved-student handoff is in
+          // play (those paths manage their own loading state inside the
+          // INITIAL_SESSION branch and we mustn't clobber them).
+          const isOAuthCallback =
+            window.location.search.includes("code=") ||
+            window.location.hash.includes("access_token=");
+          const hasOAuthFlag =
+            sessionStorage.getItem('oauth_session_ready') ||
+            sessionStorage.getItem('oauth_exchange_failed');
+          const savedStudent = localStorage.getItem('vocaband_student_login');
+          const savedPending = sessionStorage.getItem('vocaband_pending_approval');
+          if (!isOAuthCallback && !hasOAuthFlag && !savedStudent && !savedPending) {
+            setLoading(false);
+          }
         }
       } catch { /* getSession failed — let onAuthStateChange handle it */ }
     })();
@@ -1932,6 +1953,14 @@ export default function App() {
         // into the logged-out experience (otherwise pad entries from
         // the previous session would still block navigation).
         try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
+        // Clear loading + swap the SPA view BEFORE the hard reload so React
+        // flushes the post-logout tree to the screen first. Without this
+        // ordering, window.location.replace() pre-empts the pending state
+        // updates and the teacher sees a stuck spinner from the previous
+        // page until the new document finishes loading (the "endless
+        // loading after logout" report).
+        setLoading(false);
+        setView(postLogoutView);
         // Don't redirect Quick Play students — they don't need auth
         if (!quickPlaySessionParam) {
           // Hard reload after the SPA route swap to drop every piece of
@@ -1943,15 +1972,13 @@ export default function App() {
           // session change.  Replacing the URL clears the query
           // (?assignment=... etc) so a stale assignment can't be picked
           // up by the bootstrap effects on first paint.
-          setView(postLogoutView);
-          try {
-            // Students land on /student (handled by the initial-view
-            // resolver above), teachers/guests on the marketing root.
-            const target = wasStudent ? '/student' : '/';
-            window.location.replace(target);
-          } catch {}
+          // Defer to next tick so the state updates above commit before
+          // the page unloads — same reason as setLoading(false) ordering.
+          const target = wasStudent ? '/student' : '/';
+          setTimeout(() => {
+            try { window.location.replace(target); } catch {}
+          }, 0);
         }
-        setLoading(false);
       } else if (event === 'INITIAL_SESSION') {
         // No session exists — user needs to log in.
         // Exception: if the URL has an OAuth code (?code=) or implicit token

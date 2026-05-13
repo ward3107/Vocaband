@@ -6,8 +6,10 @@ import {defineConfig} from 'vite';
 // in dev) — kept as a comment so future edits don't re-import it.
 // import { cloudflare } from "@cloudflare/vite-plugin";
 import { VitePWA } from 'vite-plugin-pwa';
+import { visualizer } from 'rollup-plugin-visualizer';
 export default defineConfig(() => {
   const isTest = process.env.PLAYWRIGHT_TEST === 'true';
+  const analyze = process.env.ANALYZE === 'true';
   return {
     plugins: [
       react(),
@@ -279,6 +281,17 @@ export default defineConfig(() => {
         },
       })] : []),
       tailwindcss(),
+      // Bundle analyzer — opt-in via ANALYZE=true npm run build.
+      // Writes dist/stats.html with a treemap of every chunk so we can
+      // see what's shipping (heavy deps, dead exports, unintended top
+      // level imports).  Not in the default plugin list because the
+      // post-build write adds ~1s to every build.
+      ...(analyze ? [visualizer({
+        filename: 'dist/stats.html',
+        template: 'treemap',
+        gzipSize: true,
+        brotliSize: true,
+      })] : []),
       // Cloudflare plugin disabled — causing white screen in dev
       // ...(!isTest ? [cloudflare()] : []),
     ],
