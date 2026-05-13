@@ -3581,6 +3581,17 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     idoc.write(`<!DOCTYPE html><html><head></head><body style="margin:0">${preview.html}</body></html>`);
     idoc.close();
 
+    // The screen stylesheet hides every .sheet except :first-of-type, then
+    // relies on the inline page-nav script to add `voca-active` to the
+    // currently-visible one. That script is blocked by CSP in production
+    // (no inline-script hash), so without an override html2canvas snapshots
+    // only page 1 of a multi-sheet worksheet and the PDF ships with the
+    // rest of the content invisible. Force every sheet visible BEFORE
+    // measuring — inline styles beat the class rule.
+    idoc.querySelectorAll<HTMLElement>(".sheet").forEach((el) => {
+      el.style.display = "block";
+    });
+
     // Wait for every <img> in the source (audio QR codes, pictionary art,
     // flashcard images) to either resolve or fail. Without this gate
     // html2canvas captures a half-rendered DOM and writes blank cells
@@ -3631,10 +3642,14 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
         orientation: settings.orientation,
         compress: true,
       },
-      // `before: '.sheet'` forces each generator-emitted page onto a fresh
-      // PDF page and prevents the trailing blank page that legacy mode
-      // produces when content height is not an exact multiple of A4.
-      pagebreak: { mode: ["css", "legacy"] as const, before: ".sheet", avoid: ".no-break" },
+      // The .sheet CSS already handles pagination via `page-break-after:
+      // always` (and `:last-child { page-break-after: auto }` to suppress
+      // the trailing blank).  An earlier revision also set
+      // `pagebreak.before: '.sheet'` here — which DOUBLED the page breaks,
+      // pushing a blank page before every .sheet and shipping mostly-
+      // empty PDFs.  Keep mode = ['css', 'legacy'] and let the stylesheet
+      // drive page boundaries by itself.
+      pagebreak: { mode: ["css", "legacy"] as const },
     };
 
     try {
