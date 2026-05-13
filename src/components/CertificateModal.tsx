@@ -173,7 +173,24 @@ export default function CertificateModal({
   };
 
   const handlePrint = () => {
-    window.print();
+    if (!printRef.current) return;
+    // The app's global print CSS in `index.css` hides every
+    // body-level child except `.vb-print-stack` / `.vb-print-only`
+    // when window.print() fires.  This modal lives inside `#root`,
+    // so the certificate body would be hidden during print.  Clone
+    // the certificate into a transient body-level `.vb-print-stack`
+    // wrapper, fire print (synchronous — blocks until the dialog
+    // closes), then clean up.  No double-render on screen because
+    // `.vb-print-stack` is `display: none` outside @media print.
+    const wrapper = document.createElement('div');
+    wrapper.className = 'vb-print-stack';
+    wrapper.appendChild(printRef.current.cloneNode(true));
+    document.body.appendChild(wrapper);
+    try {
+      window.print();
+    } finally {
+      document.body.removeChild(wrapper);
+    }
   };
 
   return (
