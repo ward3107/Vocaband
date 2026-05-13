@@ -18,7 +18,6 @@ import {
 import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
 import InPageCamera from '../InPageCamera';
-import { AiVocabularyModal, type GeneratedWord } from '../ai-lesson-builder';
 import { useLanguage } from '../../hooks/useLanguage';
 import { wordInputStepT } from '../../locales/teacher/word-input-step';
 
@@ -74,15 +73,6 @@ export interface WordInputStep2026Props {
    *  with empty hebrew/arabic. */
   onTranslateBatch?: (words: string[]) => Promise<Map<string, { hebrew: string; arabic: string; match: number }>>;
   onOcrUpload?: (file: File) => Promise<{ words: string[]; success?: boolean }>;
-  /** AI vocabulary generation — takes topic + level, returns
-   *  generated words with translations.  Used by the AI Lesson Builder
-   *  to create vocabulary lists from any topic. */
-  onAiGenerateWords?: (params: {
-    topic: string;
-    level: 'A1' | 'A2' | 'B1' | 'B2';
-    examplesToAnchor?: string;
-    skipCurriculumDuplicates: boolean;
-  }) => Promise<GeneratedWord[]>;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   topicPacks?: Array<{ name: string; icon: string; ids: number[] }>;
   savedGroups?: Array<{ id: string; name: string; words: number[] }>;
@@ -1589,7 +1579,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   onTranslateWord,
   onTranslateBatch,
   onOcrUpload,
-  onAiGenerateWords,
   showToast,
   topicPacks = [],
   savedGroups = [],
@@ -1633,9 +1622,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
 
   // Panel State
   const [openPanel, setOpenPanel] = useState<PanelType>(null);
-
-  // AI Lesson Builder State
-  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   // Saved Groups from localStorage
   // Saved groups now flow through props (backed by Supabase via
@@ -2002,43 +1988,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     }
   }, [selectedWords, onSelectedWordsChange, showToast, onTranslateBatch, runBatchTranslate]);
 
-  // Add AI-generated words
-  const handleAddAiWords = useCallback((words: GeneratedWord[]) => {
-    const existingIds = new Set(selectedWords.map(w => w.id));
-    const existingEnglish = new Set(selectedWords.map(w => w.english.toLowerCase()));
-
-    // Convert GeneratedWord[] to Word[]
-    const now = Date.now();
-    const wordsToAdd: Word[] = words
-      .filter(w => !existingEnglish.has(w.english.toLowerCase()))
-      .map((gw, i) => {
-        // If it's a curriculum word, find the matching Word from allWords
-        if (gw.isFromCurriculum && gw.curriculumId) {
-          const curriculumWord = allWords.find(w => w.id === gw.curriculumId);
-          if (curriculumWord) {
-            return curriculumWord;
-          }
-        }
-        // Otherwise create a custom word
-        return {
-          id: -(now + i),
-          english: gw.english,
-          hebrew: gw.hebrew,
-          arabic: gw.arabic,
-          level: 'Custom' as const,
-        };
-      })
-      .filter(w => !existingIds.has(w.id));
-
-    if (wordsToAdd.length > 0) {
-      onSelectedWordsChange([...selectedWords, ...wordsToAdd]);
-      showToast?.(`Added ${wordsToAdd.length} AI-generated words`, 'success');
-      setShouldScrollToSelected(true);
-    } else {
-      showToast?.('All generated words are already in your list', 'info');
-    }
-  }, [allWords, selectedWords, onSelectedWordsChange, showToast]);
-
   // Remove a single word
   const handleRemoveWord = useCallback((wordId: number) => {
     onSelectedWordsChange(selectedWords.filter(w => w.id !== wordId));
@@ -2116,19 +2065,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           delay={0.2}
           isNew
         />
-        {/* AI Lesson Builder — Phase 1: Vocabulary Generator */}
-        {onAiGenerateWords && (
-          <OptionCard
-            emoji="✨"
-            title={TEXT.aiGenerate}
-            subtitle={TEXT.aiGenerateSubtitle}
-            ctaText={TEXT.aiGenerateCard}
-            gradient="from-violet-400 to-purple-500"
-            onClick={() => setAiModalOpen(true)}
-            delay={0.3}
-            isNew
-          />
-        )}
       </div>
 
       {/* Selected Words Section.  The ref-wrapper div is rendered
@@ -2372,20 +2308,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         selectedWords={selectedWords}
         onAddWords={handleAddWords}
         onRemoveWord={handleRemoveWord}
-      />
-
-      {/* AI Vocabulary Modal */}
-      <AiVocabularyModal
-        isOpen={aiModalOpen}
-        onClose={() => setAiModalOpen(false)}
-        onAddWords={handleAddAiWords}
-        onGenerate={async (params) => {
-          if (!onAiGenerateWords) {
-            throw new Error('AI generation is not available');
-          }
-          return onAiGenerateWords(params);
-        }}
-        showToast={showToast}
       />
     </div>
   );

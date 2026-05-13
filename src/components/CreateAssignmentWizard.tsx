@@ -86,20 +86,6 @@ export interface CreateAssignmentWizardProps {
   /** Effective Pro plan flag — gates AI sentence generation in
    *  ConfigureStep.  Forwarded straight through to SetupWizard. */
   isProUser?: boolean;
-  /** AI vocabulary generation — used by the AI Lesson Builder in SetupWizard. */
-  onAiGenerateWords?: (params: {
-    topic: string;
-    level: 'A1' | 'A2' | 'B1' | 'B2';
-    examplesToAnchor?: string;
-    skipCurriculumDuplicates: boolean;
-  }) => Promise<Array<{
-    english: string;
-    hebrew: string;
-    arabic: string;
-    example?: string;
-    isFromCurriculum?: boolean;
-    curriculumId?: number;
-  }>>;
   /** AI lesson generator — generates reading text + questions from selected words. */
   onGenerateLesson?: (params: {
     words: Array<{ english: string; hebrew: string; arabic: string }>;
@@ -199,7 +185,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   showToast,
   onPlayWord,
   isProUser = false,
-  onAiGenerateWords,
   onGenerateLesson,
   onSaveTemplate,
   onSwitchActivity,
@@ -456,7 +441,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
         return result;
       }}
       onTranslateBatch={translateWordsBatch}
-      onAiGenerateWords={onAiGenerateWords}
       onGenerateLesson={onGenerateLesson}
       topicPacks={TOPIC_PACKS}
       onOcrUpload={handleOcrUpload}
