@@ -17,6 +17,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft } from "lucide-react";
 import { HEBREW_LEMMAS } from "../data/vocabulary-hebrew";
 import { stripNiqqud, type HebrewLemma } from "../data/types-hebrew";
+import { useLanguage } from "../hooks/useLanguage";
+import { hebrewModesT } from "../locales/student/hebrew-modes";
 
 const ROUNDS_PER_SESSION = 10;
 type Relation = "synonym" | "antonym";
@@ -106,6 +108,8 @@ interface SynonymMatchViewProps {
 }
 
 export default function SynonymMatchView({ onExit, gradeBand, lemmaIds, onComplete }: SynonymMatchViewProps) {
+  const { language } = useLanguage();
+  const t = hebrewModesT[language];
   const universe = useMemo(buildDistractorUniverse, []);
 
   const lemmaPool = useMemo(() => {
@@ -184,11 +188,7 @@ export default function SynonymMatchView({ onExit, gradeBand, lemmaIds, onComple
             {pct}% — {score} / {lemmaPool.length}
           </h2>
           <p className="font-bold mb-6 text-white/85">
-            {pct >= 80
-              ? "מצוין! אוצר מילים חזק"
-              : pct >= 50
-              ? "יפה — ממשיכים לבנות אוצר מילים"
-              : "התרגול עוזר — נסה שוב"}
+            {pct >= 80 ? t.synonymPraiseHigh : pct >= 50 ? t.synonymPraiseMid : t.synonymPraiseLow}
           </p>
           <div className="flex gap-3 justify-center">
             <button
@@ -197,7 +197,7 @@ export default function SynonymMatchView({ onExit, gradeBand, lemmaIds, onComple
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="px-5 py-3 rounded-xl bg-white text-fuchsia-700 font-black text-sm tracking-wide shadow-sm hover:bg-amber-100"
             >
-              Play again
+              {t.playAgain}
             </button>
             <button
               type="button"
@@ -205,7 +205,7 @@ export default function SynonymMatchView({ onExit, gradeBand, lemmaIds, onComple
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
             >
-              Done
+              {t.done}
             </button>
           </div>
         </motion.div>
@@ -216,7 +216,7 @@ export default function SynonymMatchView({ onExit, gradeBand, lemmaIds, onComple
   if (!round) return null;
 
   const relationLabel =
-    round.relation === "synonym" ? "נרדפת · synonym" : "הפך · antonym";
+    round.relation === "synonym" ? t.synonymChipLabel : t.antonymChipLabel;
   const relationChipBg =
     round.relation === "synonym"
       ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/40"
@@ -233,7 +233,7 @@ export default function SynonymMatchView({ onExit, gradeBand, lemmaIds, onComple
             className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black tracking-widest uppercase hover:bg-white/15"
           >
             <ArrowLeft size={14} />
-            Back
+            {t.back}
           </button>
           <div className="text-white font-black text-sm">
             {roundIdx + 1} / {lemmaPool.length}

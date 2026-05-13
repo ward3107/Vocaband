@@ -19,6 +19,8 @@ import {
   HEBREW_LEMMAS_BY_GRADE,
 } from "../data/vocabulary-hebrew";
 import type { HebrewLemma } from "../data/types-hebrew";
+import { useLanguage } from "../hooks/useLanguage";
+import { hebrewModesT } from "../locales/student/hebrew-modes";
 
 const ROUNDS_PER_SESSION = 10;
 
@@ -70,6 +72,8 @@ interface ListeningModeViewProps {
 }
 
 export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onComplete }: ListeningModeViewProps) {
+  const { language } = useLanguage();
+  const t = hebrewModesT[language];
   const lemmaPool = useMemo(() => {
     let pool: readonly HebrewLemma[] = gradeBand
       ? (HEBREW_LEMMAS_BY_GRADE[gradeBand] ?? [])
@@ -132,7 +136,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
   if (lemmaPool.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
-        <p className="font-bold">No Hebrew lemmas available for this grade band.</p>
+        <p className="font-bold">{t.noLemmasForBand}</p>
       </div>
     );
   }
@@ -153,11 +157,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
             {pct}% — {score} / {lemmaPool.length}
           </h2>
           <p className="font-bold mb-6 text-white/85">
-            {pct >= 80
-              ? "מצוין! אוזן עברית מצוינת"
-              : pct >= 50
-              ? "יפה — האוזן משתפרת עם תרגול"
-              : "נמשיך להאזין — האוזן תתחזק"}
+            {pct >= 80 ? t.listenPraiseHigh : pct >= 50 ? t.listenPraiseMid : t.listenPraiseLow}
           </p>
           <div className="flex gap-3 justify-center">
             <button
@@ -166,7 +166,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="px-5 py-3 rounded-xl bg-white text-orange-700 font-black text-sm tracking-wide shadow-sm hover:bg-amber-100"
             >
-              Play again
+              {t.playAgain}
             </button>
             <button
               type="button"
@@ -174,7 +174,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
             >
-              Done
+              {t.done}
             </button>
           </div>
         </motion.div>
@@ -195,7 +195,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
             className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black tracking-widest uppercase hover:bg-white/15"
           >
             <ArrowLeft size={14} />
-            Back
+            {t.back}
           </button>
           <div className="text-white font-black text-sm">
             {roundIdx + 1} / {lemmaPool.length}
@@ -211,7 +211,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
           className="text-center mb-8 sm:mb-10"
         >
           <p className="text-blue-300 font-black text-[10px] tracking-[0.25em] uppercase mb-4">
-            Listen and pick the matching word
+            {t.listenInstruction}
           </p>
           <motion.button
             type="button"
@@ -220,7 +220,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
             whileTap={{ scale: 0.95 }}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             className="inline-flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white shadow-lg shadow-orange-500/30"
-            aria-label="Play word"
+            aria-label={t.listenPlayWordAria}
           >
             <Volume2 size={48} />
           </motion.button>

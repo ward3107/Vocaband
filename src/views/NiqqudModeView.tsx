@@ -22,6 +22,8 @@ import {
   HEBREW_LEMMAS_BY_GRADE,
 } from "../data/vocabulary-hebrew";
 import { stripNiqqud, type HebrewLemma } from "../data/types-hebrew";
+import { useLanguage } from "../hooks/useLanguage";
+import { hebrewModesT } from "../locales/student/hebrew-modes";
 
 // ─── Distractor generation ────────────────────────────────────────
 //
@@ -134,6 +136,8 @@ interface NiqqudModeViewProps {
 }
 
 export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete }: NiqqudModeViewProps) {
+  const { language } = useLanguage();
+  const t = hebrewModesT[language];
   const lemmaPool = useMemo(() => {
     let pool: readonly HebrewLemma[] = gradeBand
       ? (HEBREW_LEMMAS_BY_GRADE[gradeBand] ?? [])
@@ -217,11 +221,7 @@ export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete
             {pct}% — {score} / {lemmaPool.length}
           </h2>
           <p className="font-bold mb-6 text-white/85">
-            {pct >= 80
-              ? "כל הכבוד! ניקוד מצוין"
-              : pct >= 50
-              ? "יפה מאוד, ממשיכים להתאמן"
-              : "אל תוותר — עוד סיבוב"}
+            {pct >= 80 ? t.niqqudPraiseHigh : pct >= 50 ? t.niqqudPraiseMid : t.niqqudPraiseLow}
           </p>
           <div className="flex gap-3 justify-center">
             <button
@@ -230,7 +230,7 @@ export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="px-5 py-3 rounded-xl bg-white text-indigo-700 font-black text-sm tracking-wide shadow-sm hover:bg-amber-100"
             >
-              Play again
+              {t.playAgain}
             </button>
             <button
               type="button"
@@ -238,7 +238,7 @@ export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
             >
-              Done
+              {t.done}
             </button>
           </div>
         </motion.div>
@@ -259,7 +259,7 @@ export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete
             className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black tracking-widest uppercase hover:bg-white/15"
           >
             <ArrowLeft size={14} />
-            Back
+            {t.back}
           </button>
           <div className="text-white font-black text-sm">
             {roundIdx + 1} / {lemmaPool.length}
@@ -275,7 +275,7 @@ export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete
           className="text-center mb-8 sm:mb-10"
         >
           <p className="text-blue-300 font-black text-[10px] tracking-[0.25em] uppercase mb-3">
-            Choose the correct niqqud
+            {t.niqqudInstruction}
           </p>
           <div className="text-6xl sm:text-8xl font-black text-white drop-shadow-xl mb-4 leading-none" lang="he" dir="rtl">
             {stripNiqqud(round.lemma.lemmaNiqqud)}
