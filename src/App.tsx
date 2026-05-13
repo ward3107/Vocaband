@@ -2729,6 +2729,11 @@ export default function App() {
       show={showExitConfirmModal}
       onStay={() => setShowExitConfirmModal(false)}
       onLeave={handleExitConfirmLeave}
+      student={
+        user?.role === 'student' && !user.isGuest
+          ? { name: user.displayName || '', classCode: user.classCode ?? null }
+          : null
+      }
     />
   );
 
