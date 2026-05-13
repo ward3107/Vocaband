@@ -4,6 +4,25 @@ Tracking known issues with their diagnosis status.
 
 ---
 
+## Feature — Interactive worksheet attempts (Phase 2)
+
+**Status:** ✅ SHIPPED 2026-05-13. End-to-end loop: mint → solve → submit → teacher reads results.
+
+What landed:
+- `worksheet_attempts` table + `submit_worksheet_attempt` RPC + RLS scoping reads to the worksheet owner (`20260605000000_worksheet_attempts.sql`).
+- Daily pg_cron job that purges expired interactive_worksheets so the table doesn't grow forever (`20260605000001_purge_expired_worksheets.sql`).
+- Solver gained a name-entry gate, per-question answer capture (quiz: given/correct/is_correct; matching: mistakes_count), and a "Sent to your teacher" confirmation on finish.
+- New `WorksheetAttemptsView` mounted from a "Worksheet Results" tile on the English teacher dashboard (suppressed on the VocaHebrew dashboard).
+- Share button surfaces in WorksheetView, Create Assignment (ReviewStep), Quick Play Setup (inherits ReviewStep), and Bagrut Editor.
+- `ShareWorksheetDialog` extracted from FreeResourcesView to a reusable component with an inline SVG QR code for projection.
+
+Known follow-ups, none blocking:
+- No tests yet for the submission RPC or the dashboard read path.
+- Bagrut share drops words not present in `ALL_WORDS`; the button surfaces an "X of Y" caption but a more graceful fallback (e.g. plain-text drill) would beat silent omission.
+- `WorksheetAttemptsView` isn't in the lazy-prefetch list at `App.tsx:143`; first navigation has a small lag.
+
+---
+
 ## Security — F3: cap `progress.score` against client inflation
 
 **Status:** ✅ SHIPPED to prod 2026-05-13 as migration `20260606_f3_progress_score_cap.sql`.

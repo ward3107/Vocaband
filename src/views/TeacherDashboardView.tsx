@@ -77,6 +77,10 @@ interface TeacherDashboardViewProps {
   /** Single entry point that opens the merged Classroom view. */
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
+  /** Worksheet Results — teacher-facing dashboard of attempts at
+   *  shared interactive worksheets.  Optional because Hebrew teachers
+   *  don't get this tile (the feature is English-Set only for now). */
+  onWorksheetResultsClick?: () => void;
   /** Impromptu Class Show — projector mode for phone-less classrooms. */
   onClassShowClick: () => void;
   /** Project a specific assignment to the class via Class Show. */
@@ -141,6 +145,7 @@ export default function TeacherDashboardView({
   rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
   toasts, confirmDialog, setConfirmDialog,
   onQuickPlayClick, onClassroomClick, onApprovalsClick,
+  onWorksheetResultsClick,
   onClassShowClick, onProjectAssignmentToClass,
   onWorksheetClick, onPrintAssignmentWorksheet,
   onVocabagrutClick,
@@ -343,6 +348,7 @@ export default function TeacherDashboardView({
             onQuickPlayClick={onQuickPlayClick}
             onClassroomClick={onClassroomClick}
             onApprovalsClick={onApprovalsClick}
+            onWorksheetResultsClick={onWorksheetResultsClick}
             onClassShowClick={onClassShowClick}
             onWorksheetClick={onWorksheetClick}
             onVocabagrutClick={onVocabagrutClick}
