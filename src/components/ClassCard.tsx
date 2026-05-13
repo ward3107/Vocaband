@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
@@ -25,6 +25,11 @@ interface ClassCardProps {
   code: string;
   /** Optional emoji avatar; falls back to GraduationCap icon when null. */
   avatar?: string | null;
+  /** Per-class school branding — both null until the teacher fills
+   *  them in via Edit Class.  When present, the school logo + name
+   *  surface as a small strip above the class name. */
+  schoolName?: string | null;
+  schoolLogoUrl?: string | null;
   studentCount?: number;
   onAssign: () => void;
   onCopyCode: () => void;
@@ -57,6 +62,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
   name,
   code,
   avatar,
+  schoolName,
+  schoolLogoUrl,
   studentCount,
   onAssign,
   onCopyCode,
@@ -100,6 +107,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
   // opens /poster.html) because teachers usually want to drop a link
   // into a class WhatsApp / email rather than print a sheet.
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareClassMinuteOpen, setShareClassMinuteOpen] = useState(false);
+  // Per-assignment share — when set, the share modal opens with this
+  // assignment's id baked into the URL so opening the link auto-routes
+  // the student straight into this assignment after they join.
+  const [sharingAssignment, setSharingAssignment] = useState<Assignment | null>(null);
   // Ref on the assignments list so we can scroll it into view when the
   // teacher expands it (otherwise it often opens below the fold and the
   // click looks like it did nothing).
@@ -210,6 +222,31 @@ const ClassCard: React.FC<ClassCardProps> = ({
       }}
       className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow"
     >
+      {/* School branding strip — only rendered when set, so legacy
+          classes (no school configured yet) keep their existing
+          compact header.  Logo is a small 24px square so the strip
+          stays subtle; the name is the focus. */}
+      {(schoolName || schoolLogoUrl) && (
+        <div
+          className="flex items-center gap-2 px-5 pt-4"
+          style={{ color: 'var(--vb-text-secondary)' }}
+        >
+          {schoolLogoUrl && (
+            <img
+              src={schoolLogoUrl}
+              alt=""
+              className="w-6 h-6 rounded object-contain bg-white"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          )}
+          {schoolName && (
+            <span className="text-xs font-bold uppercase tracking-wider truncate">
+              {schoolName}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="p-5 pb-4">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -407,6 +444,23 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 }}
                 className="absolute right-0 top-full mt-1 w-48 rounded-xl border shadow-lg py-1 z-20"
               >
+                {/* Edit class — opens the full EditClassModal (name,
+                    avatar, school branding).  Placed at the top of the
+                    menu because it's the canonical "change anything"
+                    entry point; inline name + avatar editing on the
+                    card itself are shortcuts, but they don't expose
+                    school branding which lives only in the modal. */}
+                {onEdit && (
+                  <button
+                    onClick={() => { onEdit(); setMenuOpen(false); }}
+                    type="button"
+                    style={{ color: 'var(--vb-text-secondary)' }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
+                  >
+                    <Pencil size={14} className="text-violet-600" />
+                    Edit class
+                  </button>
+                )}
                 <button
                   onClick={() => { setShareModalOpen(true); setMenuOpen(false); }}
                   type="button"
@@ -415,6 +469,15 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 >
                   <QrCode size={14} className="text-indigo-600" />
                   {t.shareClassLink}
+                </button>
+                <button
+                  onClick={() => { setShareClassMinuteOpen(true); setMenuOpen(false); }}
+                  type="button"
+                  style={{ color: 'var(--vb-text-secondary)' }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
+                >
+                  <Timer size={14} className="text-amber-600" />
+                  Send Class Minute
                 </button>
                 <button
                   onClick={() => { onWhatsApp(); setMenuOpen(false); }}
@@ -552,6 +615,21 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 </p>
               </div>
               <div className="flex gap-1.5 flex-shrink-0">
+                <button
+                  onClick={() => setSharingAssignment(assignment)}
+                  type="button"
+                  style={{
+                    touchAction: 'manipulation',
+                    backgroundColor: 'var(--vb-accent-soft)',
+                    color: 'var(--vb-accent)',
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1 hover:opacity-90 transition-colors"
+                  aria-label="Share assignment link"
+                  title="Share assignment link"
+                >
+                  <Share2 size={13} />
+                  <span className="hidden sm:inline">Share</span>
+                </button>
                 {onEditAssignment && (
                   <button
                     onClick={() => onEditAssignment(assignment)}
@@ -626,6 +704,21 @@ const ClassCard: React.FC<ClassCardProps> = ({
       className={name}
       code={code}
       onWhatsApp={onWhatsApp}
+    />
+    <ShareClassLinkModal
+      open={sharingAssignment !== null}
+      onClose={() => setSharingAssignment(null)}
+      className={name}
+      code={code}
+      assignmentId={sharingAssignment?.id}
+      assignmentTitle={sharingAssignment?.title}
+    />
+    <ShareClassLinkModal
+      open={shareClassMinuteOpen}
+      onClose={() => setShareClassMinuteOpen(false)}
+      className={name}
+      code={code}
+      playMode="class-minute"
     />
     </>
   );

@@ -23,7 +23,6 @@ import {
   TermsPageWrapper,
   PrivacyPageWrapper,
   SecurityPageWrapper,
-  FaqPageWrapper,
   FreeResourcesPageWrapper,
   StatusPageWrapper,
   DemoModeWrapper,
@@ -33,7 +32,7 @@ import TeacherLoginView from "./TeacherLoginView";
 import FloatingButtons from "../components/FloatingButtons";
 import { useEffect } from "react";
 
-type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status";
+type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status";
 
 const SCROLL_POS_KEY = "vocaband_landing_scroll_pos";
 
@@ -153,20 +152,6 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     return (
       <>
         <AccessibilityStatementWrapper
-          onNavigate={handleNavigate}
-          onGetStarted={onStudentLogin}
-          onTeacherLogin={onTeacherOAuth}
-          onBack={goBack}
-        />
-        {cookieBannerOverlay}
-      </>
-    );
-  }
-
-  if (view === "public-faq") {
-    return (
-      <>
-        <FaqPageWrapper
           onNavigate={handleNavigate}
           onGetStarted={onStudentLogin}
           onTeacherLogin={onTeacherOAuth}

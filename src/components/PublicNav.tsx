@@ -1,25 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { Menu, X, LogIn } from "lucide-react";
+import { Menu, X, LogIn, GraduationCap } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
 import NavLanguageToggle from "./NavLanguageToggle";
 
 // The nav lives across two surfaces:
 //
-//   - Anchor links (Features, Pricing) — scroll to sections within the
-//     SAME landing page via the URL hash.  They only make sense when
-//     `currentPage === 'home'`; on /faq, /resources, /privacy etc. the
-//     anchors are absent so the link must hop home first.
+//   - Anchor links (Features, Pricing, FAQ) — scroll to sections within
+//     the SAME landing page via the URL hash.  They only make sense when
+//     `currentPage === 'home'`; on /resources, /privacy etc. the anchors
+//     are absent so the link must hop home first.
 //
-//   - Page links (Resources, FAQ) — go to dedicated SPA routes via the
+//   - Page links (Resources) — go to dedicated SPA routes via the
 //     `onNavigate` callback the host already wires up.
-type NavPage =
+export type NavPage =
   | "home"
   | "terms"
   | "privacy"
   | "accessibility"
   | "security"
-  | "faq"
   | "resources"
   | "status";
 
@@ -101,9 +100,9 @@ const PublicNav: React.FC<PublicNavProps> = ({
     { kind: "anchor", id: "teachers",   label: t.navTeachers },
     { kind: "anchor", id: "curriculum", label: t.navCurriculum },
     { kind: "anchor", id: "vocas",      label: t.navVocas },
-    { kind: "anchor", id: "pricing",    label: t.navPricing },
+    { kind: "anchor", id: "guides",     label: t.navGuides },
     { kind: "page",   page: "resources", label: t.navResources },
-    { kind: "page",   page: "faq",       label: t.navFaq },
+    { kind: "anchor", id: "faq",         label: t.navFaq },
   ];
 
   return (
@@ -145,14 +144,13 @@ const PublicNav: React.FC<PublicNavProps> = ({
                   </button>
                 );
               }
+              const isActive = currentPage === item.page;
               return (
                 <button
                   key={item.page}
                   onClick={() => goToPage(item.page)}
                   className={`px-3 py-2 text-sm font-bold transition-colors rounded-lg hover:bg-primary/5 ${
-                    currentPage === item.page
-                      ? "text-primary"
-                      : "text-stone-700 hover:text-primary"
+                    isActive ? "text-primary" : "text-stone-700 hover:text-primary"
                   }`}
                   type="button"
                 >
@@ -171,19 +169,26 @@ const PublicNav: React.FC<PublicNavProps> = ({
               meant the hamburger). */}
           <div className="flex items-center gap-3 md:gap-2 flex-shrink-0 mr-12 md:mr-0">
             <NavLanguageToggle />
-            {/* Desktop header CTA — quiet "Sign in" outline button.
-                The hero owns the dominant "Start Free" primary, so the
-                header serves as the persistent affordance for returning
-                teachers without duplicating the primary CTA.  Hidden on
-                mobile (the drawer holds the equivalent action). */}
+            {/* Desktop header CTA — dominant Teacher Sign In.  Same
+                Google OAuth flow as the hero; the nav pill carries the
+                affordance on sub-pages and when the hero scrolls
+                off-screen.  Hidden on mobile — the drawer mirrors this. */}
             {onTeacherLogin && (
               <button
                 onClick={onTeacherLogin}
-                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-stone-700 hover:text-primary border border-stone-300 hover:border-primary/40 rounded-lg hover:bg-primary/5 transition-all"
+                className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 text-sm font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 hover:from-indigo-600 hover:via-violet-700 hover:to-fuchsia-700 rounded-xl shadow-lg shadow-violet-500/40 hover:shadow-xl hover:shadow-violet-500/55 ring-2 ring-violet-300/50 hover:ring-violet-300/70 hover:scale-[1.04] transition-all"
                 type="button"
+                style={{ touchAction: 'manipulation' }}
+                aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
               >
-                <LogIn size={15} />
-                {t.navSignIn}
+                <GraduationCap size={18} strokeWidth={2.5} />
+                <div className="flex flex-col items-start leading-tight">
+                  <span>{t.navSignIn}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-violet-100/90">
+                    {t.heroSignInForTeachers}
+                  </span>
+                </div>
+                <LogIn size={14} strokeWidth={2.5} className="opacity-90" />
               </button>
             )}
 
@@ -247,14 +252,13 @@ const PublicNav: React.FC<PublicNavProps> = ({
                     </button>
                   );
                 }
+                const isActive = currentPage === item.page;
                 return (
                   <button
                     key={item.page}
                     onClick={() => goToPage(item.page)}
                     className={`w-full text-start px-3 py-3 text-base font-bold rounded-lg transition-colors ${
-                      currentPage === item.page
-                        ? "text-primary bg-primary/5"
-                        : "text-stone-800 hover:bg-primary/5"
+                      isActive ? "text-primary bg-primary/5" : "text-stone-800 hover:bg-primary/5"
                     }`}
                     type="button"
                   >
@@ -264,18 +268,29 @@ const PublicNav: React.FC<PublicNavProps> = ({
               })}
             </nav>
 
-            <div className="border-t border-stone-200 p-4 space-y-2">
+            <div className="border-t border-stone-200 p-4">
+              {/* Mobile dominant CTA — Teacher Sign In.  Single,
+                  oversized button so it's the obvious tap target when
+                  the drawer is open. */}
               {onTeacherLogin && (
                 <button
                   onClick={() => {
                     setMobileOpen(false);
                     onTeacherLogin();
                   }}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-black text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-lg shadow-md shadow-violet-500/20"
+                  className="w-full inline-flex items-center justify-center gap-3 px-4 py-4 text-lg font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 rounded-2xl shadow-lg shadow-violet-500/40 ring-2 ring-violet-300/50"
                   type="button"
+                  style={{ touchAction: 'manipulation' }}
+                  aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
                 >
-                  <LogIn size={16} />
-                  {t.heroCtaStart}
+                  <GraduationCap size={22} strokeWidth={2.5} />
+                  <div className="flex flex-col items-start leading-tight">
+                    <span>{t.navSignIn}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-100/90">
+                      {t.heroSignInForTeachers}
+                    </span>
+                  </div>
+                  <LogIn size={18} strokeWidth={2.5} className="opacity-90" />
                 </button>
               )}
             </div>

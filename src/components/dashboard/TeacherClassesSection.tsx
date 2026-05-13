@@ -5,6 +5,24 @@ import type { VocaId } from "../../core/subject";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
 
+// Build a WhatsApp share message that includes the full /student?class=
+// join URL — clicking it lands the student on the join screen with the
+// code prefilled, so no copy/paste from the parent's phone.
+function buildWhatsAppShareText(code: string, language: "en" | "he" | "ar"): string {
+  const origin =
+    typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : "https://www.vocaband.com";
+  const url = `${origin}/student?class=${encodeURIComponent(code)}`;
+  if (language === "he") {
+    return `הצטרפו לכיתה שלי בווקבנד 🎓\n${url}\n(קוד כיתה: ${code})`;
+  }
+  if (language === "ar") {
+    return `انضموا إلى صفي في فوكاباند 🎓\n${url}\n(رمز الصف: ${code})`;
+  }
+  return `Join my class on Vocaband 🎓\n${url}\n(class code: ${code})`;
+}
+
 interface TeacherClassesSectionProps {
   classes: ClassData[];
   teacherAssignments: AssignmentData[];
@@ -142,6 +160,8 @@ export default function TeacherClassesSection({
                 name={c.name}
                 code={c.code}
                 avatar={c.avatar}
+                schoolName={c.schoolName}
+                schoolLogoUrl={c.schoolLogoUrl}
                 copiedCode={copiedCode}
                 assignments={classAssignments}
                 openDropdownClassId={openDropdownClassId}
@@ -153,7 +173,11 @@ export default function TeacherClassesSection({
                   setTimeout(() => setCopiedCode(null), 2000);
                 }}
                 onWhatsApp={() => {
-                  window.open(`https://wa.me/?text=${encodeURIComponent(c.code)}`, '_blank');
+                  // VocaHebrew classes force Hebrew copy regardless of the
+                  // teacher's UI language, matching the ClassCard pattern.
+                  const shareLang = (c.subject ?? subject) === "hebrew" ? "he" : language;
+                  const text = buildWhatsAppShareText(c.code, shareLang);
+                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                 }}
                 onDelete={() => onDeleteClass(c.id)}
                 onEdit={() => onEditClass(c)}

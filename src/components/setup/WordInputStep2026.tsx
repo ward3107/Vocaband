@@ -2280,8 +2280,9 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
                       );
                       onSelectedWordsChange(updatedWords);
                       showToast?.(`Translated "${w.english}"`, 'success');
+                      return { hebrew: result.hebrew, arabic: result.arabic, russian: result.russian };
                     }
-                    return result;
+                    return null;
                   }}
                   isTranslating={false}
                 />

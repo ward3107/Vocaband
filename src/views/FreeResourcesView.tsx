@@ -5,6 +5,7 @@ import { freeResourcesT } from "../locales/student/free-resources";
 import { TOPIC_PACKS, ALL_WORDS } from "../data/vocabulary";
 import { getSentencesForWord } from "../data/sentence-bank";
 import { FILLBLANK_SENTENCES } from "../data/sentence-bank-fillblank";
+import { getWordAudioUrl } from "../utils/audioUrl";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -148,13 +149,12 @@ const getTranslation = (word: Word, lang: string) =>
 const safeFilename = (name: string) =>
   name.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
-// Audio URL matches src/hooks/useAudio.ts so QR codes resolve to the same
-// mp3 the in-app player uses. Students scan with a phone → browser opens
-// the audio file → plays. Works even if Vocaband is offline.
-const getAudioUrl = (wordId: number): string => {
-  const base = import.meta.env.VITE_SUPABASE_URL || "";
-  return `${base}/storage/v1/object/public/sound/${wordId}.mp3`;
-};
+// Audio URL resolver shared with src/hooks/useAudio.ts so QR codes
+// resolve to the same mp3 the in-app player uses (Cloudflare CDN when
+// configured, Supabase fallback otherwise). Students scan with a
+// phone → browser opens the audio file → plays. Works even if
+// Vocaband is offline.
+const getAudioUrl = (wordId: number): string => getWordAudioUrl(wordId, 'en');
 
 // Inline SVG QR — scales without quality loss when html2pdf rasterizes it,
 // and prints crisp via native Print. Error level M is the sweet spot for
@@ -2228,7 +2228,7 @@ interface FreeResourcesViewProps {
   // Mirrors NavPage in PublicNav.tsx — kept as a literal union here so the
   // call sites in App.tsx don't need to import the type. Update both when
   // adding new public pages.
-  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => void;
+  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status") => void;
   onGetStarted: () => void;
   /** Teacher signup — drives PublicNav's "Start free" CTA. */
   onTeacherLogin?: () => void;
@@ -3263,7 +3263,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900" dir={dir}>
       <PublicNav currentPage="resources" onNavigate={onNavigate} onGetStarted={onGetStarted} onTeacherLogin={onTeacherLogin} />
 
-      <main className="pt-24 pb-16 px-4 md:px-6">
+      <main id="main-content" className="pt-24 pb-16 px-4 md:px-6">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-4 mb-8">
             <button

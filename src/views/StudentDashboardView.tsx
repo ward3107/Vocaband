@@ -20,6 +20,7 @@ import { useDailyMissions } from "../hooks/useDailyMissions";
 import PetEvolutionCard from "../components/dashboard/PetEvolutionCard";
 import { usePetEvolution } from "../hooks/usePetEvolution";
 import ReviewQueueCard from "../components/dashboard/ReviewQueueCard";
+import ClassMinuteCard from "../components/dashboard/ClassMinuteCard";
 import { useDueReviews } from "../hooks/useDueReviews";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
@@ -61,6 +62,12 @@ interface StudentDashboardViewProps {
    *  card hides itself.  Routes the student straight into the
    *  Review game without going through the mode picker. */
   onStartReview?: () => void;
+  /** Optional handler for the Class Minute daily-drill entry point.
+   *  Mirrors `onStartReview` — when provided, the dashboard renders a
+   *  ClassMinuteCard above the review card; absent, the card hides.
+   *  Loads SRS-due words first then fills from assignment, sets
+   *  gameMode='class-minute', and routes to the game view. */
+  onStartClassMinute?: () => void;
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
   onGrantReward: (kind: PetRewardKind, value: number | string) => void;
@@ -121,6 +128,7 @@ export default function StudentDashboardView({
   structure,
   celebrateStructureKeys = [],
   onStartReview,
+  onStartClassMinute,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -151,6 +159,40 @@ export default function StudentDashboardView({
   const dueReviews = useDueReviews({
     enabled: Boolean(user?.role === 'student' && !user?.isGuest && onStartReview),
   });
+
+  // Class Minute — daily 60-second drill.  Derived purely from
+  // `studentProgress` so the dashboard already has the data it
+  // needs (no extra round-trip).  `doneToday` flips the card to the
+  // emerald "see you tomorrow" state; `classMinuteStreak` counts
+  // consecutive days back from today with at least one class-minute
+  // completion — gap of one day breaks the streak.
+  const { classMinuteDoneToday, classMinuteStreak } = (() => {
+    const todayKey = new Intl.DateTimeFormat('sv-SE').format(new Date());
+    const daysWithPlay = new Set<string>();
+    for (const row of studentProgress) {
+      if (row.mode !== 'class-minute') continue;
+      const dayKey = new Intl.DateTimeFormat('sv-SE').format(new Date(row.completedAt));
+      daysWithPlay.add(dayKey);
+    }
+    const doneToday = daysWithPlay.has(todayKey);
+    // Walk back day-by-day from today until we hit a gap.  If the
+    // student hasn't played today yet, the streak still counts
+    // yesterday-and-earlier consecutive days — they're "carrying" a
+    // streak that today's session would extend.
+    let streak = 0;
+    const cursor = new Date();
+    if (!doneToday) cursor.setDate(cursor.getDate() - 1);
+    while (true) {
+      const key = new Intl.DateTimeFormat('sv-SE').format(cursor);
+      if (daysWithPlay.has(key)) {
+        streak += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return { classMinuteDoneToday: doneToday, classMinuteStreak: streak };
+  })();
 
   // The default theme now uses a soft gradient instead of flat stone-100 —
   // sets a warmer tone for the vibrant greeting hero that follows. Other
@@ -244,6 +286,22 @@ export default function StudentDashboardView({
             )}
             <ShopSquare xp={xp} onOpen={() => { setShopTab('hub'); setView('shop'); }} />
           </div>
+
+          {/* ── Class Minute — daily 60-second drill ──────────────
+              Habit-forming daily ritual.  Sits above Spaced Review so
+              students see "did I do today's minute?" before "do I have
+              SRS words due?".  doneToday + streak both derived from
+              `studentProgress` — no extra round-trip. */}
+          {onStartClassMinute && (
+            <div className="mb-4">
+              <ClassMinuteCard
+                doneToday={classMinuteDoneToday}
+                streak={classMinuteStreak}
+                isLoading={studentDataLoading}
+                onStart={onStartClassMinute}
+              />
+            </div>
+          )}
 
           {/* ── Spaced Repetition queue card ──────────────────────
               Surfaces today's due-for-review words and routes the

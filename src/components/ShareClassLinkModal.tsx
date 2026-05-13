@@ -12,6 +12,18 @@ interface ShareClassLinkModalProps {
   code: string;
   /** Optional WhatsApp share — if provided, surfaces a button alongside copy. */
   onWhatsApp?: () => void;
+  /** When set, the share link deep-links the student straight into this
+   *  assignment after they log in (URL gets `&assignment=<id>`). */
+  assignmentId?: string;
+  /** Title shown in the modal header when sharing a specific assignment. */
+  assignmentTitle?: string;
+  /** When set, the share link auto-launches a specific play mode after
+   *  the student lands on the dashboard.  v1 only supports
+   *  'class-minute' — adds `&play=class-minute` to the URL.  Mutually
+   *  exclusive in intent with `assignmentId` (an assignment link routes
+   *  to the mode picker; a Class Minute link routes straight into the
+   *  60-second drill). */
+  playMode?: 'class-minute';
 }
 
 /**
@@ -20,15 +32,25 @@ interface ShareClassLinkModalProps {
  * detour, no public-landing CTAs to confuse a 4th-grader who scanned a
  * QR.  See docs/PUBLIC-PAGES-AUDIT-2026-04-28.md for the routing
  * rationale.
+ *
+ * When `assignmentId` is provided the URL also carries `&assignment=<id>`
+ * so App.tsx can auto-open that assignment for the student once they
+ * land on their dashboard.  When `playMode` is provided the URL carries
+ * `&play=<mode>` — App.tsx's bootstrap effect routes the student into
+ * the matching dashboard-launched mode (Class Minute today; others can
+ * be added if we surface more dashboard entry points).
  */
-function buildJoinUrl(code: string): string {
+function buildJoinUrl(code: string, assignmentId?: string, playMode?: string): string {
   // window.location.origin is fine on web; in SSR contexts (none today)
   // we'd fall back to the production domain.
   const origin =
     typeof window !== "undefined" && window.location?.origin
       ? window.location.origin
       : "https://www.vocaband.com";
-  return `${origin}/student?class=${encodeURIComponent(code)}`;
+  let url = `${origin}/student?class=${encodeURIComponent(code)}`;
+  if (assignmentId) url += `&assignment=${encodeURIComponent(assignmentId)}`;
+  if (playMode) url += `&play=${encodeURIComponent(playMode)}`;
+  return url;
 }
 
 const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
@@ -37,13 +59,42 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
   className,
   code,
   onWhatsApp,
+  assignmentId,
+  assignmentTitle,
+  playMode,
 }) => {
   const { language, dir } = useLanguage();
   const t = teacherDashboardT[language];
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  const url = buildJoinUrl(code);
+  const url = buildJoinUrl(code, assignmentId, playMode);
+  const isAssignmentShare = Boolean(assignmentId);
+  const isClassMinuteShare = playMode === 'class-minute';
+
+  // Header copy varies by share kind.  Class Minute gets a distinct
+  // eyebrow + subtitle so a teacher who's sharing the daily drill
+  // doesn't mistake it for a generic class invite.  Translations live
+  // here rather than in the teacher-dashboard locale file because the
+  // existing copy fields (shareClassLinkEyebrow, shareClassLinkSubtitle)
+  // are already used for the class-only flow; adding a third pair to
+  // that file would force every locale entry to grow.  Inline maps
+  // keep the diff tight.
+  const headerCopy: Record<'en' | 'he' | 'ar', { eyebrow: string; subtitle: string }> = {
+    en: {
+      eyebrow: 'Send Class Minute',
+      subtitle: `Students who open this link join ${className} and go straight into today's 60-second drill.`,
+    },
+    he: {
+      eyebrow: 'שלח דקת כיתה',
+      subtitle: `תלמידים שייפתחו את הקישור יצטרפו ל-${className} ויעברו ישר לתרגול 60 השניות של היום.`,
+    },
+    ar: {
+      eyebrow: 'أرسل دقيقة الصف',
+      subtitle: `سينضم الطلاب الذين يفتحون هذا الرابط إلى ${className} وينتقلون مباشرة إلى تمرين 60 ثانية لليوم.`,
+    },
+  };
+  const cmHeader = headerCopy[language] ?? headerCopy.en;
 
   // Reset copy chips when the modal closes so a re-open shows the
   // default Copy icons rather than a stale checkmark.
@@ -112,11 +163,21 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                 <X size={18} />
               </button>
               <p className="text-xs font-black uppercase tracking-[0.28em] text-white/70">
-                {t.shareClassLinkEyebrow}
+                {isClassMinuteShare
+                  ? cmHeader.eyebrow
+                  : isAssignmentShare
+                  ? "Share assignment"
+                  : t.shareClassLinkEyebrow}
               </p>
-              <h2 className="mt-1 text-2xl font-black leading-tight">{className}</h2>
+              <h2 className="mt-1 text-2xl font-black leading-tight">
+                {isAssignmentShare ? assignmentTitle ?? className : className}
+              </h2>
               <p className="mt-2 text-sm text-white/85 leading-relaxed">
-                {t.shareClassLinkSubtitle}
+                {isClassMinuteShare
+                  ? cmHeader.subtitle
+                  : isAssignmentShare
+                  ? `Students who open this link join ${className} and go straight to this assignment.`
+                  : t.shareClassLinkSubtitle}
               </p>
             </div>
 

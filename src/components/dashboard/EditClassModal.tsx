@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CheckCircle2, GraduationCap } from "lucide-react";
+import { CheckCircle2, GraduationCap, School } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../../constants/game";
 import type { ClassData } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -10,9 +10,15 @@ interface EditClassModalProps {
   /** The class being edited; null = modal hidden. */
   klass: ClassData | null;
   onClose: () => void;
-  /** Persist the new name + avatar.  Caller is responsible for the
-   * actual UPDATE — this modal just collects the values. */
-  onSave: (next: { name: string; avatar: string | null }) => Promise<void> | void;
+  /** Persist the new name + avatar + (optional) school branding.
+   *  Caller is responsible for the actual UPDATE — this modal just
+   *  collects the values. */
+  onSave: (next: {
+    name: string;
+    avatar: string | null;
+    schoolName: string | null;
+    schoolLogoUrl: string | null;
+  }) => Promise<void> | void;
 }
 
 /**
@@ -31,6 +37,9 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
   const t = teacherModalsT[language];
   const [name, setName] = useState(klass?.name ?? "");
   const [avatar, setAvatar] = useState<string | null>(klass?.avatar ?? null);
+  const [schoolName, setSchoolName] = useState(klass?.schoolName ?? "");
+  const [schoolLogoUrl, setSchoolLogoUrl] = useState(klass?.schoolLogoUrl ?? "");
+  const [logoBroken, setLogoBroken] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Reset form whenever a different class opens this modal.
@@ -38,19 +47,39 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
     if (klass) {
       setName(klass.name);
       setAvatar(klass.avatar ?? null);
+      setSchoolName(klass.schoolName ?? "");
+      setSchoolLogoUrl(klass.schoolLogoUrl ?? "");
+      setLogoBroken(false);
       setSaving(false);
     }
   }, [klass]);
 
   const trimmed = name.trim();
-  const dirty = !!klass && (trimmed !== klass.name || (avatar ?? null) !== (klass.avatar ?? null));
-  const valid = trimmed.length > 0 && trimmed.length <= 60;
+  const trimmedSchoolName = schoolName.trim();
+  const trimmedLogoUrl = schoolLogoUrl.trim();
+  // Defensive URL check — only allow https:// so we don't accept
+  // http:// (mixed-content) or javascript: (XSS).  Empty = clear.
+  const logoUrlValid = trimmedLogoUrl === "" || /^https:\/\//i.test(trimmedLogoUrl);
+  const schoolNameDirty = trimmedSchoolName !== (klass?.schoolName ?? "");
+  const logoDirty = trimmedLogoUrl !== (klass?.schoolLogoUrl ?? "");
+  const dirty = !!klass && (
+    trimmed !== klass.name ||
+    (avatar ?? null) !== (klass.avatar ?? null) ||
+    schoolNameDirty ||
+    logoDirty
+  );
+  const valid = trimmed.length > 0 && trimmed.length <= 60 && trimmedSchoolName.length <= 100 && logoUrlValid;
 
   const handleSave = async () => {
     if (!valid || saving) return;
     setSaving(true);
     try {
-      await onSave({ name: trimmed, avatar });
+      await onSave({
+        name: trimmed,
+        avatar,
+        schoolName: trimmedSchoolName || null,
+        schoolLogoUrl: trimmedLogoUrl || null,
+      });
     } finally {
       setSaving(false);
     }
@@ -115,6 +144,105 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               >
                 {trimmed.length}/60
               </span>
+            </div>
+
+            {/* School branding — optional.  Filled in once per class,
+                then surfaces on the teacher dashboard card + on the
+                student class-join screen.  Selling point for school-
+                wide deployments: each school appears white-labelled
+                without any infra work. */}
+            <div
+              className="mb-5 p-4 rounded-2xl"
+              style={{
+                backgroundColor: 'var(--vb-surface-elevated, rgba(0,0,0,0.03))',
+                border: '1px solid var(--vb-border)',
+              }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <School size={16} style={{ color: 'var(--vb-text-secondary)' }} />
+                <span
+                  className="text-xs font-bold uppercase tracking-widest"
+                  style={{ color: 'var(--vb-text-muted)' }}
+                >
+                  School branding (optional)
+                </span>
+              </div>
+
+              <label
+                htmlFor="edit-class-school-name"
+                className="block text-[11px] font-bold mb-1"
+                style={{ color: 'var(--vb-text-muted)' }}
+              >
+                School name
+              </label>
+              <input
+                type="text"
+                id="edit-class-school-name"
+                name="schoolName"
+                autoComplete="off"
+                value={schoolName}
+                onChange={(e) => setSchoolName(e.target.value)}
+                placeholder="e.g. Givat Olga Elementary"
+                maxLength={100}
+                style={{
+                  borderColor: 'var(--vb-border)',
+                  color: 'var(--vb-text-primary)',
+                  backgroundColor: 'var(--vb-surface)',
+                }}
+                className="w-full px-3 py-2 rounded-xl border-2 outline-none mb-3 text-sm focus:border-[var(--vb-accent)]"
+              />
+
+              <label
+                htmlFor="edit-class-school-logo"
+                className="block text-[11px] font-bold mb-1"
+                style={{ color: 'var(--vb-text-muted)' }}
+              >
+                Logo URL (https only)
+              </label>
+              <input
+                type="url"
+                id="edit-class-school-logo"
+                name="schoolLogoUrl"
+                autoComplete="off"
+                value={schoolLogoUrl}
+                onChange={(e) => { setSchoolLogoUrl(e.target.value); setLogoBroken(false); }}
+                placeholder="https://yourschool.com/logo.png"
+                maxLength={500}
+                style={{
+                  borderColor: logoUrlValid ? 'var(--vb-border)' : '#e11d48',
+                  color: 'var(--vb-text-primary)',
+                  backgroundColor: 'var(--vb-surface)',
+                }}
+                className="w-full px-3 py-2 rounded-xl border-2 outline-none text-sm focus:border-[var(--vb-accent)]"
+              />
+              {!logoUrlValid && (
+                <p className="text-[11px] mt-1" style={{ color: '#e11d48' }}>
+                  URL must start with https://
+                </p>
+              )}
+
+              {/* Live preview — confirms the URL works before saving */}
+              {trimmedLogoUrl && logoUrlValid && !logoBroken && (
+                <div
+                  className="mt-3 flex items-center gap-3 p-2 rounded-xl"
+                  style={{ backgroundColor: 'var(--vb-surface)' }}
+                >
+                  <img
+                    src={trimmedLogoUrl}
+                    alt="School logo preview"
+                    className="w-12 h-12 rounded-lg object-contain bg-white"
+                    onError={() => setLogoBroken(true)}
+                  />
+                  <span className="text-xs" style={{ color: 'var(--vb-text-secondary)' }}>
+                    Preview · {trimmedSchoolName || "School name will appear here"}
+                  </span>
+                </div>
+              )}
+              {trimmedLogoUrl && logoBroken && (
+                <p className="text-[11px] mt-2" style={{ color: '#e11d48' }}>
+                  Logo failed to load. Check the URL is correct and public.
+                </p>
+              )}
             </div>
 
             {/* Avatar picker — grouped by theme so it stays scannable */}

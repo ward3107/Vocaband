@@ -17,9 +17,17 @@ export interface TeacherResourcesStrings {
   sectionHeading: string;
   sectionSubtitle: string;
 
-  faqCardLabel: string;
-  openFaq: string;
   downloadPdf: string;
+  downloadInLanguage: string;
+  comingSoon: string;
+  recommendedPill: string;
+  previewLabel: string;
+
+  schoolGroupHeading: string;
+  teacherGroupHeading: string;
+
+  schoolPitchTitle: string;
+  schoolPitchBlurb: string;
 
   teacherGuideTitle: string;
   teacherGuideBlurb: string;
@@ -36,19 +44,25 @@ export interface TeacherResourcesStrings {
   privacyTitle: string;
   privacyBlurb: string;
   privacyDraftPill: string;
-
-  faqTitle: string;
-  faqBlurb: string;
 }
 
 const en: TeacherResourcesStrings = {
   sectionEyebrow: "For teachers",
   sectionHeading: "Everything you need to start tomorrow",
   sectionSubtitle:
-    "Print, share, or hand out — the essentials for running Vocaband in your classroom, in English, Hebrew, and Arabic.",
-  faqCardLabel: "Open",
-  openFaq: "Open FAQ",
+    "Print, share, or hand out — the essentials for running Vocaband in your classroom, in English, Hebrew, Arabic, and Russian.",
   downloadPdf: "Download PDF",
+  downloadInLanguage: "Download",
+  comingSoon: "Soon",
+  recommendedPill: "Recommended",
+  previewLabel: "Preview",
+
+  schoolGroupHeading: "For schools",
+  teacherGroupHeading: "For teachers",
+
+  schoolPitchTitle: "School Pitch Deck",
+  schoolPitchBlurb:
+    "A printable slide deck for principal meetings — what students learn, how rollout works, pricing, and a privacy summary.",
 
   teacherGuideTitle: "Teacher Guide",
   teacherGuideBlurb:
@@ -70,20 +84,25 @@ const en: TeacherResourcesStrings = {
   privacyBlurb:
     "Plain-English summary for administrators — what we collect, where it lives, how long, who can see it.",
   privacyDraftPill: "DRAFT",
-
-  faqTitle: "FAQ",
-  faqBlurb:
-    "The questions teachers actually ask — pricing, devices, offline use, data privacy, how to roll out.",
 };
 
 const he: TeacherResourcesStrings = {
   sectionEyebrow: "למורות ומורים",
   sectionHeading: "כל מה שצריך כדי להתחיל מחר",
   sectionSubtitle:
-    "להדפיס, לשתף או לחלק — האסנטיאלס להפעלת Vocaband בכיתה, בעברית, ערבית ואנגלית.",
-  faqCardLabel: "פתחו",
-  openFaq: "פתחו שאלות נפוצות",
+    "להדפיס, לשתף או לחלק — האסנטיאלס להפעלת Vocaband בכיתה, בעברית, ערבית, אנגלית ורוסית.",
   downloadPdf: "הורידו PDF",
+  downloadInLanguage: "הורדה",
+  comingSoon: "בקרוב",
+  recommendedPill: "מומלץ",
+  previewLabel: "תצוגה",
+
+  schoolGroupHeading: "לבתי ספר",
+  teacherGroupHeading: "למורות ומורים",
+
+  schoolPitchTitle: "מצגת לבית הספר",
+  schoolPitchBlurb:
+    "מצגת להדפסה לפגישה עם המנהל/ת — מה התלמידים לומדים, איך מיישמים, תמחור וסיכום פרטיות.",
 
   teacherGuideTitle: "מדריך למורה",
   teacherGuideBlurb:
@@ -105,20 +124,25 @@ const he: TeacherResourcesStrings = {
   privacyBlurb:
     "סיכום ברור להנהלה — מה אנחנו אוספים, איפה זה נשמר, כמה זמן, ומי רואה.",
   privacyDraftPill: "טיוטה",
-
-  faqTitle: "שאלות נפוצות",
-  faqBlurb:
-    "השאלות שמורים באמת שואלים — מחיר, מכשירים, אופליין, פרטיות וכניסה לבית הספר.",
 };
 
 const ar: TeacherResourcesStrings = {
   sectionEyebrow: "للمعلمين",
   sectionHeading: "كل ما تحتاجه لتبدأ غداً",
   sectionSubtitle:
-    "اطبع، شارك أو وزّع — الأساسيات لتشغيل Vocaband في صفك، بالعربية والعبرية والإنجليزية.",
-  faqCardLabel: "افتح",
-  openFaq: "افتح الأسئلة الشائعة",
+    "اطبع، شارك أو وزّع — الأساسيات لتشغيل Vocaband في صفك، بالعربية والعبرية والإنجليزية والروسية.",
   downloadPdf: "حمّل PDF",
+  downloadInLanguage: "تحميل",
+  comingSoon: "قريباً",
+  recommendedPill: "موصى به",
+  previewLabel: "معاينة",
+
+  schoolGroupHeading: "للمدارس",
+  teacherGroupHeading: "للمعلمين",
+
+  schoolPitchTitle: "عرض تقديمي للمدرسة",
+  schoolPitchBlurb:
+    "عرض شرائح للطباعة لاجتماعات الإدارة — ماذا يتعلّم الطلاب، كيف يتمّ التطبيق، الأسعار وموجز الخصوصية.",
 
   teacherGuideTitle: "دليل المعلم",
   teacherGuideBlurb:
@@ -140,10 +164,6 @@ const ar: TeacherResourcesStrings = {
   privacyBlurb:
     "ملخّص واضح للإدارة — ماذا نجمع، أين يُخزَّن، كم يبقى، ومن يصل إليه.",
   privacyDraftPill: "مسودة",
-
-  faqTitle: "الأسئلة الشائعة",
-  faqBlurb:
-    "الأسئلة التي يطرحها المعلمون فعلاً — السعر، الأجهزة، العمل بدون إنترنت، الخصوصية والنشر في المدرسة.",
 };
 
 export const teacherResourcesT: Record<Language, TeacherResourcesStrings> = { en, he, ar };

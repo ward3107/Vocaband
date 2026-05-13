@@ -33,9 +33,11 @@ export interface LandingPageT {
   navPricing: string;
   navForSchools: string;
   navResources: string;
+  navGuides: string;
   navFaq: string;
   navSignIn: string;
   navStartFree: string;
+  heroSignInForTeachers: string;
   navMenuOpen: string;
   navMenuClose: string;
 
@@ -63,7 +65,7 @@ export interface LandingPageT {
   studentsSectionSubtitle: string;
 
   // ─── Student Feature Cards ──────────────────────────────────────
-  // 11 Game Modes
+  // 15 Game Modes
   gameModesTitle: string;
   gameModesDesc: string;
   modeNames: {
@@ -71,6 +73,7 @@ export interface LandingPageT {
     listen: string;
     spell: string;
     match: string;
+    memory: string;
     tf: string;
     flash: string;
     scramble: string;
@@ -78,6 +81,9 @@ export interface LandingPageT {
     letters: string;
     sentence: string;
     fillBlank: string;
+    wordChains: string;
+    idiom: string;
+    speedRound: string;
   };
 
   // Live Challenges
@@ -246,6 +252,7 @@ export interface LandingPageT {
   footerIndividualTeacher: string;
   footerProduct: string;
   footerResources: string;
+  footerDownloads: string;
   footerLegal: string;
   footerStartLearning: string;
   footerTryDemo: string;
@@ -282,9 +289,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navPricing: "Pricing",
     navForSchools: "For Schools",
     navResources: "Resources",
+    navGuides: "Guides",
     navFaq: "FAQ",
     navSignIn: "Sign in",
     navStartFree: "Start free",
+    heroSignInForTeachers: "for teachers",
     navMenuOpen: "Open menu",
     navMenuClose: "Close menu",
 
@@ -301,7 +310,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroTrustEu: "EU-Hosted · GDPR",
     heroTrustOrigin: "Built in Israel",
 
-    floatingCardModes: "🎮 11 Game Modes",
+    floatingCardModes: "🎮 15 Game Modes",
     floatingCardXp: "⭐ Earn XP",
     floatingCardStreaks: "🔥 Daily Streaks",
     floatingCardEggs: "🎁 Daily Chests",
@@ -310,13 +319,14 @@ export const landingPageT: Record<Language, LandingPageT> = {
     studentsSectionSubtitle: "Everything you need to master vocabulary, gamified.",
 
     // Student Features
-    gameModesTitle: "11 Game Modes",
-    gameModesDesc: "From Classic to Sentence Builder — every mode teaches differently. Find your favorite!",
+    gameModesTitle: "15 Game Modes",
+    gameModesDesc: "From Classic to Idioms and Speed Round — every mode teaches differently. Find your favorite!",
     modeNames: {
       classic: "Classic",
       listen: "Listen",
       spell: "Spell",
       match: "Match",
+      memory: "Memory",
       tf: "T/F",
       flash: "Flash",
       scramble: "Scramble",
@@ -324,6 +334,9 @@ export const landingPageT: Record<Language, LandingPageT> = {
       letters: "Letters",
       sentence: "Sentence",
       fillBlank: "Fill Blank",
+      wordChains: "Chains",
+      idiom: "Idioms",
+      speedRound: "Speed",
     },
     liveChallengesTitle: "Live Challenges",
     liveChallengesDesc: "Battle classmates in real-time podiums!",
@@ -465,6 +478,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerIndividualTeacher: "Individual teacher",
     footerProduct: "Product",
     footerResources: "Resources",
+    footerDownloads: "Downloads",
     footerLegal: "Legal & Trust",
     footerStartLearning: "Start Learning",
     footerTryDemo: "Try the Demo",
@@ -501,9 +515,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navPricing: "מחירים",
     navForSchools: "לבתי ספר",
     navResources: "משאבים",
+    navGuides: "מדריכים",
     navFaq: "שאלות נפוצות",
     navSignIn: "התחברות",
     navStartFree: "התחילו בחינם",
+    heroSignInForTeachers: "למורות ומורים",
     navMenuOpen: "פתיחת תפריט",
     navMenuClose: "סגירת תפריט",
 
@@ -520,7 +536,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroTrustEu: "מאוחסן באירופה · GDPR",
     heroTrustOrigin: "פותח בישראל",
 
-    floatingCardModes: "🎮 11 מצבי משחק",
+    floatingCardModes: "🎮 15 מצבי משחק",
     floatingCardXp: "⭐ צבור נקודות",
     floatingCardStreaks: "🔥 רצף יומי",
     floatingCardEggs: "🎁 תיבות יומיות",
@@ -529,13 +545,14 @@ export const landingPageT: Record<Language, LandingPageT> = {
     studentsSectionSubtitle: "כל מה שצריך כדי לשלוט באוצר מילים — בצורה משחקית.",
 
     // Student Features
-    gameModesTitle: "11 מצבי משחק",
-    gameModesDesc: "מקלאסי עד בונה משפטים — כל מצב מלמד אחרת. מצאו את המועדף!",
+    gameModesTitle: "15 מצבי משחק",
+    gameModesDesc: "מקלאסי דרך ניבים ועד סבב מהיר — כל מצב מלמד אחרת. מצאו את המועדף!",
     modeNames: {
       classic: "קלאסי",
       listen: "הקשבה",
       spell: "איות",
       match: "התאמה",
+      memory: "זיכרון",
       tf: "נ/ל",
       flash: "כרטיסיות",
       scramble: "ערבוב",
@@ -543,6 +560,9 @@ export const landingPageT: Record<Language, LandingPageT> = {
       letters: "אותיות",
       sentence: "משפטים",
       fillBlank: "מלא חסר",
+      wordChains: "שרשרת",
+      idiom: "ניבים",
+      speedRound: "מהיר",
     },
     liveChallengesTitle: "אתגרים חיים",
     liveChallengesDesc: "התחרו בחברי לכיתה בפודיום בזמן אמת!",
@@ -684,6 +704,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerIndividualTeacher: "מורה פרטי",
     footerProduct: "מוצר",
     footerResources: "משאבים",
+    footerDownloads: "הורדות",
     footerLegal: "משפטי ואמון",
     footerStartLearning: "התחילו ללמוד",
     footerTryDemo: "נסו את הדמו",
@@ -720,9 +741,11 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navPricing: "الأسعار",
     navForSchools: "للمدارس",
     navResources: "المصادر",
+    navGuides: "أدلة",
     navFaq: "الأسئلة الشائعة",
     navSignIn: "تسجيل الدخول",
     navStartFree: "ابدأ مجانًا",
+    heroSignInForTeachers: "للمعلمين والمعلمات",
     navMenuOpen: "فتح القائمة",
     navMenuClose: "إغلاق القائمة",
 
@@ -739,7 +762,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroTrustEu: "مستضاف في أوروبا · GDPR",
     heroTrustOrigin: "صُنع في إسرائيل",
 
-    floatingCardModes: "🎮 11 لعبة",
+    floatingCardModes: "🎮 15 لعبة",
     floatingCardXp: "⭐ اكسب النقاط",
     floatingCardStreaks: "🔥 سلسلة أيام",
     floatingCardEggs: "🎁 صناديق يومية",
@@ -748,13 +771,14 @@ export const landingPageT: Record<Language, LandingPageT> = {
     studentsSectionSubtitle: "كل ما تحتاجه لإتقان المفردات، بأسلوب لعبة.",
 
     // Student Features
-    gameModesTitle: "11 لعبة",
-    gameModesDesc: "من الكلاسيكي إلى بناء الجمل — كل وضع يعلّم بشكل مختلف. اعثر على المفضّل!",
+    gameModesTitle: "15 لعبة",
+    gameModesDesc: "من الكلاسيكي إلى التعابير وسباق السرعة — كل وضع يعلّم بشكل مختلف. اعثر على المفضّل!",
     modeNames: {
       classic: "كلاسيكي",
       listen: "استماع",
       spell: "تهجئة",
       match: "تطابق",
+      memory: "ذاكرة",
       tf: "ص/خ",
       flash: "بطاقات",
       scramble: "خلط",
@@ -762,6 +786,9 @@ export const landingPageT: Record<Language, LandingPageT> = {
       letters: "حروف",
       sentence: "جمل",
       fillBlank: "املأ الفراغ",
+      wordChains: "سلسلة",
+      idiom: "تعابير",
+      speedRound: "سرعة",
     },
     liveChallengesTitle: "التحديات المباشرة",
     liveChallengesDesc: "نافس زملاء الصف في منصات مباشرة!",
@@ -903,6 +930,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerIndividualTeacher: "معلم فردي",
     footerProduct: "المنتج",
     footerResources: "الموارد",
+    footerDownloads: "التحميلات",
     footerLegal: "قانوني والثقة",
     footerStartLearning: "ابدأ التعلم",
     footerTryDemo: "جرّب العرض",

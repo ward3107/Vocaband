@@ -112,6 +112,16 @@ export default defineConfig(() => {
             /\?.*\btoken_hash=/,
             /\?.*\baccess_token=/,
             /\?.*\brefresh_token=/,
+            // PDF downloads (school decks + teacher/parent guides linked
+            // from the landing-page footer).  Without this denylist + the
+            // matching NetworkOnly runtime rule below, opening a PDF in a
+            // new tab is a `navigate` request that the SW captured with
+            // NetworkFirst.  On any transient network hiccup the
+            // handlerDidError plugin fell back to /index.html, so teachers
+            // saw the SPA shell instead of the PDF and reported "the PDFs
+            // don't open".  Keeping the SW out of `.pdf` navigations lets
+            // the browser handle them directly.
+            /\.pdf(\?|$)/,
           ],
           runtimeCaching: [
             {
@@ -132,6 +142,20 @@ export default defineConfig(() => {
               // SW never touches the response, so there's no cached
               // redirect for it to re-serve and choke on.
               urlPattern: /\/(poster|privacy|terms|quick-play)(\.html)?(\?|$)/,
+              handler: 'NetworkOnly',
+            },
+            {
+              // PDF downloads — landing-page footer links open
+              // /Vocaband-Presentation-{HE,AR}.pdf and
+              // /docs/{teacher-guide,quick-start,student-guide,parent-letter}-{en,he,ar}.pdf
+              // in a new tab.  Without this rule the generic navigate
+              // handler below captured them as NetworkFirst and, on any
+              // network hiccup, the handlerDidError fallback returned
+              // /index.html instead of the PDF (teacher report: "the
+              // PDFs don't open").  NetworkOnly keeps the SW out of the
+              // request path entirely so the browser handles
+              // application/pdf responses directly.
+              urlPattern: /\.pdf(\?|$)/,
               handler: 'NetworkOnly',
             },
             {
@@ -255,6 +279,7 @@ export default defineConfig(() => {
           manualChunks(id) {
             if (id.includes('lucide-react')) return 'lucide';
             if (id.includes('src/data/vocabulary')) return 'vocabulary';
+            return undefined;
           },
         },
       },

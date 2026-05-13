@@ -72,7 +72,7 @@ interface BucketInfo {
 }
 
 /** Recursively list every object key in a bucket (handles nested folders). */
-async function listAllKeys(client: ReturnType<typeof createClient>, bucket: string, prefix = ''): Promise<string[]> {
+async function listAllKeys(client: any, bucket: string, prefix = ''): Promise<string[]> {
   const keys: string[] = [];
   // Supabase's storage `.list()` returns at most 1000 entries per call —
   // even if you ask for more, the server caps the response.  Without a

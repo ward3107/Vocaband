@@ -1,13 +1,13 @@
 import React from 'react';
 import { ArrowLeft, Shield, Keyboard, Eye, Globe, Palette, Volume2, AlertTriangle, CheckCircle2, Mail } from 'lucide-react';
-import PublicNav from './PublicNav';
+import PublicNav, { NavPage } from './PublicNav';
 import LanguageSwitcher from './LanguageSwitcher';
 import FloatingButtons from './FloatingButtons';
 import { useLanguage } from '../hooks/useLanguage';
 import { accessibilityTranslations } from '../config/translations/legalTranslations';
 
 interface Props {
-  onNavigate: (page: "home" | "terms" | "privacy") => void;
+  onNavigate: (page: NavPage) => void;
   onGetStarted: () => void;
   /** Teacher signup — drives PublicNav's "Start free" CTA. */
   onTeacherLogin?: () => void;
@@ -36,7 +36,7 @@ export default function AccessibilityStatement({ onNavigate, onGetStarted, onTea
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 font-body" dir={isRTL ? 'rtl' : 'ltr'}>
       <PublicNav currentPage="accessibility" onNavigate={onNavigate} onGetStarted={onGetStarted} onTeacherLogin={onTeacherLogin} />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 pb-24">
+      <main id="main-content" className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 pb-24">
         <div className="flex items-center gap-4 mb-6">
           <button onClick={onBack} className="flex items-center gap-2 text-violet-300 hover:text-violet-200 font-bold hover:underline">
             <ArrowLeft size={18} className={isRTL ? 'rotate-180' : ''} /> {t.back}

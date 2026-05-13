@@ -1,3 +1,5 @@
+// @ts-nocheck — pre-compress backup of vocabulary.ts kept for diff history only.
+// Not imported anywhere; large object-literal array trips TS2590 (union too complex).
 // vocabulary.ts
 // Set 1: 4365 words | Set 2: 789 words | Set 3: 1328 words | Total: 6482 words
 

@@ -28,7 +28,7 @@ import {
   AlertTriangle, CheckCircle2, Moon, Flame, Calendar,
 } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
-import { HelpTooltip } from "../components/HelpTooltip";
+import { HelpIcon } from "../components/HelpTooltip";
 import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
 import type { View } from "../core/views";
 import { buildWordIdSubjectMap, getDisplayLabel } from "../data/wordLookup";
@@ -487,7 +487,7 @@ export default function GradebookView({
         />
       )}
 
-      <main className={`${embedded ? 'pt-4' : 'pt-36 sm:pt-32'} px-4 sm:px-6 max-w-5xl mx-auto`}>
+      <main id="main-content" className={`${embedded ? 'pt-4' : 'pt-36 sm:pt-32'} px-4 sm:px-6 max-w-5xl mx-auto`}>
         {/* Class + window selectors — the class picker is the primary
             control on this page (everything else is scoped to it), so
             it gets a branded gradient treatment that catches the eye
@@ -582,7 +582,7 @@ export default function GradebookView({
               <h3 className="text-base font-black text-[var(--vb-text-primary)] flex items-center gap-2">
                 <Calendar size={16} className="text-indigo-500" />
                 Class activity
-                <HelpTooltip content="Total XP earned by all students per day." />
+                <HelpIcon tooltip="Total XP earned by all students per day." />
               </h3>
               <p className="text-xs text-[var(--vb-text-muted)] font-medium mt-0.5">
                 Last {windowDays} days · {selectedClassName}

@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { freshTrialEndsAt, isPro } from "./core/plan";
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
+import { setSentryUser, clearSentryUser } from "./core/sentry";
 import { useAudio } from "./hooks/useAudio";
 import { useRetention } from "./hooks/useRetention";
 import { getTeacherDashboardTheme } from "./constants/teacherDashboardThemes";
@@ -51,6 +52,7 @@ const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginVi
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const ClassShowView = lazy(() => import("./views/ClassShowView"));
+const HotSeatView = lazy(() => import("./views/HotSeatView"));
 const HebrewClassShowView = lazy(() => import("./views/HebrewClassShowView"));
 const WorksheetView = lazy(() => import("./views/WorksheetView"));
 const HebrewWorksheetView = lazy(() => import("./views/HebrewWorksheetView"));
@@ -86,6 +88,7 @@ import {
 import { celebrate } from "./utils/celebrate";
 import { compressImageForUpload } from "./utils/compressImage";
 import ImageCropModal from "./components/ImageCropModal";
+import { setGuideStore, type GuideKey } from "./hooks/useFirstTimeGuide";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
@@ -134,7 +137,7 @@ const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 // ─── View constants for shouldPreserveView (O(1) lookup with Sets) ────────
 // Defined at module level to avoid re-creating arrays on every auth restore.
 const PUBLIC_VIEWS = new Set<View>([
-  "public-landing", "public-terms", "public-privacy", "public-security", "public-faq", "public-free-resources", "public-status", "accessibility-statement"
+  "public-landing", "public-terms", "public-privacy", "public-security", "public-free-resources", "public-status", "accessibility-statement"
 ]);
 const TEACHER_VIEWS = new Set<View>([
   "worksheet", "classroom", "class-show", "teacher-approvals",
@@ -215,6 +218,45 @@ export default function App() {
     } catch { /* sessionStorage may be blocked; non-fatal */ }
   }, [activeVoca]);
 
+  // First-time-guide persistence — push the signed-in teacher's
+  // dismissed-guide list into the module-level store consumed by
+  // useFirstTimeGuide.  On dismissal, the hook calls markSeen here
+  // which appends to user.guides_seen + writes it back to Supabase, so
+  // a teacher signing in on a second device never re-sees a guide they
+  // already closed.  Students/guests get null → hook falls back to
+  // localStorage (still works, just per-device).
+  useEffect(() => {
+    if (!user || user.role !== "teacher") {
+      setGuideStore(null);
+      return;
+    }
+    const seen = user.guidesSeen ?? [];
+    setGuideStore({
+      seen,
+      markSeen: async (key: GuideKey) => {
+        if (seen.includes(key)) return;
+        const next = Array.from(new Set([...seen, key]));
+        // Optimistic in-memory update first — the dashboard re-renders
+        // immediately without waiting for the round-trip.
+        setUser(prev => prev ? { ...prev, guidesSeen: next } : prev);
+        const { error } = await supabase
+          .from("users")
+          .update({ guides_seen: next })
+          .eq("uid", user.uid);
+        if (error) {
+          // Roll back the optimistic update so a retry from another
+          // device can re-attempt.  localStorage still suppresses
+          // re-shows on THIS device until storage clears.
+          console.warn("[guides] persist failed; rolling back:", error);
+          setUser(prev => prev ? { ...prev, guidesSeen: seen } : prev);
+        }
+      },
+    });
+    return () => {
+      setGuideStore(null);
+    };
+  }, [user]);
+
   // VocaHebrew routing — when an entitled teacher (subjects_taught
   // length >= 2) lands on teacher-dashboard without an activeVoca
   // chosen yet, redirect to the picker.  Single-Voca teachers get
@@ -261,14 +303,13 @@ export default function App() {
     handleCookieCustomize,
   } = useCookieConsent();
 
-  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => {
+  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status") => {
     const viewMap = {
       home: "public-landing",
       terms: "public-terms",
       privacy: "public-privacy",
       accessibility: "accessibility-statement",
       security: "public-security",
-      faq: "public-faq",
       resources: "public-free-resources",
       status: "public-status",
     } as const;
@@ -291,7 +332,6 @@ export default function App() {
     view === "public-terms" ||
     view === "public-privacy" ||
     view === "public-security" ||
-    view === "public-faq" ||
     view === "public-free-resources" ||
     view === "public-status" ||
     view === "accessibility-statement";
@@ -735,6 +775,30 @@ export default function App() {
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
+  // Captures the `?assignment=<id>` URL param at boot.  When the
+  // student lands on their dashboard with this set, we look up the
+  // matching assignment in `studentAssignments` and drop them straight
+  // into the mode picker for it — teachers share links from the
+  // assignment row so the student should bypass the dashboard step.
+  const [pendingAssignmentId, setPendingAssignmentId] = useState<string | null>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("assignment");
+    } catch {
+      return null;
+    }
+  });
+  // Captures `?play=<mode>` at boot.  Set by teacher-shared share
+  // links (Class Minute today; extendable later if we surface more
+  // dashboard-launched entry points).  Consumed once the student is
+  // on their dashboard then stripped from the URL so a back-nav
+  // doesn't re-trigger the auto-launch.
+  const [pendingPlayMode, setPendingPlayMode] = useState<string | null>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("play");
+    } catch {
+      return null;
+    }
+  });
 
   const { speak: speakWordRaw, preloadMany, playWrong, playMotivational } = useAudio();
   const speakWord = speakWordRaw;
@@ -961,6 +1025,18 @@ export default function App() {
   const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
 
   useEffect(() => { userRef.current = user; }, [user]);
+
+  // Pipe the signed-in user to Sentry so any error after this point is
+  // tagged with who hit it ("this crash affected 14 students in class X").
+  // Cleared on logout so a subsequent anonymous error isn't attributed
+  // to the previous session.
+  useEffect(() => {
+    if (user?.uid) {
+      setSentryUser({ uid: user.uid, role: user.role ?? undefined, email: user.email ?? undefined });
+    } else {
+      clearSentryUser();
+    }
+  }, [user?.uid, user?.role, user?.email]);
 
   // Cleanup feedback timeout on unmount. Save-queue unmount-flush is
   // owned by useSaveQueue itself.
@@ -2122,6 +2198,111 @@ export default function App() {
     fetchScores,
   });
 
+  // Deep-link to a specific assignment.  When a teacher shares an
+  // assignment via the Share button on its row in ClassCard, the URL
+  // carries `&assignment=<id>`.  After the student logs in and lands
+  // on their dashboard with assignments loaded, drop them straight
+  // into the mode picker for that assignment — skipping the manual
+  // dashboard tap a teacher just shortcut for them.  We only consume
+  // the pending id once; missing matches silently fall back to the
+  // normal dashboard so an outdated link doesn't strand the student.
+  useEffect(() => {
+    if (!pendingAssignmentId) return;
+    if (user?.role !== "student") return;
+    if (view !== "student-dashboard") return;
+    if (studentAssignments.length === 0) return;
+    const match = studentAssignments.find(a => a.id === pendingAssignmentId);
+    if (!match) return;
+    setActiveAssignment(match);
+    setAssignmentWords(match.words ?? []);
+    setShowModeSelection(true);
+    setView("game");
+    setPendingAssignmentId(null);
+    // Strip the consumed param so a refresh or back-nav doesn't
+    // re-trigger the auto-open after the student left the assignment.
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("assignment");
+      window.history.replaceState({}, "", url.toString());
+    } catch { /* history API unavailable — non-fatal */ }
+  }, [pendingAssignmentId, user?.role, view, studentAssignments]);
+
+  // Class Minute entry point — used by both the dashboard widget tap
+  // and the teacher-shared ?play=class-minute deep-link.  Pulls SRS-
+  // due words first, falls back to current assignments, then
+  // SET_2_WORDS as last resort.  See onStartClassMinute prop on
+  // StudentDashboardView for the inline flow.
+  const startClassMinute = useCallback(async () => {
+    const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
+    let seedWords: Word[] = [];
+    try {
+      const { data, error } = await supabase.rpc('get_due_reviews', {
+        p_today_local: today,
+        p_limit: 20,
+      });
+      if (!error && Array.isArray(data)) {
+        const dueIds = (data as Array<{ word_id: number }>).map(r => r.word_id);
+        seedWords = dueIds
+          .map(id => ALL_WORDS.find(w => w.id === id))
+          .filter((w): w is Word => Boolean(w));
+      }
+    } catch (err) {
+      console.error('[class-minute] get_due_reviews failed:', err);
+    }
+    if (seedWords.length < 15) {
+      const fallbackPool: Word[] = [];
+      const seen = new Set(seedWords.map(w => w.id));
+      for (const a of studentAssignments) {
+        const pool = a.words ?? a.wordIds.map(id => ALL_WORDS.find(w => w.id === id)).filter((w): w is Word => Boolean(w));
+        for (const w of pool) {
+          if (seen.has(w.id)) continue;
+          fallbackPool.push(w);
+          seen.add(w.id);
+        }
+        if (seedWords.length + fallbackPool.length >= 30) break;
+      }
+      seedWords = [...seedWords, ...fallbackPool];
+    }
+    if (seedWords.length < 4) {
+      seedWords = SET_2_WORDS.slice(0, 20);
+    }
+    setAssignmentWords(seedWords);
+    setGameMode("class-minute");
+    setIsFinished(false);
+    setShowModeSelection(false);
+    setView("game");
+  }, [ALL_WORDS, SET_2_WORDS, studentAssignments]);
+
+  // Deep-link to Class Minute.  When a teacher shares the daily-drill
+  // link via the Send Class Minute action on ClassCard, the URL carries
+  // `?play=class-minute`.  Same gating as the assignment deep-link:
+  // student role, dashboard view, and ALL_WORDS loaded (the SRS row
+  // hydration needs the vocabulary chunk).  We also wait until
+  // studentAssignments has populated at least once so the fallback
+  // word pool isn't empty when SRS returns thin — the polling effect
+  // above tops it up shortly after login, but the very first render
+  // can race.
+  //
+  // pendingClassSwitch gate: if the student lands on the deep-link
+  // mid-class-switch flow (ClassSwitchModal asking "stay or switch?"),
+  // wait for that decision before consuming the deep-link.  Otherwise
+  // the round launches under whichever class context happens to be
+  // active at mount time, which may not be what the student picks.
+  useEffect(() => {
+    if (pendingPlayMode !== 'class-minute') return;
+    if (user?.role !== "student") return;
+    if (view !== "student-dashboard") return;
+    if (ALL_WORDS.length === 0) return;
+    if (pendingClassSwitch) return;
+    setPendingPlayMode(null);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("play");
+      window.history.replaceState({}, "", url.toString());
+    } catch { /* history API unavailable — non-fatal */ }
+    void startClassMinute();
+  }, [pendingPlayMode, user?.role, view, ALL_WORDS.length, pendingClassSwitch, startClassMinute]);
+
 
   // --- SMART PASTE FUNCTIONS ---
 
@@ -2576,6 +2757,7 @@ export default function App() {
             setShowModeSelection(false);
             setView("game");
           }}
+          onStartClassMinute={startClassMinute}
           retention={retention}
           boosters={{
             isXpBoosterActive: boosters.isXpBoosterActive,
@@ -2937,6 +3119,7 @@ export default function App() {
           }}
           onWorksheetClick={() => { setWorksheetAssignment(null); setView("worksheet"); }}
           onVocabagrutClick={() => { setView("vocabagrut"); }}
+          onHotSeatClick={() => { setView("hot-seat"); }}
           onPrintAssignmentWorksheet={(a) => {
             setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("worksheet");
@@ -2963,15 +3146,25 @@ export default function App() {
             // classes (see migration 20260402_add_teacher_class_rls).
             // class_id and class_code never change, so all foreign keys
             // (assignments, progress, student_profiles) are preserved.
+            // School branding fields (added 20260512) are nullable so we
+            // either send a trimmed string or NULL — never an empty
+            // string, which would clutter the DB with meaningless rows.
             const { error } = await supabase
               .from('classes')
-              .update({ name: next.name, avatar: next.avatar })
+              .update({
+                name: next.name,
+                avatar: next.avatar,
+                school_name: next.schoolName?.trim() || null,
+                school_logo_url: next.schoolLogoUrl?.trim() || null,
+              })
               .eq('id', editingClass.id);
             if (error) {
               showToast('Could not save class changes. Please try again.', 'error');
               return;
             }
-            setClasses(prev => prev.map(c => c.id === editingClass.id ? { ...c, name: next.name, avatar: next.avatar } : c));
+            setClasses(prev => prev.map(c => c.id === editingClass.id
+              ? { ...c, name: next.name, avatar: next.avatar, schoolName: next.schoolName?.trim() || null, schoolLogoUrl: next.schoolLogoUrl?.trim() || null }
+              : c));
             setEditingClass(null);
             showToast('Class updated.', 'success');
           }}
@@ -3312,8 +3505,38 @@ export default function App() {
         </LazyWrapper>
       );
     }
+    // Demo-friendly error fallback: a Live Challenge crash mid-pitch is
+    // the worst possible moment.  Default "Failed to load component"
+    // text reads as a hard failure to a watching principal.  This
+    // fallback frames it as a quick reconnect, gives the teacher an
+    // obvious one-tap path back to the dashboard, and keeps the page
+    // colourful + on-brand rather than red-alert.
+    const liveChallengeErrorFallback = (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900 px-6">
+        <div className="max-w-md w-full text-center bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
+          <div className="text-5xl mb-4">⚡</div>
+          <h2 className="text-2xl font-black text-white mb-3">Reconnecting…</h2>
+          <p className="text-white/80 mb-6">
+            The challenge hit a hiccup. Students stay connected — pick the class again to resume.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setIsLiveChallenge(false);
+              setView("teacher-dashboard");
+            }}
+            className="w-full px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
     return (
-      <LazyWrapper loadingMessage="Loading live challenge...">
+      <LazyWrapper
+        loadingMessage="Loading live challenge..."
+        fallback={liveChallengeErrorFallback}
+      >
         <LiveChallengeView
           selectedClass={selectedClass}
           leaderboard={leaderboard}
@@ -3593,6 +3816,22 @@ export default function App() {
   }
 
 
+  if (view === "hot-seat") {
+    // Pass-around classroom mode — one device, many players.  Owns its
+    // own setup screen + game loop + podium internally; nothing to thread
+    // beyond speakWord (for audio replay on the prompt) and a back
+    // handler (dashboard return).  Scores stay in-memory; no Supabase
+    // writes since the players aren't logged-in users.
+    return (
+      <LazyWrapper loadingMessage="Loading Hot Seat…">
+        <HotSeatView
+          onExit={() => setView("teacher-dashboard")}
+          speak={speakWord}
+        />
+      </LazyWrapper>
+    );
+  }
+
   if (view === "class-show") {
     // Hebrew classes get a focused 2-mode projector view
     // (HebrewClassShowView). The English ClassShowView is shaped
@@ -3609,7 +3848,7 @@ export default function App() {
         <LazyWrapper loadingMessage="טוען מצב הקרנה…">
           <HebrewClassShowView
             initialLemmaIds={classShowAssignment?.wordIds}
-            className={classShowAssignment?.className ?? selectedClass?.name ?? null}
+            className={selectedClass?.name ?? null}
             onExit={() => {
               setClassShowAssignment(null);
               setView("teacher-dashboard");
@@ -3764,8 +4003,32 @@ export default function App() {
       setView("quick-play-setup");
       return null;
     }
+    // Same demo-friendly fallback rationale as Live Challenge — Quick
+    // Play is the other live-classroom screen a teacher might be
+    // showing during a sales demo when the worst-case crash hits.
+    const monitorErrorFallback = (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900 px-6">
+        <div className="max-w-md w-full text-center bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
+          <div className="text-5xl mb-4">⚡</div>
+          <h2 className="text-2xl font-black text-white mb-3">Reconnecting…</h2>
+          <p className="text-white/80 mb-6">
+            The session monitor hit a hiccup. Your active session is safe — return to the dashboard and reopen it.
+          </p>
+          <button
+            type="button"
+            onClick={() => setView(user?.role === 'student' ? 'student-dashboard' : 'teacher-dashboard')}
+            className="w-full px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
     return (
-      <LazyWrapper loadingMessage="Loading session monitor...">
+      <LazyWrapper
+        loadingMessage="Loading session monitor..."
+        fallback={monitorErrorFallback}
+      >
         <QuickPlayTeacherMonitorView
           quickPlayActiveSession={quickPlayActiveSession}
           quickPlayJoinedStudents={quickPlayJoinedStudents}

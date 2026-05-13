@@ -15,6 +15,13 @@ export interface Word {
   sentence?: string
   example?: string
   recProd?: "Rec" | "Prod"
+  /** Extension fields populated only for custom words / teacher edits.
+   *  The compact tuple-loaded base vocabulary leaves them undefined. */
+  pos?: string
+  core?: "Core I" | "Core II"
+  isCore?: boolean
+  sentences?: string[]
+  isPhrase?: boolean
 }
 
 // Compact tuple format: [id, english, hebrew, arabic, levelCode]
@@ -5174,39 +5181,39 @@ const _ALL_TUPLES: readonly WordTuple[] = [
   [7147,"well-known","ידוע","معروف",2],
   [7148,"a little sth","קצת משהו","قليل من شيء",3],
   [7150,"What if …?","מה אם?","ماذا لو؟",2],
-  [7150,"absorb","לספוג","يمتص",3],
+  [9131,"absorb","לספוג","يمتص",3],
   [7151,"What's up?","מה העניינים?","ما الأخبار؟",2],
   [7152,"account","חשבון","حساب",3],
   [7153,"acquire","לרכוש","يكتسب",3],
   [7154,"whoever","מי שـ","أياً كان",2],
-  [7154,"addition","תוספת","إضافة",3],
+  [9132,"addition","תוספת","إضافة",3],
   [7155,"advance","קידום / להתקדם","تقدم / يقدم",3],
   [7156,"wipe","לנגב","يمسح",2],
-  [7156,"advanced","מתקדם","متقدم",3],
+  [9133,"advanced","מתקדם","متقدم",3],
   [7157,"wish sb luck","לאחל למישהו מזל טוב","يتمنى لشخص حظاً سعيداً",2],
   [7158,"with the help of sth","בעזרת משהו","بمساعدة شيء",2],
   [7159,"without delay","ללא דיחוי","بدون تأخير",2],
-  [7159,"aggressive","תוקפני","عدواني",3],
+  [9134,"aggressive","תוקפני","عدواني",3],
   [7160,"wonder","לתהות/פלא","يتساءل / عجب",2],
-  [7160,"agriculture","חקלאות","زراعة",3],
+  [9135,"agriculture","חקלאות","زراعة",3],
   [7161,"air force","חיל אוויר","سلاح الجو",3],
   [7162,"work","עבודה/לעבוד","عمل / يعمل",2],
-  [7162,"alarm","אזעקה","إنذار",3],
+  [9136,"alarm","אזעקה","إنذار",3],
   [7163,"all is well","הכל בסדר","كل شيء على ما يرام",3],
   [7164,"all of a sudden","לפתע פתאום","فجأة",3],
-  [7164,"would","הייתי (עזר)","سوف (صيغة المهذبة)",2],
+  [9137,"would","הייתי (עזר)","سوف (صيغة المهذبة)",2],
   [7165,"would rather","מעדיף","يفضل",2],
-  [7165,"all over the place","בכל המקומות","في كل مكان",3],
+  [9138,"all over the place","בכל המקומות","في كل مكان",3],
   [7166,"Would you mind ...?","אכפת לך?","هل تمانع؟",2],
-  [7166,"altogether","לגמרי","تمامًا",3],
+  [9139,"altogether","לגמרי","تمامًا",3],
   [7167,"ambassador","שגריר","سفير",3],
   [7168,"ambition","שאפתנות","طموح",3],
   [7169,"written","כתוב","مكتوب",2],
   [7170,"yet","עדיין/אבל","بعد / ولكن",2],
-  [7170,"analysis","אנליזה","تحليل",3],
+  [9140,"analysis","אנליזה","تحليل",3],
   [7171,"annoy","לעצבן","يزعج",3],
   [7172,"zone","אזור","منطقة",2],
-  [7172,"anxious","חרד","قلق",3],
+  [9141,"anxious","חרד","قلق",3],
   [7173,"apparent","ברור","واضح",3],
   [7175,"approach","גישה / להתקרב","نهج / يقترب",3],
   [7176,"appropriate","מתאים","مناسب",3],
@@ -6511,7 +6518,216 @@ const _ALL_TUPLES: readonly WordTuple[] = [
   [9125,"would appreciate","אעריך","سأقدر",3],
   [9127,"x-ray","צילום רנטגן","أشعة سينية",3],
   [9128,"yawn","לפהק","يتثاءب",3],
-  [9130,"you never know","אף פעם לא יודעים","لا تعرف أبدًا",3]
+  [9130,"you never know","אף פעם לא יודעים","لا تعرف أبدًا",3],
+
+  // ── Bagrut Module E supplement (2026-05-11) ──────────────────────
+  // Advanced academic vocabulary for grade 11-12 Bagrut module E
+  // (B2-C1 CEFR). Added in IDs 9200-9270 to leave a clean gap from
+  // the prior data. All Set 3 (level=3). Translations are HE-MoE
+  // standard and MSA Arabic where possible — review by a native
+  // Hebrew/Arabic teacher recommended before classroom use.
+  [9200,"hypothesize","לשער","يفترض",3],
+  [9201,"synthesize","ליצור סינתזה","يركّب",3],
+  [9202,"refute","להפריך","يدحض",3],
+  [9203,"paradigm","פרדיגמה","نموذج",3],
+  [9204,"perception","תפיסה","إدراك",3],
+  [9205,"consequently","כתוצאה מכך","وبالتالي",3],
+  [9206,"albeit","אם כי","وإن كان",3],
+  [9207,"consensus","קונצנזוס","إجماع",3],
+  [9208,"paradox","פרדוקס","مفارقة",3],
+  [9209,"facilitate","להקל","يسهّل",3],
+  [9210,"emphasize","להדגיש","يؤكد",3],
+  [9211,"advocate","לתמוך","يدعو إلى",3],
+  [9212,"undermine","לערער","يقوّض",3],
+  [9213,"reinforce","לחזק","يعزز",3],
+  [9214,"sustainable","בר קיימא","مستدام",3],
+  [9215,"biodiversity","מגוון ביולוגי","التنوع البيولوجي",3],
+  [9216,"inherent","טבוע","متأصل",3],
+  [9217,"inevitable","בלתי נמנע","حتمي",3],
+  [9218,"arbitrary","שרירותי","اعتباطي",3],
+  [9219,"pragmatic","פרגמטי","براغماتي",3],
+  [9220,"ambiguous","דו משמעי","غامض",3],
+  [9221,"explicit","מפורש","صريح",3],
+  [9222,"implicit","מרומז","ضمني",3],
+  [9223,"emissions","פליטות","انبعاثات",3],
+  [9224,"renewable","מתחדש","متجدد",3],
+  [9225,"depletion","דלדול","استنفاد",3],
+  [9226,"deforestation","כריתת יערות","إزالة الغابات",3],
+  [9227,"algorithm","אלגוריתם","خوارزمية",3],
+  [9228,"automation","אוטומציה","أتمتة",3],
+  [9229,"cybersecurity","אבטחת סייבר","الأمن السيبراني",3],
+  [9230,"breakthrough","פריצת דרך","إنجاز",3],
+  [9231,"disruption","שיבוש","اضطراب",3],
+  [9232,"demographic","דמוגרפי","ديموغرافي",3],
+  [9233,"assimilation","הטמעה","استيعاب",3],
+  [9234,"segregation","הפרדה","فصل عنصري",3],
+  [9235,"inequality","אי שוויון","لامساواة",3],
+  [9236,"equity","שוויון","إنصاف",3],
+  [9237,"marginalize","להדיר","يهمّش",3],
+  [9238,"empower","להעצים","يمكّن",3],
+  [9239,"recession","מיתון","ركود",3],
+  [9240,"inflation","אינפלציה","تضخم",3],
+  [9241,"entrepreneurship","יזמות","ريادة الأعمال",3],
+  [9242,"monopoly","מונופול","احتكار",3],
+  [9243,"subsidy","סובסידיה","إعانة",3],
+  [9244,"deficit","גירעון","عجز",3],
+  [9245,"resilience","חוסן","مرونة",3],
+  [9246,"compassion","חמלה","تعاطف",3],
+  [9247,"introspection","התבוננות פנימית","تأمل ذاتي",3],
+  [9248,"mindfulness","קשיבות","يقظة ذهنية",3],
+  [9249,"ethics","אתיקה","أخلاقيات",3],
+  [9250,"morality","מוסר","أخلاق",3],
+  [9251,"integrity","יושרה","نزاهة",3],
+  [9252,"accountability","אחריותיות","مساءلة",3],
+  [9253,"virtue","מעלה","فضيلة",3],
+  [9254,"ideology","אידיאולוגיה","أيديولوجيا",3],
+  [9255,"pragmatism","פרגמטיזם","براغماتية",3],
+  [9256,"jurisdiction","סמכות שיפוט","اختصاص قضائي",3],
+  [9257,"verdict","פסק דין","حكم",3],
+  [9258,"precedent","תקדים","سابقة",3],
+  [9259,"thereby","בכך","بذلك",3],
+  [9260,"henceforth","מכאן ואילך","من الآن فصاعداً",3],
+  [9261,"ramification","השלכה","تبعات",3],
+  [9262,"controversy","מחלוקת","جدل",3],
+  [9263,"critique","ביקורת","نقد",3],
+  [9264,"reconcile","ליישב","يوفّق",3],
+  [9265,"feasible","בר ביצוע","مجدٍ",3],
+  [9266,"viable","בר קיימא","قابل للتطبيق",3],
+  [9267,"obsolete","מיושן","متقادم",3],
+  [9268,"imminent","ממשמש ובא","وشيك",3],
+  [9269,"subsequent","עוקב","لاحق",3],
+  [9270,"unprecedented","חסר תקדים","غير مسبوق",3],
+
+  // ── Idioms & fixed expressions pack (2026-05-11) ─────────────────
+  // High-value idioms and fixed expressions for grade 7-12. Bagrut
+  // reading-comprehension passages lean heavily on these — students
+  // who lack them lose points even when their academic vocab is
+  // strong. IDs 9300-9365. Mix of Set 2 (more common register) and
+  // Set 3 (figurative idioms). Hebrew/Arabic translations are
+  // pragmatic equivalents, not literal — review by a native teacher
+  // recommended before classroom rollout.
+  [9300,"piece of cake","קלי קלות","أمر سهل",3],
+  [9301,"break a leg","בהצלחה","حظاً سعيداً",3],
+  [9302,"hit the books","לשבת על הספרים","يدرس بجد",3],
+  [9303,"hit the road","לצאת לדרך","يغادر",3],
+  [9304,"under the weather","לא מרגיש טוב","يشعر بتوعك",3],
+  [9305,"on cloud nine","בשמיים השביעיים","في قمة السعادة",3],
+  [9306,"spill the beans","לחשוף סוד","يفشي السر",3],
+  [9307,"cost an arm and a leg","עולה הון","يكلف الكثير",3],
+  [9308,"once in a blue moon","פעם במאה שנה","نادراً جداً",3],
+  [9309,"raining cats and dogs","גשם זלעפות","تمطر بغزارة",3],
+  [9310,"the ball is in your court","הכדור במגרש שלך","الكرة في ملعبك",3],
+  [9311,"cut to the chase","לעבור לעיקר","يدخل في صلب الموضوع",3],
+  [9312,"bite the bullet","לחצות את הרוביקון","يتحمل المرارة",3],
+  [9313,"beat around the bush","להתחמק מהנושא","يلف ويدور",3],
+  [9314,"a blessing in disguise","ברכה מוסווית","نعمة مخفية",3],
+  [9315,"best of both worlds","מיטב משני העולמות","فوائد الجانبين",3],
+  [9316,"speak of the devil","הזכרת אותו","الحاكي بحاكي",3],
+  [9317,"the early bird catches the worm","הקדים תרופה למכה","من بكّر بكّر له",3],
+  [9318,"actions speak louder than words","מעשים מדברים יותר ממילים","الأفعال أبلغ من الأقوال",3],
+  [9319,"better late than never","מוטב מאוחר מאשר אף פעם","أن تأتي متأخراً خير من ألا تأتي",3],
+  [9320,"by the skin of your teeth","בשן ועין","بصعوبة بالغة",3],
+  [9321,"call it a day","לסיים את היום","ينهي يومه",3],
+  [9322,"don't judge a book by its cover","אל תשפוט ספר לפי כריכתו","لا تحكم على الكتاب من غلافه",3],
+  [9323,"hit the nail on the head","לקלוע בול","يصيب كبد الحقيقة",3],
+  [9324,"in hot water","בצרות","في ورطة",3],
+  [9325,"it takes two to tango","שניים לטנגו","الكف لا تصفق بيد واحدة",3],
+  [9326,"keep your chin up","תרים את הראש","ارفع رأسك",3],
+  [9327,"kill two birds with one stone","להרוג שתי ציפורים במכה אחת","يصيب عصفورين بحجر واحد",3],
+  [9328,"let the cat out of the bag","להוציא את החתול מהשק","يكشف السر",3],
+  [9329,"miss the boat","לפספס את ההזדמנות","يفوت الفرصة",3],
+  [9330,"pull yourself together","תתעשת","تماسك نفسك",3],
+  [9331,"so far so good","עד עכשיו הכל בסדר","حتى الآن جيد",3],
+  [9332,"the last straw","הקש האחרון","القشة التي قصمت ظهر البعير",3],
+  [9333,"to make a long story short","בקצרה","باختصار",3],
+  [9334,"under your nose","מתחת לאף","تحت أنفك",3],
+  [9335,"once and for all","אחת ולתמיד","مرة واحدة وللأبد",3],
+  [9336,"by and large","בסך הכל","بشكل عام",3],
+  [9337,"for the most part","ברובו","في معظم الأحوال",3],
+  [9338,"to some extent","במידה מסוימת","إلى حد ما",2],
+  [9339,"in the long run","בטווח הארוך","على المدى الطويل",2],
+  [9340,"in the short run","בטווח הקצר","على المدى القصير",2],
+  [9341,"in light of","לאור","في ضوء",3],
+  [9342,"with respect to","בנוגע ל","فيما يتعلق بـ",3],
+  [9343,"in terms of","מבחינת","من حيث",3],
+  [9344,"given that","בהינתן ש","بالنظر إلى أن",3],
+  [9345,"bear in mind","לזכור","تذكر",3],
+  [9346,"come to terms with","להשלים עם","يتقبل",3],
+  [9347,"get the hang of","לתפוס את העניין","يتقن",3],
+  [9348,"get to the point","להגיע לנקודה","يدخل في الموضوع",3],
+  [9349,"in a nutshell","בקצרה","باختصار",3],
+  [9350,"look on the bright side","להסתכל בצד החיובי","انظر إلى الجانب المشرق",3],
+  [9351,"make ends meet","להגיע לסוף החודש","يدبر أمره",3],
+  [9352,"on second thought","במחשבה שנייה","بعد التفكير",3],
+  [9353,"the bottom line","השורה התחתונה","خلاصة القول",3],
+  [9354,"to be on the safe side","ליתר ביטחון","من باب الاحتياط",3],
+  [9355,"with all due respect","עם כל הכבוד","مع كامل الاحترام",3],
+  [9356,"against the odds","נגד כל הסיכויים","ضد كل التوقعات",3],
+  [9357,"in a row","ברציפות","على التوالي",2],
+  [9358,"in due time","בבוא הזמן","في الوقت المناسب",3],
+  [9359,"by no means","בשום אופן לא","بأي شكل من الأشكال",3],
+  [9360,"with a grain of salt","בערבון מוגבל","مع شيء من الحذر",3],
+  [9361,"a matter of opinion","עניין של דעה","مسألة رأي",3],
+  [9362,"the bigger picture","התמונה הגדולה","الصورة الأكبر",3],
+  [9363,"in the heat of the moment","בלהט הרגע","في خضم اللحظة",3],
+  [9364,"out of the blue","משום מקום","من العدم",3],
+  [9365,"over the moon","מאושר מאוד","في قمة السعادة",3],
+
+  // ── Phrasal verbs supplement (2026-05-11) ────────────────────────
+  // Fills the most common phrasal-verb gaps. Vocabulary already had
+  // ~70 phrasal verbs scattered across the levels; these 49 close
+  // the most-cited Bagrut gaps. The companion TOPIC_PACK groups all
+  // ~120 (existing + new) for easy teacher assignment.
+  // IDs 9400-9448.
+  [9400,"look into","לבדוק","يحقق في",3],
+  [9401,"look down on","לזלזל","يحتقر",3],
+  [9402,"come along","להתלוות","يرافق",2],
+  [9403,"come across","להיתקל","يصادف",3],
+  [9404,"break up","להיפרד","ينفصل",2],
+  [9405,"break out","לפרוץ","يندلع",3],
+  [9406,"check in","להירשם","يسجل دخول",2],
+  [9407,"check out","לעזוב / לבדוק","يسجل خروج / يتفقّد",2],
+  [9408,"hand over","למסור","يسلم",3],
+  [9409,"go after","לרדוף אחרי","يلاحق",3],
+  [9410,"go without","להסתדר בלי","يستغني عن",3],
+  [9411,"put up with","לסבול","يتحمل",3],
+  [9412,"stand for","לייצג","يمثل",3],
+  [9413,"take part in","להשתתף","يشارك في",2],
+  [9414,"think over","לשקול","يفكر بـ",3],
+  [9415,"write down","לרשום","يدوّن",2],
+  [9416,"ask out","להזמין לדייט","يدعو إلى موعد",3],
+  [9417,"back up","לגבות","يدعم",3],
+  [9418,"back down","לסגת","يتراجع",3],
+  [9419,"catch up","להדביק את הפער","يلحق",3],
+  [9420,"catch on","להבין","يفهم",3],
+  [9421,"cut down on","להפחית","يقلل من",3],
+  [9422,"cut off","לנתק","يقطع",3],
+  [9423,"drop by","לקפוץ לביקור","يزور بسرعة",3],
+  [9424,"drop off","להוריד","يوصل",3],
+  [9425,"eat out","לאכול בחוץ","يأكل خارجاً",2],
+  [9426,"fall behind","להישאר מאחור","يتأخر",3],
+  [9427,"fight back","להגיב בכוח","يقاوم",3],
+  [9428,"keep on","להמשיך","يستمر",2],
+  [9429,"let down","לאכזב","يخيب الأمل",3],
+  [9430,"make up for","לפצות","يعوض عن",3],
+  [9431,"mess up","לפשל","يفسد",3],
+  [9432,"move in","לעבור דירה","ينتقل للسكن",2],
+  [9433,"move out","לעזוב דירה","ينتقل من السكن",2],
+  [9434,"pick out","לבחור","يختار",2],
+  [9435,"pull out","להוציא","يسحب",3],
+  [9436,"push back","לדחות","يؤجل",3],
+  [9437,"save up","לחסוך","يدخر",2],
+  [9438,"shut down","לסגור","يغلق",2],
+  [9439,"sign up","להירשם","يسجل",2],
+  [9440,"speed up","להאיץ","يسرّع",2],
+  [9441,"step in","להתערב","يتدخل",3],
+  [9442,"stick to","להיצמד","يلتزم بـ",3],
+  [9443,"stop by","לקפוץ לביקור","يمر بسرعة",3],
+  [9444,"sum up","לסכם","يلخص",3],
+  [9445,"use up","לגמור","يستنفذ",3],
+  [9446,"wind up","לסיים","ينتهي بـ",3],
+  [9447,"work on","לעבוד על","يعمل على",2],
+  [9448,"write up","לכתוב בפירוט","يكتب بالتفصيل",3]
 ] as const;
 
 export const ALL_WORDS: Word[] = _ALL_TUPLES.map(([id, english, hebrew, arabic, lvl]) => ({
@@ -6528,6 +6744,70 @@ export const SET_3_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 3");
 
 // Topic Packs — curated word groups by category (max 20 words per pack)
 export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
+  // ── Bagrut Module E supplement (advanced/academic, B2-C1 CEFR) ──
+  // Grade 11-12 prep pack covering critical-thinking, abstract,
+  // environment, technology, society, economics, ethics and law
+  // vocabulary commonly tested in the higher Bagrut module.
+  {
+    name: "Academic English 🎓",
+    icon: "🎓",
+    ids: [
+      9200,9201,9202,9203,9204,9205,9206,9207,9208,9209,
+      9210,9211,9212,9213,9214,9215,9216,9217,9218,9219,
+      9220,9221,9222,9223,9224,9225,9226,9227,9228,9229,
+      9230,9231,9232,9233,9234,9235,9236,9237,9238,9239,
+      9240,9241,9242,9243,9244,9245,9246,9247,9248,9249,
+      9250,9251,9252,9253,9254,9255,9256,9257,9258,9259,
+      9260,9261,9262,9263,9264,9265,9266,9267,9268,9269,
+      9270,
+    ],
+  },
+  // ── Phrasal verbs (existing + 2026-05-11 supplement) ─────────────
+  // Comprehensive grouping of all phrasal verbs in the bank. Existing
+  // entries were scattered across Set 1-3; the supplement (IDs 94xx)
+  // adds the most common Bagrut-cited misses (look into, come across,
+  // put up with, back up, catch up, etc.).
+  {
+    name: "Phrasal Verbs ↪️",
+    icon: "↪️",
+    ids: [
+      // Existing (scattered across Set 1-3)
+      5,65,558,560,572,693,694,825,904,907,
+      1029,1096,1157,1404,1613,1625,1678,1802,1810,1820,
+      1823,1824,1829,1830,1832,1833,1840,1845,1858,1860,
+      1861,1863,1864,1882,1890,1982,2026,2027,2037,2160,
+      2702,2705,2707,2710,2713,3346,3395,3584,3586,3587,
+      3588,3820,3821,3823,3956,3957,4070,4388,4397,4578,
+      4739,4740,4742,4744,4745,4898,4933,5483,6389,7466,
+      7831,8772,8776,9083,
+      // Supplement added 2026-05-11
+      9400,9401,9402,9403,9404,9405,9406,9407,9408,9409,
+      9410,9411,9412,9413,9414,9415,9416,9417,9418,9419,
+      9420,9421,9422,9423,9424,9425,9426,9427,9428,9429,
+      9430,9431,9432,9433,9434,9435,9436,9437,9438,9439,
+      9440,9441,9442,9443,9444,9445,9446,9447,9448,
+    ],
+  },
+  // ── Idioms & fixed expressions ───────────────────────────────────
+  // Bagrut reading-comprehension passages lean heavily on idioms;
+  // strong academic vocab + zero idiom knowledge = points lost.
+  {
+    name: "Idioms & Expressions 💬",
+    icon: "💬",
+    ids: [
+      // Pre-existing idiom IDs from the former "Common Idioms" pack
+      9, 13, 280, 2316, 2335, 3048, 3079, 3094, 3186, 3770,
+      3771, 4100, 5188, 5292, 5625, 5780, 6231, 6814,
+      // Bagrut idioms + fixed expressions added 2026-05-11
+      9300,9301,9302,9303,9304,9305,9306,9307,9308,9309,
+      9310,9311,9312,9313,9314,9315,9316,9317,9318,9319,
+      9320,9321,9322,9323,9324,9325,9326,9327,9328,9329,
+      9330,9331,9332,9333,9334,9335,9336,9337,9338,9339,
+      9340,9341,9342,9343,9344,9345,9346,9347,9348,9349,
+      9350,9351,9352,9353,9354,9355,9356,9357,9358,9359,
+      9360,9361,9362,9363,9364,9365,
+    ],
+  },
   // ── Core Curriculum Packs ────────────────────────────────────────────────────────
   {
     name: "Animals 🐾",
@@ -6624,22 +6904,22 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Fruits 🍎",
     icon: "🍎",
-    ids: [208, 349, 1751, 3216, 4859], // 5 fruits
+    ids: [208, 349, 1120, 1751, 1959, 2548, 2818, 2873, 3216, 3350, 3440, 4257, 4859, 4940, 5686, 5827],
   },
   {
     name: "Vegetables 🥕",
     icon: "🥕",
-    ids: [4859, 624, 690, 2858, 3931], // 5 vegetables
+    ids: [407, 577, 623, 624, 690, 1009, 1078, 1368, 2638, 2858, 3192, 3357, 3481, 3931, 4619, 6274],
   },
   {
     name: "Desserts & Sweets 🍰",
     icon: "🍰",
-    ids: [573, 629, 701, 855, 1944], // 5 desserts
+    ids: [573, 629, 662, 701, 793, 855, 995, 1174, 1944, 2176, 2271, 2457, 3398, 4302, 4358],
   },
   {
     name: "Beach & Sea 🏖️",
     icon: "🏖️",
-    ids: [405, 3123, 3226, 3915, 4208], // 5 beach/sea words
+    ids: [405, 868, 1275, 1643, 2419, 3123, 3226, 3860, 3915, 3971, 4208, 4587, 6133, 7828],
   },
   {
     name: "Hobbies & Free Time 🎯",
@@ -6649,12 +6929,12 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Birds 🐦",
     icon: "🐦",
-    ids: [476], // can add more bird words
+    ids: [476, 782, 1322, 2118, 3266, 3310, 3351, 3354, 7111, 8323],
   },
   {
     name: "Farm Animals 🐄",
     icon: "🐄",
-    ids: [782, 892, 1043, 2184, 2945], // 5 farm animals
+    ids: [702, 782, 892, 1043, 1272, 1280, 1322, 1567, 1911, 2184, 2945, 3401, 3613, 7235, 8600],
   },
   {
     name: "Time Expressions ⏰",
@@ -6664,7 +6944,7 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Shapes & Sizes 📐",
     icon: "📐",
-    ids: [4313], // can be expanded
+    ids: [465, 809, 1077, 1421, 2097, 2223, 2576, 2679, 2694, 2868, 4000, 4075, 4195, 4414, 4542, 4545, 4602, 5036, 7966, 8286],
   },
   {
     name: "Greetings & Polite Words 👋",
@@ -6677,7 +6957,7 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Bathroom 🚽",
     icon: "🚽",
-    ids: [184, 185, 2203], // bathroom items
+    ids: [184, 185, 373, 895, 2203, 2922, 4010, 4616, 4636, 4637, 4658, 6314, 7842, 7929],
   },
   {
     name: "Common Verbs 🏃",
@@ -6697,7 +6977,7 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Sky & Space ✨",
     icon: "✨",
-    ids: [2525, 3584, 3666, 4313], // 4 sky words
+    ids: [275, 859, 1346, 2525, 2948, 3417, 3584, 3625, 3627, 3666, 4060, 4152, 4208, 4313, 7986, 8907, 8922, 8962],
   },
   {
     name: "Hot & Cold 🌡️",
@@ -6771,14 +7051,6 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
 
   // ── 2026-05-07 — language-structure packs (grammar focus, not topic) ──────
   {
-    name: "Phrasal Verbs 🔄",
-    icon: "🔄",
-    // get up, get on/off, give up, give in, go away, grow up, hand in,
-    // look after/for/up, pick up, put away/off/on, run away, set up,
-    // take off, throw away, turn on/off, wake up, find out, fall down
-    ids: [1625, 1829, 1830, 1845, 1861, 1864, 1882, 1982, 2026, 2702, 2705, 2713, 3395, 3584, 3587, 3588, 3820, 3957, 4397, 4578, 4744, 4745, 4898, 5483],
-  },
-  {
     name: "Prepositions 📍",
     icon: "📍",
     // above, across, along, around, at, behind, below, beside, between,
@@ -6816,15 +7088,6 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     // otherwise, since, therefore, unless, when, while, neither, until,
     // whether, despite, nor, so, then, yet, even though
     ids: [143, 146, 173, 415, 522, 609, 1373, 2221, 2282, 3215, 3235, 4031, 4538, 4817, 5013, 5025, 5769, 6119, 6144, 6473, 6797, 6993, 7081, 7170, 7382],
-  },
-  {
-    name: "Common Idioms & Expressions 💭",
-    icon: "💭",
-    // a few, a little bit, at least, in fact, in trouble, never mind,
-    // no problem, not bad, once in a while, right away, right now,
-    // so far, all the best, by the way, in love, of course, at last,
-    // on purpose
-    ids: [9, 13, 280, 2316, 2335, 3048, 3079, 3094, 3186, 3770, 3771, 4100, 5188, 5292, 5625, 5780, 6231, 6814],
   },
   {
     name: "Common Collocations 🧩",

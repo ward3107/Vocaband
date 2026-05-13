@@ -94,7 +94,7 @@ export interface SetupWizardProps {
   showLevelFilter: boolean;
 
   // Assignment-specific
-  selectedClass?: { name: string; code: string; studentCount?: number };
+  selectedClass?: { id?: string; name: string; code: string; studentCount?: number };
   assignmentTitle?: string;
   onTitleChange?: (title: string) => void;
   assignmentDeadline?: string;
