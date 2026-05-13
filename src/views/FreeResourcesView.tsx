@@ -192,21 +192,28 @@ const baseStyles = (lang: string, accent: string, accentDark: string, settings: 
   return `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Heebo:wght@400;600;700;800&family=Cairo:wght@400;600;700;800&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    @page { size: A4 ${settings.orientation}; margin: 12mm; }
+    @page { size: A4 ${settings.orientation}; margin: 10mm; }
     html, body {
       font-family: ${fontStack};
-      line-height: 1.4;
+      line-height: 1.3;
       color: ${ink ? "#000000" : "#1f2937"};
       font-size: ${fontSizePt(settings.fontSize)}pt;
       background: #ffffff;
     }
-    .sheet {
-      page-break-after: always;
-      break-after: page;
-      padding: 0;
-    }
-    .sheet:last-child { page-break-after: auto; break-after: auto; }
-    .no-break, table, tr, .practice-box, .flashcard, .bingo-card, .word-item, .translation-item, .ws-row {
+    /* Sheet is a passive section container, not a page-break marker. Content
+     * flows continuously and html2pdf paginates based on physical A4 height.
+     * Use .page-break for sections that must start on a fresh page
+     * (answer keys, cut-out card pages, teacher-only sheets). */
+    .sheet { padding: 0; }
+    .page-break { page-break-before: always; break-before: page; }
+    /* Atomic blocks that must never split mid-element across a page boundary.
+     * Kept narrow on purpose: anything bigger than ~half a page is allowed
+     * to break so we don't push huge content to a new page and create blanks. */
+    .no-break, tr, .practice-box, .flashcard, .bingo-card, .word-item,
+    .translation-item, .ws-row, .sentence-item, .scramble-row, .trace-row,
+    .quiz-q, .callers-row, .caller-row, .spell-row, .word-bank-item,
+    .word-list-item, .answer-cell, .mm-card, .pic-card, .ph-activity,
+    .ph-word-item, .cw-clue {
       page-break-inside: avoid;
       break-inside: avoid;
     }
@@ -217,50 +224,50 @@ const baseStyles = (lang: string, accent: string, accentDark: string, settings: 
     }
     .header-bar {
       text-align: center;
-      margin-bottom: 6mm;
-      padding-bottom: 4mm;
-      border-bottom: 3px solid ${headerAccent};
+      margin-bottom: 3mm;
+      padding-bottom: 2mm;
+      border-bottom: 2.5px solid ${headerAccent};
     }
     .header-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 6mm;
-      margin-bottom: 3mm;
+      gap: 5mm;
+      margin-bottom: 1.5mm;
     }
     .logo {
-      font-size: 18pt;
+      font-size: 15pt;
       font-weight: 800;
       color: ${headerAccent};
     }
-    .topic-icon { font-size: 28pt; ${ink ? "filter: grayscale(1);" : ""} }
+    .topic-icon { font-size: 22pt; ${ink ? "filter: grayscale(1);" : ""} }
     .topic-title {
-      font-size: 16pt;
+      font-size: 14pt;
       font-weight: 800;
       color: ${ink ? "#000000" : accentDark};
     }
-    .word-count { font-size: 10pt; color: #6b7280; font-weight: 600; }
+    .word-count { font-size: 9pt; color: #6b7280; font-weight: 600; }
     .footer {
       text-align: center;
-      margin-top: 6mm;
-      padding-top: 3mm;
+      margin-top: 3mm;
+      padding-top: 1.5mm;
       border-top: 1px solid #e5e7eb;
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #9ca3af;
     }
     .info-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 4mm;
-      margin-bottom: 5mm;
-      padding: 3mm 4mm;
+      gap: 3mm;
+      margin-bottom: 3mm;
+      padding: 2mm 3mm;
       background: ${infoBg};
       border: ${infoBorder};
-      border-radius: 6px;
+      border-radius: 5px;
     }
     .info-field { display: flex; flex-direction: column; }
-    .info-label { font-size: 9pt; font-weight: 700; color: #4b5563; margin-bottom: 1mm; }
-    .info-input { border-bottom: 1.5px solid #d1d5db; height: 6mm; }
+    .info-label { font-size: 8.5pt; font-weight: 700; color: #4b5563; margin-bottom: 0.5mm; }
+    .info-input { border-bottom: 1.5px solid #d1d5db; height: 5mm; }
 
     /* Native Print (Ctrl/Cmd+P) always renders ink-friendly output regardless
      * of the Ink Saver toggle. The toggle controls the on-screen preview and
@@ -312,10 +319,8 @@ const baseStyles = (lang: string, accent: string, accentDark: string, settings: 
     }
 
     /* On-screen preview — same HTML, paper-card layout in the iframe.
-     * Print rules above are untouched, so html2pdf and Ctrl/Cmd+P keep
-     * pixel-accurate A4 output. The .voca-active toggle is driven by a
-     * postMessage script appended in htmlDoc(); first-of-type is the
-     * fallback when JS hasn't run yet so the user never sees blank space. */
+     * Content flows continuously so the teacher sees exactly what the
+     * PDF will produce. Print rules above keep pixel-accurate A4 output. */
     @media screen {
       html, body { background: #f3f4f6; }
       body { padding: 12px; min-height: 100vh; }
@@ -326,13 +331,9 @@ const baseStyles = (lang: string, accent: string, accentDark: string, settings: 
         padding: 20px 28px;
         border-radius: 12px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-        display: none;
       }
-      .sheet:first-of-type { display: block; }
-      body[data-voca-page-ready] .sheet { display: none; }
-      body[data-voca-page-ready] .sheet.voca-active { display: block; }
-      .header-bar { margin-bottom: 14px; padding-bottom: 10px; }
-      .footer { margin-top: 14px; padding-top: 8px; font-size: 10px; }
+      .header-bar { margin-bottom: 12px; padding-bottom: 8px; }
+      .footer { margin-top: 12px; padding-top: 6px; font-size: 10px; }
     }
     @media screen and (max-width: 720px) {
       body { padding: 8px; }
@@ -370,31 +371,6 @@ const htmlDoc = ({
   body: string;
 }) => {
   const dir = lang === "he" || lang === "ar" ? "rtl" : "ltr";
-  // Page-nav runtime: parent (PreviewModal) drives which .sheet is visible
-  // on screen via postMessage. Print and PDF export bypass this entirely
-  // because @media print and html2pdf both ignore display:none-by-screen-rule
-  // — every page still goes onto paper.
-  const pageNavScript = `
-    (function () {
-      var sheets = document.querySelectorAll('.sheet');
-      function setPage(n) {
-        var idx = Math.max(1, Math.min(sheets.length, n)) - 1;
-        for (var i = 0; i < sheets.length; i++) {
-          sheets[i].classList.toggle('voca-active', i === idx);
-        }
-      }
-      document.body.dataset.vocaPageReady = '1';
-      setPage(1);
-      window.addEventListener('message', function (e) {
-        var d = e.data;
-        if (d && d.type === 'voca:setPage') setPage(d.page);
-      });
-      // Tell the parent how many pages there are so it can render the counter.
-      try {
-        window.parent.postMessage({ type: 'voca:pages', count: sheets.length }, '*');
-      } catch (_) {}
-    })();
-  `;
   return `<!DOCTYPE html>
 <html lang="${lang}" dir="${dir}">
 <head>
@@ -403,7 +379,7 @@ const htmlDoc = ({
 <title>${escapeHtml(title)}</title>
 <style>${styles}</style>
 </head>
-<body>${body}<script>${pageNavScript}</script></body>
+<body>${body}</body>
 </html>`;
 };
 
@@ -419,30 +395,28 @@ const sheetHeader = (pack: TopicPack, subtitle: string) => `
   </div>
 `;
 
-const sheetFooter = (pageIndex: number, pageCount: number, pageLabel: string) => `
+// Single footer placed once at the very end of each worksheet. We dropped
+// the per-section page numbers because, with continuous flow + html2pdf
+// pagination, section index no longer maps to PDF page number. The print
+// dialog and PDF reader expose page numbers natively.
+const sheetFooter = () => `
   <div class="footer">
-    © ${new Date().getFullYear()} Vocaband • www.vocaband.com &nbsp;•&nbsp; ${escapeHtml(pageLabel)} ${pageIndex} / ${pageCount}
+    © ${new Date().getFullYear()} Vocaband • www.vocaband.com
   </div>
 `;
 
 // ---------- generators ----------
 
 const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
-  const { casing, audioQR, inkSaver, showTranslations, wordsPerPage } = settings;
+  const { casing, audioQR, inkSaver, showTranslations } = settings;
   const t = {
-    en: { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", page: "Page", listen: "Listen" },
-    he: { title: "גיליון עבודה - אוצר מילים", word: "אנגלית", translation: "תרגום", practice: "תרגול כתיבה", name: "שם:", date: "תאריך:", school: "בית ספר:", className: "כיתה:", page: "עמוד", listen: "הקשבה" },
-    ar: { title: "ورقة عمل - المفردات", word: "الإنجليزية", translation: "الترجمة", practice: "تمارين الكتابة", name: "الاسم:", date: "التاريخ:", school: "المدرسة:", className: "الصف:", page: "صفحة", listen: "استمع" },
+    en: { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", listen: "Listen" },
+    he: { title: "גיליון עבודה - אוצר מילים", word: "אנגלית", translation: "תרגום", practice: "תרגול כתיבה", name: "שם:", date: "תאריך:", school: "בית ספר:", className: "כיתה:", listen: "הקשבה" },
+    ar: { title: "ورقة عمل - المفردات", word: "الإنجليزية", translation: "الترجمة", practice: "تمارين الكتابة", name: "الاسم:", date: "التاريخ:", school: "المدرسة:", className: "الصف:", listen: "استمع" },
   }[lang as "en" | "he" | "ar"] || undefined;
-  const s = t || { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", page: "Page", listen: "Listen" };
+  const s = t || { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", listen: "Listen" };
 
   const today = new Date().toLocaleDateString(lang === "he" ? "he-IL" : lang === "ar" ? "ar-SA" : "en-US");
-  const ROWS_PER_PAGE = wordsPerPage;
-  const PRACTICE_PER_PAGE = 9;
-
-  const tablePages = chunk(words, ROWS_PER_PAGE);
-  const practicePages = chunk(words, PRACTICE_PER_PAGE);
-  const totalPages = tablePages.length + practicePages.length;
 
   const thBg = inkSaver
     ? "background: #ffffff; color: #000000; border-bottom: 2px solid #000000;"
@@ -459,110 +433,94 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, set
     baseStyles(lang, "#8b5cf6", "#7c3aed", settings) +
     `
     table { width: 100%; border-collapse: collapse; }
-    th { ${thBg} padding: 3mm 2mm; font-weight: 700; text-align: start; }
+    th { ${thBg} padding: 2mm 2mm; font-weight: 700; text-align: start; font-size: 0.95em; }
     th.num, td.num { width: 8%; text-align: center; }
     th.qr, td.qr { width: 14%; text-align: center; }
-    td { padding: 2.5mm 2mm; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+    td { padding: 1.8mm 2mm; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
     tr:nth-child(even) { background: ${evenRowBg}; }
     td.num { font-weight: 700; color: ${numColor}; }
     td.word { font-weight: 600; color: ${wordColor}; }
-    .qr-cell svg { display: block; width: 14mm; height: 14mm; margin: 0 auto; }
-    .practice-section { padding: 5mm; background: ${practiceBg}; border-radius: 8px; border: ${practiceBorder}; }
-    .practice-title { font-size: 14pt; font-weight: 800; color: ${practiceTitleColor}; margin-bottom: 4mm; text-align: center; }
-    .practice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
-    .practice-box { border: 1.5px solid #d1d5db; border-radius: 6px; padding: 3mm; background: white; min-height: 22mm; display: flex; flex-direction: column; }
-    .practice-label { font-size: 0.95em; color: ${practiceLabelColor}; font-weight: 700; margin-bottom: 2mm; }
-    .practice-input { border-bottom: 1.5px dotted #9ca3af; padding: 1.5mm 0; min-height: 5mm; font-size: 0.85em; }
+    .qr-cell svg { display: block; width: 12mm; height: 12mm; margin: 0 auto; }
+    .practice-section { padding: 4mm; background: ${practiceBg}; border-radius: 8px; border: ${practiceBorder}; margin-top: 4mm; }
+    .practice-title { font-size: 13pt; font-weight: 800; color: ${practiceTitleColor}; margin-bottom: 3mm; text-align: center; }
+    .practice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.5mm; }
+    .practice-box { border: 1.5px solid #d1d5db; border-radius: 6px; padding: 2.5mm; background: white; min-height: 18mm; display: flex; flex-direction: column; }
+    .practice-label { font-size: 0.9em; color: ${practiceLabelColor}; font-weight: 700; margin-bottom: 1.5mm; }
+    .practice-input { border-bottom: 1.5px dotted #9ca3af; padding: 1.2mm 0; min-height: 4mm; font-size: 0.8em; }
     .practice-input.en::before { content: "EN: "; color: #9ca3af; font-size: 0.85em; }
     .practice-input.tr::before { content: "${lang === "he" ? "תרגום: " : lang === "ar" ? "الترجمة: " : "Translation: "}"; color: #9ca3af; font-size: 0.85em; }
   `;
 
-  const tablePagesHTML = tablePages
-    .map((rows, pageIdx) => {
-      const startIdx = pageIdx * ROWS_PER_PAGE;
-      const isFirst = pageIdx === 0;
-      return `
-      <section class="sheet">
-        ${sheetHeader(pack, `${words.length} ${lang === "he" ? "מילים" : lang === "ar" ? "كلمة" : "words"}`)}
-        ${isFirst
-          ? `<div class="info-row no-break">
-              <div class="info-field"><span class="info-label">${escapeHtml(s.name)}</span><div class="info-input"></div></div>
-              <div class="info-field"><span class="info-label">${escapeHtml(s.date)}</span><div class="info-input">${today}</div></div>
-              <div class="info-field"><span class="info-label">${escapeHtml(s.school)}</span><div class="info-input"></div></div>
-              <div class="info-field"><span class="info-label">${escapeHtml(s.className)}</span><div class="info-input"></div></div>
-            </div>`
-          : ""}
-        <table>
-          <thead><tr>
-            <th class="num">#</th>
-            <th>${escapeHtml(s.word)}</th>
-            <th>${escapeHtml(s.translation)}</th>
-            ${audioQR ? `<th class="qr">🔊 ${escapeHtml(s.listen)}</th>` : ""}
-          </tr></thead>
-          <tbody>
-            ${rows
-              .map(
-                (w, i) => `
-              <tr>
-                <td class="num">${startIdx + i + 1}</td>
-                <td class="word"><span class="en">${escapeHtml(applyCasing(w.english, casing))}</span></td>
-                <td>${showTranslations ? escapeHtml(getTranslation(w, lang)) : blankLine("#9ca3af")}</td>
-                ${audioQR ? `<td class="qr qr-cell">${qrSvg(getAudioUrl(w.id), 50)}</td>` : ""}
-              </tr>`,
-              )
-              .join("")}
-          </tbody>
-        </table>
-        ${sheetFooter(pageIdx + 1, totalPages, s.page)}
-      </section>`;
-    })
-    .join("");
-
-  const practicePagesHTML = practicePages
-    .map((rows, pageIdx) => {
-      const startIdx = pageIdx * PRACTICE_PER_PAGE;
-      return `
-      <section class="sheet">
-        ${sheetHeader(pack, escapeHtml(s.practice))}
-        <div class="practice-section">
-          <div class="practice-title">✏️ ${escapeHtml(s.practice)}</div>
-          <div class="practice-grid">
-            ${rows
-              .map(
-                (_, i) => `
-              <div class="practice-box">
-                <div class="practice-label">${startIdx + i + 1}.</div>
-                <div class="practice-input en"></div>
-                <div class="practice-input tr"></div>
-              </div>`,
-              )
-              .join("")}
-          </div>
+  // One continuous container. Header at the top, info row once, then the
+  // full vocabulary table flows page-to-page automatically, followed by
+  // the practice grid (also flows). html2pdf paginates by physical A4
+  // height; rows / practice boxes are atomic via page-break-inside:avoid.
+  const body = `
+    <section class="sheet">
+      ${sheetHeader(pack, `${words.length} ${lang === "he" ? "מילים" : lang === "ar" ? "كلمة" : "words"}`)}
+      <div class="info-row no-break">
+        <div class="info-field"><span class="info-label">${escapeHtml(s.name)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(s.date)}</span><div class="info-input">${today}</div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(s.school)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(s.className)}</span><div class="info-input"></div></div>
+      </div>
+      <table>
+        <thead><tr>
+          <th class="num">#</th>
+          <th>${escapeHtml(s.word)}</th>
+          <th>${escapeHtml(s.translation)}</th>
+          ${audioQR ? `<th class="qr">🔊 ${escapeHtml(s.listen)}</th>` : ""}
+        </tr></thead>
+        <tbody>
+          ${words
+            .map(
+              (w, i) => `
+            <tr>
+              <td class="num">${i + 1}</td>
+              <td class="word"><span class="en">${escapeHtml(applyCasing(w.english, casing))}</span></td>
+              <td>${showTranslations ? escapeHtml(getTranslation(w, lang)) : blankLine("#9ca3af")}</td>
+              ${audioQR ? `<td class="qr qr-cell">${qrSvg(getAudioUrl(w.id), 50)}</td>` : ""}
+            </tr>`,
+            )
+            .join("")}
+        </tbody>
+      </table>
+      <div class="practice-section">
+        <div class="practice-title">✏️ ${escapeHtml(s.practice)}</div>
+        <div class="practice-grid">
+          ${words
+            .map(
+              (_, i) => `
+            <div class="practice-box">
+              <div class="practice-label">${i + 1}.</div>
+              <div class="practice-input en"></div>
+              <div class="practice-input tr"></div>
+            </div>`,
+            )
+            .join("")}
         </div>
-        ${sheetFooter(tablePages.length + pageIdx + 1, totalPages, s.page)}
-      </section>`;
-    })
-    .join("");
+      </div>
+      ${sheetFooter()}
+    </section>`;
 
   return htmlDoc({
     lang,
     title: `${pack.name} — ${s.title}`,
     styles,
-    body: tablePagesHTML + practicePagesHTML,
+    body,
   });
 };
 
 const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, audioQR, inkSaver } = settings;
   const t = {
-    en: { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" },
-    he: { title: "תרגיל התאמה", instructions: "כתבו את מספר המילה הנכונה באנגלית ליד כל תרגום.", englishWords: "מילים באנגלית", translations: "תרגומים", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
-    ar: { title: "تمرين المطابقة", instructions: "اكتب رقم الكلمة الإنجليزية الصحيحة بجانب كل ترجمة.", englishWords: "الكلمات الإنجليزية", translations: "الترجمات", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
-  }[lang as "en" | "he" | "ar"] || { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" };
+    en: { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", name: "Name:", date: "Date:" },
+    he: { title: "תרגיל התאמה", instructions: "כתבו את מספר המילה הנכונה באנגלית ליד כל תרגום.", englishWords: "מילים באנגלית", translations: "תרגומים", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
+    ar: { title: "تمرين المطابقة", instructions: "اكتب رقم الكلمة الإنجليزية الصحيحة بجانب كل ترجمة.", englishWords: "الكلمات الإنجليزية", translations: "الترجمات", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", name: "Name:", date: "Date:" };
 
-  const PER_PAGE = 18;
-  const groups = chunk(words, PER_PAGE);
-  const totalPages = groups.length + 1; // + answer key
+  const numbered = words.map((w, i) => ({ word: w, number: i + 1 }));
+  const shuffled = seededShuffle(numbered, hashString(pack.name));
 
   const wordItemBg = inkSaver ? "#ffffff" : "#f0fdf4";
   const wordItemBorder = inkSaver ? "#000000" : "#10b981";
@@ -576,69 +534,59 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
   const styles =
     baseStyles(lang, "#10b981", "#047857", settings) +
     `
-    .instructions { background: ${instructionsBg}; border: 2px solid ${accentColor}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
-    .section-title { font-size: 1.1em; font-weight: 800; color: ${accentDark}; margin: 5mm 0 3mm; padding-bottom: 1mm; border-bottom: 1.5px solid ${inkSaver ? "#d1d5db" : "#d1fae5"}; }
-    .pair-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
-    .word-item { display: flex; align-items: center; gap: 2mm; padding: 2.5mm 3mm; background: ${wordItemBg}; border: 1px solid ${wordItemBorder}; border-radius: 5px; }
+    .instructions { background: ${instructionsBg}; border: 2px solid ${accentColor}; border-radius: 6px; padding: 2mm 3mm; margin: 3mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .section-title { font-size: 1.05em; font-weight: 800; color: ${accentDark}; margin: 4mm 0 2mm; padding-bottom: 1mm; border-bottom: 1.5px solid ${inkSaver ? "#d1d5db" : "#d1fae5"}; }
+    .pair-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }
+    .word-item { display: flex; align-items: center; gap: 2mm; padding: 1.8mm 2.5mm; background: ${wordItemBg}; border: 1px solid ${wordItemBorder}; border-radius: 5px; font-size: 0.95em; }
     .word-num { font-weight: 800; color: ${accentColor}; min-width: 7mm; }
     .word-text { font-weight: 600; color: ${accentDark}; flex: 1; }
-    .word-qr svg { display: block; width: 11mm; height: 11mm; }
-    .translation-item { display: flex; justify-content: space-between; align-items: center; padding: 2.5mm 3mm; background: ${trItemBg}; border: 1px solid ${trItemBorder}; border-radius: 5px; gap: 3mm; }
+    .word-qr svg { display: block; width: 10mm; height: 10mm; }
+    .translation-item { display: flex; justify-content: space-between; align-items: center; padding: 1.8mm 2.5mm; background: ${trItemBg}; border: 1px solid ${trItemBorder}; border-radius: 5px; gap: 2mm; font-size: 0.95em; }
     .translation-text { font-weight: 600; color: ${trTextColor}; }
-    .number-box { min-width: 12mm; height: 7mm; border: 1.5px solid #6b7280; border-radius: 4px; }
-    .answer-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
-    .answer-cell { display: flex; gap: 2mm; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.9em; }
+    .number-box { min-width: 11mm; height: 6mm; border: 1.5px solid #6b7280; border-radius: 4px; }
+    .answer-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5mm; }
+    .answer-cell { display: flex; gap: 2mm; padding: 1.5mm 2.5mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.88em; }
     .answer-num { font-weight: 800; color: ${accentColor}; min-width: 6mm; }
   `;
 
-  const pageHTML = groups
-    .map((group, pageIdx) => {
-      const startIdx = pageIdx * PER_PAGE;
-      const numbered = group.map((w, i) => ({ word: w, number: startIdx + i + 1 }));
-      const shuffled = seededShuffle(numbered, hashString(pack.name) ^ pageIdx);
-
-      return `
-      <section class="sheet">
-        ${sheetHeader(pack, t.title)}
-        ${pageIdx === 0
-          ? `<div class="instructions">✏️ ${escapeHtml(t.instructions)}</div>
-             <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
-               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
-               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
-             </div>`
-          : ""}
-        <div class="section-title">📝 ${escapeHtml(t.englishWords)}</div>
-        <div class="pair-grid">
-          ${numbered
-            .map(
-              (n) => `
-            <div class="word-item">
-              <span class="word-num">${n.number}.</span>
-              <span class="word-text en">${escapeHtml(applyCasing(n.word.english, casing))}</span>
-              ${audioQR ? `<span class="word-qr">${qrSvg(getAudioUrl(n.word.id), 40)}</span>` : ""}
-            </div>`,
-            )
-            .join("")}
-        </div>
-        <div class="section-title">✏️ ${escapeHtml(t.translations)}</div>
-        <div class="pair-grid">
-          ${shuffled
-            .map(
-              (n) => `
-            <div class="translation-item">
-              <span class="translation-text">${escapeHtml(getTranslation(n.word, lang))}</span>
-              <div class="number-box"></div>
-            </div>`,
-            )
-            .join("")}
-        </div>
-        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
-      </section>`;
-    })
-    .join("");
-
-  const answerKeyHTML = `
+  // Single continuous sheet: header → instructions → info → words grid →
+  // translations grid. Answer key on its own physical page (teacher-only).
+  const body = `
     <section class="sheet">
+      ${sheetHeader(pack, t.title)}
+      <div class="instructions">✏️ ${escapeHtml(t.instructions)}</div>
+      <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+      </div>
+      <div class="section-title">📝 ${escapeHtml(t.englishWords)}</div>
+      <div class="pair-grid">
+        ${numbered
+          .map(
+            (n) => `
+          <div class="word-item">
+            <span class="word-num">${n.number}.</span>
+            <span class="word-text en">${escapeHtml(applyCasing(n.word.english, casing))}</span>
+            ${audioQR ? `<span class="word-qr">${qrSvg(getAudioUrl(n.word.id), 36)}</span>` : ""}
+          </div>`,
+          )
+          .join("")}
+      </div>
+      <div class="section-title">✏️ ${escapeHtml(t.translations)}</div>
+      <div class="pair-grid">
+        ${shuffled
+          .map(
+            (n) => `
+          <div class="translation-item">
+            <span class="translation-text">${escapeHtml(getTranslation(n.word, lang))}</span>
+            <div class="number-box"></div>
+          </div>`,
+          )
+          .join("")}
+      </div>
+      ${sheetFooter()}
+    </section>
+    <section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="section-title">🔑 ${escapeHtml(t.answerKey)}</div>
       <div class="answer-grid">
@@ -653,28 +601,24 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
           )
           .join("")}
       </div>
-      ${sheetFooter(totalPages, totalPages, t.page)}
+      ${sheetFooter()}
     </section>`;
 
   return htmlDoc({
     lang,
     title: `${pack.name} — ${t.title}`,
     styles,
-    body: pageHTML + answerKeyHTML,
+    body,
   });
 };
 
 const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, audioQR, inkSaver, showTranslations } = settings;
   const t = {
-    en: { title: "Flashcards", instructions: "Cut along the solid lines. Fold along the dashed line — English on the front, translation on the back.", english: "English", translation: "Translation", page: "Page" },
-    he: { title: "כרטיסיות", instructions: "גזרו לאורך הקווים המלאים. קפלו לאורך הקו המקווקו — אנגלית בקדמה, תרגום בגב.", english: "אנגלית", translation: "תרגום", page: "עמוד" },
-    ar: { title: "بطاقات تعليمية", instructions: "قص على طول الخطوط المتصلة. اطوِ على الخط المتقطع — الإنجليزية أمامًا والترجمة خلفًا.", english: "الإنجليزية", translation: "الترجمة", page: "صفحة" },
-  }[lang as "en" | "he" | "ar"] || { title: "Flashcards", instructions: "Cut along the solid lines. Fold along the dashed line — English on the front, translation on the back.", english: "English", translation: "Translation", page: "Page" };
-
-  const PER_PAGE = 6;
-  const pages = chunk(words, PER_PAGE);
-  const totalPages = pages.length;
+    en: { title: "Flashcards", instructions: "Cut along the solid lines. Fold along the dashed line — English on the front, translation on the back.", english: "English", translation: "Translation" },
+    he: { title: "כרטיסיות", instructions: "גזרו לאורך הקווים המלאים. קפלו לאורך הקו המקווקו — אנגלית בקדמה, תרגום בגב.", english: "אנגלית", translation: "תרגום" },
+    ar: { title: "بطاقات تعليمية", instructions: "قص على طول الخطوط المتصلة. اطوِ على الخط المتقطع — الإنجليزية أمامًا والترجمة خلفًا.", english: "الإنجليزية", translation: "الترجمة" },
+  }[lang as "en" | "he" | "ar"] || { title: "Flashcards", instructions: "Cut along the solid lines. Fold along the dashed line — English on the front, translation on the back.", english: "English", translation: "Translation" };
 
   const cardBorder = inkSaver ? "#000000" : "#93c5fd";
   const backBorder = inkSaver ? "#000000" : "#fcd34d";
@@ -683,66 +627,64 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, se
   const accentColor = inkSaver ? "#000000" : "#3b82f6";
   const accentDark = inkSaver ? "#000000" : "#1e40af";
 
+  // 3-column grid + shorter card height packs ~9 cards per A4 portrait
+  // (vs 6 in the old 2-col layout). page-break-inside:avoid on .flashcard
+  // ensures cards never split across pages so cutting lines stay clean.
   const styles =
     baseStyles(lang, "#3b82f6", "#1d4ed8", settings) +
     `
-    .instructions { background: ${inkSaver ? "#ffffff" : "#eff6ff"}; border: 2px solid ${accentColor}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
-    .cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6mm; margin-top: 4mm; }
-    .flashcard { display: flex; flex-direction: column; height: 78mm; }
-    .flashcard-front, .flashcard-back { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid ${cardBorder}; border-radius: 8px; padding: 5mm; text-align: center; position: relative; }
+    .instructions { background: ${inkSaver ? "#ffffff" : "#eff6ff"}; border: 2px solid ${accentColor}; border-radius: 6px; padding: 2mm 3mm; margin: 3mm 0; text-align: center; color: ${accentDark}; font-weight: 600; font-size: 0.9em; }
+    .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin-top: 3mm; }
+    .flashcard { display: flex; flex-direction: column; height: 62mm; }
+    .flashcard-front, .flashcard-back { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid ${cardBorder}; border-radius: 8px; padding: 3mm; text-align: center; position: relative; }
     .flashcard-front { background: ${frontBg}; }
     .flashcard-back { background: ${backBg}; border-color: ${backBorder}; }
-    .flashcard-number { position: absolute; top: 2mm; ${lang === "he" || lang === "ar" ? "left" : "right"}: 2mm; font-size: 0.85em; font-weight: 800; color: #6b7280; background: white; padding: 1mm 3mm; border-radius: 999px; border: 1px solid #d1d5db; }
-    .flashcard-word { font-size: 1.6em; font-weight: 800; color: ${inkSaver ? "#000000" : "#1f2937"}; margin: 3mm 0; }
-    .flashcard-hint { font-size: 0.75em; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-    .fold-line { height: 0; border-top: 1.5px dashed #6b7280; margin: 2mm 0; }
-    .flashcard-qr { position: absolute; top: 2mm; ${lang === "he" || lang === "ar" ? "right" : "left"}: 2mm; }
-    .flashcard-qr svg { display: block; width: 12mm; height: 12mm; background: white; padding: 1mm; border-radius: 3px; }
+    .flashcard-number { position: absolute; top: 1.5mm; ${lang === "he" || lang === "ar" ? "left" : "right"}: 1.5mm; font-size: 0.8em; font-weight: 800; color: #6b7280; background: white; padding: 0.5mm 2mm; border-radius: 999px; border: 1px solid #d1d5db; }
+    .flashcard-word { font-size: 1.35em; font-weight: 800; color: ${inkSaver ? "#000000" : "#1f2937"}; margin: 1.5mm 0; }
+    .flashcard-hint { font-size: 0.7em; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+    .fold-line { height: 0; border-top: 1.5px dashed #6b7280; margin: 1.5mm 0; }
+    .flashcard-qr { position: absolute; top: 1.5mm; ${lang === "he" || lang === "ar" ? "right" : "left"}: 1.5mm; }
+    .flashcard-qr svg { display: block; width: 10mm; height: 10mm; background: white; padding: 1mm; border-radius: 3px; }
   `;
 
-  const pagesHTML = pages
-    .map((group, pageIdx) => {
-      const startIdx = pageIdx * PER_PAGE;
-      const cards = group
-        .map(
-          (w, i) => `
-        <div class="flashcard no-break">
-          <div class="flashcard-front">
-            <div class="flashcard-number">${startIdx + i + 1}</div>
-            ${audioQR ? `<div class="flashcard-qr">${qrSvg(getAudioUrl(w.id), 45)}</div>` : ""}
-            <div class="flashcard-word en">${escapeHtml(applyCasing(w.english, casing))}</div>
-            <div class="flashcard-hint">${escapeHtml(t.english)}</div>
-          </div>
-          <div class="fold-line"></div>
-          <div class="flashcard-back">
-            <div class="flashcard-number">${startIdx + i + 1}</div>
-            <div class="flashcard-word">${showTranslations ? escapeHtml(getTranslation(w, lang)) : blankLine("#9ca3af")}</div>
-            <div class="flashcard-hint">${escapeHtml(t.translation)}</div>
-          </div>
-        </div>`,
-        )
-        .join("");
-
-      return `
-      <section class="sheet">
-        ${sheetHeader(pack, t.title)}
-        ${pageIdx === 0 ? `<div class="instructions">✂️ ${escapeHtml(t.instructions)}</div>` : ""}
-        <div class="cards-grid">${cards}</div>
-        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
-      </section>`;
-    })
+  const cardsHTML = words
+    .map(
+      (w, i) => `
+      <div class="flashcard no-break">
+        <div class="flashcard-front">
+          <div class="flashcard-number">${i + 1}</div>
+          ${audioQR ? `<div class="flashcard-qr">${qrSvg(getAudioUrl(w.id), 40)}</div>` : ""}
+          <div class="flashcard-word en">${escapeHtml(applyCasing(w.english, casing))}</div>
+          <div class="flashcard-hint">${escapeHtml(t.english)}</div>
+        </div>
+        <div class="fold-line"></div>
+        <div class="flashcard-back">
+          <div class="flashcard-number">${i + 1}</div>
+          <div class="flashcard-word">${showTranslations ? escapeHtml(getTranslation(w, lang)) : blankLine("#9ca3af")}</div>
+          <div class="flashcard-hint">${escapeHtml(t.translation)}</div>
+        </div>
+      </div>`,
+    )
     .join("");
 
-  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: pagesHTML });
+  const body = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.title)}
+      <div class="instructions">✂️ ${escapeHtml(t.instructions)}</div>
+      <div class="cards-grid">${cardsHTML}</div>
+      ${sheetFooter()}
+    </section>`;
+
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, audioQR, inkSaver, showTranslations, bingoGridSize, bingoCardCount } = settings;
   const t = {
-    en: { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation. Win by completing a full row, column, or diagonal!", free: "FREE", wordList: "Word List", card: "Card", page: "Page", callersTitle: "Caller's Checklist", callersInstructions: "Read these English words to the class in any order. Tick each word as you call it." },
-    he: { title: "כרטיסי בינגו", instructions: "המורה אומרת מילים באנגלית, התלמידים מסמנים את התרגום. מנצחים על-ידי השלמת שורה, טור או אלכסון מלא!", free: "חינם", wordList: "רשימת מילים", card: "כרטיס", page: "עמוד", callersTitle: "רשימת הקראה למורה", callersInstructions: "הקריאו לתלמידים את המילים באנגלית בכל סדר. סמנו כל מילה אחרי שהקראתם אותה." },
-    ar: { title: "بطاقات البينغو", instructions: "يقول المعلم الكلمات بالإنجليزية، ويضع الطلاب علامة على الترجمة. الفوز بإكمال صف أو عمود أو قطر كامل!", free: "مجاني", wordList: "قائمة الكلمات", card: "بطاقة", page: "صفحة", callersTitle: "قائمة المعلم للنداء", callersInstructions: "اقرأ هذه الكلمات الإنجليزية للصف بأي ترتيب. ضع علامة على كل كلمة بعد قراءتها." },
-  }[lang as "en" | "he" | "ar"] || { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation.", free: "FREE", wordList: "Word List", card: "Card", page: "Page", callersTitle: "Caller's Checklist", callersInstructions: "Read these English words to the class in any order. Tick each word as you call it." };
+    en: { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation. Win by completing a full row, column, or diagonal!", free: "FREE", wordList: "Word List", card: "Card", callersTitle: "Caller's Checklist", callersInstructions: "Read these English words to the class in any order. Tick each word as you call it." },
+    he: { title: "כרטיסי בינגו", instructions: "המורה אומרת מילים באנגלית, התלמידים מסמנים את התרגום. מנצחים על-ידי השלמת שורה, טור או אלכסון מלא!", free: "חינם", wordList: "רשימת מילים", card: "כרטיס", callersTitle: "רשימת הקראה למורה", callersInstructions: "הקריאו לתלמידים את המילים באנגלית בכל סדר. סמנו כל מילה אחרי שהקראתם אותה." },
+    ar: { title: "بطاقات البينغو", instructions: "يقول المعلم الكلمات بالإنجليزية، ويضع الطلاب علامة على الترجمة. الفوز بإكمال صف أو عمود أو قطر كامل!", free: "مجاني", wordList: "قائمة الكلمات", card: "بطاقة", callersTitle: "قائمة المعلم للنداء", callersInstructions: "اقرأ هذه الكلمات الإنجليزية للصف بأي ترتيب. ضع علامة على كل كلمة بعد قراءتها." },
+  }[lang as "en" | "he" | "ar"] || { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation.", free: "FREE", wordList: "Word List", card: "Card", callersTitle: "Caller's Checklist", callersInstructions: "Read these English words to the class in any order. Tick each word as you call it." };
 
   // Cells per card depends on grid size. Centre cell is "free" only on odd
   // grids (3, 5, 7) — even grids skip the free centre because there isn't
@@ -761,8 +703,6 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
   // overflow. Tuned to fit two-word translations without truncation at A4.
   const cellMinHeight = bingoGridSize === 3 ? "50mm" : bingoGridSize === 5 ? "28mm" : "18mm";
   const cellFontSize = bingoGridSize === 3 ? "1.4em" : bingoGridSize === 5 ? "1em" : "0.75em";
-
-  const totalPages = bingoCardCount + 2; // cards + word list + caller's checklist
 
   const accentColor = inkSaver ? "#000000" : "#f59e0b";
   const accentDark = inkSaver ? "#000000" : "#d97706";
@@ -802,6 +742,9 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
     .callers-tr { color: #6b7280; font-size: 0.85em; }
   `;
 
+  // Each bingo card sits on its own page — cards are designed to be cut out
+  // and distributed to students. Forced page break between cards via
+  // .page-break (first card flows from the instructions on page 1).
   const cardPages = Array.from({ length: bingoCardCount }, (_, cardIdx) => {
     const seed = hashString(pack.name) ^ (cardIdx + 1);
     const picked = seededShuffle(pool, seed).slice(0, cellsToFill);
@@ -819,22 +762,26 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
     } else {
       picked.forEach((w) => cells.push({ text: getTranslation(w, lang), free: false }));
     }
+    const pageBreakClass = cardIdx === 0 ? "" : " page-break";
     return `
-    <section class="sheet">
-      ${sheetHeader(pack, t.title)}
-      ${cardIdx === 0 ? `<div class="instructions">🎮 ${escapeHtml(t.instructions)}</div>` : ""}
+    <section class="sheet${pageBreakClass}">
+      ${cardIdx === 0 ? sheetHeader(pack, t.title) + `<div class="instructions">🎮 ${escapeHtml(t.instructions)}</div>` : ""}
       <div class="bingo-card no-break">
         <div class="bingo-card-title">${escapeHtml(t.card)} ${cardIdx + 1}</div>
         <div class="bingo-grid">
           ${cells.map((c) => `<div class="bingo-cell ${c.free ? "free" : ""}">${escapeHtml(c.text)}</div>`).join("")}
         </div>
       </div>
-      ${sheetFooter(cardIdx + 1, totalPages, t.page)}
     </section>`;
   }).join("");
 
-  const wordListPage = `
-    <section class="sheet">
+  // Word list + caller's checklist flow continuously on the teacher-only
+  // pages at the end. Forced page-break before each so they don't share a
+  // page with the last bingo card (teacher pages shouldn't be cut out
+  // alongside student cards).
+  const callerOrder = seededShuffle(words, hashString(pack.name) ^ 0xca11);
+  const teacherPages = `
+    <section class="sheet page-break">
       ${sheetHeader(pack, t.wordList)}
       <div class="word-list-section">
         <div class="word-list-title">📝 ${escapeHtml(t.wordList)}</div>
@@ -854,16 +801,8 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
             .join("")}
         </div>
       </div>
-      ${sheetFooter(bingoCardCount + 1, totalPages, t.page)}
-    </section>`;
-
-  // Caller's checklist for the teacher: checkbox + numbered word + (optional)
-  // translation so they can read either side. Shuffled so the call order
-  // varies between print runs without changing the cards' layouts (cards are
-  // seeded per-card; this list uses its own seed).
-  const callerOrder = seededShuffle(words, hashString(pack.name) ^ 0xca11);
-  const callersListPage = `
-    <section class="sheet">
+    </section>
+    <section class="sheet page-break">
       ${sheetHeader(pack, t.callersTitle)}
       <div class="instructions">📣 ${escapeHtml(t.callersInstructions)}</div>
       <div class="callers-section">
@@ -882,10 +821,10 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
             .join("")}
         </div>
       </div>
-      ${sheetFooter(totalPages, totalPages, t.page)}
+      ${sheetFooter()}
     </section>`;
 
-  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: cardPages + wordListPage + callersListPage });
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: cardPages + teacherPages });
 };
 
 const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
@@ -898,10 +837,10 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, se
   const toGridCase = (s: string) =>
     gridCase === "lower" ? s.toLowerCase() : s.toUpperCase();
   const t = {
-    en: { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:", page: "Page" },
-    he: { title: "חיפוש מילים", instructions: "מצאו את כל המילים המוסתרות באנגלית. המילים יכולות להיות אופקיות, אנכיות או אלכסוניות.", wordsToFind: "מילים למציאה", answerKey: "פתרון", name: "שם:", date: "תאריך:", className: "כיתה:", page: "עמוד" },
-    ar: { title: "بحث الكلمات", instructions: "ابحث عن جميع الكلمات الإنجليزية المخفية. يمكن أن تكون الكلمات أفقية أو عمودية أو قطرية.", wordsToFind: "الكلمات المطلوبة", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:", className: "الصف:", page: "صفحة" },
-  }[lang as "en" | "he" | "ar"] || { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:", page: "Page" };
+    en: { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" },
+    he: { title: "חיפוש מילים", instructions: "מצאו את כל המילים המוסתרות באנגלית. המילים יכולות להיות אופקיות, אנכיות או אלכסוניות.", wordsToFind: "מילים למציאה", answerKey: "פתרון", name: "שם:", date: "תאריך:", className: "כיתה:" },
+    ar: { title: "بحث الكلمات", instructions: "ابحث عن جميع الكلمات الإنجليزية المخفية. يمكن أن تكون الكلمات أفقية أو عمودية أو قطرية.", wordsToFind: "الكلمات المطلوبة", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:", className: "الصف:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" };
 
   // Cap and filter to letters-only English; sort longer first to improve placement success.
   // Internally we work in uppercase letters; we lowercase at render time when needed.
@@ -1038,9 +977,8 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, se
           ${wordListHTML}
         </div>
       </div>
-      ${sheetFooter(1, 2, t.page)}
     </section>
-    <section class="sheet">
+    <section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="ws-content">
         <div class="ws-grid">${cellHTML(true)}</div>
@@ -1049,7 +987,7 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, se
           ${wordListHTML}
         </div>
       </div>
-      ${sheetFooter(2, 2, t.page)}
+      ${sheetFooter()}
     </section>`;
 
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
@@ -1058,10 +996,10 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, se
 const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, audioQR, inkSaver, showTranslations } = settings;
   const t = {
-    en: { title: "Fill in the Blank", instructions: "Use the words from the word bank to fill in each blank.", wordBank: "Word Bank", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:", className: "Class:" },
-    he: { title: "השלמת חסר", instructions: "השתמשו במילים מבנק המילים כדי להשלים כל חסר.", wordBank: "בנק מילים", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:", className: "כיתה:" },
-    ar: { title: "املأ الفراغ", instructions: "استخدم الكلمات من بنك الكلمات لملء كل فراغ.", wordBank: "بنك الكلمات", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:", className: "الصف:" },
-  }[lang as "en" | "he" | "ar"] || { title: "Fill in the Blank", instructions: "Use the words from the word bank to fill in each blank.", wordBank: "Word Bank", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:", className: "Class:" };
+    en: { title: "Fill in the Blank", instructions: "Use the words from the word bank to fill in each blank.", wordBank: "Word Bank", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" },
+    he: { title: "השלמת חסר", instructions: "השתמשו במילים מבנק המילים כדי להשלים כל חסר.", wordBank: "בנק מילים", answerKey: "פתרון", name: "שם:", date: "תאריך:", className: "כיתה:" },
+    ar: { title: "املأ الفراغ", instructions: "استخدم الكلمات من بنك الكلمات لملء كل فراغ.", wordBank: "بنك الكلمات", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:", className: "الصف:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Fill in the Blank", instructions: "Use the words from the word bank to fill in each blank.", wordBank: "Word Bank", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" };
 
   const BLANK = "____________";
   const seedBase = hashString(pack.name);
@@ -1096,10 +1034,6 @@ const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, set
   const items = words.map(buildItem);
   const bank = seededShuffle(words, seedBase ^ 0xbeef);
 
-  const PER_PAGE = 8;
-  const sentencePages = chunk(items, PER_PAGE);
-  const totalPages = sentencePages.length + 1; // + answer key
-
   const accent = inkSaver ? "#000000" : "#0ea5e9";
   const accentDark = inkSaver ? "#000000" : "#0369a1";
   const softBg = inkSaver ? "#ffffff" : "#f0f9ff";
@@ -1110,21 +1044,21 @@ const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, set
   const styles =
     baseStyles(lang, "#0ea5e9", "#0369a1", settings) +
     `
-    .instructions { background: ${softBg}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
-    .word-bank { background: ${bankBg}; border: 2px solid ${bankBorder}; border-radius: 8px; padding: 4mm; margin: 4mm 0; }
-    .word-bank-title { font-weight: 800; color: ${accentDark}; margin-bottom: 3mm; text-align: center; font-size: 1.05em; }
-    .word-bank-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
-    .word-bank-item { display: flex; align-items: center; gap: 2mm; padding: 2mm 3mm; background: white; border: 1px solid ${bankBorder}; border-radius: 4px; font-size: 0.95em; }
+    .instructions { background: ${softBg}; border: 2px solid ${accent}; border-radius: 6px; padding: 2mm 3mm; margin: 3mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .word-bank { background: ${bankBg}; border: 2px solid ${bankBorder}; border-radius: 8px; padding: 3mm; margin: 3mm 0; }
+    .word-bank-title { font-weight: 800; color: ${accentDark}; margin-bottom: 2mm; text-align: center; font-size: 1.05em; }
+    .word-bank-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5mm; }
+    .word-bank-item { display: flex; align-items: center; gap: 2mm; padding: 1.5mm 2.5mm; background: white; border: 1px solid ${bankBorder}; border-radius: 4px; font-size: 0.92em; }
     .word-bank-en { font-weight: 700; color: ${inkSaver ? "#000000" : "#1f2937"}; flex: 1; }
     .word-bank-tr { color: #6b7280; font-size: 0.85em; }
-    .word-bank-qr svg { display: block; width: 9mm; height: 9mm; }
-    .sentence-list { display: flex; flex-direction: column; gap: 3mm; margin-top: 4mm; }
-    .sentence-item { display: flex; gap: 3mm; padding: 3mm 4mm; background: ${sentenceBg}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 6px; min-height: 12mm; align-items: center; }
-    .sentence-num { font-weight: 800; color: ${accent}; min-width: 8mm; font-size: 1.1em; }
-    .sentence-text { flex: 1; line-height: 1.7; }
+    .word-bank-qr svg { display: block; width: 8mm; height: 8mm; }
+    .sentence-list { display: flex; flex-direction: column; gap: 2mm; margin-top: 3mm; }
+    .sentence-item { display: flex; gap: 2.5mm; padding: 2mm 3mm; background: ${sentenceBg}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 6px; min-height: 9mm; align-items: center; }
+    .sentence-num { font-weight: 800; color: ${accent}; min-width: 7mm; font-size: 1.05em; }
+    .sentence-text { flex: 1; line-height: 1.5; }
     .sentence-text .blank { font-weight: 800; letter-spacing: 1px; color: ${accent}; }
-    .answer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }
-    .answer-cell { display: flex; gap: 2mm; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.9em; }
+    .answer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5mm; }
+    .answer-cell { display: flex; gap: 2mm; padding: 1.5mm 2.5mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.88em; }
     .answer-num { font-weight: 800; color: ${accent}; min-width: 6mm; }
   `;
 
@@ -1149,39 +1083,29 @@ const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, set
       </div>
     </div>`;
 
-  const sentencePagesHTML = sentencePages
-    .map((group, pageIdx) => {
-      const startIdx = pageIdx * PER_PAGE;
-      return `
-      <section class="sheet">
-        ${sheetHeader(pack, t.title)}
-        ${pageIdx === 0
-          ? `<div class="instructions">✏️ ${escapeHtml(t.instructions)}</div>
-             <div class="info-row no-break" style="grid-template-columns: repeat(3, 1fr);">
-               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
-               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
-               <div class="info-field"><span class="info-label">${escapeHtml(t.className)}</span><div class="info-input"></div></div>
-             </div>
-             ${wordBankHTML}`
-          : ""}
-        <div class="sentence-list">
-          ${group
-            .map(
-              (item, i) => `
-            <div class="sentence-item no-break">
-              <span class="sentence-num">${startIdx + i + 1}.</span>
-              <span class="sentence-text en">${renderSentence(item.sentence)}</span>
-            </div>`,
-            )
-            .join("")}
-        </div>
-        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
-      </section>`;
-    })
-    .join("");
-
-  const answerKeyHTML = `
+  const body = `
     <section class="sheet">
+      ${sheetHeader(pack, t.title)}
+      <div class="instructions">✏️ ${escapeHtml(t.instructions)}</div>
+      <div class="info-row no-break" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(t.className)}</span><div class="info-input"></div></div>
+      </div>
+      ${wordBankHTML}
+      <div class="sentence-list">
+        ${items
+          .map(
+            (item, i) => `
+          <div class="sentence-item no-break">
+            <span class="sentence-num">${i + 1}.</span>
+            <span class="sentence-text en">${renderSentence(item.sentence)}</span>
+          </div>`,
+          )
+          .join("")}
+      </div>
+    </section>
+    <section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="answer-grid">
         ${items
@@ -1194,23 +1118,19 @@ const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, set
           )
           .join("")}
       </div>
-      ${sheetFooter(totalPages, totalPages, t.page)}
+      ${sheetFooter()}
     </section>`;
 
-  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: sentencePagesHTML + answerKeyHTML });
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 const generateSpellingTestHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, audioQR, inkSaver } = settings;
   const t = {
-    en: { title: "Spelling Test", instructions: "Listen to your teacher and write each word on the correct line.", studentTitle: "✍️ Student Sheet", callerTitle: "📣 Teacher's Caller List", callerInstructions: "Read each English word aloud. Tick it after you've called it.", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" },
-    he: { title: "מבחן איות", instructions: "הקשיבו למורה וכתבו כל מילה על השורה הנכונה.", studentTitle: "✍️ דף תלמיד", callerTitle: "📣 רשימת הקראה למורה", callerInstructions: "הקריאו כל מילה בקול. סמנו אחרי שהקראתם.", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
-    ar: { title: "اختبار الإملاء", instructions: "استمع للمعلم واكتب كل كلمة على السطر الصحيح.", studentTitle: "✍️ ورقة الطالب", callerTitle: "📣 قائمة المعلم للنداء", callerInstructions: "اقرأ كل كلمة بصوت عالٍ. ضع علامة بعد قراءتها.", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
-  }[lang as "en" | "he" | "ar"] || { title: "Spelling Test", instructions: "Listen to your teacher and write each word on the correct line.", studentTitle: "✍️ Student Sheet", callerTitle: "📣 Teacher's Caller List", callerInstructions: "Read each English word aloud. Tick it after you've called it.", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" };
-
-  const PER_PAGE = 20;
-  const studentPages = chunk(words, PER_PAGE);
-  const totalPages = studentPages.length + 1; // + caller's list
+    en: { title: "Spelling Test", instructions: "Listen to your teacher and write each word on the correct line.", studentTitle: "✍️ Student Sheet", callerTitle: "📣 Teacher's Caller List", callerInstructions: "Read each English word aloud. Tick it after you've called it.", answerKey: "Answer Key", name: "Name:", date: "Date:" },
+    he: { title: "מבחן איות", instructions: "הקשיבו למורה וכתבו כל מילה על השורה הנכונה.", studentTitle: "✍️ דף תלמיד", callerTitle: "📣 רשימת הקראה למורה", callerInstructions: "הקריאו כל מילה בקול. סמנו אחרי שהקראתם.", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
+    ar: { title: "اختبار الإملاء", instructions: "استمع للمعلم واكتب كل كلمة على السطر الصحيح.", studentTitle: "✍️ ورقة الطالب", callerTitle: "📣 قائمة المعلم للنداء", callerInstructions: "اقرأ كل كلمة بصوت عالٍ. ضع علامة بعد قراءتها.", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Spelling Test", instructions: "Listen to your teacher and write each word on the correct line.", studentTitle: "✍️ Student Sheet", callerTitle: "📣 Teacher's Caller List", callerInstructions: "Read each English word aloud. Tick it after you've called it.", answerKey: "Answer Key", name: "Name:", date: "Date:" };
 
   const lineColor = inkSaver ? "#000000" : "#94a3b8";
   const accent = inkSaver ? "#000000" : "#0ea5e9";
@@ -1219,51 +1139,41 @@ const generateSpellingTestHTML = (pack: TopicPack, words: Word[], lang: string, 
   const styles =
     baseStyles(lang, accent, accentDark, settings) +
     `
-    .instructions { background: ${inkSaver ? "#ffffff" : "#f0f9ff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
-    .spell-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 8mm; row-gap: 4mm; margin-top: 3mm; }
-    .spell-row { display: flex; align-items: baseline; gap: 3mm; padding: 1mm 0; }
-    .spell-num { font-weight: 800; color: ${accent}; min-width: 9mm; text-align: end; }
-    .spell-line { flex: 1; border-bottom: 1.5px solid ${lineColor}; height: 7mm; }
-    .caller-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 6mm; row-gap: 2mm; margin-top: 3mm; }
-    .caller-row { display: flex; align-items: center; gap: 2mm; padding: 2mm 3mm; border: 1px solid ${inkSaver ? "#000000" : "#e0f2fe"}; border-radius: 4px; background: ${inkSaver ? "#ffffff" : "#f0f9ff"}; }
+    .instructions { background: ${inkSaver ? "#ffffff" : "#f0f9ff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 2mm 3mm; margin: 3mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .spell-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 6mm; row-gap: 3mm; margin-top: 3mm; }
+    .spell-row { display: flex; align-items: baseline; gap: 2.5mm; padding: 0.5mm 0; }
+    .spell-num { font-weight: 800; color: ${accent}; min-width: 8mm; text-align: end; }
+    .spell-line { flex: 1; border-bottom: 1.5px solid ${lineColor}; height: 6mm; }
+    .caller-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 5mm; row-gap: 1.5mm; margin-top: 3mm; }
+    .caller-row { display: flex; align-items: center; gap: 2mm; padding: 1.5mm 2.5mm; border: 1px solid ${inkSaver ? "#000000" : "#e0f2fe"}; border-radius: 4px; background: ${inkSaver ? "#ffffff" : "#f0f9ff"}; font-size: 0.95em; }
     .caller-check { width: 4mm; height: 4mm; border: 1.5px solid ${inkSaver ? "#000000" : accent}; border-radius: 2px; flex-shrink: 0; }
     .caller-num { font-weight: 800; color: ${accent}; min-width: 6mm; }
     .caller-en { flex: 1; font-weight: 700; color: ${inkSaver ? "#000000" : accentDark}; }
-    .caller-tr { color: #6b7280; font-size: 0.9em; }
-    .caller-qr svg { display: block; width: 12mm; height: 12mm; }
+    .caller-tr { color: #6b7280; font-size: 0.88em; }
+    .caller-qr svg { display: block; width: 10mm; height: 10mm; }
   `;
 
-  const studentPagesHTML = studentPages
-    .map((rows, pageIdx) => {
-      const startIdx = pageIdx * PER_PAGE;
-      return `
-      <section class="sheet">
-        ${sheetHeader(pack, t.studentTitle)}
-        ${pageIdx === 0
-          ? `<div class="instructions">${escapeHtml(t.instructions)}</div>
-             <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
-               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
-               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
-             </div>`
-          : ""}
-        <div class="spell-grid">
-          ${rows
-            .map(
-              (_, i) => `
-            <div class="spell-row no-break">
-              <span class="spell-num">${startIdx + i + 1}.</span>
-              <div class="spell-line"></div>
-            </div>`,
-            )
-            .join("")}
-        </div>
-        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
-      </section>`;
-    })
-    .join("");
-
-  const callerHTML = `
+  const body = `
     <section class="sheet">
+      ${sheetHeader(pack, t.studentTitle)}
+      <div class="instructions">${escapeHtml(t.instructions)}</div>
+      <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+      </div>
+      <div class="spell-grid">
+        ${words
+          .map(
+            (_, i) => `
+          <div class="spell-row no-break">
+            <span class="spell-num">${i + 1}.</span>
+            <div class="spell-line"></div>
+          </div>`,
+          )
+          .join("")}
+      </div>
+    </section>
+    <section class="sheet page-break">
       ${sheetHeader(pack, t.callerTitle)}
       <div class="instructions">${escapeHtml(t.callerInstructions)}</div>
       <div class="caller-grid">
@@ -1280,25 +1190,22 @@ const generateSpellingTestHTML = (pack: TopicPack, words: Word[], lang: string, 
           )
           .join("")}
       </div>
-      ${sheetFooter(totalPages, totalPages, t.page)}
+      ${sheetFooter()}
     </section>`;
 
-  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: studentPagesHTML + callerHTML });
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 const generateWordScrambleHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, inkSaver, showTranslations } = settings;
   const t = {
-    en: { title: "Word Scramble", instructions: "Unscramble the letters and write the English word on the line. The translation is given as a hint.", letters: "Scrambled", clue: "Hint", answer: "Your answer", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" },
-    he: { title: "ערבוב אותיות", instructions: "סדרו את האותיות וכתבו את המילה באנגלית על השורה. התרגום נתון כרמז.", letters: "מעורבב", clue: "רמז", answer: "התשובה שלך", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
-    ar: { title: "ترتيب الحروف", instructions: "رتب الحروف واكتب الكلمة الإنجليزية على السطر. الترجمة مذكورة كتلميح.", letters: "مخلوط", clue: "تلميح", answer: "إجابتك", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
-  }[lang as "en" | "he" | "ar"] || { title: "Word Scramble", instructions: "Unscramble the letters and write the English word on the line. The translation is given as a hint.", letters: "Scrambled", clue: "Hint", answer: "Your answer", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" };
+    en: { title: "Word Scramble", instructions: "Unscramble the letters and write the English word on the line. The translation is given as a hint.", letters: "Scrambled", clue: "Hint", answer: "Your answer", answerKey: "Answer Key", name: "Name:", date: "Date:" },
+    he: { title: "ערבוב אותיות", instructions: "סדרו את האותיות וכתבו את המילה באנגלית על השורה. התרגום נתון כרמז.", letters: "מעורבב", clue: "רמז", answer: "התשובה שלך", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
+    ar: { title: "ترتيب الحروف", instructions: "رتب الحروف واكتب الكلمة الإنجليزية على السطر. الترجمة مذكورة كتلميح.", letters: "مخلوط", clue: "تلميح", answer: "إجابتك", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Word Scramble", instructions: "Unscramble the letters and write the English word on the line. The translation is given as a hint.", letters: "Scrambled", clue: "Hint", answer: "Your answer", answerKey: "Answer Key", name: "Name:", date: "Date:" };
 
   // Filter to single-token alpha words; multi-word entries don't scramble cleanly.
   const eligible = words.filter((w) => /^[a-zA-Z]+$/.test(w.english) && w.english.length >= 3);
-  const PER_PAGE = 10;
-  const pages = chunk(eligible, PER_PAGE);
-  const totalPages = Math.max(1, pages.length) + 1;
 
   const accent = inkSaver ? "#000000" : "#16a34a";
   const accentDark = inkSaver ? "#000000" : "#15803d";
@@ -1306,18 +1213,18 @@ const generateWordScrambleHTML = (pack: TopicPack, words: Word[], lang: string, 
   const styles =
     baseStyles(lang, accent, accentDark, settings) +
     `
-    .instructions { background: ${inkSaver ? "#ffffff" : "#f0fdf4"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
-    .scramble-list { display: flex; flex-direction: column; gap: 4mm; margin-top: 3mm; }
-    .scramble-row { display: grid; grid-template-columns: 9mm 1fr; gap: 3mm; align-items: center; padding: 3mm 4mm; background: ${inkSaver ? "#ffffff" : "#f8fafc"}; border: 1.5px solid ${inkSaver ? "#000000" : "#d1fae5"}; border-radius: 6px; }
-    .scramble-num { font-weight: 800; color: ${accent}; font-size: 1.05em; }
-    .scramble-content { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: center; }
-    .scramble-letters { letter-spacing: 4px; font-weight: 800; font-family: 'Courier New', monospace; font-size: 1.15em; color: ${accentDark}; }
-    .scramble-tr { color: #6b7280; font-style: italic; font-size: 0.95em; }
-    .scramble-answer { display: flex; align-items: baseline; gap: 2mm; margin-top: 2mm; grid-column: 1 / -1; }
-    .scramble-answer-label { color: ${accent}; font-weight: 700; font-size: 0.85em; }
-    .scramble-answer-line { flex: 1; border-bottom: 1.5px dotted ${inkSaver ? "#000000" : "#94a3b8"}; height: 5mm; }
-    .answer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm; }
-    .answer-cell { display: flex; gap: 2mm; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.9em; }
+    .instructions { background: ${inkSaver ? "#ffffff" : "#f0fdf4"}; border: 2px solid ${accent}; border-radius: 6px; padding: 2mm 3mm; margin: 3mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .scramble-list { display: flex; flex-direction: column; gap: 2.5mm; margin-top: 3mm; }
+    .scramble-row { display: grid; grid-template-columns: 8mm 1fr; gap: 2.5mm; align-items: center; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#f8fafc"}; border: 1.5px solid ${inkSaver ? "#000000" : "#d1fae5"}; border-radius: 6px; }
+    .scramble-num { font-weight: 800; color: ${accent}; font-size: 1em; }
+    .scramble-content { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; align-items: center; }
+    .scramble-letters { letter-spacing: 3px; font-weight: 800; font-family: 'Courier New', monospace; font-size: 1.1em; color: ${accentDark}; }
+    .scramble-tr { color: #6b7280; font-style: italic; font-size: 0.92em; }
+    .scramble-answer { display: flex; align-items: baseline; gap: 2mm; margin-top: 1.5mm; grid-column: 1 / -1; }
+    .scramble-answer-label { color: ${accent}; font-weight: 700; font-size: 0.82em; }
+    .scramble-answer-line { flex: 1; border-bottom: 1.5px dotted ${inkSaver ? "#000000" : "#94a3b8"}; height: 4mm; }
+    .answer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5mm; }
+    .answer-cell { display: flex; gap: 2mm; padding: 1.5mm 2.5mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.88em; }
     .answer-num { font-weight: 800; color: ${accent}; min-width: 6mm; }
   `;
 
@@ -1332,46 +1239,36 @@ const generateWordScrambleHTML = (pack: TopicPack, words: Word[], lang: string, 
     return shuffled.join("-").toUpperCase();
   };
 
-  const pagesHTML = pages
-    .map((group, pageIdx) => {
-      const startIdx = pageIdx * PER_PAGE;
-      return `
-      <section class="sheet">
-        ${sheetHeader(pack, t.title)}
-        ${pageIdx === 0
-          ? `<div class="instructions">${escapeHtml(t.instructions)}</div>
-             <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
-               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
-               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
-             </div>`
-          : ""}
-        <div class="scramble-list">
-          ${group
-            .map(
-              (w, i) => `
-            <div class="scramble-row no-break">
-              <span class="scramble-num">${startIdx + i + 1}.</span>
-              <div>
-                <div class="scramble-content">
-                  <span class="scramble-letters en">${escapeHtml(scrambleWord(applyCasing(w.english, casing)))}</span>
-                  ${showTranslations ? `<span class="scramble-tr">${escapeHtml(t.clue)}: ${escapeHtml(getTranslation(w, lang))}</span>` : ""}
-                </div>
-                <div class="scramble-answer">
-                  <span class="scramble-answer-label">${escapeHtml(t.answer)}:</span>
-                  <span class="scramble-answer-line"></span>
-                </div>
-              </div>
-            </div>`,
-            )
-            .join("")}
-        </div>
-        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
-      </section>`;
-    })
-    .join("");
-
-  const answerKeyHTML = `
+  const body = `
     <section class="sheet">
+      ${sheetHeader(pack, t.title)}
+      <div class="instructions">${escapeHtml(t.instructions)}</div>
+      <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+      </div>
+      <div class="scramble-list">
+        ${eligible
+          .map(
+            (w, i) => `
+          <div class="scramble-row no-break">
+            <span class="scramble-num">${i + 1}.</span>
+            <div>
+              <div class="scramble-content">
+                <span class="scramble-letters en">${escapeHtml(scrambleWord(applyCasing(w.english, casing)))}</span>
+                ${showTranslations ? `<span class="scramble-tr">${escapeHtml(t.clue)}: ${escapeHtml(getTranslation(w, lang))}</span>` : ""}
+              </div>
+              <div class="scramble-answer">
+                <span class="scramble-answer-label">${escapeHtml(t.answer)}:</span>
+                <span class="scramble-answer-line"></span>
+              </div>
+            </div>
+          </div>`,
+          )
+          .join("")}
+      </div>
+    </section>
+    <section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="answer-grid">
         ${eligible
@@ -1384,19 +1281,19 @@ const generateWordScrambleHTML = (pack: TopicPack, words: Word[], lang: string, 
           )
           .join("")}
       </div>
-      ${sheetFooter(totalPages, totalPages, t.page)}
+      ${sheetFooter()}
     </section>`;
 
-  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: pagesHTML + answerKeyHTML });
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, inkSaver } = settings;
   const t = {
-    en: { title: "Vocabulary Quiz", instructions: "Circle the letter (A, B, C or D) of the correct answer.", part1: "Part 1 — Choose the correct translation", part2: "Part 2 — Choose the correct English word", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:", score: "Score:" },
-    he: { title: "מבחן אוצר מילים", instructions: "הקיפו את האות (A, B, C או D) של התשובה הנכונה.", part1: "חלק 1 — בחרו את התרגום הנכון", part2: "חלק 2 — בחרו את המילה הנכונה באנגלית", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:", score: "ציון:" },
-    ar: { title: "اختبار المفردات", instructions: "ضع دائرة حول الحرف (A أو B أو C أو D) للإجابة الصحيحة.", part1: "الجزء 1 — اختر الترجمة الصحيحة", part2: "الجزء 2 — اختر الكلمة الإنجليزية الصحيحة", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:", score: "النتيجة:" },
-  }[lang as "en" | "he" | "ar"] || { title: "Vocabulary Quiz", instructions: "Circle the letter (A, B, C or D) of the correct answer.", part1: "Part 1 — Choose the correct translation", part2: "Part 2 — Choose the correct English word", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:", score: "Score:" };
+    en: { title: "Vocabulary Quiz", instructions: "Circle the letter (A, B, C or D) of the correct answer.", part1: "Part 1 — Choose the correct translation", part2: "Part 2 — Choose the correct English word", answerKey: "Answer Key", name: "Name:", date: "Date:", score: "Score:" },
+    he: { title: "מבחן אוצר מילים", instructions: "הקיפו את האות (A, B, C או D) של התשובה הנכונה.", part1: "חלק 1 — בחרו את התרגום הנכון", part2: "חלק 2 — בחרו את המילה הנכונה באנגלית", answerKey: "פתרון", name: "שם:", date: "תאריך:", score: "ציון:" },
+    ar: { title: "اختبار المفردات", instructions: "ضع دائرة حول الحرف (A أو B أو C أو D) للإجابة الصحيحة.", part1: "الجزء 1 — اختر الترجمة الصحيحة", part2: "الجزء 2 — اختر الكلمة الإنجليزية الصحيحة", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:", score: "النتيجة:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Vocabulary Quiz", instructions: "Circle the letter (A, B, C or D) of the correct answer.", part1: "Part 1 — Choose the correct translation", part2: "Part 2 — Choose the correct English word", answerKey: "Answer Key", name: "Name:", date: "Date:", score: "Score:" };
 
   // Half EN→translation, half translation→EN. We split the word list so a
   // student doesn't see the same word answered in both directions.
@@ -1412,11 +1309,11 @@ const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, set
   const styles =
     baseStyles(lang, accent, accentDark, settings) +
     `
-    .instructions { background: ${inkSaver ? "#ffffff" : "#f5f3ff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
-    .quiz-section-title { font-size: 1.1em; font-weight: 800; color: ${accentDark}; margin: 5mm 0 3mm; padding-bottom: 1mm; border-bottom: 2px solid ${inkSaver ? "#000000" : "#ddd6fe"}; }
-    .quiz-list { display: flex; flex-direction: column; gap: 3mm; }
-    .quiz-q { padding: 2.5mm 4mm; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 5px; background: ${inkSaver ? "#ffffff" : "#fafafa"}; }
-    .quiz-q-prompt { font-weight: 700; color: ${accentDark}; margin-bottom: 2mm; }
+    .instructions { background: ${inkSaver ? "#ffffff" : "#f5f3ff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 2mm 3mm; margin: 3mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .quiz-section-title { font-size: 1.05em; font-weight: 800; color: ${accentDark}; margin: 4mm 0 2mm; padding-bottom: 1mm; border-bottom: 2px solid ${inkSaver ? "#000000" : "#ddd6fe"}; }
+    .quiz-list { display: flex; flex-direction: column; gap: 2mm; }
+    .quiz-q { padding: 2mm 3mm; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 5px; background: ${inkSaver ? "#ffffff" : "#fafafa"}; }
+    .quiz-q-prompt { font-weight: 700; color: ${accentDark}; margin-bottom: 1.5mm; }
     .quiz-q-num { color: ${accent}; font-weight: 800; }
     .quiz-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1mm 5mm; }
     .quiz-option { display: flex; align-items: baseline; gap: 2mm; padding: 0.5mm 0; }
@@ -1448,8 +1345,6 @@ const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, set
     buildQuestion(w, getTranslation(w, lang), (x) => applyCasing(x.english, casing), seed ^ (i + 100) * 37),
   );
 
-  const totalPages = 2;
-
   const renderQuestion = (q: ReturnType<typeof buildQuestion>, idx: number, isEnglish: boolean) => `
     <div class="quiz-q no-break">
       <div class="quiz-q-prompt"><span class="quiz-q-num">${idx + 1}.</span> ${
@@ -1468,7 +1363,7 @@ const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, set
       </div>
     </div>`;
 
-  const studentPageHTML = `
+  const body = `
     <section class="sheet">
       ${sheetHeader(pack, t.title)}
       <div class="instructions">${escapeHtml(t.instructions)}</div>
@@ -1481,11 +1376,8 @@ const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, set
       <div class="quiz-list">${q1.map((q, i) => renderQuestion(q, i, true)).join("")}</div>
       <div class="quiz-section-title">${escapeHtml(t.part2)}</div>
       <div class="quiz-list">${q2.map((q, i) => renderQuestion(q, q1.length + i, false)).join("")}</div>
-      ${sheetFooter(1, totalPages, t.page)}
-    </section>`;
-
-  const answerKeyHTML = `
-    <section class="sheet">
+    </section>
+    <section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="answer-grid">
         ${[...q1, ...q2]
@@ -1498,10 +1390,10 @@ const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, set
           )
           .join("")}
       </div>
-      ${sheetFooter(2, totalPages, t.page)}
+      ${sheetFooter()}
     </section>`;
 
-  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: studentPageHTML + answerKeyHTML });
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 // Greedy crossword placement. Longest words first, intersect on shared
@@ -1641,10 +1533,10 @@ const buildCrossword = (
 const generateCrosswordHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, inkSaver } = settings;
   const t = {
-    en: { title: "Crossword Puzzle", instructions: "Solve the crossword. Use the translations as clues to find each English word.", across: "Across", down: "Down", solution: "Solution", page: "Page", name: "Name:", date: "Date:" },
-    he: { title: "תשבץ", instructions: "פתרו את התשבץ. השתמשו בתרגומים כרמזים למציאת כל מילה באנגלית.", across: "מאוזן", down: "מאונך", solution: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
-    ar: { title: "لغز الكلمات المتقاطعة", instructions: "حل اللغز. استخدم الترجمات كتلميحات لإيجاد كل كلمة إنجليزية.", across: "أفقي", down: "عمودي", solution: "الحل", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
-  }[lang as "en" | "he" | "ar"] || { title: "Crossword Puzzle", instructions: "Solve the crossword. Use the translations as clues to find each English word.", across: "Across", down: "Down", solution: "Solution", page: "Page", name: "Name:", date: "Date:" };
+    en: { title: "Crossword Puzzle", instructions: "Solve the crossword. Use the translations as clues to find each English word.", across: "Across", down: "Down", solution: "Solution", name: "Name:", date: "Date:" },
+    he: { title: "תשבץ", instructions: "פתרו את התשבץ. השתמשו בתרגומים כרמזים למציאת כל מילה באנגלית.", across: "מאוזן", down: "מאונך", solution: "פתרון", name: "שם:", date: "תאריך:" },
+    ar: { title: "لغز الكلمات المتقاطعة", instructions: "حل اللغز. استخدم الترجمات كتلميحات لإيجاد كل كلمة إنجليزية.", across: "أفقي", down: "عمودي", solution: "الحل", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Crossword Puzzle", instructions: "Solve the crossword. Use the translations as clues to find each English word.", across: "Across", down: "Down", solution: "Solution", name: "Name:", date: "Date:" };
 
   const entries = words.map((w) => ({ english: w.english, clue: getTranslation(w, lang) }));
   const { placements, grid, rows, cols } = buildCrossword(entries, 12);
@@ -1684,7 +1576,7 @@ const generateCrosswordHTML = (pack: TopicPack, words: Word[], lang: string, set
       <section class="sheet">
         ${sheetHeader(pack, t.title)}
         <div class="cw-empty-msg">${escapeHtml(t.instructions)}</div>
-        ${sheetFooter(1, 1, t.page)}
+        ${sheetFooter()}
       </section>`;
     return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: emptyHTML });
   }
@@ -1729,7 +1621,7 @@ const generateCrosswordHTML = (pack: TopicPack, words: Word[], lang: string, set
       )
       .join("");
 
-  const puzzleHTML = `
+  const body = `
     <section class="sheet">
       ${sheetHeader(pack, t.title)}
       <div class="instructions">${escapeHtml(t.instructions)}</div>
@@ -1748,26 +1640,23 @@ const generateCrosswordHTML = (pack: TopicPack, words: Word[], lang: string, set
           <div class="cw-clue-list">${renderClueList(downClues)}</div>
         </div>
       </div>
-      ${sheetFooter(1, 2, t.page)}
-    </section>`;
-
-  const solutionHTML = `
-    <section class="sheet">
+    </section>
+    <section class="sheet page-break">
       ${sheetHeader(pack, t.solution)}
       ${renderGrid(true)}
-      ${sheetFooter(2, 2, t.page)}
+      ${sheetFooter()}
     </section>`;
 
-  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: puzzleHTML + solutionHTML });
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 const generateClozeHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, audioQR, inkSaver, showTranslations } = settings;
   const t = {
-    en: { title: "Cloze Reading", instructions: "Read the passage and fill in each blank with a word from the word bank.", wordBank: "Word Bank", passage: "Passage", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" },
-    he: { title: "קריאה והשלמה", instructions: "קראו את הקטע והשלימו כל חסר במילה מבנק המילים.", wordBank: "בנק מילים", passage: "קטע", answerKey: "פתרון", page: "עמוד", name: "שם:", date: "תאריך:" },
-    ar: { title: "قراءة وملء الفراغات", instructions: "اقرأ النص واملأ كل فراغ بكلمة من بنك الكلمات.", wordBank: "بنك الكلمات", passage: "النص", answerKey: "مفتاح الإجابة", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
-  }[lang as "en" | "he" | "ar"] || { title: "Cloze Reading", instructions: "Read the passage and fill in each blank with a word from the word bank.", wordBank: "Word Bank", passage: "Passage", answerKey: "Answer Key", page: "Page", name: "Name:", date: "Date:" };
+    en: { title: "Cloze Reading", instructions: "Read the passage and fill in each blank with a word from the word bank.", wordBank: "Word Bank", passage: "Passage", answerKey: "Answer Key", name: "Name:", date: "Date:" },
+    he: { title: "קריאה והשלמה", instructions: "קראו את הקטע והשלימו כל חסר במילה מבנק המילים.", wordBank: "בנק מילים", passage: "קטע", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
+    ar: { title: "قراءة وملء الفراغات", instructions: "اقرأ النص واملأ كل فراغ بكلمة من بنك الكلمات.", wordBank: "بنك الكلمات", passage: "النص", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Cloze Reading", instructions: "Read the passage and fill in each blank with a word from the word bank.", wordBank: "Word Bank", passage: "Passage", answerKey: "Answer Key", name: "Name:", date: "Date:" };
 
   const BLANK = "____________";
   const seedBase = hashString(pack.name);
@@ -1791,10 +1680,11 @@ const generateClozeHTML = (pack: TopicPack, words: Word[], lang: string, setting
   };
 
   const items = words.map(buildItem);
-  // Cap to keep the passage readable. Long packs get split into multiple passages.
+  // Cap to keep each passage readable. Long packs get split into multiple
+  // passages within the same sheet — they flow without forced page breaks
+  // so html2pdf paginates by physical A4 height.
   const PER_PASSAGE = 12;
   const passages = chunk(items, PER_PASSAGE);
-  const totalPages = passages.length + 1;
 
   const accent = inkSaver ? "#000000" : "#0891b2";
   const accentDark = inkSaver ? "#000000" : "#155e75";
@@ -1802,20 +1692,20 @@ const generateClozeHTML = (pack: TopicPack, words: Word[], lang: string, setting
   const styles =
     baseStyles(lang, accent, accentDark, settings) +
     `
-    .instructions { background: ${inkSaver ? "#ffffff" : "#ecfeff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
-    .word-bank { background: ${inkSaver ? "#ffffff" : "#ecfeff"}; border: 2px solid ${inkSaver ? "#000000" : "#67e8f9"}; border-radius: 8px; padding: 4mm; margin: 4mm 0; }
-    .word-bank-title { font-weight: 800; color: ${accentDark}; margin-bottom: 3mm; text-align: center; font-size: 1.05em; }
-    .word-bank-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
-    .word-bank-item { display: flex; align-items: center; gap: 2mm; padding: 2mm 3mm; background: white; border: 1px solid ${inkSaver ? "#000000" : "#67e8f9"}; border-radius: 4px; font-size: 0.95em; }
+    .instructions { background: ${inkSaver ? "#ffffff" : "#ecfeff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 2mm 3mm; margin: 3mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .word-bank { background: ${inkSaver ? "#ffffff" : "#ecfeff"}; border: 2px solid ${inkSaver ? "#000000" : "#67e8f9"}; border-radius: 8px; padding: 3mm; margin: 3mm 0; }
+    .word-bank-title { font-weight: 800; color: ${accentDark}; margin-bottom: 2mm; text-align: center; font-size: 1.05em; }
+    .word-bank-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5mm; }
+    .word-bank-item { display: flex; align-items: center; gap: 2mm; padding: 1.5mm 2.5mm; background: white; border: 1px solid ${inkSaver ? "#000000" : "#67e8f9"}; border-radius: 4px; font-size: 0.92em; }
     .word-bank-en { font-weight: 700; color: ${inkSaver ? "#000000" : "#1f2937"}; flex: 1; }
     .word-bank-tr { color: #6b7280; font-size: 0.85em; }
-    .word-bank-qr svg { display: block; width: 9mm; height: 9mm; }
-    .passage-section { margin-top: 4mm; padding: 5mm 6mm; background: ${inkSaver ? "#ffffff" : "#fafdfd"}; border: 1.5px solid ${inkSaver ? "#000000" : "#cffafe"}; border-radius: 6px; }
-    .passage-title { font-weight: 800; color: ${accentDark}; margin-bottom: 3mm; font-size: 1.05em; }
-    .passage-paragraph { line-height: 2.0; text-align: start; margin-bottom: 3mm; font-size: 1.05em; }
-    .passage-paragraph .blank { display: inline-block; min-width: 22mm; border-bottom: 1.5px solid ${accent}; font-weight: 800; letter-spacing: 1px; color: ${accent}; padding: 0 1mm; text-align: center; }
-    .answer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }
-    .answer-cell { display: flex; gap: 2mm; padding: 2mm 3mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.9em; }
+    .word-bank-qr svg { display: block; width: 8mm; height: 8mm; }
+    .passage-section { margin-top: 3mm; padding: 3mm 4mm; background: ${inkSaver ? "#ffffff" : "#fafdfd"}; border: 1.5px solid ${inkSaver ? "#000000" : "#cffafe"}; border-radius: 6px; }
+    .passage-title { font-weight: 800; color: ${accentDark}; margin-bottom: 2mm; font-size: 1.05em; }
+    .passage-paragraph { line-height: 1.75; text-align: start; margin-bottom: 2mm; font-size: 1em; }
+    .passage-paragraph .blank { display: inline-block; min-width: 20mm; border-bottom: 1.5px solid ${accent}; font-weight: 800; letter-spacing: 1px; color: ${accent}; padding: 0 1mm; text-align: center; }
+    .answer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5mm; }
+    .answer-cell { display: flex; gap: 2mm; padding: 1.5mm 2.5mm; background: ${inkSaver ? "#ffffff" : "#f9fafb"}; border: 1px solid ${inkSaver ? "#000000" : "#e5e7eb"}; border-radius: 4px; font-size: 0.88em; }
     .answer-num { font-weight: 800; color: ${accent}; min-width: 6mm; }
   `;
 
@@ -1854,28 +1744,28 @@ const generateClozeHTML = (pack: TopicPack, words: Word[], lang: string, setting
       </div>
     </div>`;
 
-  const passagePagesHTML = passages
-    .map((group, pageIdx) => `
-      <section class="sheet">
-        ${sheetHeader(pack, t.title)}
-        ${pageIdx === 0
-          ? `<div class="instructions">${escapeHtml(t.instructions)}</div>
-             <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
-               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
-               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
-             </div>
-             ${wordBankHTML}`
-          : ""}
-        <div class="passage-section">
-          <div class="passage-title">📖 ${escapeHtml(t.passage)} ${pageIdx + 1}</div>
-          ${buildPassage(group)}
-        </div>
-        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
-      </section>`)
+  const passageSectionsHTML = passages
+    .map(
+      (group, pageIdx) => `
+      <div class="passage-section">
+        <div class="passage-title">📖 ${escapeHtml(t.passage)} ${pageIdx + 1}</div>
+        ${buildPassage(group)}
+      </div>`,
+    )
     .join("");
 
-  const answerKeyHTML = `
+  const body = `
     <section class="sheet">
+      ${sheetHeader(pack, t.title)}
+      <div class="instructions">${escapeHtml(t.instructions)}</div>
+      <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+      </div>
+      ${wordBankHTML}
+      ${passageSectionsHTML}
+    </section>
+    <section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="answer-grid">
         ${items
@@ -1888,23 +1778,19 @@ const generateClozeHTML = (pack: TopicPack, words: Word[], lang: string, setting
           )
           .join("")}
       </div>
-      ${sheetFooter(totalPages, totalPages, t.page)}
+      ${sheetFooter()}
     </section>`;
 
-  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: passagePagesHTML + answerKeyHTML });
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 const generateTracingHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, inkSaver, showTranslations } = settings;
   const t = {
-    en: { title: "Tracing Practice", instructions: "Trace the dotted letters, then write each word again on the line below.", page: "Page", name: "Name:", date: "Date:" },
-    he: { title: "תרגול כתיבה", instructions: "עברו על האותיות המקווקוות, ואז כתבו את כל מילה שוב על השורה למטה.", page: "עמוד", name: "שם:", date: "תאריך:" },
-    ar: { title: "تمرين الكتابة", instructions: "تتبع الحروف المنقطة، ثم اكتب كل كلمة مرة أخرى على السطر أدناه.", page: "صفحة", name: "الاسم:", date: "التاريخ:" },
-  }[lang as "en" | "he" | "ar"] || { title: "Tracing Practice", instructions: "Trace the dotted letters, then write each word again on the line below.", page: "Page", name: "Name:", date: "Date:" };
-
-  const PER_PAGE = 6;
-  const pages = chunk(words, PER_PAGE);
-  const totalPages = Math.max(1, pages.length);
+    en: { title: "Tracing Practice", instructions: "Trace the dotted letters, then write each word again on the line below.", name: "Name:", date: "Date:" },
+    he: { title: "תרגול כתיבה", instructions: "עברו על האותיות המקווקוות, ואז כתבו את כל מילה שוב על השורה למטה.", name: "שם:", date: "תאריך:" },
+    ar: { title: "تمرين الكتابة", instructions: "تتبع الحروف المنقطة، ثم اكتب كل كلمة مرة أخرى على السطر أدناه.", name: "الاسم:", date: "التاريخ:" },
+  }[lang as "en" | "he" | "ar"] || { title: "Tracing Practice", instructions: "Trace the dotted letters, then write each word again on the line below.", name: "Name:", date: "Date:" };
 
   const accent = inkSaver ? "#000000" : "#9333ea";
   const accentDark = inkSaver ? "#000000" : "#6b21a8";
@@ -1916,62 +1802,55 @@ const generateTracingHTML = (pack: TopicPack, words: Word[], lang: string, setti
   const styles =
     baseStyles(lang, accent, accentDark, settings) +
     `
-    .instructions { background: ${inkSaver ? "#ffffff" : "#faf5ff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 3mm 4mm; margin: 4mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
-    .trace-list { display: flex; flex-direction: column; gap: 6mm; margin-top: 4mm; }
-    .trace-row { padding: 4mm 5mm; background: ${inkSaver ? "#ffffff" : "#fdfaff"}; border: 1.5px solid ${inkSaver ? "#000000" : "#e9d5ff"}; border-radius: 6px; }
-    .trace-num { font-weight: 800; color: ${accent}; font-size: 0.95em; margin-bottom: 1mm; }
-    .trace-tr { color: #6b7280; font-size: 0.9em; font-style: italic; margin-bottom: 2mm; }
-    .trace-letters { font-size: 26pt; font-weight: 800; letter-spacing: 4px; color: ${traceColor}; line-height: 1.2; font-family: 'Comic Sans MS', 'Courier New', monospace; }
-    .trace-baseline { border-bottom: 1.5px solid ${inkSaver ? "#000000" : "#cbd5e1"}; height: 14mm; margin-top: 2mm; position: relative; }
+    .instructions { background: ${inkSaver ? "#ffffff" : "#faf5ff"}; border: 2px solid ${accent}; border-radius: 6px; padding: 2mm 3mm; margin: 3mm 0; text-align: center; color: ${accentDark}; font-weight: 600; }
+    .trace-list { display: flex; flex-direction: column; gap: 4mm; margin-top: 3mm; }
+    .trace-row { padding: 3mm 4mm; background: ${inkSaver ? "#ffffff" : "#fdfaff"}; border: 1.5px solid ${inkSaver ? "#000000" : "#e9d5ff"}; border-radius: 6px; }
+    .trace-num { font-weight: 800; color: ${accent}; font-size: 0.92em; margin-bottom: 0.5mm; }
+    .trace-tr { color: #6b7280; font-size: 0.88em; font-style: italic; margin-bottom: 1.5mm; }
+    .trace-letters { font-size: 22pt; font-weight: 800; letter-spacing: 4px; color: ${traceColor}; line-height: 1.15; font-family: 'Comic Sans MS', 'Courier New', monospace; }
+    .trace-baseline { border-bottom: 1.5px solid ${inkSaver ? "#000000" : "#cbd5e1"}; height: 12mm; margin-top: 1.5mm; position: relative; }
     .trace-midline { position: absolute; top: 50%; left: 0; right: 0; border-bottom: 0.5px dashed ${inkSaver ? "#9ca3af" : "#cbd5e1"}; }
   `;
 
-  const pagesHTML = pages
-    .map((group, pageIdx) => {
-      const startIdx = pageIdx * PER_PAGE;
-      return `
-      <section class="sheet">
-        ${sheetHeader(pack, t.title)}
-        ${pageIdx === 0
-          ? `<div class="instructions">${escapeHtml(t.instructions)}</div>
-             <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
-               <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
-               <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
-             </div>`
-          : ""}
-        <div class="trace-list">
-          ${group
-            .map(
-              (w, i) => `
-            <div class="trace-row no-break">
-              <div class="trace-num">${startIdx + i + 1}.</div>
-              ${showTranslations ? `<div class="trace-tr">${escapeHtml(getTranslation(w, lang))}</div>` : ""}
-              <div class="trace-letters en">${escapeHtml(applyCasing(w.english, casing))}</div>
-              <div class="trace-baseline"><div class="trace-midline"></div></div>
-            </div>`,
-            )
-            .join("")}
-        </div>
-        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
-      </section>`;
-    })
-    .join("");
+  const body = `
+    <section class="sheet">
+      ${sheetHeader(pack, t.title)}
+      <div class="instructions">${escapeHtml(t.instructions)}</div>
+      <div class="info-row no-break" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="info-field"><span class="info-label">${escapeHtml(t.name)}</span><div class="info-input"></div></div>
+        <div class="info-field"><span class="info-label">${escapeHtml(t.date)}</span><div class="info-input"></div></div>
+      </div>
+      <div class="trace-list">
+        ${words
+          .map(
+            (w, i) => `
+          <div class="trace-row no-break">
+            <div class="trace-num">${i + 1}.</div>
+            ${showTranslations ? `<div class="trace-tr">${escapeHtml(getTranslation(w, lang))}</div>` : ""}
+            <div class="trace-letters en">${escapeHtml(applyCasing(w.english, casing))}</div>
+            <div class="trace-baseline"><div class="trace-midline"></div></div>
+          </div>`,
+          )
+          .join("")}
+      </div>
+      ${sheetFooter()}
+    </section>`;
 
-  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: pagesHTML });
+  return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 const generateMemoryMatchHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, audioQR, inkSaver } = settings;
   const t = {
-    en: { title: "Memory Match Cards", instructions: "Cut along the dashed lines. Place the cards face-down. Take turns flipping two cards — match each English word with its translation to keep the pair.", page: "Page" },
-    he: { title: "כרטיסי משחק זיכרון", instructions: "גזרו לאורך הקווים המקווקוים. הניחו את הכרטיסים הפוכים. סובבו שני כרטיסים בכל תור — התאימו מילה באנגלית עם התרגום שלה כדי לשמור על הזוג.", page: "עמוד" },
-    ar: { title: "بطاقات لعبة الذاكرة", instructions: "قص على طول الخطوط المتقطعة. ضع البطاقات وجهها للأسفل. اقلب بطاقتين في كل دور — طابق كل كلمة إنجليزية مع ترجمتها للاحتفاظ بالزوج.", page: "صفحة" },
-  }[lang as "en" | "he" | "ar"] || { title: "Memory Match Cards", instructions: "Cut along the dashed lines. Place the cards face-down. Take turns flipping two cards — match each English word with its translation to keep the pair.", page: "Page" };
+    en: { title: "Memory Match Cards", instructions: "Cut along the dashed lines. Place the cards face-down. Take turns flipping two cards — match each English word with its translation to keep the pair." },
+    he: { title: "כרטיסי משחק זיכרון", instructions: "גזרו לאורך הקווים המקווקוים. הניחו את הכרטיסים הפוכים. סובבו שני כרטיסים בכל תור — התאימו מילה באנגלית עם התרגום שלה כדי לשמור על הזוג." },
+    ar: { title: "بطاقات لعبة الذاكرة", instructions: "قص على طول الخطوط المتقطعة. ضع البطاقات وجهها للأسفل. اقلب بطاقتين في كل دور — طابق كل كلمة إنجليزية مع ترجمتها للاحتفاظ بالزوج." },
+  }[lang as "en" | "he" | "ar"] || { title: "Memory Match Cards", instructions: "Cut along the dashed lines. Place the cards face-down. Take turns flipping two cards — match each English word with its translation to keep the pair." };
 
-  // 8 pairs × 2 cards = 16 cards per A4 page in 4×4 grid.
+  // 8 pairs × 2 cards = 16 cards per A4 page in 4×4 grid. Each grid is
+  // intentionally one printed page so a teacher cuts out a complete set.
   const PAIRS_PER_PAGE = 8;
   const pages = chunk(words, PAIRS_PER_PAGE);
-  const totalPages = Math.max(1, pages.length);
 
   const accent = inkSaver ? "#000000" : "#db2777";
   const accentDark = inkSaver ? "#000000" : "#9d174d";
@@ -2001,10 +1880,10 @@ const generateMemoryMatchHTML = (pack: TopicPack, words: Word[], lang: string, s
         { type: "tr", word: w },
       ]);
       const shuffled = seededShuffle(cards, hashString(pack.name) ^ pageIdx);
+      const pageBreakClass = pageIdx === 0 ? "" : " page-break";
       return `
-      <section class="sheet">
-        ${sheetHeader(pack, t.title)}
-        ${pageIdx === 0 ? `<div class="instructions">✂️ ${escapeHtml(t.instructions)}</div>` : ""}
+      <section class="sheet${pageBreakClass}">
+        ${pageIdx === 0 ? sheetHeader(pack, t.title) + `<div class="instructions">✂️ ${escapeHtml(t.instructions)}</div>` : ""}
         <div class="mm-grid">
           ${shuffled
             .map((c) => {
@@ -2024,7 +1903,6 @@ const generateMemoryMatchHTML = (pack: TopicPack, words: Word[], lang: string, s
             })
             .join("")}
         </div>
-        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
       </section>`;
     })
     .join("");
@@ -2035,15 +1913,16 @@ const generateMemoryMatchHTML = (pack: TopicPack, words: Word[], lang: string, s
 const generatePictionaryHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
   const { casing, audioQR, inkSaver, showTranslations } = settings;
   const t = {
-    en: { title: "Pictionary Cards", instructions: "Cut along the dashed lines. Pick a card. Draw the word — your partner guesses!", drawHere: "Draw here", page: "Page" },
-    he: { title: "כרטיסי ציור", instructions: "גזרו לאורך הקווים המקווקוים. בחרו כרטיס. ציירו את המילה — בן הזוג שלכם מנחש!", drawHere: "ציירו כאן", page: "עמוד" },
-    ar: { title: "بطاقات الرسم", instructions: "قص على طول الخطوط المتقطعة. اختر بطاقة. ارسم الكلمة — يخمنها شريكك!", drawHere: "ارسم هنا", page: "صفحة" },
-  }[lang as "en" | "he" | "ar"] || { title: "Pictionary Cards", instructions: "Cut along the dashed lines. Pick a card. Draw the word — your partner guesses!", drawHere: "Draw here", page: "Page" };
+    en: { title: "Pictionary Cards", instructions: "Cut along the dashed lines. Pick a card. Draw the word — your partner guesses!", drawHere: "Draw here" },
+    he: { title: "כרטיסי ציור", instructions: "גזרו לאורך הקווים המקווקוים. בחרו כרטיס. ציירו את המילה — בן הזוג שלכם מנחש!", drawHere: "ציירו כאן" },
+    ar: { title: "بطاقات الرسم", instructions: "قص على طول الخطوط المتقطعة. اختر بطاقة. ارسم الكلمة — يخمنها شريكك!", drawHere: "ارسم هنا" },
+  }[lang as "en" | "he" | "ar"] || { title: "Pictionary Cards", instructions: "Cut along the dashed lines. Pick a card. Draw the word — your partner guesses!", drawHere: "Draw here" };
 
   // 4 cards per A4 portrait — 2×2 grid, each card is roughly half-page.
+  // Each group is intentionally one printed page so the teacher cuts out
+  // a complete set at once.
   const PER_PAGE = 4;
   const pages = chunk(words, PER_PAGE);
-  const totalPages = Math.max(1, pages.length);
 
   const accent = inkSaver ? "#000000" : "#0d9488";
   const accentDark = inkSaver ? "#000000" : "#115e59";
@@ -2066,10 +1945,10 @@ const generatePictionaryHTML = (pack: TopicPack, words: Word[], lang: string, se
   const pagesHTML = pages
     .map((group, pageIdx) => {
       const startIdx = pageIdx * PER_PAGE;
+      const pageBreakClass = pageIdx === 0 ? "" : " page-break";
       return `
-      <section class="sheet">
-        ${sheetHeader(pack, t.title)}
-        ${pageIdx === 0 ? `<div class="instructions">✂️ ${escapeHtml(t.instructions)}</div>` : ""}
+      <section class="sheet${pageBreakClass}">
+        ${pageIdx === 0 ? sheetHeader(pack, t.title) + `<div class="instructions">✂️ ${escapeHtml(t.instructions)}</div>` : ""}
         <div class="pic-grid">
           ${group
             .map(
@@ -2086,7 +1965,6 @@ const generatePictionaryHTML = (pack: TopicPack, words: Word[], lang: string, se
             )
             .join("")}
         </div>
-        ${sheetFooter(pageIdx + 1, totalPages, t.page)}
       </section>`;
     })
     .join("");
@@ -2112,7 +1990,6 @@ const generateParentHandoutHTML = (pack: TopicPack, words: Word[], lang: string,
       ],
       qrHint: "Scan the QR codes for pronunciation",
       footer: "Thank you for supporting your child's learning! ❤️",
-      page: "Page",
     },
     he: {
       title: "מדריך להורה",
@@ -2127,7 +2004,6 @@ const generateParentHandoutHTML = (pack: TopicPack, words: Word[], lang: string,
       ],
       qrHint: "סרקו את קודי ה-QR להגייה",
       footer: "תודה שאתם תומכים בלמידה של הילד/ה שלכם! ❤️",
-      page: "עמוד",
     },
     ar: {
       title: "دليل ولي الأمر",
@@ -2142,7 +2018,6 @@ const generateParentHandoutHTML = (pack: TopicPack, words: Word[], lang: string,
       ],
       qrHint: "امسحوا رموز QR للنطق",
       footer: "شكرًا لدعمكم لتعلم طفلكم! ❤️",
-      page: "صفحة",
     },
   }[lang as "en" | "he" | "ar"] || {
     title: "Parent's Guide",
@@ -2157,7 +2032,6 @@ const generateParentHandoutHTML = (pack: TopicPack, words: Word[], lang: string,
     ],
     qrHint: "Scan the QR codes for pronunciation",
     footer: "Thank you for supporting your child's learning! ❤️",
-    page: "Page",
   };
 
   const accent = inkSaver ? "#000000" : "#e11d48";
@@ -2218,7 +2092,7 @@ const generateParentHandoutHTML = (pack: TopicPack, words: Word[], lang: string,
       </div>
 
       <div class="ph-footer">${escapeHtml(t.footer)}</div>
-      ${sheetFooter(1, 1, t.page)}
+      ${sheetFooter()}
     </section>`;
 
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body: handoutHTML });
@@ -2707,9 +2581,6 @@ interface PreviewModalProps {
     bingoGridSizeOptions: { value: BingoGridSize; label: string }[];
     bingoCardCount: string;
     bingoCardCountOptions: { value: BingoCardCount; label: string }[];
-    pageNavTemplate: string; // "Page {current} of {total}"
-    prevPage: string;
-    nextPage: string;
     previewLoading: string;
   };
   onClose: () => void;
@@ -2734,10 +2605,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   onDownload,
   isDownloading,
 }) => {
-  const { isRTL } = useLanguage();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [pageCount, setPageCount] = useState(1);
-  const [currentPage, setCurrentPage] = useState(1);
   // Reset to "loading" whenever the srcDoc changes (new pack, new settings).
   // Without this the spinner can flash off before the iframe re-paints with
   // the new HTML, giving the user a brief moment of stale content.
@@ -2760,28 +2628,6 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // The iframe's injected script posts {type:'voca:pages', count} once it
-  // mounts; we reset to page 1 on every srcDoc swap so settings changes
-  // never leave the user on a now-nonexistent page.
-  useEffect(() => {
-    const onMessage = (e: MessageEvent) => {
-      const d = e.data;
-      if (!d || d.type !== "voca:pages") return;
-      const count = Math.max(1, Number(d.count) || 1);
-      setPageCount(count);
-      setCurrentPage(1);
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, []);
-
-  // Push the current page into the iframe whenever it changes.
-  useEffect(() => {
-    const win = iframeRef.current?.contentWindow;
-    if (!win) return;
-    win.postMessage({ type: "voca:setPage", page: currentPage }, "*");
-  }, [currentPage]);
-
   const handlePrint = () => {
     const iframe = iframeRef.current;
     if (!iframe || !iframe.contentWindow) return;
@@ -2793,9 +2639,6 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   // empty gutters. Landscape gets the wider container so two-column layouts
   // (flashcards, word search) breathe properly.
   const containerWidth = settings.orientation === "portrait" ? "sm:max-w-3xl" : "sm:max-w-5xl";
-
-  const goPrev = () => setCurrentPage((p) => Math.max(1, p - 1));
-  const goNext = () => setCurrentPage((p) => Math.min(pageCount, p + 1));
 
   return (
     <div
@@ -2943,34 +2786,6 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
               checked={settings.audioQR}
               onChange={(v) => onSettingChange("audioQR", v)}
             />
-          </div>
-        )}
-
-        {pageCount > 1 && (
-          <div className="bg-violet-50/70 border-b border-violet-200 px-3 sm:px-6 py-2 flex items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={isRTL ? goNext : goPrev}
-              disabled={isRTL ? currentPage >= pageCount : currentPage <= 1}
-              aria-label={labels.prevPage}
-              className="p-1.5 rounded-lg text-violet-700 hover:bg-violet-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <span className="text-xs sm:text-sm font-bold text-violet-900 tabular-nums select-none" aria-live="polite">
-              {labels.pageNavTemplate
-                .replace("{current}", String(currentPage))
-                .replace("{total}", String(pageCount))}
-            </span>
-            <button
-              type="button"
-              onClick={isRTL ? goPrev : goNext}
-              disabled={isRTL ? currentPage <= 1 : currentPage >= pageCount}
-              aria-label={labels.nextPage}
-              className="p-1.5 rounded-lg text-violet-700 hover:bg-violet-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronRight size={18} />
-            </button>
           </div>
         )}
 
@@ -3628,9 +3443,6 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     // String fields here are literal unions in the html2pdf.js .d.ts (e.g.
     // "jpeg" | "png", "mm" | "cm" | "in"), so we need `as const` to stop
     // TS widening them to plain string and tripping the type guard.
-    // Scale 1.5 (down from 2) cuts html2canvas time roughly in half while
-    // still producing print-quality A4 output — the resulting PDFs print
-    // at ~225 dpi which is well above the 150 dpi A4 print baseline.
     const opt = {
       margin: 0,
       filename: preview.filename,
@@ -4062,9 +3874,6 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             bingoGridSizeOptions,
             bingoCardCount: t.bingoCardCountLabel,
             bingoCardCountOptions,
-            pageNavTemplate: t.pageNavLabel,
-            prevPage: t.prevPage,
-            nextPage: t.nextPage,
             previewLoading: t.previewLoading,
           }}
           onClose={() => setPreviewSource(null)}

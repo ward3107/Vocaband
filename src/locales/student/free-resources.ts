@@ -67,9 +67,6 @@ export interface FreeResourcesT {
   print: string;
   cancel: string;
   closePreview: string;
-  pageNavLabel: string; // "Page {current} of {total}"
-  prevPage: string;
-  nextPage: string;
 
   // Letter case toggle (English only — students who don't yet know
   // capital vs. small letters benefit from a single consistent case).
@@ -177,9 +174,6 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     print: "Print",
     cancel: "Cancel",
     closePreview: "Close preview",
-    pageNavLabel: "Page {current} of {total}",
-    prevPage: "Previous page",
-    nextPage: "Next page",
 
     casingLabel: "Letter case",
     casingOriginal: "As is",
@@ -278,9 +272,6 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     print: "הדפסה",
     cancel: "ביטול",
     closePreview: "סגור תצוגה מקדימה",
-    pageNavLabel: "עמוד {current} מתוך {total}",
-    prevPage: "עמוד קודם",
-    nextPage: "עמוד הבא",
 
     casingLabel: "אותיות",
     casingOriginal: "כפי שהוא",
@@ -379,9 +370,6 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     print: "طباعة",
     cancel: "إلغاء",
     closePreview: "إغلاق المعاينة",
-    pageNavLabel: "صفحة {current} من {total}",
-    prevPage: "الصفحة السابقة",
-    nextPage: "الصفحة التالية",
 
     casingLabel: "حالة الأحرف",
     casingOriginal: "كما هي",
