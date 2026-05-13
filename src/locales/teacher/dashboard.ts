@@ -48,6 +48,11 @@ export interface TeacherDashboardT {
   approvalsButtonReview: string;
   approvalsButtonCheck: string;
 
+  // ─── Worksheet Results tile (interactive worksheet attempts) ──
+  worksheetResultsTitle: string;
+  worksheetResultsDescription: string;
+  worksheetResultsTooltip: string;
+
   // ─── Quick Play hero accents + section headings ────────────────
   qpInstantBadge: string;
   qpStartBtn: string;
@@ -141,6 +146,10 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsButtonReview: "Review",
     approvalsButtonCheck: "Check",
 
+    worksheetResultsTitle: "Worksheet Results",
+    worksheetResultsDescription: "Scores from shared worksheets",
+    worksheetResultsTooltip: "See who completed the worksheets you shared via the Free Resources page and how they did.",
+
     qpInstantBadge: "Instant",
     qpStartBtn: "Start",
     forYourClassesHeading: "For your classes",
@@ -224,6 +233,10 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsTooltip: "אשר תלמידים שנרשמו לכיתות שלך",
     approvalsWaiting: (n) => `${n} ${n === 1 ? "תלמיד ממתין" : "תלמידים ממתינים"}`,
     approvalsNoPending: "אין אישורים ממתינים",
+
+    worksheetResultsTitle: "תוצאות דף עבודה",
+    worksheetResultsDescription: "ציונים מדפי עבודה ששותפו",
+    worksheetResultsTooltip: "ראה מי השלים את דפי העבודה ששיתפת דרך עמוד המשאבים החינמיים וכמה הצליחו.",
     approvalsButtonReview: "סקור",
     approvalsButtonCheck: "בדוק",
 
@@ -310,6 +323,10 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsTooltip: "وافق على الطلاب الذين سجّلوا في فصولك",
     approvalsWaiting: (n) => `${n} ${n === 1 ? "طالب ينتظر" : "طلاب ينتظرون"}`,
     approvalsNoPending: "لا توجد موافقات معلقة",
+
+    worksheetResultsTitle: "نتائج ورقة العمل",
+    worksheetResultsDescription: "نتائج أوراق العمل المشتركة",
+    worksheetResultsTooltip: "اطّلع على من أكمل أوراق العمل التي شاركتها عبر صفحة الموارد المجانية وعلى كيفية أدائهم.",
     approvalsButtonReview: "مراجعة",
     approvalsButtonCheck: "تحقّق",
 

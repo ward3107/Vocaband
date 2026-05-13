@@ -44,6 +44,7 @@ const ShopView = lazy(() => import("./views/ShopView"));
 const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
 const GlobalLeaderboardView = lazy(() => import("./views/GlobalLeaderboardView"));
 const TeacherApprovalsView = lazy(() => import("./views/TeacherApprovalsView"));
+const WorksheetAttemptsView = lazy(() => import("./views/WorksheetAttemptsView"));
 const CreateAssignmentView = lazy(() => import("./views/CreateAssignmentView"));
 // AnalyticsView + GradebookView are no longer routed directly here —
 // they're now lazy-loaded inside ClassroomView and rendered as tabs.
@@ -3153,6 +3154,7 @@ export default function App() {
             void logAudit('view_gradebook', 'progress');
           }}
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
+          onWorksheetResultsClick={activeVoca === "hebrew" ? undefined : () => setView("worksheet-attempts")}
           onClassShowClick={() => { setClassShowAssignment(null); setView("class-show"); }}
           onProjectAssignmentToClass={(a) => {
             setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
@@ -3649,6 +3651,14 @@ export default function App() {
           handleRejectStudent={handleRejectStudent}
           showToast={showToast}
         />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === "worksheet-attempts" && user) {
+    return (
+      <LazyWrapper loadingMessage="Loading worksheet results...">
+        <WorksheetAttemptsView user={user} onBack={() => setView("teacher-dashboard")} />
       </LazyWrapper>
     );
   }

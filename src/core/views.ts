@@ -21,6 +21,7 @@ export type View =
   | "game"
   | "teacher-dashboard"
   | "teacher-approvals"
+  | "worksheet-attempts"
   | "student-dashboard"
   | "create-assignment"
   | "gradebook"
