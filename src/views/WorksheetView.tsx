@@ -21,7 +21,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, ArrowLeftRight, CheckCircle, Layers, Grid3x3, Puzzle, MessageCircle, Link } from 'lucide-react';
+import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, ArrowLeftRight, CheckCircle, Layers, Grid3x3, Puzzle, MessageCircle, Link, Share2 } from 'lucide-react';
+import { ShareWorksheetDialog, type ShareSource, type WorksheetLang } from '../components/ShareWorksheetDialog';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../core/supabase';
@@ -161,6 +162,13 @@ export default function WorksheetView({
   const [sourceIdx, setSourceIdx] = useState(() =>
     Math.max(0, Math.min(initialSourceIndex, initialSources.length - 1)),
   );
+
+  // Online-share dialog state.  Null = closed; set to a ShareSource to
+  // open the dialog with the current word list + title pre-filled.
+  // Teachers logged in here automatically land the share under their
+  // teacher_uid (see create_interactive_worksheet RPC) so submissions
+  // surface in their Worksheet Results dashboard.
+  const [shareSource, setShareSource] = useState<ShareSource | null>(null);
 
   const source = effectiveSources[Math.min(sourceIdx, effectiveSources.length - 1)];
   const wordsForSheet = source?.words ?? [];
@@ -569,8 +577,26 @@ export default function WorksheetView({
           </div>
         </div>
 
-        {/* Action */}
-        <div className="flex justify-end">
+        {/* Action — Share online sits next to Print so a teacher can
+            either print the sheet OR mint a link without switching
+            screens.  Disabled gating matches Print exactly so we don't
+            try to share an empty word list. */}
+        <div className="flex flex-col sm:flex-row justify-end gap-3">
+          <button
+            type="button"
+            onClick={() =>
+              setShareSource({
+                topicName: title.trim() || 'Vocabulary worksheet',
+                wordIds: wordsForSheet.map((w) => w.id),
+              })
+            }
+            disabled={wordsForSheet.length === 0}
+            className="px-6 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-emerald-500/30 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+          >
+            <Share2 size={20} />
+            {t.shareOnline}
+          </button>
           <button
             type="button"
             onClick={() => window.print()}
@@ -579,13 +605,21 @@ export default function WorksheetView({
               backgroundColor: 'var(--vb-accent)',
               color: 'var(--vb-accent-text)',
             }}
-            className="px-8 py-4 rounded-2xl font-black text-lg flex items-center gap-2 shadow-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-8 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 shadow-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Printer size={20} />
             {t.print}
           </button>
         </div>
       </motion.div>
+
+      {shareSource && (
+        <ShareWorksheetDialog
+          source={shareSource}
+          defaultLang={translationLang as WorksheetLang}
+          onClose={() => setShareSource(null)}
+        />
+      )}
 
       {/* Portal the print stack to document.body so it becomes a
           DIRECT body child.  The print CSS uses `body > * { display:

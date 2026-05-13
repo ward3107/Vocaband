@@ -68,6 +68,7 @@ export interface WorksheetStrings {
   // Preview and print
   preview: string;
   print: string;
+  shareOnline: string;
 
   // Print-only strings (for the actual worksheet)
   classLabel: string;
@@ -138,6 +139,7 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     answerKeyOnNewPageHint: 'Hand out the worksheet without revealing the answers.',
     preview: 'Preview',
     print: 'Print',
+    shareOnline: 'Share online',
     classLabel: 'Class:',
     dateLabel: 'Date:',
     nameLabel: 'Name:',
@@ -202,6 +204,7 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     answerKeyOnNewPageHint: 'חלק את דף העבודה מבלי לחשוף את התשובות.',
     preview: 'תצוגה מקדימה',
     print: 'הדפס',
+    shareOnline: 'שתף אונליין',
     classLabel: 'כיתה:',
     dateLabel: 'תאריך:',
     nameLabel: 'שם:',
@@ -266,6 +269,7 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     answerKeyOnNewPageHint: 'وزّع ورقة العمل دون كشف الإجابات.',
     preview: 'معاينة',
     print: 'طباعة',
+    shareOnline: 'مشاركة عبر الإنترنت',
     classLabel: 'الصف:',
     dateLabel: 'التاريخ:',
     nameLabel: 'الاسم:',
