@@ -460,7 +460,7 @@ export default function HotSeatView({ onExit, speak }: HotSeatViewProps) {
           type="button"
           onClick={() => speak(question.word.id, question.word.english)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-semibold transition mb-5"
-          aria-label="Replay audio"
+          aria-label={t.replay}
         >
           <Volume2 size={14} />
           {t.replay}
