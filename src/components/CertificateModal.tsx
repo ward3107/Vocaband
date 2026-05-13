@@ -15,14 +15,18 @@
  *
  * Localized in EN / HE / AR with proper RTL on the certificate body.
  *
- * v1 scope decisions:
- *   - Metrics shown are derived from the StudentRollup the gradebook
- *     already has in memory: games-played count + average score.
- *     "Words mastered" (per the roadmap) is a v2 once we query
- *     `word_attempts` for unique-word coverage.
- *   - Teacher name comes from `user.displayName` when available;
- *     when null we fall back to a generic "Your teacher" signature
- *     line so the certificate still prints cleanly.
+ * Metrics shown (all derived from data the gradebook already has):
+ *   - games-played count (from progress rows)
+ *   - average score (from progress rows)
+ *   - words mastered, distinct word_ids where the student has answered
+ *     correctly >= MASTERY_THRESHOLD times across all modes combined,
+ *     computed in GradebookView from the get_class_mastery RPC.  Stat
+ *     is hidden when 0 so a brand-new student doesn't get a depressing
+ *     "0 words mastered" line on their certificate.
+ *
+ * Teacher name comes from `user.displayName` when available; when null
+ * we fall back to a generic "Your teacher" signature line so the
+ * certificate still prints cleanly.
  */
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -36,6 +40,15 @@ interface CertificateModalProps {
   className: string;
   attempts: number;
   avgScore: number;
+  /** Count of distinct word_ids the student has answered correctly
+   *  >= MASTERY_THRESHOLD times across all modes.  Derived from
+   *  word_attempts (via the get_class_mastery RPC) in GradebookView.
+   *  Optional so non-Gradebook callers (or environments where the
+   *  mastery RPC hasn't loaded yet) can still render the certificate
+   *  with the two original stats.  Hidden from the certificate when
+   *  the value is 0 / undefined to avoid printing an awkward "0 words
+   *  mastered" line on a brand-new student. */
+  wordsMastered?: number;
   /** Teacher's display name for the signature line.  When omitted,
    *  the certificate prints a generic "Your teacher" sign-off. */
   teacherName?: string;
@@ -53,6 +66,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
   body: string;
   gamesPlayed: (n: number) => string;
   avgScore: (p: number) => string;
+  wordsMastered: (n: number) => string;
   issuedBy: string;
   yourTeacher: string;
   date: string;
@@ -71,6 +85,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     body: 'for outstanding progress in English vocabulary.',
     gamesPlayed: n => `${n} ${n === 1 ? 'game' : 'games'} played`,
     avgScore: p => `${p}% average score`,
+    wordsMastered: n => `${n} ${n === 1 ? 'word' : 'words'} mastered`,
     issuedBy: 'Issued by',
     yourTeacher: 'Your teacher',
     date: 'Date',
@@ -89,6 +104,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     body: 'על התקדמות מצוינת באוצר מילים באנגלית.',
     gamesPlayed: n => `${n} ${n === 1 ? 'משחק' : 'משחקים'}`,
     avgScore: p => `${p}% ממוצע`,
+    wordsMastered: n => `${n} ${n === 1 ? 'מילה' : 'מילים'} נשלטו`,
     issuedBy: 'הוענק על ידי',
     yourTeacher: 'המורה שלך',
     date: 'תאריך',
@@ -107,6 +123,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     body: 'لتقدمه المتميز في مفردات اللغة الإنجليزية.',
     gamesPlayed: n => `${n} ${n === 1 ? 'لعبة' : 'ألعاب'}`,
     avgScore: p => `${p}٪ متوسط النتيجة`,
+    wordsMastered: n => `${n} ${n === 1 ? 'كلمة' : 'كلمات'} متقنة`,
     issuedBy: 'منحت من قبل',
     yourTeacher: 'معلمك',
     date: 'التاريخ',
@@ -127,6 +144,7 @@ export default function CertificateModal({
   className,
   attempts,
   avgScore,
+  wordsMastered,
   teacherName,
 }: CertificateModalProps) {
   const { language, dir } = useLanguage();
@@ -307,7 +325,9 @@ export default function CertificateModal({
                       {t.body}
                     </p>
 
-                    {/* Stats row */}
+                    {/* Stats row.  Words-mastered is hidden for brand-new
+                        students (count = 0) so the certificate doesn't
+                        print a depressing "0 words mastered" headline. */}
                     <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-2">
                       <div className="text-center">
                         <p className="text-xl sm:text-3xl font-black text-amber-700 tabular-nums">{attempts}</p>
@@ -322,6 +342,17 @@ export default function CertificateModal({
                           {t.avgScore(avgScore).replace(`${avgScore}%`, '').trim()}
                         </p>
                       </div>
+                      {wordsMastered != null && wordsMastered > 0 && (
+                        <>
+                          <div className="w-px h-10 sm:h-12 bg-amber-200" />
+                          <div className="text-center">
+                            <p className="text-xl sm:text-3xl font-black text-amber-700 tabular-nums">{wordsMastered}</p>
+                            <p className="text-[10px] sm:text-xs text-stone-500 font-bold uppercase tracking-wider mt-0.5">
+                              {t.wordsMastered(wordsMastered).replace(String(wordsMastered), '').trim()}
+                            </p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
