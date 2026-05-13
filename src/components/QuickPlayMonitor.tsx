@@ -692,7 +692,7 @@ export default function QuickPlayMonitor({
               type="range"
               id="quick-play-monitor-volume"
               name="musicVolume"
-              aria-label="Background music volume"
+              aria-label={tT.qpBackgroundMusicVolume}
               min="0"
               max="1"
               step="0.05"
@@ -725,13 +725,13 @@ export default function QuickPlayMonitor({
             <button
               type="button"
               onClick={toggleQrCollapsed}
-              aria-label="Show QR code"
+              aria-label={tT.qpShowQrAria}
               className={`absolute top-0 right-0 z-10 bg-gradient-to-br ${t.qrCard} rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all text-white flex flex-col items-center justify-center p-3 sm:p-4 ring-4 ring-white/30`}
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any, minWidth: '80px', minHeight: '80px' }}
             >
               <QrCode size={36} className="sm:hidden" />
               <QrCode size={42} className="hidden sm:block" />
-              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider mt-1 leading-none">Show QR</span>
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider mt-1 leading-none">{tT.qpShowQrShort}</span>
               {effectiveStudents.length > 0 && (
                 <span className="absolute -top-2 -right-2 min-w-[24px] h-6 px-1.5 bg-green-500 text-white text-[11px] font-black rounded-full flex items-center justify-center shadow-md ring-2 ring-white/30">
                   {effectiveStudents.length}
@@ -754,18 +754,18 @@ export default function QuickPlayMonitor({
                   level="M"
                   marginSize={0}
                   style={{ width: '100%', height: '100%' }}
-                  aria-label="Quick Play QR Code"
+                  aria-label={tT.qpQrCodeAria}
                 />
               </div>
             </div>
             <div className="flex flex-col justify-center text-white min-w-0 flex-1 text-center sm:text-left">
-              <span className="font-label text-[10px] 2xl:text-xs uppercase tracking-[0.2em] opacity-80">Join at {window.location.host}</span>
+              <span className="font-label text-[10px] 2xl:text-xs uppercase tracking-[0.2em] opacity-80">{tT.qpJoinAtHost(window.location.host)}</span>
               {/* Session code — readable but supporting; QR is the
                   primary scan target, code is the type-by-hand fallback. */}
               <h2 className="font-headline text-2xl sm:text-3xl 2xl:text-4xl font-black tracking-tighter">{session.sessionCode}</h2>
               <div className="mt-2 flex items-center gap-2 justify-center sm:justify-start">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-xs 2xl:text-sm font-medium">{effectiveStudents.length > 0 ? `${effectiveStudents.length} players joined` : 'Waiting for players...'}</span>
+                <span className="text-xs 2xl:text-sm font-medium">{effectiveStudents.length > 0 ? tT.qpPlayersJoined(effectiveStudents.length) : tT.qpWaitingForPlayers}</span>
               </div>
               {/* Share button — prominent on both mobile and desktop so
                   the teacher can fire it with one tap during class.
@@ -868,8 +868,8 @@ export default function QuickPlayMonitor({
                             2026-04-30). */}
                         <button
                           onClick={() => setConfirmKick(top3[1].name)}
-                          aria-label={`Remove ${top3[1].name}`}
-                          title={`Remove ${top3[1].name}`}
+                          aria-label={tT.qpRemovePlayerAria(top3[1].name)}
+                          title={tT.qpRemovePlayerAria(top3[1].name)}
                           className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
                         >
                           <X size={12} />
@@ -893,8 +893,8 @@ export default function QuickPlayMonitor({
                         <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] 2xl:text-xs min-[1700px]:text-lg font-black px-2 py-0.5 min-[1700px]:px-4 min-[1700px]:py-1.5 rounded-full shadow-md`}>1st</div>
                         <button
                           onClick={() => setConfirmKick(top3[0].name)}
-                          aria-label={`Remove ${top3[0].name}`}
-                          title={`Remove ${top3[0].name}`}
+                          aria-label={tT.qpRemovePlayerAria(top3[0].name)}
+                          title={tT.qpRemovePlayerAria(top3[0].name)}
                           className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
                         >
                           <X size={14} />
@@ -919,8 +919,8 @@ export default function QuickPlayMonitor({
                         <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>3rd</div>
                         <button
                           onClick={() => setConfirmKick(top3[2].name)}
-                          aria-label={`Remove ${top3[2].name}`}
-                          title={`Remove ${top3[2].name}`}
+                          aria-label={tT.qpRemovePlayerAria(top3[2].name)}
+                          title={tT.qpRemovePlayerAria(top3[2].name)}
                           className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
                         >
                           <X size={12} />
@@ -940,8 +940,8 @@ export default function QuickPlayMonitor({
                 <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
                   <Users size={48} className="mx-auto mb-3 opacity-20 2xl:scale-150" />
                 </motion.div>
-                <p className={`font-headline font-bold text-base 2xl:text-3xl ${t.text} opacity-60`}>Waiting for players...</p>
-                <p className={`text-sm 2xl:text-xl ${t.text} opacity-40 mt-1`}>Share the QR code to get started</p>
+                <p className={`font-headline font-bold text-base 2xl:text-3xl ${t.text} opacity-60`}>{tT.qpWaitingForPlayers}</p>
+                <p className={`text-sm 2xl:text-xl ${t.text} opacity-40 mt-1`}>{tT.qpShareQrToStart}</p>
               </div>
             )}
           </div>
@@ -997,7 +997,7 @@ export default function QuickPlayMonitor({
                       <button
                         onClick={() => setConfirmKick(student.name)}
                         className="absolute top-1 right-1 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/80 text-on-error transition-all z-10"
-                        title={`Remove ${student.name}`}
+                        title={tT.qpRemovePlayerAria(student.name)}
                       >
                         <X size={10} />
                       </button>
@@ -1063,7 +1063,7 @@ export default function QuickPlayMonitor({
                   <div className="w-3 h-3 bg-[var(--vb-border)] rounded-full" />
                   <div className="w-3 h-3 bg-[var(--vb-border)] rounded-full" />
                 </div>
-                <span className="ml-2 text-xs font-semibold text-[var(--vb-text-muted)] uppercase tracking-wider">Drag to move</span>
+                <span className="ml-2 text-xs font-semibold text-[var(--vb-text-muted)] uppercase tracking-wider">{tT.qpDragToMove}</span>
               </div>
 
               <div className="p-6 sm:p-10">
@@ -1077,13 +1077,13 @@ export default function QuickPlayMonitor({
                   level="M"
                   marginSize={2}
                   style={{ width: '100%', height: '100%' }}
-                  aria-label="Quick Play QR Code (enlarged)"
+                  aria-label={tT.qpQrCodeEnlargedAria}
                 />
               </div>
               <p className="text-center text-purple-600 font-mono font-black text-2xl sm:text-3xl mt-4">
                 {session.sessionCode}
               </p>
-              <p className="text-center text-[var(--vb-text-muted)] text-sm mt-1">Scan to join</p>
+              <p className="text-center text-[var(--vb-text-muted)] text-sm mt-1">{tT.qpScanToJoin}</p>
 
               {/* Share row — Web Share API on mobile (AirDrop /
                   Messages / WhatsApp), clipboard fallback elsewhere.
@@ -1169,7 +1169,7 @@ export default function QuickPlayMonitor({
               </div>
               <h2 className="text-xl font-black text-gray-900 mb-2">{tT.qpRemovePlayerTitle}</h2>
               <p className="text-gray-500 mb-6">
-                Remove <strong>{confirmKick}</strong> from this Quick Play session?
+                {tT.qpConfirmKickBefore}<strong>{confirmKick}</strong>{tT.qpConfirmKickAfter}
               </p>
               <div className="flex gap-3">
                 <button
@@ -1208,7 +1208,7 @@ export default function QuickPlayMonitor({
               <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <LogOut size={32} />
               </div>
-              <h2 className="text-2xl font-black text-gray-900 mb-2">End Quick Play Session?</h2>
+              <h2 className="text-2xl font-black text-gray-900 mb-2">{tT.qpEndSessionTitle}</h2>
               <p className="text-gray-500 mb-6">
                 Students will no longer be able to join using code <strong>{session.sessionCode}</strong>. The session will be permanently ended.
               </p>
