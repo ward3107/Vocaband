@@ -122,6 +122,38 @@ body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/bagrut_cache" \
   -d '{"cache_key":"hack","module":"B","model":"x","content":{}}')
 check "anon bagrut_cache insert is rejected" "row-level security|violates|permission denied|42501" "$body"
 
+# ─── Positive RLS tests — Quick Play guest path MUST work for anon ───
+# These flipped the script: the items above all check that anon is
+# REJECTED. The Quick Play guest flow relies on anon being ABLE to read
+# quick_play_sessions when is_active=true (because students join
+# without authenticating). The 2026-04-25 regression was an over-tight
+# RLS policy that locked anon out of that SELECT and silently bounced
+# every QR-scanning student back to the landing page — no error in the
+# UI because the client falls through to the server endpoint, which
+# was also broken.  Running this as a pre-deploy guard catches the
+# regression before students do.
+echo
+echo "── Positive RLS — Quick Play anon SELECT must succeed ──"
+
+# ─── Test 9a: anon CAN select from quick_play_sessions ────────────────
+echo "[9a] Anon SELECT quick_play_sessions (is_active=true)"
+body=$(curl -s -w "\n__STATUS__:%{http_code}" "$SUPABASE_URL/rest/v1/quick_play_sessions?select=id,session_code,is_active&is_active=eq.true&limit=1" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY")
+status=$(echo "$body" | grep -o '__STATUS__:[0-9]*' | cut -d: -f2)
+payload=$(echo "$body" | sed 's/__STATUS__:[0-9]*$//')
+# Success looks like an HTTP 200 with a JSON array (possibly empty).
+# Failure modes we're guarding against: 401, 403, 406, or a body that
+# starts with `{"code":` / `{"message":` (PostgREST error envelope).
+if [[ "$status" == "200" ]] && echo "$payload" | grep -qE '^\s*\['; then
+  echo "  PASS  anon quick_play_sessions SELECT returned 200 + JSON array"
+  PASS=$((PASS+1))
+else
+  echo "  FAIL  anon quick_play_sessions SELECT regressed — status=$status body=$payload"
+  echo "        Quick Play QR-scan flow will be broken for every student."
+  FAIL=$((FAIL+1))
+fi
+
 # ─── App-server pen-tests ─────────────────────────────────────────────
 # Optional: also probe the Express app server for unauthenticated info-
 # disclosure regressions on /api/version, /api/ocr/status, /api/ocr/
