@@ -9,9 +9,10 @@
  * their Worksheet Results dashboard, while anonymous mints from the
  * public marketing page stay invisible to everyone but the student.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Share2, X, Loader2, Check, Copy, MessageCircle } from "lucide-react";
+import qrcode from "qrcode-generator";
 import { supabase } from "../core/supabase";
 
 export type WorksheetLang = "en" | "he" | "ar";
@@ -45,6 +46,19 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
   const [copied, setCopied] = useState(false);
 
   const shareUrl = slug ? `${window.location.origin}/w/${slug}` : "";
+
+  // Inline SVG QR so a teacher can project the dialog to a screen and
+  // students scan with their phones — no extra app or screenshot
+  // needed.  Same `qrcode-generator` library FreeResourcesView already
+  // uses for printed sheets; error level M is a balance between visual
+  // density and scan reliability from a projected screen.
+  const qrSvgMarkup = useMemo(() => {
+    if (!shareUrl) return "";
+    const qr = qrcode(0, "M");
+    qr.addData(shareUrl);
+    qr.make();
+    return qr.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
+  }, [shareUrl]);
 
   const handleGenerate = async () => {
     setCreating(true);
@@ -212,6 +226,19 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
 
           {slug && (
             <>
+              {/* Scannable QR — useful when the dialog is projected to
+                  a screen and students point their phones at it.
+                  dangerouslySetInnerHTML is safe here because the QR
+                  library produces a pure SVG string with no user input
+                  that could carry script tags. */}
+              <div className="flex items-center justify-center bg-white rounded-xl border border-stone-200 p-4">
+                <div
+                  className="w-44 h-44"
+                  aria-label="QR code for the worksheet link"
+                  dangerouslySetInnerHTML={{ __html: qrSvgMarkup }}
+                />
+              </div>
+
               <div className="rounded-xl bg-stone-50 border border-stone-200 px-3 py-3">
                 <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-1">Link</p>
                 <p className="font-mono text-sm break-all text-stone-800">{shareUrl}</p>

@@ -156,7 +156,10 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
                 target words before the formal exam.  Disabled when none
                 of the source words are recognised (e.g. a fully custom
                 list); we don't have audio/translations for unknown
-                strings so the solver would be useless. */}
+                strings so the solver would be useless.  When some but
+                not all words resolve, the button caption surfaces the
+                ratio so the teacher knows we're shipping a subset and
+                can decide whether to swap out custom words first. */}
             <button
               type="button"
               onClick={() =>
@@ -171,10 +174,18 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
               title={
                 shareableWordIds.length === 0
                   ? "These custom words aren't in our vocabulary, so an interactive worksheet isn't available."
-                  : undefined
+                  : shareableWordIds.length < sourceWords.length
+                    ? `${sourceWords.length - shareableWordIds.length} custom word(s) aren't in our vocabulary and will be skipped in the online version.`
+                    : undefined
               }
             >
-              <Share2 size={16} /> Share online
+              <Share2 size={16} />
+              Share online
+              {shareableWordIds.length > 0 && shareableWordIds.length < sourceWords.length && (
+                <span className="text-xs font-medium opacity-90">
+                  ({shareableWordIds.length}/{sourceWords.length})
+                </span>
+              )}
             </button>
             <button
               type="button"
