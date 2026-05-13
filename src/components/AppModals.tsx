@@ -17,6 +17,7 @@
  */
 import React from "react";
 import { useLanguage } from "../hooks/useLanguage";
+import { appModalsT } from "../locales/teacher/app-modals";
 
 // ── ConsentModal ──────────────────────────────────────────────────────────
 export interface ConsentModalProps {
@@ -188,6 +189,7 @@ export const ExitConfirmModal: React.FC<ExitConfirmModalProps> = ({
   }
 
   // ── Default neutral variant (teachers / guests) ──────────────
+  const t = appModalsT[language];
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
       <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl" dir={dir}>
