@@ -8,7 +8,6 @@
  * layout chrome (centering + bg).
  */
 import TeacherLoginCard from "../components/TeacherLoginCard";
-import TeacherResourcesSection from "../components/TeacherResourcesSection";
 import { useLanguage } from "../hooks/useLanguage";
 
 interface TeacherLoginViewProps {
@@ -22,14 +21,6 @@ export default function TeacherLoginView({ onBack }: TeacherLoginViewProps) {
     <div dir={dir} className="min-h-screen signature-gradient">
       <div className="flex items-center justify-center p-4 sm:p-6 pt-10 sm:pt-14">
         <TeacherLoginCard onCancel={onBack} />
-      </div>
-
-      {/* Soft white panel below the auth card carrying the docs + FAQ
-          cards.  Mirrors the structure on the public landing page so
-          teachers see the same resources whether they discover them
-          from /home or from /teacher-login. */}
-      <div className="bg-white rounded-t-3xl mt-6 sm:mt-10">
-        <TeacherResourcesSection variant="compact" />
       </div>
     </div>
   );
