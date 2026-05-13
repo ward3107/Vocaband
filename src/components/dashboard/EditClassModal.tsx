@@ -57,9 +57,21 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
   const trimmed = name.trim();
   const trimmedSchoolName = schoolName.trim();
   const trimmedLogoUrl = schoolLogoUrl.trim();
-  // Defensive URL check — only allow https:// so we don't accept
-  // http:// (mixed-content) or javascript: (XSS).  Empty = clear.
-  const logoUrlValid = trimmedLogoUrl === "" || /^https:\/\//i.test(trimmedLogoUrl);
+  // Parse the URL and verify protocol === 'https:' on the parsed object.
+  // A regex check on the raw string is too lax for CodeQL's XSS-through-DOM
+  // taint analysis (js/xss-through-dom) and lets through edge cases like
+  // "https:javascript:alert(1)" that parse to javascript:.  The parsed
+  // URL goes to <img src> below — never the raw user input.
+  const safeLogoUrl: string | null = (() => {
+    if (!trimmedLogoUrl) return null;
+    try {
+      const parsed = new URL(trimmedLogoUrl);
+      return parsed.protocol === "https:" ? parsed.toString() : null;
+    } catch {
+      return null;
+    }
+  })();
+  const logoUrlValid = trimmedLogoUrl === "" || safeLogoUrl !== null;
   const schoolNameDirty = trimmedSchoolName !== (klass?.schoolName ?? "");
   const logoDirty = trimmedLogoUrl !== (klass?.schoolLogoUrl ?? "");
   const dirty = !!klass && (
@@ -222,13 +234,13 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               )}
 
               {/* Live preview — confirms the URL works before saving */}
-              {trimmedLogoUrl && logoUrlValid && !logoBroken && (
+              {safeLogoUrl && !logoBroken && (
                 <div
                   className="mt-3 flex items-center gap-3 p-2 rounded-xl"
                   style={{ backgroundColor: 'var(--vb-surface)' }}
                 >
                   <img
-                    src={trimmedLogoUrl}
+                    src={safeLogoUrl}
                     alt="School logo preview"
                     className="w-12 h-12 rounded-lg object-contain bg-white"
                     onError={() => setLogoBroken(true)}
