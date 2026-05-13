@@ -3279,23 +3279,44 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const handleConfirmDownload = async () => {
     if (!preview) return;
     setIsExporting(true);
-    // Attach the source div to the document — html2canvas can't measure
-    // layout for a detached node, which is the most common cause of
-    // blank trailing pages in html2pdf exports. Position it off-screen
-    // at the real document width so font metrics match the preview.
-    const container = document.createElement("div");
-    container.style.position = "fixed";
-    container.style.left = "-99999px";
-    container.style.top = "0";
-    container.style.width = settings.orientation === "portrait" ? "210mm" : "297mm";
-    container.innerHTML = preview.html;
-    document.body.appendChild(container);
+    // Render the preview HTML inside an off-screen iframe rather than a
+    // plain <div> appended to document.body.  preview.html embeds a
+    // <style> block with global selectors (`*`, `html, body` from
+    // baseStyles) which, if injected directly into the live document,
+    // bleed into the running app during export and cause a visible
+    // flicker/layout shift.  An iframe gives the export its own
+    // document so those globals stay scoped to it.
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.left = "-99999px";
+    iframe.style.top = "0";
+    iframe.style.width = settings.orientation === "portrait" ? "210mm" : "297mm";
+    // Height kicks the iframe past 0 so layout actually computes; the
+    // real worksheet height is determined by the .sheet elements
+    // inside.  Border:0 stops Safari from reserving a 2px frame.
+    iframe.style.height = "297mm";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const idoc = iframe.contentDocument;
+    if (!idoc) {
+      // Some embedded contexts (older webviews, certain CSP setups)
+      // strip iframe.contentDocument.  Cleanup + bail rather than
+      // ship a half-rendered PDF.
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      setIsExporting(false);
+      setPreviewSource(null);
+      return;
+    }
+    idoc.open();
+    idoc.write(`<!DOCTYPE html><html><head></head><body style="margin:0">${preview.html}</body></html>`);
+    idoc.close();
 
     // Wait for every <img> in the source (audio QR codes, pictionary art,
     // flashcard images) to either resolve or fail. Without this gate
     // html2canvas captures a half-rendered DOM and writes blank cells
     // into the resulting PDF.
-    const imgs = Array.from(container.querySelectorAll("img"));
+    const imgs = Array.from(idoc.querySelectorAll("img"));
     await Promise.all(
       imgs.map((img) =>
         img.complete
@@ -3308,10 +3329,17 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     );
     // Let webfonts (Inter/Heebo/Cairo) finish before snapshotting too —
     // otherwise canvas falls back to system fonts mid-render and the
-    // last page can lay out differently from the preview iframe.
-    if ((document as Document & { fonts?: { ready: Promise<unknown> } }).fonts) {
+    // last page can lay out differently from the preview iframe.  The
+    // iframe inherits the parent's font registry in modern browsers but
+    // also exposes its own; await both to be safe.
+    const fontPromises: Promise<unknown>[] = [];
+    const idocFonts = (idoc as Document & { fonts?: { ready: Promise<unknown> } }).fonts;
+    if (idocFonts) fontPromises.push(idocFonts.ready);
+    const parentFonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts;
+    if (parentFonts) fontPromises.push(parentFonts.ready);
+    if (fontPromises.length) {
       try {
-        await (document as Document & { fonts: { ready: Promise<unknown> } }).fonts.ready;
+        await Promise.all(fontPromises);
       } catch {
         // font loading API is best-effort; carry on if it rejects.
       }
@@ -3341,11 +3369,11 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     };
 
     try {
-      await html2pdf().set(opt).from(container).save();
+      await html2pdf().set(opt).from(idoc.body).save();
     } catch (error) {
       console.error("PDF generation failed:", error);
     } finally {
-      if (container.parentNode) container.parentNode.removeChild(container);
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
       setIsExporting(false);
       setPreviewSource(null);
     }
