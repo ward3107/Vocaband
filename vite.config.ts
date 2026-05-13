@@ -229,7 +229,21 @@ export default defineConfig(() => {
             },
             {
               // Fonts + small images.  CacheFirst with a generous TTL.
-              urlPattern: ({ request }) => ['font', 'image'].includes(request.destination),
+              //
+              // Scope intentionally limited to same-origin + fonts.gstatic.com.
+              // Previously this matched ANY image destination, which meant
+              // third-party icons (e.g. ssl.gstatic.com/ui/v1/icons/common/x_8px.png
+              // loaded by Google Sign-In) hit the SW's fetch path.  CSP
+              // `connect-src` doesn't allowlist those hosts (correctly — we
+              // don't make API calls there), so workbox's fetch was blocked,
+              // which then cascaded into "IDBDatabase: The database connection
+              // is closing" errors as the cache-put plugin spammed
+              // updateTimestamp against an aborted transaction.  Leaving the
+              // request unhandled lets the browser fetch it directly under
+              // `img-src 'self' data: blob: https:`, which permits it.
+              urlPattern: ({ request, url, sameOrigin }) =>
+                ['font', 'image'].includes(request.destination) &&
+                (sameOrigin || url.hostname === 'fonts.gstatic.com'),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'vocaband-media',
