@@ -130,6 +130,12 @@ export interface TeacherWizardsT {
   whatsAppLabel: string;
   createAnother: string;
   backToDashboard: string;
+
+  // ─── ActivityTypeTabs (top of the New Activity wizard) ──────────
+  /** "Assignment" tab — the default homework / words-based flow. */
+  activityTabAssignment: string;
+  /** Eyebrow above the tab strip — "What do you want to create?" */
+  activityTabsEyebrow: string;
 }
 
 export const teacherWizardsT: Record<Language, TeacherWizardsT> = {
@@ -239,6 +245,8 @@ export const teacherWizardsT: Record<Language, TeacherWizardsT> = {
     whatsAppLabel: "WhatsApp",
     createAnother: "Create another",
     backToDashboard: "Back to dashboard",
+    activityTabAssignment: "Assignment",
+    activityTabsEyebrow: "What do you want to create?",
   },
 
   he: {
@@ -347,6 +355,8 @@ export const teacherWizardsT: Record<Language, TeacherWizardsT> = {
     whatsAppLabel: "וואטסאפ",
     createAnother: "צור עוד",
     backToDashboard: "חזרה ללוח הבקרה",
+    activityTabAssignment: "משימה",
+    activityTabsEyebrow: "מה תרצו ליצור?",
   },
 
   ar: {
@@ -455,5 +465,7 @@ export const teacherWizardsT: Record<Language, TeacherWizardsT> = {
     whatsAppLabel: "واتساب",
     createAnother: "أنشئ آخر",
     backToDashboard: "العودة إلى لوحة التحكم",
+    activityTabAssignment: "واجب",
+    activityTabsEyebrow: "ماذا تريد أن تنشئ؟",
   },
 };
