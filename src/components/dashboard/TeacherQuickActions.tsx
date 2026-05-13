@@ -1,4 +1,4 @@
-import { GraduationCap, UserCircle, Tv2, Printer, Zap, Sparkles } from "lucide-react";
+import { GraduationCap, UserCircle, Tv2, Printer, Zap, Sparkles, Users } from "lucide-react";
 import { HelpTooltip } from "../HelpTooltip";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
@@ -12,6 +12,9 @@ interface TeacherQuickActionsProps {
   onClassShowClick?: () => void;
   onWorksheetClick?: () => void;
   onVocabagrutClick?: () => void;
+  /** Pass-around single-device classroom mode.  Optional so the
+   *  VocaHebrew dashboard (no Hebrew analog yet) can omit it. */
+  onHotSeatClick?: () => void;
   /** Drives Hebrew-locked locale + RTL when the dashboard is showing a
    *  Hebrew class context. Defaults to "english" so existing callers
    *  keep their current behaviour. */
@@ -20,7 +23,7 @@ interface TeacherQuickActionsProps {
 
 export default function TeacherQuickActions({
   pendingStudentsCount,
-  onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick, onWorksheetClick, onVocabagrutClick,
+  onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick, onWorksheetClick, onVocabagrutClick, onHotSeatClick,
   subject = "english",
 }: TeacherQuickActionsProps) {
   const { language } = useLanguage();
@@ -117,6 +120,28 @@ export default function TeacherQuickActions({
                   title={t.worksheetTitle}
                   description={t.worksheetDescription}
                   onClick={onWorksheetClick}
+                  isHebrew={isHebrew}
+                />
+              </div>
+            </HelpTooltip>
+          )}
+
+          {/* Hot Seat — single-device pass-around mode.  English-only
+              for now: HotSeatView ships with EN/HE/AR copy internally,
+              but the dashboard tile is gated by !isHebrew to match the
+              Vocabagrut precedent (Hebrew dashboard surfaces only the
+              Hebrew-native flows).  If Hebrew teachers want the tile,
+              just drop the gate. */}
+          {!isHebrew && onHotSeatClick && (
+            <HelpTooltip className="h-full" content={t.hotSeatTooltip}>
+              <div className="h-full" data-tour="hot-seat">
+                <CompactActionCard
+                  icon={<Users size={20} />}
+                  iconBg="bg-orange-100"
+                  iconColor="text-orange-600"
+                  title={t.hotSeatTitle}
+                  description={t.hotSeatDescription}
+                  onClick={onHotSeatClick}
                   isHebrew={isHebrew}
                 />
               </div>

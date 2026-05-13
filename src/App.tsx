@@ -52,6 +52,7 @@ const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginVi
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const ClassShowView = lazy(() => import("./views/ClassShowView"));
+const HotSeatView = lazy(() => import("./views/HotSeatView"));
 const HebrewClassShowView = lazy(() => import("./views/HebrewClassShowView"));
 const WorksheetView = lazy(() => import("./views/WorksheetView"));
 const HebrewWorksheetView = lazy(() => import("./views/HebrewWorksheetView"));
@@ -141,6 +142,7 @@ const PUBLIC_VIEWS = new Set<View>([
 const TEACHER_VIEWS = new Set<View>([
   "worksheet", "classroom", "class-show", "teacher-approvals",
   "quick-play-teacher-monitor", "quick-play-setup", "create-assignment",
+  "hot-seat",
   "voca-picker", "vocahebrew-dashboard",
   "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-synonyms", "vocahebrew-listening",
 ]);
@@ -805,7 +807,7 @@ export default function App() {
     }
   });
 
-  const { speak: speakWordRaw, preloadMany, playWrong, playMotivational } = useAudio();
+  const { speak: speakWordRaw, preloadMany, playWrong, playMotivational, stopAll: stopAllAudio } = useAudio();
   const speakWord = speakWordRaw;
 
   // --- GAME STATE ---
@@ -1824,8 +1826,20 @@ export default function App() {
               plan: "free",
               trialEndsAt: freshTrialEndsAt(),
             };
-            // Use upsert to handle race conditions (StrictMode double-mount, retry after partial failure)
-            const { error: insertErr } = await supabase.from('users').upsert(mapUserToDb(newUser), { onConflict: 'uid' });
+            // Use upsert with ignoreDuplicates=true to handle race
+            // conditions (StrictMode double-mount, retry after partial
+            // failure) WITHOUT overwriting an already-paying Pro
+            // teacher's plan/trial_ends_at on every re-sign-in.  The
+            // adjacent comment used to claim this was the case, but the
+            // call previously omitted `ignoreDuplicates`, which made
+            // Supabase default to ON CONFLICT DO UPDATE — silently
+            // downgrading any returning Pro teacher to Free + a fresh
+            // 30-day trial.  Same bug also made it possible for the
+            // tightened users_update RLS (20260602) to reject the
+            // re-sign-in altogether once that migration lands.
+            const { error: insertErr } = await supabase
+              .from('users')
+              .upsert(mapUserToDb(newUser), { onConflict: 'uid', ignoreDuplicates: true });
             if (insertErr) {
               console.error("Teacher profile upsert failed:", insertErr);
             }
@@ -1922,6 +1936,11 @@ export default function App() {
         restoreSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         cleanupSessionData(); // Clear save queue and timers
+        // Kill any audio still in flight — word TTS, motivational MP3s,
+        // demo speechSynthesis utterances — so the logged-out landing
+        // doesn't get serenaded by leftovers from the previous session.
+        try { stopAllAudio(); } catch {}
+        try { window.speechSynthesis?.cancel(); } catch {}
         setUser(null);
         // Reset all game-playing state so the back button can't resurrect
         // a ghost of the previous session.  Symptom before this clear:
@@ -1972,7 +1991,24 @@ export default function App() {
         // the previous session would still block navigation).
         try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
         // Don't redirect Quick Play students — they don't need auth
-        if (!quickPlaySessionParam) setView(postLogoutView);
+        if (!quickPlaySessionParam) {
+          // Hard reload after the SPA route swap to drop every piece of
+          // in-memory state (audio handles, demo speech utterances, mode
+          // intros, popstate back-button trap entries).  Without this the
+          // teacher reported "after logout I still hear the demo voices
+          // and the back button takes me through every screen I just
+          // visited" — that's React state + history surviving the
+          // session change.  Replacing the URL clears the query
+          // (?assignment=... etc) so a stale assignment can't be picked
+          // up by the bootstrap effects on first paint.
+          setView(postLogoutView);
+          try {
+            // Students land on /student (handled by the initial-view
+            // resolver above), teachers/guests on the marketing root.
+            const target = wasStudent ? '/student' : '/';
+            window.location.replace(target);
+          } catch {}
+        }
         setLoading(false);
       } else if (event === 'INITIAL_SESSION') {
         // No session exists — user needs to log in.
@@ -3124,6 +3160,7 @@ export default function App() {
           }}
           onWorksheetClick={() => { setWorksheetAssignment(null); setView("worksheet"); }}
           onVocabagrutClick={() => { setView("vocabagrut"); }}
+          onHotSeatClick={() => { setView("hot-seat"); }}
           onPrintAssignmentWorksheet={(a) => {
             setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("worksheet");
@@ -3819,6 +3856,22 @@ export default function App() {
     );
   }
 
+
+  if (view === "hot-seat") {
+    // Pass-around classroom mode — one device, many players.  Owns its
+    // own setup screen + game loop + podium internally; nothing to thread
+    // beyond speakWord (for audio replay on the prompt) and a back
+    // handler (dashboard return).  Scores stay in-memory; no Supabase
+    // writes since the players aren't logged-in users.
+    return (
+      <LazyWrapper loadingMessage="Loading Hot Seat…">
+        <HotSeatView
+          onExit={() => setView("teacher-dashboard")}
+          speak={speakWord}
+        />
+      </LazyWrapper>
+    );
+  }
 
   if (view === "class-show") {
     // Hebrew classes get a focused 2-mode projector view

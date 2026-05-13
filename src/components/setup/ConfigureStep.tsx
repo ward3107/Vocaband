@@ -12,6 +12,7 @@ import AiLessonBuilder from '../ai-lesson-builder/AiLessonBuilder';
 import type { GeneratedLesson } from '../ai-lesson-builder/AiLessonBuilder';
 import { useLanguage } from '../../hooks/useLanguage';
 import { teacherWizardsT } from '../../locales/teacher/wizards';
+import { useAutoResizeTextarea } from '../../hooks/useAutoResizeTextarea';
 
 // ── Derive assignment meta from selected modes ───────────────────────────────
 // The old "Quick template" UI forced teachers to pick a preset before
@@ -175,6 +176,20 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   // Sentence builder local state
   const [customSentenceInput, setCustomSentenceInput] = useState('');
   const [editingSentenceIndex, setEditingSentenceIndex] = useState<number | null>(null);
+
+  // Auto-grow refs for the assignment-setup textareas.  Teachers pasting
+  // long instructions or multi-line sentences shouldn't have to wrestle
+  // an inner scrollbar to verify what they pasted.
+  const instructionsTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const customSentenceTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const editSentenceTextareaRef = useRef<HTMLTextAreaElement>(null);
+  useAutoResizeTextarea(instructionsTextareaRef, assignmentInstructions ?? '', { min: 56 });
+  useAutoResizeTextarea(customSentenceTextareaRef, customSentenceInput, { min: 56 });
+  useAutoResizeTextarea(
+    editSentenceTextareaRef,
+    editingSentenceIndex !== null ? (assignmentSentences[editingSentenceIndex] ?? '') : '',
+    { min: 96 },
+  );
 
   // Cleanup on unmount: close any open modals/overlays
   useEffect(() => {
@@ -694,6 +709,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 id="assignment-instructions"
                 name="instructions"
                 autoComplete="off"
+                ref={instructionsTextareaRef}
                 value={assignmentInstructions}
                 onChange={(e) => {
                   instructionsManuallyEditedRef.current = true;
@@ -701,7 +717,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 }}
                 placeholder={isAssignment ? t.instructionsPlaceholderAssignment : t.instructionsPlaceholderQp}
                 rows={2}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all resize-none"
+                className="w-full px-3 py-2.5 rounded-xl border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all overflow-y-auto"
               />
             </div>
           </div>
@@ -782,11 +798,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             </label>
             <div className="flex gap-2">
               <textarea
+                ref={customSentenceTextareaRef}
                 value={customSentenceInput}
                 onChange={(e) => setCustomSentenceInput(e.target.value)}
                 placeholder={t.sentencePlaceholder}
                 rows={2}
-                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none overflow-y-auto"
               />
               <button
                 onClick={() => {
@@ -860,6 +877,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 </h3>
                 <textarea
                   autoFocus
+                  ref={editSentenceTextareaRef}
                   value={assignmentSentences[editingSentenceIndex]}
                   onChange={(e) => {
                     const updated = [...assignmentSentences];
@@ -867,7 +885,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     onSentencesChange?.(updated);
                   }}
                   rows={3}
-                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none"
+                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none overflow-y-auto"
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                 />
                 <div className="flex gap-3 mt-4">

@@ -87,6 +87,8 @@ interface TeacherDashboardViewProps {
   onPrintAssignmentWorksheet: (a: AssignmentData) => void;
   /** Vocabagrut — Bagrut-style mock exam generator. */
   onVocabagrutClick: () => void;
+  /** Hot Seat — pass-around single-device classroom mode. */
+  onHotSeatClick: () => void;
 
   // Classes section handlers
   onNewClass: () => void;
@@ -142,6 +144,7 @@ export default function TeacherDashboardView({
   onClassShowClick, onProjectAssignmentToClass,
   onWorksheetClick, onPrintAssignmentWorksheet,
   onVocabagrutClick,
+  onHotSeatClick,
   onNewClass, onAssignClass, onDeleteClass,
   editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
   onNameChange, onAvatarChange,
@@ -343,6 +346,7 @@ export default function TeacherDashboardView({
             onClassShowClick={onClassShowClick}
             onWorksheetClick={onWorksheetClick}
             onVocabagrutClick={onVocabagrutClick}
+            onHotSeatClick={onHotSeatClick}
           />
 
           <TeacherClassesSection

@@ -2261,6 +2261,8 @@ interface ResourceCardProps {
   categoryGamesLabel: string;
   categoryAssessLabel: string;
   categoryFamilyLabel: string;
+  moreFormatsLabel: string;
+  hideFormatsLabel: string;
   audioZipTitle: string;
   audioZipDesc: string;
   audioZipDownloadLabel: string;
@@ -2320,6 +2322,8 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
   categoryGamesLabel,
   categoryAssessLabel,
   categoryFamilyLabel,
+  moreFormatsLabel,
+  hideFormatsLabel,
   audioZipTitle,
   audioZipDesc,
   audioZipDownloadLabel,
@@ -2345,6 +2349,11 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
   isDownloading,
 }) => {
   const { isRTL } = useLanguage();
+  // On mobile the card stacks 15 buttons + 4 dividers vertically, which makes
+  // scanning impossible. We default-collapse the format grid so each card shows
+  // only the primary Download + a "More formats" disclosure, and we expand it
+  // automatically on >=sm so the desktop experience is unchanged.
+  const [formatsOpen, setFormatsOpen] = useState(false);
 
   // Keeps each button declaration short and consistent. The gradient + text
   // colour hint at the format's character so teachers can spot favourites.
@@ -2375,18 +2384,22 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
-      className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 overflow-hidden group hover:border-white/30 transition-all"
+      className="bg-white/10 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/20 overflow-hidden group hover:border-white/30 transition-all"
     >
-      <div className={`bg-gradient-to-r ${gradient} p-6 flex items-center gap-4`}>
-        <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center">{icon}</div>
+      <div className={`bg-gradient-to-r ${gradient} p-3 sm:p-6 flex items-center gap-3 sm:gap-4`}>
+        <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white/20 flex items-center justify-center shrink-0 text-xl sm:text-3xl">
+          {icon}
+        </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-2xl font-bold text-white truncate">{title}</h3>
-          <p className="text-white/90 text-base font-semibold">{size}</p>
+          <h3 className="text-base sm:text-2xl font-bold text-white truncate leading-tight">{title}</h3>
+          <p className="text-white/90 text-xs sm:text-base font-semibold">{size}</p>
         </div>
       </div>
 
-      <div className="p-6">
-        <p className="text-white/80 mb-4 leading-relaxed text-lg">{description}</p>
+      <div className="p-3 sm:p-6">
+        <p className="text-white/80 mb-3 sm:mb-4 leading-snug sm:leading-relaxed text-xs sm:text-lg line-clamp-2 sm:line-clamp-none">
+          {description}
+        </p>
 
         <div className="grid grid-cols-1 gap-2">
           <motion.button
@@ -2395,10 +2408,11 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             onClick={onDownload}
             disabled={isDownloading}
             aria-label={`${downloadLabel} — ${title}`}
-            className={`w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`w-full py-2 sm:py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all flex items-center justify-center gap-2 text-sm sm:text-base ${
               isDownloading ? "cursor-wait" : "cursor-pointer"
             }`}
             type="button"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >
             {isDownloading ? (
               <>
@@ -2413,22 +2427,24 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             )}
           </motion.button>
 
-          {/* Phase-1 online-solver share. Opens the ShareWorksheetDialog which
-              calls the create_interactive_worksheet RPC and returns a
-              vocaband.com/w/<slug> link teachers can paste into WhatsApp. */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onShareInteractive}
-            aria-label={`Share online worksheet — ${title}`}
-            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 transition-all"
+          {/* Mobile-only disclosure. On >=sm we hide this button and always show
+              the full format grid via the `sm:!block` rule on the wrapper below. */}
+          <button
             type="button"
+            onClick={() => setFormatsOpen((o) => !o)}
+            aria-expanded={formatsOpen}
+            className="sm:hidden w-full py-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white font-semibold transition-all flex items-center justify-center gap-2 text-xs"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >
-            <Share2 size={16} />
-            <span>Share online</span>
-          </motion.button>
+            <Layers size={14} />
+            <span>{formatsOpen ? hideFormatsLabel : moreFormatsLabel}</span>
+            <ChevronRight
+              size={14}
+              className={`transition-transform ${formatsOpen ? "rotate-90" : ""}`}
+            />
+          </button>
 
+        <div className={`${formatsOpen ? "block" : "hidden"} sm:!block`}>
           <CategoryLabel>{categoryPracticeLabel}</CategoryLabel>
           <div className="grid grid-cols-2 gap-2">
             <FormatButton
@@ -2558,6 +2574,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
               fullWidth
             />
           </div>
+        </div>
 
           {/* Audio pack download — fetches all topic MP3s from Supabase Storage
               via the Cloudflare Worker's /api/audio-pack route, which streams
@@ -2567,7 +2584,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             href={`/api/audio-pack?ids=${topicWordIds.join(",")}&name=${encodeURIComponent(title)}`}
             download
             aria-label={`${audioZipDownloadLabel} — ${title}`}
-            className="mt-3 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-3"
+            className="mt-3 px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-3"
           >
             <Music size={18} className="text-white/70 shrink-0" />
             <div className="flex-1 min-w-0">
@@ -2693,6 +2710,7 @@ interface PreviewModalProps {
     pageNavTemplate: string; // "Page {current} of {total}"
     prevPage: string;
     nextPage: string;
+    previewLoading: string;
   };
   onClose: () => void;
   onDownload: () => void;
@@ -2720,6 +2738,13 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pageCount, setPageCount] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
+  // Reset to "loading" whenever the srcDoc changes (new pack, new settings).
+  // Without this the spinner can flash off before the iframe re-paints with
+  // the new HTML, giving the user a brief moment of stale content.
+  const [iframeReady, setIframeReady] = useState(false);
+  useEffect(() => {
+    setIframeReady(false);
+  }, [preview.html]);
   const showWordsPerPage = format === "worksheet";
   const showBingoSettings = format === "bingo";
   const showTranslationsToggle =
@@ -2949,14 +2974,23 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
           </div>
         )}
 
-        <div className="flex-1 overflow-hidden bg-gray-100">
+        <div className="flex-1 overflow-hidden bg-gray-100 relative">
           <iframe
             ref={iframeRef}
             srcDoc={preview.html}
             title={previewTitle}
             className="w-full h-full border-0 bg-white"
             sandbox="allow-same-origin allow-modals allow-scripts"
+            onLoad={() => setIframeReady(true)}
           />
+          {!iframeReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/85 backdrop-blur-sm pointer-events-none">
+              <div className="flex items-center gap-3 text-violet-700">
+                <Loader2 size={20} className="animate-spin" />
+                <span className="font-semibold text-sm sm:text-base">{labels.previewLoading}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-gray-100 px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-end gap-2 sm:gap-3 border-t">
@@ -3514,31 +3548,101 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const handleConfirmDownload = async () => {
     if (!preview) return;
     setIsExporting(true);
-    const container = document.createElement("div");
-    container.innerHTML = preview.html;
+    // Render the preview HTML inside an off-screen iframe rather than a
+    // plain <div> appended to document.body.  preview.html embeds a
+    // <style> block with global selectors (`*`, `html, body` from
+    // baseStyles) which, if injected directly into the live document,
+    // bleed into the running app during export and cause a visible
+    // flicker/layout shift.  An iframe gives the export its own
+    // document so those globals stay scoped to it.
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.left = "-99999px";
+    iframe.style.top = "0";
+    iframe.style.width = settings.orientation === "portrait" ? "210mm" : "297mm";
+    // Height kicks the iframe past 0 so layout actually computes; the
+    // real worksheet height is determined by the .sheet elements
+    // inside.  Border:0 stops Safari from reserving a 2px frame.
+    iframe.style.height = "297mm";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const idoc = iframe.contentDocument;
+    if (!idoc) {
+      // Some embedded contexts (older webviews, certain CSP setups)
+      // strip iframe.contentDocument.  Cleanup + bail rather than
+      // ship a half-rendered PDF.
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      setIsExporting(false);
+      setPreviewSource(null);
+      return;
+    }
+    idoc.open();
+    idoc.write(`<!DOCTYPE html><html><head></head><body style="margin:0">${preview.html}</body></html>`);
+    idoc.close();
+
+    // Wait for every <img> in the source (audio QR codes, pictionary art,
+    // flashcard images) to either resolve or fail. Without this gate
+    // html2canvas captures a half-rendered DOM and writes blank cells
+    // into the resulting PDF.
+    const imgs = Array.from(idoc.querySelectorAll("img"));
+    await Promise.all(
+      imgs.map((img) =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              img.addEventListener("load", () => resolve(), { once: true });
+              img.addEventListener("error", () => resolve(), { once: true });
+            }),
+      ),
+    );
+    // Let webfonts (Inter/Heebo/Cairo) finish before snapshotting too —
+    // otherwise canvas falls back to system fonts mid-render and the
+    // last page can lay out differently from the preview iframe.  The
+    // iframe inherits the parent's font registry in modern browsers but
+    // also exposes its own; await both to be safe.
+    const fontPromises: Promise<unknown>[] = [];
+    const idocFonts = (idoc as Document & { fonts?: { ready: Promise<unknown> } }).fonts;
+    if (idocFonts) fontPromises.push(idocFonts.ready);
+    const parentFonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts;
+    if (parentFonts) fontPromises.push(parentFonts.ready);
+    if (fontPromises.length) {
+      try {
+        await Promise.all(fontPromises);
+      } catch {
+        // font loading API is best-effort; carry on if it rejects.
+      }
+    }
 
     // String fields here are literal unions in the html2pdf.js .d.ts (e.g.
     // "jpeg" | "png", "mm" | "cm" | "in"), so we need `as const` to stop
     // TS widening them to plain string and tripping the type guard.
+    // Scale 1.5 (down from 2) cuts html2canvas time roughly in half while
+    // still producing print-quality A4 output — the resulting PDFs print
+    // at ~225 dpi which is well above the 150 dpi A4 print baseline.
     const opt = {
       margin: 0,
       filename: preview.filename,
-      image: { type: "jpeg" as const, quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      image: { type: "jpeg" as const, quality: 0.95 },
+      html2canvas: { scale: 1.5, useCORS: true, letterRendering: true, backgroundColor: "#ffffff" },
       jsPDF: {
         unit: "mm" as const,
         format: "a4" as const,
         orientation: settings.orientation,
         compress: true,
       },
-      pagebreak: { mode: ["css", "legacy"] as const },
+      // `before: '.sheet'` forces each generator-emitted page onto a fresh
+      // PDF page and prevents the trailing blank page that legacy mode
+      // produces when content height is not an exact multiple of A4.
+      pagebreak: { mode: ["css", "legacy"] as const, before: ".sheet", avoid: ".no-break" },
     };
 
     try {
-      await html2pdf().set(opt).from(container).save();
+      await html2pdf().set(opt).from(idoc.body).save();
     } catch (error) {
       console.error("PDF generation failed:", error);
     } finally {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
       setIsExporting(false);
       setPreviewSource(null);
     }
@@ -3788,7 +3892,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                 <p className="text-white/70 font-semibold">{t.searchEmpty}</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                 {filteredPacks.map((topic, index) => {
                   const wordCount = topic.ids.length;
                   const pagesCount = Math.max(1, Math.ceil(wordCount / 22));
@@ -3824,6 +3928,8 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                       categoryGamesLabel={t.categoryGames}
                       categoryAssessLabel={t.categoryAssess}
                       categoryFamilyLabel={t.categoryFamily}
+                      moreFormatsLabel={t.moreFormats}
+                      hideFormatsLabel={t.hideFormats}
                       audioZipTitle={t.audioZipTitle}
                       audioZipDesc={t.audioZipDesc}
                       audioZipDownloadLabel={t.audioZipDownload}
@@ -3944,6 +4050,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             pageNavTemplate: t.pageNavLabel,
             prevPage: t.prevPage,
             nextPage: t.nextPage,
+            previewLoading: t.previewLoading,
           }}
           onClose={() => setPreviewSource(null)}
           onDownload={handleConfirmDownload}

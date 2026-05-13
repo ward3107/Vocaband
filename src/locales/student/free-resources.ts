@@ -36,6 +36,11 @@ export interface FreeResourcesT {
   categoryGames: string;
   categoryAssess: string;
   categoryFamily: string;
+  // Mobile-only disclosure that hides the full format grid behind a tap
+  moreFormats: string;
+  hideFormats: string;
+  // Preview-modal status while the iframe is rendering the worksheet
+  previewLoading: string;
   // Theme bundles section
   bundlesTitle: string;
   bundlesSubtitle: string;
@@ -147,6 +152,9 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     categoryGames: "Games",
     categoryAssess: "Assess",
     categoryFamily: "Family",
+    moreFormats: "More formats",
+    hideFormats: "Hide formats",
+    previewLoading: "Preparing preview…",
     bundlesTitle: "Theme Bundles",
     bundlesSubtitle: "Curated multi-topic packs ready to print and use across the year",
     bundleBackToSchool: "Back to School",
@@ -245,6 +253,9 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     categoryGames: "משחקים",
     categoryAssess: "הערכה",
     categoryFamily: "משפחה",
+    moreFormats: "פורמטים נוספים",
+    hideFormats: "הסתר פורמטים",
+    previewLoading: "מכין תצוגה מקדימה…",
     bundlesTitle: "חבילות לפי נושא",
     bundlesSubtitle: "חבילות רב-נושאיות מוכנות להדפסה לאורך כל השנה",
     bundleBackToSchool: "חזרה לבית הספר",
@@ -343,6 +354,9 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     categoryGames: "ألعاب",
     categoryAssess: "تقييم",
     categoryFamily: "العائلة",
+    moreFormats: "تنسيقات إضافية",
+    hideFormats: "إخفاء التنسيقات",
+    previewLoading: "جارٍ تحضير المعاينة…",
     bundlesTitle: "حزم حسب الموضوع",
     bundlesSubtitle: "حزم متعددة المواضيع جاهزة للطباعة والاستخدام طوال العام",
     bundleBackToSchool: "العودة إلى المدرسة",

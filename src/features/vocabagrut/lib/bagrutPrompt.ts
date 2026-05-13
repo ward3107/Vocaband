@@ -50,12 +50,17 @@ Question IDs: use stable kebab-case strings like "rc-1", "rc-2", "vic-1", "wp-1"
 }
 
 export function buildUserMessage(input: PromptInput): string {
-  return `Generate a Bagrut-style mock exam for Module ${input.module}.
+  return `Generate a Module ${input.module} style mock exam for English practice.
 
 Target word list (every word must appear in PART I or PART II in authentic context):
 ${input.words.map((w, i) => `${i + 1}. ${w}`).join('\n')}
 
-Title the test "Practice Bagrut — Module ${input.module}: <a 3–6 word topic phrase you choose based on the words>".
+Title the test "English Practice Test — Module ${input.module}: <a 3–6 word topic phrase you choose based on the words>".
+
+IMPORTANT branding rule for the title and every visible string in the
+output: do NOT include the words "Bagrut", "Vocabagrut", "matriculation",
+or any phrasing that implies endorsement by the Israeli Ministry of
+Education.  This is a teacher-authored practice paper.
 
 Return ONLY the bagrut_test tool call.  No prose.`;
 }

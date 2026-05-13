@@ -4,6 +4,90 @@ Tracking known issues with their diagnosis status.
 
 ---
 
+## Security — F2: lock self-writable game-state columns on `public.users`
+
+**Status:** scoped, NOT started.  Companion finding to F1 which shipped 2026-05-12 as migration `20260602_lock_users_plan_columns.sql`.
+
+**Audit context** (pen-test 2026-05-12): the `users_update` RLS policy USING is owner-only (`auth.uid() = uid`), but the WITH CHECK only pins `role` / `class_code` / `plan` / `trial_ends_at`. Every other column on `public.users` is writable by the row's owner via direct `supabase.from('users').update(...)`. A logged-in student can open DevTools and run:
+
+```js
+await supabase.from('users').update({
+  xp: 999999, streak: 365,
+  badges: ['🎯 Perfect Score', '👑 Champion', /* …all of them */],
+  unlocked_avatars: [/* all */], unlocked_themes: [/* all */],
+  power_ups: { hint: 99, freeze: 99 },
+}).eq('uid', myUid);
+```
+
+…and instantly top every leaderboard, claim every shop item, and stack every power-up. Doesn't leak any data, doesn't affect other students — just breaks gamification fairness at scale.
+
+**Why not one migration like F1:** F1 worked as a single migration because no React code legitimately writes `plan` / `trial_ends_at`. F2 columns are written legitimately from five React sites today (see table below), so a "lock and refactor" sprint is needed — locking without refactoring would silently break game-finish saves, badge awards, shop purchases, and power-up consumption.
+
+**React sites that currently write F2 columns directly:**
+
+| File | Column(s) | What it does |
+|---|---|---|
+| `src/hooks/useGameFinish.ts:469` | `xp`, `streak` | Save XP+streak after a game ends |
+| `src/hooks/useGameState.ts:540` | `xp`, `streak` | Alternate save path |
+| `src/hooks/useAwardBadge.ts:37` | `badges` | Grant in-game badge ("🎯 Perfect Score" etc.) |
+| `src/views/ShopView.tsx:585, 679` | `unlocked_*`, `xp` | Buy avatar / theme / frame / title |
+| `src/views/GameView.tsx:227, 238, 248` | `power_ups` | Consume a hint / freeze |
+
+**Required server-side RPCs (most of the shape already exists):**
+
+1. **`award_progress_xp(p_xp_delta INT, p_streak INT)`** — new. Capped at ±200/call, only `authenticated`. Recomputes the streak from `progress.completed_at` server-side as a sanity check before persisting.
+2. **`award_self_badge(p_badge TEXT)`** — new. Idempotent array-append. No XP side-effect (`record_mission_progress` handles mission XP separately, `award_reward` handles teacher-granted XP).
+3. **`purchase_item(item_type, item_id, item_cost)`** — **already exists** (migration 009). React shop currently bypasses it via direct UPDATEs; just needs to be wired through.
+4. **`consume_power_up(p_kind TEXT)`** — new. Atomic JSONB decrement guarded by "must be > 0".
+
+**Required trigger (the lock itself):**
+
+```sql
+CREATE OR REPLACE FUNCTION public.enforce_users_locked_columns()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+  -- Bypass for service_role (Stripe / admin scripts) and SECURITY
+  -- DEFINER functions (which run as 'postgres').  is_admin() covers
+  -- platform admins.  Authenticated end users go through the new
+  -- RPCs above — direct UPDATE is rejected here.
+  IF current_user IN ('postgres', 'service_role', 'supabase_admin')
+     OR is_admin()
+  THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.xp IS DISTINCT FROM OLD.xp THEN RAISE EXCEPTION 'Use award_progress_xp RPC' USING ERRCODE='42501'; END IF;
+  IF NEW.streak IS DISTINCT FROM OLD.streak THEN RAISE EXCEPTION 'Use award_progress_xp RPC' USING ERRCODE='42501'; END IF;
+  IF NEW.badges IS DISTINCT FROM OLD.badges THEN RAISE EXCEPTION 'Use award_self_badge / award_reward RPC' USING ERRCODE='42501'; END IF;
+  IF NEW.unlocked_avatars IS DISTINCT FROM OLD.unlocked_avatars THEN RAISE EXCEPTION 'Use purchase_item RPC' USING ERRCODE='42501'; END IF;
+  IF NEW.unlocked_themes IS DISTINCT FROM OLD.unlocked_themes THEN RAISE EXCEPTION 'Use purchase_item RPC' USING ERRCODE='42501'; END IF;
+  IF NEW.power_ups IS DISTINCT FROM OLD.power_ups THEN RAISE EXCEPTION 'Use purchase_item / consume_power_up RPC' USING ERRCODE='42501'; END IF;
+  IF NEW.pet_active_days IS DISTINCT FROM OLD.pet_active_days THEN RAISE EXCEPTION 'Use record_pet_activity RPC' USING ERRCODE='42501'; END IF;
+  IF NEW.pet_last_active_date IS DISTINCT FROM OLD.pet_last_active_date THEN RAISE EXCEPTION 'Use record_pet_activity RPC' USING ERRCODE='42501'; END IF;
+
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER users_locked_columns_guard
+BEFORE UPDATE ON public.users
+FOR EACH ROW EXECUTE FUNCTION public.enforce_users_locked_columns();
+```
+
+**Sequence to ship safely:**
+
+1. Land RPCs 1, 2, 4 (RPC 3 already exists).
+2. Migrate each of the 5 React sites to call its RPC; keep the direct UPDATE as a fallback for one deploy cycle so a partial rollout doesn't break the field.
+3. Verify in staging + the demo classroom flow that XP / streak / badges / shop / power-ups all work end-to-end.
+4. Apply the trigger migration.
+5. Add pen-test cases to `scripts/security-pen-test.sh` (authenticated session attempts the four direct-UPDATE attacks — all should fail).
+6. Remove the React fallback branches.
+
+**Why it's not urgent:** today this is a fairness / "kid bragging on TikTok" issue, not a revenue issue. F1 closed the revenue hole. Park this until the user base or a noisy bug report justifies the sprint.
+
+---
+
 ## Beat-Kahoot Roadmap (drafted 2026-05-12)
 
 Strategic roadmap for making Vocaband structurally beat Kahoot in Israeli schools. Grouped by tier — top tiers ship soonest. Discovery notes precede each item.
@@ -14,6 +98,8 @@ Strategic roadmap for making Vocaband structurally beat Kahoot in Israeli school
 - **Spaced repetition** — `supabase/migrations/20260507205628_spaced_repetition.sql` provides `review_schedule`, `count_due_reviews`, `get_due_reviews`, `record_review_result`, `schedule_review_words`. Wired through `useDueReviews.ts` → `ReviewQueueCard.tsx` → `ReviewGame.tsx`. Full SRS already live.
 - **QR / nickname join** — Quick Play already exists.
 - **Curriculum labelling structure** — `Set 1 / Set 2 / Set 3 / Custom` type already in place across the codebase.
+- **Class Minute — daily 60-second drill** (PR #587, follow-up class-switch race fix #588, shipped 2026-05-12) — `ClassMinuteCard.tsx` dashboard tile + `?play=class-minute` teacher share link via `ShareClassLinkModal`. SRS-first word source, falls back to assignments then `SET_2_WORDS`. Saves with `mode='class-minute'`; dashboard derives `doneToday` + streak from `studentProgress` with no extra round-trip. KNOWN GAP: only renders on the STRUCTURE_UX dashboard branch (which is feature-flagged OFF) — needs porting to the legacy branch for production visibility. Same gap applies to `ReviewQueueCard`.
+- **Hot Seat — single-device pass-around mode** (PR #589, shipped 2026-05-12) — `HotSeatView.tsx` owns setup → interstitial → question → podium phases. Reuses Classic-style multi-choice mechanics, in-memory scoring (no DB writes — players aren't logged-in students). v1 uses `SET_2_WORDS` only; per-assignment word picker is a deferred v2. Tile is gated `!isHebrew` (mirrors Vocabagrut precedent).
 
 These items are DONE. Don't rebuild them — surface and market them.
 
@@ -21,28 +107,14 @@ These items are DONE. Don't rebuild them — surface and market them.
 
 ### Tier 1 — Ship next (small scope, big leverage)
 
-**1. Class Minute — daily 60-second drill**
-- Teacher dashboard tile + student dashboard tile labelled "Class Minute"
-- 60-second timer, rapid-fire word recognition, pulls from the student's SRS due queue (`useDueReviews`) first, then fills from current assignment
-- Single score at the end + streak ("3 days in a row!"). No XP economy changes — just a daily ritual
-- Reuses: word picker, existing game-mode rendering, `useDueReviews`, streak field on `users`
-- ETA: 1–2 evenings
-- Why now: smallest scope on this list, daily habit = retention moat Kahoot cannot copy
-
-**2. Hot-seat mode (single device, pass-around)**
-- New game mode flag `hotSeat: true` on existing game shells
-- Each round: shows student name → "Pass to {name}" interstitial → 1 question → score → next student
-- Teacher picks the player list (manual names, or roster from class)
-- Solves "not every kid has a phone" — opens lower-income schools
-- ETA: 1–2 evenings
-- Why now: cheap, unblocks a real market segment
-
-**3. Printable PDF certificate (basic)**
+**1. Printable PDF certificate (basic)**
 - Reuse the existing `html2pdf` pipeline used by `HebrewWorksheetView`
 - New file: `src/views/certificates/StudentCertificate.tsx` — A4 layout, student name, class, date, "X words mastered", MoE-set label
 - "Print certificate" button on the student profile (teacher view) + end-of-unit
 - ETA: 1 evening for v1
 - Why now: fridge marketing, parent word-of-mouth, no new infra
+
+**Class Minute** and **Hot Seat** shipped 2026-05-12 — see "Already shipped" section above.
 
 ---
 
@@ -119,11 +191,10 @@ These items are DONE. Don't rebuild them — surface and market them.
 
 ---
 
-### Suggested start: TONIGHT
+### Suggested next move (post-Hot-Seat ship)
 
-**Class Minute (#1)** — smallest scope, biggest habit moat, reuses everything we already built (SRS + word picker + streak field). One evening for v1, demoable to a teacher the next morning. After it ships, the daily-drill data informs every other feature on this list.
-
-Fallback if Class Minute feels too big tonight: **Printable PDF Certificate (#3)** — even smaller, even more immediately marketable.
+1. **Smoke-test the three features that just shipped on production** — Class Minute card + teacher share link + Hot Seat. None have been seen running by a human. The legacy-branch bug for the Class Minute card (rendered on STRUCTURE_UX branch only) is the most likely real-world breakage.
+2. **Printable PDF Certificate** — smallest remaining Tier-1, A4 layout, reuses the html2pdf pipeline. 1 evening.
 
 ---
 
