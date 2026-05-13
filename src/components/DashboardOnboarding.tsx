@@ -1,52 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, X, Sparkles } from 'lucide-react';
+import { useLanguage } from '../hooks/useLanguage';
+import { dashboardOnboardingT } from '../locales/teacher/dashboard-onboarding';
 
-interface TourStep {
-  target: string; // data-tour attribute value
-  title: string;
-  description: string;
-  icon: string;
-}
-
-const STEPS: TourStep[] = [
-  {
-    target: 'quick-play',
-    title: 'Quick Online Challenge',
-    description: 'Create a QR code for instant vocabulary games — students scan and play, no login needed.',
-    icon: '📱',
-  },
-  {
-    target: 'analytics',
-    title: 'Classroom Analytics',
-    description: 'See scores, trends, most-missed words, and which students need extra help.',
-    icon: '📊',
-  },
-  {
-    target: 'gradebook',
-    title: 'Students & Grades',
-    description: 'Track every student\'s progress, scores, and detailed mistake history.',
-    icon: '🏆',
-  },
-  {
-    target: 'approvals',
-    title: 'Student Approvals',
-    description: 'When students sign up with your class code, approve or reject them here.',
-    icon: '👤',
-  },
-  {
-    target: 'my-classes',
-    title: 'Your Classes',
-    description: 'Create classes, get shareable codes, assign vocabulary, and manage students.',
-    icon: '📚',
-  },
-  {
-    target: 'new-class',
-    title: 'Create Your First Class',
-    description: 'Start here — create a class to get a code you can share with your students.',
-    icon: '✨',
-  },
-];
+// Static step metadata (target selector + icon) — the title/description
+// pair comes from the active locale and is merged at render time.
+const STEP_META = [
+  { target: 'quick-play', icon: '📱' },
+  { target: 'analytics',  icon: '📊' },
+  { target: 'gradebook',  icon: '🏆' },
+  { target: 'approvals',  icon: '👤' },
+  { target: 'my-classes', icon: '📚' },
+  { target: 'new-class',  icon: '✨' },
+] as const;
 
 interface Props {
   onComplete: () => void;
@@ -59,6 +26,16 @@ interface Props {
 const MOBILE_BREAKPOINT = 640;
 
 export default function DashboardOnboarding({ onComplete }: Props) {
+  const { language, dir } = useLanguage();
+  const t = dashboardOnboardingT[language];
+  // Combine static metadata with translated text into a single STEPS
+  // array, matched up by index so the rest of the component can keep
+  // using `STEPS[step].target` etc. without further changes.
+  const STEPS = STEP_META.map((m, i) => ({
+    ...m,
+    title: t.steps[i].title,
+    description: t.steps[i].description,
+  }));
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
@@ -67,7 +44,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
   );
 
   const updateRect = useCallback(() => {
-    const el = document.querySelector(`[data-tour="${STEPS[step].target}"]`);
+    const el = document.querySelector(`[data-tour="${STEP_META[step].target}"]`);
     if (el) {
       setRect(el.getBoundingClientRect());
     } else {
@@ -80,7 +57,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
   // this the tooltip was correctly drawn at the target's position but
   // the target itself could be below the fold on mobile.
   useEffect(() => {
-    const el = document.querySelector(`[data-tour="${STEPS[step].target}"]`);
+    const el = document.querySelector(`[data-tour="${STEP_META[step].target}"]`);
     if (el && 'scrollIntoView' in el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -192,16 +169,17 @@ export default function DashboardOnboarding({ onComplete }: Props) {
           transition={{ duration: 0.2 }}
           className="absolute bg-[var(--vb-surface)] rounded-2xl shadow-2xl p-5 border border-[var(--vb-border)] max-w-[calc(100vw-24px)]"
           style={getTooltipStyle()}
+          dir={dir}
         >
           {/* Step counter */}
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-[var(--vb-text-muted)] uppercase tracking-wider">
-              Step {step + 1} of {STEPS.length}
+              {t.stepCounter(step + 1, STEPS.length)}
             </span>
             <button
               onClick={onComplete}
               className="text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] transition-colors"
-              title="Skip tour"
+              title={t.skipTour}
             >
               <X size={16} />
             </button>
@@ -234,7 +212,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
               onClick={onComplete}
               className="px-3 py-2 text-xs font-bold text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] transition-colors"
             >
-              Skip All
+              {t.skipAll}
             </button>
             <div className="flex-1" />
             {!isLast ? (
@@ -242,7 +220,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
                 onClick={() => setStep(s => s + 1)}
                 className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-lg shadow-blue-200"
               >
-                Next
+                {t.next}
                 <ChevronRight size={14} />
               </button>
             ) : (
@@ -251,7 +229,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
                 className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-200"
               >
                 <Sparkles size={14} />
-                Got it!
+                {t.gotIt}
               </button>
             )}
           </div>
