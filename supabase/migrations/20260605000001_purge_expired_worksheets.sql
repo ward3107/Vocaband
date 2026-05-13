@@ -57,3 +57,11 @@ SELECT cron.schedule(
   '30 3 * * *',
   $cron$ SELECT public.purge_expired_worksheets(); $cron$
 );
+
+-- Lock down REST exposure: the function is SECURITY DEFINER for the
+-- pg_cron owner; we don't want anon/authenticated POSTing to
+-- /rest/v1/rpc/purge_expired_worksheets to trigger a DELETE.  Cron
+-- runs as the function owner, so it still works.
+REVOKE EXECUTE ON FUNCTION public.purge_expired_worksheets() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.purge_expired_worksheets() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.purge_expired_worksheets() FROM authenticated;
