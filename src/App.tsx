@@ -142,6 +142,7 @@ const PUBLIC_VIEWS = new Set<View>([
 const TEACHER_VIEWS = new Set<View>([
   "worksheet", "classroom", "class-show", "teacher-approvals",
   "quick-play-teacher-monitor", "quick-play-setup", "create-assignment",
+  "hot-seat",
   "voca-picker", "vocahebrew-dashboard",
   "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-synonyms", "vocahebrew-listening",
 ]);
