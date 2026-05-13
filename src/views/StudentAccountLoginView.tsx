@@ -1,10 +1,11 @@
 import { type ReactNode, useRef, useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft, KeyRound } from "lucide-react";
 import OAuthCallback from "../components/OAuthCallback";
 import OAuthClassCode from "../components/OAuthClassCode";
 import OAuthButton from "../components/OAuthButton";
 import StudentEmailOtpCard from "../components/StudentEmailOtpCard";
+import StudentPinLoginCard from "../components/StudentPinLoginCard";
 import type { View } from "../core/views";
 import { writeIntendedClassCode } from "../utils/oauthIntent";
 import { useLanguage, languageNames, type Language } from "../hooks/useLanguage";
@@ -191,12 +192,17 @@ export default function StudentAccountLoginView({
   const t = studentLoginT[language];
   const [langOpen, setLangOpen] = useState(false);
   const langs: Language[] = ["en", "he", "ar"];
-  // Toggle between Google OAuth (default) and email-OTP auth path.
-  // Same Supabase session afterwards either way — only the UI for
-  // identity verification differs.  See StudentEmailOtpCard.tsx for
-  // why students need this (shared classroom PCs, Google-cookie
-  // leakage between back-to-back logins).
-  const [emailOtpMode, setEmailOtpMode] = useState(false);
+  // Three login paths, in order of preference for the Israeli market:
+  //   - "pin"   : teacher pre-creates a roster row + PIN; the student
+  //               picks their name and types the PIN.  Default — no
+  //               Google account needed (matches MoE-issued devices).
+  //   - "oauth" : Google + Microsoft + a link to email-OTP.  Backup
+  //               for students who aren't on the roster yet or who
+  //               attend a school where OAuth is preferred.
+  //   - "otp"   : email magic-code.  Reached via a button inside the
+  //               OAuth panel; identity ends up in the same session
+  //               either way.
+  const [authMode, setAuthMode] = useState<"pin" | "oauth" | "otp">("pin");
 
   return (
     <>
@@ -390,25 +396,36 @@ export default function StudentAccountLoginView({
                     )}
                   </div>
 
-                  {/* Primary CTA — Google. The only login path.
-                      - Returning students: Google identifies them and
-                        routes them straight to their dashboard.
-                      - First-timers: Google identifies them, then we
-                        show the OAuthClassCode screen to bind them
-                        to the class code they just typed. */}
-                  {emailOtpMode ? (
-                    /* Email + 6-digit OTP path.  Self-contained — uses
-                       useTeacherOtpAuth (which is actually a generic
-                       email-OTP hook, not teacher-specific) and on
-                       verifyOtp success flips isOAuthCallback so the
-                       existing OAuthCallback → OAuthClassCode chain
-                       takes over (find existing student profile OR
-                       show class-code binding screen, same as Google
-                       OAuth lands in). */
+                  {/* Auth panel — picks one of three paths:
+                      - "pin"  : teacher-issued PIN (primary; default)
+                      - "oauth": Google + Microsoft
+                      - "otp"  : email magic-code (reached from inside oauth)
+                      The PIN path doesn't need a Google/Microsoft account,
+                      which matches most Israeli classrooms and lets a
+                      4th-grader join without parental email setup. */}
+                  {authMode === "pin" ? (
+                    hasEnoughCode ? (
+                      <StudentPinLoginCard
+                        classCode={studentLoginClassCode.trim().toUpperCase()}
+                        onSuccess={() => {
+                          // Supabase session is live; App.tsx's
+                          // onAuthStateChange listener will hydrate the
+                          // AppUser from public.users on its own.
+                        }}
+                        onUseDifferentMethod={() => setAuthMode("oauth")}
+                      />
+                    ) : (
+                      <div className="text-center py-4">
+                        <KeyRound size={22} className="text-stone-400 mx-auto mb-2" />
+                        <p className="text-sm font-bold text-stone-600">Enter your class code above</p>
+                        <p className="text-xs text-stone-500 mt-1">Then pick your name and type your PIN.</p>
+                      </div>
+                    )
+                  ) : authMode === "otp" ? (
                     <StudentEmailOtpCard
                       classCode={studentLoginClassCode}
                       onVerified={() => setIsOAuthCallback(true)}
-                      onUseGoogle={() => setEmailOtpMode(false)}
+                      onUseGoogle={() => setAuthMode("oauth")}
                     />
                   ) : (
                     <>
@@ -420,19 +437,9 @@ export default function StudentAccountLoginView({
                           setError(errorMessage);
                         }}
                         beforeSignIn={() => {
-                          // Persist class code so OAuthClassCode can pre-fill
-                          // for first-timers + App can detect class-switch
-                          // intent for returning students.  writeIntendedClassCode
-                          // normalises empty strings to "clear".
                           writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
                         }}
                       />
-                      {/* Microsoft sign-in -- covers MoE @edu.gov.il /
-                          Microsoft 365 accounts plus Outlook/Hotmail.
-                          Same class-code stash as Google, so the post-
-                          OAuth chain (OAuthCallback -> OAuthClassCode)
-                          treats them as a student in this class
-                          regardless of which provider verified them. */}
                       <OAuthButton
                         provider="azure"
                         label={t.signInWithMicrosoft}
@@ -446,18 +453,21 @@ export default function StudentAccountLoginView({
                           writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
                         }}
                       />
-                      {/* Email-OTP escape hatch — for students who'd
-                          rather not use a personal Google account on a
-                          shared classroom PC, or who don't have a
-                          Google account at all.  Subtle styling so
-                          Google stays visually primary. */}
                       <button
                         type="button"
-                        onClick={() => setEmailOtpMode(true)}
+                        onClick={() => setAuthMode("otp")}
                         className="w-full mt-3 text-xs font-bold text-stone-500 hover:text-stone-900 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg hover:bg-stone-100 transition-colors"
-                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as unknown as string }}
                       >
                         Or use email instead
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAuthMode("pin")}
+                        className="w-full mt-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg hover:bg-indigo-50 transition-colors"
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as unknown as string }}
+                      >
+                        <KeyRound size={12} /> I have a PIN from my teacher
                       </button>
                     </>
                   )}

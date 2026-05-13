@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Users } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
@@ -37,6 +37,8 @@ interface ClassCardProps {
   onDelete: () => void;
   /** Open the edit-class modal for renaming + changing avatar. */
   onEdit?: () => void;
+  /** Open the roster modal — manage students + PINs for this class. */
+  onOpenRoster?: () => void;
   /** Called when user changes the class name inline. */
   onNameChange?: (newName: string) => Promise<void> | void;
   /** Called when user picks a new avatar. */
@@ -70,6 +72,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   onWhatsApp,
   onDelete,
   onEdit,
+  onOpenRoster,
   onNameChange,
   onAvatarChange,
   copiedCode,
@@ -456,6 +459,17 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     Edit class
                   </button>
                 )}
+                {onOpenRoster && (
+                  <button
+                    onClick={() => { onOpenRoster(); setMenuOpen(false); }}
+                    type="button"
+                    style={{ color: 'var(--vb-text-secondary)' }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
+                  >
+                    <Users size={14} className="text-fuchsia-600" />
+                    Manage roster
+                  </button>
+                )}
                 <button
                   onClick={() => { setShareModalOpen(true); setMenuOpen(false); }}
                   type="button"
@@ -539,6 +553,23 @@ const ClassCard: React.FC<ClassCardProps> = ({
             <Zap size={15} />
             {t.newAssignment}
           </button>
+          {onOpenRoster && (
+            <button
+              onClick={onOpenRoster}
+              type="button"
+              style={{
+                touchAction: 'manipulation',
+                backgroundColor: 'var(--vb-surface-alt)',
+                color: 'var(--vb-text-secondary)',
+              }}
+              className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-sm transition-colors hover:opacity-90"
+              title="Manage roster + PINs"
+              aria-label="Manage roster"
+            >
+              <Users size={15} />
+              <span className="hidden sm:inline">Roster</span>
+            </button>
+          )}
           {assignments.length > 0 && (
             <button
               onClick={handleToggleAssignments}
