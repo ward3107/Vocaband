@@ -12,6 +12,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import type { StructurePart } from '../../constants/game';
+import { useLanguage } from '../../hooks/useLanguage';
+import { structureT } from '../../locales/student/structure';
 
 export interface PartOriginSheetProps {
   open: boolean;
@@ -31,6 +33,8 @@ const formatDate = (iso: string): string => {
 };
 
 export const PartOriginSheet: React.FC<PartOriginSheetProps> = ({ open, part, earnedAt, onClose }) => {
+  const { language, dir } = useLanguage();
+  const t = structureT[language];
   const isEarned = earnedAt !== null;
   return (
     <AnimatePresence>
@@ -51,6 +55,7 @@ export const PartOriginSheet: React.FC<PartOriginSheetProps> = ({ open, part, ea
             transition={{ type: 'spring', stiffness: 260, damping: 26 }}
             onClick={(e) => e.stopPropagation()}
             className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-6 m-0 sm:m-4"
+            dir={dir}
           >
             <div className="flex items-start gap-4">
               <div className={`shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl ${isEarned ? 'bg-gradient-to-br from-emerald-400 to-teal-500' : 'bg-stone-200'}`}>
@@ -58,19 +63,19 @@ export const PartOriginSheet: React.FC<PartOriginSheetProps> = ({ open, part, ea
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-[11px] font-black uppercase tracking-widest ${isEarned ? 'text-emerald-600' : 'text-stone-500'}`}>
-                  {isEarned ? 'Earned' : 'Locked'}
+                  {isEarned ? t.partEarnedTag : t.partLockedTag}
                 </p>
                 <h3 className="text-xl font-black text-stone-900 leading-tight">{part.label}</h3>
                 <p className="text-sm text-stone-600 mt-1.5 leading-relaxed">
                   {isEarned
-                    ? <>You earned this because <span className="font-bold text-stone-800">{part.origin.replace(/\.$/, '')}</span>{earnedAt && <> on {formatDate(earnedAt)}</>}.</>
-                    : <>To unlock: <span className="font-bold text-stone-800">{part.origin}</span></>}
+                    ? t.partEarnedBecause(part.origin.replace(/\.$/, ''), earnedAt ? formatDate(earnedAt) : null)
+                    : t.partToUnlock(part.origin)}
                 </p>
               </div>
               <button
                 onClick={onClose}
                 type="button"
-                aria-label="Close"
+                aria-label={t.partCloseAria}
                 className="shrink-0 w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500 transition-colors"
               >
                 <X size={18} />
@@ -82,7 +87,7 @@ export const PartOriginSheet: React.FC<PartOriginSheetProps> = ({ open, part, ea
               type="button"
               className="mt-5 w-full py-3 rounded-xl font-bold bg-stone-900 text-white hover:bg-stone-800 active:scale-[0.99] transition-all"
             >
-              Got it
+              {t.partGotIt}
             </button>
           </motion.div>
         </motion.div>

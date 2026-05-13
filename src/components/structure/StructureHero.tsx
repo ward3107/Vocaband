@@ -13,6 +13,8 @@ import React, { useState } from 'react';
 import { MetaphorScene } from './MetaphorScene';
 import { PartOriginSheet } from './PartOriginSheet';
 import type { StructureKind, StructurePart } from '../../constants/game';
+import { useLanguage } from '../../hooks/useLanguage';
+import { structureT } from '../../locales/student/structure';
 
 interface Slot {
   part: StructurePart;
@@ -32,13 +34,15 @@ interface StructureHeroProps {
 }
 
 export const StructureHero: React.FC<StructureHeroProps> = ({ kind, slots, nextLocked, celebrateKeys, masteryProgress }) => {
+  const { language } = useLanguage();
+  const t = structureT[language];
   const [openSlot, setOpenSlot] = useState<{ part: StructurePart; earnedAt: string | null } | null>(null);
 
   const earnedCount = slots.filter(s => s.earned).length;
 
   return (
     <>
-      <section className="mb-4" aria-label="Your structure">
+      <section className="mb-4" aria-label={t.structureAria}>
         <MetaphorScene
           kind={kind}
           slots={slots}
@@ -60,10 +64,9 @@ export const StructureHero: React.FC<StructureHeroProps> = ({ kind, slots, nextL
             <>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-500">Next piece</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-500">{t.nextPiece}</p>
                   <p className="text-sm font-bold text-stone-900 truncate">
-                    {nextLocked.label}{' '}
-                    <span className="text-stone-500 font-normal">— {nextLocked.origin}</span>
+                    {t.nextPieceLine(nextLocked.label, nextLocked.origin)}
                   </p>
                 </div>
                 <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center text-lg shadow-sm">
@@ -73,9 +76,9 @@ export const StructureHero: React.FC<StructureHeroProps> = ({ kind, slots, nextL
               {nextLocked.unlockEvent === 'mastered_5_words' && masteryProgress && masteryProgress.needed > 0 && (
                 <div className="mt-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-indigo-600">Progress</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest text-indigo-600">{t.progressLabel}</span>
                     <span className="text-xs font-bold text-stone-700">
-                      {masteryProgress.played} / {masteryProgress.needed} great games
+                      {t.greatGamesProgress(masteryProgress.played, masteryProgress.needed)}
                     </span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-stone-200 overflow-hidden">
@@ -85,7 +88,7 @@ export const StructureHero: React.FC<StructureHeroProps> = ({ kind, slots, nextL
                     />
                   </div>
                   <p className="mt-1 text-[11px] text-stone-500">
-                    A "great game" is any game with a score of 80 or higher.
+                    {t.greatGameDefinition}
                   </p>
                 </div>
               )}
@@ -93,9 +96,9 @@ export const StructureHero: React.FC<StructureHeroProps> = ({ kind, slots, nextL
           ) : (
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600">Complete!</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600">{t.completeLabel}</p>
                 <p className="text-sm font-bold text-stone-900">
-                  You've earned every piece — {earnedCount} in total.
+                  {t.completeBody(earnedCount)}
                 </p>
               </div>
               <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-lg shadow-sm">
