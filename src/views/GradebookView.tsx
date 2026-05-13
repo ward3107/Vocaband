@@ -24,11 +24,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Users, Trophy, GraduationCap, ChevronDown, Download, Gift,
+  Users, Trophy, GraduationCap, ChevronDown, Download, Gift, Award,
   AlertTriangle, CheckCircle2, Moon, Flame, Calendar,
 } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import { HelpIcon } from "../components/HelpTooltip";
+import CertificateModal from "../components/CertificateModal";
 import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
 import type { View } from "../core/views";
 import { buildWordIdSubjectMap, getDisplayLabel } from "../data/wordLookup";
@@ -195,6 +196,10 @@ export default function GradebookView({
   const [loadingActivity, setLoadingActivity] = useState(false);
 
   const [rewardStudent, setRewardStudent] = useState<StudentInfo | null>(null);
+  // When set, opens the printable Certificate of Achievement modal for
+  // the given student.  Decoupled from the Reward / Drill state so a
+  // teacher can have one open without affecting the others.
+  const [certificateFor, setCertificateFor] = useState<StudentRollup | null>(null);
 
   // Keep selectedClassCode valid if classes list updates.
   useEffect(() => {
@@ -682,6 +687,15 @@ export default function GradebookView({
                       </button>
                       <button
                         type="button"
+                        onClick={() => setCertificateFor(r)}
+                        title="Print certificate"
+                        aria-label={`Print certificate for ${r.studentName}`}
+                        className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 transition-colors"
+                      >
+                        <Award size={16} />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => {
                           if (useDrawerDrill) {
                             setDrillStudent(r);
@@ -809,6 +823,20 @@ export default function GradebookView({
         onClose={() => setRewardStudent(null)}
         onRewardGiven={() => showToast('Reward sent!', 'success')}
         showToast={(msg, type) => showToast(msg, type)}
+      />
+
+      <CertificateModal
+        open={certificateFor !== null}
+        onClose={() => setCertificateFor(null)}
+        studentName={certificateFor?.studentName ?? ''}
+        className={
+          classes.find(c => c.code === certificateFor?.classCode)?.name
+          ?? certificateFor?.classCode
+          ?? ''
+        }
+        attempts={certificateFor?.attempts ?? 0}
+        avgScore={certificateFor?.avgScore ?? 0}
+        teacherName={user?.displayName}
       />
 
       {/* v2 Classroom drill drawers — only active when useDrawerDrill is
