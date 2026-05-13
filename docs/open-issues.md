@@ -4,9 +4,24 @@ Tracking known issues with their diagnosis status.
 
 ---
 
+## Security — F3: cap `progress.score` against client inflation
+
+**Status:** ✅ SHIPPED to prod 2026-05-13 as migration `20260606_f3_progress_score_cap.sql`.
+
+`save_student_progress` was a SECURITY DEFINER RPC that wrote the caller's `p_score` verbatim — a logged-in student could replay it with `p_score = 999_999_999` and the upsert lands. The matching `progress_update` / `progress_insert` RLS policies enforced ownership and monotonic-increase but not an upper bound. The existing table CHECK `progress_score_check (score BETWEEN 0 AND 1000)` would have caught absurd values, but only by raising a generic constraint error — not a clean reject path.
+
+Migration adds:
+- **RPC clamp**: `p_score := GREATEST(0, LEAST(1000, p_score))` — matches the table CHECK exactly so the clamp / policies / column constraint are all in lockstep.
+- **`progress_insert` WITH CHECK**: adds `score BETWEEN 0 AND 1000`.
+- **`progress_update` WITH CHECK**: adds `score <= 1000` on top of the existing monotonic-increase rule.
+
+Closes the final finding from the 2026-05-12 pen-test. F1 + F2 + F3 are all live.
+
+---
+
 ## Security — F2: lock self-writable game-state columns on `public.users`
 
-**Status:** RPCs applied to prod 2026-05-13 as migration `20260603_f2_game_state_rpcs.sql`.  Companion React PR (in flight, branch `claude/f2-lock-game-state-columns`) routes the 4 sites through the new RPCs.  Trigger migration `20260604_f2_lock_game_state_columns.sql` is committed but **NOT YET APPLIED** — apply only after the React PR is merged + deployed to prod.  Until then the columns remain self-writable (no regression vs. main).
+**Status:** ✅ SHIPPED to prod 2026-05-13. RPCs (`award_progress_xp`, `award_self_badge`, `consume_power_up`) live as migration `20260603_f2_game_state_rpcs.sql`. React refactor (4 sites) merged in PR #597. Trigger live as `20260604_f2_lock_game_state_columns.sql` + INVOKER hotfix in `20260605_f2_trigger_invoker_fix.sql` (PR #605).  Companion finding to F1 which shipped 2026-05-12 as migration `20260602_lock_users_plan_columns.sql`.
 
 **Audit context** (pen-test 2026-05-12): the `users_update` RLS policy USING is owner-only (`auth.uid() = uid`), but the WITH CHECK only pins `role` / `class_code` / `plan` / `trial_ends_at`. Every other column on `public.users` is writable by the row's owner via direct `supabase.from('users').update(...)`. A logged-in student can open DevTools and run:
 
