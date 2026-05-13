@@ -14,6 +14,8 @@ import { motion } from "motion/react";
 import { Share2, X, Loader2, Check, Copy, MessageCircle } from "lucide-react";
 import qrcode from "qrcode-generator";
 import { supabase } from "../core/supabase";
+import { useLanguage } from "../hooks/useLanguage";
+import { shareWorksheetT } from "../locales/teacher/share-worksheet";
 
 export type WorksheetLang = "en" | "he" | "ar";
 
@@ -24,10 +26,9 @@ export interface ShareSource {
 
 type InteractiveFormat = "matching" | "quiz";
 
-const SUPPORTED_INTERACTIVE_FORMATS: { value: InteractiveFormat; label: string; desc: string }[] = [
-  { value: "matching", label: "Matching", desc: "Tap pairs of English ↔ translation" },
-  { value: "quiz", label: "Multiple-choice quiz", desc: "Pick the right translation from 4 options" },
-];
+// Visual-only metadata for the format picker — translated label /
+// description are pulled from the active locale at render time.
+const SUPPORTED_INTERACTIVE_FORMATS: InteractiveFormat[] = ["matching", "quiz"];
 
 interface Props {
   source: ShareSource;
@@ -36,6 +37,8 @@ interface Props {
 }
 
 export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onClose }) => {
+  const { language, dir } = useLanguage();
+  const t = shareWorksheetT[language];
   const [format, setFormat] = useState<InteractiveFormat>("matching");
   // Default to a *translation* target — if the source list is already
   // English we land on Hebrew, the safe default for the IL audience.
@@ -75,7 +78,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
         p_settings: { language: lang },
       });
       if (rpcErr || !data) {
-        setError(rpcErr?.message ?? "Could not create the link. Please try again.");
+        setError(rpcErr?.message ?? t.generateError);
         return;
       }
       setSlug(String(data));
@@ -92,12 +95,12 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
     } catch {
       // clipboard API may be blocked over http — show the URL so the
       // teacher can long-press to copy manually.
-      window.prompt("Copy this link", shareUrl);
+      window.prompt(t.copyPromptTitle, shareUrl);
     }
   };
 
   const handleWhatsApp = () => {
-    const text = `Solve this worksheet on your phone: ${source.topicName}\n${shareUrl}`;
+    const text = t.whatsappText(source.topicName, shareUrl);
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -109,8 +112,8 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
     }
     try {
       await navigator.share({
-        title: `Worksheet: ${source.topicName}`,
-        text: `Solve this worksheet on your phone:`,
+        title: t.nativeShareTitle(source.topicName),
+        text: t.nativeShareText,
         url: shareUrl,
       });
     } catch {
@@ -123,20 +126,21 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center sm:justify-center z-50 p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Share online worksheet"
+      aria-label={t.dialogAria}
     >
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden"
+        dir={dir}
       >
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-4 flex items-center gap-3">
           <Share2 size={20} className="text-white" />
-          <h3 className="text-lg font-bold text-white flex-1 truncate">Share online worksheet</h3>
+          <h3 className="text-lg font-bold text-white flex-1 truncate">{t.heading}</h3>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t.closeAria}
             className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10"
           >
             <X size={20} />
@@ -145,34 +149,36 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
 
         <div className="p-5 space-y-4">
           <div>
-            <p className="text-xs uppercase tracking-widest font-bold text-stone-400">Topic</p>
+            <p className="text-xs uppercase tracking-widest font-bold text-stone-400">{t.topicLabel}</p>
             <p className="font-bold text-stone-900 text-lg">{source.topicName}</p>
             <p className="text-xs text-stone-500">
-              {Array.from(new Set(source.wordIds)).length} words
+              {t.wordsCount(Array.from(new Set(source.wordIds)).length)}
             </p>
           </div>
 
           {!slug && (
             <>
               <div>
-                <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-2">Exercise</p>
+                <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-2">{t.exerciseLabel}</p>
                 <div className="grid gap-2">
-                  {SUPPORTED_INTERACTIVE_FORMATS.map((opt) => {
-                    const active = format === opt.value;
+                  {SUPPORTED_INTERACTIVE_FORMATS.map((value) => {
+                    const active = format === value;
+                    const label = value === "matching" ? t.matchingLabel : t.quizLabel;
+                    const desc = value === "matching" ? t.matchingDesc : t.quizDesc;
                     return (
                       <button
-                        key={opt.value}
+                        key={value}
                         type="button"
-                        onClick={() => setFormat(opt.value)}
-                        className={`text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                        onClick={() => setFormat(value)}
+                        className={`text-start px-4 py-3 rounded-xl border-2 transition-all ${
                           active
                             ? "bg-emerald-50 border-emerald-500 text-emerald-900"
                             : "bg-white border-stone-200 text-stone-700 hover:border-stone-300"
                         }`}
                         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                       >
-                        <div className="font-bold">{opt.label}</div>
-                        <div className="text-xs text-stone-500">{opt.desc}</div>
+                        <div className="font-bold">{label}</div>
+                        <div className="text-xs text-stone-500">{desc}</div>
                       </button>
                     );
                   })}
@@ -181,7 +187,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
 
               <div>
                 <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-2">
-                  Translation
+                  {t.translationLabel}
                 </p>
                 <div className="inline-flex rounded-lg bg-stone-100 p-1 w-full">
                   {([
@@ -219,7 +225,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 {creating ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
-                {creating ? "Creating link…" : "Generate share link"}
+                {creating ? t.generating : t.generateBtn}
               </button>
             </>
           )}
@@ -234,16 +240,16 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
               <div className="flex items-center justify-center bg-white rounded-xl border border-stone-200 p-4">
                 <div
                   className="w-44 h-44"
-                  aria-label="QR code for the worksheet link"
+                  aria-label={t.qrAria}
                   dangerouslySetInnerHTML={{ __html: qrSvgMarkup }}
                 />
               </div>
 
               <div className="rounded-xl bg-stone-50 border border-stone-200 px-3 py-3">
-                <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-1">Link</p>
+                <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-1">{t.linkLabel}</p>
                 <p className="font-mono text-sm break-all text-stone-800">{shareUrl}</p>
                 <p className="text-xs text-stone-500 mt-1">
-                  Expires in 30 days. Anyone with this link can solve the worksheet.
+                  {t.expiresNote}
                 </p>
               </div>
 
@@ -255,7 +261,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 >
                   {copied ? <Check size={16} /> : <Copy size={16} />}
-                  {copied ? "Copied" : "Copy"}
+                  {copied ? t.copiedBtn : t.copyBtn}
                 </button>
                 <button
                   type="button"
@@ -264,7 +270,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 >
                   <MessageCircle size={16} />
-                  WhatsApp
+                  {t.whatsappBtn}
                 </button>
               </div>
 
@@ -276,7 +282,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 >
                   <Share2 size={16} />
-                  More share options
+                  {t.moreShareBtn}
                 </button>
               )}
 
@@ -285,7 +291,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
                 onClick={() => window.open(shareUrl, "_blank", "noopener,noreferrer")}
                 className="w-full text-center text-sm font-bold text-emerald-700 hover:text-emerald-900 py-1"
               >
-                Open as a student →
+                {t.openAsStudent}
               </button>
             </>
           )}

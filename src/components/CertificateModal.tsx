@@ -72,6 +72,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
   date: string;
   brand: string;
   brandTagline: string;
+  closeAria: string;
 }> = {
   en: {
     modalTitle: 'Certificate of Achievement',
@@ -91,6 +92,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     date: 'Date',
     brand: 'Vocaband',
     brandTagline: 'English vocabulary for Israeli schools',
+    closeAria: 'Close',
   },
   he: {
     modalTitle: 'תעודת הצטיינות',
@@ -110,6 +112,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     date: 'תאריך',
     brand: 'Vocaband',
     brandTagline: 'אוצר מילים באנגלית לבתי ספר ישראליים',
+    closeAria: 'סגירה',
   },
   ar: {
     modalTitle: 'شهادة تقدير',
@@ -129,6 +132,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     date: 'التاريخ',
     brand: 'Vocaband',
     brandTagline: 'مفردات الإنجليزية للمدارس الإسرائيلية',
+    closeAria: 'إغلاق',
   },
 };
 
@@ -243,7 +247,7 @@ export default function CertificateModal({
               <button
                 onClick={onClose}
                 type="button"
-                aria-label="Close"
+                aria-label={t.closeAria}
                 className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors shrink-0"
                 style={{ touchAction: "manipulation" }}
               >

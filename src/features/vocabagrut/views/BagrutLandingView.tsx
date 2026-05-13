@@ -16,6 +16,8 @@ import InPageCamera from '../../../components/InPageCamera';
 import { AVAILABLE_MODULES, COMING_SOON_MODULES, MODULE_SPECS } from '../lib/moduleMap';
 import { useBagrutGenerator } from '../hooks/useBagrutGenerator';
 import type { BagrutModule, BagrutTest } from '../types';
+import { useLanguage } from '../../../hooks/useLanguage';
+import { vocabagrutT } from '../../../locales/teacher/vocabagrut';
 
 type WordSource = 'paste' | 'photo' | 'class';
 
@@ -58,6 +60,8 @@ function parsePasteText(text: string): string[] {
 }
 
 export default function BagrutLandingView({ user, classes, teacherAssignments, onBack, onGenerated, showToast }: Props) {
+  const { language, dir } = useLanguage();
+  const t = vocabagrutT[language];
   const [module, setModule] = useState<BagrutModule>('B');
   const [source, setSource] = useState<WordSource>('paste');
   const [pendingWords, setPendingWords] = useState<string[]>([]);
@@ -198,39 +202,39 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
       return;
     }
     const { added, skippedDup } = addWords(assignmentWords);
-    if (added > 0) showToast(`Added ${added} word${added === 1 ? '' : 's'} from "${selectedAssignment.title}"${skippedDup ? ` (${skippedDup} duplicate${skippedDup === 1 ? '' : 's'} skipped)` : ''}`, 'success');
-    else showToast('All those words are already in the list', 'info');
+    if (added > 0) showToast(t.addedFromAssignment(added, selectedAssignment.title, skippedDup), 'success');
+    else showToast(t.allDuplicates, 'info');
   }
 
   // ── Generate ─────────────────────────────────────────────────────────
   async function handleGenerate() {
     if (pendingWords.length === 0) {
-      showToast('Add some words first', 'error');
+      showToast(t.addSomeFirst, 'error');
       return;
     }
     const test = await gen.generate(module, pendingWords);
     if (test) {
-      showToast(gen.cached ? 'Loaded from cache' : 'Generated! Review and export.', 'success');
+      showToast(gen.cached ? t.loadedFromCache : t.generatedSuccess, 'success');
       onGenerated(test, pendingWords);
     }
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--vb-bg)' }}>
+    <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-bg)' }}>
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 opacity-90" />
         <div className="relative px-4 sm:px-8 py-6 sm:py-10">
           <button onClick={onBack} type="button" className="text-white/90 hover:text-white inline-flex items-center gap-1.5 text-sm font-medium mb-4">
-            <ArrowLeft size={18} /> Back
+            <ArrowLeft size={18} /> {t.back}
           </button>
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
               <Sparkles size={32} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-black text-white">Vocabagrut</h1>
+              <h1 className="text-2xl sm:text-3xl font-black text-white">{t.productName}</h1>
               <p className="text-white/90 text-sm sm:text-base mt-1 max-w-xl">
-                Generate a Bagrut-style mock exam from your word list. Looks like the real paper — perfect for format familiarity.
+                {t.heroBlurb}
               </p>
             </div>
           </div>
@@ -241,7 +245,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
         {/* ── Module picker ── */}
         <section>
           <h2 className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            1 · Choose module
+            {t.step1Heading}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {AVAILABLE_MODULES.map(m => {
@@ -259,8 +263,8 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                   <div className={`absolute inset-0 bg-gradient-to-br ${MODULE_GRADIENTS[m]} opacity-90`} />
                   <div className="relative z-10 text-white">
                     <div className="text-xs font-bold uppercase tracking-widest opacity-90">{spec.label}</div>
-                    <div className="text-xl font-black mt-1">{spec.pointTrack}-point</div>
-                    <div className="text-xs opacity-90 mt-1">CEFR {spec.cefr} · grade {spec.gradeBand}</div>
+                    <div className="text-xl font-black mt-1">{t.pointTrack(String(spec.pointTrack))}</div>
+                    <div className="text-xs opacity-90 mt-1">{t.cefrGrade(spec.cefr, String(spec.gradeBand))}</div>
                   </div>
                 </motion.button>
               );
@@ -280,14 +284,14 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                     key={m}
                     className="relative rounded-2xl p-4 text-left overflow-hidden border-2 border-dashed cursor-not-allowed"
                     style={{ borderColor: 'var(--vb-border)' }}
-                    title={`${spec.label} is coming soon`}
+                    title={t.comingSoonTitle(spec.label)}
                   >
                     <div className={`absolute inset-0 bg-gradient-to-br ${MODULE_GRADIENTS[m] || 'from-slate-400 to-slate-600'} opacity-30`} />
                     <div className="relative z-10" style={{ color: 'var(--vb-text-primary)' }}>
                       <div className="text-xs font-bold uppercase tracking-widest opacity-80">{spec.label}</div>
-                      <div className="text-xl font-black mt-1 opacity-90">{spec.pointTrack}-point</div>
-                      <div className="text-xs opacity-80 mt-1">CEFR {spec.cefr} · grade {spec.gradeBand}</div>
-                      <div className="mt-2 inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700">Coming soon</div>
+                      <div className="text-xl font-black mt-1 opacity-90">{t.pointTrack(String(spec.pointTrack))}</div>
+                      <div className="text-xs opacity-80 mt-1">{t.cefrGrade(spec.cefr, String(spec.gradeBand))}</div>
+                      <div className="mt-2 inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700">{t.comingSoon}</div>
                     </div>
                   </div>
                 );
@@ -299,12 +303,12 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
         {/* ── Add words ── */}
         <section>
           <h2 className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            2 · Add words
+            {t.step2Heading}
           </h2>
           <div className="grid grid-cols-3 gap-2 mb-4">
-            <SourceTab active={source === 'paste'} icon={<ClipboardPaste size={18} />} label="Paste" onClick={() => setSource('paste')} />
-            <SourceTab active={source === 'photo'} icon={<Camera size={18} />} label="Photo" onClick={() => setSource('photo')} />
-            <SourceTab active={source === 'class'} icon={<FolderOpen size={18} />} label="From class" onClick={() => setSource('class')} />
+            <SourceTab active={source === 'paste'} icon={<ClipboardPaste size={18} />} label={t.sourcePaste} onClick={() => setSource('paste')} />
+            <SourceTab active={source === 'photo'} icon={<Camera size={18} />} label={t.sourcePhoto} onClick={() => setSource('photo')} />
+            <SourceTab active={source === 'class'} icon={<FolderOpen size={18} />} label={t.sourceClass} onClick={() => setSource('class')} />
           </div>
 
           {source === 'paste' && (
@@ -312,13 +316,13 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
               <textarea
                 value={pasteDraft}
                 onChange={e => setPasteDraft(e.target.value)}
-                placeholder="Paste or type words separated by commas, new lines, or semicolons. Example: harvest, community, neighbour, garden, soil, vegetables"
+                placeholder={t.pastePlaceholder}
                 className="w-full min-h-[140px] p-3 rounded-xl border text-sm"
                 style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
               />
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>
-                  {pastePreview.length === 0 ? 'No valid words yet' : `${pastePreview.length} word${pastePreview.length === 1 ? '' : 's'} ready to add`}
+                  {pastePreview.length === 0 ? t.noValidWordsYet : t.readyToAdd(pastePreview.length)}
                 </span>
                 <button
                   type="button"
@@ -326,7 +330,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                   disabled={pastePreview.length === 0}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-40"
                 >
-                  <Plus size={16} /> Add to list
+                  <Plus size={16} /> {t.addToList}
                 </button>
               </div>
             </div>
@@ -341,7 +345,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                   disabled={ocrLoading}
                   className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
                 >
-                  <Camera size={18} /> Open camera
+                  <Camera size={18} /> {t.openCamera}
                 </button>
                 <button
                   type="button"
@@ -350,7 +354,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                   className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold border"
                   style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
                 >
-                  Upload from gallery
+                  {t.uploadFromGallery}
                 </button>
                 <input
                   ref={fileInputRef}
@@ -366,11 +370,11 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
               </div>
               {ocrLoading && (
                 <div className="text-sm flex items-center gap-2" style={{ color: 'var(--vb-text-secondary)' }}>
-                  <Loader2 size={14} className="animate-spin" /> Reading words from image…
+                  <Loader2 size={14} className="animate-spin" /> {t.readingWords}
                 </div>
               )}
               <p className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>
-                Detected words go straight into the list below — review and remove any false positives.
+                {t.ocrTip}
               </p>
             </div>
           )}
@@ -383,7 +387,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                 className="w-full p-3 rounded-xl border text-sm"
                 style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
               >
-                <option value="">Select a class…</option>
+                <option value="">{t.selectClass}</option>
                 {teacherClasses.map(c => (
                   <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
                 ))}
@@ -395,23 +399,23 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                   className="w-full p-3 rounded-xl border text-sm"
                   style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
                 >
-                  <option value="">Select an assignment…</option>
+                  <option value="">{t.selectAssignment}</option>
                   {classAssignments.map(a => (
-                    <option key={a.id} value={a.id}>{a.title} ({(a.words ?? []).length} words)</option>
+                    <option key={a.id} value={a.id}>{a.title} ({t.wordsInAssignment((a.words ?? []).length)})</option>
                   ))}
                 </select>
               )}
               {selectedAssignment && (
                 <div className="rounded-xl p-3 border" style={{ borderColor: 'var(--vb-border)' }}>
                   <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--vb-text-muted)' }}>
-                    {assignmentWords.length} word{assignmentWords.length === 1 ? '' : 's'} in this assignment
+                    {t.wordsInAssignment(assignmentWords.length)}
                   </div>
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     {assignmentWords.slice(0, 30).map(w => (
                       <span key={w} className="inline-block px-2 py-0.5 rounded-md text-xs" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}>{w}</span>
                     ))}
                     {assignmentWords.length > 30 && (
-                      <span className="text-xs px-2 py-0.5" style={{ color: 'var(--vb-text-muted)' }}>+{assignmentWords.length - 30} more…</span>
+                      <span className="text-xs px-2 py-0.5" style={{ color: 'var(--vb-text-muted)' }}>{t.morePlusN(assignmentWords.length - 30)}</span>
                     )}
                   </div>
                   <button
@@ -419,7 +423,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                     onClick={pullAssignmentWords}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700"
                   >
-                    <Plus size={16} /> Add all to list
+                    <Plus size={16} /> {t.addAllToList}
                   </button>
                 </div>
               )}
@@ -431,11 +435,11 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-muted)' }}>
-              3 · Review &amp; approve
+              {t.step3Heading}
             </h2>
             {pendingWords.length > 0 && (
               <button type="button" onClick={clearAll} className="text-xs font-medium" style={{ color: 'var(--vb-text-muted)' }}>
-                Clear all
+                {t.clearAll}
               </button>
             )}
           </div>
@@ -445,13 +449,13 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
           >
             {pendingWords.length === 0 ? (
               <div className="text-sm py-3 text-center" style={{ color: 'var(--vb-text-muted)' }}>
-                Add words from any source above. They'll appear here for you to review and remove false positives before generating.
+                {t.emptyReviewBody}
               </div>
             ) : (
               <>
                 <div className="text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: 'var(--vb-text-secondary)' }}>
-                  <span>{pendingWords.length} word{pendingWords.length === 1 ? '' : 's'} ready</span>
-                  {pendingWords.length >= MAX_WORDS && <span className="text-amber-600">· capped at {MAX_WORDS}</span>}
+                  <span>{t.wordsReady(pendingWords.length)}</span>
+                  {pendingWords.length >= MAX_WORDS && <span className="text-amber-600">{t.cappedAt(MAX_WORDS)}</span>}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {pendingWords.map(w => (
@@ -465,7 +469,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                         type="button"
                         onClick={() => removeWord(w)}
                         className="opacity-60 hover:opacity-100"
-                        aria-label={`Remove ${w}`}
+                        aria-label={t.removeWordAria(w)}
                       >
                         <X size={12} />
                       </button>
@@ -493,13 +497,13 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold text-white text-base disabled:opacity-50 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30"
           >
             {gen.loading ? (
-              <><Loader2 size={20} className="animate-spin" /> Generating Module {module}…</>
+              <><Loader2 size={20} className="animate-spin" /> {t.generating(module)}</>
             ) : (
-              <><Sparkles size={20} /> Generate {MODULE_SPECS[module].label} mock exam ({pendingWords.length} word{pendingWords.length === 1 ? '' : 's'})</>
+              <><Sparkles size={20} /> {t.generateBtn(MODULE_SPECS[module].label, pendingWords.length)}</>
             )}
           </motion.button>
           <p className="mt-3 text-xs text-center" style={{ color: 'var(--vb-text-muted)' }}>
-            Every word will appear in the reading or vocab section in authentic context.
+            {t.generateFootnote}
           </p>
         </section>
       </div>

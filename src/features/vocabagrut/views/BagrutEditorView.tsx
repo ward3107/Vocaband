@@ -11,6 +11,8 @@ import { exportBagrutPdf } from '../lib/bagrutPdf';
 import { saveBagrutDraft, updateBagrutTest } from '../hooks/useBagrutTests';
 import { ALL_WORDS } from '../../../data/vocabulary';
 import { ShareWorksheetDialog, type ShareSource } from '../../../components/ShareWorksheetDialog';
+import { useLanguage } from '../../../hooks/useLanguage';
+import { vocabagrutT } from '../../../locales/teacher/vocabagrut';
 
 interface Props {
   user: AppUser;
@@ -25,6 +27,8 @@ interface Props {
 }
 
 export default function BagrutEditorView({ user, classes, test, sourceWords, existingId, onBack, onPreview, showToast }: Props) {
+  const { language, dir } = useLanguage();
+  const t = vocabagrutT[language];
   const [draft, setDraft] = useState<BagrutTest>(test);
   const [savedId, setSavedId] = useState<string | null>(existingId);
   const [classId, setClassId] = useState<string | null>(null);
@@ -68,9 +72,9 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
     setExporting(true);
     try {
       await exportBagrutPdf(draft, { withAnswerKey });
-      showToast('PDF exported', 'success');
+      showToast(t.toastPdfExported, 'success');
     } catch (err: any) {
-      showToast(err?.message || 'PDF export failed', 'error');
+      showToast(err?.message || t.toastPdfFailed, 'error');
     } finally {
       setExporting(false);
     }
@@ -82,7 +86,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
       if (savedId) {
         const r = await updateBagrutTest(savedId, { title: draft.title, content: draft, class_id: classId });
         if (r.error) showToast(r.error, 'error');
-        else showToast('Draft saved', 'success');
+        else showToast(t.toastDraftSaved, 'success');
       } else {
         const r = await saveBagrutDraft({
           teacherUid: user.uid,
@@ -93,14 +97,14 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
           content: draft,
         });
         if ('error' in r) showToast(r.error, 'error');
-        else { setSavedId(r.id); showToast('Draft saved', 'success'); }
+        else { setSavedId(r.id); showToast(t.toastDraftSaved, 'success'); }
       }
     } finally { setSaving(false); }
   }
 
   async function handlePublish() {
     if (!classId) {
-      showToast('Pick a class to publish to first', 'error');
+      showToast(t.toastPickClassFirst, 'error');
       return;
     }
     setSaving(true);
@@ -121,17 +125,17 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
       }
       const r = await updateBagrutTest(id, { class_id: classId, published: true, content: draft, title: draft.title });
       if (r.error) showToast(r.error, 'error');
-      else showToast('Published — students can now see it', 'success');
+      else showToast(t.toastPublished, 'success');
     } finally { setSaving(false); }
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--vb-bg)' }}>
+    <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-bg)' }}>
       {/* Sticky action bar */}
       <div className="sticky top-0 z-20 backdrop-blur" style={{ backgroundColor: 'rgba(255,255,255,0.85)', borderBottom: '1px solid var(--vb-border)' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <button onClick={onBack} type="button" className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--vb-text-secondary)' }}>
-            <ArrowLeft size={16} /> New test
+            <ArrowLeft size={16} /> {t.newTest}
           </button>
           <div className="flex items-center gap-2">
             <button
@@ -140,7 +144,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border"
               style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
             >
-              <Eye size={16} /> Preview
+              <Eye size={16} /> {t.preview}
             </button>
             <button
               type="button"
@@ -149,7 +153,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border"
               style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
             >
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save draft
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {t.saveDraft}
             </button>
             {/* Share online — mints an interactive practice worksheet
                 from the test's vocabulary so students can drill the
@@ -164,7 +168,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
               type="button"
               onClick={() =>
                 setShareSource({
-                  topicName: draft.title || 'Bagrut practice',
+                  topicName: draft.title || t.bagrutPracticeFallback,
                   wordIds: shareableWordIds,
                 })
               }
@@ -173,14 +177,14 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               title={
                 shareableWordIds.length === 0
-                  ? "These custom words aren't in our vocabulary, so an interactive worksheet isn't available."
+                  ? t.shareDisabledTitle
                   : shareableWordIds.length < sourceWords.length
-                    ? `${sourceWords.length - shareableWordIds.length} custom word(s) aren't in our vocabulary and will be skipped in the online version.`
+                    ? t.shareSkipTitle(sourceWords.length - shareableWordIds.length)
                     : undefined
               }
             >
               <Share2 size={16} />
-              Share online
+              {t.shareOnline}
               {shareableWordIds.length > 0 && shareableWordIds.length < sourceWords.length && (
                 <span className="text-xs font-medium opacity-90">
                   ({shareableWordIds.length}/{sourceWords.length})
@@ -193,7 +197,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
               disabled={exporting}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow"
             >
-              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} Export PDF
+              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} {t.exportPdf}
             </button>
           </div>
         </div>
@@ -203,7 +207,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
         {/* Header */}
         <div className="rounded-2xl p-5 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
           <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--vb-text-muted)' }}>
-            {spec.label} · {spec.pointTrack}-point program · CEFR {spec.cefr}
+            {t.testHeader(spec.label, String(spec.pointTrack), spec.cefr)}
           </div>
           <input
             value={draft.title}
@@ -212,11 +216,11 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
             style={{ color: 'var(--vb-text-primary)' }}
           />
           <div className="flex flex-wrap items-center gap-3 mt-3 text-sm" style={{ color: 'var(--vb-text-secondary)' }}>
-            <span>Time {draft.time_minutes} min</span>
+            <span>{t.timeMin(draft.time_minutes)}</span>
             <span>·</span>
-            <span>{draft.total_points} points</span>
+            <span>{t.pointsSuffix(draft.total_points)}</span>
             <span>·</span>
-            <span>{sourceWords.length} target words</span>
+            <span>{t.targetWords(sourceWords.length)}</span>
           </div>
         </div>
 
@@ -225,7 +229,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1">
               <label className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-muted)' }}>
-                Publish to class (optional)
+                {t.publishToClassLabel}
               </label>
               <select
                 value={classId ?? ''}
@@ -233,7 +237,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
                 className="w-full mt-1 p-2 rounded-lg border text-sm"
                 style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
               >
-                <option value="">None — keep as draft</option>
+                <option value="">{t.noneKeepDraft}</option>
                 {teacherClasses.map(c => (
                   <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
                 ))}
@@ -245,7 +249,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
               disabled={saving || !classId}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
             >
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Publish to class
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} {t.publishToClass}
             </button>
           </div>
         </div>
@@ -258,7 +262,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
                 {section.title}
               </h3>
               <span className="text-xs px-2 py-1 rounded-md" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}>
-                {section.total_points} pts
+                {t.pointsShort(section.total_points)}
               </span>
             </div>
             {section.passage !== undefined && (
@@ -274,7 +278,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
                 <div key={q.id} className="rounded-lg p-3 border" style={{ borderColor: 'var(--vb-border)' }}>
                   <div className="flex items-start gap-2">
                     <span className="text-xs font-bold mt-0.5 px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-muted)' }}>
-                      {q.type.toUpperCase()} · {q.points} pts
+                      {q.type.toUpperCase()} · {t.pointsShort(q.points)}
                     </span>
                   </div>
                   <textarea
@@ -325,7 +329,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
             className="w-4 h-4"
           />
           <label htmlFor="answerKey" className="text-sm flex items-center gap-2 cursor-pointer" style={{ color: 'var(--vb-text-primary)' }}>
-            <FileText size={16} /> Include teacher's answer key page when exporting PDF
+            <FileText size={16} /> {t.includeAnswerKey}
           </label>
         </div>
       </div>
