@@ -23,6 +23,8 @@ import type { HebrewLemma } from "../data/types-hebrew";
 import type { ClassData } from "../core/supabase";
 import { runHebrewOcr } from "../utils/hebrewOcr";
 import { useSavedTasks, type SavedTask } from "../hooks/useSavedTasks";
+import { useLanguage } from "../hooks/useLanguage";
+import { hebrewWizardT } from "../locales/teacher/hebrew-wizard";
 
 // Hebrew-native mode ids. The first 4 are wired end-to-end. The next 6
 // (classic … scramble) are listed for teachers to see the roadmap and
@@ -79,6 +81,8 @@ export interface HebrewAssignmentWizardProps {
 }
 
 export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProps) {
+  const { language } = useLanguage();
+  const t = hebrewWizardT[language];
   const {
     selectedClass,
     selectedWords, setSelectedWords,
@@ -204,7 +208,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black hover:bg-white/15"
           >
             <ArrowRight size={14} />
-            <span lang="he">חזרה</span>
+            <span>{t.back}</span>
           </button>
           <div className="text-blue-200 font-black text-[11px] tracking-[0.2em]" lang="he">
             VocaHebrew · {selectedClass.name}
@@ -234,19 +238,19 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
           >
-            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2" lang="he">
-              בחרו מילים לתרגול
+            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
+              {t.step1Heading}
             </h1>
-            <p className="text-white/60 font-bold text-sm mb-5" lang="he">
-              {selectedWords.length} מילים נבחרו
+            <p className="text-white/60 font-bold text-sm mb-5">
+              {t.step1Selected(selectedWords.length)}
             </p>
 
             {/* ─── Word-source picker ─────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5" lang="he">
-              <SourceTab active={wordSource === "packs"} onClick={() => setWordSource("packs")} icon={<BookOpen size={18} />} label="מהאוצר" />
-              <SourceTab active={wordSource === "ocr"} onClick={() => { setWordSource("ocr"); cameraInputRef.current?.click(); }} icon={ocrBusy ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />} label="צילום" disabled={ocrBusy} />
-              <SourceTab active={wordSource === "upload"} onClick={() => { setWordSource("upload"); uploadInputRef.current?.click(); }} icon={ocrBusy ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />} label="העלאת תמונה" disabled={ocrBusy} />
-              <SourceTab active={wordSource === "library"} onClick={() => setWordSource("library")} icon={<FolderOpen size={18} />} label="מהספרייה" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+              <SourceTab active={wordSource === "packs"} onClick={() => setWordSource("packs")} icon={<BookOpen size={18} />} label={t.sourceTabPacks} />
+              <SourceTab active={wordSource === "ocr"} onClick={() => { setWordSource("ocr"); cameraInputRef.current?.click(); }} icon={ocrBusy ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />} label={t.sourceTabOcr} disabled={ocrBusy} />
+              <SourceTab active={wordSource === "upload"} onClick={() => { setWordSource("upload"); uploadInputRef.current?.click(); }} icon={ocrBusy ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />} label={t.sourceTabUpload} disabled={ocrBusy} />
+              <SourceTab active={wordSource === "library"} onClick={() => setWordSource("library")} icon={<FolderOpen size={18} />} label={t.sourceTabLibrary} />
             </div>
 
             {/* Hidden inputs — Camera uses capture, Upload doesn't. */}
@@ -258,7 +262,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
               <div className="mb-5" lang="he">
                 {hebrewSavedTasks.length === 0 ? (
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-white/70 text-sm font-bold">
-                    אין עדיין מטלות שמורות בעברית. שמרו מטלה כדי לראות אותה כאן.
+                    {t.noSavedTasksYet}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -278,7 +282,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                             <div className="flex items-center gap-2 min-w-0">
                               {task.pinned && <Pin size={14} className="text-amber-400 fill-amber-400 shrink-0" />}
                               <span className="font-black text-white truncate">
-                                {task.title || "מטלה ללא שם"}
+                                {task.title || t.unnamedTask}
                               </span>
                             </div>
                             <Repeat size={16} className="text-blue-300 shrink-0" />
@@ -303,7 +307,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             {ocrUnmatched.length > 0 && !ocrError && (
               <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3" lang="he">
                 <div className="text-amber-100 text-xs font-black mb-2">
-                  {ocrUnmatched.length} מילים מהתמונה לא נמצאו באוצר ויידלגו כעת.
+                  {t.ocrUnmatched(ocrUnmatched.length)}
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
                   {ocrUnmatched.slice(0, 20).map((w) => (
@@ -312,7 +316,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                     </span>
                   ))}
                   {ocrUnmatched.length > 20 && (
-                    <span className="text-white/50 text-xs font-bold">… ועוד {ocrUnmatched.length - 20}</span>
+                    <span className="text-white/50 text-xs font-bold">{t.ocrUnmatchedMore(ocrUnmatched.length - 20)}</span>
                   )}
                 </div>
               </div>
@@ -329,7 +333,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                     : "bg-white/10 text-white hover:bg-white/15"
                 }`}
               >
-                כל הכיתות
+                {t.allClasses}
               </button>
               {HEBREW_PACKS_BY_KIND.grade.map((pack) => (
                 <button
@@ -365,7 +369,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                         className="text-xs font-black text-blue-300 hover:text-blue-200"
                         lang="he"
                       >
-                        {allSelected ? "נקה" : "בחרו הכל"}
+                        {allSelected ? t.clearAll : t.selectAll}
                       </button>
                     </header>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -416,7 +420,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
 
             <FooterBar
               primaryDisabled={!canContinueFromStep1}
-              primaryLabel="המשך"
+              primaryLabel={t.continueBtn}
               onPrimary={() => setStep(2)}
               countLabel={`${selectedWords.length} / ${HEBREW_LEMMAS.length}`}
             />
@@ -430,28 +434,27 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
           >
-            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2" lang="he">
-              פרטי המטלה
+            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
+              {t.step2Heading}
             </h1>
-            <p className="text-white/60 font-bold text-sm mb-6" lang="he">
-              שם המטלה ותאריך הגשה (אופציונלי)
+            <p className="text-white/60 font-bold text-sm mb-6">
+              {t.step2Subheading}
             </p>
 
-            <label className="block text-white/70 font-black text-xs mb-2" lang="he">
-              שם המטלה
+            <label className="block text-white/70 font-black text-xs mb-2">
+              {t.titleLabel}
             </label>
             <input
               type="text"
               value={assignmentTitle}
               onChange={(e) => setAssignmentTitle(e.target.value)}
-              placeholder="לדוגמה: שורש פעלים — שיעור 3"
+              placeholder={t.titlePlaceholder}
               className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 font-bold text-base focus:outline-none focus:border-blue-400 mb-5"
               dir="auto"
-              lang="he"
             />
 
-            <label className="block text-white/70 font-black text-xs mb-2" lang="he">
-              תאריך הגשה (אופציונלי)
+            <label className="block text-white/70 font-black text-xs mb-2">
+              {t.deadlineLabel}
             </label>
             <input
               type="date"
@@ -462,9 +465,9 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
 
             <FooterBar
               primaryDisabled={!canContinueFromStep2}
-              primaryLabel="המשך"
+              primaryLabel={t.continueBtn}
               onPrimary={() => setStep(3)}
-              secondaryLabel="חזרה"
+              secondaryLabel={t.back}
               onSecondary={() => setStep(1)}
             />
           </motion.div>
@@ -477,11 +480,11 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
           >
-            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2" lang="he">
-              משחקי תרגול
+            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
+              {t.step3Heading}
             </h1>
-            <p className="text-white/60 font-bold text-sm mb-6" lang="he">
-              בחרו אילו מצבים יהיו זמינים לתלמידים
+            <p className="text-white/60 font-bold text-sm mb-6">
+              {t.step3Subheading}
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -506,7 +509,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                   >
                     {locked && (
                       <span className="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full bg-white/15 text-white/80 text-[10px] font-black tracking-widest">
-                        בקרוב
+                        {t.comingSoon}
                       </span>
                     )}
                     <div className="flex items-start justify-between gap-3">
@@ -534,9 +537,9 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
 
             <FooterBar
               primaryDisabled={!canSave}
-              primaryLabel={isEditing ? "עדכון מטלה" : "שמירת מטלה"}
+              primaryLabel={isEditing ? t.saveBtnEdit : t.saveBtnNew}
               onPrimary={() => handleSaveAssignment()}
-              secondaryLabel="חזרה"
+              secondaryLabel={t.back}
               onSecondary={() => setStep(2)}
             />
           </motion.div>

@@ -10,6 +10,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 import { STRUCTURE_KINDS, type StructureKind } from '../../constants/game';
+import { useLanguage } from '../../hooks/useLanguage';
+import { structureT } from '../../locales/student/structure';
 
 export interface StructureKindPickerProps {
   open: boolean;
@@ -24,6 +26,8 @@ const GRADIENTS: Record<StructureKind, string> = {
 };
 
 export const StructureKindPicker: React.FC<StructureKindPickerProps> = ({ open, onPick }) => {
+  const { language, dir } = useLanguage();
+  const t = structureT[language];
   return (
     <AnimatePresence>
       {open && (
@@ -35,6 +39,7 @@ export const StructureKindPicker: React.FC<StructureKindPickerProps> = ({ open, 
           role="dialog"
           aria-modal="true"
           aria-labelledby="structure-picker-title"
+          dir={dir}
         >
           <motion.div
             initial={{ scale: 0.95, y: 20 }}
@@ -46,14 +51,13 @@ export const StructureKindPicker: React.FC<StructureKindPickerProps> = ({ open, 
             <div className="text-center mb-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-[11px] font-black uppercase tracking-widest mb-3">
                 <Sparkles size={14} />
-                Welcome!
+                {t.pickerWelcome}
               </div>
               <h2 id="structure-picker-title" className="text-2xl sm:text-3xl font-black text-stone-900">
-                Pick what you'd like to build.
+                {t.pickerHeading}
               </h2>
               <p className="mt-2 text-sm sm:text-base text-stone-600">
-                As you master words and earn perfect scores, pieces of your creation unlock — one by one.
-                Pick a style you'll love to see grow.
+                {t.pickerBody}
               </p>
             </div>
 
@@ -74,7 +78,7 @@ export const StructureKindPicker: React.FC<StructureKindPickerProps> = ({ open, 
             </div>
 
             <p className="mt-5 text-center text-xs text-stone-500">
-              Don't worry — you can change later.
+              {t.pickerChangeLater}
             </p>
           </motion.div>
         </motion.div>

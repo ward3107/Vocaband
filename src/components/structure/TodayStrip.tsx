@@ -15,6 +15,8 @@
 import React from 'react';
 import { Flame, Play, Sparkles } from 'lucide-react';
 import type { AppUser, AssignmentData, ProgressData } from '../../core/supabase';
+import { useLanguage } from '../../hooks/useLanguage';
+import { structureT } from '../../locales/student/structure';
 
 export interface TodayStripProps {
   user: AppUser;
@@ -38,6 +40,8 @@ export const TodayStrip: React.FC<TodayStripProps> = ({
   onPlayNextAssignment,
   onPractice,
 }) => {
+  const { language } = useLanguage();
+  const t = structureT[language];
   // Pick the "next" assignment: the first one without 100% progress
   // across its allowed modes.  If none, assignments are all done and we
   // show the practice CTA instead.
@@ -49,23 +53,23 @@ export const TodayStrip: React.FC<TodayStripProps> = ({
   });
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const greeting = hour < 12 ? t.greetingMorning : hour < 18 ? t.greetingAfternoon : t.greetingEvening;
 
   return (
     <section
-      aria-label="Today"
+      aria-label={t.todayAria}
       className="mb-4 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 rounded-3xl p-4 sm:p-5 shadow-lg text-white"
     >
       <div className="flex items-center gap-3 sm:gap-4">
         {/* Left: greeting + streak */}
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-black uppercase tracking-widest opacity-80">
-            {greeting}, {user.displayName?.split(' ')[0] ?? 'friend'}
+            {greeting}, {user.displayName?.split(' ')[0] ?? t.greetingFriendFallback}
           </p>
           <div className="mt-1 flex items-center gap-3 flex-wrap">
             <span className="inline-flex items-center gap-1 bg-white/15 rounded-full px-2.5 py-1 text-xs font-bold">
               <Flame size={14} className={streak > 0 ? 'text-amber-300' : 'text-white/60'} />
-              {streak > 0 ? `${streak}-day streak` : 'Start a streak'}
+              {streak > 0 ? t.todayStreakLabel(streak) : t.todayStartStreak}
             </span>
             <span className="inline-flex items-center gap-1 bg-white/15 rounded-full px-2.5 py-1 text-xs font-bold">
               <Sparkles size={14} className="text-amber-200" />
@@ -83,7 +87,7 @@ export const TodayStrip: React.FC<TodayStripProps> = ({
             className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-white text-indigo-700 font-black text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all"
           >
             <Play size={16} fill="currentColor" />
-            Play
+            {t.todayPlay}
           </button>
         ) : (
           <button
@@ -93,7 +97,7 @@ export const TodayStrip: React.FC<TodayStripProps> = ({
             className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-white text-indigo-700 font-black text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all"
           >
             <Sparkles size={16} />
-            Practice
+            {t.todayPractice}
           </button>
         )}
       </div>
@@ -101,9 +105,9 @@ export const TodayStrip: React.FC<TodayStripProps> = ({
       {/* Below: one-liner of what the CTA does */}
       <p className="mt-3 text-xs sm:text-sm opacity-90 leading-snug">
         {nextAssignment ? (
-          <>Today's job: <span className="font-bold">{nextAssignment.title}</span>. Every play grows your structure.</>
+          <>{t.todayJobLead} <span className="font-bold">{nextAssignment.title}</span>{t.todayJobTail}</>
         ) : (
-          <>All assignments done — nice! Tap Practice to keep your streak and unlock more pieces.</>
+          <>{t.todayAllDone}</>
         )}
       </p>
     </section>

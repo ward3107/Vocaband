@@ -15,6 +15,8 @@
  */
 import React from 'react';
 import { STRUCTURE_PARTS, type StructureKind, type StructurePart } from '../../constants/game';
+import { useLanguage } from '../../hooks/useLanguage';
+import { structureT, type StructureStrings } from '../../locales/student/structure';
 
 interface Slot {
   part: StructurePart;
@@ -170,23 +172,39 @@ const BACKDROPS: Record<StructureKind, React.FC> = {
   castle: CastleBackdrop,
 };
 
-const SCENE_META: Record<StructureKind, { heading: string; subheading: string; isDark: boolean; chipBg: string }> = {
-  garden: { heading: 'Your Garden',        subheading: 'A quiet field that fills as you learn',     isDark: false, chipBg: 'bg-stone-900/40 text-white' },
-  city:   { heading: 'Your City',          subheading: 'A skyline you build, block by block',       isDark: true,  chipBg: 'bg-black/40 text-white' },
-  rocket: { heading: 'Your Rocket',        subheading: 'Every part assembles toward launch',        isDark: true,  chipBg: 'bg-black/50 text-white' },
-  castle: { heading: 'Your Castle',        subheading: 'Stone by stone, raise your keep',           isDark: true,  chipBg: 'bg-black/40 text-white' },
+// SCENE_META splits the dark/chip styling from the headings.  Headings
+// + subheadings come from the active locale at render time so EN / HE /
+// AR scenes get the right caption pair.
+const SCENE_STYLE: Record<StructureKind, { isDark: boolean; chipBg: string }> = {
+  garden: { isDark: false, chipBg: 'bg-stone-900/40 text-white' },
+  city:   { isDark: true,  chipBg: 'bg-black/40 text-white' },
+  rocket: { isDark: true,  chipBg: 'bg-black/50 text-white' },
+  castle: { isDark: true,  chipBg: 'bg-black/40 text-white' },
 };
 
+function getSceneCaptions(kind: StructureKind, t: StructureStrings): { heading: string; subheading: string } {
+  switch (kind) {
+    case 'garden': return { heading: t.metaphorGardenHeading, subheading: t.metaphorGardenSubheading };
+    case 'city':   return { heading: t.metaphorCityHeading,   subheading: t.metaphorCitySubheading };
+    case 'rocket': return { heading: t.metaphorRocketHeading, subheading: t.metaphorRocketSubheading };
+    case 'castle': return { heading: t.metaphorCastleHeading, subheading: t.metaphorCastleSubheading };
+  }
+}
+
 export const MetaphorScene: React.FC<MetaphorSceneProps> = ({ kind, slots, onTapSlot, celebrateKeys }) => {
+  const { language } = useLanguage();
+  const t = structureT[language];
   const positions = POSITIONS[kind];
   const Backdrop = BACKDROPS[kind];
-  const meta = SCENE_META[kind];
+  const style = SCENE_STYLE[kind];
+  const captions = getSceneCaptions(kind, t);
+  const meta = { ...captions, ...style };
 
   return (
     <div
       className="relative w-full overflow-hidden rounded-3xl shadow-xl ring-1 ring-stone-900/10"
       style={{ aspectRatio: '3 / 2' }}
-      aria-label={`Your ${kind}`}
+      aria-label={t.metaphorSlotAria(kind)}
     >
       <Backdrop />
 
@@ -203,7 +221,7 @@ export const MetaphorScene: React.FC<MetaphorSceneProps> = ({ kind, slots, onTap
             key={slot.part.key}
             onClick={() => onTapSlot(slot.part, slot.earned)}
             type="button"
-            aria-label={slot.earned ? `${slot.part.label} — earned` : `${slot.part.label} — locked`}
+            aria-label={slot.earned ? t.metaphorPartEarnedAria(slot.part.label) : t.metaphorPartLockedAria(slot.part.label)}
             className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all hover:scale-110 active:scale-95"
             style={{ left: `${pos.x}%`, top: `${pos.y}%`, touchAction: 'manipulation' }}
           >

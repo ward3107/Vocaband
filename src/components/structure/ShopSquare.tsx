@@ -12,6 +12,8 @@
  */
 import React from 'react';
 import { ShoppingBag } from 'lucide-react';
+import { useLanguage } from '../../hooks/useLanguage';
+import { structureT } from '../../locales/student/structure';
 
 export interface ShopSquareProps {
   xp: number;
@@ -19,6 +21,8 @@ export interface ShopSquareProps {
 }
 
 export const ShopSquare: React.FC<ShopSquareProps> = ({ xp, onOpen }) => {
+  const { language } = useLanguage();
+  const t = structureT[language];
   return (
     <button
       type="button"
@@ -36,23 +40,23 @@ export const ShopSquare: React.FC<ShopSquareProps> = ({ xp, onOpen }) => {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 leading-none">
-            Shop
+            {t.shopShop}
           </p>
           <p className="mt-1 text-xl sm:text-2xl font-black leading-tight truncate">
-            Spend XP
+            {t.shopSpendXp}
           </p>
           <p className="text-xs sm:text-sm font-bold opacity-90 leading-snug mt-0.5 truncate">
-            🥚 Eggs · ⚡ Power-ups · 🎭 Avatars
+            {t.shopCategoryLine}
           </p>
         </div>
       </div>
 
       <div className="relative mt-3 flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs font-black">
-          {xp.toLocaleString()} XP in wallet
+          {t.shopXpInWallet(xp.toLocaleString())}
         </span>
         <span className="text-[11px] font-bold opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
-          Open →
+          {t.shopOpen}
         </span>
       </div>
     </button>

@@ -15,6 +15,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { StructureHero } from './StructureHero';
 import type { StructureKind, StructurePart } from '../../constants/game';
+import { useLanguage } from '../../hooks/useLanguage';
+import { structureT } from '../../locales/student/structure';
 
 interface Slot {
   part: StructurePart;
@@ -41,6 +43,8 @@ export const StructureDetailModal: React.FC<StructureDetailModalProps> = ({
   celebrateKeys,
   masteryProgress,
 }) => {
+  const { language, dir } = useLanguage();
+  const t = structureT[language];
   // Close on Escape for desktop keyboard users.
   useEffect(() => {
     if (!open) return;
@@ -71,18 +75,19 @@ export const StructureDetailModal: React.FC<StructureDetailModalProps> = ({
             transition={{ type: 'spring', stiffness: 220, damping: 24 }}
             onClick={(e) => e.stopPropagation()}
             className="w-full sm:max-w-3xl bg-white rounded-none sm:rounded-3xl shadow-2xl overflow-hidden my-auto"
+            dir={dir}
           >
             {/* Sticky header with title + close button.  The title here
                 echoes the scene's caption so it's obvious what the
                 modal is showing. */}
             <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-white/95 backdrop-blur-sm border-b border-stone-100 px-5 py-3">
               <h2 id="structure-detail-title" className="text-lg font-black text-stone-900 capitalize">
-                Your {kind}
+                {t.detailTitle(kind)}
               </h2>
               <button
                 onClick={onClose}
                 type="button"
-                aria-label="Close"
+                aria-label={t.detailClose}
                 className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-600 transition-colors"
               >
                 <X size={18} />
@@ -103,11 +108,11 @@ export const StructureDetailModal: React.FC<StructureDetailModalProps> = ({
                   Complements the "Next piece" card which only shows
                   the next unlock. */}
               <div className="mt-4 bg-stone-50 border border-stone-200 rounded-2xl p-4 text-xs sm:text-sm text-stone-700 leading-relaxed">
-                <p className="font-black text-stone-900 mb-1.5">How pieces unlock</p>
+                <p className="font-black text-stone-900 mb-1.5">{t.howPiecesUnlockTitle}</p>
                 <ul className="space-y-1 list-disc list-inside marker:text-indigo-500">
-                  <li>Play a game and score 80 or higher — every 2 great games adds a piece.</li>
-                  <li>Score a perfect 100 — instantly unlocks a landmark piece.</li>
-                  <li>Keep a 7-day streak — unlocks a commitment piece.</li>
+                  <li>{t.unlockBullet1}</li>
+                  <li>{t.unlockBullet2}</li>
+                  <li>{t.unlockBullet3}</li>
                 </ul>
               </div>
             </div>

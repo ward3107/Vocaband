@@ -13,6 +13,8 @@ import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { MetaphorScene } from './MetaphorScene';
 import { STRUCTURE_PARTS, STRUCTURE_KINDS, type StructureKind, type StructurePart } from '../../constants/game';
+import { useLanguage } from '../../hooks/useLanguage';
+import { structureT } from '../../locales/student/structure';
 
 interface Slot {
   part: StructurePart;
@@ -27,6 +29,8 @@ export interface StructurePreviewTileProps {
 }
 
 export const StructurePreviewTile: React.FC<StructurePreviewTileProps> = ({ kind, slots, onOpen }) => {
+  const { language } = useLanguage();
+  const t = structureT[language];
   const meta = STRUCTURE_KINDS.find(k => k.kind === kind) ?? STRUCTURE_KINDS[0];
   const earned = slots.filter(s => s.earned).length;
   const total = STRUCTURE_PARTS[kind].length;
@@ -37,7 +41,7 @@ export const StructurePreviewTile: React.FC<StructurePreviewTileProps> = ({ kind
       type="button"
       onClick={onOpen}
       style={{ touchAction: 'manipulation' }}
-      aria-label={`Open your ${kind} — ${earned} of ${total} pieces earned`}
+      aria-label={t.previewTileAria(kind, earned, total)}
       className="group relative overflow-hidden rounded-3xl shadow-xl ring-1 ring-stone-900/10 bg-stone-900 text-white hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.99] transition-all text-left w-full"
     >
       {/* Embed the real scene at small size so the student sees a
@@ -59,14 +63,14 @@ export const StructurePreviewTile: React.FC<StructurePreviewTileProps> = ({ kind
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 leading-none">
-              {meta.emoji} Your {kind}
+              {t.previewTileYourKind(meta.emoji, kind)}
             </p>
             <p className="mt-1 text-sm sm:text-base font-black">
-              {earned} / {total} pieces
+              {t.previewTilePieces(earned, total)}
             </p>
           </div>
           <span className="shrink-0 inline-flex items-center gap-1 bg-white/25 backdrop-blur-sm rounded-full px-2.5 py-1.5 text-[11px] font-black opacity-90 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
-            Open
+            {t.previewTileOpen}
             <ArrowRight size={12} />
           </span>
         </div>

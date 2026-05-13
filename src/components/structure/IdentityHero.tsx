@@ -15,6 +15,8 @@ import { Flame, Sparkles, Crown } from 'lucide-react';
 import type { AppUser } from '../../core/supabase';
 import { getXpTitle, NAME_FRAMES, NAME_TITLES } from '../../constants/game';
 import { getTitleStyle } from '../../constants/titleStyles';
+import { useLanguage } from '../../hooks/useLanguage';
+import { structureT } from '../../locales/student/structure';
 
 export interface IdentityHeroProps {
   user: AppUser;
@@ -51,7 +53,9 @@ const HERO_GRADIENTS: Record<string, string> = {
 };
 
 export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) => {
-  const firstName = user.displayName?.split(' ')[0] ?? 'Friend';
+  const { language } = useLanguage();
+  const t = structureT[language];
+  const firstName = user.displayName?.split(' ')[0] ?? t.identityFriendFallback;
   const avatar = user.avatar || '🦊';
 
   const equippedFrame = user.activeFrame
@@ -78,7 +82,7 @@ export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) 
 
   return (
     <section
-      aria-label="Your profile"
+      aria-label={t.identityProfileAria}
       className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${heroGradient} text-white shadow-xl ring-1 ring-white/10 p-5 sm:p-7 mb-4`}
     >
       {/* Decorative corner blobs — soft atmosphere, not busy */}
@@ -124,7 +128,7 @@ export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) 
 
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-black uppercase tracking-[0.2em] opacity-80 leading-none">
-            Hello,
+            {t.identityHello}
           </p>
           <h1 className="mt-1 text-3xl sm:text-4xl font-black leading-tight truncate drop-shadow-sm">
             {firstName}
@@ -148,11 +152,11 @@ export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) 
       <div className="relative mt-4 sm:mt-5 flex items-center gap-2 flex-wrap">
         <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-black shadow-sm">
           <Sparkles size={15} className="text-yellow-100" />
-          {xp.toLocaleString()} XP
+          {t.identityXpLabel(xp.toLocaleString())}
         </span>
         <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-black shadow-sm">
           <Flame size={15} className={streak > 0 ? 'text-amber-100' : 'text-white/60'} />
-          {streak > 0 ? `${streak}-day streak` : 'No streak yet'}
+          {streak > 0 ? t.identityStreakLabel(streak) : t.identityNoStreak}
         </span>
       </div>
     </section>

@@ -15,6 +15,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft } from "lucide-react";
 import { HEBREW_LEMMAS } from "../data/vocabulary-hebrew";
 import { stripNiqqud, type HebrewLemma } from "../data/types-hebrew";
+import { useLanguage } from "../hooks/useLanguage";
+import { hebrewModesT } from "../locales/student/hebrew-modes";
 
 // 22 letters of the Hebrew alphabet.  Final forms (ך ם ן ף ץ) never
 // appear in a shoresh entry because the root tracks the abstract
@@ -48,6 +50,8 @@ interface ShoreshHuntViewProps {
 }
 
 export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplete }: ShoreshHuntViewProps) {
+  const { language } = useLanguage();
+  const t = hebrewModesT[language];
   const lemmaPool = useMemo(() => {
     let all: readonly HebrewLemma[] = gradeBand
       ? HEBREW_LEMMAS.filter((l) => l.gradeBand === gradeBand)
@@ -138,11 +142,7 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
             {pct}% — {score} / {lemmaPool.length}
           </h2>
           <p className="font-bold mb-6 text-white/85">
-            {pct >= 80
-              ? "מצוין! זיהית את השורשים"
-              : pct >= 50
-              ? "יפה — ממשיכים לחפש שורשים"
-              : "תרגול נוסף יעזור — נסה שוב"}
+            {pct >= 80 ? t.shoreshPraiseHigh : pct >= 50 ? t.shoreshPraiseMid : t.shoreshPraiseLow}
           </p>
           <div className="flex gap-3 justify-center">
             <button
@@ -151,7 +151,7 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="px-5 py-3 rounded-xl bg-white text-emerald-700 font-black text-sm tracking-wide shadow-sm hover:bg-amber-100"
             >
-              Play again
+              {t.playAgain}
             </button>
             <button
               type="button"
@@ -159,7 +159,7 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
             >
-              Done
+              {t.done}
             </button>
           </div>
         </motion.div>
@@ -181,7 +181,7 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
             className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black tracking-widest uppercase hover:bg-white/15"
           >
             <ArrowLeft size={14} />
-            Back
+            {t.back}
           </button>
           <div className="text-white font-black text-sm">
             {roundIdx + 1} / {lemmaPool.length}
@@ -197,7 +197,7 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
           className="text-center mb-6 sm:mb-8"
         >
           <p className="text-blue-300 font-black text-[10px] tracking-[0.25em] uppercase mb-3">
-            Find the 3 root letters
+            {t.shoreshInstruction}
           </p>
           <div className="text-5xl sm:text-7xl font-black text-white drop-shadow-xl mb-3 leading-none" lang="he" dir="rtl">
             {round.lemma.lemmaNiqqud}
@@ -284,8 +284,8 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
                 }`}
               >
                 {resolved === "correct"
-                  ? "✓ נכון"
-                  : `✗ השורש: ${round.shoresh.join("·")}`}
+                  ? t.shoreshCorrect
+                  : t.shoreshShowAnswer(round.shoresh.join("·"))}
               </p>
               {/* stripNiqqud is referenced so consumers see the unmarked
                   word + shoresh letters side-by-side when reviewing. */}
