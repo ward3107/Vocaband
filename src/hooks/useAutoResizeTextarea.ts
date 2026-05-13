@@ -20,7 +20,10 @@ export function useAutoResizeTextarea(
     if (!el) return;
     el.style.height = 'auto';
     const min = opts?.min ?? 0;
-    const max = opts?.max ?? Math.round(window.innerHeight * 0.6);
-    el.style.height = `${Math.max(min, Math.min(el.scrollHeight, max))}px`;
+    // No default cap: callers that want one pass `max` explicitly. The
+    // previous 60vh default clipped pasted content silently because the
+    // call sites also set `overflow-hidden`, so the tail was unreachable.
+    const measured = Math.max(min, el.scrollHeight);
+    el.style.height = `${opts?.max != null ? Math.min(measured, opts.max) : measured}px`;
   }, [ref, value, opts?.min, opts?.max]);
 }
