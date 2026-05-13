@@ -136,7 +136,7 @@ const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 // ─── View constants for shouldPreserveView (O(1) lookup with Sets) ────────
 // Defined at module level to avoid re-creating arrays on every auth restore.
 const PUBLIC_VIEWS = new Set<View>([
-  "public-landing", "public-terms", "public-privacy", "public-security", "public-free-resources", "public-status", "accessibility-statement"
+  "public-landing", "public-terms", "public-privacy", "public-security", "public-free-resources", "public-interactive-worksheet", "public-status", "accessibility-statement"
 ]);
 const TEACHER_VIEWS = new Set<View>([
   "worksheet", "classroom", "class-show", "teacher-approvals",
@@ -182,6 +182,11 @@ export default function App() {
   const [view, setView] = useState<View>(() => {
     if (quickPlaySessionParam) return "quick-play-student";
     if (window.location.pathname === "/accessibility-statement") return "accessibility-statement";
+    // Public interactive worksheet — WhatsApp-shareable link teachers paste
+    // from the Free Resources page.  Path is /w/<slug>; the slug is read in
+    // the render switch below.  Auth state is ignored, since logged-in
+    // teachers should also be able to test their own shares.
+    if (window.location.pathname.startsWith("/w/")) return "public-interactive-worksheet";
     // Dedicated student URL — `vocaband.com/student` lands directly on
     // the student login page, separate from the teacher-focused
     // marketing landing.  Teachers can share this URL with their class.
@@ -332,6 +337,7 @@ export default function App() {
     view === "public-privacy" ||
     view === "public-security" ||
     view === "public-free-resources" ||
+    view === "public-interactive-worksheet" ||
     view === "public-status" ||
     view === "accessibility-statement";
   const vocab = useVocabularyLazy(!isPublicView);

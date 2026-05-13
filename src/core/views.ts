@@ -11,6 +11,7 @@ export type View =
   | "public-privacy"
   | "public-security"
   | "public-free-resources"
+  | "public-interactive-worksheet"
   | "public-status"
   | "accessibility-statement"
   | "teacher-login"
