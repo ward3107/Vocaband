@@ -3,6 +3,8 @@ import { motion } from 'motion/react';
 import { Calendar, AlertTriangle } from 'lucide-react';
 import type { ProgressData } from '../../core/supabase';
 import { ALL_WORDS } from '../../data/vocabulary';
+import { useLanguage } from '../../hooks/useLanguage';
+import { analyticsT } from '../../locales/teacher/analytics';
 
 interface ClassPatternsSectionProps {
   /** All progress rows the teacher has access to (already filtered by class elsewhere if needed). */
@@ -12,8 +14,6 @@ interface ClassPatternsSectionProps {
   /** Number of weeks to show on the heatmap (default 8). */
   weeks?: number;
 }
-
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /**
  * Class Patterns — two analytics cards grouped into one section:
@@ -31,6 +31,8 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  * zero additional network cost.
  */
 export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatternsSectionProps) {
+  const { language } = useLanguage();
+  const t = analyticsT[language];
   const filtered = useMemo(
     () => (classCode ? scores.filter(s => s.classCode === classCode) : scores),
     [scores, classCode],
@@ -77,14 +79,16 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
     return 'bg-indigo-200';
   };
 
-  // Busiest day-of-week label for the summary line.
+  // Busiest day-of-week label for the summary line.  Pulled from the
+  // translated dayLabels so Hebrew/Arabic classrooms see a localised
+  // day name ("ב'", "اثنين") instead of the English fallback.
   const busiestDayLabel = useMemo(() => {
     const dayTotals = Array(7).fill(0);
     for (const row of heatmap.grid) row.forEach((v, i) => { dayTotals[i] += v; });
     const maxIdx = dayTotals.indexOf(Math.max(...dayTotals));
     if (dayTotals[maxIdx] === 0) return null;
-    return DAY_LABELS[maxIdx];
-  }, [heatmap]);
+    return t.dayLabels[maxIdx];
+  }, [heatmap, t]);
 
   // ─── Hardest words ───────────────────────────────────────────────────
   // Aggregate mistake counts per word_id across all completions, keep
@@ -119,22 +123,22 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
       >
         <div className="flex items-center gap-2 mb-1">
           <Calendar size={20} className="text-indigo-500" />
-          <h3 className="text-lg font-black text-stone-900">Activity Pattern</h3>
+          <h3 className="text-lg font-black text-stone-900">{t.activityPattern}</h3>
         </div>
         <p className="text-sm text-stone-500 mb-4">
-          When your class actually plays, over the last {weeks} weeks.
-          {busiestDayLabel && <> Busiest day: <strong>{busiestDayLabel}</strong>.</>}
+          {t.activityIntro(weeks)}
+          {busiestDayLabel && <> {t.busiestDayLabel} <strong>{busiestDayLabel}</strong>.</>}
         </p>
 
         {heatmap.max === 0 ? (
           <div className="py-6 text-center text-sm text-stone-400 font-medium">
-            No plays recorded yet in this window.
+            {t.noPlaysInWindow}
           </div>
         ) : (
           <>
-            {/* Column headers — day labels */}
+            {/* Column headers — day labels (translated) */}
             <div className="flex gap-1 mb-2 pl-10">
-              {DAY_LABELS.map(label => (
+              {t.dayLabels.map(label => (
                 <div key={label} className="flex-1 text-center text-[10px] font-black uppercase text-stone-400 tracking-widest">
                   {label[0]}
                 </div>
@@ -144,10 +148,10 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
             {[...heatmap.grid].reverse().map((row, rIdx) => {
               const weekOffset = heatmap.grid.length - 1 - rIdx;
               const label = weekOffset === 0
-                ? 'this wk'
+                ? t.thisWeek
                 : weekOffset === 1
-                ? 'last wk'
-                : `${weekOffset}w ago`;
+                ? t.lastWeek
+                : t.weeksAgo(weekOffset);
               return (
                 <div key={rIdx} className="flex gap-1 mb-1 items-center">
                   <div className="w-10 text-right text-[10px] font-bold uppercase text-stone-400 mr-1 tabular-nums">
@@ -156,7 +160,7 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
                   {row.map((count, dIdx) => (
                     <div
                       key={dIdx}
-                      title={`${count} play${count === 1 ? '' : 's'}`}
+                      title={t.playsTooltip(count)}
                       className={`flex-1 h-6 rounded-md ${cellColor(count, heatmap.max)} flex items-center justify-center text-[10px] font-black ${count > 0 && count / heatmap.max > 0.5 ? 'text-white' : 'text-stone-700'}`}
                     >
                       {count > 0 ? count : ''}
@@ -178,15 +182,15 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
       >
         <div className="flex items-center gap-2 mb-1">
           <AlertTriangle size={20} className="text-rose-500" />
-          <h3 className="text-lg font-black text-stone-900">Hardest Words</h3>
+          <h3 className="text-lg font-black text-stone-900">{t.hardestWords}</h3>
         </div>
         <p className="text-sm text-stone-500 mb-4">
-          Words your class has missed the most.  Re-teach these first.
+          {t.hardestWordsIntro}
         </p>
 
         {hardestWords.length === 0 ? (
           <div className="py-6 text-center text-sm text-stone-400 font-medium">
-            No mistakes recorded yet — nice work.
+            {t.noMistakesNiceWork}
           </div>
         ) : (
           <div className="space-y-2">

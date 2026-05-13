@@ -34,6 +34,8 @@ import type { View } from "../core/views";
 import { buildWordIdSubjectMap, getDisplayLabel } from "../data/wordLookup";
 import MasteryHeatmap, { type MasteryRow } from "./gradebook/MasteryHeatmap";
 import { TeacherRewardModal, type StudentInfo } from "../components/dashboard/TeacherRewardModal";
+import { useLanguage } from "../hooks/useLanguage";
+import { gradebookT } from "../locales/teacher/gradebook";
 import StudentProfile from "./classroom/StudentProfile";
 import AssignmentDetail from "./classroom/AssignmentDetail";
 
@@ -167,6 +169,8 @@ export default function GradebookView({
 }: GradebookViewProps) {
   void focus; // reserved for future scroll-anchor wiring; kept in
               // the prop signature so callers can plumb intent now
+  const { language, dir } = useLanguage();
+  const t = gradebookT[language];
   const showPulse       = !sections || sections.includes('pulse');
   const showActivity    = !sections || sections.includes('activity');
   const showStudents    = !sections || sections.includes('students');
@@ -383,7 +387,7 @@ export default function GradebookView({
       .filter(s => s.classCode === selectedClassCode)
       .forEach(s => {
         if (!byAssignment.has(s.assignmentId)) {
-          const title = teacherAssignments.find(a => a.id === s.assignmentId)?.title ?? 'Quick Play';
+          const title = teacherAssignments.find(a => a.id === s.assignmentId)?.title ?? t.quickPlayFallback;
           byAssignment.set(s.assignmentId, {
             assignmentId: s.assignmentId,
             title,
@@ -405,7 +409,7 @@ export default function GradebookView({
     const rows: string[][] = [header];
     studentRollups.forEach(r => {
       r.scores.forEach(s => {
-        const assignmentTitle = teacherAssignments.find(a => a.id === s.assignmentId)?.title ?? 'Quick Play';
+        const assignmentTitle = teacherAssignments.find(a => a.id === s.assignmentId)?.title ?? t.quickPlayFallback;
         rows.push([
           r.studentName,
           r.classCode,
@@ -474,11 +478,11 @@ export default function GradebookView({
   const selectedClassName = classes.find(c => c.code === selectedClassCode)?.name ?? selectedClassCode;
 
   return (
-    <div className={embedded ? "pb-8" : "min-h-screen bg-background pb-8"}>
+    <div dir={dir} className={embedded ? "pb-8" : "min-h-screen bg-background pb-8"}>
       {!embedded && (
         <TopAppBar
-          title="Gradebook"
-          subtitle="PROGRESS · DECISION SUPPORT"
+          title={t.title}
+          subtitle={t.subtitle}
           showBack
           onBack={() => setView('teacher-dashboard')}
           userName={user?.displayName}
@@ -498,11 +502,11 @@ export default function GradebookView({
               <GraduationCap size={16} className="text-white" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-80 leading-none">Class</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-80 leading-none">{t.classLabel}</span>
               <select
                 value={selectedClassCode}
                 onChange={e => setSelectedClassCode(e.target.value)}
-                aria-label="Select class"
+                aria-label={t.selectClassAria}
                 className="bg-transparent text-sm font-black text-white focus:outline-none cursor-pointer pr-6 mt-0.5"
                 style={{
                   // Force the native caret to render white against the
@@ -541,7 +545,7 @@ export default function GradebookView({
                 className="px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-colors shadow-sm"
               >
                 <Download size={14} />
-                Export CSV
+                {t.exportCsv}
               </button>
             </div>
           )}
@@ -553,22 +557,25 @@ export default function GradebookView({
           <PulseCard
             kind="on-track"
             students={onTrack}
-            title="On track"
-            subtitle="≥70% and active this week"
+            title={t.onTrackTitle}
+            subtitle={t.onTrackSubtitle}
+            strongEngagementLabel={t.strongEngagement}
             icon={<CheckCircle2 size={22} />}
           />
           <PulseCard
             kind="needs-attention"
             students={needsAttention}
-            title="Needs attention"
-            subtitle="Low scores or stuck on specific words"
+            title={t.needsAttentionTitle}
+            subtitle={t.needsAttentionSubtitle}
+            strongEngagementLabel={t.strongEngagement}
             icon={<AlertTriangle size={22} />}
           />
           <PulseCard
             kind="not-playing"
             students={notPlaying}
-            title="Not playing"
-            subtitle="No activity in 7+ days"
+            title={t.notPlayingTitle}
+            subtitle={t.notPlayingSubtitle}
+            strongEngagementLabel={t.strongEngagement}
             icon={<Moon size={22} />}
           />
         </div>
@@ -581,12 +588,12 @@ export default function GradebookView({
             <div>
               <h3 className="text-base font-black text-[var(--vb-text-primary)] flex items-center gap-2">
                 <Calendar size={16} className="text-indigo-500" />
-                Class activity
-                <HelpTooltip content="Total XP earned by all students per day." />
+                {t.classActivity}
+                <HelpTooltip content={t.classActivityHelp} />
               </h3>
               <p className="text-xs text-[var(--vb-text-muted)] font-medium mt-0.5">
-                Last {windowDays} days · {selectedClassName}
-                {loadingActivity && ' · loading…'}
+                {t.lastNDaysFor(windowDays, selectedClassName)}
+                {loadingActivity && t.loadingDots}
               </p>
             </div>
           </div>
@@ -623,12 +630,12 @@ export default function GradebookView({
         <div className="bg-[var(--vb-surface)] rounded-2xl p-4 sm:p-5 shadow-sm border border-[var(--vb-border)] mb-6">
           <h3 className="text-base font-black text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
             <Users size={16} className="text-violet-500" />
-            Students
+            {t.studentsHeading}
             <span className="text-xs font-bold text-[var(--vb-text-muted)]">· {studentRollups.length}</span>
           </h3>
           {studentRollups.length === 0 ? (
             <div className="text-center py-10 text-[var(--vb-text-muted)] text-sm">
-              No students have played yet in this class.
+              {t.noStudentsPlayed}
             </div>
           ) : (
             <div className="space-y-2">
@@ -663,8 +670,8 @@ export default function GradebookView({
                         <div className="flex-1 min-w-0">
                           <p className="font-black text-[var(--vb-text-primary)] truncate">{r.studentName}</p>
                           <p className="text-xs text-[var(--vb-text-muted)] font-medium">
-                            {r.attempts} {r.attempts === 1 ? 'play' : 'plays'}
-                            {r.lastDate && ` · last ${new Date(r.lastDate).toLocaleDateString()}`}
+                            {t.playsLabel(r.attempts)}
+                            {r.lastDate && t.lastSeenAt(new Date(r.lastDate).toLocaleDateString())}
                           </p>
                         </div>
                       </button>
@@ -674,8 +681,8 @@ export default function GradebookView({
                       <button
                         type="button"
                         onClick={() => openRewardFor(r)}
-                        title="Reward"
-                        aria-label={`Reward ${r.studentName}`}
+                        title={t.rewardTitle}
+                        aria-label={t.rewardAria(r.studentName)}
                         className="p-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 transition-colors"
                       >
                         <Gift size={16} />
@@ -689,7 +696,7 @@ export default function GradebookView({
                             setExpandedStudent(isExpanded ? null : r.key);
                           }
                         }}
-                        aria-label="Toggle details"
+                        aria-label={t.toggleDetailsAria}
                         className="p-1"
                       >
                         <ChevronDown
@@ -711,10 +718,10 @@ export default function GradebookView({
                           <div className="px-3 sm:px-4 pb-4 space-y-4 border-t border-[var(--vb-border)] pt-3">
                             <div>
                               <h4 className="text-xs font-black uppercase tracking-widest text-[var(--vb-text-muted)] mb-2">
-                                Per mode
+                                {t.perMode}
                               </h4>
                               {r.modeBreakdown.size === 0 ? (
-                                <p className="text-sm text-[var(--vb-text-muted)] italic">No mode data yet.</p>
+                                <p className="text-sm text-[var(--vb-text-muted)] italic">{t.noModeData}</p>
                               ) : (
                                 <div className="space-y-1.5">
                                   {Array.from(r.modeBreakdown.entries())
@@ -739,8 +746,8 @@ export default function GradebookView({
 
                             <div>
                               <h4 className="text-xs font-black uppercase tracking-widest text-[var(--vb-text-muted)] mb-2">
-                                Word mastery
-                                {loadingMastery && ' · loading…'}
+                                {t.wordMastery}
+                                {loadingMastery && t.loadingDots}
                               </h4>
                               <MasteryHeatmap rows={studentMasteryRows} getLabel={getMasteryLabel} />
                             </div>
@@ -761,7 +768,7 @@ export default function GradebookView({
           <div className="bg-[var(--vb-surface)] rounded-2xl p-5 shadow-sm border border-[var(--vb-border)]">
             <h3 className="text-base font-black text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
               <Trophy size={16} className="text-amber-500" />
-              Assignments
+              {t.assignmentsHeading}
               <span className="text-xs font-bold text-[var(--vb-text-muted)]">· {assignmentRollups.length}</span>
             </h3>
             <div className="space-y-2">
@@ -771,7 +778,7 @@ export default function GradebookView({
                     <div className="flex-1 min-w-0 text-left">
                       <p className="font-bold text-[var(--vb-text-primary)] truncate">{a.title}</p>
                       <p className="text-xs text-[var(--vb-text-muted)]">
-                        {a.uniqueStudents.size} student{a.uniqueStudents.size === 1 ? '' : 's'} · {a.attempts} play{a.attempts === 1 ? '' : 's'}
+                        {t.assignmentMetaRow(a.uniqueStudents.size, a.attempts)}
                       </p>
                     </div>
                     <div className={`px-3 py-1.5 rounded-lg bg-gradient-to-br text-white font-black text-sm ${scoreColor(a.avgScore)}`}>
@@ -854,7 +861,7 @@ export default function GradebookView({
                     id: drillAssignmentId,
                     title:
                       teacherAssignments.find(a => a.id === drillAssignmentId)?.title
-                      ?? 'Quick Play',
+                      ?? t.quickPlayFallback,
                     classCode: selectedClassCode,
                   }
                 : null
@@ -864,10 +871,7 @@ export default function GradebookView({
             )}
             classStudents={classStudents}
             onReassign={(names) => {
-              showToast(
-                `Reassign flow coming next: ${names.length} student${names.length === 1 ? '' : 's'} flagged.`,
-                'info'
-              );
+              showToast(t.reassignToast(names.length), 'info');
             }}
           />
         </>
@@ -878,13 +882,15 @@ export default function GradebookView({
 
 // ── Pulse card — one of the 3 decision cards at the top ──────────────────────
 function PulseCard({
-  kind, students, title, subtitle, icon,
+  kind, students, title, subtitle, icon, strongEngagementLabel,
 }: {
   kind: PulseBucket;
   students: StudentRollup[];
   title: string;
   subtitle: string;
   icon: React.ReactNode;
+  /** Localised "Strong engagement" caption shown only on the on-track card. */
+  strongEngagementLabel: string;
 }) {
   const styles: Record<PulseBucket, { bg: string; ring: string; glow: string }> = {
     'on-track':        { bg: 'from-emerald-500 to-teal-600', ring: 'ring-emerald-200', glow: 'shadow-emerald-500/30' },
@@ -931,7 +937,7 @@ function PulseCard({
       )}
       {kind === 'on-track' && students.length > 0 && (
         <div className="mt-2 flex items-center gap-1 text-[11px] opacity-95 font-bold">
-          <Flame size={12} /> Strong engagement
+          <Flame size={12} /> {strongEngagementLabel}
         </div>
       )}
     </motion.div>
