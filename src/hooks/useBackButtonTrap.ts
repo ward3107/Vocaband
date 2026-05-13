@@ -169,11 +169,25 @@ export function useBackButtonTrap(
       // CASE A: at dashboard floor, ANY back press re-traps and shows
       //         the exit confirmation.  We never navigate away from
       //         the dashboard via popstate — it's an absolute floor.
-      //         Double-back = logout: if the confirm modal is already
-      //         visible and the user presses back AGAIN, treat it as
-      //         "yes, really leave."
+      //
+      //         Double-back behaviour differs by role:
+      //         - Teachers / guests: second back while modal open =
+      //           "yes, really leave" → signOut + public landing.
+      //         - Students: second back is treated as "Stay" — the
+      //           modal closes, no signout.  Real exit requires
+      //           tapping the explicit "Switch class" link in the
+      //           friendly soft-landing modal.  Kids 9–14 frequently
+      //           mash back; auto-signout on the second tap throws
+      //           them out of their session even though the modal
+      //           was supposed to be the safety net.
+      const isStudent = currentUser?.role === 'student';
       if (atDashboardFloor) {
         if (exitModalOpenRef.current) {
+          if (isStudent) {
+            setShowExitConfirmModal(false);
+            pushDashboardTrap();
+            return;
+          }
           setShowExitConfirmModal(false);
           exitIntentRef.current = true;
           supabase.auth.signOut().catch(() => {});
