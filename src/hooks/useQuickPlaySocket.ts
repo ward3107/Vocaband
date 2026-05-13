@@ -209,10 +209,15 @@ async function getSocket(): Promise<Socket> {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 10_000,
     randomizationFactor: 0.5,
-    // polling first so iOS Safari 15 + corporate proxies that fail the
-    // WebSocket upgrade don't get stuck — socket.io upgrades to WS
-    // automatically once polling is established.
-    transports: ["polling", "websocket"],
+    // WebSocket-only — engine.io polling needs sticky sessions, but our
+    // Cloudflare Worker → Fly.io edge has no sticky routing and Fly's
+    // auto_stop / auto_start_machines wipes the in-memory sid map on
+    // every cold start. Any polling POST with an old sid lands on a VM
+    // that doesn't know it and returns 400. A WebSocket pins the TCP
+    // socket to one VM for its lifetime, so the sticky problem can't
+    // occur. Modern browsers (incl. iOS Safari) all support WS over
+    // TLS reliably through Cloudflare's edge.
+    transports: ["websocket"],
   }) as Socket;
 
   cachedSocket = socket;

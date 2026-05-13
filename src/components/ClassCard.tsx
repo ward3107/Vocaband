@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Users } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
