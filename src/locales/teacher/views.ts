@@ -62,6 +62,22 @@ export interface TeacherViewsT {
   qpBackgroundMusic: string;
   qpPrevTrackTitle: string;
   qpNextTrackTitle: string;
+  qpBackgroundMusicVolume: string;
+  qpShowQrAria: string;
+  qpShowQrShort: string;
+  qpQrCodeAria: string;
+  qpQrCodeEnlargedAria: string;
+  qpJoinAtHost: (host: string) => string;
+  qpPlayersJoined: (n: number) => string;
+  qpWaitingForPlayers: string;
+  qpShareQrToStart: string;
+  qpDragToMove: string;
+  qpScanToJoin: string;
+  qpEndSessionTitle: string;
+  qpRemovePlayerAria: (name: string) => string;
+  /** Wraps the bolded student name in the kick-confirm modal. */
+  qpConfirmKickBefore: string;
+  qpConfirmKickAfter: string;
 
   // ─── RewardInboxCard ───────────────────────────────────────────
   rewardXpLabel: string;
@@ -121,6 +137,21 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpBackgroundMusic: "Background Music",
     qpPrevTrackTitle: "Previous track",
     qpNextTrackTitle: "Next track",
+    qpBackgroundMusicVolume: "Background music volume",
+    qpShowQrAria: "Show QR code",
+    qpShowQrShort: "Show QR",
+    qpQrCodeAria: "Quick Play QR Code",
+    qpQrCodeEnlargedAria: "Quick Play QR Code (enlarged)",
+    qpJoinAtHost: (host) => `Join at ${host}`,
+    qpPlayersJoined: (n) => `${n} ${n === 1 ? "player" : "players"} joined`,
+    qpWaitingForPlayers: "Waiting for players...",
+    qpShareQrToStart: "Share the QR code to get started",
+    qpDragToMove: "Drag to move",
+    qpScanToJoin: "Scan to join",
+    qpEndSessionTitle: "End Quick Play Session?",
+    qpRemovePlayerAria: (name) => `Remove ${name}`,
+    qpConfirmKickBefore: "Remove ",
+    qpConfirmKickAfter: " from this Quick Play session?",
 
     rewardXpLabel: "XP Boost",
     rewardBadgeLabel: "New Badge",
@@ -177,6 +208,21 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpBackgroundMusic: "מוזיקת רקע",
     qpPrevTrackTitle: "שיר קודם",
     qpNextTrackTitle: "שיר הבא",
+    qpBackgroundMusicVolume: "עוצמת מוזיקת רקע",
+    qpShowQrAria: "הצג קוד QR",
+    qpShowQrShort: "הצג QR",
+    qpQrCodeAria: "קוד QR למשחק מהיר",
+    qpQrCodeEnlargedAria: "קוד QR למשחק מהיר (מוגדל)",
+    qpJoinAtHost: (host) => `הצטרפו בכתובת ${host}`,
+    qpPlayersJoined: (n) => `${n} ${n === 1 ? "שחקן הצטרף" : "שחקנים הצטרפו"}`,
+    qpWaitingForPlayers: "מחכים לשחקנים...",
+    qpShareQrToStart: "שתפו את קוד ה-QR כדי להתחיל",
+    qpDragToMove: "גררו להזזה",
+    qpScanToJoin: "סרקו כדי להצטרף",
+    qpEndSessionTitle: "לסיים את משחק המהיר?",
+    qpRemovePlayerAria: (name) => `הסר את ${name}`,
+    qpConfirmKickBefore: "להסיר את ",
+    qpConfirmKickAfter: " ממשחק המהיר הזה?",
 
     rewardXpLabel: "בוסט XP",
     rewardBadgeLabel: "תג חדש",
@@ -233,6 +279,21 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpBackgroundMusic: "موسيقى الخلفية",
     qpPrevTrackTitle: "المقطع السابق",
     qpNextTrackTitle: "المقطع التالي",
+    qpBackgroundMusicVolume: "مستوى صوت الموسيقى",
+    qpShowQrAria: "إظهار رمز QR",
+    qpShowQrShort: "عرض QR",
+    qpQrCodeAria: "رمز QR للعب السريع",
+    qpQrCodeEnlargedAria: "رمز QR للعب السريع (مكبّر)",
+    qpJoinAtHost: (host) => `انضم على ${host}`,
+    qpPlayersJoined: (n) => `${n} ${n === 1 ? "لاعب انضم" : "لاعبين انضموا"}`,
+    qpWaitingForPlayers: "في انتظار اللاعبين...",
+    qpShareQrToStart: "شارك رمز QR للبدء",
+    qpDragToMove: "اسحب للتحريك",
+    qpScanToJoin: "امسح للانضمام",
+    qpEndSessionTitle: "إنهاء جلسة اللعب السريع؟",
+    qpRemovePlayerAria: (name) => `إزالة ${name}`,
+    qpConfirmKickBefore: "إزالة ",
+    qpConfirmKickAfter: " من جلسة اللعب السريع هذه؟",
 
     rewardXpLabel: "دعم XP",
     rewardBadgeLabel: "شارة جديدة",

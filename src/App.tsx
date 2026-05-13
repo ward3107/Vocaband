@@ -50,6 +50,7 @@ const CreateAssignmentView = lazy(() => import("./views/CreateAssignmentView"));
 // they're now lazy-loaded inside ClassroomView and rendered as tabs.
 const ClassroomView = lazy(() => import("./views/ClassroomView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
+const ClassRosterModal = lazy(() => import("./components/ClassRosterModal"));
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const ClassShowView = lazy(() => import("./views/ClassShowView"));
@@ -368,6 +369,10 @@ export default function App() {
   const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
   // Edit-class modal state — null when closed, the class data when open.
   const [editingClass, setEditingClass] = useState<ClassData | null>(null);
+  // Roster modal — opened from a ClassCard's "Manage roster" action.
+  // When non-null, ClassRosterModal renders for this class so the teacher
+  // can pre-create PIN-login students (Path C).
+  const [rosterModalClass, setRosterModalClass] = useState<ClassData | null>(null);
   const [createdClassName, setCreatedClassName] = useState<string>("");
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ id: string; title: string } | null>(null);
   const [rejectStudentModal, setRejectStudentModal] = useState<{ id: string; displayName: string } | null>(null);
@@ -3282,6 +3287,7 @@ export default function App() {
             setTeacherAssignments(prev => prev.filter(a => a.id !== assignment.id));
             showToast("Assignment deleted successfully", "success");
           }}
+          onOpenRoster={(c) => setRosterModalClass(c)}
           savedTasks={savedTasks.tasks}
           onTogglePinSavedTask={savedTasks.togglePin}
           onRemoveSavedTask={savedTasks.remove}
@@ -3415,6 +3421,14 @@ export default function App() {
             setUser(prev => prev ? { ...prev, onboardedAt: new Date().toISOString() } : prev);
           }}
         />
+        {rosterModalClass && (
+          <ClassRosterModal
+            open={!!rosterModalClass}
+            onClose={() => setRosterModalClass(null)}
+            classCode={rosterModalClass.code}
+            className={rosterModalClass.name}
+          />
+        )}
       </LazyWrapper>
     );
   }

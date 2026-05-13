@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import type { LeaderboardEntry } from "../core/types";
 import type { ClassData } from "../core/supabase";
 import type { View } from "../core/views";
+import { useLanguage } from "../hooks/useLanguage";
+import { liveChallengeT } from "../locales/teacher/live-challenge";
 
 interface LiveChallengeViewProps {
   selectedClass: ClassData;
@@ -19,6 +21,8 @@ export default function LiveChallengeView({
   setView,
   setIsLiveChallenge,
 }: LiveChallengeViewProps) {
+  const { language, dir } = useLanguage();
+  const t = liveChallengeT[language];
   // Calculate total scores (baseScore + currentGameScore) for each student
   const sortedLeaderboard = (Object.entries(leaderboard) as [string, LeaderboardEntry][])
     .map(([uid, entry]) => ({
@@ -76,14 +80,14 @@ export default function LiveChallengeView({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
+    <div dir={dir} className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-8">
-          <button onClick={exitChallenge} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">← Back to Class Selection</button>
+          <button onClick={exitChallenge} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">{t.backToClassSelection}</button>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
               <span className={`w-3 h-3 rounded-full ${socketConnected ? "bg-green-400 shadow-lg shadow-green-400/50" : "bg-red-400 animate-pulse"}`} />
-              <span className="font-bold">{socketConnected ? "🔴 LIVE" : "Reconnecting..."}</span>
+              <span className="font-bold">{socketConnected ? t.liveIndicator : t.reconnecting}</span>
             </div>
             <button
               onClick={() => {
@@ -95,7 +99,7 @@ export default function LiveChallengeView({
               }}
               className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105"
             >
-              End Challenge
+              {t.endChallenge}
             </button>
           </div>
         </div>
@@ -133,9 +137,9 @@ export default function LiveChallengeView({
             animate={{ scale: 1, opacity: 1 }}
             className="text-3xl sm:text-5xl 2xl:text-6xl font-black mb-2 drop-shadow-2xl"
           >
-            🏆 Live Challenge: {selectedClass.name}
+            {t.liveChallengeFor(selectedClass.name)}
           </motion.h1>
-          <p className="text-white/90 font-bold text-sm sm:text-base 2xl:text-lg">Class Code: <span className="bg-white text-purple-600 px-4 py-2 rounded-xl font-mono font-black ml-2 shadow-lg 2xl:text-xl">{selectedClass.code}</span></p>
+          <p className="text-white/90 font-bold text-sm sm:text-base 2xl:text-lg">{t.classCodeLabel} <span className="bg-white text-purple-600 px-4 py-2 rounded-xl font-mono font-black ml-2 shadow-lg 2xl:text-xl">{selectedClass.code}</span></p>
         </div>
 
         {/* Socket-offline warning — if the live socket never connects,
@@ -151,13 +155,9 @@ export default function LiveChallengeView({
           >
             <div className="shrink-0 w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xl">⚠️</div>
             <div className="flex-1 min-w-0">
-              <p className="font-black text-base">Live podium not connected</p>
+              <p className="font-black text-base">{t.podiumNotConnected}</p>
               <p className="text-sm mt-1 leading-relaxed">
-                Students who join right now won't show up here until the
-                socket reconnects.  This is usually the real-time server
-                waking up from idle — try refreshing this page in 10–20
-                seconds.  If it keeps showing, the live backend (Render)
-                may be down or unreachable from your network.
+                {t.podiumOfflineHelp}
               </p>
             </div>
           </motion.div>
@@ -179,12 +179,12 @@ export default function LiveChallengeView({
                     <div className="w-16 h-16 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl shadow-xl shadow-slate-400/30 border-4 border-white">
                       🥈
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-500 text-white text-xs px-2 py-0.5 rounded-full font-black">2ND</div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-500 text-white text-xs px-2 py-0.5 rounded-full font-black">{t.rankBadge2}</div>
                   </div>
                   <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-40">
                     <p className="font-bold text-sm sm:text-base 2xl:text-lg truncate">{top3[1].name}{top3[1].isGuest && <span className="ml-1">🎭</span>}</p>
                     <p className="text-2xl sm:text-3xl 2xl:text-4xl font-black">{top3[1].totalScore}</p>
-                    <p className="text-[10px] 2xl:text-xs text-white/70 font-bold">POINTS</p>
+                    <p className="text-[10px] 2xl:text-xs text-white/70 font-bold">{t.pointsLabel}</p>
                   </div>
                   <div className="h-16 sm:h-24 2xl:h-28 w-full bg-gradient-to-t from-slate-400/30 to-transparent rounded-t-lg mt-2"></div>
                 </motion.div>
@@ -210,14 +210,14 @@ export default function LiveChallengeView({
                     <div className="w-20 h-20 sm:w-24 sm:h-24 2xl:w-28 2xl:h-28 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-4xl sm:text-5xl 2xl:text-6xl shadow-2xl shadow-yellow-400/50 border-4 border-white animate-pulse">
                       🥇
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs px-3 py-0.5 rounded-full font-black shadow-lg">1ST</div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs px-3 py-0.5 rounded-full font-black shadow-lg">{t.rankBadge1}</div>
                     <div className="absolute -top-1 -right-1 text-yellow-300 animate-bounce">✨</div>
                     <div className="absolute -top-1 -left-1 text-yellow-300 animate-bounce [animation-delay:0.5s]">✨</div>
                   </div>
                   <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-600/30 backdrop-blur-md rounded-2xl p-4 sm:p-5 mt-4 text-center border-2 border-yellow-300/50 w-32 sm:w-40 2xl:w-44 shadow-2xl shadow-yellow-400/20">
                     <p className="font-bold text-base sm:text-lg 2xl:text-xl truncate">{top3[0].name}{top3[0].isGuest && <span className="ml-1">🎭</span>}</p>
                     <p className="text-3xl sm:text-4xl 2xl:text-5xl font-black">{top3[0].totalScore}</p>
-                    <p className="text-[10px] 2xl:text-xs text-white/80 font-bold">POINTS</p>
+                    <p className="text-[10px] 2xl:text-xs text-white/80 font-bold">{t.pointsLabel}</p>
                   </div>
                   <div className="h-24 sm:h-32 2xl:h-36 w-full bg-gradient-to-t from-yellow-400/40 to-transparent rounded-t-lg mt-2"></div>
                 </motion.div>
@@ -235,12 +235,12 @@ export default function LiveChallengeView({
                     <div className="w-16 h-16 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl shadow-xl shadow-orange-400/30 border-4 border-white">
                       🥉
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full font-black">3RD</div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full font-black">{t.rankBadge3}</div>
                   </div>
                   <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-40">
                     <p className="font-bold text-sm sm:text-base 2xl:text-lg truncate">{top3[2].name}{top3[2].isGuest && <span className="ml-1">🎭</span>}</p>
                     <p className="text-2xl sm:text-3xl 2xl:text-4xl font-black">{top3[2].totalScore}</p>
-                    <p className="text-[10px] 2xl:text-xs text-white/70 font-bold">POINTS</p>
+                    <p className="text-[10px] 2xl:text-xs text-white/70 font-bold">{t.pointsLabel}</p>
                   </div>
                   <div className="h-12 sm:h-20 2xl:h-24 w-full bg-gradient-to-t from-orange-400/30 to-transparent rounded-t-lg mt-2"></div>
                 </motion.div>
@@ -252,10 +252,10 @@ export default function LiveChallengeView({
         {/* Rest of Leaderboard */}
         <div className="bg-white/10 backdrop-blur-md rounded-[40px] p-6 sm:p-8 border border-white/20 shadow-2xl">
           <h2 className="text-xl sm:text-2xl 2xl:text-3xl font-black mb-4 sm:mb-6 flex items-center gap-2">
-            <span className="text-2xl 2xl:text-3xl">📊</span> Full Leaderboard
+            <span className="text-2xl 2xl:text-3xl">📊</span> {t.fullLeaderboard}
             {sortedLeaderboard.length > 0 && (
-              <span className="ml-auto text-sm 2xl:text-base font-normal bg-white/20 px-3 py-1 rounded-full">
-                {sortedLeaderboard.length} {sortedLeaderboard.length === 1 ? 'Player' : 'Players'}
+              <span className="ms-auto text-sm 2xl:text-base font-normal bg-white/20 px-3 py-1 rounded-full">
+                {t.playerCount(sortedLeaderboard.length)}
               </span>
             )}
           </h2>
@@ -284,8 +284,8 @@ export default function LiveChallengeView({
                 >
                   ⏳
                 </motion.div>
-                <p className="text-white/80 font-bold text-lg">Waiting for students to join...</p>
-                <p className="text-white/60 text-sm mt-2">Share the class code to start the competition!</p>
+                <p className="text-white/80 font-bold text-lg">{t.waitingForStudents}</p>
+                <p className="text-white/60 text-sm mt-2">{t.shareCodeToStart}</p>
               </div>
             )}
           </div>
@@ -314,7 +314,7 @@ export default function LiveChallengeView({
             >
               <div className="text-center mb-6">
                 <div className="text-5xl sm:text-6xl mb-3">🏁</div>
-                <h2 className="text-2xl sm:text-3xl font-black mb-1">Challenge Complete!</h2>
+                <h2 className="text-2xl sm:text-3xl font-black mb-1">{t.challengeComplete}</h2>
                 <p className="text-stone-500 font-bold text-sm">{selectedClass.name}</p>
               </div>
 
@@ -340,7 +340,7 @@ export default function LiveChallengeView({
                         <p className="font-black text-base truncate">
                           {entry.name}{entry.isGuest && <span className="ml-1">🎭</span>}
                         </p>
-                        <p className="text-xs font-bold text-stone-500">#{idx + 1} place</p>
+                        <p className="text-xs font-bold text-stone-500">{t.placeSuffix(idx + 1)}</p>
                       </div>
                       <div className="text-2xl font-black text-indigo-600">{entry.totalScore}</div>
                     </motion.div>
@@ -349,7 +349,7 @@ export default function LiveChallengeView({
               </div>
 
               <div className="text-center text-sm font-bold text-stone-500 mb-6">
-                {sortedLeaderboard.length} {sortedLeaderboard.length === 1 ? 'student' : 'students'} played
+                {t.studentsPlayedSummary(sortedLeaderboard.length)}
               </div>
 
               <button
@@ -358,7 +358,7 @@ export default function LiveChallengeView({
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl transition-all"
               >
-                Close
+                {t.close}
               </button>
             </motion.div>
           </motion.div>

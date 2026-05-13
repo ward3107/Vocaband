@@ -10,6 +10,8 @@ import { LETTER_COLORS } from "../constants/game";
 import type { GameMode } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { LeaderboardEntry } from "../core/types";
+import { useLanguage } from "../hooks/useLanguage";
+import { gameActiveT } from "../locales/student/game-active";
 
 interface GameViewProps {
   user: AppUser | null;
@@ -77,9 +79,11 @@ export default function GameView(props: GameViewProps) {
     availableWords, setAvailableWords, sentenceFeedback, handleSentenceWordTap,
     handleSentenceCheck, speak, leaderboard, isFinished,
   } = props;
+  const { language, dir } = useLanguage();
+  const t = gameActiveT[language];
 
   return (
-    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeBg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 font-sans max-w-7xl mx-auto`}>
+    <div dir={dir} className={`min-h-screen ${user?.role === 'student' ? activeThemeBg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 font-sans max-w-7xl mx-auto`}>
       {saveError && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />
@@ -87,8 +91,8 @@ export default function GameView(props: GameViewProps) {
           <button
             onClick={() => setSaveError(null)}
             className="ml-1 hover:opacity-75"
-            aria-label="Dismiss error message"
-            title="Dismiss error message"
+            aria-label={t.dismissError}
+            title={t.dismissError}
           >
             <X size={16} />
           </button>
@@ -117,7 +121,7 @@ export default function GameView(props: GameViewProps) {
           <button onClick={() => setTargetLanguage(targetLanguage === "hebrew" ? "arabic" : "hebrew")} className="flex items-center gap-2 bg-white px-3 sm:px-4 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors">
             <Languages size={18} /><span className="text-sm font-bold">{targetLanguage === "hebrew" ? "עברית" : "عربي"}</span>
           </button>
-          <button onClick={handleExitGame} className="text-stone-400 hover:text-stone-900 font-bold text-sm">Exit</button>
+          <button onClick={handleExitGame} className="text-stone-400 hover:text-stone-900 font-bold text-sm">{t.exit}</button>
         </div>
       </div>
 
@@ -206,8 +210,8 @@ export default function GameView(props: GameViewProps) {
                   <button
                     onClick={() => speakWord(currentWord?.id, currentWord?.english)}
                     className="p-1.5 sm:p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
-                    aria-label="Play pronunciation"
-                    title="Play pronunciation"
+                    aria-label={t.playPronunciation}
+                    title={t.playPronunciation}
                   >
                     <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
                   </button>
@@ -271,18 +275,18 @@ export default function GameView(props: GameViewProps) {
                     <p className="text-2xl sm:text-4xl font-black text-stone-800" dir="auto">{tfOption?.[targetLanguage] || tfOption?.arabic || tfOption?.hebrew}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:gap-4">
-                    <button onClick={() => handleTFAnswer(true)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-colors">True ✓</button>
-                    <button onClick={() => handleTFAnswer(false)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-rose-100 text-rose-700 hover:bg-rose-200 active:bg-rose-300 transition-colors">False ✗</button>
+                    <button onClick={() => handleTFAnswer(true)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-colors">{t.trueWithMark}</button>
+                    <button onClick={() => handleTFAnswer(false)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-rose-100 text-rose-700 hover:bg-rose-200 active:bg-rose-300 transition-colors">{t.falseWithMark}</button>
                   </div>
                 </div>
               ) : gameMode === "flashcards" ? (
                 <div className="max-w-md mx-auto space-y-3 sm:space-y-4">
                   <button onClick={() => setIsFlipped(!isFlipped)} className="w-full py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-lg sm:text-xl font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors">
-                    {isFlipped ? "Show English" : "Show Translation"}
+                    {isFlipped ? t.showEnglish : t.showTranslation}
                   </button>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <button onClick={() => handleFlashcardAnswer(false)} className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">Still Learning</button>
-                    <button onClick={() => handleFlashcardAnswer(true)} className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-50 transition-colors">Got It!</button>
+                    <button onClick={() => handleFlashcardAnswer(false)} className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">{t.stillLearning}</button>
+                    <button onClick={() => handleFlashcardAnswer(true)} className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-50 transition-colors">{t.gotIt}</button>
                   </div>
                 </div>
               ) : (
@@ -321,7 +325,7 @@ export default function GameView(props: GameViewProps) {
                         value={spellingInput}
                         onChange={(e) => setSpellingInput(e.target.value)}
                         disabled={feedback === "show-answer" || feedback === "correct"}
-                        placeholder="Type the word..."
+                        placeholder={t.typeTheWord}
                         className={`w-full p-3 text-xl font-black text-center border-4 rounded-2xl mb-3 transition-all ${
                           feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                           feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
@@ -332,7 +336,7 @@ export default function GameView(props: GameViewProps) {
                       {feedback === "show-answer" && (
                         <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-3" />
                       )}
-                      <button type="submit" className="w-full py-3 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors">Check Answer</button>
+                      <button type="submit" className="w-full py-3 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors">{t.checkAnswer}</button>
                     </form>
                   )}
                 </div>
@@ -341,15 +345,15 @@ export default function GameView(props: GameViewProps) {
                   const sentences = (activeAssignment as AssignmentData & { sentences?: string[] })?.sentences?.filter(s => s.trim()) || [];
                   if (sentences.length === 0) return (
                     <div className="text-center p-8">
-                      <p className="text-stone-400 text-lg">No sentences were added to this assignment.</p>
-                      <p className="text-stone-400 text-sm mt-2">Ask your teacher to add sentences.</p>
+                      <p className="text-stone-400 text-lg">{t.noSentencesAdded}</p>
+                      <p className="text-stone-400 text-sm mt-2">{t.askTeacherToAddSentences}</p>
                     </div>
                   );
                   return (
                     <div className="max-w-xl mx-auto">
                       <div className="flex items-center justify-center gap-2 mb-3">
-                        <p className="text-stone-400 text-xs font-bold uppercase">Sentence {sentenceIndex + 1} / {sentences.length}</p>
-                        <button onClick={() => speak(sentences[sentenceIndex])} className="text-blue-500 hover:text-blue-700 active:scale-90 transition-all" title="Listen to sentence">🔊</button>
+                        <p className="text-stone-400 text-xs font-bold uppercase">{t.sentenceCounter(sentenceIndex + 1, sentences.length)}</p>
+                        <button onClick={() => speak(sentences[sentenceIndex])} className="text-blue-500 hover:text-blue-700 active:scale-90 transition-all" title={t.listenToSentence}>🔊</button>
                       </div>
                       {/* Built sentence area */}
                       <div className={`min-h-[60px] border-4 rounded-2xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
@@ -357,7 +361,7 @@ export default function GameView(props: GameViewProps) {
                         sentenceFeedback === "wrong" ? "border-rose-500 bg-rose-50" :
                         "border-stone-200 bg-stone-50"
                       }`}>
-                        {builtSentence.length === 0 && <span className="text-stone-300 text-sm italic w-full text-center">Tap words below to build the sentence</span>}
+                        {builtSentence.length === 0 && <span className="text-stone-300 text-sm italic w-full text-center">{t.tapWordsToBuild}</span>}
                         {builtSentence.map((word, i) => (
                           <button
                             key={i}
@@ -377,8 +381,8 @@ export default function GameView(props: GameViewProps) {
                         ))}
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => { setBuiltSentence([]); setAvailableWords(shuffle(sentences[sentenceIndex].split(" ").filter(Boolean))); }} className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors">Clear</button>
-                        <button onClick={handleSentenceCheck} disabled={builtSentence.length === 0 || sentenceFeedback !== null} className="flex-2 py-2 px-6 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors disabled:opacity-50">Check ✓</button>
+                        <button onClick={() => { setBuiltSentence([]); setAvailableWords(shuffle(sentences[sentenceIndex].split(" ").filter(Boolean))); }} className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors">{t.clear}</button>
+                        <button onClick={handleSentenceCheck} disabled={builtSentence.length === 0 || sentenceFeedback !== null} className="flex-2 py-2 px-6 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors disabled:opacity-50">{t.checkSentence}</button>
                       </div>
                     </div>
                   );
@@ -391,7 +395,7 @@ export default function GameView(props: GameViewProps) {
                     value={spellingInput}
                     onChange={(e) => setSpellingInput(e.target.value)}
                     disabled={feedback === "show-answer" || feedback === "correct"}
-                    placeholder="Type in English..."
+                    placeholder={t.typeInEnglish}
                     className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
                       feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                       feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
@@ -400,7 +404,7 @@ export default function GameView(props: GameViewProps) {
                     }`}
                   />
                   {gameMode === "spelling" && (
-                    <p className="text-stone-400 font-bold mb-3 sm:mb-6 text-base sm:text-lg">Translation: <span className="text-stone-900 text-xl sm:text-2xl" dir="auto">{currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew}</span></p>
+                    <p className="text-stone-400 font-bold mb-3 sm:mb-6 text-base sm:text-lg">{t.translationLabel} <span className="text-stone-900 text-xl sm:text-2xl" dir="auto">{currentWord?.[targetLanguage] || currentWord?.arabic || currentWord?.hebrew}</span></p>
                   )}
                   {feedback === "show-answer" && (
                     <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-4" />
@@ -469,7 +473,7 @@ export default function GameView(props: GameViewProps) {
                 >
                   ⏳
                 </motion.div>
-                <p className="text-xs text-white/70 italic">Waiting for players...</p>
+                <p className="text-xs text-white/70 italic">{t.waitingForPlayers}</p>
               </div>
             )}
           </div>
@@ -486,7 +490,7 @@ export default function GameView(props: GameViewProps) {
             max={100}
             value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
           />
-          <p className="text-center text-stone-400 text-xs font-bold mt-2 uppercase tracking-widest">Word {currentIndex + 1} of {gameWords.length}</p>
+          <p className="text-center text-stone-400 text-xs font-bold mt-2 uppercase tracking-widest">{t.wordOfTotal(currentIndex + 1, gameWords.length)}</p>
         </div>
       </div>
     )}

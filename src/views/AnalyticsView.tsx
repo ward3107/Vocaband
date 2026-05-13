@@ -28,6 +28,8 @@ import {
   type ClassData,
 } from "../core/supabase";
 import type { View } from "../core/views";
+import { useLanguage } from "../hooks/useLanguage";
+import { analyticsT } from "../locales/teacher/analytics";
 
 interface AnalyticsViewProps {
   user: { displayName?: string; avatar?: string } | null;
@@ -63,6 +65,8 @@ export default function AnalyticsView({
   setSelectedWords: setAppSelectedWords,
   embedded = false,
 }: AnalyticsViewProps) {
+  const { language, dir } = useLanguage();
+  const t = analyticsT[language];
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [selectedScore, setSelectedScore] = useState<ProgressData | null>(null);
@@ -394,11 +398,11 @@ export default function AnalyticsView({
   }, [selectedClass]);
 
   return (
-    <div className={embedded ? "pb-24" : "min-h-screen bg-gradient-to-b from-stone-50 to-white pb-24"}>
+    <div dir={dir} className={embedded ? "pb-24" : "min-h-screen bg-gradient-to-b from-stone-50 to-white pb-24"}>
       {!embedded && (
         <TopAppBar
-          title="Analytics"
-          subtitle="CLASSROOM INSIGHTS"
+          title={t.title}
+          subtitle={t.subtitle}
           showBack
           onBack={() => setView("teacher-dashboard")}
           userName={user?.displayName}
@@ -415,7 +419,7 @@ export default function AnalyticsView({
             only the presentation changed. */}
         <div className="mb-6">
           <div className="text-[11px] font-black uppercase tracking-wider text-[var(--vb-text-muted)] mb-2">
-            Filter by class
+            {t.filterByClass}
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -426,7 +430,7 @@ export default function AnalyticsView({
                   : "bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)] border border-[var(--vb-border)]"
               }`}
             >
-              All classes
+              {t.allClasses}
             </button>
             {classes.map(c => (
               <button
@@ -447,7 +451,7 @@ export default function AnalyticsView({
         {allScores.length === 0 ? (
           <div className="bg-[var(--vb-surface)] p-12 rounded-3xl shadow-xl text-center">
             <Sparkles className="mx-auto text-[var(--vb-border)] mb-4" size={48} />
-            <p className="text-[var(--vb-text-muted)] font-medium">No student data yet. Analytics will appear once students complete assignments.</p>
+            <p className="text-[var(--vb-text-muted)] font-medium">{t.noStudentData}</p>
           </div>
         ) : (
           <>
@@ -472,24 +476,24 @@ export default function AnalyticsView({
 
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-[var(--vb-text-muted)] text-sm">Students</span>
+                          <span className="text-[var(--vb-text-muted)] text-sm">{t.students}</span>
                           <span className="font-bold text-[var(--vb-text-primary)]">{analytics.studentCount}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[var(--vb-text-muted)] text-sm">Average Score</span>
+                          <span className="text-[var(--vb-text-muted)] text-sm">{t.averageScore}</span>
                           <span className={`font-bold ${analytics.avgScore >= 80 ? 'text-emerald-600' : analytics.avgScore >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
                             {analytics.avgScore}%
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[var(--vb-text-muted)] text-sm">Total Attempts</span>
+                          <span className="text-[var(--vb-text-muted)] text-sm">{t.totalAttempts}</span>
                           <span className="font-bold text-[var(--vb-text-primary)]">{analytics.totalAttempts}</span>
                         </div>
                         {analytics.strugglingCount > 0 && (
                           <div className="pt-2 border-t border-[var(--vb-border)]">
                             <span className="inline-flex items-center gap-1 text-rose-600 font-bold text-sm">
                               <AlertTriangle size={14} />
-                              {analytics.strugglingCount} need help
+                              {t.needHelpCount(analytics.strugglingCount)}
                             </span>
                           </div>
                         )}
@@ -508,16 +512,16 @@ export default function AnalyticsView({
                   onClick={() => { setSelectedClass(null); setReteachWords(new Set()); }}
                   className="mb-6 flex items-center gap-2 text-[var(--vb-text-muted)] hover:text-[var(--vb-text-primary)] font-medium transition-colors"
                 >
-                  ← Back to all classes
+                  {t.backToAllClasses}
                 </button>
 
                 {/* Class Title */}
                 <div className="mb-8">
                   <h1 className="text-2xl sm:text-3xl font-bold text-[var(--vb-text-primary)]">
-                    {selectedClassData?.name || 'All Classes'}
+                    {selectedClassData?.name || t.allClassesFallback}
                   </h1>
                   <p className="text-[var(--vb-text-muted)] mt-1">
-                    {currentAnalytics.studentCount} students • {currentAnalytics.totalAttempts} total attempts
+                    {t.studentsAttemptsSummary(currentAnalytics.studentCount, currentAnalytics.totalAttempts)}
                   </p>
                 </div>
 
@@ -529,11 +533,11 @@ export default function AnalyticsView({
                       <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
                         <Users className="text-amber-700" size={20} />
                       </div>
-                      Who Needs Help
+                      {t.whoNeedsHelp}
                     </h2>
 
                     {currentAnalytics.strugglingStudents.length === 0 ? (
-                      <p className="text-[var(--vb-text-muted)] italic">All students are doing well! 🎉</p>
+                      <p className="text-[var(--vb-text-muted)] italic">{t.allStudentsDoingWell}</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {currentAnalytics.strugglingStudents.slice(0, 6).map(s => {
@@ -550,7 +554,7 @@ export default function AnalyticsView({
                                 <span className="text-2xl">{s.avatar}</span>
                                 <div className="flex-1 min-w-0">
                                   <p className="font-bold text-[var(--vb-text-primary)] truncate">{s.name}</p>
-                                  <p className="text-[var(--vb-text-muted)] text-sm">{s.attempts} attempts</p>
+                                  <p className="text-[var(--vb-text-muted)] text-sm">{t.attempts(s.attempts)}</p>
                                 </div>
                                 <span className={`font-black text-xl ${s.avg < 50 ? 'text-rose-600' : 'text-amber-600'}`}>
                                   {s.avg}%
@@ -560,11 +564,11 @@ export default function AnalyticsView({
                                 <button
                                   onClick={() => {
                                     if (!studentInfo) {
-                                      pushToast(`Can't find ${s.name} in this class. Try refreshing the page.`, 'error');
+                                      pushToast(t.cantFindStudent(s.name), 'error');
                                       return;
                                     }
                                     if (!studentInfo.uid) {
-                                      pushToast(`${s.name} hasn't created an account yet — can't receive rewards.`, 'error');
+                                      pushToast(t.studentNoAccount(s.name), 'error');
                                       return;
                                     }
                                     setRewardStudent({
@@ -576,10 +580,10 @@ export default function AnalyticsView({
                                   }}
                                   type="button"
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold transition-colors"
-                                  title="Give reward"
+                                  title={t.giveRewardTitle}
                                 >
                                   <Gift size={14} />
-                                  Reward
+                                  {t.rewardButton}
                                 </button>
                               </div>
                             </div>
@@ -590,7 +594,7 @@ export default function AnalyticsView({
 
                     {currentAnalytics.strugglingStudents.length > 6 && (
                       <p className="text-[var(--vb-text-muted)] text-sm mt-3">
-                        +{currentAnalytics.strugglingStudents.length - 6} more students need attention
+                        {t.moreStudentsNeedAttention(currentAnalytics.strugglingStudents.length - 6)}
                       </p>
                     )}
                   </div>
@@ -602,28 +606,28 @@ export default function AnalyticsView({
                         <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
                           <BookOpen className="text-rose-700" size={20} />
                         </div>
-                        What to Reteach
+                        {t.whatToReteach}
                       </h2>
                       <div className="flex gap-2">
                         <button
                           onClick={selectAllReteachWords}
                           className="text-xs font-bold text-rose-600 hover:text-rose-800 px-3 py-1 bg-rose-100 rounded-full"
                         >
-                          Select All
+                          {t.selectAll}
                         </button>
                         {reteachWords.size > 0 && (
                           <button
                             onClick={clearReteachWords}
                             className="text-xs font-bold text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] px-3 py-1 bg-[var(--vb-surface-alt)] rounded-full"
                           >
-                            Clear
+                            {t.clear}
                           </button>
                         )}
                       </div>
                     </div>
 
                     {currentAnalytics.topMistakes.length === 0 ? (
-                      <p className="text-[var(--vb-text-muted)] italic">No mistakes recorded yet — students are doing great!</p>
+                      <p className="text-[var(--vb-text-muted)] italic">{t.noMistakesRecorded}</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {currentAnalytics.topMistakes.map(({ word, count }) => {
@@ -671,9 +675,9 @@ export default function AnalyticsView({
                     {reteachWords.size > 0 && (
                       <div className="mt-4 p-3 bg-rose-100 rounded-xl flex items-center justify-between">
                         <span className="text-rose-700 font-bold text-sm">
-                          {reteachWords.size} word{reteachWords.size !== 1 ? 's' : ''} selected
+                          {t.wordsSelected(reteachWords.size)}
                         </span>
-                        <span className="text-rose-600 text-sm">Create assignment below ↓</span>
+                        <span className="text-rose-600 text-sm">{t.createAssignmentBelow}</span>
                       </div>
                     )}
                   </div>
@@ -684,14 +688,14 @@ export default function AnalyticsView({
                       <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
                         <TrendingUp className="text-emerald-700" size={20} />
                       </div>
-                      Class Health
+                      {t.classHealth}
                     </h2>
 
                     <div className="space-y-4">
                       {/* Average Score Bar */}
                       <div>
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-[var(--vb-text-secondary)] font-medium">Average Score</span>
+                          <span className="text-[var(--vb-text-secondary)] font-medium">{t.averageScore}</span>
                           <span className={`font-black text-xl ${currentAnalytics.avgScore >= 80 ? 'text-emerald-600' : currentAnalytics.avgScore >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
                             {currentAnalytics.avgScore}%
                           </span>
@@ -714,14 +718,14 @@ export default function AnalyticsView({
                             <Gamepad2 className="text-indigo-600" size={20} />
                           </div>
                           <div>
-                            <p className="text-[var(--vb-text-muted)] text-sm">Most Played Mode</p>
+                            <p className="text-[var(--vb-text-muted)] text-sm">{t.mostPlayedMode}</p>
                             <p className="font-black text-[var(--vb-text-primary)] capitalize">
                               {currentAnalytics.bestMode.replace(/-/g, ' ')}
                             </p>
                           </div>
                         </div>
                         <span className="text-indigo-600 font-bold">
-                          {currentAnalytics.modeCounts[currentAnalytics.bestMode] || 0} plays
+                          {t.playsCount(currentAnalytics.modeCounts[currentAnalytics.bestMode] || 0)}
                         </span>
                       </div>
 
@@ -729,11 +733,11 @@ export default function AnalyticsView({
                       <div className="flex items-center gap-4">
                         <div className="flex-1 bg-[var(--vb-surface)] p-4 rounded-2xl shadow-sm text-center">
                           <p className="text-3xl font-black text-indigo-600">{currentAnalytics.studentCount}</p>
-                          <p className="text-[var(--vb-text-muted)] text-sm">Active Students</p>
+                          <p className="text-[var(--vb-text-muted)] text-sm">{t.activeStudents}</p>
                         </div>
                         <div className="flex-1 bg-[var(--vb-surface)] p-4 rounded-2xl shadow-sm text-center">
                           <p className="text-3xl font-black text-indigo-600">{currentAnalytics.totalAttempts}</p>
-                          <p className="text-[var(--vb-text-muted)] text-sm">Total Attempts</p>
+                          <p className="text-[var(--vb-text-muted)] text-sm">{t.totalAttempts}</p>
                         </div>
                       </div>
                     </div>
@@ -761,7 +765,7 @@ export default function AnalyticsView({
             className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 font-bold"
           >
             <Plus size={20} />
-            Create Assignment with {reteachWords.size} word{reteachWords.size !== 1 ? 's' : ''}
+            {t.createAssignmentWithWords(reteachWords.size)}
           </button>
         </div>
       )}
@@ -800,7 +804,7 @@ export default function AnalyticsView({
                   <span className="text-4xl">{avatar}</span>
                   <div>
                     <h2 className="text-2xl font-black text-[var(--vb-text-primary)]">{selectedStudent}</h2>
-                    <p className="text-[var(--vb-text-muted)]">{studentScores.length} {studentScores.length === 1 ? 'attempt' : 'attempts'}</p>
+                    <p className="text-[var(--vb-text-muted)]">{t.attemptsLabel(studentScores.length)}</p>
                   </div>
                 </div>
                 <button onClick={() => setSelectedStudent(null)} className="text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)]">
@@ -812,7 +816,7 @@ export default function AnalyticsView({
               <div className={`p-6 rounded-2xl mb-6 ${
                 avgScore >= 80 ? 'bg-emerald-50' : avgScore >= 70 ? 'bg-amber-50' : 'bg-rose-50'
               }`}>
-                <p className="text-[var(--vb-text-muted)] text-sm font-bold uppercase mb-1">Average Score</p>
+                <p className="text-[var(--vb-text-muted)] text-sm font-bold uppercase mb-1">{t.averageScore}</p>
                 <p className={`text-4xl font-black ${avgScore >= 80 ? 'text-emerald-600' : avgScore >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
                   {avgScore}%
                 </p>
@@ -823,7 +827,7 @@ export default function AnalyticsView({
                 <div className="mb-6">
                   <h3 className="font-bold text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
                     <AlertTriangle className="text-rose-500" size={18} />
-                    Most Challenging Words
+                    {t.mostChallengingWords}
                   </h3>
                   <div className="space-y-2">
                     {topMistakes.map(({ word, count }) => (
@@ -841,7 +845,7 @@ export default function AnalyticsView({
 
               {/* Recent Attempts */}
               <div>
-                <h3 className="font-bold text-[var(--vb-text-primary)] mb-3">Recent Attempts</h3>
+                <h3 className="font-bold text-[var(--vb-text-primary)] mb-3">{t.recentAttempts}</h3>
                 <div className="space-y-2">
                   {studentScores
                     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
@@ -899,7 +903,7 @@ export default function AnalyticsView({
               <div>
                 <h3 className="font-bold text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
                   <AlertTriangle className="text-rose-500" size={18} />
-                  Words Missed
+                  {t.wordsMissed}
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
                   {selectedScore.mistakes.map((wordId, idx) => {
@@ -909,7 +913,7 @@ export default function AnalyticsView({
                     );
                     return (
                       <div key={idx} className="bg-rose-50 p-3 rounded-xl border border-rose-200">
-                        <p className="font-bold text-[var(--vb-text-primary)]">{word?.primary || 'Unknown'}</p>
+                        <p className="font-bold text-[var(--vb-text-primary)]">{word?.primary || t.unknownWord}</p>
                         <p className="text-[var(--vb-text-muted)] text-sm">{word?.secondary || ''}</p>
                       </div>
                     );

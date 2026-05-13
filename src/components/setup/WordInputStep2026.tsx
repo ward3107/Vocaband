@@ -19,79 +19,26 @@ import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
 import InPageCamera from '../InPageCamera';
 import { AiVocabularyModal, type GeneratedWord } from '../ai-lesson-builder';
+import { useLanguage } from '../../hooks/useLanguage';
+import { wordInputStepT } from '../../locales/teacher/word-input-step';
 
-// English-only text constants for the word input step
+// Default English fallback — overridden inside the component by the
+// language-aware `TEXT` derived from useLanguage().  Kept here so any
+// module-level usage (none today) still resolves.
 // Build marker bumped each diagnostic deploy — lets us confirm the
 // user is seeing the latest code, not a stale service-worker copy.
 const APP_VERSION = 'ocr-debug-2026-04-29-e';
 
-const TEXT = {
-  pasteTitle: 'Paste your word list here',
-  pastePlaceholder: 'apple, banana, orange, grape',
-  pasteTip: 'Separate words with commas, spaces, or lines',
-  analyzeButton: 'Analyze & Add Words',
-  analyzing: 'Analyzing...',
-  or: 'OR',
-  topicPacks: 'Topic Packs',
-  savedGroups: 'Saved Groups',
-  browseLibrary: 'Browse Library',
-  ocr: 'Scan & Upload',
-  ocrSubtitle: 'Photo to text',
-  view: 'View',
-  upload: 'Upload',
-  packs: 'packs',
-  groups: 'groups',
-  words: 'words',
-  wordsSelected: 'words selected',
-  ready: 'READY',
-  readyDesc: 'All words have translations',
-  needsWork: 'NEEDS WORK',
-  needsWorkDesc: 'Missing translations',
-  fixTranslations: 'Fix Missing Translations',
-  translateMissing: (n: number) => `Translate ${n} missing word${n === 1 ? '' : 's'}`,
-  translating: 'Translating…',
-  done: 'Done',
-  fix: 'Fix',
-  addTranslation: 'Add translation',
-  continue: 'Continue to Step 2',
-  back: 'Back',
-  cancel: 'Cancel',
-  addWords: 'Add Words',
-  camera: 'Camera',
-  gallery: 'Gallery',
-  uploading: 'Uploading...',
-  extracting: 'Extracting words...',
-  ocrError: 'No words detected',
-  ocrErrorDesc: 'Try a clearer photo or different angle',
-  tryAgain: 'Try Again',
-  wordsFound: 'words found',
-  reviewWords: 'Review and edit before adding:',
-  new: 'new',
-  noSavedGroups: 'No saved groups yet',
-  saveGroupHint: 'Create a group from your selected words',
-  searchPlaceholder: 'Search words...',
-  showingFirst: 'Showing first 100',
-  refineSearch: 'refine your search',
-  addSelectedPacks: 'Add selected packs',
-  addSelectedWords: 'Add selected words',
-  chooseFile: 'Choose File',
-  noFileSelected: 'No file selected',
-  // Language preference
-  translationLang: 'Translation Language',
-  bothLang: 'Both',
-  hebrewOnly: 'Hebrew Only',
-  arabicOnly: 'Arabic Only',
-  clearAll: 'Clear All',
-  clearAllConfirm: 'Are you sure you want to remove all words?',
-  selectWords: 'Select words to add:',
-  allWords: 'All words',
-  addSelected: 'Add selected words',
-  alreadyAdded: 'Already added',
-  // AI Lesson Builder
-  aiGenerate: 'AI Generate',
-  aiGenerateSubtitle: 'Topic to words',
-  aiGenerateCard: '✨ Generate',
-};
+/**
+ * Hook used by every sub-component in this file to pick the right
+ * locale at render time.  Centralises the lookup so we don't repeat
+ * `wordInputStepT[useLanguage().language]` everywhere.  Every React
+ * sub-component below shadows its `TEXT` local with `useStepTexts()`.
+ */
+function useStepTexts() {
+  const { language } = useLanguage();
+  return wordInputStepT[language];
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -167,6 +114,7 @@ interface HeroPasteAreaProps {
 }
 
 const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing }) => {
+  const TEXT = useStepTexts();
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -314,6 +262,7 @@ interface StatusCardsProps {
 }
 
 const StatusCards: React.FC<StatusCardsProps> = ({ readyCount, needsWorkCount, onFixClick, isTranslating }) => {
+  const TEXT = useStepTexts();
 
   if (readyCount === 0 && needsWorkCount === 0) return null;
 
@@ -411,6 +360,7 @@ const WordCard: React.FC<WordCardProps> = ({
   onQuickTranslate,
   isTranslating = false
 }) => {
+  const TEXT = useStepTexts();
   const [localTranslating, setLocalTranslating] = useState(false);
   const [translateError, setTranslateError] = useState<string | null>(null);
 
@@ -563,6 +513,7 @@ interface EditTranslationModalProps {
 const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
   isOpen, onClose, word, translationLang, onSave, onTranslate
 }) => {
+  const TEXT = useStepTexts();
   const [hebrew, setHebrew] = useState('');
   const [arabic, setArabic] = useState('');
   const [russian, setRussian] = useState('');
@@ -621,7 +572,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
         <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <span className="text-2xl">✏️</span>
-            <span className="font-bold">Edit Translations</span>
+            <span className="font-bold">{TEXT.editTranslations}</span>
           </div>
           <button
             onClick={onClose}
@@ -692,7 +643,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
                 autoComplete="off"
                 value={hebrew}
                 onChange={(e) => setHebrew(e.target.value)}
-                placeholder="Enter Hebrew translation"
+                placeholder={TEXT.enterHebrew}
                 className="w-full px-4 py-3 border border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
                 dir="rtl"
               />
@@ -712,7 +663,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
                 autoComplete="off"
                 value={arabic}
                 onChange={(e) => setArabic(e.target.value)}
-                placeholder="Enter Arabic translation"
+                placeholder={TEXT.enterArabic}
                 className="w-full px-4 py-3 border border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
                 dir="rtl"
               />
@@ -734,7 +685,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
               autoComplete="off"
               value={russian}
               onChange={(e) => setRussian(e.target.value)}
-              placeholder="Enter Russian translation"
+              placeholder={TEXT.enterRussian}
               className="w-full px-4 py-3 border border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
               dir="ltr"
             />
@@ -795,6 +746,7 @@ interface OcrModalProps {
 const OcrModal: React.FC<OcrModalProps> = ({
   isOpen, onClose, onUpload, onOpenCamera, onOpenGallery, state, progress, extractedWords, onConfirm, onEditWord, errorMessage,
 }) => {
+  const TEXT = useStepTexts();
 
   if (!isOpen) return null;
 
@@ -984,6 +936,7 @@ interface PackWordsModalProps {
 const PackWordsModal: React.FC<PackWordsModalProps> = ({
   isOpen, onClose, onParentClose, pack, selectedWordIds, onAddWords
 }) => {
+  const TEXT = useStepTexts();
   const [selectedForAdd, setSelectedForAdd] = useState<Set<number>>(new Set());
 
   // Pre-select words that aren't already added
@@ -1153,6 +1106,7 @@ interface TopicPacksPanelProps {
 const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
   isOpen, onClose, topicPacks, allWords, selectedWords, onAddWords
 }) => {
+  const TEXT = useStepTexts();
   const [selectedPack, setSelectedPack] = useState<{ name: string; icon: string; ids: number[]; words: Word[] } | null>(null);
 
   const selectedWordIds = new Set(selectedWords.map(w => w.id));
@@ -1267,6 +1221,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
   isOpen, onClose, savedGroups, allWords, selectedWords, onAddWords,
   onRenameGroup, onDeleteGroup,
 }) => {
+  const TEXT = useStepTexts();
   const selectedWordIds = new Set(selectedWords.map(w => w.id));
 
   // Inline-rename state — track which group id is being edited and
@@ -1393,7 +1348,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                           {onRenameGroup && (
                             <button
                               type="button"
-                              aria-label={`Rename ${group.name}`}
+                              aria-label={TEXT.renameGroupAria(group.name)}
                               title="Rename"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1409,7 +1364,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                           {onDeleteGroup && (
                             <button
                               type="button"
-                              aria-label={`Delete ${group.name}`}
+                              aria-label={TEXT.deleteGroupAria(group.name)}
                               title="Delete"
                               onClick={async (e) => {
                                 e.stopPropagation();
@@ -1452,6 +1407,7 @@ interface BrowseLibraryPanelProps {
 const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
   isOpen, onClose, allWords, selectedWords, onAddWords, onRemoveWord
 }) => {
+  const TEXT = useStepTexts();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<'All' | 'Set 1' | 'Set 2' | 'Set 3'>('All');
   const [selectedForAdd, setSelectedForAdd] = useState<Set<number>>(new Set());
@@ -1643,6 +1599,12 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   onCustomWordsChange,
   hideContinueButton = false,
 }) => {
+  const { language } = useLanguage();
+  // Language-aware string lookup — shadows the module-level TEXT const
+  // so every existing `TEXT.foo` reference further down the file picks
+  // up the correct locale at render time without touching individual
+  // call sites.  Updates whenever the teacher flips EN/HE/AR.
+  const TEXT = wordInputStepT[language];
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const selectedWordsRef = useRef<HTMLDivElement>(null);
   // OCR / panels set this true when they add words; the effect below

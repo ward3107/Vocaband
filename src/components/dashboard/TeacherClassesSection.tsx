@@ -35,6 +35,8 @@ interface TeacherClassesSectionProps {
   onDeleteClass: (classId: string) => void;
   /** Open the rename + change-avatar modal for this class. */
   onEditClass: (c: ClassData) => void;
+  /** Open the roster modal — manage students + PINs for this class. */
+  onOpenRoster?: (c: ClassData) => void;
   /** Quick inline name change. */
   onNameChange?: (classId: string, newName: string) => Promise<void>;
   /** Quick inline avatar change. */
@@ -61,6 +63,7 @@ export default function TeacherClassesSection({
   classes, teacherAssignments, copiedCode, setCopiedCode,
   openDropdownClassId, setOpenDropdownClassId,
   onNewClass, onAssign, onDeleteClass, onEditClass,
+  onOpenRoster,
   onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   onProjectAssignmentToClass, onPrintAssignmentWorksheet,
@@ -181,6 +184,7 @@ export default function TeacherClassesSection({
                 }}
                 onDelete={() => onDeleteClass(c.id)}
                 onEdit={() => onEditClass(c)}
+                onOpenRoster={onOpenRoster ? () => onOpenRoster(c) : undefined}
                 onNameChange={onNameChange ? (newName) => onNameChange(c.id, newName) : undefined}
                 onAvatarChange={onAvatarChange ? (newAvatar) => onAvatarChange(c.id, newAvatar) : undefined}
                 onEditAssignment={(assignment) => onEditAssignment(assignment, c)}

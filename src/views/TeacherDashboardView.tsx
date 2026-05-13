@@ -110,6 +110,8 @@ interface TeacherDashboardViewProps {
   onEditAssignment: (a: AssignmentData, c: ClassData) => void;
   onDuplicateAssignment: (a: AssignmentData, c: ClassData) => void;
   onDeleteAssignment: (a: AssignmentData) => void;
+  /** Open the roster modal for a given class. */
+  onOpenRoster?: (c: ClassData) => void;
 
   // Saved-task templates (localStorage-backed, see useSavedTasks).
   savedTasks?: SavedTask[];
@@ -154,6 +156,7 @@ export default function TeacherDashboardView({
   editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
   onNameChange, onAvatarChange,
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
+  onOpenRoster,
   savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
   onWizardComplete, onWizardSkip,
   subject = "english",
@@ -367,6 +370,7 @@ export default function TeacherDashboardView({
             onAssign={onAssignClass}
             onDeleteClass={onDeleteClass}
             onEditClass={onEditClass}
+            onOpenRoster={onOpenRoster}
             onNameChange={onNameChange}
             onAvatarChange={onAvatarChange}
             onEditAssignment={onEditAssignment}

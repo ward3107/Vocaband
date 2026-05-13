@@ -86,6 +86,30 @@ export interface StudentDashboardStrings {
   close: string;
   yourCompanion: string;
   evolutionReward: string;
+  petLevel: (n: number) => string;
+  petNext: (emoji: string, stage: string) => string;
+  petXpProgress: (current: number, target: number) => string;
+  petEvolutionTip: (name: string, xpNeeded: number, reward: string) => string;
+  petMaxedOut: (stage: string) => string;
+  petClaim: string;
+
+  // ActiveBoostersStrip
+  boosterXpDouble: string;
+  boosterWeekendXp: string;
+  boosterFocusMode: string;
+  boosterStreakFreeze: (n: number) => string;
+  boosterLuckyCharm: (n: number) => string;
+
+  // PowerUpsStrip
+  powerUpSkip: string;
+  powerUpFiftyFifty: string;
+  powerUpRevealLetter: string;
+  powerUpWithCount: (label: string, n: number) => string;
+
+  // DropOfTheWeekCard
+  dropOfTheWeek: string;
+  dropDiscountChip: (pct: number) => string;
+  dropThisWeekInShop: string;
 
   // StudentOverallProgress
   overallProgress: string;
@@ -156,6 +180,24 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     close: "Close",
     yourCompanion: "Your companion",
     evolutionReward: "Evolution reward",
+    petLevel: (n) => `Level ${n}`,
+    petNext: (emoji, stage) => `Next: ${emoji} ${stage}`,
+    petXpProgress: (current, target) => `${current} / ${target} XP`,
+    petEvolutionTip: (name, xpNeeded, reward) => `${name}, earn ${xpNeeded} more XP — next unlock: ${reward}`,
+    petMaxedOut: (stage) => `Maxed out! You and ${stage} are unstoppable.`,
+    petClaim: "Claim",
+    boosterXpDouble: "2× XP",
+    boosterWeekendXp: "Weekend 2× XP",
+    boosterFocusMode: "Focus mode",
+    boosterStreakFreeze: (n) => `Streak Freeze ×${n}`,
+    boosterLuckyCharm: (n) => `Lucky Charm ×${n}`,
+    powerUpSkip: "Skip",
+    powerUpFiftyFifty: "50/50",
+    powerUpRevealLetter: "Reveal Letter",
+    powerUpWithCount: (label, n) => `${label} ×${n}`,
+    dropOfTheWeek: "Drop of the week",
+    dropDiscountChip: (pct) => `${pct}% OFF`,
+    dropThisWeekInShop: "this week in the shop",
     overallProgress: "Overall Progress",
     loadingAssignments: "Loading your assignments...",
     playAgain: "Play again",
@@ -218,6 +260,24 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     close: "סגור",
     yourCompanion: "החבר שלך",
     evolutionReward: "פרס אבולוציה",
+    petLevel: (n) => `דרגה ${n}`,
+    petNext: (emoji, stage) => `הבא: ${emoji} ${stage}`,
+    petXpProgress: (current, target) => `${current} / ${target} XP`,
+    petEvolutionTip: (name, xpNeeded, reward) => `${name}, צברו עוד ${xpNeeded} XP — הפתיחה הבאה: ${reward}`,
+    petMaxedOut: (stage) => `הגעתם למקסימום! אתם ו-${stage} בלתי ניתנים לעצירה.`,
+    petClaim: "אסוף",
+    boosterXpDouble: "פי 2 XP",
+    boosterWeekendXp: "סוף שבוע פי 2 XP",
+    boosterFocusMode: "מצב ריכוז",
+    boosterStreakFreeze: (n) => `הקפאת רצף ×${n}`,
+    boosterLuckyCharm: (n) => `קמע מזל ×${n}`,
+    powerUpSkip: "דלג",
+    powerUpFiftyFifty: "50/50",
+    powerUpRevealLetter: "חשוף אות",
+    powerUpWithCount: (label, n) => `${label} ×${n}`,
+    dropOfTheWeek: "מבצע השבוע",
+    dropDiscountChip: (pct) => `${pct}% הנחה`,
+    dropThisWeekInShop: "השבוע בחנות",
     overallProgress: "התקדמות כוללת",
     loadingAssignments: "טוען את המטלות שלך...",
     playAgain: "שחק שוב",
@@ -280,6 +340,24 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     close: "إغلاق",
     yourCompanion: "رفيقك",
     evolutionReward: "مكافأة التطور",
+    petLevel: (n) => `المستوى ${n}`,
+    petNext: (emoji, stage) => `التالي: ${emoji} ${stage}`,
+    petXpProgress: (current, target) => `${current} / ${target} XP`,
+    petEvolutionTip: (name, xpNeeded, reward) => `${name}، اكسب ${xpNeeded} XP إضافية — الفتح القادم: ${reward}`,
+    petMaxedOut: (stage) => `وصلت إلى الحد الأقصى! أنت و${stage} لا يمكن إيقافكما.`,
+    petClaim: "احصل",
+    boosterXpDouble: "×2 XP",
+    boosterWeekendXp: "عطلة الأسبوع ×2 XP",
+    boosterFocusMode: "وضع التركيز",
+    boosterStreakFreeze: (n) => `تجميد السلسلة ×${n}`,
+    boosterLuckyCharm: (n) => `تعويذة الحظ ×${n}`,
+    powerUpSkip: "تخطّي",
+    powerUpFiftyFifty: "50/50",
+    powerUpRevealLetter: "كشف حرف",
+    powerUpWithCount: (label, n) => `${label} ×${n}`,
+    dropOfTheWeek: "عرض الأسبوع",
+    dropDiscountChip: (pct) => `خصم ${pct}%`,
+    dropThisWeekInShop: "هذا الأسبوع في المتجر",
     overallProgress: "التقدم الإجمالي",
     loadingAssignments: "جاري تحميل المهام...",
     playAgain: "العب مرة أخرى",
