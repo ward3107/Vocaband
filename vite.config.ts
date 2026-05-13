@@ -54,6 +54,32 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
+          // Precache only the SPA shell — the JS/CSS chunks, HTML, and
+          // critical icons.  Excluded from precache:
+          //   - Heavy export-only vendor chunks (~2.6 MB combined raw).
+          //     jspdf / pptxgen / html2pdf / html2canvas* / exceljs all
+          //     fire only when a teacher clicks "Export to …" inside
+          //     ReportExportBar or the Gradebook export modal.  They're
+          //     already lazy-imported, so excluding them from precache
+          //     means the SW won't pre-fetch them on first visit — the
+          //     teacher's click triggers a one-time fetch instead.
+          //     90 %+ of teachers never click these buttons.
+          //   - stats.html — only emitted when ANALYZE=true.
+          //   - PDFs, MP4s, MP3s — explicit belt-and-suspenders even
+          //     though the default globPatterns wouldn't include them.
+          globIgnores: [
+            '**/node_modules/**/*',
+            '**/assets/jspdf*.js',
+            '**/assets/pptxgen*.js',
+            '**/assets/html2pdf*.js',
+            '**/assets/html2canvas*.js',
+            '**/assets/exceljs*.js',
+            '**/assets/mammoth*.js',
+            '**/*.pdf',
+            '**/*.mp4',
+            '**/*.mp3',
+            '**/stats.html',
+          ],
           // Clean up any caches left behind by the previous (broken)
           // SW so returning users don't carry stale entries forward.
           cleanupOutdatedCaches: true,

@@ -3751,12 +3751,6 @@ export default function App() {
         onSaveTemplate={savedTasks.save}
         initialSelectedWords={quickPlayInitialWords}
         initialSelectedModes={quickPlayInitialModes}
-        // use2026WordInput + OCR/DOCX handlers + custom-words state make
-        // Quick Play's step 1 look and behave identically to Assignment's.
-        // Without these the QP teacher got the older WordInputStep UI
-        // (just paste + topics) while assignment teachers got the richer
-        // 2026 redesign (library, OCR photo, DOCX upload, custom words).
-        use2026WordInput={true}
         onOcrUpload={handleOcrUpload}
         isOcrProcessing={isOcrProcessing}
         ocrProgress={ocrProgress}
