@@ -462,11 +462,17 @@ export function useGameFinish(params: UseGameFinishParams) {
         p.id === optimisticProgress.id ? { ...p, id: progressId } : p
       ));
 
-      // XP/streak write is batched with other queued saves — cheap,
-      // non-critical to the game loop, survives a failed flush the
-      // next time it runs.
+      // XP/streak write goes through the award_progress_xp RPC so it
+      // can be locked by the F2 trigger (20260604).  Server clamps
+      // p_xp_delta to ±300 and validates p_new_streak ∈ {0, current,
+      // current+1}.  Still queued + non-blocking — game loop continues
+      // even if the save flush is slow.
       queueSaveOperation(async () => {
-        await supabase.from('users').update({ xp: newXp, streak: newStreak }).eq('uid', user.uid);
+        const { error } = await supabase.rpc('award_progress_xp', {
+          p_xp_delta: xpEarned,
+          p_new_streak: newStreak,
+        });
+        if (error) console.warn('award_progress_xp failed (will retry):', error.message);
       });
 
       // Clear any legacy retry key for this assignment+mode — the new

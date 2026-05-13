@@ -122,6 +122,84 @@ body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/bagrut_cache" \
   -d '{"cache_key":"hack","module":"B","model":"x","content":{}}')
 check "anon bagrut_cache insert is rejected" "row-level security|violates|permission denied|42501" "$body"
 
+# ─── F2 — authenticated-student direct-UPDATE attacks ─────────────────
+# These require a STUDENT_JWT (an authenticated session token for a
+# test student account).  Without one, the section is skipped — but
+# the F2 lock can still be verified via the SQL queries in the
+# 20260604 migration's verification section.
+#
+# To run: sign in to the demo classroom as a test student, copy the
+# access token from devtools (supabase.auth.getSession()), then:
+#   STUDENT_JWT=<token> ./scripts/security-pen-test.sh
+
+if [[ -n "${STUDENT_JWT:-}" ]]; then
+  echo
+  echo "── F2 direct-UPDATE attacks (authenticated student) ──"
+
+  # 17. Direct xp inflation — must fail with the F2 trigger message.
+  echo "[17] Authed student tries direct UPDATE users.xp = 999999"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"xp": 999999}')
+  check "authed UPDATE users.xp is rejected by F2 trigger" "Direct UPDATE of users.xp is not allowed|42501" "$body"
+
+  # 18. Direct streak inflation.
+  echo "[18] Authed student tries direct UPDATE users.streak = 365"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"streak": 365}')
+  check "authed UPDATE users.streak is rejected" "Direct UPDATE of users.streak is not allowed|42501" "$body"
+
+  # 19. Direct badges inflation.
+  echo "[19] Authed student tries direct UPDATE users.badges"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"badges": ["🎯 Perfect Score", "👑 Champion"]}')
+  check "authed UPDATE users.badges is rejected" "Direct UPDATE of users.badges is not allowed|42501" "$body"
+
+  # 20. Direct unlocked_avatars inflation.
+  echo "[20] Authed student tries direct UPDATE users.unlocked_avatars"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"unlocked_avatars": ["🐉", "🦄"]}')
+  check "authed UPDATE users.unlocked_avatars is rejected" "Direct UPDATE of users.unlocked_avatars is not allowed|42501" "$body"
+
+  # 21. Direct power_ups inflation.
+  echo "[21] Authed student tries direct UPDATE users.power_ups"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"power_ups": {"skip": 99, "fifty_fifty": 99, "reveal_letter": 99}}')
+  check "authed UPDATE users.power_ups is rejected" "Direct UPDATE of users.power_ups is not allowed|42501" "$body"
+
+  # 22. F1 regression — plan still locked.
+  echo "[22] Authed student tries direct UPDATE users.plan = 'pro' (F1 regression)"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"plan": "pro", "trial_ends_at": "2099-01-01"}')
+  check "authed UPDATE users.plan is still rejected (F1)" "row-level security|violates|42501" "$body"
+else
+  echo
+  echo "── F2 / F1 authenticated tests skipped (set STUDENT_JWT to run) ──"
+fi
+
 # ─── App-server pen-tests ─────────────────────────────────────────────
 # Optional: also probe the Express app server for unauthenticated info-
 # disclosure regressions on /api/version, /api/ocr/status, /api/ocr/
