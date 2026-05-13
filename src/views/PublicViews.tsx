@@ -30,6 +30,7 @@ import {
 } from "../components/LazyComponents";
 import TeacherLoginView from "./TeacherLoginView";
 import FloatingButtons from "../components/FloatingButtons";
+import InteractiveWorksheetView from "./InteractiveWorksheetView";
 import { useEffect } from "react";
 
 type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status";
@@ -171,6 +172,29 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
           onTeacherLogin={onTeacherOAuth}
           onBack={goBack}
         />
+        {cookieBannerOverlay}
+      </>
+    );
+  }
+
+  if (view === "public-interactive-worksheet") {
+    // Slug lives in the URL path (/w/<slug>) so navigating between slugs
+    // doesn't require a state round-trip — the path is the source of
+    // truth.  onBack returns the visitor to the landing page; we also
+    // clear the path so refresh doesn't bounce them back into the
+    // worksheet they just left.
+    const slug = window.location.pathname.replace(/^\/w\//, "").split(/[/?#]/)[0] || "";
+    const handleBack = () => {
+      try {
+        window.history.replaceState({}, "", "/");
+      } catch {
+        /* history API blocked — fall through to a hard back nav */
+      }
+      onPublicNavigate("home");
+    };
+    return (
+      <>
+        <InteractiveWorksheetView slug={slug} onBack={handleBack} />
         {cookieBannerOverlay}
       </>
     );
