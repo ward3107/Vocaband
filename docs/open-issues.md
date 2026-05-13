@@ -122,12 +122,10 @@ These items are DONE. Don't rebuild them — surface and market them.
 
 ### Tier 1 — Ship next (small scope, big leverage)
 
-**1. Printable PDF certificate (basic)**
-- Reuse the existing `html2pdf` pipeline used by `HebrewWorksheetView`
-- New file: `src/views/certificates/StudentCertificate.tsx` — A4 layout, student name, class, date, "X words mastered", MoE-set label
-- "Print certificate" button on the student profile (teacher view) + end-of-unit
-- ETA: 1 evening for v1
-- Why now: fridge marketing, parent word-of-mouth, no new infra
+**1. Printable PDF certificate** — ✅ SHIPPED 2026-05-12 (v1) / 2026-05-13 (v2).
+- v1 (`CertificateModal.tsx`) — A4-portrait certificate with student name, class, date, games-played + avg-score. Printer-icon button in the per-student Gradebook row. `html2pdf.js` lazy-loaded so the heavy chain stays out of the Gradebook chunk. EN/HE/AR with proper RTL.
+- v2 — adds **words-mastered** count (distinct word_ids the student has answered correctly ≥ `MASTERY_THRESHOLD` (5) times across all modes combined). Derived client-side from the existing `get_class_mastery` RPC data already in memory — no new server round-trip. Stat hides itself when 0 so brand-new students don't get a depressing "0 words mastered" headline.
+- Follow-up candidates: "Print certificate" button on the end-of-unit screen (currently only in the Gradebook); per-student certificate-history list so teachers can re-print past achievements; MoE-set label on the certificate.
 
 **Class Minute** and **Hot Seat** shipped 2026-05-12 — see "Already shipped" section above.
 

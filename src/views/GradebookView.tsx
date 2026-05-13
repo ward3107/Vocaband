@@ -33,6 +33,7 @@ import CertificateModal from "../components/CertificateModal";
 import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
 import type { View } from "../core/views";
 import { buildWordIdSubjectMap, getDisplayLabel } from "../data/wordLookup";
+import { MASTERY_THRESHOLD } from "../constants/game";
 import MasteryHeatmap, { type MasteryRow } from "./gradebook/MasteryHeatmap";
 import { TeacherRewardModal, type StudentInfo } from "../components/dashboard/TeacherRewardModal";
 import StudentProfile from "./classroom/StudentProfile";
@@ -120,6 +121,10 @@ interface StudentRollup {
   bestScore: number;
   avgScore: number;
   attempts: number;
+  /** Count of distinct word_ids the student has answered correctly
+   *  >= MASTERY_THRESHOLD times across all modes combined.  Derived
+   *  from masteryRows; 0 until that data loads. */
+  wordsMastered: number;
   lastDate: string;
   scores: ProgressData[];
   modeBreakdown: Map<string, { attempts: number; avgScore: number }>;
@@ -266,6 +271,29 @@ export default function GradebookView({
 
   // ── Per-student rollup (scoped to selected class) ─────────────────────────
   const studentRollups = useMemo<StudentRollup[]>(() => {
+    // Pre-compute mastered-word counts per student from masteryRows.  A
+    // word counts as mastered when the student has answered it correctly
+    // >= MASTERY_THRESHOLD times across ALL modes combined.  masteryRows
+    // is per (student, word, mode), so we first sum corrects across modes
+    // for each (student, word) pair, then count word_ids that crossed
+    // the threshold.  Used to populate the certificate's "words mastered"
+    // stat and the per-row mastery column.
+    const correctsByStudentWord = new Map<string, Map<number, number>>();
+    masteryRows.forEach(r => {
+      let perWord = correctsByStudentWord.get(r.student_uid);
+      if (!perWord) {
+        perWord = new Map();
+        correctsByStudentWord.set(r.student_uid, perWord);
+      }
+      perWord.set(r.word_id, (perWord.get(r.word_id) ?? 0) + (r.correct_count ?? 0));
+    });
+    const masteredByUid = new Map<string, number>();
+    correctsByStudentWord.forEach((wordMap, uid) => {
+      let count = 0;
+      wordMap.forEach(corrects => { if (corrects >= MASTERY_THRESHOLD) count++; });
+      masteredByUid.set(uid, count);
+    });
+
     const bucket = new Map<string, StudentRollup>();
     allScores
       .filter(s => s.classCode === selectedClassCode)
@@ -280,6 +308,7 @@ export default function GradebookView({
             avatar: s.avatar || '🦊',
             totalXp: 0, bestScore: 0, avgScore: 0,
             attempts: 0,
+            wordsMastered: s.studentUid ? (masteredByUid.get(s.studentUid) ?? 0) : 0,
             lastDate: s.completedAt,
             scores: [],
             modeBreakdown: new Map(),
@@ -305,7 +334,7 @@ export default function GradebookView({
     return Array.from(bucket.values()).sort(
       (a, b) => new Date(b.lastDate).getTime() - new Date(a.lastDate).getTime()
     );
-  }, [allScores, selectedClassCode]);
+  }, [allScores, selectedClassCode, masteryRows]);
 
   // ── Class pulse classification ────────────────────────────────────────────
   const { onTrack, needsAttention, notPlaying } = useMemo(() => {
@@ -345,6 +374,7 @@ export default function GradebookView({
             classCode: s.classCode,
             avatar: '🦊',
             totalXp: 0, bestScore: 0, avgScore: 0, attempts: 0,
+            wordsMastered: 0,
             lastDate: s.lastActive,
             scores: [],
             modeBreakdown: new Map(),
@@ -836,6 +866,7 @@ export default function GradebookView({
         }
         attempts={certificateFor?.attempts ?? 0}
         avgScore={certificateFor?.avgScore ?? 0}
+        wordsMastered={certificateFor?.wordsMastered ?? 0}
         teacherName={user?.displayName}
       />
 
