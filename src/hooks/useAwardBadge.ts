@@ -34,7 +34,12 @@ export function useAwardBadge(params: UseAwardBadgeParams) {
     celebrate('big');
 
     try {
-      const { error } = await supabase.from('users').update({ badges: newBadges }).eq('uid', user.uid);
+      // award_self_badge is idempotent server-side (array_append guarded
+      // by NOT @>) so the client's badges.includes(badge) check above
+      // and the server check both have to pass — twice the protection
+      // against a double-award showing up as a phantom row.  Routes via
+      // the RPC so the F2 trigger (20260604) can lock direct writes.
+      const { error } = await supabase.rpc('award_self_badge', { p_badge: badge });
       if (error) throw error;
     } catch (error) {
       console.error("Error saving badge:", error);
