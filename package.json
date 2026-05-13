@@ -45,6 +45,7 @@
     "client-zip": "^2.5.0",
     "csvtojson": "^2.0.14",
     "date-fns": "^4.1.0",
+    "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.1",
     "helmet": "^8.1.0",
