@@ -1,18 +1,11 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
+import { MotionConfig, motion, useScroll, useTransform } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
-import { teacherResourcesT } from "../locales/student/teacher-resources";
-import { faqT } from "../locales/student/faq";
 import {
-  Rocket,
   Gamepad2,
-  Play,
-  User,
-  Apple,
   Coins,
   ArrowRight,
-  Link2,
   GraduationCap,
   Sparkles,
   Trophy,
@@ -23,31 +16,18 @@ import {
   Crown,
   Target,
   BookOpen,
-  Volume2,
-  PenTool,
   BarChart3,
   Clock,
   CheckCircle2,
   Layers,
   FileText,
   ShieldCheck,
-  Accessibility,
-  Lock,
   Globe,
-  ExternalLink,
   Wand2,
   Camera,
   Radio,
   Compass,
-  ChevronDown,
-  CircleHelp,
-  Users,
-  Mail,
-  Lightbulb,
-  Download,
-  Activity,
   MapPin,
-  Presentation,
   LogIn,
 } from "lucide-react";
 import Tilt from "react-parallax-tilt";
@@ -66,6 +46,13 @@ const SubjectRequestModal = lazy(() => import("./SubjectRequestModal"));
 const FeatureRequestModal = lazy(() => import("./FeatureRequestModal"));
 const SchoolInquiryModal = lazy(() => import("./SchoolInquiryModal"));
 
+// Below-the-fold sections — lazy so they don't enter the initial
+// landing-page chunk.  Each becomes its own JS file, fetched while
+// the hero is already on screen.
+const LandingFinalCTA = lazy(() => import("./landing/LandingFinalCTA"));
+const LandingFAQ = lazy(() => import("./landing/LandingFAQ"));
+const LandingFooter = lazy(() => import("./landing/LandingFooter"));
+
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status") => void;
   onGetStarted: () => void;
@@ -77,17 +64,9 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = landingPageT[language];
-  const tr = teacherResourcesT[language];
-  const fq = faqT[language];
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
-  const [openFaqItem, setOpenFaqItem] = useState<string | null>(null);
-  const toggleFaq = (id: string) => setOpenFaqItem(prev => (prev === id ? null : id));
-  const scrollToFaq = () => {
-    const el = document.getElementById("faq");
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
 
   // Mobile scroll-snap: tag the body while LandingPage is mounted so the
   // matching @media rule in index.css kicks in. Cleaned up on unmount so
@@ -123,18 +102,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
   const cardYBoost  = useTransform(studentsProgress, [0, 1], [25, -25]);
   const cardYPet    = useTransform(studentsProgress, [0, 1], [-20, 20]);
   const cardYStreak = useTransform(studentsProgress, [0, 1], [30, -30]);
-
-  // Footer cascade — every footer line / link / heading uses this
-  // variant.  The grid is the trigger; each item gets a `custom` index
-  // that maps to its delay (i * 0.07s) so they fade up one by one.
-  const footerItemVariant = {
-    hidden: { opacity: 0, y: 8 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.22, delay: i * 0.025, ease: "easeOut" as const },
-    }),
-  };
 
   // C1: spotlight follow — mouseMove updates CSS vars on the target.
   // The spotlight overlay reads them via var(--mx) / var(--my).
@@ -172,6 +139,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
   const stamp3Glow  = useTransform(journeyProgress, [0.76, 0.88], [0, 1]);
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="min-h-screen signature-gradient overflow-x-hidden">
       <PublicNav
         currentPage="home"
@@ -2024,266 +1992,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           </motion.div>
         </section>
 
-        {/* Final CTA - Epic 3D Card */}
-        <section className="py-8 md:py-24 px-4 md:px-6 bg-violet-950 relative overflow-hidden">
-          {/* Cosmic trilingual backdrop — silent looping video.  Lazy-
-              loaded (4.5 MB clip, well below the fold) — the violet
-              section background stays in place while the source
-              attaches as the user scrolls down. */}
-          <LazyBgVideo
-            src="/cta-bg.mp4"
-            className="absolute inset-0 w-full h-full object-cover"
+        <Suspense fallback={null}>
+          <LandingFinalCTA
+            onTryDemo={onTryDemo}
+            onTeacherLogin={onTeacherLogin}
+            isAuthenticated={isAuthenticated}
           />
-          {/* Section-level darkening overlay so heading + buttons stay
-              readable on top of the busy image. */}
-          <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 50 }}
-            whileInView={{ opacity: 1, scale: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
-            className="max-w-5xl mx-auto relative z-10"
-          >
-            {/* 3D Card with multiple shadow layers */}
-            <div className="relative p-6 md:p-20 rounded-[2rem] md:rounded-[3rem] bg-gradient-to-br from-violet-600/40 via-purple-600/40 to-fuchsia-600/40 backdrop-blur-sm border border-white/15 text-white text-center overflow-hidden">
-              {/* Animated background pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <motion.div
-                  animate={{ x: [0, 50, 0], y: [0, -50, 0] }}
-                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage: "radial-gradient(circle, #fff 2px, transparent 2px)",
-                    backgroundSize: "40px 40px",
-                  }}
-                />
-              </div>
-
-              {/* Glow orbs */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-
-              {/* 3D Depth shadow layers */}
-              <div className="absolute inset-0 rounded-[3rem] shadow-[inset_0_2px_20px_rgba(255,255,255,0.2)]" />
-
-              <div className="relative z-10">
-                {/* Floating trophy */}
-                <motion.div
-                  animate={{ y: [0, -10, 0], rotate: [-5, 5, -5] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  className="text-7xl md:text-8xl mb-6"
-                >
-                  🏆
-                </motion.div>
-
-                <h2 className="text-4xl md:text-6xl lg:text-7xl font-black font-headline mb-6 tracking-tight">
-                  {t.finalCtaH2Line1}
-                  <span className="inline-block pr-4 pb-2 mt-2 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
-                    {t.finalCtaH2Line2}
-                  </span>
-                </h2>
-
-                <p className="text-xl text-white/80 font-bold mb-6 md:mb-10 max-w-2xl mx-auto" dir={dir}>
-                  {t.finalCtaSubtitle}
-                </p>
-
-                {/* 3D Buttons */}
-                <div className="flex flex-col sm:flex-row gap-5 justify-center">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={onTryDemo}
-                    className="group relative px-10 py-5 rounded-2xl text-xl font-black text-white shadow-[0_10px_0_0_#6d28d9,0_25px_50px_rgba(139,92,246,0.5)] hover:shadow-[0_14px_0_0_#5b21b6,0_35px_60px_rgba(139,92,246,0.6)] active:shadow-[0_4px_0_0_#6d28d9,0_12px_25px_rgba(139,92,246,0.4)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 overflow-hidden"
-                  >
-                    <Rocket size={24} className="relative z-10" />
-                    <span className="relative z-10">{t.finalCtaStart}</span>
-                    <Sparkles size={24} className="relative z-10" fill="currentColor" />
-                  </motion.button>
-
-                  {!isAuthenticated && (
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={onTeacherLogin}
-                      className="group relative px-8 py-5 rounded-2xl text-lg font-bold text-purple-600 shadow-[0_10px_0_0_#4c1d95,0_25px_50px_rgba(76,29,149,0.3)] hover:shadow-[0_14px_0_0_#3b0764,0_35px_60px_rgba(76,29,149,0.4)] active:shadow-[0_4px_0_0_#4c1d95,0_12px_25px_rgba(76,29,149,0.3)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-white overflow-hidden"
-                    >
-                      <span className="absolute inset-0 bg-gradient-to-b from-white to-gray-50" />
-                      <GraduationCap size={22} className="relative z-10" />
-                      <span className="relative z-10">{t.finalCtaTeacher}</span>
-                    </motion.button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </section>
+        </Suspense>
 
 
-        {/* FAQ section — inlined from the former /faq route so visitors
-            can scan answers without leaving the landing page.  The
-            footer + nav both anchor here via #faq. */}
-        <section id="faq" className="py-12 md:py-24 px-4 md:px-6 relative scroll-mt-20 bg-gradient-to-b from-transparent via-slate-950/60 to-slate-950">
-          <div className="max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-12 md:mb-16"
-            >
-              <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-violet-500/20 border border-violet-400/30 mb-6">
-                <CircleHelp size={20} className="text-violet-300" />
-                <span className="text-violet-200 font-bold text-sm">FAQ</span>
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black text-white mb-4 font-headline drop-shadow-lg">
-                {fq.title}
-              </h2>
-              <p className="text-lg text-white/70 max-w-2xl mx-auto text-center" dir={dir}>
-                {fq.subtitle}
-              </p>
-            </motion.div>
+        <Suspense fallback={null}>
+          <LandingFAQ />
+        </Suspense>
 
-            {([
-              {
-                section: fq.teacherSection,
-                icon: <GraduationCap size={20} className="text-white" />,
-                iconBg: "from-violet-500 to-fuchsia-500",
-                iconShadow: "shadow-violet-500/30",
-                items: [
-                  { id: "q1", q: fq.q1, a: fq.a1 },
-                  { id: "q2", q: fq.q2, a: fq.a2 },
-                  { id: "q3", q: fq.q3, a: fq.a3 },
-                  { id: "q4", q: fq.q4, a: fq.a4 },
-                  { id: "q5", q: fq.q5, a: fq.a5 },
-                  { id: "q6", q: fq.q6, a: fq.a6 },
-                ],
-              },
-              {
-                section: fq.studentSection,
-                icon: <Users size={20} className="text-white" />,
-                iconBg: "from-sky-500 to-cyan-500",
-                iconShadow: "shadow-sky-500/30",
-                items: [
-                  { id: "q7", q: fq.q7, a: fq.a7 },
-                  { id: "q8", q: fq.q8, a: fq.a8 },
-                  { id: "q9", q: fq.q9, a: fq.a9 },
-                  { id: "q10", q: fq.q10, a: fq.a10 },
-                ],
-              },
-              {
-                section: fq.generalSection,
-                icon: <Globe size={20} className="text-white" />,
-                iconBg: "from-amber-500 to-orange-500",
-                iconShadow: "shadow-amber-500/30",
-                items: [
-                  { id: "q11", q: fq.q11, a: fq.a11 },
-                  { id: "q12", q: fq.q12, a: fq.a12 },
-                  { id: "q13", q: fq.q13, a: fq.a13 },
-                ],
-              },
-            ]).map((group, gi) => (
-              <motion.div
-                key={group.section}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 + gi * 0.05 }}
-                className="mb-10 md:mb-12"
-              >
-                <div className={`flex items-center gap-3 mb-6 ${isRTL ? "flex-row-reverse" : ""}`}>
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${group.iconBg} flex items-center justify-center shadow-lg ${group.iconShadow}`}>
-                    {group.icon}
-                  </div>
-                  <h3 className="text-2xl font-bold text-white">{group.section}</h3>
-                </div>
-                <div className="space-y-3 md:space-y-4">
-                  {group.items.map(item => {
-                    const isOpen = openFaqItem === item.id;
-                    return (
-                      <div
-                        key={item.id}
-                        className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleFaq(item.id)}
-                          aria-expanded={isOpen}
-                          className={`w-full px-5 md:px-6 py-4 md:py-5 flex items-center gap-4 hover:bg-white/5 transition-colors ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
-                        >
-                          <CircleHelp size={22} className="text-violet-400 flex-shrink-0" />
-                          <span className="flex-1 font-bold text-white text-base md:text-lg">{item.q}</span>
-                          <motion.div
-                            animate={{ rotate: isOpen ? 180 : 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="flex-shrink-0"
-                          >
-                            <ChevronDown size={24} className="text-white/60" />
-                          </motion.div>
-                        </button>
-                        <AnimatePresence>
-                          {isOpen && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="px-5 md:px-6 pb-5 pt-0">
-                                <div className={`text-white/80 leading-relaxed ${isRTL ? "pr-9 text-right" : "pl-9 text-left"}`} dir={dir}>
-                                  {item.a}
-                                </div>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            ))}
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center p-6 md:p-8 rounded-3xl bg-white/5 backdrop-blur-md border border-white/10"
-            >
-              <Mail size={32} className="text-violet-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-4">{fq.cta}</h3>
-              <a
-                href="mailto:contact@vocaband.com"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold hover:shadow-lg hover:shadow-violet-500/30 transition-all"
-              >
-                {fq.ctaButton}
-              </a>
-            </motion.div>
-          </div>
-        </section>
-
-        {/*
-          ═══════════════════════════════════════════════════════════
-          REDESIGNED FOOTER — 4-column structured grid
-          ───────────────────────────────────────────────────────────
-          Was: brand + 4 legal pills crammed onto one centred row,
-               trust strip + teacher links + copyright stacked below.
-          Now: a proper 4-column footer grid (brand / company /
-               resources / legal), trust strip + copyright in a
-               unified bottom bar. Stacks to 1-col on mobile.
-
-          Layout principles:
-          - Each column has its own vertical heading + linked items.
-          - Brand column doubles as the contact channel (school +
-            teacher mailto buttons match the pricing strategy in
-            docs/PRICING-MODEL.md — schools-first public face,
-            private teacher channel).
-          - Trust strip moved into the bottom bar alongside copyright
-            (was its own row, now reads as supporting evidence).
-          - All visual styling stays in the violet/fuchsia hero
-            family — no contrast breaks.
-          ═══════════════════════════════════════════════════════════
-        */}
         {/* Teacher resources — card grid linking to the PDFs in /public/docs
             and the existing FAQ page.  Rendered just above the footer so
             teachers evaluating the app can pick up the Teacher Guide /
@@ -2292,363 +2013,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             the auth card so it is discoverable from both entry points. */}
         <TeacherResourcesSection variant="hero" />
 
-        <footer className="pt-16 pb-4 md:pt-24 md:pb-6 px-4 md:px-6 relative bg-slate-950 mt-8 md:mt-12">
-          <div className="max-w-7xl mx-auto">
-
-            {/* ── 4-column grid — each line cascades in one-by-one ── */}
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-80px" }}
-              className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 md:gap-10 lg:gap-12 pb-10 border-b border-white/10"
-            >
-
-              {/* Col 1: Brand + tagline + contact */}
-              <div className="col-span-2 md:col-span-1">
-                {/* Brand V — uses the canonical signature-gradient +
-                    italic font-headline treatment that PublicNav and
-                    QuickPlayStudentView already use, so the V mark is
-                    visually identical wherever it appears in the app. */}
-                <motion.div
-                  variants={footerItemVariant}
-                  custom={0}
-                  className="flex items-center gap-3 mb-3"
-                >
-                  <div className="w-11 h-11 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
-                    <span className="text-white text-2xl font-black font-headline italic">V</span>
-                  </div>
-                  <span className="text-white font-black text-xl">Vocaband</span>
-                </motion.div>
-                <motion.p
-                  variants={footerItemVariant}
-                  custom={1}
-                  className="text-white/75 text-sm leading-relaxed mb-5 max-w-xs"
-                  dir={dir}
-                >
-                  {t.footerTagline}
-                </motion.p>
-              </div>
-
-              {/* Col 2: Product */}
-              <div>
-                <motion.h4
-                  variants={footerItemVariant}
-                  custom={2}
-                  className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
-                >
-                  {t.footerProduct}
-                </motion.h4>
-                <ul className="space-y-2.5">
-                  {/* "Start Learning" footer link removed — it routed
-                      students to the join screen, but students no
-                      longer arrive on the marketing landing.  They
-                      reach /student via the teacher's class link. */}
-                  <motion.li variants={footerItemVariant} custom={3}>
-                    <button
-                      onClick={onTryDemo}
-                      type="button"
-                      className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      {t.footerTryDemo}
-                    </button>
-                  </motion.li>
-                  {!isAuthenticated && (
-                    <motion.li variants={footerItemVariant} custom={4}>
-                      <button
-                        onClick={onTeacherLogin}
-                        type="button"
-                        className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                      >
-                        {t.footerTeacherLogin}
-                      </button>
-                    </motion.li>
-                  )}
-                </ul>
-              </div>
-
-              {/* Col 3: Resources */}
-              <div>
-                <motion.h4
-                  variants={footerItemVariant}
-                  custom={5}
-                  className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
-                >
-                  {t.footerResources}
-                </motion.h4>
-                <ul className="space-y-2.5">
-                  <motion.li variants={footerItemVariant} custom={6}>
-                    <a
-                      href="/answers/cefr-a1-vocabulary-list.html"
-                      className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      {t.footerCefrVocab}
-                    </a>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={7}>
-                    <a
-                      href="/answers/cefr-a1-vs-a2-vocabulary.html"
-                      className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      {t.footerCefrExplained}
-                    </a>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={8}>
-                    <a
-                      href="/answers/best-english-vocabulary-app-grade-5.html"
-                      className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      {t.footerBestEsl}
-                    </a>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={9}>
-                    <button
-                      type="button"
-                      onClick={scrollToFaq}
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <CircleHelp size={14} aria-hidden="true" />
-                      {t.footerFaq}
-                    </button>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={10}>
-                    <a
-                      href="mailto:contact@vocaband.com"
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <Mail size={14} aria-hidden="true" />
-                      {t.footerContact}
-                    </a>
-                  </motion.li>
-                  {/* Private channel for individual teachers — per
-                      docs/PRICING-MODEL.md the public face is schools-first;
-                      this footer mailto is the casual entry point for solo
-                      teachers who want a Pro quote.  The subject line lets
-                      sales triage the inbox without a separate form. */}
-                  <motion.li variants={footerItemVariant} custom={11}>
-                    <a
-                      href="mailto:contact@vocaband.com?subject=Individual%20Teacher"
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <User size={14} aria-hidden="true" />
-                      {t.footerTeacherInquiry}
-                    </a>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={12}>
-                    <button
-                      type="button"
-                      onClick={() => setIsFeatureModalOpen(true)}
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <Lightbulb size={14} aria-hidden="true" />
-                      {t.footerFeatureRequest}
-                    </button>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={13}>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate("resources")}
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <Download size={14} aria-hidden="true" />
-                      {t.footerFreeResources}
-                    </button>
-                  </motion.li>
-                </ul>
-              </div>
-
-              {/* Col 4: Downloads — PDF handouts.  Uses `download` so
-                  the browser saves directly instead of opening the slow
-                  PDF.js viewer.  School pitch ships HE/AR; teacher
-                  handouts ship in the user's UI language. */}
-              <div>
-                <motion.h4
-                  variants={footerItemVariant}
-                  custom={14}
-                  className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
-                >
-                  {t.footerDownloads}
-                </motion.h4>
-                <ul className="space-y-2.5">
-                  <motion.li variants={footerItemVariant} custom={15}>
-                    <a
-                      href={
-                        language === "he"
-                          ? "https://www.canva.com/d/SfnGGC-8GJg19xN"
-                          : language === "ar"
-                          ? "https://www.canva.com/d/v6rOhUQiFahEsBr"
-                          : "https://www.canva.com/d/O_Z26Jkg32JPRlt"
-                      }
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <Presentation size={14} aria-hidden="true" />
-                      {t.footerSchoolDeck}
-                    </a>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={16}>
-                    <a
-                      href="/Vocaband-Presentation-HE.pdf"
-                      download="Vocaband-Presentation-HE.pdf"
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <FileText size={14} aria-hidden="true" />
-                      {t.footerSchoolPdfHe}
-                    </a>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={17}>
-                    <a
-                      href="/Vocaband-Presentation-AR.pdf"
-                      download="Vocaband-Presentation-AR.pdf"
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <FileText size={14} aria-hidden="true" />
-                      {t.footerSchoolPdfAr}
-                    </a>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={18}>
-                    <a
-                      href={`/docs/teacher-guide-${language}.pdf`}
-                      download={`teacher-guide-${language}.pdf`}
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <BookOpen size={14} aria-hidden="true" />
-                      {tr.teacherGuideTitle}
-                    </a>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={19}>
-                    <a
-                      href={`/docs/quick-start-${language}.pdf`}
-                      download={`quick-start-${language}.pdf`}
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <Zap size={14} aria-hidden="true" />
-                      {tr.quickStartTitle}
-                    </a>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={20}>
-                    <a
-                      href={`/docs/student-guide-${language}.pdf`}
-                      download={`student-guide-${language}.pdf`}
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <Gamepad2 size={14} aria-hidden="true" />
-                      {tr.studentGuideTitle}
-                    </a>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={21}>
-                    <a
-                      href={`/docs/parent-letter-${language}.pdf`}
-                      download={`parent-letter-${language}.pdf`}
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <Mail size={14} aria-hidden="true" />
-                      {tr.parentLetterTitle}
-                    </a>
-                  </motion.li>
-                </ul>
-              </div>
-
-              {/* Col 5: Legal + Trust */}
-              <div>
-                <motion.h4
-                  variants={footerItemVariant}
-                  custom={15}
-                  className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
-                >
-                  {t.footerLegal}
-                </motion.h4>
-                <ul className="space-y-2.5">
-                  <motion.li variants={footerItemVariant} custom={16}>
-                    <button
-                      onClick={() => onNavigate("terms")}
-                      type="button"
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <FileText size={14} aria-hidden="true" />
-                      {t.footerTerms}
-                    </button>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={17}>
-                    <button
-                      onClick={() => onNavigate("privacy")}
-                      type="button"
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <ShieldCheck size={14} aria-hidden="true" />
-                      {t.footerPrivacy}
-                    </button>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={18}>
-                    <button
-                      onClick={() => onNavigate("security")}
-                      type="button"
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <Lock size={14} aria-hidden="true" />
-                      {t.footerSecurity}
-                    </button>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={19}>
-                    <button
-                      onClick={() => onNavigate("accessibility")}
-                      type="button"
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <Accessibility size={14} aria-hidden="true" />
-                      {t.footerAccessibility}
-                    </button>
-                  </motion.li>
-                  <motion.li variants={footerItemVariant} custom={20}>
-                    <button
-                      onClick={() => onNavigate("status")}
-                      type="button"
-                      className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                    >
-                      <Activity size={14} aria-hidden="true" />
-                      {t.footerStatus}
-                    </button>
-                  </motion.li>
-                </ul>
-              </div>
-            </motion.div>
-
-            {/* ── Bottom bar: trust strip + copyright ───────────── */}
-            <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
-              {/* Copyright */}
-              <p className="text-white/70 text-xs font-medium order-2 md:order-1" dir={dir}>
-                {t.footerCopyright(new Date().getFullYear())}
-              </p>
-
-              {/* Trust strip — three small badges showing the things
-                  we CAN factually claim (SSL Labs grade, TLS 1.3,
-                  EU hosting).  The SSL Labs badge deep-links to a
-                  live report so visitors can verify it.  See
-                  docs/SECURITY-OVERVIEW.md for what we are/are NOT
-                  claiming. */}
-              <div className="flex flex-wrap items-center justify-center gap-2 order-1 md:order-2">
-                <a
-                  href="https://www.ssllabs.com/ssltest/analyze.html?d=vocaband.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 font-bold text-[11px] transition-colors"
-                >
-                  <ShieldCheck size={11} />
-                  <span>SSL Labs A+</span>
-                  <ExternalLink size={9} className="opacity-60" />
-                </a>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-200 border border-blue-400/30 font-bold text-[11px]">
-                  <Lock size={11} />
-                  TLS 1.3
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/15 text-violet-200 border border-violet-400/30 font-bold text-[11px]">
-                  <Globe size={11} />
-                  EU-hosted
-                </span>
-              </div>
-            </div>
-          </div>
-        </footer>
+        <Suspense fallback={null}>
+          <LandingFooter
+            onNavigate={onNavigate}
+            onTryDemo={onTryDemo}
+            onTeacherLogin={onTeacherLogin}
+            onOpenFeatureRequest={() => setIsFeatureModalOpen(true)}
+            isAuthenticated={isAuthenticated}
+          />
+        </Suspense>
       </main>
 
       <FloatingButtons />
@@ -2685,6 +2058,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           <AccessibilityWidget /> in main.tsx, which is now visible on every
           page. Two triggers at different positions was confusing. */}
     </div>
+    </MotionConfig>
   );
 };
 
