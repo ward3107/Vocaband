@@ -99,7 +99,7 @@ BEGIN
     'authenticated',
     'authenticated',
     v_email,
-    crypt(p_pin, gen_salt('bf')),
+    extensions.crypt(p_pin, extensions.gen_salt('bf')),
     NOW(),
     jsonb_build_object('provider', 'roster_pin', 'providers', ARRAY['roster_pin']),
     jsonb_build_object(
@@ -170,7 +170,7 @@ BEGIN
   END IF;
 
   UPDATE auth.users
-  SET encrypted_password = crypt(p_new_pin, gen_salt('bf')),
+  SET encrypted_password = extensions.crypt(p_new_pin, extensions.gen_salt('bf')),
       updated_at = NOW()
   WHERE id = v_auth_uid;
 
