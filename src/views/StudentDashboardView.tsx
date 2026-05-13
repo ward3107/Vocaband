@@ -499,6 +499,20 @@ export default function StudentDashboardView({
           }}
         />
         <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
+        {/* ── Class Minute — daily 60-second drill ──────────────
+            Habit-forming daily ritual.  Same card the STRUCTURE_UX
+            branch renders; this duplicate lives here because the
+            legacy branch is the production-default render path
+            (STRUCTURE_UX is feature-flagged off).  When the flag
+            flips on for everyone, drop one of the two. */}
+        {onStartClassMinute && (
+          <ClassMinuteCard
+            doneToday={classMinuteDoneToday}
+            streak={classMinuteStreak}
+            isLoading={studentDataLoading}
+            onStart={onStartClassMinute}
+          />
+        )}
         <DailyGoalBanner studentProgress={studentProgress} />
         <LeaderboardTeaser
           classCode={user.classCode}

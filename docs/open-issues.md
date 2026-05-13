@@ -14,6 +14,8 @@ Strategic roadmap for making Vocaband structurally beat Kahoot in Israeli school
 - **Spaced repetition** — `supabase/migrations/20260507205628_spaced_repetition.sql` provides `review_schedule`, `count_due_reviews`, `get_due_reviews`, `record_review_result`, `schedule_review_words`. Wired through `useDueReviews.ts` → `ReviewQueueCard.tsx` → `ReviewGame.tsx`. Full SRS already live.
 - **QR / nickname join** — Quick Play already exists.
 - **Curriculum labelling structure** — `Set 1 / Set 2 / Set 3 / Custom` type already in place across the codebase.
+- **Class Minute — daily 60-second drill** (PR #587, follow-up class-switch race fix #588, shipped 2026-05-12) — `ClassMinuteCard.tsx` dashboard tile + `?play=class-minute` teacher share link via `ShareClassLinkModal`. SRS-first word source, falls back to assignments then `SET_2_WORDS`. Saves with `mode='class-minute'`; dashboard derives `doneToday` + streak from `studentProgress` with no extra round-trip. KNOWN GAP: only renders on the STRUCTURE_UX dashboard branch (which is feature-flagged OFF) — needs porting to the legacy branch for production visibility. Same gap applies to `ReviewQueueCard`.
+- **Hot Seat — single-device pass-around mode** (PR #589, shipped 2026-05-12) — `HotSeatView.tsx` owns setup → interstitial → question → podium phases. Reuses Classic-style multi-choice mechanics, in-memory scoring (no DB writes — players aren't logged-in students). v1 uses `SET_2_WORDS` only; per-assignment word picker is a deferred v2. Tile is gated `!isHebrew` (mirrors Vocabagrut precedent).
 
 These items are DONE. Don't rebuild them — surface and market them.
 
@@ -21,28 +23,14 @@ These items are DONE. Don't rebuild them — surface and market them.
 
 ### Tier 1 — Ship next (small scope, big leverage)
 
-**1. Class Minute — daily 60-second drill**
-- Teacher dashboard tile + student dashboard tile labelled "Class Minute"
-- 60-second timer, rapid-fire word recognition, pulls from the student's SRS due queue (`useDueReviews`) first, then fills from current assignment
-- Single score at the end + streak ("3 days in a row!"). No XP economy changes — just a daily ritual
-- Reuses: word picker, existing game-mode rendering, `useDueReviews`, streak field on `users`
-- ETA: 1–2 evenings
-- Why now: smallest scope on this list, daily habit = retention moat Kahoot cannot copy
-
-**2. Hot-seat mode (single device, pass-around)**
-- New game mode flag `hotSeat: true` on existing game shells
-- Each round: shows student name → "Pass to {name}" interstitial → 1 question → score → next student
-- Teacher picks the player list (manual names, or roster from class)
-- Solves "not every kid has a phone" — opens lower-income schools
-- ETA: 1–2 evenings
-- Why now: cheap, unblocks a real market segment
-
-**3. Printable PDF certificate (basic)**
+**1. Printable PDF certificate (basic)**
 - Reuse the existing `html2pdf` pipeline used by `HebrewWorksheetView`
 - New file: `src/views/certificates/StudentCertificate.tsx` — A4 layout, student name, class, date, "X words mastered", MoE-set label
 - "Print certificate" button on the student profile (teacher view) + end-of-unit
 - ETA: 1 evening for v1
 - Why now: fridge marketing, parent word-of-mouth, no new infra
+
+**Class Minute** and **Hot Seat** shipped 2026-05-12 — see "Already shipped" section above.
 
 ---
 
@@ -119,11 +107,10 @@ These items are DONE. Don't rebuild them — surface and market them.
 
 ---
 
-### Suggested start: TONIGHT
+### Suggested next move (post-Hot-Seat ship)
 
-**Class Minute (#1)** — smallest scope, biggest habit moat, reuses everything we already built (SRS + word picker + streak field). One evening for v1, demoable to a teacher the next morning. After it ships, the daily-drill data informs every other feature on this list.
-
-Fallback if Class Minute feels too big tonight: **Printable PDF Certificate (#3)** — even smaller, even more immediately marketable.
+1. **Smoke-test the three features that just shipped on production** — Class Minute card + teacher share link + Hot Seat. None have been seen running by a human. The legacy-branch bug for the Class Minute card (rendered on STRUCTURE_UX branch only) is the most likely real-world breakage.
+2. **Printable PDF Certificate** — smallest remaining Tier-1, A4 layout, reuses the html2pdf pipeline. 1 evening.
 
 ---
 
