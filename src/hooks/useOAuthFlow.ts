@@ -194,7 +194,13 @@ export function useOAuthFlow(params: UseOAuthFlowParams) {
         avatar: studentData.avatar,
         createdAt: studentData.created_at,
       };
-      await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
+      // ignoreDuplicates: don't overwrite the existing row's xp /
+      // badges / unlocked_* / power_ups on every re-sign-in.  Those
+      // columns are locked server-side and re-asserting them from
+      // React state would fail the strict-match RLS check shipping
+      // in 20260602+.  Race-condition coverage (StrictMode double-
+      // mount) still works because the INSERT half is what we need.
+      await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid', ignoreDuplicates: true });
 
       setUser(studentUser);
       setIsOAuthCallback(false);

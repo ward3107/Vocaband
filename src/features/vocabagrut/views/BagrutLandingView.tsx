@@ -267,13 +267,28 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
             })}
           </div>
           {COMING_SOON_MODULES.length > 0 && (
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            // Match the active-module grid (1 col mobile / 3 cols ≥sm) so
+            // teachers can SEE that Modules D and E exist at the same
+            // visual weight as A/B/C — previously these were tucked into
+            // a smaller 2-col strip below and several teachers reported
+            // not noticing them at all.
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
               {COMING_SOON_MODULES.map(m => {
                 const spec = MODULE_SPECS[m];
                 return (
-                  <div key={m} className="rounded-xl p-3 border border-dashed" style={{ borderColor: 'var(--vb-border)' }}>
-                    <div className="text-xs font-bold opacity-60" style={{ color: 'var(--vb-text-secondary)' }}>{spec.label} · coming soon</div>
-                    <div className="text-xs mt-0.5 opacity-50" style={{ color: 'var(--vb-text-muted)' }}>{spec.pointTrack}-point</div>
+                  <div
+                    key={m}
+                    className="relative rounded-2xl p-4 text-left overflow-hidden border-2 border-dashed cursor-not-allowed"
+                    style={{ borderColor: 'var(--vb-border)' }}
+                    title={`${spec.label} is coming soon`}
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-br ${MODULE_GRADIENTS[m] || 'from-slate-400 to-slate-600'} opacity-30`} />
+                    <div className="relative z-10" style={{ color: 'var(--vb-text-primary)' }}>
+                      <div className="text-xs font-bold uppercase tracking-widest opacity-80">{spec.label}</div>
+                      <div className="text-xl font-black mt-1 opacity-90">{spec.pointTrack}-point</div>
+                      <div className="text-xs opacity-80 mt-1">CEFR {spec.cefr} · grade {spec.gradeBand}</div>
+                      <div className="mt-2 inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700">Coming soon</div>
+                    </div>
                   </div>
                 );
               })}

@@ -768,13 +768,27 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
     }
   };
 
-  // ── Handle paste event — auto-analyze for multi-word paste ────────────────────
+  // Handle paste event — route to the SAME analyse pipeline the
+  // "Paste & Analyze" button uses, so a teacher copying a list out of
+  // Word / a Google Doc gets the full translation + curriculum-match
+  // preview instead of only the autocomplete suggester.  Teachers
+  // were reporting "when I paste, the system doesn't analyse — it only
+  // works when I type each word"; the cause was the old branch calling
+  // handleQuickAdd (autocomplete-only) instead of handlePasteAndAnalyze.
   const handlePaste = (e: React.ClipboardEvent) => {
-    const pastedText = e.clipboardData.getData('text');
-    // If pasted text has 3+ words, auto-analyze after a delay
-    const wordCount = pastedText.trim().split(/[\s,;\n]+/).filter(t => t.length > 0).length;
-    if (wordCount >= 3) {
-      setTimeout(() => handleQuickAdd(), 300);
+    const pastedText = e.clipboardData.getData('text') || '';
+    const trimmed = pastedText.trim();
+    if (!trimmed) return;
+    // A paste that contains any separator (space, comma, semicolon,
+    // newline, tab) is a multi-term paste — analyse it.  A single
+    // token still goes through the normal autocomplete dropdown.
+    const looksMultiTerm = /[\s,;\n\t]/.test(trimmed);
+    if (looksMultiTerm) {
+      e.preventDefault();
+      setSearchQuery('');
+      setShowAutocomplete(false);
+      // Skip a frame so the input clear paints before the modal opens.
+      setTimeout(() => handlePasteAndAnalyze(trimmed), 0);
     }
   };
 
@@ -1090,9 +1104,13 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
     showToast?.(`Translated ${wordsNeedingTranslation.length} words`, 'success');
   };
 
-  const handlePasteAndAnalyze = () => {
-    if (!searchQuery.trim()) return;
-    const analysis = analyzePastedText(searchQuery, allWords);
+  // Accepts an optional text override so the paste handler can pass the
+  // freshly-pasted string directly — otherwise `searchQuery` would still
+  // hold the pre-paste value on the same tick (React state batching).
+  const handlePasteAndAnalyze = (textOverride?: string) => {
+    const source = (textOverride ?? searchQuery).trim();
+    if (!source) return;
+    const analysis = analyzePastedText(source, allWords);
     setPreviewAnalysis(analysis as any);
     setShowPreviewInline(true);
     setSearchQuery(''); // Clear search after analysis
@@ -2366,7 +2384,7 @@ export const WordInputStep: React.FC<WordInputStepProps> = ({
       {searchQuery.trim() && (
         <div className="pt-4 border-t border-[var(--vb-border)]">
           <button
-            onClick={handlePasteAndAnalyze}
+            onClick={() => handlePasteAndAnalyze()}
             className="w-full px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
           >
             <Sparkles size={18} /> Analyze text
