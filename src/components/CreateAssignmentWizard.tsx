@@ -386,7 +386,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       allWords={allWords}
       set1Words={set1Words}
       set2Words={set2Words}
-      use2026WordInput={true}
       onComplete={handleWizardComplete}
       onBack={handleWizardBack}
       onSaveTemplate={onSaveTemplate}
