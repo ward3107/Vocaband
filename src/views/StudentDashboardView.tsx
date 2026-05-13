@@ -20,6 +20,7 @@ import { useDailyMissions } from "../hooks/useDailyMissions";
 import PetEvolutionCard from "../components/dashboard/PetEvolutionCard";
 import { usePetEvolution } from "../hooks/usePetEvolution";
 import ReviewQueueCard from "../components/dashboard/ReviewQueueCard";
+import ClassMinuteCard from "../components/dashboard/ClassMinuteCard";
 import { useDueReviews } from "../hooks/useDueReviews";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
@@ -61,6 +62,12 @@ interface StudentDashboardViewProps {
    *  card hides itself.  Routes the student straight into the
    *  Review game without going through the mode picker. */
   onStartReview?: () => void;
+  /** Optional handler for the Class Minute daily-drill entry point.
+   *  Mirrors `onStartReview` — when provided, the dashboard renders a
+   *  ClassMinuteCard above the review card; absent, the card hides.
+   *  Loads SRS-due words first then fills from assignment, sets
+   *  gameMode='class-minute', and routes to the game view. */
+  onStartClassMinute?: () => void;
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
   onGrantReward: (kind: PetRewardKind, value: number | string) => void;
@@ -108,6 +115,16 @@ interface StudentDashboardViewProps {
 // legacy dashboard is what production ships until we're ready.
 const STRUCTURE_UX_ENABLED = import.meta.env.VITE_STRUCTURE_UX === 'true';
 
+// Temporarily hidden — the daily-drill ritual hasn't been validated
+// with real teachers yet, so the dashboard tile is suppressed on both
+// the legacy and STRUCTURE_UX render paths.  Keeping the prop, the
+// onStartClassMinute callback, the `?play=class-minute` deep-link
+// bootstrap, the GameMode entry, and the teacher's "Send Class
+// Minute" share link untouched — flipping this flag back to true
+// re-enables the student-facing entry point in one line, and any
+// pre-shared teacher links keep working in the meantime.
+const SHOW_CLASS_MINUTE_CARD = false;
+
 export default function StudentDashboardView({
   user, xp, streak, badges,
   copiedCode, setCopiedCode,
@@ -121,6 +138,7 @@ export default function StudentDashboardView({
   structure,
   celebrateStructureKeys = [],
   onStartReview,
+  onStartClassMinute,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -151,6 +169,40 @@ export default function StudentDashboardView({
   const dueReviews = useDueReviews({
     enabled: Boolean(user?.role === 'student' && !user?.isGuest && onStartReview),
   });
+
+  // Class Minute — daily 60-second drill.  Derived purely from
+  // `studentProgress` so the dashboard already has the data it
+  // needs (no extra round-trip).  `doneToday` flips the card to the
+  // emerald "see you tomorrow" state; `classMinuteStreak` counts
+  // consecutive days back from today with at least one class-minute
+  // completion — gap of one day breaks the streak.
+  const { classMinuteDoneToday, classMinuteStreak } = (() => {
+    const todayKey = new Intl.DateTimeFormat('sv-SE').format(new Date());
+    const daysWithPlay = new Set<string>();
+    for (const row of studentProgress) {
+      if (row.mode !== 'class-minute') continue;
+      const dayKey = new Intl.DateTimeFormat('sv-SE').format(new Date(row.completedAt));
+      daysWithPlay.add(dayKey);
+    }
+    const doneToday = daysWithPlay.has(todayKey);
+    // Walk back day-by-day from today until we hit a gap.  If the
+    // student hasn't played today yet, the streak still counts
+    // yesterday-and-earlier consecutive days — they're "carrying" a
+    // streak that today's session would extend.
+    let streak = 0;
+    const cursor = new Date();
+    if (!doneToday) cursor.setDate(cursor.getDate() - 1);
+    while (true) {
+      const key = new Intl.DateTimeFormat('sv-SE').format(cursor);
+      if (daysWithPlay.has(key)) {
+        streak += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return { classMinuteDoneToday: doneToday, classMinuteStreak: streak };
+  })();
 
   // The default theme now uses a soft gradient instead of flat stone-100 —
   // sets a warmer tone for the vibrant greeting hero that follows. Other
@@ -244,6 +296,22 @@ export default function StudentDashboardView({
             )}
             <ShopSquare xp={xp} onOpen={() => { setShopTab('hub'); setView('shop'); }} />
           </div>
+
+          {/* ── Class Minute — daily 60-second drill ──────────────
+              Habit-forming daily ritual.  Currently hidden behind
+              SHOW_CLASS_MINUTE_CARD pending real-teacher validation;
+              code path stays intact for an easy re-enable.  See the
+              flag declaration above this component for context. */}
+          {SHOW_CLASS_MINUTE_CARD && onStartClassMinute && (
+            <div className="mb-4">
+              <ClassMinuteCard
+                doneToday={classMinuteDoneToday}
+                streak={classMinuteStreak}
+                isLoading={studentDataLoading}
+                onStart={onStartClassMinute}
+              />
+            </div>
+          )}
 
           {/* ── Spaced Repetition queue card ──────────────────────
               Surfaces today's due-for-review words and routes the
@@ -441,6 +509,20 @@ export default function StudentDashboardView({
           }}
         />
         <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
+        {/* ── Class Minute — daily 60-second drill ──────────────
+            Habit-forming daily ritual.  Same card the STRUCTURE_UX
+            branch renders; this duplicate lives here because the
+            legacy branch is the production-default render path
+            (STRUCTURE_UX is feature-flagged off).  When the flag
+            flips on for everyone, drop one of the two. */}
+        {SHOW_CLASS_MINUTE_CARD && onStartClassMinute && (
+          <ClassMinuteCard
+            doneToday={classMinuteDoneToday}
+            streak={classMinuteStreak}
+            isLoading={studentDataLoading}
+            onStart={onStartClassMinute}
+          />
+        )}
         <DailyGoalBanner studentProgress={studentProgress} />
         <LeaderboardTeaser
           classCode={user.classCode}

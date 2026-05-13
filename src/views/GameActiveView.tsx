@@ -75,6 +75,7 @@ import WordChainsGame from "../components/game/WordChainsGame";
 import IdiomGame from "../components/game/IdiomGame";
 import SpeedRoundGame from "../components/game/SpeedRoundGame";
 import ReviewGame from "../components/game/ReviewGame";
+import RelationsGame from "../components/game/RelationsGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -177,11 +178,11 @@ export default function GameActiveView({
   // These mappings are intentionally generous so a strong run reads as
   // ≥80 and triggers a streak day; tunable in a follow-up once we have
   // pilot data on average scores.
-  const finishSelfContainedMode = async (rawScore: number, mode: 'idiom' | 'word-chains' | 'speed-round') => {
+  const finishSelfContainedMode = async (rawScore: number, mode: 'idiom' | 'word-chains' | 'speed-round' | 'class-minute') => {
     let normalized: number;
     if (mode === 'idiom') normalized = Math.min(100, Math.max(0, rawScore) * 10);
     else if (mode === 'word-chains') normalized = Math.min(100, Math.max(0, rawScore) * 10);
-    else /* speed-round */ normalized = Math.min(100, Math.max(0, rawScore) * 5);
+    else /* speed-round, class-minute — same SpeedRoundGame mechanics */ normalized = Math.min(100, Math.max(0, rawScore) * 5);
     try {
       await saveScore(normalized, 100);
     } catch {
@@ -323,6 +324,23 @@ export default function GameActiveView({
         />
       );
     }
+    if (gameMode === "class-minute") {
+      // Daily 60-second drill.  Reuses SpeedRoundGame's mechanics —
+      // gameWords was pre-seeded by App.tsx's onStartClassMinute with
+      // SRS-due words first then assignment fallback, so the same
+      // shell drives a more pedagogically targeted run.  Saves with
+      // mode='class-minute' so the dashboard can detect today's
+      // completion (and tomorrow flip the card back to "ready").
+      return (
+        <SpeedRoundGame
+          gameWords={gameWords}
+          themeColor={modeTheme ?? "amber"}
+          targetLanguage={targetLanguage}
+          speak={speakWord}
+          onFinish={(score) => { finishSelfContainedMode(score, 'class-minute'); }}
+        />
+      );
+    }
     if (gameMode === "review") {
       // Spaced-repetition review session.  Self-fetches the queue of
       // due words on mount via get_due_reviews, runs Classic-style
@@ -346,7 +364,7 @@ export default function GameActiveView({
       // RELATIONS dataset, not the assignment word pool.
       return (
         <RelationsGame
-          themeColor={modeTheme ?? "fuchsia"}
+          themeColor={modeTheme ?? "violet"}
           speak={speak}
           onFinish={handleExitGame}
         />

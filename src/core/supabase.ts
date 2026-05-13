@@ -98,7 +98,7 @@ export async function handleDbError(
 // constant lists exactly the columns the matching mapper below reads.
 // ---------------------------------------------------------------------------
 export const USER_COLUMNS =
-  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at,subjects_taught';
+  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at,subjects_taught,guides_seen';
 export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar,subject,school_name,school_logo_url';
 export const ASSIGNMENT_COLUMNS =
   'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at,subject';
@@ -163,6 +163,11 @@ export interface AppUser {
    *  rows so existing teachers are unaffected.  Students ignore
    *  this field (their Voca comes from the class they joined). */
   subjectsTaught?: string[];
+  /** First-time-guide keys this teacher has dismissed.  Mirrors the
+   *  `users.guides_seen text[]` column; see useFirstTimeGuide.  Empty
+   *  array (the DB default) means no guides have been dismissed yet —
+   *  every guide will auto-show once.  Students ignore this field. */
+  guidesSeen?: string[];
 }
 
 export interface ClassData {
@@ -189,7 +194,7 @@ export interface AssignmentData {
   id: string;
   classId: string;
   wordIds: number[];
-  words?: import('./vocabulary').Word[];
+  words?: import('../data/vocabulary').Word[];
   title: string;
   deadline?: string | null;
   createdAt?: string;
@@ -244,6 +249,7 @@ export function mapUser(row: any): AppUser {
     plan: row.plan ?? 'free',
     trialEndsAt: row.trial_ends_at ?? null,
     subjectsTaught: row.subjects_taught ?? ['english'],
+    guidesSeen: row.guides_seen ?? [],
   };
 }
 
@@ -268,6 +274,7 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
     ...(u.plan !== undefined && { plan: u.plan }),
     ...(u.trialEndsAt !== undefined && { trial_ends_at: u.trialEndsAt }),
     ...(u.subjectsTaught !== undefined && { subjects_taught: u.subjectsTaught }),
+    ...(u.guidesSeen !== undefined && { guides_seen: u.guidesSeen }),
   };
 }
 

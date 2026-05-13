@@ -77,6 +77,10 @@ interface TeacherDashboardViewProps {
   /** Single entry point that opens the merged Classroom view. */
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
+  /** Worksheet Results — teacher-facing dashboard of attempts at
+   *  shared interactive worksheets.  Optional because Hebrew teachers
+   *  don't get this tile (the feature is English-Set only for now). */
+  onWorksheetResultsClick?: () => void;
   /** Impromptu Class Show — projector mode for phone-less classrooms. */
   onClassShowClick: () => void;
   /** Project a specific assignment to the class via Class Show. */
@@ -87,6 +91,8 @@ interface TeacherDashboardViewProps {
   onPrintAssignmentWorksheet: (a: AssignmentData) => void;
   /** Vocabagrut — Bagrut-style mock exam generator. */
   onVocabagrutClick: () => void;
+  /** Hot Seat — pass-around single-device classroom mode. */
+  onHotSeatClick: () => void;
 
   // Classes section handlers
   onNewClass: () => void;
@@ -141,9 +147,11 @@ export default function TeacherDashboardView({
   rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
   toasts, confirmDialog, setConfirmDialog,
   onQuickPlayClick, onClassroomClick, onApprovalsClick,
+  onWorksheetResultsClick,
   onClassShowClick, onProjectAssignmentToClass,
   onWorksheetClick, onPrintAssignmentWorksheet,
   onVocabagrutClick,
+  onHotSeatClick,
   onNewClass, onAssignClass, onDeleteClass,
   editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
   onNameChange, onAvatarChange,
@@ -343,9 +351,11 @@ export default function TeacherDashboardView({
             onQuickPlayClick={onQuickPlayClick}
             onClassroomClick={onClassroomClick}
             onApprovalsClick={onApprovalsClick}
+            onWorksheetResultsClick={onWorksheetResultsClick}
             onClassShowClick={onClassShowClick}
             onWorksheetClick={onWorksheetClick}
             onVocabagrutClick={onVocabagrutClick}
+            onHotSeatClick={onHotSeatClick}
           />
 
           <TeacherClassesSection

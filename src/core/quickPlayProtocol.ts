@@ -254,11 +254,22 @@ export function isValidClientId(v: unknown): v is string {
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
 
-/** Nickname: 1-30 chars, no control characters. Whitespace is allowed
- *  inside but the caller should trim before sending. */
+/** Nickname: 1-30 chars, no control characters, no bidirectional
+ *  formatting overrides. Whitespace is allowed inside but the caller
+ *  should trim before sending.
+ *
+ *  The bidi block (U+202A-U+202E and U+2066-U+2069) is rejected because
+ *  a single U+202E (RIGHT-TO-LEFT OVERRIDE) in a nickname flips the
+ *  display order of every character that follows it, so a student can
+ *  type "Alice" + U+202E + "evil" and have "evilecilA" appear on the
+ *  classroom projector while the server-side string still looks
+ *  innocuous. Same vector that defeated a thousand filename-spoof
+ *  defenses. Strip rather than escape — there's no legitimate reason
+ *  for a kid's display name to need a bidi override mark. */
 export function isValidNickname(v: unknown): v is string {
   return typeof v === "string"
     && v.length >= 1
     && v.length <= QP_MAX_NICKNAME
-    && !/[\x00-\x1f]/.test(v);
+    && !/[\x00-\x1f]/.test(v)
+    && !/[\u202A-\u202E\u2066-\u2069]/.test(v);
 }

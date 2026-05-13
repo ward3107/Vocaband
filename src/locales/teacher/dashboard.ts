@@ -48,6 +48,11 @@ export interface TeacherDashboardT {
   approvalsButtonReview: string;
   approvalsButtonCheck: string;
 
+  // ─── Worksheet Results tile (interactive worksheet attempts) ──
+  worksheetResultsTitle: string;
+  worksheetResultsDescription: string;
+  worksheetResultsTooltip: string;
+
   // ─── Quick Play hero accents + section headings ────────────────
   qpInstantBadge: string;
   qpStartBtn: string;
@@ -64,6 +69,9 @@ export interface TeacherDashboardT {
   vocabagrutTitle: string;
   vocabagrutDescription: string;
   vocabagrutTooltip: string;
+  hotSeatTitle: string;
+  hotSeatDescription: string;
+  hotSeatTooltip: string;
 
   // ─── Classes section ───────────────────────────────────────────
   myClassesHeading: string;
@@ -138,6 +146,10 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsButtonReview: "Review",
     approvalsButtonCheck: "Check",
 
+    worksheetResultsTitle: "Worksheet Results",
+    worksheetResultsDescription: "Scores from shared worksheets",
+    worksheetResultsTooltip: "See who completed the worksheets you shared via the Free Resources page and how they did.",
+
     qpInstantBadge: "Instant",
     qpStartBtn: "Start",
     forYourClassesHeading: "For your classes",
@@ -152,6 +164,9 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     vocabagrutTitle: "Vocabagrut",
     vocabagrutDescription: "Bagrut-style mock exam",
     vocabagrutTooltip: "Generate a Bagrut-style mock exam from your word list. Looks like the real Israeli MoE Bagrut paper — perfect for format familiarity in grades 7–9.",
+    hotSeatTitle: "Hot Seat",
+    hotSeatDescription: "Pass-around single-device game",
+    hotSeatTooltip: "One device, many players. Type student names, pass the tablet around — each student gets a turn in the hot seat. Perfect for classes where not every kid has a phone.",
 
     myClassesHeading: "My classes",
     noClassesYetSubtitle: "You haven't created any classes yet.",
@@ -218,6 +233,10 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsTooltip: "אשר תלמידים שנרשמו לכיתות שלך",
     approvalsWaiting: (n) => `${n} ${n === 1 ? "תלמיד ממתין" : "תלמידים ממתינים"}`,
     approvalsNoPending: "אין אישורים ממתינים",
+
+    worksheetResultsTitle: "תוצאות דף עבודה",
+    worksheetResultsDescription: "ציונים מדפי עבודה ששותפו",
+    worksheetResultsTooltip: "ראה מי השלים את דפי העבודה ששיתפת דרך עמוד המשאבים החינמיים וכמה הצליחו.",
     approvalsButtonReview: "סקור",
     approvalsButtonCheck: "בדוק",
 
@@ -235,6 +254,9 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     vocabagrutTitle: "ווקבגרות",
     vocabagrutDescription: "מבחן בגרות לדוגמה",
     vocabagrutTooltip: "צרו מבחן בנוסח בגרות מתוך רשימת המילים שלכם. נראה כמו השאלון של משרד החינוך — מצוין להיכרות עם הפורמט בכיתות ז–ט.",
+    hotSeatTitle: "כיסא חם",
+    hotSeatDescription: "משחק במכשיר אחד עם תורות",
+    hotSeatTooltip: "מכשיר אחד, הרבה שחקנים. הקלידו שמות תלמידים, העבירו את הטאבלט — לכל תלמיד תור בכיסא החם. מושלם לכיתות שבהן לא לכל ילד יש טלפון.",
 
     myClassesHeading: "הכיתות שלי",
     noClassesYetSubtitle: "עוד לא יצרת כיתות.",
@@ -301,6 +323,10 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsTooltip: "وافق على الطلاب الذين سجّلوا في فصولك",
     approvalsWaiting: (n) => `${n} ${n === 1 ? "طالب ينتظر" : "طلاب ينتظرون"}`,
     approvalsNoPending: "لا توجد موافقات معلقة",
+
+    worksheetResultsTitle: "نتائج ورقة العمل",
+    worksheetResultsDescription: "نتائج أوراق العمل المشتركة",
+    worksheetResultsTooltip: "اطّلع على من أكمل أوراق العمل التي شاركتها عبر صفحة الموارد المجانية وعلى كيفية أدائهم.",
     approvalsButtonReview: "مراجعة",
     approvalsButtonCheck: "تحقّق",
 
@@ -318,6 +344,9 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     vocabagrutTitle: "ووكاباجروت",
     vocabagrutDescription: "نموذج اختبار باجروت",
     vocabagrutTooltip: "أنشئ نموذج اختبار بنمط باجروت من قائمة الكلمات. يبدو مثل ورقة باجروت الإسرائيلية الحقيقية — ممتاز للتعرف على الشكل في الصفوف 7–9.",
+    hotSeatTitle: "الكرسي الساخن",
+    hotSeatDescription: "لعبة بجهاز واحد بالأدوار",
+    hotSeatTooltip: "جهاز واحد، عدة لاعبين. اكتب أسماء الطلاب ومرّر الجهاز — كل طالب يحصل على دوره في الكرسي الساخن. مثالي للصفوف التي لا يملك فيها كل طالب هاتفًا.",
 
     myClassesHeading: "فصولي",
     noClassesYetSubtitle: "لم تنشئ أي فصول بعد.",

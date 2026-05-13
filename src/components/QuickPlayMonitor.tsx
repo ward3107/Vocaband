@@ -141,7 +141,17 @@ const MUSIC_TRACKS = [
 ];
 
 const getMusicUrl = (file: string): string => {
-  const cloudflareUrl = import.meta.env.VITE_CLOUDFLARE_URL;
+  // .env.example ships VITE_CLOUDFLARE_URL set to the placeholder
+  // "https://your-cloudflare-r2-url.dev".  If a dev copies that file
+  // without updating it, every track 404s and the Howl call silently
+  // never starts — teachers see the music button toggle on but hear
+  // nothing.  Reject obvious placeholders so we fall back to the bundled
+  // /game-music/*.mp3 served by the same origin (works in dev, in
+  // preview, and in production whether or not the CDN env is wired).
+  const raw = import.meta.env.VITE_CLOUDFLARE_URL as string | undefined;
+  const cloudflareUrl = raw && !/your-cloudflare-r2-url|example\.com|placeholder/i.test(raw)
+    ? raw
+    : '';
   if (cloudflareUrl) return `${cloudflareUrl}/game-music/${file}.mp3`;
   return `/game-music/${file}.mp3`;
 };

@@ -9,12 +9,13 @@
 
 import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, BookOpen, Bookmark, Target, QrCode, Users, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Bookmark, Target, QrCode, Users, Sparkles, Share2 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { WizardMode, AssignmentData, getGameModeConfig } from './types';
 import type { GeneratedLesson } from '../ai-lesson-builder/AiLessonBuilder';
 import { useLanguage } from '../../hooks/useLanguage';
 import { teacherWizardsT } from '../../locales/teacher/wizards';
+import { ShareWorksheetDialog, type ShareSource, type WorksheetLang } from '../ShareWorksheetDialog';
 
 export interface ReviewStepProps {
   mode: WizardMode;
@@ -66,6 +67,16 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   // one would just duplicate it).
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const showSaveToggle = !!onSaveTemplate && !editingAssignment;
+
+  // Online-share dialog state.  Lets a teacher mint a /w/<slug> link
+  // for the current word list without going through the assign-to-class
+  // flow — useful when they want a quick take-home practice link.
+  const [shareSource, setShareSource] = useState<ShareSource | null>(null);
+  // Default the dialog's translation target to the teacher's UI
+  // language; the dialog itself flips EN → HE since the IL audience
+  // expects a non-English target.
+  const shareDefaultLang: WorksheetLang =
+    language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'en';
 
   // Auto-scroll-to-launch-button removed. It fought the SetupWizard's
   // scroll-to-top on step change: SetupWizard scrolled to top of step 3,
@@ -341,6 +352,27 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           without scrolling.  On sm+ screens it sits inline where it
           used to.  The gradient-to-transparent fade under it keeps the
           summary text from butting up against the solid button bar. */}
+      {/* Tertiary action — "Share online" mints an interactive
+          worksheet from the picked words without going through
+          assign-to-class.  Placed above the primary action bar so it
+          stays a secondary path, not the main CTA. */}
+      {selectedWords.length > 0 && (
+        <button
+          type="button"
+          onClick={() =>
+            setShareSource({
+              topicName: (isAssignment ? assignmentTitle : '').trim() || 'Vocabulary worksheet',
+              wordIds: selectedWords.map((w) => w.id),
+            })
+          }
+          className="w-full mb-3 py-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold border-2 border-emerald-200 flex items-center justify-center gap-2 transition-all"
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        >
+          <Share2 size={18} />
+          Share as online worksheet
+        </button>
+      )}
+
       <div className="flex gap-3 fixed sm:static bottom-0 inset-x-0 sm:inset-auto z-30 px-4 sm:px-0 bg-gradient-to-t sm:bg-none from-white via-white/95 to-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 sm:pt-0 sm:pb-0">
         <button
           onClick={onBack}
@@ -407,6 +439,14 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             </div>
           )}
         </motion.div>
+      )}
+
+      {shareSource && (
+        <ShareWorksheetDialog
+          source={shareSource}
+          defaultLang={shareDefaultLang}
+          onClose={() => setShareSource(null)}
+        />
       )}
     </motion.div>
   );

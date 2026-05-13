@@ -13,10 +13,10 @@ import {
   Activity,
   Calendar,
 } from "lucide-react";
-import PublicNav from "../components/PublicNav";
+import PublicNav, { NavPage } from "../components/PublicNav";
 
 interface StatusViewProps {
-  onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq") => void;
+  onNavigate: (page: NavPage) => void;
   onGetStarted: () => void;
   /** Teacher signup — drives PublicNav's "Start free" CTA. */
   onTeacherLogin?: () => void;
@@ -76,7 +76,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label }) => {
 };
 
 const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onBack }) => {
-  const { language, dir, textAlign, isRTL } = useLanguage();
+  const { language, dir, isRTL } = useLanguage();
   const t = statusT[language];
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
@@ -157,7 +157,7 @@ const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onTea
             <h1 className="text-4xl md:text-5xl font-black text-white mt-6 mb-3 font-headline">
               {t.title}
             </h1>
-            <p className="text-lg text-white/70" dir={dir} style={{ textAlign }}>
+            <p className="text-lg text-white/70" dir={dir} style={{ textAlign: isRTL ? 'right' : 'left' }}>
               {t.subtitle}
             </p>
             <p className="text-white/50 text-sm mt-2 flex items-center justify-center gap-2">
@@ -259,7 +259,7 @@ const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onTea
             transition={{ delay: 0.5 }}
             className="text-center"
           >
-            <p className="text-white/40 text-sm" dir={dir} style={{ textAlign }}>
+            <p className="text-white/40 text-sm" dir={dir} style={{ textAlign: isRTL ? 'right' : 'left' }}>
               {t.note}
             </p>
           </motion.div>

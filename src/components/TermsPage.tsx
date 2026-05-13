@@ -1,13 +1,13 @@
 import React from "react";
 import { ArrowLeft, Printer, FileText, Scale, Users, Shield, AlertTriangle, Gavel, Mail } from "lucide-react";
-import PublicNav from "./PublicNav";
+import PublicNav, { NavPage } from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useLanguage } from "../hooks/useLanguage";
 import { termsTranslations, uiTranslations } from "../config/translations/legalTranslations";
 
 interface TermsPageProps {
-  onNavigate: (page: "home" | "terms" | "privacy") => void;
+  onNavigate: (page: NavPage) => void;
   onGetStarted: () => void;
   /** Teacher signup / OAuth — wired into PublicNav so its primary
    *  "Start free" CTA drives the freemium audience (teachers), not

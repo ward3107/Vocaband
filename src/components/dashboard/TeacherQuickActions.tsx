@@ -1,4 +1,4 @@
-import { GraduationCap, UserCircle, Tv2, Printer, Zap, Sparkles } from "lucide-react";
+import { GraduationCap, UserCircle, Tv2, Printer, Zap, Sparkles, Users, ClipboardList } from "lucide-react";
 import { HelpTooltip } from "../HelpTooltip";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
@@ -9,9 +9,15 @@ interface TeacherQuickActionsProps {
   onQuickPlayClick: () => void;
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
+  /** Optional — only the English dashboard wires this for now, since
+   *  interactive worksheets are an English-Set feature. */
+  onWorksheetResultsClick?: () => void;
   onClassShowClick?: () => void;
   onWorksheetClick?: () => void;
   onVocabagrutClick?: () => void;
+  /** Pass-around single-device classroom mode.  Optional so the
+   *  VocaHebrew dashboard (no Hebrew analog yet) can omit it. */
+  onHotSeatClick?: () => void;
   /** Drives Hebrew-locked locale + RTL when the dashboard is showing a
    *  Hebrew class context. Defaults to "english" so existing callers
    *  keep their current behaviour. */
@@ -20,7 +26,7 @@ interface TeacherQuickActionsProps {
 
 export default function TeacherQuickActions({
   pendingStudentsCount,
-  onQuickPlayClick, onClassroomClick, onApprovalsClick, onClassShowClick, onWorksheetClick, onVocabagrutClick,
+  onQuickPlayClick, onClassroomClick, onApprovalsClick, onWorksheetResultsClick, onClassShowClick, onWorksheetClick, onVocabagrutClick, onHotSeatClick,
   subject = "english",
 }: TeacherQuickActionsProps) {
   const { language } = useLanguage();
@@ -123,6 +129,28 @@ export default function TeacherQuickActions({
             </HelpTooltip>
           )}
 
+          {/* Hot Seat — single-device pass-around mode.  English-only
+              for now: HotSeatView ships with EN/HE/AR copy internally,
+              but the dashboard tile is gated by !isHebrew to match the
+              Vocabagrut precedent (Hebrew dashboard surfaces only the
+              Hebrew-native flows).  If Hebrew teachers want the tile,
+              just drop the gate. */}
+          {!isHebrew && onHotSeatClick && (
+            <HelpTooltip className="h-full" content={t.hotSeatTooltip}>
+              <div className="h-full" data-tour="hot-seat">
+                <CompactActionCard
+                  icon={<Users size={20} />}
+                  iconBg="bg-orange-100"
+                  iconColor="text-orange-600"
+                  title={t.hotSeatTitle}
+                  description={t.hotSeatDescription}
+                  onClick={onHotSeatClick}
+                  isHebrew={isHebrew}
+                />
+              </div>
+            </HelpTooltip>
+          )}
+
           {/* Vocabagrut — Bagrut-style mock exam.
               English-Bagrut-specific (the Israeli English matriculation
               paper); no Hebrew analog, so the tile is suppressed entirely
@@ -183,6 +211,26 @@ export default function TeacherQuickActions({
               />
             </div>
           </HelpTooltip>
+
+          {/* Worksheet Results — only surfaced on the English dashboard
+              because the interactive-worksheet share feature is
+              English-only for now.  Hidden on Hebrew via the prop
+              gate set by TeacherDashboardView. */}
+          {onWorksheetResultsClick && (
+            <HelpTooltip className="h-full" content={t.worksheetResultsTooltip}>
+              <div className="h-full" data-tour="worksheet-results">
+                <CompactActionCard
+                  icon={<ClipboardList size={20} />}
+                  iconBg="bg-violet-100"
+                  iconColor="text-violet-600"
+                  title={t.worksheetResultsTitle}
+                  description={t.worksheetResultsDescription}
+                  onClick={onWorksheetResultsClick}
+                  isHebrew={isHebrew}
+                />
+              </div>
+            </HelpTooltip>
+          )}
         </div>
       </div>
     </div>

@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 // A component that always throws
-function ThrowingChild({ message }: { message: string }) {
+function ThrowingChild({ message }: { message: string }): React.ReactNode {
   throw new Error(message);
 }
 

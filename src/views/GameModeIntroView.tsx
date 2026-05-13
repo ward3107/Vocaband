@@ -27,6 +27,8 @@ const modeThemes: Record<GameMode, {
   "word-chains":     { gradient: "from-orange-50 via-white to-amber-50",       card: "from-orange-400 to-amber-500",       stepBg: "bg-orange-50 border-orange-100",      stepNum: "bg-orange-500",       cta: "from-orange-500 to-amber-500",        accent: "text-orange-700" },
   idiom:             { gradient: "from-sky-50 via-white to-blue-50",            card: "from-sky-400 to-blue-500",           stepBg: "bg-sky-50 border-sky-100",            stepNum: "bg-sky-500",          cta: "from-sky-500 to-blue-500",            accent: "text-sky-700" },
   "speed-round":     { gradient: "from-red-50 via-white to-rose-50",            card: "from-red-400 to-rose-500",           stepBg: "bg-red-50 border-red-100",            stepNum: "bg-red-500",          cta: "from-red-500 to-rose-500",            accent: "text-red-700" },
+  review:            { gradient: "from-violet-50 via-white to-indigo-50",        card: "from-violet-400 to-indigo-500",      stepBg: "bg-violet-50 border-violet-100",      stepNum: "bg-violet-500",       cta: "from-violet-500 to-indigo-500",       accent: "text-violet-700" },
+  "class-minute":    { gradient: "from-amber-50 via-white to-orange-50",         card: "from-amber-400 to-orange-500",       stepBg: "bg-amber-50 border-amber-100",        stepNum: "bg-amber-500",        cta: "from-amber-500 to-orange-500",        accent: "text-amber-700" },
 };
 
 interface GameModeIntroViewProps {

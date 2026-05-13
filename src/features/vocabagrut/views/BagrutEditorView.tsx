@@ -1,14 +1,16 @@
 // Step 2 of the Vocabagrut teacher flow: review the generated test, light
 // edits, export PDF, save draft, optionally publish to a class.
 
-import { useState } from 'react';
-import { ArrowLeft, Download, Save, Upload, Loader2, FileText, Eye } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowLeft, Download, Save, Upload, Loader2, FileText, Eye, Share2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AppUser, ClassData } from '../../../core/supabase';
 import type { BagrutTest } from '../types';
 import { MODULE_SPECS } from '../lib/moduleMap';
 import { exportBagrutPdf } from '../lib/bagrutPdf';
 import { saveBagrutDraft, updateBagrutTest } from '../hooks/useBagrutTests';
+import { ALL_WORDS } from '../../../data/vocabulary';
+import { ShareWorksheetDialog, type ShareSource } from '../../../components/ShareWorksheetDialog';
 
 interface Props {
   user: AppUser;
@@ -29,9 +31,21 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
   const [withAnswerKey, setWithAnswerKey] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [shareSource, setShareSource] = useState<ShareSource | null>(null);
 
   const teacherClasses = classes.filter(c => c.teacherUid === user.uid);
   const spec = MODULE_SPECS[draft.module];
+
+  // Bagrut test rows store sourceWords as English strings (custom lists
+  // are common — e.g. a teacher pastes 25 unit words).  ShareWorksheetDialog
+  // needs numeric ALL_WORDS ids, so we resolve here.  Words not in
+  // ALL_WORDS are silently dropped — the interactive solver can't render
+  // pronunciation / translations for them anyway.  Memoised so re-renders
+  // on draft edits don't re-walk ALL_WORDS.
+  const shareableWordIds = useMemo(() => {
+    const lowered = new Set(sourceWords.map(s => s.toLowerCase()));
+    return ALL_WORDS.filter(w => lowered.has(w.english.toLowerCase())).map(w => w.id);
+  }, [sourceWords]);
 
   function patchSection(idx: number, patch: Partial<BagrutTest['sections'][number]>) {
     setDraft(d => ({
@@ -136,6 +150,42 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
               style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
             >
               {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save draft
+            </button>
+            {/* Share online — mints an interactive practice worksheet
+                from the test's vocabulary so students can drill the
+                target words before the formal exam.  Disabled when none
+                of the source words are recognised (e.g. a fully custom
+                list); we don't have audio/translations for unknown
+                strings so the solver would be useless.  When some but
+                not all words resolve, the button caption surfaces the
+                ratio so the teacher knows we're shipping a subset and
+                can decide whether to swap out custom words first. */}
+            <button
+              type="button"
+              onClick={() =>
+                setShareSource({
+                  topicName: draft.title || 'Bagrut practice',
+                  wordIds: shareableWordIds,
+                })
+              }
+              disabled={shareableWordIds.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              title={
+                shareableWordIds.length === 0
+                  ? "These custom words aren't in our vocabulary, so an interactive worksheet isn't available."
+                  : shareableWordIds.length < sourceWords.length
+                    ? `${sourceWords.length - shareableWordIds.length} custom word(s) aren't in our vocabulary and will be skipped in the online version.`
+                    : undefined
+              }
+            >
+              <Share2 size={16} />
+              Share online
+              {shareableWordIds.length > 0 && shareableWordIds.length < sourceWords.length && (
+                <span className="text-xs font-medium opacity-90">
+                  ({shareableWordIds.length}/{sourceWords.length})
+                </span>
+              )}
             </button>
             <button
               type="button"
@@ -279,6 +329,14 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
           </label>
         </div>
       </div>
+
+      {shareSource && (
+        <ShareWorksheetDialog
+          source={shareSource}
+          defaultLang="he"
+          onClose={() => setShareSource(null)}
+        />
+      )}
     </div>
   );
 }

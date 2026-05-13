@@ -44,6 +44,7 @@ const ShopView = lazy(() => import("./views/ShopView"));
 const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
 const GlobalLeaderboardView = lazy(() => import("./views/GlobalLeaderboardView"));
 const TeacherApprovalsView = lazy(() => import("./views/TeacherApprovalsView"));
+const WorksheetAttemptsView = lazy(() => import("./views/WorksheetAttemptsView"));
 const CreateAssignmentView = lazy(() => import("./views/CreateAssignmentView"));
 // AnalyticsView + GradebookView are no longer routed directly here —
 // they're now lazy-loaded inside ClassroomView and rendered as tabs.
@@ -53,6 +54,7 @@ const ClassRosterModal = lazy(() => import("./components/ClassRosterModal"));
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const ClassShowView = lazy(() => import("./views/ClassShowView"));
+const HotSeatView = lazy(() => import("./views/HotSeatView"));
 const HebrewClassShowView = lazy(() => import("./views/HebrewClassShowView"));
 const WorksheetView = lazy(() => import("./views/WorksheetView"));
 const HebrewWorksheetView = lazy(() => import("./views/HebrewWorksheetView"));
@@ -88,6 +90,7 @@ import {
 import { celebrate } from "./utils/celebrate";
 import { compressImageForUpload } from "./utils/compressImage";
 import ImageCropModal from "./components/ImageCropModal";
+import { setGuideStore, type GuideKey } from "./hooks/useFirstTimeGuide";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
@@ -136,11 +139,12 @@ const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 // ─── View constants for shouldPreserveView (O(1) lookup with Sets) ────────
 // Defined at module level to avoid re-creating arrays on every auth restore.
 const PUBLIC_VIEWS = new Set<View>([
-  "public-landing", "public-terms", "public-privacy", "public-security", "public-faq", "public-free-resources", "public-status", "accessibility-statement"
+  "public-landing", "public-terms", "public-privacy", "public-security", "public-free-resources", "public-interactive-worksheet", "public-status", "accessibility-statement"
 ]);
 const TEACHER_VIEWS = new Set<View>([
   "worksheet", "classroom", "class-show", "teacher-approvals",
   "quick-play-teacher-monitor", "quick-play-setup", "create-assignment",
+  "hot-seat",
   "voca-picker", "vocahebrew-dashboard",
   "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-synonyms", "vocahebrew-listening",
 ]);
@@ -182,6 +186,11 @@ export default function App() {
   const [view, setView] = useState<View>(() => {
     if (quickPlaySessionParam) return "quick-play-student";
     if (window.location.pathname === "/accessibility-statement") return "accessibility-statement";
+    // Public interactive worksheet — WhatsApp-shareable link teachers paste
+    // from the Free Resources page.  Path is /w/<slug>; the slug is read in
+    // the render switch below.  Auth state is ignored, since logged-in
+    // teachers should also be able to test their own shares.
+    if (window.location.pathname.startsWith("/w/")) return "public-interactive-worksheet";
     // Dedicated student URL — `vocaband.com/student` lands directly on
     // the student login page, separate from the teacher-focused
     // marketing landing.  Teachers can share this URL with their class.
@@ -216,6 +225,45 @@ export default function App() {
       else sessionStorage.removeItem(ACTIVE_VOCA_KEY);
     } catch { /* sessionStorage may be blocked; non-fatal */ }
   }, [activeVoca]);
+
+  // First-time-guide persistence — push the signed-in teacher's
+  // dismissed-guide list into the module-level store consumed by
+  // useFirstTimeGuide.  On dismissal, the hook calls markSeen here
+  // which appends to user.guides_seen + writes it back to Supabase, so
+  // a teacher signing in on a second device never re-sees a guide they
+  // already closed.  Students/guests get null → hook falls back to
+  // localStorage (still works, just per-device).
+  useEffect(() => {
+    if (!user || user.role !== "teacher") {
+      setGuideStore(null);
+      return;
+    }
+    const seen = user.guidesSeen ?? [];
+    setGuideStore({
+      seen,
+      markSeen: async (key: GuideKey) => {
+        if (seen.includes(key)) return;
+        const next = Array.from(new Set([...seen, key]));
+        // Optimistic in-memory update first — the dashboard re-renders
+        // immediately without waiting for the round-trip.
+        setUser(prev => prev ? { ...prev, guidesSeen: next } : prev);
+        const { error } = await supabase
+          .from("users")
+          .update({ guides_seen: next })
+          .eq("uid", user.uid);
+        if (error) {
+          // Roll back the optimistic update so a retry from another
+          // device can re-attempt.  localStorage still suppresses
+          // re-shows on THIS device until storage clears.
+          console.warn("[guides] persist failed; rolling back:", error);
+          setUser(prev => prev ? { ...prev, guidesSeen: seen } : prev);
+        }
+      },
+    });
+    return () => {
+      setGuideStore(null);
+    };
+  }, [user]);
 
   // VocaHebrew routing — when an entitled teacher (subjects_taught
   // length >= 2) lands on teacher-dashboard without an activeVoca
@@ -263,14 +311,13 @@ export default function App() {
     handleCookieCustomize,
   } = useCookieConsent();
 
-  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "faq" | "resources" | "status") => {
+  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status") => {
     const viewMap = {
       home: "public-landing",
       terms: "public-terms",
       privacy: "public-privacy",
       accessibility: "accessibility-statement",
       security: "public-security",
-      faq: "public-faq",
       resources: "public-free-resources",
       status: "public-status",
     } as const;
@@ -293,8 +340,8 @@ export default function App() {
     view === "public-terms" ||
     view === "public-privacy" ||
     view === "public-security" ||
-    view === "public-faq" ||
     view === "public-free-resources" ||
+    view === "public-interactive-worksheet" ||
     view === "public-status" ||
     view === "accessibility-statement";
   const vocab = useVocabularyLazy(!isPublicView);
@@ -741,8 +788,32 @@ export default function App() {
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
+  // Captures the `?assignment=<id>` URL param at boot.  When the
+  // student lands on their dashboard with this set, we look up the
+  // matching assignment in `studentAssignments` and drop them straight
+  // into the mode picker for it — teachers share links from the
+  // assignment row so the student should bypass the dashboard step.
+  const [pendingAssignmentId, setPendingAssignmentId] = useState<string | null>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("assignment");
+    } catch {
+      return null;
+    }
+  });
+  // Captures `?play=<mode>` at boot.  Set by teacher-shared share
+  // links (Class Minute today; extendable later if we surface more
+  // dashboard-launched entry points).  Consumed once the student is
+  // on their dashboard then stripped from the URL so a back-nav
+  // doesn't re-trigger the auto-launch.
+  const [pendingPlayMode, setPendingPlayMode] = useState<string | null>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("play");
+    } catch {
+      return null;
+    }
+  });
 
-  const { speak: speakWordRaw, preloadMany, playWrong, playMotivational } = useAudio();
+  const { speak: speakWordRaw, preloadMany, playWrong, playMotivational, stopAll: stopAllAudio } = useAudio();
   const speakWord = speakWordRaw;
 
   // --- GAME STATE ---
@@ -1761,8 +1832,20 @@ export default function App() {
               plan: "free",
               trialEndsAt: freshTrialEndsAt(),
             };
-            // Use upsert to handle race conditions (StrictMode double-mount, retry after partial failure)
-            const { error: insertErr } = await supabase.from('users').upsert(mapUserToDb(newUser), { onConflict: 'uid' });
+            // Use upsert with ignoreDuplicates=true to handle race
+            // conditions (StrictMode double-mount, retry after partial
+            // failure) WITHOUT overwriting an already-paying Pro
+            // teacher's plan/trial_ends_at on every re-sign-in.  The
+            // adjacent comment used to claim this was the case, but the
+            // call previously omitted `ignoreDuplicates`, which made
+            // Supabase default to ON CONFLICT DO UPDATE — silently
+            // downgrading any returning Pro teacher to Free + a fresh
+            // 30-day trial.  Same bug also made it possible for the
+            // tightened users_update RLS (20260602) to reject the
+            // re-sign-in altogether once that migration lands.
+            const { error: insertErr } = await supabase
+              .from('users')
+              .upsert(mapUserToDb(newUser), { onConflict: 'uid', ignoreDuplicates: true });
             if (insertErr) {
               console.error("Teacher profile upsert failed:", insertErr);
             }
@@ -1859,6 +1942,11 @@ export default function App() {
         restoreSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         cleanupSessionData(); // Clear save queue and timers
+        // Kill any audio still in flight — word TTS, motivational MP3s,
+        // demo speechSynthesis utterances — so the logged-out landing
+        // doesn't get serenaded by leftovers from the previous session.
+        try { stopAllAudio(); } catch {}
+        try { window.speechSynthesis?.cancel(); } catch {}
         setUser(null);
         // Reset all game-playing state so the back button can't resurrect
         // a ghost of the previous session.  Symptom before this clear:
@@ -1909,7 +1997,24 @@ export default function App() {
         // the previous session would still block navigation).
         try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
         // Don't redirect Quick Play students — they don't need auth
-        if (!quickPlaySessionParam) setView(postLogoutView);
+        if (!quickPlaySessionParam) {
+          // Hard reload after the SPA route swap to drop every piece of
+          // in-memory state (audio handles, demo speech utterances, mode
+          // intros, popstate back-button trap entries).  Without this the
+          // teacher reported "after logout I still hear the demo voices
+          // and the back button takes me through every screen I just
+          // visited" — that's React state + history surviving the
+          // session change.  Replacing the URL clears the query
+          // (?assignment=... etc) so a stale assignment can't be picked
+          // up by the bootstrap effects on first paint.
+          setView(postLogoutView);
+          try {
+            // Students land on /student (handled by the initial-view
+            // resolver above), teachers/guests on the marketing root.
+            const target = wasStudent ? '/student' : '/';
+            window.location.replace(target);
+          } catch {}
+        }
         setLoading(false);
       } else if (event === 'INITIAL_SESSION') {
         // No session exists — user needs to log in.
@@ -2139,6 +2244,111 @@ export default function App() {
     loadPendingStudents,
     fetchScores,
   });
+
+  // Deep-link to a specific assignment.  When a teacher shares an
+  // assignment via the Share button on its row in ClassCard, the URL
+  // carries `&assignment=<id>`.  After the student logs in and lands
+  // on their dashboard with assignments loaded, drop them straight
+  // into the mode picker for that assignment — skipping the manual
+  // dashboard tap a teacher just shortcut for them.  We only consume
+  // the pending id once; missing matches silently fall back to the
+  // normal dashboard so an outdated link doesn't strand the student.
+  useEffect(() => {
+    if (!pendingAssignmentId) return;
+    if (user?.role !== "student") return;
+    if (view !== "student-dashboard") return;
+    if (studentAssignments.length === 0) return;
+    const match = studentAssignments.find(a => a.id === pendingAssignmentId);
+    if (!match) return;
+    setActiveAssignment(match);
+    setAssignmentWords(match.words ?? []);
+    setShowModeSelection(true);
+    setView("game");
+    setPendingAssignmentId(null);
+    // Strip the consumed param so a refresh or back-nav doesn't
+    // re-trigger the auto-open after the student left the assignment.
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("assignment");
+      window.history.replaceState({}, "", url.toString());
+    } catch { /* history API unavailable — non-fatal */ }
+  }, [pendingAssignmentId, user?.role, view, studentAssignments]);
+
+  // Class Minute entry point — used by both the dashboard widget tap
+  // and the teacher-shared ?play=class-minute deep-link.  Pulls SRS-
+  // due words first, falls back to current assignments, then
+  // SET_2_WORDS as last resort.  See onStartClassMinute prop on
+  // StudentDashboardView for the inline flow.
+  const startClassMinute = useCallback(async () => {
+    const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
+    let seedWords: Word[] = [];
+    try {
+      const { data, error } = await supabase.rpc('get_due_reviews', {
+        p_today_local: today,
+        p_limit: 20,
+      });
+      if (!error && Array.isArray(data)) {
+        const dueIds = (data as Array<{ word_id: number }>).map(r => r.word_id);
+        seedWords = dueIds
+          .map(id => ALL_WORDS.find(w => w.id === id))
+          .filter((w): w is Word => Boolean(w));
+      }
+    } catch (err) {
+      console.error('[class-minute] get_due_reviews failed:', err);
+    }
+    if (seedWords.length < 15) {
+      const fallbackPool: Word[] = [];
+      const seen = new Set(seedWords.map(w => w.id));
+      for (const a of studentAssignments) {
+        const pool = a.words ?? a.wordIds.map(id => ALL_WORDS.find(w => w.id === id)).filter((w): w is Word => Boolean(w));
+        for (const w of pool) {
+          if (seen.has(w.id)) continue;
+          fallbackPool.push(w);
+          seen.add(w.id);
+        }
+        if (seedWords.length + fallbackPool.length >= 30) break;
+      }
+      seedWords = [...seedWords, ...fallbackPool];
+    }
+    if (seedWords.length < 4) {
+      seedWords = SET_2_WORDS.slice(0, 20);
+    }
+    setAssignmentWords(seedWords);
+    setGameMode("class-minute");
+    setIsFinished(false);
+    setShowModeSelection(false);
+    setView("game");
+  }, [ALL_WORDS, SET_2_WORDS, studentAssignments]);
+
+  // Deep-link to Class Minute.  When a teacher shares the daily-drill
+  // link via the Send Class Minute action on ClassCard, the URL carries
+  // `?play=class-minute`.  Same gating as the assignment deep-link:
+  // student role, dashboard view, and ALL_WORDS loaded (the SRS row
+  // hydration needs the vocabulary chunk).  We also wait until
+  // studentAssignments has populated at least once so the fallback
+  // word pool isn't empty when SRS returns thin — the polling effect
+  // above tops it up shortly after login, but the very first render
+  // can race.
+  //
+  // pendingClassSwitch gate: if the student lands on the deep-link
+  // mid-class-switch flow (ClassSwitchModal asking "stay or switch?"),
+  // wait for that decision before consuming the deep-link.  Otherwise
+  // the round launches under whichever class context happens to be
+  // active at mount time, which may not be what the student picks.
+  useEffect(() => {
+    if (pendingPlayMode !== 'class-minute') return;
+    if (user?.role !== "student") return;
+    if (view !== "student-dashboard") return;
+    if (ALL_WORDS.length === 0) return;
+    if (pendingClassSwitch) return;
+    setPendingPlayMode(null);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("play");
+      window.history.replaceState({}, "", url.toString());
+    } catch { /* history API unavailable — non-fatal */ }
+    void startClassMinute();
+  }, [pendingPlayMode, user?.role, view, ALL_WORDS.length, pendingClassSwitch, startClassMinute]);
 
 
   // --- SMART PASTE FUNCTIONS ---
@@ -2594,6 +2804,7 @@ export default function App() {
             setShowModeSelection(false);
             setView("game");
           }}
+          onStartClassMinute={startClassMinute}
           retention={retention}
           boosters={{
             isXpBoosterActive: boosters.isXpBoosterActive,
@@ -2948,6 +3159,7 @@ export default function App() {
             void logAudit('view_gradebook', 'progress');
           }}
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
+          onWorksheetResultsClick={activeVoca === "hebrew" ? undefined : () => setView("worksheet-attempts")}
           onClassShowClick={() => { setClassShowAssignment(null); setView("class-show"); }}
           onProjectAssignmentToClass={(a) => {
             setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
@@ -2955,6 +3167,7 @@ export default function App() {
           }}
           onWorksheetClick={() => { setWorksheetAssignment(null); setView("worksheet"); }}
           onVocabagrutClick={() => { setView("vocabagrut"); }}
+          onHotSeatClick={() => { setView("hot-seat"); }}
           onPrintAssignmentWorksheet={(a) => {
             setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("worksheet");
@@ -3456,6 +3669,14 @@ export default function App() {
     );
   }
 
+  if (view === "worksheet-attempts" && user) {
+    return (
+      <LazyWrapper loadingMessage="Loading worksheet results...">
+        <WorksheetAttemptsView user={user} onBack={() => setView("teacher-dashboard")} />
+      </LazyWrapper>
+    );
+  }
+
   if (view === "quick-play-setup") {
     // VocaHebrew gets a focused Hebrew-only Quick Play setup that
     // surfaces HEBREW_LEMMAS via HEBREW_PACKS — never ALL_WORDS or
@@ -3660,6 +3881,22 @@ export default function App() {
   }
 
 
+  if (view === "hot-seat") {
+    // Pass-around classroom mode — one device, many players.  Owns its
+    // own setup screen + game loop + podium internally; nothing to thread
+    // beyond speakWord (for audio replay on the prompt) and a back
+    // handler (dashboard return).  Scores stay in-memory; no Supabase
+    // writes since the players aren't logged-in users.
+    return (
+      <LazyWrapper loadingMessage="Loading Hot Seat…">
+        <HotSeatView
+          onExit={() => setView("teacher-dashboard")}
+          speak={speakWord}
+        />
+      </LazyWrapper>
+    );
+  }
+
   if (view === "class-show") {
     // Hebrew classes get a focused 2-mode projector view
     // (HebrewClassShowView). The English ClassShowView is shaped
@@ -3676,7 +3913,7 @@ export default function App() {
         <LazyWrapper loadingMessage="טוען מצב הקרנה…">
           <HebrewClassShowView
             initialLemmaIds={classShowAssignment?.wordIds}
-            className={classShowAssignment?.className ?? selectedClass?.name ?? null}
+            className={selectedClass?.name ?? null}
             onExit={() => {
               setClassShowAssignment(null);
               setView("teacher-dashboard");
