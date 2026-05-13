@@ -97,7 +97,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.6.0",
-    "google-tts-api": "^0.0.6",
+    "google-tts-api": "^2.0.2",
     "jsdom": "^29.1.1",
     "prettier": "^3.8.3",
     "serialize-javascript": "^7.0.4",
