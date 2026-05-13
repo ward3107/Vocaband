@@ -96,6 +96,13 @@ export function useLiveChallengeSocket(
         reconnectionDelay: 1000,
         reconnectionDelayMax: 10_000,
         randomizationFactor: 0.5,
+        // WebSocket-only — engine.io polling needs sticky sessions, and our
+        // Cloudflare Worker → Fly.io edge has no sticky routing. Once
+        // multiple Fly machines wake (or the single machine cold-restarts
+        // after auto_stop) the polling sid → owner mapping breaks and every
+        // poll returns 400. A WebSocket pins the TCP socket to one VM for
+        // its lifetime, so the sticky-session problem cannot occur.
+        transports: ['websocket'],
         // Async callback ensures a fresh token is fetched on every reconnect.
         auth: (cb: (data: { token: string }) => void) => {
           getToken().then(t => cb({ token: t }));
