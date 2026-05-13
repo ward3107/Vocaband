@@ -16,6 +16,8 @@
  * components only render JSX and emit events.
  */
 import React from "react";
+import { useLanguage } from "../hooks/useLanguage";
+import { appModalsT } from "../locales/teacher/app-modals";
 
 // ── ConsentModal ──────────────────────────────────────────────────────────
 export interface ConsentModalProps {
@@ -33,22 +35,24 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
   onToggleChecked,
   onAccept,
 }) => {
+  const { language, dir } = useLanguage();
+  const t = appModalsT[language];
   if (!show) return null;
   return (
     <div className="fixed inset-0 bg-inverse-surface/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-surface-container-lowest rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border-t sm:border border-surface-variant/20">
-        <h2 className="text-base sm:text-lg font-black text-on-surface mb-2 font-headline">Privacy Policy Update</h2>
+      <div className="bg-surface-container-lowest rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border-t sm:border border-surface-variant/20" dir={dir}>
+        <h2 className="text-base sm:text-lg font-black text-on-surface mb-2 font-headline">{t.consentTitle}</h2>
         <p className="text-on-surface-variant text-xs sm:text-sm mb-3">
-          We&apos;ve updated our Privacy Policy (v{policyVersion}). Please review and accept to continue using Vocaband.
+          {t.consentIntro(policyVersion)}
         </p>
         <div className="bg-surface-container-low rounded-xl p-3 mb-3 text-xs sm:text-sm text-on-surface-variant space-y-1.5">
-          <p><strong>What we collect:</strong> Display name, class code, game scores & progress. Student accounts are anonymous — no emails or personal info required.</p>
-          <p><strong>For teachers:</strong> Email (via Google) and display name, used only for authentication.</p>
-          <p><strong>How we use it:</strong> To run the app — games, progress tracking, leaderboards. No ads, no profiling, no third-party trackers.</p>
-          <p><strong>Your rights:</strong> You can export or delete your data anytime from Privacy Settings.</p>
+          <p><strong>{t.consentCollectLabel}</strong>{t.consentCollectBody}</p>
+          <p><strong>{t.consentTeachersLabel}</strong>{t.consentTeachersBody}</p>
+          <p><strong>{t.consentUseLabel}</strong>{t.consentUseBody}</p>
+          <p><strong>{t.consentRightsLabel}</strong>{t.consentRightsBody}</p>
           <div className="flex gap-3 pt-1">
-            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">Full Privacy Policy</a>
-            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">Terms of Service</a>
+            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">{t.consentFullPolicyLink}</a>
+            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">{t.consentTermsLink}</a>
           </div>
         </div>
         <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
@@ -59,7 +63,11 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
             className="mt-0.5 w-8 h-8 rounded border-outline text-primary focus:ring-primary focus:ring-2 focus:ring-offset-0"
           />
           <span className="text-xs sm:text-sm text-on-surface">
-            I have read and agree to the <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">Terms of Service</a>.
+            {t.consentCheckboxPrefix}
+            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentFullPolicyLink}</a>
+            {t.consentCheckboxAnd}
+            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentTermsLink}</a>
+            {t.consentCheckboxSuffix}
           </span>
         </label>
         <button
@@ -67,7 +75,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
           disabled={!consentChecked}
           className={`w-full py-2.5 rounded-xl font-bold transition-all text-sm font-headline ${consentChecked ? 'signature-gradient text-white hover:shadow-lg' : 'bg-surface-container text-on-surface-variant/50 cursor-not-allowed'}`}
         >
-          Accept & Continue
+          {t.consentAccept}
         </button>
       </div>
     </div>
@@ -86,26 +94,28 @@ export const ExitConfirmModal: React.FC<ExitConfirmModalProps> = ({
   onStay,
   onLeave,
 }) => {
+  const { language, dir } = useLanguage();
+  const t = appModalsT[language];
   if (!show) return null;
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
-      <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl">
-        <h2 className="text-2xl font-black mb-2">Leave Vocaband?</h2>
+      <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl" dir={dir}>
+        <h2 className="text-2xl font-black mb-2">{t.exitTitle}</h2>
         <p className="text-stone-500 mb-6">
-          You'll need to sign in again next time.
+          {t.exitBody}
         </p>
         <div className="flex gap-3">
           <button
             onClick={onStay}
             className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 border-2 border-stone-200 transition-colors"
           >
-            Stay
+            {t.exitStay}
           </button>
           <button
             onClick={onLeave}
             className="flex-1 py-4 rounded-2xl font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-lg shadow-rose-100"
           >
-            Leave
+            {t.exitLeave}
           </button>
         </div>
       </div>
@@ -133,21 +143,23 @@ export const ClassSwitchModal: React.FC<ClassSwitchModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const { language, dir } = useLanguage();
+  const t = appModalsT[language];
   if (!pendingClassSwitch) return null;
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
-      <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl">
-        <h2 className="text-2xl font-black mb-2">Switch class?</h2>
+      <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl" dir={dir}>
+        <h2 className="text-2xl font-black mb-2">{t.switchTitle}</h2>
         <p className="text-stone-600 mb-6 leading-relaxed">
-          You're currently in{' '}
+          {t.switchSentenceLead}
           <span className="font-bold text-stone-900">
             {pendingClassSwitch.fromClassName ?? pendingClassSwitch.fromCode}
           </span>
-          {'. '}Do you want to switch to{' '}
+          {t.switchSentenceMiddle}
           <span className="font-bold text-stone-900">
             {pendingClassSwitch.toClassName ?? pendingClassSwitch.toCode}
           </span>
-          ?
+          {t.switchSentenceTail}
         </p>
         <div className="flex flex-col-reverse sm:flex-row gap-3">
           <button
@@ -155,14 +167,14 @@ export const ClassSwitchModal: React.FC<ClassSwitchModalProps> = ({
             style={{ touchAction: 'manipulation' }}
             className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 border-2 border-stone-200 transition-colors"
           >
-            Stay in {pendingClassSwitch.fromCode}
+            {t.switchStayBtn(pendingClassSwitch.fromCode)}
           </button>
           <button
             onClick={onConfirm}
             style={{ touchAction: 'manipulation' }}
             className="flex-1 py-4 rounded-2xl font-black text-white bg-gradient-to-br from-blue-500 to-indigo-600 hover:shadow-lg active:scale-95 transition-all"
           >
-            Switch to {pendingClassSwitch.toCode}
+            {t.switchConfirmBtn(pendingClassSwitch.toCode)}
           </button>
         </div>
       </div>

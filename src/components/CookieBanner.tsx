@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Cookie, ChevronUp, ChevronDown, Shield, BarChart3, Settings, Check, Lock } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
+import { cookieBannerT, type CookieBannerStrings } from "../locales/cookie-banner";
 
 export interface CookiePreferences {
   essential: boolean;  // Always true, can't be disabled
@@ -13,31 +15,27 @@ interface CookieBannerProps {
   onCustomize: (preferences: CookiePreferences) => void;
 }
 
-const cookieCategories = [
-  {
-    id: "essential" as const,
-    name: "Essential Cookies",
-    description: "Required for the website to function. Includes authentication and security.",
-    icon: Shield,
-    required: true,
-  },
-  {
-    id: "analytics" as const,
-    name: "Analytics Cookies",
-    description: "Help us understand how you use the site so we can improve your experience.",
-    icon: BarChart3,
-    required: false,
-  },
-  {
-    id: "functional" as const,
-    name: "Functional Cookies",
-    description: "Remember your preferences like theme, language, and game settings.",
-    icon: Settings,
-    required: false,
-  },
+// Category metadata that DOES NOT change between locales (id, icon,
+// required flag).  Display text is pulled from the active locale at
+// render time via getCookieCategories below.
+const cookieCategoryStyle = [
+  { id: "essential" as const,   icon: Shield,    required: true  },
+  { id: "analytics" as const,   icon: BarChart3, required: false },
+  { id: "functional" as const,  icon: Settings,  required: false },
 ];
 
+function getCookieCategories(t: CookieBannerStrings) {
+  return [
+    { ...cookieCategoryStyle[0], name: t.essentialName,   description: t.essentialDescription },
+    { ...cookieCategoryStyle[1], name: t.analyticsName,   description: t.analyticsDescription },
+    { ...cookieCategoryStyle[2], name: t.functionalName,  description: t.functionalDescription },
+  ];
+}
+
 const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) => {
+  const { language, dir } = useLanguage();
+  const t = cookieBannerT[language];
+  const cookieCategories = getCookieCategories(t);
   const [isExpanded, setIsExpanded] = useState(false);
   const [preferences, setPreferences] = useState<CookiePreferences>({
     essential: true,
@@ -64,6 +62,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1], delay: 0.3 }}
         className="max-w-4xl mx-auto bg-slate-900/95 backdrop-blur-2xl p-4 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-[0_25px_70px_-15px_rgba(139,92,246,0.4)] pointer-events-auto border border-white/15 max-h-[85vh] md:max-h-none flex flex-col"
+        dir={dir}
       >
         {/* Header Row */}
         <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 mb-3 md:mb-4 flex-shrink-0">
@@ -80,10 +79,10 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
 
           <div className="flex-1 text-center md:text-left">
             <p className="text-white/90 font-bold text-xs md:text-base leading-relaxed">
-              We use cookies to enhance your learning experience. By continuing to browse, you agree to our use of cookies.
+              {t.heroMain}
             </p>
             <p className="hidden md:block text-white/50 text-xs mt-1 font-medium">
-              EU-hosted • No third-party trackers • You can change this anytime in settings.
+              {t.heroSub}
             </p>
           </div>
         </div>
@@ -100,7 +99,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
             >
               <div className="mb-4 md:mb-6 p-3 md:p-6 bg-white/5 rounded-xl md:rounded-2xl border border-white/10 overflow-y-auto max-h-[40vh] md:max-h-none">
                 <h3 className="text-base md:text-lg font-black font-headline mb-3 md:mb-4 text-white">
-                  Cookie Preferences
+                  {t.preferencesTitle}
                 </h3>
                 <div className="space-y-2 md:space-y-3">
                   {cookieCategories.map((category) => {
@@ -141,7 +140,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
                             {isDisabled && (
                               <span className="inline-flex items-center gap-1 text-[9px] md:text-[10px] font-black uppercase tracking-wider px-1.5 md:px-2 py-0.5 bg-violet-500/25 text-violet-100 border border-violet-400/40 rounded-full">
                                 <Lock size={9} aria-hidden="true" />
-                                Required
+                                {t.requiredBadge}
                               </span>
                             )}
                           </div>
@@ -189,13 +188,13 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
               <>
                 <ChevronUp size={16} className="md:hidden" aria-hidden="true" />
                 <ChevronUp size={18} className="hidden md:block" aria-hidden="true" />
-                Less
+                {t.less}
               </>
             ) : (
               <>
                 <ChevronDown size={16} className="md:hidden" aria-hidden="true" />
                 <ChevronDown size={18} className="hidden md:block" aria-hidden="true" />
-                Customize
+                {t.customize}
               </>
             )}
           </button>
@@ -208,7 +207,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
               className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
             >
               <Check size={16} aria-hidden="true" />
-              Save Preferences
+              {t.savePreferences}
             </motion.button>
           ) : (
             <motion.button
@@ -218,7 +217,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
               className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
             >
               <Check size={16} aria-hidden="true" />
-              Accept All
+              {t.acceptAll}
             </motion.button>
           )}
         </div>
