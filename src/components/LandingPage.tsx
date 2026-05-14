@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { MotionConfig, motion } from "motion/react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
@@ -30,8 +30,12 @@ const FeatureRequestModal = lazy(() => import("./FeatureRequestModal"));
 const SchoolInquiryModal = lazy(() => import("./SchoolInquiryModal"));
 
 // Below-the-fold sections — lazy so they don't enter the initial
-// landing-page chunk.  Each becomes its own JS file, fetched while
-// the hero is already on screen.
+// landing-page chunk.  Each becomes its own JS file, gated by the
+// `DeferredSection` IntersectionObserver wrapper below so the eight
+// chunks don't all race to download in parallel the moment the hero
+// mounts. Without the gate, a post-logout reload sees ~87 background
+// requests / ~20 s of network activity even though the user usually
+// only ever sees the hero before clicking "Sign in" again.
 const LandingStudents = lazy(() => import("./landing/LandingStudents"));
 const LandingAI = lazy(() => import("./landing/LandingAI"));
 const LandingTeachers = lazy(() => import("./landing/LandingTeachers"));
@@ -40,6 +44,49 @@ const LandingVocas = lazy(() => import("./landing/LandingVocas"));
 const LandingFinalCTA = lazy(() => import("./landing/LandingFinalCTA"));
 const LandingFAQ = lazy(() => import("./landing/LandingFAQ"));
 const LandingFooter = lazy(() => import("./landing/LandingFooter"));
+
+// Render `children` only once the placeholder scrolls within `rootMargin`
+// of the viewport. Lazy-loaded children won't fetch their JS chunk until
+// the placeholder intersects, which staggers the eight below-the-fold
+// section chunks based on scroll instead of firing them all in parallel
+// on first paint.  `minHeight` reserves space so the page layout doesn't
+// jump as sections hydrate — picked per section to roughly match the
+// rendered height of each on a phone.
+const DeferredSection: React.FC<{
+  children: ReactNode;
+  rootMargin?: string;
+  minHeight?: number;
+}> = ({ children, rootMargin = "600px", minHeight = 400 }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (show) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setShow(true);
+      return;
+    }
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setShow(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [show, rootMargin]);
+
+  return (
+    <div ref={ref} style={{ minHeight: show ? undefined : minHeight }}>
+      {show ? children : null}
+    </div>
+  );
+};
 
 interface LandingPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status") => void;
@@ -422,38 +469,52 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           </div>
         </section>
 
-        <Suspense fallback={null}>
-          <LandingStudents />
-        </Suspense>
+        <DeferredSection minHeight={800}>
+          <Suspense fallback={null}>
+            <LandingStudents />
+          </Suspense>
+        </DeferredSection>
 
-        <Suspense fallback={null}>
-          <LandingAI />
-        </Suspense>
+        <DeferredSection minHeight={600}>
+          <Suspense fallback={null}>
+            <LandingAI />
+          </Suspense>
+        </DeferredSection>
 
-        <Suspense fallback={null}>
-          <LandingTeachers />
-        </Suspense>
+        <DeferredSection minHeight={700}>
+          <Suspense fallback={null}>
+            <LandingTeachers />
+          </Suspense>
+        </DeferredSection>
 
-        <Suspense fallback={null}>
-          <LandingJourney />
-        </Suspense>
+        <DeferredSection minHeight={600}>
+          <Suspense fallback={null}>
+            <LandingJourney />
+          </Suspense>
+        </DeferredSection>
 
-        <Suspense fallback={null}>
-          <LandingVocas onOpenSubjectRequest={() => setIsSubjectModalOpen(true)} />
-        </Suspense>
+        <DeferredSection minHeight={500}>
+          <Suspense fallback={null}>
+            <LandingVocas onOpenSubjectRequest={() => setIsSubjectModalOpen(true)} />
+          </Suspense>
+        </DeferredSection>
 
-        <Suspense fallback={null}>
-          <LandingFinalCTA
-            onTryDemo={onTryDemo}
-            onTeacherLogin={onTeacherLogin}
-            isAuthenticated={isAuthenticated}
-          />
-        </Suspense>
+        <DeferredSection minHeight={500}>
+          <Suspense fallback={null}>
+            <LandingFinalCTA
+              onTryDemo={onTryDemo}
+              onTeacherLogin={onTeacherLogin}
+              isAuthenticated={isAuthenticated}
+            />
+          </Suspense>
+        </DeferredSection>
 
 
-        <Suspense fallback={null}>
-          <LandingFAQ />
-        </Suspense>
+        <DeferredSection minHeight={500}>
+          <Suspense fallback={null}>
+            <LandingFAQ />
+          </Suspense>
+        </DeferredSection>
 
         {/* Teacher resources — card grid linking to the PDFs in /public/docs
             and the existing FAQ page.  Rendered just above the footer so
@@ -461,17 +522,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             Parent Letter / Privacy summary without leaving the landing
             page.  The same section is rendered on /teacher-login under
             the auth card so it is discoverable from both entry points. */}
-        <TeacherResourcesSection variant="hero" />
+        <DeferredSection minHeight={400}>
+          <TeacherResourcesSection variant="hero" />
+        </DeferredSection>
 
-        <Suspense fallback={null}>
-          <LandingFooter
-            onNavigate={onNavigate}
-            onTryDemo={onTryDemo}
-            onTeacherLogin={onTeacherLogin}
-            onOpenFeatureRequest={() => setIsFeatureModalOpen(true)}
-            isAuthenticated={isAuthenticated}
-          />
-        </Suspense>
+        <DeferredSection minHeight={400}>
+          <Suspense fallback={null}>
+            <LandingFooter
+              onNavigate={onNavigate}
+              onTryDemo={onTryDemo}
+              onTeacherLogin={onTeacherLogin}
+              onOpenFeatureRequest={() => setIsFeatureModalOpen(true)}
+              isAuthenticated={isAuthenticated}
+            />
+          </Suspense>
+        </DeferredSection>
       </main>
 
       <FloatingButtons />
