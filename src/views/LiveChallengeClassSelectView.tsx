@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { Zap, ChevronRight } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import TopAppBar from "../components/TopAppBar";
-import { supabase, type ClassData } from "../core/supabase";
+import { performUserLogout, type ClassData } from "../core/supabase";
 import { SOCKET_EVENTS } from "../core/types";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
@@ -36,7 +36,7 @@ export default function LiveChallengeClassSelectView({
         onBack={() => setView("teacher-dashboard")}
         userName={user?.displayName}
         userAvatar={user?.avatar}
-        onLogout={() => supabase.auth.signOut()}
+        onLogout={() => performUserLogout()}
       />
 
       <main id="main-content" className="pt-24 px-6 max-w-2xl mx-auto">

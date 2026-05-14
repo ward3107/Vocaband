@@ -49,6 +49,60 @@ export const supabase = createClient(
 );
 
 // ---------------------------------------------------------------------------
+// Fast user-initiated logout
+// ---------------------------------------------------------------------------
+//
+// Default `supabase.auth.signOut()` makes a network round-trip to the auth
+// server before firing `SIGNED_OUT`.  On slow mobile networks that wait can
+// stretch to several seconds, during which the teacher sees nothing happen
+// after tapping Logout — they're stuck staring at the dashboard while the
+// browser waits for /auth/v1/logout to respond.
+//
+// This helper short-circuits that wait by:
+//   1. Clearing Supabase + app localStorage synchronously so the next page
+//      load sees no session and renders the landing instantly (no spinner).
+//   2. Cancelling speechSynthesis so demo voices don't outlive the navigation.
+//   3. Firing `signOut({ scope: 'local' })` in the background as best-effort
+//      server-side revocation — we don't await it.
+//   4. Hard-reloading to the appropriate landing immediately.
+//
+// The `onAuthStateChange` SIGNED_OUT handler in App.tsx still exists as a
+// fallback for automatic logouts (refresh token failure, session expiry)
+// and may fire concurrently here — harmless because the page is already
+// unloading.
+export function performUserLogout(opts: { isStudent?: boolean } = {}): void {
+  const target = opts.isStudent ? '/student' : '/';
+
+  try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+
+  // App-specific session pointers — clearing these avoids the post-reload
+  // bootstrap auto-restoring a student or Quick Play session.
+  try { localStorage.removeItem('vocaband_student_login'); } catch { /* noop */ }
+  try { localStorage.removeItem('vocaband_quick_play_session'); } catch { /* noop */ }
+  try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* noop */ }
+
+  // Supabase persists the session under `sb-<project-ref>-auth-token`.
+  // Wiping it synchronously means the bootstrap on the new page can't
+  // find a session to restore and skips its own spinner entirely.
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sb-') && key.includes('-auth-token')) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch { /* noop */ }
+
+  // Fire-and-forget server-side revocation.  `scope: 'local'` keeps other
+  // device sessions alive (which is what a per-device logout should do)
+  // and the call runs to completion in the background until the page
+  // unloads — we don't block the redirect on it.
+  supabase.auth.signOut({ scope: 'local' }).catch(() => { /* best-effort */ });
+
+  try { window.location.replace(target); } catch { /* noop */ }
+}
+
+// ---------------------------------------------------------------------------
 // Error handling
 // ---------------------------------------------------------------------------
 
