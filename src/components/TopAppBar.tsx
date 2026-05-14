@@ -25,6 +25,11 @@ interface TopAppBarProps {
    *  user chip.  Currently teacher-only — students don't need it on
    *  their own dashboards (they can use browser zoom). */
   showScaleControl?: boolean;
+  /** Optional ReactNode rendered at the start of the right-side
+   *  controls (before Exit/Scale/Language/User chip).  Used today by
+   *  the teacher dashboard to host the Voca switcher button so it
+   *  doesn't have to float over the header with fixed positioning. */
+  extraTrailing?: React.ReactNode;
 }
 
 /**
@@ -55,6 +60,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   userAvatar,
   onLogout,
   showScaleControl = false,
+  extraTrailing,
 }) => {
   const { language } = useLanguage();
   // Localised back / exit fallbacks — parents can still pass an
@@ -114,6 +120,10 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         </div>
       </div>
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Parent-supplied trailing control(s).  Rendered first so a
+            "switch Voca" pill sits to the left of Exit/Scale/Language/
+            User chip rather than floating over the header. */}
+        {extraTrailing}
         {/* Exit button — single-click escape from a multi-step flow.
             Sits before all other right-side controls so it's easy
             to find with a glance, no matter the step.  Renders only
