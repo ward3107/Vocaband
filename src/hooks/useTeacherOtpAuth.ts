@@ -45,15 +45,12 @@ export interface UseTeacherOtpAuth {
   error: string | null;
   /** Seconds until resend is allowed. 0 = enabled. */
   resendInSeconds: number;
-  /** Type-and-submit the email to send the OTP.  When Supabase has
-   *  CAPTCHA protection enabled (Auth → Bot and Abuse Protection),
-   *  pass the verified Turnstile token in `captchaToken`.  Without
-   *  protection enabled it's ignored. */
-  sendCode: (email: string, captchaToken?: string) => Promise<void>;
+  /** Type-and-submit the email to send the OTP. */
+  sendCode: (email: string) => Promise<void>;
   /** Type-and-submit the 6-digit code to verify. */
   verifyCode: (code: string) => Promise<void>;
   /** Resend the same email's code. */
-  resend: (captchaToken?: string) => Promise<void>;
+  resend: () => Promise<void>;
   /** Reset back to 'idle' so the user can edit the email again. */
   reset: () => void;
 }
@@ -88,7 +85,7 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
     };
   }, [resendInSeconds]);
 
-  const sendCode = useCallback(async (rawEmail: string, captchaToken?: string) => {
+  const sendCode = useCallback(async (rawEmail: string) => {
     const trimmed = rawEmail.trim().toLowerCase();
     // Cheap client-side sanity check — Supabase rejects malformed
     // emails too, but failing fast keeps the loading spinner from
@@ -111,18 +108,11 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
     // teacher signups we need to create an auth.users row, then the
     // allowlist check in App.tsx's onAuthStateChange handler blocks
     // any non-allowlisted teacher from getting a public.users row.
-    //
-    // captchaToken is forwarded to Supabase Auth's CAPTCHA verification
-    // path.  When CAPTCHA protection is OFF in the Supabase dashboard
-    // (Auth → Bot and Abuse Protection), Supabase ignores this field
-    // entirely — so passing it here is safe even before the dashboard
-    // setting is enabled.
     const { error: sendErr } = await supabase.auth.signInWithOtp({
       email: trimmed,
       options: {
         shouldCreateUser: true,
         emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
-        captchaToken: captchaToken && captchaToken.length > 0 ? captchaToken : undefined,
       },
     });
 
@@ -169,9 +159,9 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
     setStage("done");
   }, [email]);
 
-  const resend = useCallback(async (captchaToken?: string) => {
+  const resend = useCallback(async () => {
     if (!email || resendInSeconds > 0) return;
-    await sendCode(email, captchaToken);
+    await sendCode(email);
   }, [email, resendInSeconds, sendCode]);
 
   const reset = useCallback(() => {
