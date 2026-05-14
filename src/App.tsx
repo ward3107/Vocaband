@@ -3053,7 +3053,7 @@ export default function App() {
               touchAction: "manipulation",
               WebkitTapHighlightColor: "transparent",
             }}
-            className={`fixed top-3 ${activeVoca === "hebrew" ? "left-3" : "right-3"} z-[60] inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-indigo-600 text-white text-xs sm:text-sm font-black tracking-wider shadow-lg shadow-indigo-500/40 ring-2 ring-white/30 hover:bg-indigo-500 active:scale-95 transition`}
+            className="fixed top-3 right-3 z-[60] inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-indigo-600 text-white text-xs sm:text-sm font-black tracking-wider shadow-lg shadow-indigo-500/40 ring-2 ring-white/30 hover:bg-indigo-500 active:scale-95 transition"
             title={activeVoca === "hebrew" ? "החלף ל-Voca אחר" : "Switch to another Voca"}
             dir={activeVoca === "hebrew" ? "rtl" : undefined}
           >
