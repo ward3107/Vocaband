@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { View } from '../core/views';
 import { supabase } from '../core/supabase';
+import { useLanguage } from '../hooks/useLanguage';
+import { pendingApprovalT } from '../locales/student/pending-approval';
 
 interface PendingApprovalInfo {
   name: string;
@@ -40,6 +42,8 @@ export default function PendingApprovalScreen({
   setView,
   showToast,
 }: PendingApprovalScreenProps) {
+  const { language, dir } = useLanguage();
+  const t = pendingApprovalT[language];
   const [checking, setChecking] = useState(false);
   const [dots, setDots] = useState('');
   // Capture the parent-supplied callbacks via refs so the realtime
@@ -70,7 +74,7 @@ export default function PendingApprovalScreen({
       if (cancelled) return;
       if (row && row.status === 'approved') {
         try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
-        showToastRef.current("You've been approved! Logging in...", 'success');
+        showToastRef.current(t.approvedLoggingIn, 'success');
         void handleLoginAsStudentRef.current(row.id);
       }
     };
@@ -163,20 +167,20 @@ export default function PendingApprovalScreen({
 
       if (data && data.length > 0 && data[0].status === 'approved') {
         try { sessionStorage.removeItem('vocaband_pending_approval'); } catch {}
-        showToast("You've been approved! Logging in...", 'success');
+        showToast(t.approvedLoggingIn, 'success');
         void handleLoginAsStudent(data[0].id);
       } else {
-        showToast("Not approved yet. Ask your teacher!", 'info');
+        showToast(t.notApprovedYet, 'info');
       }
     } catch {
-      showToast('Could not check. Try again.', 'error');
+      showToast(t.couldNotCheck, 'error');
     } finally {
       setChecking(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 px-4">
+    <div dir={dir} className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 px-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
         <div className="text-6xl mb-4">
           <span className="inline-block animate-bounce">
@@ -187,18 +191,18 @@ export default function PendingApprovalScreen({
           </span>
         </div>
         <h2 className="text-2xl font-black text-stone-800 mb-2">
-          Waiting for approval{dots}
+          {t.waitingForApproval}{dots}
         </h2>
         <p className="text-stone-500 mb-6">
-          Your teacher needs to approve <strong>"{pendingApprovalInfo.name}"</strong> in class <strong>{pendingApprovalInfo.classCode}</strong> before you can play.
+          {t.bodyLead} <strong>"{pendingApprovalInfo.name}"</strong> {t.inClass(pendingApprovalInfo.classCode)} {t.beforeYouCanPlay}
         </p>
 
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-left">
-          <p className="text-sm font-bold text-amber-800 mb-2">What to do:</p>
+          <p className="text-sm font-bold text-amber-800 mb-2">{t.whatToDoLabel}</p>
           <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
-            <li>Tell your teacher you signed up</li>
-            <li>They'll approve you from their dashboard</li>
-            <li>This screen will update automatically</li>
+            <li>{t.step1}</li>
+            <li>{t.step2}</li>
+            <li>{t.step3}</li>
           </ol>
         </div>
 
@@ -209,7 +213,7 @@ export default function PendingApprovalScreen({
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           className="w-full py-4 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50 mb-3"
         >
-          {checking ? 'Checking...' : 'Check now'}
+          {checking ? t.checking : t.checkNow}
         </button>
 
         <button
@@ -222,7 +226,7 @@ export default function PendingApprovalScreen({
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           className="text-stone-400 text-sm hover:text-stone-600 transition-colors"
         >
-          Use a different account
+          {t.useDifferentAccount}
         </button>
       </div>
     </div>

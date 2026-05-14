@@ -169,6 +169,12 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     totalXP: "Total XP",
     wordsLearned: "words mastered",
     badgesEarned: "Badges",
+    playPronunciation: "Play pronunciation",
+    typeInEnglish: "Type in English...",
+    typeTheWord: "Type the word...",
+    clearBtn: "Clear",
+    streak: "Streak",
+    frame: "Frame",
   },
   he: {
     demoMode: "מצב הדגמה — הצצה מעשית ל-Vocaband",
@@ -251,6 +257,12 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     totalXP: "סה\"כ XP",
     wordsLearned: "מילים שנלמדו",
     badgesEarned: "הישגים",
+    playPronunciation: "השמע הגייה",
+    typeInEnglish: "הקלידו באנגלית...",
+    typeTheWord: "הקלידו את המילה...",
+    clearBtn: "נקה",
+    streak: "רצף",
+    frame: "מסגרת",
   },
   ar: {
     demoMode: "وضع تجريبي — معاينة عملية لـ Vocaband",
@@ -333,6 +345,12 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     totalXP: "مجموع XP",
     wordsLearned: "كلمات تم إتقانها",
     badgesEarned: "الشارات",
+    playPronunciation: "تشغيل النطق",
+    typeInEnglish: "اكتب بالإنجليزية...",
+    typeTheWord: "اكتب الكلمة...",
+    clearBtn: "مسح",
+    streak: "السلسلة",
+    frame: "إطار",
   },
 };
 
@@ -1202,7 +1220,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       {/* Close Button — dark glass to match the rest of the app's UI. */}
       <button
         onClick={onClose}
-        aria-label="Close demo"
+        aria-label={t.closeDemo}
         className={`absolute top-14 z-50 w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 hover:border-white/40 shadow-lg transition-all ${isRTL ? 'left-4' : 'right-4'}`}
       >
         <X size={20} />
@@ -1877,7 +1895,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <button
                       onClick={() => speakWord(currentWord.id)}
                       className="p-1.5 sm:p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-full hover:from-emerald-100 hover:to-emerald-200 transition-all shadow-sm hover:shadow-md border border-emerald-200"
-                      aria-label="Play pronunciation"
+                      aria-label={t.playPronunciation}
                     >
                       <Volume2 size={20} className="text-emerald-600 sm:w-6 sm:h-6" />
                     </button>
@@ -1943,7 +1961,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <button
                       onClick={() => speakWord(currentWord.id)}
                       className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm hover:shadow-md border border-blue-200 mx-auto flex items-center justify-center"
-                      aria-label="Play pronunciation"
+                      aria-label={t.playPronunciation}
                     >
                       <Volume2 size={24} className="text-stone-600 sm:w-8 sm:h-8" />
                     </button>
@@ -2049,7 +2067,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <button
                       onClick={() => speakWord(currentWord.id)}
                       className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm hover:shadow-md border border-blue-200 mx-auto flex items-center justify-center"
-                      aria-label="Play pronunciation"
+                      aria-label={t.playPronunciation}
                     >
                       <Volume2 size={24} className="text-stone-600 sm:w-8 sm:h-8" />
                     </button>
@@ -2080,7 +2098,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       spellCheck={false}
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
-                      placeholder="Type in English..."
+                      placeholder={t.typeInEnglish}
                       disabled={selectedAnswer !== null}
                       className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all shadow-sm ${
                         isCorrect === true ? "border-blue-500 bg-gradient-to-br from-blue-50 to-emerald-50 text-blue-700 shadow-blue-200/50" :
@@ -2144,7 +2162,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       spellCheck={false}
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
-                      placeholder="Type in English..."
+                      placeholder={t.typeInEnglish}
                       disabled={selectedAnswer !== null}
                       className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all shadow-sm ${
                         isCorrect === true ? "border-blue-500 bg-gradient-to-br from-blue-50 to-emerald-50 text-blue-700 shadow-blue-200/50" :
@@ -2199,7 +2217,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <button
                       onClick={() => speakWord(tfStatement.word.id)}
                       className="mt-4 p-2 sm:p-3 bg-gradient-to-br from-rose-50 to-rose-100 rounded-full hover:from-rose-100 hover:to-rose-200 transition-all shadow-sm hover:shadow-md border border-rose-200"
-                      aria-label="Play pronunciation"
+                      aria-label={t.playPronunciation}
                     >
                       <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
                     </button>
@@ -2263,7 +2281,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         <motion.button
                           onClick={() => speakWord(currentWord.id)}
                           className="p-2 sm:p-3 bg-white rounded-full hover:bg-stone-50 transition-colors shadow-sm border border-stone-200"
-                          aria-label="Play pronunciation"
+                          aria-label={t.playPronunciation}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                         >
@@ -2338,7 +2356,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <button
                       onClick={() => speakWord(currentWord.id)}
                       className="p-1.5 sm:p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm hover:shadow-md border border-blue-200"
-                      aria-label="Play pronunciation"
+                      aria-label={t.playPronunciation}
                     >
                       <Volume2 size={20} className="text-stone-600 sm:w-6 sm:h-6" />
                     </button>
@@ -2355,7 +2373,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       spellCheck={false}
                       value={spellingInput}
                       onChange={(e) => setSpellingInput(e.target.value)}
-                      placeholder="Type in English..."
+                      placeholder={t.typeInEnglish}
                       disabled={selectedAnswer !== null}
                       className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all shadow-sm ${
                         isCorrect === true ? "border-blue-500 bg-gradient-to-br from-blue-50 to-emerald-50 text-blue-700 shadow-blue-200/50" :
@@ -2438,7 +2456,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         spellCheck={false}
                         value={spellingInput}
                         onChange={(e) => setSpellingInput(e.target.value)}
-                        placeholder="Type the word..."
+                        placeholder={t.typeTheWord}
                         disabled={selectedAnswer !== null}
                         className={`w-full p-3 sm:p-4 text-base sm:text-2xl font-black text-center border-4 rounded-2xl mb-3 transition-all ${
                           isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
@@ -2560,7 +2578,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         className="flex-1 py-2 bg-gradient-to-r from-stone-100 to-stone-200 text-stone-600 rounded-xl font-bold hover:from-stone-200 hover:to-stone-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
                         whileHover={{ scale: sentenceFeedback === null ? 1.02 : 1 }}
                         whileTap={{ scale: 0.97 }}
-                      >Clear</motion.button>
+                      >{t.clearBtn}</motion.button>
                       <motion.button
                         onClick={() => {
                           const target = currentSentence;
@@ -2657,7 +2675,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </div>
                 {streak > 0 && (
                   <div className="bg-white p-5 sm:p-7 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center">
-                    <p className="text-[10px] sm:text-xs uppercase tracking-widest text-orange-500 mb-1 font-black">Streak</p>
+                    <p className="text-[10px] sm:text-xs uppercase tracking-widest text-orange-500 mb-1 font-black">{t.streak}</p>
                     <p className="text-4xl sm:text-6xl font-black text-orange-600">{streak} 🔥</p>
                   </div>
                 )}
@@ -2869,7 +2887,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {shopTab === "themes" && (
                 <div>
                   <div className="mb-4">
-                    <h2 className="text-xl font-black text-stone-900">Themes</h2>
+                    <h2 className="text-xl font-black text-stone-900">{t.themes}</h2>
                     <p className="text-stone-500 text-sm mt-1">Change the whole-app vibe.</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2913,7 +2931,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                             </span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-0.5">Frame</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-0.5">{t.frame}</p>
                             <h3 className="text-base font-black text-white truncate">{frame.name}</h3>
                             <p className="text-xs text-white/70 mt-1">Full app — {frame.cost} XP</p>
                           </div>

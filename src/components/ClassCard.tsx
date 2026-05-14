@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Users } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
@@ -264,7 +264,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   ...(avatar ? { backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' } : {}),
                 }}
                 className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'border' : 'bg-gradient-to-br from-indigo-300 to-violet-400'}`}
-                title="Change avatar"
+                title={t.changeAvatarTitle}
               >
                 {avatar ? (
                   <span className="text-2xl leading-none">{avatar}</span>
@@ -374,7 +374,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     onKeyDown={handleNameKeyDown}
                     onBlur={handleNameSave}
                     maxLength={60}
-                    placeholder="Class name"
+                    placeholder={t.classNamePlaceholder}
                     style={{ color: 'var(--vb-text-primary)', backgroundColor: 'var(--vb-surface-alt)' }}
                     className="flex-1 text-lg sm:text-xl font-bold leading-tight border-2 border-[var(--vb-accent)] rounded-lg px-2 py-1 outline-none"
                     disabled={savingName}
@@ -407,7 +407,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   type="button"
                   style={{ touchAction: 'manipulation', color: 'var(--vb-text-secondary)' }}
                   className="group inline-flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wider transition-colors hover:text-[var(--vb-accent)]"
-                  title="Copy class code"
+                  title={t.copyClassCodeTitle}
                 >
                   <span>{code}</span>
                   {copiedCode === code ? (
@@ -435,7 +435,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
               type="button"
               style={{ touchAction: 'manipulation', color: 'var(--vb-text-muted)' }}
               className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--vb-surface-alt)] hover:text-[var(--vb-text-primary)]"
-              aria-label="Class options"
+              aria-label={t.classOptionsAria}
             >
               <MoreVertical size={18} />
             </button>
@@ -577,11 +577,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 color: 'var(--vb-text-secondary)',
               }}
               className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-sm transition-colors hover:opacity-90"
-              title="Manage roster + PINs"
-              aria-label="Manage roster"
+              title={t.rosterButtonTitle}
+              aria-label={t.rosterButtonAria}
             >
               <Users size={15} />
-              <span className="hidden sm:inline">Roster</span>
+              <span className="hidden sm:inline">{t.rosterShortLabel}</span>
             </button>
           )}
           {assignments.length > 0 && (
@@ -655,11 +655,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     color: 'var(--vb-accent)',
                   }}
                   className="px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1 hover:opacity-90 transition-colors"
-                  aria-label="Share assignment link"
-                  title="Share assignment link"
+                  aria-label={t.shareAssignmentAria}
+                  title={t.shareAssignmentTitle}
                 >
                   <Share2 size={13} />
-                  <span className="hidden sm:inline">Share</span>
+                  <span className="hidden sm:inline">{t.shareShortLabel}</span>
                 </button>
                 {onEditAssignment && (
                   <button
@@ -690,11 +690,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
                       color: 'var(--vb-accent)',
                     }}
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1 hover:opacity-90 transition-colors"
-                    aria-label="Project to class"
-                    title="Project to class"
+                    aria-label={t.projectToClassAria}
+                    title={t.projectToClassAria}
                   >
                     <Tv2 size={13} />
-                    <span className="hidden sm:inline">Project</span>
+                    <span className="hidden sm:inline">{t.projectShortLabel}</span>
                   </button>
                 )}
                 {onPrintAssignmentWorksheet && (
@@ -706,11 +706,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
                       color: 'var(--vb-text-secondary)',
                     }}
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1 hover:opacity-90 transition-colors"
-                    aria-label="Print worksheet"
-                    title="Print worksheet"
+                    aria-label={t.printWorksheetAria}
+                    title={t.printWorksheetAria}
                   >
                     <Printer size={13} />
-                    <span className="hidden sm:inline">Print</span>
+                    <span className="hidden sm:inline">{t.printShortLabel}</span>
                   </button>
                 )}
                 {onDeleteAssignment && (

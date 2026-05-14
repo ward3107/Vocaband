@@ -15,6 +15,8 @@ import { freshTrialEndsAt, isPro } from "./core/plan";
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { setSentryUser, clearSentryUser } from "./core/sentry";
 import { useAudio } from "./hooks/useAudio";
+import { useLanguage } from "./hooks/useLanguage";
+import { appToastsT } from "./locales/app-toasts";
 import { useRetention } from "./hooks/useRetention";
 import { getTeacherDashboardTheme } from "./constants/teacherDashboardThemes";
 import { applyThemePalette, clearThemePalette } from "./utils/applyThemePalette";
@@ -170,6 +172,11 @@ const shouldPreserveView = (role: string, currentView: View): boolean => {
 export default function App() {
   // Initialize game debugger
   const gameDebug = getGameDebugger();
+  // Language-aware toast text — picked up at render time so a teacher
+  // who flips EN/HE/AR before firing a callback sees the localised
+  // version on the next render.
+  const { language: appLanguage } = useLanguage();
+  const appToasts = appToastsT[appLanguage];
 
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
@@ -1871,17 +1878,17 @@ export default function App() {
               if (session?.user) {
                 await restoreSession(session.user);
               } else {
-                showToast("Could not restore session. Please sign in again.", "error");
+                showToast(appToasts.couldNotRestoreSession, "error");
                 setLoading(false);
               }
             } catch {
-              showToast("Sign-in failed. Please try again.", "error");
+              showToast(appToasts.signInFailed, "error");
               setLoading(false);
             }
           }, 1500);
           return; // Don't setLoading(false) yet — the retry will handle it
         }
-        showToast("Sign-in failed. Please try again.", "error");
+        showToast(appToasts.signInFailed, "error");
       } finally {
         restoreInProgress.current = false;
         setLoading(false);
@@ -2057,7 +2064,7 @@ export default function App() {
               setTimeout(pollForSession, 250);
             } else {
               // Session never materialised — show landing with error
-              showToast("Sign-in is taking too long. Please try again.", "error");
+              showToast(appToasts.signInTakingTooLong, "error");
               setLoading(false);
             }
           };
@@ -3103,7 +3110,7 @@ export default function App() {
             setDeleteConfirmModal(null);
             const undoTimeout = setTimeout(async () => {
               const { error } = await supabase.from('assignments').delete().eq('id', deletedId);
-              if (error) showToast("Failed to delete from database: " + error.message, "error");
+              if (error) showToast(appToasts.failedDeleteFromDb(error.message), "error");
               delete (window as any).__undoAssignment;
               delete (window as any).__undoDeleteTimeout;
             }, 8000);
@@ -3123,7 +3130,7 @@ export default function App() {
                     delete (window as any).__undoAssignment;
                   }
                   setToasts(prev => prev.filter(t => t.id !== undoToastId));
-                  showToast("Assignment restored!", "success");
+                  showToast(appToasts.assignmentRestored, "success");
                 }
               }
             }]);
@@ -3281,11 +3288,11 @@ export default function App() {
           onDeleteAssignment={async (assignment) => {
             const { error } = await supabase.from('assignments').delete().eq('id', assignment.id);
             if (error) {
-              showToast("Failed to delete assignment: " + error.message, "error");
+              showToast(appToasts.failedDeleteAssignment(error.message), "error");
               return;
             }
             setTeacherAssignments(prev => prev.filter(a => a.id !== assignment.id));
-            showToast("Assignment deleted successfully", "success");
+            showToast(appToasts.assignmentDeleted, "success");
           }}
           onOpenRoster={(c) => setRosterModalClass(c)}
           savedTasks={savedTasks.tasks}
@@ -3405,7 +3412,7 @@ export default function App() {
               return { classCode: code };
             } catch (err) {
               console.error('[onboarding] wizard completion failed:', err);
-              showToast("Couldn't set up your class — please try again.", 'error');
+              showToast(appToasts.couldNotSetupClass, 'error');
               return null;
             }
           }}
@@ -3704,7 +3711,7 @@ export default function App() {
                 p_subject: 'hebrew',
               });
               if (error) {
-                showToast("Failed to create session: " + error.message, "error");
+                showToast(appToasts.failedCreateSession(error.message), "error");
                 throw error;
               }
               const session = data as { id: string; session_code: string; allowed_modes?: string[] };
@@ -3805,7 +3812,7 @@ export default function App() {
           });
 
           if (error) {
-            showToast("Failed to create session: " + error.message, "error");
+            showToast(appToasts.failedCreateSession(error.message), "error");
             throw error;
           }
 
