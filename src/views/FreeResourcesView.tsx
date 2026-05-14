@@ -62,6 +62,10 @@ interface WorksheetSettings {
   orientation: Orientation;
   bingoGridSize: BingoGridSize;
   bingoCardCount: BingoCardCount;
+  // Teacher-only solution sheet appended to puzzle/quiz worksheets.
+  // Default true so existing behavior is unchanged; teachers who want
+  // a clean student-facing print can untick from the settings drawer.
+  includeAnswerKey: boolean;
 }
 
 const DEFAULT_SETTINGS: WorksheetSettings = {
@@ -74,7 +78,21 @@ const DEFAULT_SETTINGS: WorksheetSettings = {
   orientation: "portrait",
   bingoGridSize: 5,
   bingoCardCount: 4,
+  includeAnswerKey: true,
 };
+
+// Formats whose generators emit a teacher-only answer key / solution
+// sheet at the end. The settings drawer hides the toggle for any other
+// format so teachers don't see a no-op control.
+const FORMATS_WITH_ANSWER_KEY = new Set<Format>([
+  "matching",
+  "wordsearch",
+  "fillblank",
+  "scramble",
+  "quiz",
+  "crossword",
+  "cloze",
+]);
 
 // Many beginning EFL students do not yet recognise that "Apple" and "apple"
 // are the same word. Worksheets default to "original" but teachers can flip
@@ -512,7 +530,7 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, set
 };
 
 const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
-  const { casing, audioQR, inkSaver } = settings;
+  const { casing, audioQR, inkSaver, includeAnswerKey } = settings;
   const t = {
     en: { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", name: "Name:", date: "Date:" },
     he: { title: "תרגיל התאמה", instructions: "כתבו את מספר המילה הנכונה באנגלית ליד כל תרגום.", englishWords: "מילים באנגלית", translations: "תרגומים", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
@@ -586,7 +604,7 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
       </div>
       ${sheetFooter()}
     </section>
-    <section class="sheet page-break">
+    ${includeAnswerKey ? `<section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="section-title">🔑 ${escapeHtml(t.answerKey)}</div>
       <div class="answer-grid">
@@ -602,7 +620,7 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
           .join("")}
       </div>
       ${sheetFooter()}
-    </section>`;
+    </section>` : ""}`;
 
   return htmlDoc({
     lang,
@@ -828,7 +846,7 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
 };
 
 const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
-  const { casing, audioQR, inkSaver } = settings;
+  const { casing, audioQR, inkSaver, includeAnswerKey } = settings;
   // Word search grids are always one consistent case so the eye can scan the
   // letters as a uniform texture. We honour the toggle: "lower" → all
   // lowercase, otherwise → all uppercase. The word list always matches the
@@ -978,7 +996,7 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, se
         </div>
       </div>
     </section>
-    <section class="sheet page-break">
+    ${includeAnswerKey ? `<section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="ws-content">
         <div class="ws-grid">${cellHTML(true)}</div>
@@ -988,13 +1006,13 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, se
         </div>
       </div>
       ${sheetFooter()}
-    </section>`;
+    </section>` : ""}`;
 
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
-  const { casing, audioQR, inkSaver, showTranslations } = settings;
+  const { casing, audioQR, inkSaver, showTranslations, includeAnswerKey } = settings;
   const t = {
     en: { title: "Fill in the Blank", instructions: "Use the words from the word bank to fill in each blank.", wordBank: "Word Bank", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" },
     he: { title: "השלמת חסר", instructions: "השתמשו במילים מבנק המילים כדי להשלים כל חסר.", wordBank: "בנק מילים", answerKey: "פתרון", name: "שם:", date: "תאריך:", className: "כיתה:" },
@@ -1105,7 +1123,7 @@ const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, set
           .join("")}
       </div>
     </section>
-    <section class="sheet page-break">
+    ${includeAnswerKey ? `<section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="answer-grid">
         ${items
@@ -1119,7 +1137,7 @@ const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, set
           .join("")}
       </div>
       ${sheetFooter()}
-    </section>`;
+    </section>` : ""}`;
 
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
@@ -1197,7 +1215,7 @@ const generateSpellingTestHTML = (pack: TopicPack, words: Word[], lang: string, 
 };
 
 const generateWordScrambleHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
-  const { casing, inkSaver, showTranslations } = settings;
+  const { casing, inkSaver, showTranslations, includeAnswerKey } = settings;
   const t = {
     en: { title: "Word Scramble", instructions: "Unscramble the letters and write the English word on the line. The translation is given as a hint.", letters: "Scrambled", clue: "Hint", answer: "Your answer", answerKey: "Answer Key", name: "Name:", date: "Date:" },
     he: { title: "ערבוב אותיות", instructions: "סדרו את האותיות וכתבו את המילה באנגלית על השורה. התרגום נתון כרמז.", letters: "מעורבב", clue: "רמז", answer: "התשובה שלך", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
@@ -1268,7 +1286,7 @@ const generateWordScrambleHTML = (pack: TopicPack, words: Word[], lang: string, 
           .join("")}
       </div>
     </section>
-    <section class="sheet page-break">
+    ${includeAnswerKey ? `<section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="answer-grid">
         ${eligible
@@ -1282,13 +1300,13 @@ const generateWordScrambleHTML = (pack: TopicPack, words: Word[], lang: string, 
           .join("")}
       </div>
       ${sheetFooter()}
-    </section>`;
+    </section>` : ""}`;
 
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
-  const { casing, inkSaver } = settings;
+  const { casing, inkSaver, includeAnswerKey } = settings;
   const t = {
     en: { title: "Vocabulary Quiz", instructions: "Circle the letter (A, B, C or D) of the correct answer.", part1: "Part 1 — Choose the correct translation", part2: "Part 2 — Choose the correct English word", answerKey: "Answer Key", name: "Name:", date: "Date:", score: "Score:" },
     he: { title: "מבחן אוצר מילים", instructions: "הקיפו את האות (A, B, C או D) של התשובה הנכונה.", part1: "חלק 1 — בחרו את התרגום הנכון", part2: "חלק 2 — בחרו את המילה הנכונה באנגלית", answerKey: "פתרון", name: "שם:", date: "תאריך:", score: "ציון:" },
@@ -1377,7 +1395,7 @@ const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, set
       <div class="quiz-section-title">${escapeHtml(t.part2)}</div>
       <div class="quiz-list">${q2.map((q, i) => renderQuestion(q, q1.length + i, false)).join("")}</div>
     </section>
-    <section class="sheet page-break">
+    ${includeAnswerKey ? `<section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="answer-grid">
         ${[...q1, ...q2]
@@ -1391,7 +1409,7 @@ const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, set
           .join("")}
       </div>
       ${sheetFooter()}
-    </section>`;
+    </section>` : ""}`;
 
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
@@ -1531,7 +1549,7 @@ const buildCrossword = (
 };
 
 const generateCrosswordHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
-  const { casing, inkSaver } = settings;
+  const { casing, inkSaver, includeAnswerKey } = settings;
   const t = {
     en: { title: "Crossword Puzzle", instructions: "Solve the crossword. Use the translations as clues to find each English word.", across: "Across", down: "Down", solution: "Solution", name: "Name:", date: "Date:" },
     he: { title: "תשבץ", instructions: "פתרו את התשבץ. השתמשו בתרגומים כרמזים למציאת כל מילה באנגלית.", across: "מאוזן", down: "מאונך", solution: "פתרון", name: "שם:", date: "תאריך:" },
@@ -1641,17 +1659,17 @@ const generateCrosswordHTML = (pack: TopicPack, words: Word[], lang: string, set
         </div>
       </div>
     </section>
-    <section class="sheet page-break">
+    ${includeAnswerKey ? `<section class="sheet page-break">
       ${sheetHeader(pack, t.solution)}
       ${renderGrid(true)}
       ${sheetFooter()}
-    </section>`;
+    </section>` : ""}`;
 
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
 
 const generateClozeHTML = (pack: TopicPack, words: Word[], lang: string, settings: WorksheetSettings) => {
-  const { casing, audioQR, inkSaver, showTranslations } = settings;
+  const { casing, audioQR, inkSaver, showTranslations, includeAnswerKey } = settings;
   const t = {
     en: { title: "Cloze Reading", instructions: "Read the passage and fill in each blank with a word from the word bank.", wordBank: "Word Bank", passage: "Passage", answerKey: "Answer Key", name: "Name:", date: "Date:" },
     he: { title: "קריאה והשלמה", instructions: "קראו את הקטע והשלימו כל חסר במילה מבנק המילים.", wordBank: "בנק מילים", passage: "קטע", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
@@ -1765,7 +1783,7 @@ const generateClozeHTML = (pack: TopicPack, words: Word[], lang: string, setting
       ${wordBankHTML}
       ${passageSectionsHTML}
     </section>
-    <section class="sheet page-break">
+    ${includeAnswerKey ? `<section class="sheet page-break">
       ${sheetHeader(pack, t.answerKey)}
       <div class="answer-grid">
         ${items
@@ -1779,7 +1797,7 @@ const generateClozeHTML = (pack: TopicPack, words: Word[], lang: string, setting
           .join("")}
       </div>
       ${sheetFooter()}
-    </section>`;
+    </section>` : ""}`;
 
   return htmlDoc({ lang, title: `${pack.name} — ${t.title}`, styles, body });
 };
@@ -2572,6 +2590,12 @@ const CheckboxField: React.FC<{ label: string; checked: boolean; onChange: (v: b
   </label>
 );
 
+// Stages we surface to the user during the html2pdf pass so the wait
+// doesn't feel like a hung tab. The actual rasterization is one big
+// synchronous-ish call; we just transition the label at each await
+// checkpoint in handleConfirmDownload.
+type ExportStage = "preparing" | "rendering" | "saving" | null;
+
 interface PreviewModalProps {
   // Nullable so the modal can paint its chrome instantly while the
   // generator is still computing the HTML in a deferred microtask.
@@ -2610,10 +2634,20 @@ interface PreviewModalProps {
     bingoCardCount: string;
     bingoCardCountOptions: { value: BingoCardCount; label: string }[];
     previewLoading: string;
+    includeAnswerKey: string;
+    exportPreparing: string;
+    exportRendering: string;
+    exportSaving: string;
+    exportTip: string;
   };
   onClose: () => void;
   onDownload: () => void;
   isDownloading: boolean;
+  exportStage: ExportStage;
+  // Whether this format ends with a teacher-only solution sheet, so
+  // the modal can hide the "Include answer key" toggle for formats
+  // that never emit one (worksheet, flashcards, bingo, ...).
+  hasAnswerKey: boolean;
 }
 
 const PreviewModal: React.FC<PreviewModalProps> = ({
@@ -2632,6 +2666,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   onClose,
   onDownload,
   isDownloading,
+  exportStage,
+  hasAnswerKey,
 }) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Reset to "loading" whenever the srcDoc changes (new pack, new settings).
@@ -2803,6 +2839,14 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
               />
             )}
 
+            {hasAnswerKey && (
+              <CheckboxField
+                label={labels.includeAnswerKey}
+                checked={settings.includeAnswerKey}
+                onChange={(v) => onSettingChange("includeAnswerKey", v)}
+              />
+            )}
+
             <CheckboxField
               label={labels.inkSaver}
               checked={settings.inkSaver}
@@ -2828,11 +2872,36 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
               onLoad={() => setIframeReady(true)}
             />
           ) : null}
-          {(!preview || !iframeReady) && (
+          {(!preview || !iframeReady) && !exportStage && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/85 backdrop-blur-sm pointer-events-none">
               <div className="flex items-center gap-3 text-violet-700">
                 <Loader2 size={20} className="animate-spin" />
                 <span className="font-semibold text-sm sm:text-base">{labels.previewLoading}</span>
+              </div>
+            </div>
+          )}
+          {/* Export overlay — opaque on purpose so the user can't doubt
+              that the click registered. The stage label rotates as
+              handleConfirmDownload moves through font-wait → image-wait
+              → html2pdf.save() so the wait feels staged instead of frozen. */}
+          {exportStage && (
+            <div
+              className="absolute inset-0 flex items-center justify-center bg-white/95 backdrop-blur-sm"
+              role="status"
+              aria-live="polite"
+            >
+              <div className="flex flex-col items-center gap-4 text-violet-700 px-6 text-center max-w-sm">
+                <Loader2 size={48} className="animate-spin" />
+                <div className="text-lg sm:text-xl font-bold">
+                  {exportStage === "preparing"
+                    ? labels.exportPreparing
+                    : exportStage === "rendering"
+                      ? labels.exportRendering
+                      : labels.exportSaving}
+                </div>
+                <div className="text-xs sm:text-sm text-violet-600/80 leading-relaxed">
+                  {labels.exportTip}
+                </div>
               </div>
             </div>
           )}
@@ -3004,6 +3073,10 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const [previewSource, setPreviewSource] = useState<PreviewSource | null>(null);
   const [settings, setSettings] = useState<WorksheetSettings>(DEFAULT_SETTINGS);
   const [isExporting, setIsExporting] = useState(false);
+  // Drives the prominent "Generating PDF…" overlay in the PreviewModal.
+  // Cycles preparing → rendering → saving as handleConfirmDownload moves
+  // through its async checkpoints; cleared in the finally block.
+  const [exportStage, setExportStage] = useState<ExportStage>(null);
   const [topicSearch, setTopicSearch] = useState("");
   // null = collapsed; otherwise the lookup key of the bundle whose format
   // picker is currently open. Only one bundle is expanded at a time so the
@@ -3155,6 +3228,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const handleConfirmDownload = async () => {
     if (!preview) return;
     setIsExporting(true);
+    setExportStage("preparing");
     // Render the preview HTML inside an off-screen iframe rather than a
     // plain <div> appended to document.body.  preview.html embeds a
     // <style> block with global selectors (`*`, `html, body` from
@@ -3181,6 +3255,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
       // ship a half-rendered PDF.
       if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
       setIsExporting(false);
+      setExportStage(null);
       setPreviewSource(null);
       return;
     }
@@ -3234,6 +3309,11 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
       ]);
     }
 
+    // Stage transition: fonts + images are loaded, now we hand off to
+    // html2canvas. Update the overlay BEFORE the yield so the new
+    // label paints in the same frame as the spinner.
+    setExportStage("rendering");
+
     // Yield to the browser so React paints the "exporting" spinner
     // BEFORE html2canvas locks the main thread for its rasterization
     // pass.  Without this the user clicks Download and sees a totally
@@ -3270,12 +3350,22 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     };
 
     try {
-      await html2pdf().set(opt).from(idoc.body).save();
+      // Split the html2pdf chain so we can flip the overlay label
+      // between the slow html2canvas pass (`toCanvas`) and the much
+      // faster jsPDF assemble + save pass. The worker is mutative and
+      // chains across awaits — calling `.toPdf().save()` on the same
+      // worker after `.toCanvas()` resolves is the documented
+      // multi-step pattern from html2pdf.js.
+      const worker = html2pdf().set(opt).from(idoc.body);
+      await worker.toCanvas();
+      setExportStage("saving");
+      await worker.toPdf().save();
     } catch (error) {
       console.error("PDF generation failed:", error);
     } finally {
       if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
       setIsExporting(false);
+      setExportStage(null);
       setPreviewSource(null);
     }
   };
@@ -3680,10 +3770,17 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             bingoCardCount: t.bingoCardCountLabel,
             bingoCardCountOptions,
             previewLoading: t.previewLoading,
+            includeAnswerKey: t.includeAnswerKeyLabel,
+            exportPreparing: t.exportPreparing,
+            exportRendering: t.exportRendering,
+            exportSaving: t.exportSaving,
+            exportTip: t.exportTip,
           }}
           onClose={() => setPreviewSource(null)}
           onDownload={handleConfirmDownload}
           isDownloading={isExporting}
+          exportStage={exportStage}
+          hasAnswerKey={FORMATS_WITH_ANSWER_KEY.has(previewSource.format)}
         />
       )}
       {shareSource && (
