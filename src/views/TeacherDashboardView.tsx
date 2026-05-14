@@ -128,6 +128,11 @@ interface TeacherDashboardViewProps {
    *  quick actions are visible.  Defaults to 'english' so the existing
    *  English-only experience is preserved when the prop is omitted. */
   subject?: VocaId;
+  /** Optional ReactNode rendered inside the TopAppBar's right-side
+   *  controls (before Exit / scale / language / user chip).  Used by
+   *  App.tsx to host the Voca switcher button so it lives in the
+   *  header instead of floating over the page. */
+  headerExtra?: React.ReactNode;
 }
 
 export default function TeacherDashboardView({
@@ -154,6 +159,7 @@ export default function TeacherDashboardView({
   savedTasks, onUseSavedTask, onTogglePinSavedTask, onRemoveSavedTask,
   onWizardComplete, onWizardSkip,
   subject = "english",
+  headerExtra,
 }: TeacherDashboardViewProps) {
   const { language, dir: uiDir } = useLanguage();
   // VocaHebrew is intrinsically a Hebrew-language product surface — its
@@ -249,6 +255,7 @@ export default function TeacherDashboardView({
           userAvatar={user?.avatar}
           onLogout={() => supabase.auth.signOut()}
           showScaleControl
+          extraTrailing={headerExtra}
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -3040,33 +3040,42 @@ export default function App() {
   }
   if (hasTeacherAccess(user) && view === "teacher-dashboard") {
     const showVocaSwitcher = getEntitledVocas(user).length >= 2;
+    // Inline Voca switcher rendered inside TopAppBar's controls
+    // (passed via TeacherDashboardView's `headerExtra` prop).  Previously
+    // floated over the header with `position: fixed`, which covered the
+    // logo in Hebrew RTL and the user chip / logout in English LTR no
+    // matter how high we pushed the z-index.  Lives in the flex flow
+    // now so it just sits beside the language switcher.
+    const vocaSwitcherButton = showVocaSwitcher ? (
+      <button
+        type="button"
+        onClick={() => {
+          setActiveVoca(null);
+          setView("voca-picker");
+        }}
+        style={{
+          touchAction: "manipulation",
+          WebkitTapHighlightColor: "transparent",
+        }}
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-indigo-600 text-white text-[10px] sm:text-xs font-black tracking-wider shadow-sm hover:bg-indigo-500 active:scale-95 transition"
+        title={activeVoca === "hebrew" ? "החלף ל-Voca אחר" : "Switch to another Voca"}
+      >
+        <ArrowLeftRight size={12} aria-hidden />
+        <span className="hidden sm:inline">
+          {activeVoca === "hebrew" ? "החלף Voca" : "Switch Voca"}
+        </span>
+        <span className="sm:hidden">
+          {activeVoca === "hebrew" ? "החלף" : "Switch"}
+        </span>
+      </button>
+    ) : null;
     return (
       <LazyWrapper loadingMessage="Loading dashboard...">
-        {showVocaSwitcher && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveVoca(null);
-              setView("voca-picker");
-            }}
-            style={{
-              touchAction: "manipulation",
-              WebkitTapHighlightColor: "transparent",
-            }}
-            className="fixed top-3 right-3 z-[60] inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-indigo-600 text-white text-xs sm:text-sm font-black tracking-wider shadow-lg shadow-indigo-500/40 ring-2 ring-white/30 hover:bg-indigo-500 active:scale-95 transition"
-            title={activeVoca === "hebrew" ? "החלף ל-Voca אחר" : "Switch to another Voca"}
-            dir={activeVoca === "hebrew" ? "rtl" : undefined}
-          >
-            <ArrowLeftRight size={14} aria-hidden />
-            <span>
-              {activeVoca === "hebrew" ? "🇮🇱 החלף Voca" : "🇬🇧 Switch Voca"}
-            </span>
-          </button>
-        )}
         <TeacherDashboardView
           user={user}
           setUser={setUser}
           subject={activeVoca ?? "english"}
+          headerExtra={vocaSwitcherButton}
           consentModal={consentModal}
           exitConfirmModal={exitConfirmModal}
           ocrCropModal={ocrCropModal}
