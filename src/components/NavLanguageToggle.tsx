@@ -144,7 +144,7 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
         }}
         className="relative bg-white text-slate-700 px-3 py-2.5 rounded-full shadow-lg hover:shadow-xl flex items-center gap-2 border-2 border-slate-200 hover:border-violet-400 transition-all cursor-pointer"
         type="button"
-        aria-label="Change language"
+        aria-label={language === 'he' ? 'החלף שפה' : language === 'ar' ? 'تغيير اللغة' : 'Change language'}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         style={{ touchAction: "manipulation" }}

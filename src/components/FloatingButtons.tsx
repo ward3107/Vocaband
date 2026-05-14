@@ -455,7 +455,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
         aria-label={shareAria}
         aria-expanded={shareOpen}
         aria-haspopup="menu"
-        title="Share"
+        title={language === 'he' ? 'שיתוף' : language === 'ar' ? 'مشاركة' : 'Share'}
       >
         <Share2 size={18} strokeWidth={2.5} aria-hidden="true" />
       </motion.button>
@@ -536,7 +536,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
           whileTap={{ scale: 0.95 }}
           className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
           style={getButtonStyle('backToTop')}
-          title="Back to top"
+          title={language === 'he' ? 'חזרה למעלה' : language === 'ar' ? 'العودة إلى الأعلى' : 'Back to top'}
         >
           <ArrowUp size={22} strokeWidth={2.5} aria-hidden="true" />
         </motion.button>

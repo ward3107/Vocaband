@@ -74,7 +74,7 @@ const LandingLanguageToggle: React.FC<LandingLanguageToggleProps> = ({ className
             }}
             className="relative w-11 h-11 rounded-xl bg-white/95 backdrop-blur-xl shadow-lg border border-white/50 flex items-center justify-center overflow-hidden group"
             type="button"
-            aria-label="Change language"
+            aria-label={language === 'he' ? 'החלף שפה' : language === 'ar' ? 'تغيير اللغة' : 'Change language'}
           >
             {/* Animated gradient shimmer on hover */}
             <motion.div

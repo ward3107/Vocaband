@@ -111,11 +111,10 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
           >
             <div className="mb-5">
               <h2 className="text-2xl font-black" style={{ color: 'var(--vb-text-primary)' }}>
-                Edit class
+                {t.editTitle}
               </h2>
               <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>
-                Rename this class or pick a new avatar — students, assignments,
-                and progress all stay intact.  Class code stays the same.
+                {t.editBlurb}
               </p>
             </div>
 
@@ -125,7 +124,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               className="block text-xs font-bold uppercase tracking-widest mb-2"
               style={{ color: 'var(--vb-text-muted)' }}
             >
-              Class name
+              {t.classNameLabel}
             </label>
             <input
               autoFocus
@@ -146,9 +145,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
             />
             <div className="flex justify-between mb-5">
               <span className="text-[11px]" style={{ color: 'var(--vb-text-muted)' }}>
-                Class code:{' '}
-                <span className="font-mono font-bold" style={{ color: 'var(--vb-text-secondary)' }}>{klass.code}</span>{' '}
-                (cannot change)
+                {t.classCodeStatic(klass.code)}
               </span>
               <span
                 className="text-[11px] font-bold"
@@ -176,7 +173,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                   className="text-xs font-bold uppercase tracking-widest"
                   style={{ color: 'var(--vb-text-muted)' }}
                 >
-                  School branding (optional)
+                  {language === 'he' ? 'מיתוג בית ספר (אופציונלי)' : language === 'ar' ? 'هوية المدرسة (اختياري)' : 'School branding (optional)'}
                 </span>
               </div>
 
@@ -185,7 +182,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 className="block text-[11px] font-bold mb-1"
                 style={{ color: 'var(--vb-text-muted)' }}
               >
-                School name
+                {language === 'he' ? 'שם בית הספר' : language === 'ar' ? 'اسم المدرسة' : 'School name'}
               </label>
               <input
                 type="text"
@@ -194,7 +191,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 autoComplete="off"
                 value={schoolName}
                 onChange={(e) => setSchoolName(e.target.value)}
-                placeholder="e.g. Givat Olga Elementary"
+                placeholder={language === 'he' ? 'למשל: בית ספר גבעת אולגה' : language === 'ar' ? 'مثال: مدرسة جفعات أولجا الابتدائية' : 'e.g. Givat Olga Elementary'}
                 maxLength={100}
                 style={{
                   borderColor: 'var(--vb-border)',
@@ -209,7 +206,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 className="block text-[11px] font-bold mb-1"
                 style={{ color: 'var(--vb-text-muted)' }}
               >
-                Logo URL (https only)
+                {language === 'he' ? 'כתובת לוגו (https בלבד)' : language === 'ar' ? 'رابط الشعار (https فقط)' : 'Logo URL (https only)'}
               </label>
               <input
                 type="url"
@@ -229,7 +226,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               />
               {!logoUrlValid && (
                 <p className="text-[11px] mt-1" style={{ color: '#e11d48' }}>
-                  URL must start with https://
+                  {language === 'he' ? 'הכתובת חייבת להתחיל ב-https://' : language === 'ar' ? 'يجب أن يبدأ الرابط بـ https://' : 'URL must start with https://'}
                 </p>
               )}
 
@@ -241,18 +238,22 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 >
                   <img
                     src={safeLogoUrl}
-                    alt="School logo preview"
+                    alt={language === 'he' ? 'תצוגה מקדימה של לוגו בית הספר' : language === 'ar' ? 'معاينة شعار المدرسة' : 'School logo preview'}
                     className="w-12 h-12 rounded-lg object-contain bg-white"
                     onError={() => setLogoBroken(true)}
                   />
                   <span className="text-xs" style={{ color: 'var(--vb-text-secondary)' }}>
-                    Preview · {trimmedSchoolName || "School name will appear here"}
+                    {language === 'he' ? 'תצוגה מקדימה' : language === 'ar' ? 'معاينة' : 'Preview'} · {trimmedSchoolName || (language === 'he' ? 'שם בית הספר יופיע כאן' : language === 'ar' ? 'سيظهر اسم المدرسة هنا' : 'School name will appear here')}
                   </span>
                 </div>
               )}
               {trimmedLogoUrl && logoBroken && (
                 <p className="text-[11px] mt-2" style={{ color: '#e11d48' }}>
-                  Logo failed to load. Check the URL is correct and public.
+                  {language === 'he'
+                    ? 'טעינת הלוגו נכשלה. בדקו שהקישור נכון וציבורי.'
+                    : language === 'ar'
+                    ? 'تعذّر تحميل الشعار. تحقق من صحة الرابط وأنه عام.'
+                    : 'Logo failed to load. Check the URL is correct and public.'}
                 </p>
               )}
             </div>
@@ -262,7 +263,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               className="block text-xs font-bold uppercase tracking-widest mb-2"
               style={{ color: 'var(--vb-text-muted)' }}
             >
-              Class avatar
+              {t.classAvatarLabel}
             </label>
 
             {/* "Default" tile — clears the selection back to the standard icon */}
@@ -275,7 +276,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                   backgroundColor: avatar === null ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
                   borderColor: avatar === null ? 'var(--vb-accent)' : 'var(--vb-border)',
                 }}
-                title="Use default icon"
+                title={t.useDefaultIconTitle}
                 className="aspect-square rounded-xl flex items-center justify-center transition-all border-2"
               >
                 <GraduationCap size={18} style={{ color: 'var(--vb-text-secondary)' }} />
@@ -283,13 +284,26 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
             </div>
 
             <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1 -mr-1">
-              {CLASS_AVATAR_GROUPS.map(group => (
+              {CLASS_AVATAR_GROUPS.map(group => {
+                const localizedLabel = ({
+                  School:  { he: 'בית ספר', ar: 'مدرسة' },
+                  Science: { he: 'מדע',     ar: 'علوم' },
+                  Animals: { he: 'חיות',    ar: 'حيوانات' },
+                  Nature:  { he: 'טבע',     ar: 'طبيعة' },
+                  Sports:  { he: 'ספורט',   ar: 'رياضة' },
+                  Arts:    { he: 'אומנות',  ar: 'فنون' },
+                } as Record<string, { he: string; ar: string }>)[group.label];
+                const label =
+                  language === 'he' && localizedLabel ? localizedLabel.he :
+                  language === 'ar' && localizedLabel ? localizedLabel.ar :
+                  group.label;
+                return (
                 <div key={group.label}>
                   <p
                     className="text-[11px] font-bold uppercase tracking-widest mb-1.5"
                     style={{ color: 'var(--vb-text-muted)' }}
                   >
-                    {group.label}
+                    {label}
                   </p>
                   <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                     {group.emojis.map(em => {
@@ -320,7 +334,8 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                     })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Actions */}
