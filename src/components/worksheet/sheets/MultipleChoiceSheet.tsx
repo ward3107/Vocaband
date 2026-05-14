@@ -41,6 +41,10 @@ export function MultipleChoiceSheet({ words, translationLang, answerKey }: Multi
     });
   }, [words]);
 
+  const whatIsMeaning = (t: string) =>
+    translationLang === 'he' ? <>מה המשמעות באנגלית של <strong dir="auto">{t}</strong>?</> :
+    translationLang === 'ar' ? <>ما المعنى الإنجليزي لـ <strong dir="auto">{t}</strong>؟</> :
+    <>What is the English meaning of <strong dir="auto">{t}</strong>?</>;
   return (
     <div style={{ fontSize: '13pt' }}>
       {questions.map((q, qIdx) => (
@@ -48,7 +52,7 @@ export function MultipleChoiceSheet({ words, translationLang, answerKey }: Multi
           <div style={{ marginBottom: '0.5rem' }}>
             <span style={{ fontWeight: 900, fontSize: '14pt' }}>{qIdx + 1}.</span>
             <span style={{ marginLeft: '0.5rem' }}>
-              What is the English meaning of <strong dir="auto">{pickTranslation(q.targetWord, translationLang)}</strong>?
+              {whatIsMeaning(pickTranslation(q.targetWord, translationLang))}
             </span>
           </div>
           <div style={{ marginLeft: '1.5rem' }}>

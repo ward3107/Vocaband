@@ -11,6 +11,7 @@ interface FillBlankSheetProps {
   answerKey?: boolean;
   /** AI-generated sentences keyed by word ID — overrides word.sentence/example */
   aiSentences?: Record<number, string>;
+  translationLang?: 'he' | 'ar' | 'en';
 }
 
 function blankSentence(sentence: string, target: string): string {
@@ -23,7 +24,8 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function FillBlankSheet({ words, answerKey, aiSentences }: FillBlankSheetProps) {
+export function FillBlankSheet({ words, answerKey, aiSentences, translationLang = 'en' }: FillBlankSheetProps) {
+  const writeSentenceUsing = translationLang === 'he' ? 'כתבו משפט תוך שימוש ב' : translationLang === 'ar' ? 'اكتب جملة باستخدام' : 'Write a sentence using';
   return (
     <ol style={{ paddingLeft: '1.5rem', fontSize: '13pt', lineHeight: 1.9 }}>
       {words.map(w => {
@@ -31,7 +33,7 @@ export function FillBlankSheet({ words, answerKey, aiSentences }: FillBlankSheet
         if (!raw) {
           return (
             <li key={w.id} style={{ marginBottom: '0.6rem' }}>
-              Write a sentence using <strong>{answerKey ? w.english : '__________'}</strong>:
+              {writeSentenceUsing} <strong>{answerKey ? w.english : '__________'}</strong>:
               {!answerKey && (
                 <div style={{ borderBottom: '1px solid #aaa', height: '1.2em', marginTop: '0.3rem' }} />
               )}

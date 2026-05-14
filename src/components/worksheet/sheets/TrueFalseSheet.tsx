@@ -39,21 +39,24 @@ export function TrueFalseSheet({ words, translationLang, answerKey }: TrueFalseS
     });
   }, [words, translationLang]);
 
+  const meansWord = translationLang === 'he' ? 'פירושה' : translationLang === 'ar' ? 'تعني' : 'means';
+  const trueLabel = translationLang === 'he' ? 'נכון' : translationLang === 'ar' ? 'صحيح' : 'True';
+  const falseLabel = translationLang === 'he' ? 'לא נכון' : translationLang === 'ar' ? 'خطأ' : 'False';
   return (
     <div style={{ fontSize: '13pt' }}>
       {questions.map((q, idx) => (
         <div key={q.word.id} style={{ marginBottom: '0.8rem', paddingBottom: '0.8rem', borderBottom: '1px solid #eee' }}>
           <span style={{ fontWeight: 900, fontSize: '14pt' }}>{idx + 1}.</span>
           <span style={{ marginLeft: '0.5rem', marginRight: '1rem' }}>
-            <strong>{q.word.english}</strong> means <strong dir="auto">{q.shownTranslation}</strong>
+            <strong>{q.word.english}</strong> {meansWord} <strong dir="auto">{q.shownTranslation}</strong>
           </span>
           <span style={{ display: 'inline-flex', gap: '1rem', marginLeft: '1rem' }}>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              <span>☐ True</span>
+              <span>☐ {trueLabel}</span>
               {answerKey && q.isTrue && <span style={{ color: '#10b981', fontWeight: 700 }}> ✓</span>}
             </label>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              <span>☐ False</span>
+              <span>☐ {falseLabel}</span>
               {answerKey && !q.isTrue && <span style={{ color: '#10b981', fontWeight: 700 }}> ✓</span>}
             </label>
           </span>

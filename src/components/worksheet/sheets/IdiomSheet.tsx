@@ -19,10 +19,11 @@ function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
 }
 
 export function IdiomSheet({ words, translationLang, answerKey }: IdiomSheetProps) {
+  const readEach = translationLang === 'he' ? 'קראו כל ביטוי וכתבו מה אתם חושבים שהוא אומר.' : translationLang === 'ar' ? 'اقرأ كل تعبير اصطلاحي واكتب ما تعتقد أنه يعنيه.' : 'Read each idiom and write what you think it means.';
   return (
     <div>
       <p style={{ fontSize: '11pt', marginBottom: '0.75rem', fontStyle: 'italic' }}>
-        Read each idiom and write what you think it means.
+        {readEach}
       </p>
       <ol style={{ fontSize: '13pt', paddingLeft: '1.25rem', margin: 0 }}>
         {words.map((w) => {
