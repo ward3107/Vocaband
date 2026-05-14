@@ -8,6 +8,7 @@ import { generateSentencesForAssignment } from "./data/sentence-bank";
 import {
   RefreshCw,
   AlertTriangle,
+  ArrowLeftRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, hasTeacherAccess, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
@@ -2950,6 +2951,20 @@ export default function App() {
     total: number,
   ) => {
     if (!user || !activeAssignment || !inHebrewAssignment) return;
+
+    // Hebrew Quick Play: push the round's raw score to the live podium
+    // so the teacher's QuickPlayMonitor leaderboard updates in real
+    // time.  Without this branch, only the gradebook recorded the
+    // round and every Hebrew student stayed at 0 pts on the projector.
+    // Mirrors what the English flow does via useGameFinish's
+    // quickPlaySocketUpdateScore callback — accumulate per-mode into
+    // the session-wide cumulative ref so consecutive modes don't
+    // regress and the server stops accepting updates.
+    if (QUICKPLAY_V2 && quickPlayActiveSession) {
+      qpCumulativeScoreRef.current += Math.max(0, score);
+      quickPlaySocket.updateScore(qpCumulativeScoreRef.current);
+    }
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const sessionUid = session?.user?.id;
@@ -3038,11 +3053,14 @@ export default function App() {
               touchAction: "manipulation",
               WebkitTapHighlightColor: "transparent",
             }}
-            className={`fixed top-3 ${activeVoca === "hebrew" ? "left-3" : "right-3"} z-50 px-3 py-1.5 rounded-full bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-black tracking-widest shadow-lg shadow-indigo-500/30 hover:bg-indigo-600 active:scale-95 transition`}
+            className={`fixed top-3 ${activeVoca === "hebrew" ? "left-3" : "right-3"} z-50 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-indigo-600 text-white text-xs sm:text-sm font-black tracking-wider shadow-lg shadow-indigo-500/40 ring-2 ring-white/30 hover:bg-indigo-500 active:scale-95 transition`}
             title={activeVoca === "hebrew" ? "החלף ל-Voca אחר" : "Switch to another Voca"}
             dir={activeVoca === "hebrew" ? "rtl" : undefined}
           >
-            {activeVoca === "hebrew" ? "🇮🇱 עב · החלף" : "🇬🇧 EN · SWITCH"}
+            <ArrowLeftRight size={14} aria-hidden />
+            <span>
+              {activeVoca === "hebrew" ? "🇮🇱 החלף Voca" : "🇬🇧 Switch Voca"}
+            </span>
           </button>
         )}
         <TeacherDashboardView
