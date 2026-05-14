@@ -1,8 +1,8 @@
 /**
- * VocaPickerView — post-login landing for teachers entitled to 2+
- * Vocas (e.g. their school's principal assigned both English and
- * Hebrew via users.subjects_taught).  Teachers with a single Voca
- * never see this screen; they route straight to teacher-dashboard.
+ * VocaPickerView — post-login Voca chooser.  Each teacher account is
+ * locked to a single Voca (users.subject) so teachers route past this
+ * screen automatically.  Only admin accounts land here, since the
+ * developer needs entry to every Voca from one login.
  *
  * No track-switch picker, no learner/native toggle — those concerns
  * sit further down in the Voca itself.  This screen only answers
@@ -10,7 +10,7 @@
  */
 import { motion } from "motion/react";
 import type { AppUser } from "../core/supabase";
-import type { VocaId } from "../core/subject";
+import { getEntitledVocas, type VocaId } from "../core/subject";
 import { useLanguage } from "../hooks/useLanguage";
 
 interface VocaCard {
@@ -50,7 +50,7 @@ interface VocaPickerViewProps {
 
 export default function VocaPickerView({ user, onPickVoca }: VocaPickerViewProps) {
   const { dir } = useLanguage();
-  const entitled = (user.subjectsTaught ?? ["english"]) as readonly VocaId[];
+  const entitled = getEntitledVocas(user);
   const cards = VOCA_CARDS.filter((c) => entitled.includes(c.id));
 
   return (
@@ -66,14 +66,14 @@ export default function VocaPickerView({ user, onPickVoca }: VocaPickerViewProps
           className="text-center mb-10 sm:mb-14"
         >
           <p className="text-amber-300 font-black text-xs tracking-[0.25em] uppercase mb-3">
-            Welcome back, {user.displayName || "teacher"}
+            Welcome back, {user.displayName || "admin"}
           </p>
           <h1 className="text-3xl sm:text-5xl font-black font-headline text-white mb-3 drop-shadow-lg">
             Pick your Voca
           </h1>
           <p className="text-white/70 font-bold text-sm sm:text-base max-w-lg mx-auto">
-            Your school has unlocked {cards.length} Vocas for you. You can
-            switch between them any time from the header.
+            Admin entry to all {cards.length} Vocas. Switch between them any
+            time from the header pill.
           </p>
         </motion.div>
 

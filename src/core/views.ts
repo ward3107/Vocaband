@@ -40,10 +40,9 @@ export type View =
   | "class-show"
   | "worksheet"
   | "vocabagrut"
-  // VocaHebrew — shown when an entitled teacher (subjects_taught
-  // contains 'hebrew') picks Hebrew on the Voca Picker post-login.
-  // The picker itself only renders when subjects_taught.length >= 2;
-  // teachers with a single Voca route straight to teacher-dashboard.
+  // VocaHebrew — shown when an admin picks Hebrew on the Voca Picker
+  // post-login.  Teachers belong to a single Voca (users.subject) and
+  // route straight to teacher-dashboard, skipping the picker entirely.
   | "voca-picker"
   | "vocahebrew-dashboard"
   | "vocahebrew-niqqud"
