@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles, X, Loader2, Check, ChevronRight, RefreshCw, Search
 } from 'lucide-react';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,12 @@ const TOPIC_SUGGESTIONS = {
 export default function AiVocabularyModal({
   isOpen, onClose, onAddWords, onGenerate, showToast
 }: AiVocabularyModalProps) {
+  const { language } = useLanguage();
+  const L = language === 'he'
+    ? { topicLabel: '📚 נושא', levelLabel: '📊 רמה', examplesLabel: '💡 מילים לדוגמה לסגנון (אופציונלי)', topicPlaceholder: 'לדוגמה: מזג אוויר, אוכל, רגשות, מקצועות בית ספר...', examplesPlaceholder: 'לדוגמה: שמשי, מעונן, רוחני...', topicHint: 'הקלידו נושא או בחרו מהצעות', examplesHint: 'עוזר ל-AI להתאים את סגנון אוצר המילים שלכם', skipDupes: 'דלגו על מילים שכבר באוצר', skipDupesHint: 'אל תציעו מילים מ-Set 1, Set 2 או Set 3', generating: 'מייצר מילים...', generate: '✨ צור מילים', wordsForTopic: (n: number, t: string) => `${n} מילים עבור "${t}"`, selectedCount: (n: number) => `${n} נבחרו להוספה`, newSearch: 'חיפוש חדש', selectAll: 'בחר הכל', deselectAll: 'נקה הכל', curriculum: 'מאוצר', addToList: (n: number) => `הוסף ${n} מילים לרשימה` }
+    : language === 'ar'
+    ? { topicLabel: '📚 الموضوع', levelLabel: '📊 المستوى', examplesLabel: '💡 كلمات مثال لتوجيه الأسلوب (اختياري)', topicPlaceholder: 'مثال: الطقس، الطعام، المشاعر، المواد الدراسية...', examplesPlaceholder: 'مثال: مشمس، غائم، عاصف...', topicHint: 'اكتب موضوعاً أو اختر من الاقتراحات', examplesHint: 'يساعد الذكاء على مطابقة أسلوب مفرداتك المفضّل', skipDupes: 'تخطّي الكلمات الموجودة في المنهج', skipDupesHint: 'لا تقترح كلمات من Set 1 أو Set 2 أو Set 3', generating: 'جارٍ توليد الكلمات...', generate: '✨ توليد الكلمات', wordsForTopic: (n: number, t: string) => `${n} كلمة لـ "${t}"`, selectedCount: (n: number) => `${n} مختارة للإضافة`, newSearch: 'بحث جديد', selectAll: 'تحديد الكل', deselectAll: 'إلغاء التحديد', curriculum: 'من المنهج', addToList: (n: number) => `أضف ${n} كلمة إلى القائمة` }
+    : { topicLabel: '📚 Topic', levelLabel: '📊 Level', examplesLabel: '💡 Example words to guide style (optional)', topicPlaceholder: 'e.g. weather, food, feelings, school subjects...', examplesPlaceholder: 'e.g. sunny, cloudy, windy...', topicHint: 'Type a topic or choose from suggestions above', examplesHint: 'Helps AI match your preferred vocabulary style', skipDupes: 'Skip words already in the curriculum', skipDupesHint: "Don't suggest words from Set 1, Set 2, or Set 3", generating: 'Generating words...', generate: '✨ Generate words', wordsForTopic: (n: number, t: string) => `${n} words for "${t}"`, selectedCount: (n: number) => `${n} selected to add`, newSearch: 'New search', selectAll: 'Select All', deselectAll: 'Deselect All', curriculum: 'Curriculum', addToList: (n: number) => `Add ${n} word${n !== 1 ? 's' : ''} to list` };
   // Form state
   const [topic, setTopic] = useState('');
   const [level, setLevel] = useState<ProficiencyLevel>('A2');
@@ -190,7 +197,7 @@ export default function AiVocabularyModal({
               {/* Topic Input with Dropdown */}
               <div>
                 <label htmlFor="ai-topic" className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
-                  📚 Topic <span className="text-rose-500">*</span>
+                  {L.topicLabel} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -199,7 +206,7 @@ export default function AiVocabularyModal({
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     onFocus={() => setShowTopicDropdown(true)}
-                    placeholder="e.g. weather, food, feelings, school subjects..."
+                    placeholder={L.topicPlaceholder}
                     className="w-full px-4 py-3 pr-10 border-2 border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:border-fuchsia-300 text-[var(--vb-text-primary)]"
                     dir="ltr"
                     autoFocus
@@ -246,14 +253,14 @@ export default function AiVocabularyModal({
                   </AnimatePresence>
                 </div>
                 <p className="mt-1 text-xs text-[var(--vb-text-muted)]">
-                  Type a topic or choose from suggestions above
+                  {L.topicHint}
                 </p>
               </div>
 
               {/* Level Selection */}
               <div>
                 <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
-                  📊 Level <span className="text-rose-500">*</span>
+                  {L.levelLabel} <span className="text-rose-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {LEVELS.map((lvl) => (
@@ -280,19 +287,19 @@ export default function AiVocabularyModal({
               {/* Examples to Anchor */}
               <div>
                 <label htmlFor="ai-examples" className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
-                  💡 Example words to guide style (optional)
+                  {L.examplesLabel}
                 </label>
                 <input
                   id="ai-examples"
                   type="text"
                   value={examplesToAnchor}
                   onChange={(e) => setExamplesToAnchor(e.target.value)}
-                  placeholder="e.g. sunny, cloudy, windy..."
+                  placeholder={L.examplesPlaceholder}
                   className="w-full px-4 py-3 border-2 border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:border-fuchsia-300 text-[var(--vb-text-primary)]"
                   dir="ltr"
                 />
                 <p className="mt-1 text-xs text-[var(--vb-text-muted)]">
-                  Helps AI match your preferred vocabulary style
+                  {L.examplesHint}
                 </p>
               </div>
 
@@ -307,10 +314,10 @@ export default function AiVocabularyModal({
                 />
                 <div className="flex-1">
                   <label htmlFor="skip-duplicates" className="text-sm font-bold text-[var(--vb-text-secondary)] cursor-pointer">
-                    Skip words already in the curriculum
+                    {L.skipDupes}
                   </label>
                   <p className="text-xs text-[var(--vb-text-muted)]">
-                    Don't suggest words from Set 1, Set 2, or Set 3
+                    {L.skipDupesHint}
                   </p>
                 </div>
               </div>
@@ -326,12 +333,12 @@ export default function AiVocabularyModal({
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Generating words...</span>
+                    <span>{L.generating}</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    <span>✨ Generate words</span>
+                    <span>{L.generate}</span>
                   </>
                 )}
               </button>
@@ -343,10 +350,10 @@ export default function AiVocabularyModal({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-bold text-[var(--vb-text-primary)]">
-                    {generatedWords.length} words for "{topic}"
+                    {L.wordsForTopic(generatedWords.length, topic)}
                   </p>
                   <p className="text-sm text-[var(--vb-text-muted)]">
-                    {selectedForAdd.size} selected to add
+                    {L.selectedCount(selectedForAdd.size)}
                   </p>
                 </div>
                 <button
@@ -359,7 +366,7 @@ export default function AiVocabularyModal({
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <RefreshCw className="w-4 h-4" />
-                  <span>New search</span>
+                  <span>{L.newSearch}</span>
                 </button>
               </div>
 
@@ -371,7 +378,7 @@ export default function AiVocabularyModal({
                   className="flex-1 py-2 bg-fuchsia-100 text-fuchsia-700 text-sm font-semibold rounded-lg hover:bg-fuchsia-200 transition-colors"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
-                  Select All
+                  {L.selectAll}
                 </button>
                 <button
                   onClick={() => setSelectedForAdd(new Set())}
@@ -379,7 +386,7 @@ export default function AiVocabularyModal({
                   className="flex-1 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] text-sm font-semibold rounded-lg hover:bg-[var(--vb-surface-alt)] transition-colors"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
-                  Deselect All
+                  {L.deselectAll}
                 </button>
               </div>
 
@@ -410,7 +417,7 @@ export default function AiVocabularyModal({
                               <p className="font-bold text-[var(--vb-text-primary)]">{word.english}</p>
                               {word.isFromCurriculum && (
                                 <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-semibold">
-                                  Curriculum
+                                  {L.curriculum}
                                 </span>
                               )}
                             </div>
@@ -451,7 +458,7 @@ export default function AiVocabularyModal({
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <Check className="w-5 h-5" />
-                  <span>Add {selectedForAdd.size} word{selectedForAdd.size !== 1 ? 's' : ''} to list</span>
+                  <span>{L.addToList(selectedForAdd.size)}</span>
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
