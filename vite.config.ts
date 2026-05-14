@@ -54,6 +54,13 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
+          // Suppress the noisy "IDBDatabase: connection is closing"
+          // unhandled rejections that fire from workbox-expiration when
+          // the page is navigating away mid-cache-write.  See
+          // public/sw-error-suppress.js for the listener — importScripts
+          // injects it BEFORE workbox boots so every subsequent
+          // expiration update is covered.
+          importScripts: ['/sw-error-suppress.js'],
           // Precache only the SPA shell — the JS/CSS chunks, HTML, and
           // critical icons.  Excluded from precache:
           //   - Heavy export-only vendor chunks (~2.6 MB combined raw).
