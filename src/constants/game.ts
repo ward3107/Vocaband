@@ -388,23 +388,6 @@ export const DAILY_CHEST_XP = { min: 20, max: 60 };
 export const WEEKLY_CHALLENGE_PLAYS = 5;      // plays required
 export const WEEKLY_CHALLENGE_REWARD_XP = 100; // + a free common egg (granted via RPC)
 export const COMEBACK_AFTER_DAYS = 3;          // offline this many days → free golden egg on return
-export const LIMITED_ITEM_ROTATION_DAYS = 7;   // limited cosmetic rotates weekly
-
-// Rotating limited-time items (one visible at a time).  The active item
-// is picked from this pool modulo current ISO-week so all students see
-// the same "hot drop" at once.  Items are regular shop SKUs priced at
-// ~20% off — the scarcity itself drives the FOMO, not a custom price.
-export const LIMITED_ROTATION: { kind: 'avatar' | 'frame' | 'title' | 'theme'; itemId: string; discount: number; tagline: string }[] = [
-  { kind: 'avatar', itemId: '🐉',            discount: 0.2, tagline: 'Week of the Dragon' },
-  { kind: 'frame',  itemId: 'holographic',    discount: 0.2, tagline: 'Holo Week' },
-  { kind: 'title',  itemId: 'goated',         discount: 0.2, tagline: 'GOATed Drop' },
-  { kind: 'theme',  itemId: 'galaxy',         discount: 0.2, tagline: 'Galaxy Week' },
-  { kind: 'avatar', itemId: '🦄',            discount: 0.2, tagline: 'Unicorn Season' },
-  { kind: 'frame',  itemId: 'crown',          discount: 0.2, tagline: 'Reign Week' },
-  { kind: 'title',  itemId: 'final_boss',     discount: 0.2, tagline: 'Final Boss Week' },
-  { kind: 'avatar', itemId: '🐐',            discount: 0.2, tagline: 'GOAT Energy' },
-];
-
 // --- GAME: LETTER COLORS ---
 export const LETTER_COLORS = ["#EF4444","#F97316","#EAB308","#22C55E","#3B82F6","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#6366F1"];
 

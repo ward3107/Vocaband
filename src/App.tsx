@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
-import type { View, ShopTab } from "./core/views";
+import type { View } from "./core/views";
 import { type VocaId, ACTIVE_VOCA_KEY, getEntitledVocas } from "./core/subject";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import type { Word } from "./data/vocabulary";
@@ -329,7 +329,6 @@ export default function App() {
     } as const;
     setView(viewMap[page]);
   };
-  const [shopTab, setShopTab] = useState<ShopTab>("hub");
   const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
 
@@ -2766,7 +2765,6 @@ export default function App() {
           classSwitchModal={classSwitchModal}
           classNotFoundBanner={classNotFoundBanner}
           setView={setView}
-          setShopTab={setShopTab}
           setActiveAssignment={setActiveAssignment}
           setAssignmentWords={setAssignmentWords}
           setShowModeSelection={setShowModeSelection}

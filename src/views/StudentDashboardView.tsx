@@ -11,7 +11,6 @@ import PetCompanion from "../components/dashboard/PetCompanion";
 import RetentionStrip from "../components/dashboard/RetentionStrip";
 import ActiveBoostersStrip from "../components/dashboard/ActiveBoostersStrip";
 import PowerUpsStrip from "../components/dashboard/PowerUpsStrip";
-import DropOfTheWeekCard from "../components/dashboard/DropOfTheWeekCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
@@ -31,7 +30,7 @@ import { StructureDetailModal } from "../components/structure/StructureDetailMod
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
-import type { View, ShopTab } from "../core/views";
+import type { View } from "../core/views";
 import type { RetentionState } from "../hooks/useRetention";
 import type { StructureState } from "../hooks/useStructure";
 
@@ -52,7 +51,6 @@ interface StudentDashboardViewProps {
   classSwitchModal: React.ReactNode;
   classNotFoundBanner?: React.ReactNode;
   setView: React.Dispatch<React.SetStateAction<View>>;
-  setShopTab: React.Dispatch<React.SetStateAction<ShopTab>>;
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
   setShowModeSelection: (show: boolean) => void;
@@ -131,7 +129,7 @@ export default function StudentDashboardView({
   studentAssignments, studentProgress, studentDataLoading,
   showStudentOnboarding, setShowStudentOnboarding,
   consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
-  setView, setShopTab,
+  setView,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
   retention, onGrantXp, onGrantReward, onApplyServerRewards, boosters,
   onRenameDisplayName,
@@ -294,7 +292,7 @@ export default function StudentDashboardView({
                  the shop tile doesn't slide across the full width. */
               <div className="rounded-3xl bg-stone-100 min-h-[200px]" aria-hidden />
             )}
-            <ShopSquare xp={xp} onOpen={() => { setShopTab('hub'); setView('shop'); }} />
+            <ShopSquare xp={xp} onOpen={() => setView('shop')} />
           </div>
 
           {/* ── Class Minute — daily 60-second drill ──────────────
@@ -341,10 +339,7 @@ export default function StudentDashboardView({
               setShowModeSelection(true);
               setView('game');
             }}
-            onPractice={() => {
-              setShopTab('hub');
-              setView('shop');
-            }}
+            onPractice={() => setView('shop')}
           />
 
           {/* ── Daily missions — three rotating mission types that
@@ -489,7 +484,7 @@ export default function StudentDashboardView({
           badges={badges}
           copiedCode={copiedCode}
           setCopiedCode={setCopiedCode}
-          onShopClick={() => { setShopTab("hub"); setView("shop"); }}
+          onShopClick={() => setView("shop")}
           onRenameDisplayName={onRenameDisplayName}
         />
         <StudentStatsRow
@@ -499,15 +494,6 @@ export default function StudentDashboardView({
           studentProgress={studentProgress}
         />
         <ActiveBoostersStrip {...boosters} />
-        {/* Weekly rotating shop drop — identical card to the one at the
-            top of the Shop view, so students see the offer from the
-            dashboard and can click straight through to the right tab. */}
-        <DropOfTheWeekCard
-          onShopOpen={(tab) => {
-            setShopTab(tab);
-            setView("shop");
-          }}
-        />
         <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
         {/* ── Class Minute — daily 60-second drill ──────────────
             Habit-forming daily ritual.  Same card the STRUCTURE_UX

@@ -50,15 +50,3 @@ export type View =
   | "vocahebrew-synonyms"
   | "vocahebrew-listening";
 
-export type ShopTab =
-  // "hub" = the Arcade Lobby landing screen (portal tiles + hero +
-  // daily deal + trending rail).  Other values are category-focused
-  // sheets reached from the hub.
-  | "hub"
-  | "eggs"
-  | "avatars"
-  | "themes"
-  | "powerups"
-  | "titles"
-  | "frames"
-  | "boosters";
