@@ -10,7 +10,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, hasTeacherAccess, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { freshTrialEndsAt, isPro } from "./core/plan";
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { setSentryUser, clearSentryUser } from "./core/sentry";
@@ -241,7 +241,7 @@ export default function App() {
   // already closed.  Students/guests get null → hook falls back to
   // localStorage (still works, just per-device).
   useEffect(() => {
-    if (!user || user.role !== "teacher") {
+    if (!user || !hasTeacherAccess(user)) {
       setGuideStore(null);
       return;
     }
@@ -279,7 +279,7 @@ export default function App() {
   // activeVoca for content gating) never sees a null on a real
   // teacher session.
   useEffect(() => {
-    if (!user || user.role !== "teacher") return;
+    if (!user || !hasTeacherAccess(user)) return;
     const entitled = getEntitledVocas(user);
     if (entitled.length === 0) return; // shouldn't happen; defaults to ['english']
     if (entitled.length === 1) {
@@ -1361,11 +1361,15 @@ export default function App() {
           // the teacher button.  Reject with a clear error + sign out.
           // Stale flags older than the freshness window are ignored
           // (see utils/oauthIntent).
+          //
+          // Only reject when the DB role is 'student' — admins are a
+          // superset of teachers and must be allowed through the teacher
+          // entrance (see hasTeacherAccess in core/supabase).
           const intended = readIntendedRole();
-          if (intended?.role === 'teacher' && intended.fresh && userData.role !== 'teacher') {
+          if (intended?.role === 'teacher' && intended.fresh && userData.role === 'student') {
             clearIntendedRole();
             setError(
-              `This Google account (${userData.email ?? 'unknown'}) is registered as a ${userData.role}, not a teacher. ` +
+              `This Google account (${userData.email ?? 'unknown'}) is registered as a student, not a teacher. ` +
               `Sign in from the student page instead, or use a different Google account for teacher access.`
             );
             await supabase.auth.signOut().catch(() => {});
@@ -1377,7 +1381,7 @@ export default function App() {
 
           setUser(userData);
           checkConsent(userData);
-          if (userData.role === "teacher") {
+          if (hasTeacherAccess(userData)) {
             // The speculative parallel fetch above already has the classes
             // ready by now (it started at the same time as fetchUserProfile,
             // not after). Fall back to a direct fetch only if the speculative
@@ -1652,7 +1656,7 @@ export default function App() {
                     setBadges(restored.badges || []);
                     setXp(restored.xp ?? 0);
                     setStreak(restored.streak ?? 0);
-                    setView(restored.role === "teacher" ? "teacher-dashboard" : "student-dashboard");
+                    setView(hasTeacherAccess(restored) ? "teacher-dashboard" : "student-dashboard");
                     // Update saved UID for next refresh
                     localStorage.setItem('vocaband_student_login', JSON.stringify({
                       classCode: restored.classCode || savedCode,
@@ -2132,7 +2136,7 @@ export default function App() {
   // - For teachers: applies their dashboard theme CSS variables
   // - For students/public: clears any teacher theme variables
   // Extract theme ID separately to avoid re-running effect on unrelated user updates.
-  const teacherThemeId = user?.role === 'teacher' ? (user as any).teacherDashboardTheme : null;
+  const teacherThemeId = hasTeacherAccess(user) ? (user as any).teacherDashboardTheme : null;
   const lastThemeRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -2876,7 +2880,7 @@ export default function App() {
   // picked one this session.  Picking writes activeVoca and routes
   // into the right dashboard.  Teachers with a single Voca never see
   // this view (the routing effect auto-sets activeVoca for them).
-  if (user?.role === "teacher" && view === "voca-picker") {
+  if (hasTeacherAccess(user) && view === "voca-picker") {
     return (
       <LazyWrapper loadingMessage="Loading...">
         <VocaPickerView
@@ -2893,7 +2897,7 @@ export default function App() {
   // games (Niqqud, Shoresh Hunt, Synonym Match, Listening).
   // Switch-Voca returns the teacher to the picker so they can flip
   // back to English without logging out.
-  if (user?.role === "teacher" && view === "vocahebrew-dashboard") {
+  if (hasTeacherAccess(user) && view === "vocahebrew-dashboard") {
     const showSwitcher = getEntitledVocas(user).length >= 2;
     return (
       <LazyWrapper loadingMessage="Loading VocaHebrew...">
@@ -3021,7 +3025,7 @@ export default function App() {
       </LazyWrapper>
     );
   }
-  if (user?.role === "teacher" && view === "teacher-dashboard") {
+  if (hasTeacherAccess(user) && view === "teacher-dashboard") {
     const showVocaSwitcher = getEntitledVocas(user).length >= 2;
     return (
       <LazyWrapper loadingMessage="Loading dashboard...">
@@ -3607,7 +3611,7 @@ export default function App() {
     // state while we schedule the navigation change.
     setTimeout(() => {
       setIsLiveChallenge(false);
-      if (user?.role === 'teacher') setView('live-challenge-class-select');
+      if (hasTeacherAccess(user)) setView('live-challenge-class-select');
       else if (user?.role === 'student') setView('student-dashboard');
       else setView('public-landing');
     }, 0);

@@ -29,7 +29,7 @@
  *   `quick_play_sessions` SELECT had a chance to land state.
  */
 import { useEffect } from 'react';
-import type { AppUser, AssignmentData } from '../core/supabase';
+import { hasTeacherAccess, type AppUser, type AssignmentData } from '../core/supabase';
 import type { View } from '../core/views';
 
 export interface UseViewGuardsParams {
@@ -53,7 +53,7 @@ export function useViewGuards(params: UseViewGuardsParams): void {
     if (view !== 'landing' || loading) return;
     if (!user) {
       setView('student-account-login');
-    } else if (user.role === 'teacher') {
+    } else if (hasTeacherAccess(user)) {
       setView('teacher-dashboard');
     } else {
       setView('student-dashboard');
@@ -67,7 +67,7 @@ export function useViewGuards(params: UseViewGuardsParams): void {
       setView('quick-play-student');
     } else if (user?.role === 'student') {
       setView('student-dashboard');
-    } else if (user?.role === 'teacher') {
+    } else if (hasTeacherAccess(user)) {
       setView('teacher-dashboard');
     } else {
       setView('public-landing');
