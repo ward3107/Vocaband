@@ -1,8 +1,8 @@
 # Shop redesign — design plan
 
-**Status:** Draft for review · 2026-05-14
+**Status:** Decisions locked 2026-05-14, awaiting one final scope
+question on the Featured Game Mode 2× XP. See bottom.
 **Branch:** `claude/shop-redesign-plan`
-**Out of scope until approved:** any code changes.
 
 ---
 
@@ -61,10 +61,11 @@ the marketplace.
 │ ←      🛍 SHOP            💰 2,450   │
 ├──────────────────────────────────────┤
 │ ┌──────────────────────────────────┐ │
-│ │ 🔥 THIS WEEK ONLY                │ │
-│ │ ┌────┐ Galaxy Frame              │ │
-│ │ │ 🌌 │ 200 XP                    │ │
-│ │ └────┘ [  CLAIM →  ]             │ │
+│ │ 🎯 SPOTLIGHT (dynamic — §3a)     │ │
+│ │ ┌────┐ Almost yours!             │ │
+│ │ │ 🧙 │ Wizard avatar             │ │
+│ │ │    │ 50 XP to unlock           │ │
+│ │ └────┘ [  PLAY TO EARN  ]        │ │
 │ └──────────────────────────────────┘ │
 │                                      │
 │ 🥚 EGGS                          →   │
@@ -95,9 +96,10 @@ the marketplace.
 ### Key changes vs today
 
 1. **No Hub.** "Shop" button on Dashboard opens directly into this
-   screen. Drop of the Week appears here (and on Dashboard, but with a
-   visual link that takes you to the highlighted card, not a separate
-   landing).
+   screen.
+   **Drop of the Week is removed entirely** — replaced by the
+   dynamic Spotlight (§3a). The `LIMITED_ROTATION` constant in
+   `game.ts` and its 8 weekly taglines go away.
 2. **Categories collapse from 7 → 5**: Eggs · Avatars · Power-ups
    (merged with Boosters via internal toggle) · Themes · Frames &
    Titles (merged — both are cosmetic decorations on the name/avatar).
@@ -121,6 +123,59 @@ the marketplace.
 - Pricing and XP economy.
 - Server-side purchase RPCs.
 - Egg opening sequence.
+
+---
+
+## 3a. Spotlight — the dynamic hero slot
+
+Replaces the static "Drop of the Week" with a smart priority engine.
+On every render of the Marketplace hero, evaluate these in order and
+show the first one that matches:
+
+| Priority | Condition | Card content | CTA |
+|---|---|---|---|
+| **1** | `featuredMode` is set for current ISO week AND student hasn't already earned 200+ XP in that mode this week | "**Double XP this week!** Play *Sentence Builder* for 2× rewards." | `PLAY NOW` → opens GameModeSelectionView pre-selected |
+| **2** | Student is < 100 XP from the next avatar tier unlock | "**Almost yours!** *Wizard* — 50 XP away." (preview of locked avatar) | `PLAY TO EARN` → opens GameModeSelectionView |
+| **3** | Daily Chest unclaimed for today | "**Today's chest is waiting** — open it for free XP." | `OPEN` → triggers existing useRetention hook |
+| **4** | Student has a `pinnedShopItemId` saved + can't afford it yet | "**Saving for *Galaxy Frame*** — 120 / 200 XP" (progress bar) | `PLAY TO EARN` |
+| **5** | Fallback — pick highest-priced unowned item from a category the student owns least | "**Try this:** *Fire Theme* — 180 XP" | `BUY` (if affordable) or `PLAY TO EARN` |
+
+### Implementation surface
+
+- New file `src/components/shop/Spotlight.tsx` (~120 lines) — the
+  priority engine + card renderer.
+- New hook `src/hooks/usePinnedShopItem.ts` — localStorage-backed
+  `(pinnedId, pin, unpin)` triplet. **No backend change** — pin
+  state lives on the device. Acceptable: if a kid switches devices,
+  they re-pin (rare).
+- New constant `FEATURED_MODE` in `src/constants/game.ts` —
+  either a hardcoded string (manually rotated by operator) OR a
+  weekly rotation function `featuredModeForWeek(date)` similar to
+  the existing weekly-drop logic. See §7 question.
+- Spotlight reads from existing `useRetention()`, the AppUser xp
+  field, and the new pin hook. No new server endpoints.
+
+### Pin affordance
+
+Every locked item in every carousel grows a small **📌 / 📍**
+icon in the corner. Tap = "Save this for later" → writes to
+localStorage → Spotlight starts showing the progress bar. Tap again
+to unpin. Only one item can be pinned at a time.
+
+---
+
+## 3b. What gets deleted
+
+Code that goes away with the Hub + Drop of the Week removal:
+
+- `ShopView.tsx:884-915` — Hub hero block, trending rail, portal
+  grid (~75 lines).
+- `game.ts` `LIMITED_ROTATION` constant + 8 weekly taglines + the
+  weekly-pick function (~40 lines).
+- `StudentDashboardView.tsx` weekly-drop card (or repurpose as the
+  Spotlight preview on Dashboard — decision in §7).
+- The `'hub'` value in the `ShopTab` union (probably kill the union
+  entirely if categories are all on one screen).
 
 ---
 
@@ -201,45 +256,59 @@ speaker to polish before shipping anyway.
 - `src/core/views.ts` — drop the `ShopTab` union, or keep it for
   the optional fullscreen category grid view only.
 
-### Deleted (probably)
+### Deleted
 - Hub-specific code in `ShopView.tsx:884-915` (hero block + trending
-  rail + portal grid).
-- DropOfTheWeek duplication — keep on Dashboard only OR keep on
-  Marketplace only (decision needed, see §7).
+  rail + portal grid) — ~75 lines.
+- `LIMITED_ROTATION` constant + weekly-rotation logic in `game.ts`
+  — ~40 lines.
+- The `'hub'` tab and likely the entire `ShopTab` union in
+  `src/core/views.ts`.
 
 ---
 
-## 6. Implementation phases
+## 6. Implementation phases (all in ONE PR per user direction)
 
-| Phase | Deliverable | Reviewable? |
+| Phase | Deliverable |
+|---|---|
+| **1. Catalogue i18n extract** | Create `shop-catalog.ts` with the English strings extracted from `game.ts`. Wire ShopView to read from the map. |
+| **2. AI-draft HE + AR for catalogue** | Run a Gemini script over `shop-catalog.ts`. Commit raw output for later native-speaker polish. |
+| **3. New marketplace layout** | `ShopMarketplaceView` + `CategoryCarousel`. Drop the Hub. Wire Dashboard's Shop button to open it. |
+| **4. Spotlight engine** | `Spotlight.tsx` with 5-tier priority logic + `usePinnedShopItem` + `FEATURED_MODE` config + pin icons on locked items. |
+| **5. Locked-avatar inline state** | Replace nested tiers with dim + XP badge. |
+| **6. Boosters + Power-ups merge** | Single section with internal toggle. |
+| **7. Cleanup** | Remove dead Hub code, `LIMITED_ROTATION`, `ShopTab` union. |
+
+---
+
+## 7. Decisions (locked) + remaining question
+
+### Locked
+- **Translations:** AI-draft HE + AR first via Gemini script, native
+  polish later (operator task).
+- **Shipping:** all 7 phases in one PR.
+- **Hero slot:** Spotlight priority engine combining Featured Game
+  Mode 2× XP + Almost Unlocked + Daily Chest + Save for X.
+- **Drop of the Week:** removed entirely. The Spotlight engine is
+  the only hero.
+- **Dashboard ↔ Marketplace duplication:** Dashboard keeps its
+  existing Daily Chest card. Marketplace gets the full Spotlight
+  engine. No duplicated weekly-drop card.
+
+### Remaining question — Featured Mode 2× XP
+
+The Spotlight's #1 priority is "Play *Sentence Builder* this week
+for 2× XP." If we promise 2× XP we have to deliver it.
+
+| Option | Scope | Risk |
 |---|---|---|
-| **1. Catalogue i18n maps (EN-only)** | Create `shop-catalog.ts` with the English strings extracted from `game.ts`. Wire ShopView to read from the map. No visual change. | TypeScript check + roster of strings ready for translator. |
-| **2. AI-draft HE + AR for catalogue** | Run a Gemini script over `shop-catalog.ts`. Commit raw output as `he-draft` / `ar-draft`. | Native speaker review (operator task). |
-| **3. New marketplace layout** | `ShopMarketplaceView` + `CategoryCarousel`. Drop the Hub. Wire dashboard. | Visual review on staging. |
-| **4. Locked-avatar inline state** | Replace nested tiers with dim + XP badge. | Visual review. |
-| **5. Boosters + Power-ups merge** | Single section with internal toggle. | Visual review. |
-| **6. Cleanup** | Remove dead Hub code, old `shopTab` union if unused. | Type-check. |
+| **A. Frontend marketing only** — card says "Featured: Sentence Builder" without an XP multiplier. Real XP unchanged. | +0 backend lines | Promise mismatch if copy ever says "2×" |
+| **B. Real 2× XP, frontend-multiplied** — XP grants on the client get multiplied if mode === FEATURED_MODE. | +5 frontend lines | Trivially gameable — student edits the request |
+| **C. Real 2× XP, server-enforced** — server checks `mode + ISO_week` against a multiplier table on every XP grant. | +30 backend lines, 1 new column or constant on Fly.io | Most work, only safe option for a real promise |
 
-Each phase is its own PR. Shipping phase 1 alone is already a win
-(translation infrastructure in place even if marketplace IA waits).
+Recommendation: **C**, because the whole point of the new hero is
+pedagogical credibility. A teacher who sees "2× XP this week" needs
+that to be real, or it undermines trust. The work is bounded:
+~30 lines in `server.ts` near the existing XP grant endpoint, plus a
+`FEATURED_MODE_THIS_WEEK` constant.
 
----
-
-## 7. Open questions
-
-1. **Drop of the Week placement** — only on Dashboard? Only on
-   Marketplace? Both? (Today: both, which is the duplication problem.)
-2. **AI-draft translations vs hold for native speaker** — ship the
-   AI draft and iterate, or block phase 3 until a native pass exists?
-3. **Existing purchases mid-redesign** — if a student already owns
-   the Dragon avatar under the old IA, do they need to re-equip after
-   the redesign lands? (Probably no — store stays the same, just the
-   UI changes.)
-4. **Frames + Titles merge** — they're both name decorations, but
-   they look very different (frame = avatar border, title = small text
-   under name). Merge into one section "Decorations" or keep as two?
-5. **Phase 1 alone** (translation infrastructure, no IA changes)
-   shipped as the first PR while we discuss IA — or hold everything
-   together?
-6. **Naming** — "Shop" stays, or rename to "Market" / "Store" / Hebrew
-   "חנות" / Arabic "متجر"? (Just the i18n key value.)
+Open question to confirm before coding starts: **A, B, or C?**
