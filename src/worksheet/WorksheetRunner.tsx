@@ -9,10 +9,11 @@
  * caller.  Nothing about score persistence, name entry, or the
  * student/teacher UX lives here — that's the caller's job.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
+import { SkipForward } from "lucide-react";
 import { ALL_WORDS, type Word } from "../data/vocabulary";
-import type { Exercise, ExerciseResult, Language } from "./types";
+import type { Exercise, ExerciseResult, ExerciseType, Language } from "./types";
 import { EXERCISE_REGISTRY } from "./exercises/registry";
 
 interface Props {
@@ -47,6 +48,12 @@ const resolveWords = (ids: number[]): Word[] => {
   return out;
 };
 
+// How long the "Skipping {type}: no questions for these words" card
+// stays on screen before we advance to the next exercise. Long enough
+// for a kid to read it; short enough that a worksheet with several
+// empty sections doesn't feel stalled.
+const SKIP_NOTICE_MS = 1400;
+
 export const WorksheetRunner: React.FC<Props> = ({
   exercises,
   targetLang,
@@ -57,19 +64,51 @@ export const WorksheetRunner: React.FC<Props> = ({
 }) => {
   const [idx, setIdx] = useState(initialIdx);
   const [results, setResults] = useState<ExerciseResult[]>(initialResults);
+  // When set, the runner is showing a "skipping" placeholder for the
+  // current exercise (which auto-completed with no available items)
+  // and the registered timeout will advance to the next exercise.
+  const [skipping, setSkipping] = useState<ExerciseType | null>(null);
+  // Guards against the same exercise's useEffect firing onComplete
+  // twice (it can if the component re-renders before unmount because
+  // the parent passes a fresh handleComplete each render).
+  const handledIdxRef = useRef<number>(-1);
 
   const current = exercises[idx];
   const words = useMemo(() => (current ? resolveWords(current.word_ids) : []), [current]);
 
   const handleComplete = (result: ExerciseResult) => {
+    if (handledIdxRef.current === idx) return;
+    handledIdxRef.current = idx;
+
     const next = [...results, result];
     onProgress?.(next);
-    if (idx + 1 < exercises.length) {
-      setResults(next);
-      setIdx(idx + 1);
-    } else {
-      onFinish(next);
+
+    const advance = () => {
+      if (idx + 1 < exercises.length) {
+        setResults(next);
+        setIdx(idx + 1);
+      } else {
+        onFinish(next);
+      }
+    };
+
+    // total === 0 is the "no available items" auto-skip path used by
+    // exercises that depend on a content bank (Cloze, FillBlank,
+    // Definition Match, Synonyms, Sentence Builder, Word in Context)
+    // when none of the picked words have entries in the bank. Show a
+    // short notice so the kid sees what their teacher had picked,
+    // rather than silently jumping to the next exercise (or, in the
+    // worst case, the submit screen with a blank result).
+    if (result.total === 0 && current) {
+      setSkipping(current.type);
+      window.setTimeout(() => {
+        setSkipping(null);
+        advance();
+      }, SKIP_NOTICE_MS);
+      return;
     }
+
+    advance();
   };
 
   if (!current) {
@@ -91,23 +130,61 @@ export const WorksheetRunner: React.FC<Props> = ({
       )}
       {/* Keying on idx forces a fresh mount per exercise so each one
           gets its own clean state — otherwise stale `useState(() =>
-          shuffle(...))` from the previous exercise would leak in. */}
+          shuffle(...))` from the previous exercise would leak in.
+          Reset the once-per-idx onComplete guard on every fresh mount
+          via the key change below. */}
       <motion.div
         key={idx}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
       >
-        <Component
-          config={current}
-          words={words}
-          targetLang={targetLang}
-          onComplete={handleComplete}
-        />
+        {skipping ? (
+          <SkipNotice type={skipping} />
+        ) : (
+          <Component
+            config={current}
+            words={words}
+            targetLang={targetLang}
+            onComplete={handleComplete}
+          />
+        )}
       </motion.div>
     </div>
   );
 };
+
+const EXERCISE_LABEL: Record<ExerciseType, string> = {
+  matching: "Matching",
+  quiz: "Quiz",
+  letter_scramble: "Letter Scramble",
+  listening_dictation: "Listening Dictation",
+  fill_blank: "Fill in the Blank",
+  definition_match: "Definition Match",
+  synonym_antonym: "Synonyms & Antonyms",
+  cloze: "Cloze Paragraph",
+  sentence_building: "Sentence Building",
+  translation_typing: "Translation Typing",
+  word_in_context: "Word in Context",
+  true_false: "True or False",
+};
+
+const SkipNotice: React.FC<{ type: ExerciseType }> = ({ type }) => (
+  <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-2xl text-center max-w-md mx-auto">
+    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-amber-100 text-amber-600 mb-4">
+      <SkipForward size={26} />
+    </div>
+    <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-2">
+      Skipping
+    </p>
+    <h3 className="text-xl font-black text-stone-900 mb-2">
+      {EXERCISE_LABEL[type] ?? type}
+    </h3>
+    <p className="text-sm text-stone-500">
+      No questions available for these words.
+    </p>
+  </div>
+);
 
 // Slim per-exercise progress strip shown above the active exercise
 // when the worksheet contains more than one.  Single-exercise

@@ -141,18 +141,12 @@ const MUSIC_TRACKS = [
 ];
 
 const getMusicUrl = (file: string): string => {
-  // .env.example ships VITE_CLOUDFLARE_URL set to the placeholder
-  // "https://your-cloudflare-r2-url.dev".  If a dev copies that file
-  // without updating it, every track 404s and the Howl call silently
-  // never starts — teachers see the music button toggle on but hear
-  // nothing.  Reject obvious placeholders so we fall back to the bundled
-  // /game-music/*.mp3 served by the same origin (works in dev, in
-  // preview, and in production whether or not the CDN env is wired).
-  const raw = import.meta.env.VITE_CLOUDFLARE_URL as string | undefined;
-  const cloudflareUrl = raw && !/your-cloudflare-r2-url|example\.com|placeholder/i.test(raw)
-    ? raw
-    : '';
-  if (cloudflareUrl) return `${cloudflareUrl}/game-music/${file}.mp3`;
+  // Always serve from the same-origin /game-music/ path. The Cloudflare
+  // R2 alias at audio.vocaband.com only carries word-pronunciation
+  // buckets (sound/, sound-hebrew/, motivational/) — game-music files
+  // 404 there, so routing through the CDN env var silently broke the
+  // teacher monitor music toggle in production. Files live in
+  // public/game-music/ and the Worker serves them directly.
   return `/game-music/${file}.mp3`;
 };
 
@@ -361,6 +355,7 @@ export default function QuickPlayMonitor({
           src: [getMusicUrl(MUSIC_TRACKS[currentTrack].file)],
           volume: 0,
           loop: true,
+          onloaderror: () => console.warn(`[QuickPlayMonitor] music load failed: ${MUSIC_TRACKS[currentTrack].file}`),
         });
       }
       musicRef.current.play();
@@ -383,6 +378,7 @@ export default function QuickPlayMonitor({
       src: [getMusicUrl(MUSIC_TRACKS[idx].file)],
       volume: 0,
       loop: true,
+      onloaderror: () => console.warn(`[QuickPlayMonitor] music load failed: ${MUSIC_TRACKS[idx].file}`),
     });
     musicRef.current = newTrack;
     if (musicPlaying) {
