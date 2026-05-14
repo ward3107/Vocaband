@@ -472,6 +472,13 @@ export default function App() {
   const [classShowAssignment, setClassShowAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[] } | null>(null);
   // Worksheet — optional pre-fill from an assignment.
   const [worksheetAssignment, setWorksheetAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[]; className?: string | null } | null>(null);
+  // Tracks the entry point for activity-type tab views (class-show,
+  // worksheet, hot-seat, vocabagrut).  When set to 'create-assignment',
+  // these views' back/exit handlers return to the New Activity wizard
+  // (so the teacher lands back on the tab strip) instead of jumping
+  // straight to the teacher dashboard.  Cleared when the wizard itself
+  // is exited.
+  const [activityNavOrigin, setActivityNavOrigin] = useState<"create-assignment" | null>(null);
   // Cumulative score across all modes a guest has played in the
   // current Quick Play session.  The per-mode `score` state (in
   // useGameState) resets to 0 on every new mode, so emitting it
@@ -3180,10 +3187,14 @@ export default function App() {
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
           onWorksheetResultsClick={activeVoca === "hebrew" ? undefined : () => setView("worksheet-attempts")}
           onProjectAssignmentToClass={(a) => {
+            // Direct dashboard entry — back should go to dashboard, not
+            // to a possibly-stale create-assignment session.
+            setActivityNavOrigin(null);
             setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("class-show");
           }}
           onPrintAssignmentWorksheet={(a) => {
+            setActivityNavOrigin(null);
             setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("worksheet");
           }}
@@ -3498,6 +3509,7 @@ export default function App() {
         TOPIC_PACKS={TOPIC_PACKS}
         onBack={() => {
           setEditingAssignment(null);
+          setActivityNavOrigin(null);
           setView("teacher-dashboard");
         }}
         // The setup wizard's AssignmentData type narrows
@@ -3522,6 +3534,10 @@ export default function App() {
         // pass null so the tool opens to its own picker UI but with
         // the class name pre-filled via selectedClass.
         onSwitchActivity={(type) => {
+          // Remember that this tab view was opened from the wizard so
+          // its back/exit handler returns here instead of jumping past
+          // to the teacher dashboard.
+          setActivityNavOrigin('create-assignment');
           if (type === 'class-show') {
             setClassShowAssignment(null);
             setView('class-show');
@@ -3918,7 +3934,16 @@ export default function App() {
     return (
       <LazyWrapper loadingMessage="Loading Hot Seat…">
         <HotSeatView
-          onExit={() => setView("teacher-dashboard")}
+          onExit={() => {
+            // When launched from the New Activity wizard's tab strip,
+            // back should land on the wizard (so the teacher keeps
+            // their tab context); otherwise return to dashboard.
+            if (activityNavOrigin === 'create-assignment' && selectedClass) {
+              setView('create-assignment');
+            } else {
+              setView('teacher-dashboard');
+            }
+          }}
           speak={speakWord}
         />
       </LazyWrapper>
@@ -3944,7 +3969,11 @@ export default function App() {
             className={selectedClass?.name ?? null}
             onExit={() => {
               setClassShowAssignment(null);
-              setView("teacher-dashboard");
+              if (activityNavOrigin === 'create-assignment' && selectedClass) {
+                setView('create-assignment');
+              } else {
+                setView('teacher-dashboard');
+              }
             }}
           />
         </LazyWrapper>
@@ -3987,7 +4016,11 @@ export default function App() {
           }}
           onExit={() => {
             setClassShowAssignment(null);
-            setView("teacher-dashboard");
+            if (activityNavOrigin === 'create-assignment' && selectedClass) {
+              setView('create-assignment');
+            } else {
+              setView('teacher-dashboard');
+            }
           }}
         />
       </LazyWrapper>
@@ -4013,7 +4046,11 @@ export default function App() {
             className={worksheetAssignment?.className ?? selectedClass?.name ?? null}
             onBack={() => {
               setWorksheetAssignment(null);
-              setView("teacher-dashboard");
+              if (activityNavOrigin === 'create-assignment' && selectedClass) {
+                setView('create-assignment');
+              } else {
+                setView('teacher-dashboard');
+              }
             }}
           />
         </LazyWrapper>
@@ -4052,7 +4089,11 @@ export default function App() {
           }}
           onExit={() => {
             setWorksheetAssignment(null);
-            setView("teacher-dashboard");
+            if (activityNavOrigin === 'create-assignment' && selectedClass) {
+              setView('create-assignment');
+            } else {
+              setView('teacher-dashboard');
+            }
           }}
         />
       </LazyWrapper>
@@ -4071,7 +4112,13 @@ export default function App() {
           <HebrewComingSoonView
             titleHe="Vocabagrut"
             descriptionHe="מבחן מתכונת בסגנון בגרות זמין כרגע רק במסלול האנגלית."
-            onBack={() => setView("teacher-dashboard")}
+            onBack={() => {
+              if (activityNavOrigin === 'create-assignment' && selectedClass) {
+                setView('create-assignment');
+              } else {
+                setView('teacher-dashboard');
+              }
+            }}
           />
         </LazyWrapper>
       );
@@ -4082,7 +4129,19 @@ export default function App() {
           user={user}
           classes={visibleClasses}
           teacherAssignments={visibleAssignments}
-          onExit={() => setView(user.role === 'student' ? 'student-dashboard' : 'teacher-dashboard')}
+          onExit={() => {
+            // Students always return to their own dashboard.  Teachers
+            // who entered Vocabagrut via the New Activity wizard's tab
+            // strip go back to the wizard; other teachers (direct
+            // navigation, state restore) land on the dashboard.
+            if (user.role === 'student') {
+              setView('student-dashboard');
+            } else if (activityNavOrigin === 'create-assignment' && selectedClass) {
+              setView('create-assignment');
+            } else {
+              setView('teacher-dashboard');
+            }
+          }}
           showToast={showToast}
         />
       </LazyWrapper>
