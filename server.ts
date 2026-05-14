@@ -38,6 +38,7 @@ import { validateBagrutTest, computeMcMax, scoreMcAnswers, stripAnswerKey } from
 import { MODULE_SPECS } from "./src/features/vocabagrut/lib/moduleMap";
 import type { BagrutModule, BagrutTest } from "./src/features/vocabagrut/types";
 import { synthesizeSpeechMp3 } from "./tts-common";
+import { isDevEmail } from "./src/core/dev-allowlist";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload } from "./src/core/types";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils";
 import {
@@ -1547,12 +1548,14 @@ ${JSON.stringify(validWords)}`;
   }
 
   // Stricter gate for AI endpoints — auth + teacher + (Pro OR School OR
-  // inside trial window).  Without this, a Free-tier teacher (or anyone
-  // who signs up as a teacher) could bypass the React `isPro(user)` UI
-  // check and call /api/generate-sentences directly via curl/devtools,
-  // burning Gemini quota at our expense.  Reads `plan` + `trial_ends_at`
-  // from public.users via the service-role client, mirroring isPro() in
-  // src/core/plan.ts so the gate stays in lockstep with the UI promise.
+  // inside trial window OR admin OR developer email).  Without this, a
+  // Free-tier teacher (or anyone who signs up as a teacher) could
+  // bypass the React `isPro(user)` UI check and call
+  // /api/generate-sentences directly via curl/devtools, burning Gemini
+  // quota at our expense.  Reads `plan`, `trial_ends_at`, `role`, and
+  // `email` from public.users via the service-role client, mirroring
+  // getEffectivePlan() in src/core/plan.ts so the gate stays in
+  // lockstep with the UI promise.
   async function requireProTeacher(req: express.Request, res: express.Response): Promise<{ uid: string } | null> {
     const baseAuth = await requireAuthenticatedTeacher(req, res);
     if (!baseAuth) return null;
@@ -1563,7 +1566,7 @@ ${JSON.stringify(validWords)}`;
     try {
       const { data, error } = await supabaseAdmin
         .from("users")
-        .select("plan, trial_ends_at")
+        .select("plan, trial_ends_at, role, email")
         .eq("uid", baseAuth.uid)
         .maybeSingle();
       if (error || !data) {
@@ -1572,9 +1575,13 @@ ${JSON.stringify(validWords)}`;
       }
       const plan = data.plan as "free" | "pro" | "school" | null;
       const trialEndsAt = data.trial_ends_at as string | null;
+      const role = data.role as string | null;
+      const email = data.email as string | null;
       const isPaid = plan === "pro" || plan === "school";
       const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
-      if (!isPaid && !isTrialing) {
+      const isAdmin = role === "admin";
+      const isDev = isDevEmail(email);
+      if (!isPaid && !isTrialing && !isAdmin && !isDev) {
         res.status(403).json({
           error: "ai_requires_pro",
           message: "AI features require Pro. Upgrade to continue.",
