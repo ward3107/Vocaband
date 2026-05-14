@@ -82,6 +82,28 @@ export default function StudentAccountLoginView({
 }: StudentAccountLoginViewProps) {
   const codeInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Per-student teacher invite link prefill.  The teacher's "Share link"
+  // button in ClassRosterModal generates URLs like:
+  //   https://vocaband.com/student?class=ABC12345&s=<student_profile_id>
+  // When the student opens that URL we forward `s=<uuid>` to
+  // StudentPinLoginCard so it can auto-select the row and skip the
+  // pick-your-name step.  Captured once on mount — subsequent picks /
+  // back-taps are user-driven.
+  const [prefilledStudentId] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('s');
+      if (!raw) return null;
+      // student_profiles.id is a UUID — accept the typical
+      // 8-4-4-4-12 hex form (case-insensitive).  Anything else gets
+      // dropped so a malformed param can't blow up the picker.
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+        return null;
+      }
+      return raw.toLowerCase();
+    } catch { return null; }
+  });
+
   // Auto-focus the (hidden) code input when the primary screen is up.
   // On mobile this cues the soft keyboard; on desktop, first keystroke
   // lands in the right place without the student hunting for a field.
@@ -407,6 +429,7 @@ export default function StudentAccountLoginView({
                     hasEnoughCode ? (
                       <StudentPinLoginCard
                         classCode={studentLoginClassCode.trim().toUpperCase()}
+                        prefilledStudentId={prefilledStudentId}
                         onSuccess={() => {
                           // Supabase session is live; App.tsx's
                           // onAuthStateChange listener will hydrate the
