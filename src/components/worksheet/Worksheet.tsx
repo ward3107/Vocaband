@@ -182,7 +182,7 @@ export default function Worksheet({
 
       {sheetType === 'word-list' && <WordListSheet words={words} translationLang={translationLang} />}
       {sheetType === 'scramble' && <ScrambleSheet words={words} translationLang={translationLang} />}
-      {sheetType === 'fill-blank' && <FillBlankSheet words={words} aiSentences={aiSentences} />}
+      {sheetType === 'fill-blank' && <FillBlankSheet words={words} aiSentences={aiSentences} translationLang={translationLang} />}
       {sheetType === 'match-up' && <MatchUpSheet words={words} translationLang={translationLang} />}
       {sheetType === 'multiple-choice' && <MultipleChoiceSheet words={words} translationLang={translationLang} />}
       {sheetType === 'reverse-translation' && <ReverseTranslationSheet words={words} translationLang={translationLang} />}

@@ -3,6 +3,7 @@ import type { Word } from "../../data/vocabulary";
 import type { AssignmentData } from "../../core/supabase";
 import AnswerOptionButton from "../AnswerOptionButton";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
+import { useLanguage } from "../../hooks/useLanguage";
 
 interface FillBlankGameProps {
   activeAssignment: AssignmentData | null;
@@ -78,6 +79,7 @@ const FillBlankGame = React.memo(({
   options, hiddenOptions, feedback,
   gameWordsCount, onAnswer, themeColor,
 }: FillBlankGameProps) => {
+  const { language } = useLanguage();
   const themed = themeColor ? getThemeColors(themeColor) : null;
   const sentences = (activeAssignment as AssignmentData & { sentences?: string[] })?.sentences?.filter(s => s.trim()) || [];
 
@@ -142,7 +144,7 @@ const FillBlankGame = React.memo(({
         {sentinelIdx >= 0 && (
           <span
             className="inline-flex items-center justify-center align-middle min-w-[64px] sm:min-w-[88px] h-9 sm:h-12 px-3 sm:px-4 mx-1 sm:mx-1.5 rounded-xl border-2 border-dashed border-lime-500 bg-white text-lime-600 font-black text-xl sm:text-3xl"
-            aria-label="Fill in the blank"
+            aria-label={language === 'he' ? 'מלא את החסר' : language === 'ar' ? 'املأ الفراغ' : 'Fill in the blank'}
           >
             ?
           </span>

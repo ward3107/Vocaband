@@ -442,7 +442,7 @@ const WordCard: React.FC<WordCardProps> = ({
               disabled={localTranslating || isTranslating}
               className="p-2 rounded-md bg-gradient-to-br from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 text-amber-700 hover:text-amber-800 transition-all min-w-[36px] min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-              title="Quick translate with AI"
+              title={TEXT.quickTranslateWithAi}
             >
               {localTranslating || isTranslating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -461,7 +461,7 @@ const WordCard: React.FC<WordCardProps> = ({
             type="button"
             className="p-2 rounded-md bg-[var(--vb-surface-alt)] hover:bg-indigo-100 text-[var(--vb-text-secondary)] hover:text-indigo-600 transition-colors min-w-[36px] min-h-[36px]"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-            title="Edit translations"
+            title={TEXT.editTranslationsTitle}
           >
             <span className="text-sm">✏️</span>
           </button>
@@ -475,7 +475,7 @@ const WordCard: React.FC<WordCardProps> = ({
             type="button"
             className="p-2 rounded-md bg-[var(--vb-surface-alt)] hover:bg-red-100 text-[var(--vb-text-secondary)] hover:text-red-600 transition-colors min-w-[36px] min-h-[36px]"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-            title="Remove word"
+            title={TEXT.removeWordTitle}
           >
             <X className="w-4 h-4" />
           </button>
@@ -1339,7 +1339,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                             <button
                               type="button"
                               aria-label={TEXT.renameGroupAria(group.name)}
-                              title="Rename"
+                              title={TEXT.renameTitle}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditingId(group.id);
@@ -1355,7 +1355,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                             <button
                               type="button"
                               aria-label={TEXT.deleteGroupAria(group.name)}
-                              title="Delete"
+                              title={TEXT.deleteTitle}
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 if (window.confirm(`Delete saved group "${group.name}"?`)) {

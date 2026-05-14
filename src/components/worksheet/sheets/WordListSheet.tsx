@@ -18,14 +18,16 @@ function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
 
 export function WordListSheet({ words, translationLang }: WordListSheetProps) {
   const dir = translationLang === 'en' ? 'ltr' : undefined;
+  const englishH = translationLang === 'he' ? 'אנגלית' : translationLang === 'ar' ? 'الإنجليزية' : 'English';
+  const translationH = translationLang === 'he' ? 'תרגום' : translationLang === 'ar' ? 'الترجمة' : 'Translation';
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13pt' }}>
       <thead>
         <tr style={{ borderBottom: '2px solid #000' }}>
           <th style={{ textAlign: 'left', padding: '0.4rem', width: '8%' }}>#</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '46%' }}>English</th>
+          <th style={{ textAlign: 'left', padding: '0.4rem', width: '46%' }}>{englishH}</th>
           <th style={{ textAlign: 'left', padding: '0.4rem', width: '46%' }} dir={dir}>
-            Translation
+            {translationH}
           </th>
         </tr>
       </thead>

@@ -26,6 +26,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Star, X } from "lucide-react";
 import { supabase } from "../core/supabase";
 import type { AppUser } from "../core/supabase";
+import { useLanguage } from "../hooks/useLanguage";
+import { ratingPromptT } from "../locales/rating-prompt";
 
 interface RatingPromptProps {
   user: AppUser;
@@ -54,6 +56,8 @@ interface RatingPromptProps {
 const STUDENT_EMOJIS = ["😡", "😕", "😐", "🙂", "😍"];
 
 export default function RatingPrompt({ user, kind, guestStorage, onDone }: RatingPromptProps) {
+  const { language, dir } = useLanguage();
+  const t = ratingPromptT[language];
   const [open, setOpen] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   // Two-step star selection for the teacher variant.  Earlier the
@@ -158,11 +162,12 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
             onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-md bg-[var(--vb-surface)] rounded-3xl shadow-2xl p-6 sm:p-8"
+            dir={dir}
           >
             <button
               type="button"
               onClick={handleDismiss}
-              aria-label="Close"
+              aria-label={t.closeAria}
               className="absolute top-3 right-3 w-9 h-9 rounded-full hover:bg-[var(--vb-surface-alt)] flex items-center justify-center text-[var(--vb-text-muted)]"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
             >
@@ -173,10 +178,10 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
               <>
                 <div className="text-5xl text-center mb-3" aria-hidden>👩‍🏫</div>
                 <h2 id="rating-prompt-title" className="text-xl sm:text-2xl font-black text-[var(--vb-text-primary)] text-center mb-2">
-                  How's Vocaband working for your class?
+                  {t.teacherHeading}
                 </h2>
                 <p className="text-sm text-[var(--vb-text-secondary)] text-center mb-6">
-                  Quick rating — helps us know what to build next.
+                  {t.teacherSubheading}
                 </p>
                 {/* Cumulative-fill star widget.  The "active" rating is
                     whichever is largest of (a) the star being hovered
@@ -188,7 +193,7 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
                 <div
                   className="flex justify-center gap-2 sm:gap-3 mb-4"
                   role="radiogroup"
-                  aria-label="Rating, 1 to 5 stars"
+                  aria-label={t.starsAria}
                   onMouseLeave={() => setHoveredRating(null)}
                 >
                   {[1, 2, 3, 4, 5].map((n) => {
@@ -202,7 +207,7 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
                         disabled={submitting}
                         role="radio"
                         aria-checked={selectedRating === n}
-                        aria-label={`${n} star${n === 1 ? "" : "s"}`}
+                        aria-label={t.starAria(n)}
                         className="p-2 sm:p-3 rounded-2xl hover:bg-amber-50 transition-colors disabled:opacity-60"
                         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                       >
@@ -225,12 +230,12 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
                 <p className="text-sm font-bold text-[var(--vb-text-primary)] text-center mb-3 min-h-[1.25rem]">
                   {(() => {
                     const r = hoveredRating ?? selectedRating;
-                    if (r == null) return "Tap a star to rate";
-                    if (r === 1) return "1 star · Needs work";
-                    if (r === 2) return `${r} stars · Could be better`;
-                    if (r === 3) return `${r} stars · It's okay`;
-                    if (r === 4) return `${r} stars · Pretty good`;
-                    return `${r} stars · Love it`;
+                    if (r == null) return t.tapToRate;
+                    if (r === 1) return t.oneStar;
+                    if (r === 2) return t.twoStars;
+                    if (r === 3) return t.threeStars;
+                    if (r === 4) return t.fourStars;
+                    return t.fiveStars;
                   })()}
                 </p>
                 <button
@@ -240,26 +245,26 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
                   className="w-full py-3 rounded-2xl font-bold bg-amber-400 text-stone-900 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                 >
-                  {submitting ? "Sending…" : "Send rating"}
+                  {submitting ? t.sending : t.sendRating}
                 </button>
               </>
             ) : (
               <>
                 <div className="text-5xl text-center mb-3" aria-hidden>🎉</div>
                 <h2 id="rating-prompt-title" className="text-xl sm:text-2xl font-black text-[var(--vb-text-primary)] text-center mb-2">
-                  How was that game?
+                  {t.studentHeading}
                 </h2>
                 <p className="text-sm text-[var(--vb-text-secondary)] text-center mb-6">
-                  Tap a face — your teacher will see the average for the class.
+                  {t.studentSubheading}
                 </p>
-                <div className="flex justify-center gap-1 sm:gap-2 mb-2" role="group" aria-label="Rating">
+                <div className="flex justify-center gap-1 sm:gap-2 mb-2" role="group" aria-label={t.studentRatingGroupAria}>
                   {STUDENT_EMOJIS.map((emoji, idx) => (
                     <button
                       key={emoji}
                       type="button"
                       onClick={() => handleSubmit(idx + 1)}
                       disabled={submitting}
-                      aria-label={`Rating ${idx + 1} of 5`}
+                      aria-label={t.studentRatingAria(idx + 1)}
                       className="text-4xl sm:text-5xl p-2 rounded-2xl hover:bg-[var(--vb-surface-alt)] hover:scale-110 active:scale-95 transition-transform disabled:opacity-60"
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                     >

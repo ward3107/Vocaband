@@ -217,8 +217,8 @@ export default function AssignmentDetail({
 
           <Bucket
             icon={<Moon size={18} className="text-[var(--vb-text-secondary)]" />}
-            title="Not started"
-            subtitle="Zero plays on this assignment"
+            title={t.notStartedTitle}
+            subtitle={t.notStartedSubtitle}
             count={notStarted.length}
             tone="stone"
           >
@@ -233,7 +233,7 @@ export default function AssignmentDetail({
                   <span className="text-lg" aria-hidden>🦊</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-[var(--vb-text-primary)] truncate">{name}</p>
-                    <p className="text-[11px] text-[var(--vb-text-muted)]">Hasn't opened it</p>
+                    <p className="text-[11px] text-[var(--vb-text-muted)]">{t.hasntOpenedIt}</p>
                   </div>
                 </div>
               ))

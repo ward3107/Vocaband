@@ -112,6 +112,18 @@ export interface TeacherDashboardT {
   wordCount: (n: number) => string;
   editAssignment: string;
   duplicateAssignment: string;
+
+  // ClassCard primary action row (Roster button + assignment-row actions)
+  rosterShortLabel: string;
+  rosterButtonTitle: string;
+  rosterButtonAria: string;
+  shareAssignmentAria: string;
+  shareAssignmentTitle: string;
+  shareShortLabel: string;
+  projectToClassAria: string;
+  projectShortLabel: string;
+  printWorksheetAria: string;
+  printShortLabel: string;
 }
 
 export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
@@ -203,6 +215,16 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     wordCount: (n) => `${n} word${n === 1 ? '' : 's'}`,
     editAssignment: "Edit",
     duplicateAssignment: "Duplicate",
+    rosterShortLabel: "Roster",
+    rosterButtonTitle: "Manage roster + PINs",
+    rosterButtonAria: "Manage roster",
+    shareAssignmentAria: "Share assignment link",
+    shareAssignmentTitle: "Share assignment link",
+    shareShortLabel: "Share",
+    projectToClassAria: "Project to class",
+    projectShortLabel: "Project",
+    printWorksheetAria: "Print worksheet",
+    printShortLabel: "Print",
   },
 
   he: {
@@ -293,6 +315,16 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     wordCount: (n) => `${n} ${n === 1 ? "מילה" : "מילים"}`,
     editAssignment: "ערוך",
     duplicateAssignment: "שכפל",
+    rosterShortLabel: "רשימה",
+    rosterButtonTitle: "ניהול רשימה ו-PINs",
+    rosterButtonAria: "ניהול רשימת הכיתה",
+    shareAssignmentAria: "שיתוף קישור למשימה",
+    shareAssignmentTitle: "שיתוף קישור למשימה",
+    shareShortLabel: "שתף",
+    projectToClassAria: "הקרנה לכיתה",
+    projectShortLabel: "הקרן",
+    printWorksheetAria: "הדפסת דף עבודה",
+    printShortLabel: "הדפס",
   },
 
   ar: {
@@ -383,5 +415,15 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     wordCount: (n) => `${n} ${n === 1 ? "كلمة" : "كلمات"}`,
     editAssignment: "تعديل",
     duplicateAssignment: "تكرار",
+    rosterShortLabel: "القائمة",
+    rosterButtonTitle: "إدارة القائمة ورموز PIN",
+    rosterButtonAria: "إدارة قائمة الصف",
+    shareAssignmentAria: "مشاركة رابط الواجب",
+    shareAssignmentTitle: "مشاركة رابط الواجب",
+    shareShortLabel: "مشاركة",
+    projectToClassAria: "عرض على الصف",
+    projectShortLabel: "عرض",
+    printWorksheetAria: "طباعة ورقة العمل",
+    printShortLabel: "طباعة",
   },
 };

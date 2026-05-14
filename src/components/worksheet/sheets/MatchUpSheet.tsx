@@ -37,10 +37,11 @@ export function MatchUpSheet({ words, translationLang, answerKey }: MatchUpSheet
     return LETTERS[rightPos] ?? '?';
   };
 
+  const drawLine = translationLang === 'he' ? 'משכו קו מכל מילה באנגלית לתרגום שלה. (או כתבו את האות המתאימה על הקו.)' : translationLang === 'ar' ? 'ارسم خطًا من كل كلمة بالإنجليزية إلى ترجمتها. (أو اكتب الحرف المطابق على السطر.)' : 'Draw a line from each English word to its translation.  (Or write the matching letter on the line.)';
   return (
     <div>
       <p style={{ fontSize: '11pt', marginBottom: '0.75rem', fontStyle: 'italic' }}>
-        Draw a line from each English word to its translation.  (Or write the matching letter on the line.)
+        {drawLine}
       </p>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13pt' }}>
         <tbody>

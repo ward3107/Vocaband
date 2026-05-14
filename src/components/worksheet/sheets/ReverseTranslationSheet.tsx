@@ -17,14 +17,18 @@ function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
 }
 
 export function ReverseTranslationSheet({ words, translationLang, answerKey }: ReverseTranslationSheetProps) {
+  const translationH = translationLang === 'he' ? 'תרגום' : translationLang === 'ar' ? 'الترجمة' : 'Translation';
+  const writeH = answerKey
+    ? (translationLang === 'he' ? 'אנגלית' : translationLang === 'ar' ? 'الإنجليزية' : 'English')
+    : (translationLang === 'he' ? 'כתבו את המילה באנגלית' : translationLang === 'ar' ? 'اكتب الكلمة بالإنجليزية' : 'Write the English word');
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13pt' }}>
       <thead>
         <tr style={{ borderBottom: '2px solid #000' }}>
           <th style={{ textAlign: 'left', padding: '0.4rem', width: '8%' }}>#</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '40%' }}>Translation</th>
+          <th style={{ textAlign: 'left', padding: '0.4rem', width: '40%' }}>{translationH}</th>
           <th style={{ textAlign: 'left', padding: '0.4rem', width: '52%' }}>
-            {answerKey ? 'English' : 'Write the English word'}
+            {writeH}
           </th>
         </tr>
       </thead>

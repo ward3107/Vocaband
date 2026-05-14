@@ -276,7 +276,7 @@ export default function StudentAccountLoginView({
                   <button
                     onClick={() => setLangOpen(o => !o)}
                     type="button"
-                    aria-label="Change language"
+                    aria-label={language === 'he' ? 'החלף שפה' : language === 'ar' ? 'تغيير اللغة' : 'Change language'}
                     aria-expanded={langOpen}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm text-white text-xs font-bold hover:bg-white/20 transition-colors"
                     style={{ touchAction: 'manipulation' }}

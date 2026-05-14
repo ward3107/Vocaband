@@ -351,7 +351,7 @@ export default function HebrewClassShowView({
                 </div>
                 {phase.revealed && (
                   <div dir="ltr" className="space-y-2">
-                    <div className="text-sky-300/60 font-black text-sm tracking-widest mb-2">Translation</div>
+                    <div className="text-sky-300/60 font-black text-sm tracking-widest mb-2">תרגום · Translation · ترجمة</div>
                     <div className="text-3xl sm:text-5xl font-black text-white">{lemma.translationEn}</div>
                     <div className="text-3xl sm:text-5xl font-black text-white/80">{lemma.translationAr}</div>
                   </div>

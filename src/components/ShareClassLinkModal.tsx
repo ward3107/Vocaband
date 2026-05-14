@@ -96,6 +96,23 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
   };
   const cmHeader = headerCopy[language] ?? headerCopy.en;
 
+  const assignmentHeaderCopy: Record<'en' | 'he' | 'ar', { eyebrow: string; subtitle: string }> = {
+    en: {
+      eyebrow: 'Share assignment',
+      subtitle: `Students who open this link join ${className} and go straight to this assignment.`,
+    },
+    he: {
+      eyebrow: 'שיתוף משימה',
+      subtitle: `תלמידים שייפתחו את הקישור יצטרפו ל-${className} ויעברו ישר למשימה הזו.`,
+    },
+    ar: {
+      eyebrow: 'مشاركة الواجب',
+      subtitle: `سينضم الطلاب الذين يفتحون هذا الرابط إلى ${className} وينتقلون مباشرة إلى هذا الواجب.`,
+    },
+  };
+  const assignHeader = assignmentHeaderCopy[language] ?? assignmentHeaderCopy.en;
+  const closeAria = language === 'he' ? 'סגירה' : language === 'ar' ? 'إغلاق' : 'Close';
+
   // Reset copy chips when the modal closes so a re-open shows the
   // default Copy icons rather than a stale checkmark.
   useEffect(() => {
@@ -156,7 +173,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
               <button
                 onClick={onClose}
                 type="button"
-                aria-label="Close"
+                aria-label={closeAria}
                 className="absolute top-4 end-4 w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
                 style={{ touchAction: "manipulation" }}
               >
@@ -166,7 +183,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                 {isClassMinuteShare
                   ? cmHeader.eyebrow
                   : isAssignmentShare
-                  ? "Share assignment"
+                  ? assignHeader.eyebrow
                   : t.shareClassLinkEyebrow}
               </p>
               <h2 className="mt-1 text-2xl font-black leading-tight">
@@ -176,7 +193,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                 {isClassMinuteShare
                   ? cmHeader.subtitle
                   : isAssignmentShare
-                  ? `Students who open this link join ${className} and go straight to this assignment.`
+                  ? assignHeader.subtitle
                   : t.shareClassLinkSubtitle}
               </p>
             </div>

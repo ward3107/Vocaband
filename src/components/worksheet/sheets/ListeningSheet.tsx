@@ -12,7 +12,9 @@ interface ListeningSheetProps {
   answerKey?: boolean;
 }
 
-export function ListeningSheet({ words, answerKey }: ListeningSheetProps) {
+export function ListeningSheet({ words, translationLang, answerKey }: ListeningSheetProps) {
+  const teacherSays = translationLang === 'he' ? 'המורה יאמר מילה. הקיפו את הכתיב הנכון.' : translationLang === 'ar' ? 'سيقول المعلّم كلمة. ضع دائرة حول التهجئة الصحيحة.' : 'Your teacher will say a word. Circle the correct spelling.';
+  const listenAndChoose = translationLang === 'he' ? 'הקשיבו ובחרו את המילה הנכונה:' : translationLang === 'ar' ? 'استمع واختر الكلمة الصحيحة:' : 'Listen and choose the correct word:';
   // Generate 3 distractors for each word
   const questions = useMemo(() => {
     return words.map(targetWord => {
@@ -38,14 +40,14 @@ export function ListeningSheet({ words, answerKey }: ListeningSheetProps) {
   return (
     <div style={{ fontSize: '13pt' }}>
       <p style={{ fontSize: '11pt', color: '#666', marginBottom: '1rem' }}>
-        Your teacher will say a word. Circle the correct spelling.
+        {teacherSays}
       </p>
       {questions.map((q, qIdx) => (
         <div key={q.targetWord.id} style={{ marginBottom: '1.2rem', paddingBottom: '1rem', borderBottom: '1px dashed #ccc' }}>
           <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontWeight: 900, fontSize: '14pt' }}>{qIdx + 1}.</span>
             <Volume2 size={18} style={{ color: '#6366f1' }} />
-            <span>Listen and choose the correct word:</span>
+            <span>{listenAndChoose}</span>
           </div>
           <div style={{ marginLeft: '1.5rem' }}>
             {q.options.map((opt, optIdx) => {

@@ -39,6 +39,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Volume2, X, SkipForward, Zap, Clock } from "lucide-react";
 import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
+import { gameAriasT } from "../../locales/student/game-arias";
 import { type GameThemeColor, getThemeColors } from "./GameShell";
 
 interface SpeedRoundGameProps {
@@ -107,6 +108,7 @@ export default function SpeedRoundGame({
   durationSeconds = 60,
 }: SpeedRoundGameProps) {
   const { language, dir } = useLanguage();
+  const tAria = gameAriasT[language];
   const theme = getThemeColors(themeColor);
 
   // Round state.
@@ -323,7 +325,7 @@ export default function SpeedRoundGame({
         type="button"
         onClick={() => speak(question.word.id, question.word.english)}
         className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-semibold transition"
-        aria-label="Replay audio"
+        aria-label={tAria.replayAudio}
       >
         <Volume2 size={14} />
         {language === "he" ? "השמע שוב" : language === "ar" ? "أعد التشغيل" : "Replay"}

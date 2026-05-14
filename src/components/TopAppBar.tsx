@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ChevronLeft, X } from "lucide-react";
 import UiScaleControl from "./dashboard/UiScaleControl";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { useLanguage } from "../hooks/useLanguage";
 
 interface TopAppBarProps {
   title: string;
@@ -50,11 +51,17 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   showBack = false,
   onBack,
   onExit,
-  exitLabel = "Exit",
+  exitLabel,
   userAvatar,
   onLogout,
   showScaleControl = false,
 }) => {
+  const { language } = useLanguage();
+  // Localised back / exit fallbacks — parents can still pass an
+  // explicit exitLabel ("End show", "Cancel", etc.) and it wins.
+  const backAria = language === "he" ? "חזרה" : language === "ar" ? "رجوع" : "Go back";
+  const defaultExit = language === "he" ? "יציאה" : language === "ar" ? "خروج" : "Exit";
+  const effectiveExitLabel = exitLabel ?? defaultExit;
   const safeAvatarUrl = sanitizeAvatarUrl(userAvatar);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -90,7 +97,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           <button
             onClick={onBack}
             className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full signature-gradient shadow-lg shadow-blue-500/20 text-white hover:scale-105 active:scale-95 transition-transform"
-            aria-label="Go back"
+            aria-label={backAria}
           >
             <ChevronLeft size={18} />
           </button>
@@ -115,11 +122,11 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           <button
             type="button"
             onClick={onExit}
-            aria-label={exitLabel}
+            aria-label={effectiveExitLabel}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 active:scale-95 transition-colors border-2 border-stone-200"
           >
             <X size={14} />
-            <span>{exitLabel}</span>
+            <span>{effectiveExitLabel}</span>
           </button>
         )}
         {showScaleControl && <UiScaleControl />}

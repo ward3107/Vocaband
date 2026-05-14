@@ -77,7 +77,7 @@ export default function ClassCreatedModal({
                   ? <Check size={20} style={{ color: 'var(--vb-accent)' }} />
                   : <Copy size={20} />
                 }
-                <span>Copy</span>
+                <span>{language === 'he' ? 'העתק' : language === 'ar' ? 'نسخ' : 'Copy'}</span>
               </button>
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(createdClassCode || "")}`}

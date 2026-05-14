@@ -112,7 +112,7 @@ export default function QuickPlayStudentView({
   // picker can fire the join with it.  Defaults to empty string
   // and is overwritten when the student clicks Continue on the form.
   const stagedNameRef = useRef<string>("");
-  const { setLanguage: setAppLanguage } = useLanguage();
+  const { language: qpLanguage, setLanguage: setAppLanguage } = useLanguage();
 
   // Surface server-side join errors as toasts so the student isn't
   // stuck staring at the join screen. "nickname_taken" has its own
@@ -558,7 +558,7 @@ export default function QuickPlayStudentView({
                         autoComplete="off"
                         maxLength={30}
                         defaultValue={quickPlayStudentName}
-                        placeholder="Enter your nickname..."
+                        placeholder={qpLanguage === 'he' ? 'הכניסו כינוי...' : qpLanguage === 'ar' ? 'أدخل اسمك المستعار...' : 'Enter your nickname...'}
                         className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         autoFocus
                       />

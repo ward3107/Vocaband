@@ -17,16 +17,22 @@ function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
 }
 
 export function LetterSoundsSheet({ words, translationLang, answerKey }: LetterSoundsSheetProps) {
+  const wordH = translationLang === 'he' ? 'מילה' : translationLang === 'ar' ? 'الكلمة' : 'Word';
+  const letterByLetterH = translationLang === 'he' ? 'אות אחר אות' : translationLang === 'ar' ? 'حرفًا حرفًا' : 'Letter by letter';
+  const hintH = translationLang === 'he' ? 'רמז' : translationLang === 'ar' ? 'تلميح' : 'Hint';
+  const writeItH = answerKey
+    ? (translationLang === 'he' ? 'כתבו אותה' : translationLang === 'ar' ? 'اكتبها' : 'Write it')
+    : (translationLang === 'he' ? 'תורכם' : translationLang === 'ar' ? 'دورك' : 'Your turn');
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13pt' }}>
       <thead>
         <tr style={{ borderBottom: '2px solid #000' }}>
           <th style={{ textAlign: 'left', padding: '0.4rem', width: '8%' }}>#</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '20%' }}>Word</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '25%' }}>Letter by letter</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '22%' }}>Hint</th>
+          <th style={{ textAlign: 'left', padding: '0.4rem', width: '20%' }}>{wordH}</th>
+          <th style={{ textAlign: 'left', padding: '0.4rem', width: '25%' }}>{letterByLetterH}</th>
+          <th style={{ textAlign: 'left', padding: '0.4rem', width: '22%' }}>{hintH}</th>
           <th style={{ textAlign: 'left', padding: '0.4rem', width: '25%' }}>
-            {answerKey ? 'Write it' : 'Your turn'}
+            {writeItH}
           </th>
         </tr>
       </thead>

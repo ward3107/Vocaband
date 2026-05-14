@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { RotateCw, Crop, X, Check, Maximize } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
 
 interface ImageCropModalProps {
   file: File;
@@ -17,6 +18,12 @@ const HANDLE_SIZE = 28; // touch-friendly handle size in px
 const MIN_CROP = 10;    // minimum crop size in %
 
 export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropModalProps) {
+  const { language } = useLanguage();
+  const labels = language === "he"
+    ? { loading: "טוען תמונה...", rotate: "סובב", fullImage: "תמונה מלאה", cancel: "ביטול", scanWords: "סרוק מילים", preview: "תצוגה מקדימה" }
+    : language === "ar"
+    ? { loading: "جارٍ تحميل الصورة...", rotate: "تدوير", fullImage: "الصورة الكاملة", cancel: "إلغاء", scanWords: "مسح الكلمات", preview: "معاينة" }
+    : { loading: "Loading image...", rotate: "Rotate", fullImage: "Full image", cancel: "Cancel", scanWords: "Scan Words", preview: "Preview" };
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [imgSrc, setImgSrc] = useState("");
@@ -278,7 +285,7 @@ export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropM
           {imgSrc && (
             <img
               src={imgSrc}
-              alt="Preview"
+              alt={labels.preview}
               className="absolute pointer-events-none select-none"
               style={{
                 left: imgDisplay.x,
@@ -341,7 +348,7 @@ export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropM
 
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm">
-              Loading image...
+              {labels.loading}
             </div>
           )}
         </div>
@@ -350,11 +357,11 @@ export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropM
         <div className="flex items-center justify-center gap-6 px-4 py-3 bg-black/90">
           <button onClick={rotate90} className="flex flex-col items-center gap-1 p-2 text-white/70 hover:text-white active:scale-90 transition-all">
             <RotateCw size={22} />
-            <span className="text-[10px] font-bold">Rotate</span>
+            <span className="text-[10px] font-bold">{labels.rotate}</span>
           </button>
           <button onClick={resetCrop} className="flex flex-col items-center gap-1 p-2 text-white/70 hover:text-white active:scale-90 transition-all">
             <Maximize size={22} />
-            <span className="text-[10px] font-bold">Full image</span>
+            <span className="text-[10px] font-bold">{labels.fullImage}</span>
           </button>
         </div>
 
@@ -364,13 +371,13 @@ export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropM
             onClick={onCancel}
             className="flex-1 py-3.5 bg-white/10 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all"
           >
-            Cancel
+            {labels.cancel}
           </button>
           <button
             onClick={handleConfirm}
             className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            <Check size={18} /> Scan Words
+            <Check size={18} /> {labels.scanWords}
           </button>
         </div>
       </motion.div>

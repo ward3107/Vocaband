@@ -35,6 +35,8 @@ export function SentenceBuilderSheet({ words, translationLang, answerKey, aiSent
       };
     });
   }, [words, translationLang, aiSentences]);
+  const unscramblePrefix = translationLang === 'he' ? 'סדרו את המילים למשפט על' : translationLang === 'ar' ? 'رتّب الكلمات لتكوين جملة عن' : 'Unscramble the words to make a sentence about';
+  const yourAnswer = translationLang === 'he' ? 'התשובה שלך:' : translationLang === 'ar' ? 'إجابتك:' : 'Your answer:';
 
   return (
     <div style={{ fontSize: '13pt' }}>
@@ -45,14 +47,14 @@ export function SentenceBuilderSheet({ words, translationLang, answerKey, aiSent
             <div style={{ marginBottom: '0.5rem' }}>
               <span style={{ fontWeight: 900, fontSize: '14pt' }}>{idx + 1}.</span>
               <span style={{ marginLeft: '0.5rem', fontWeight: 700 }}>
-                Unscramble the words to make a sentence about <strong dir="auto">{item.translation}</strong>:
+                {unscramblePrefix} <strong dir="auto">{item.translation}</strong>:
               </span>
             </div>
             <div style={{ marginLeft: '1.5rem', padding: '0.6rem', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '0.5rem' }}>
               <span style={{ letterSpacing: '0.1em' }}>{scrambled}</span>
             </div>
             <div style={{ marginLeft: '1.5rem' }}>
-              <span style={{ fontWeight: 700 }}>Your answer: </span>
+              <span style={{ fontWeight: 700 }}>{yourAnswer} </span>
               <span style={{ fontStyle: answerKey ? 'normal' : 'italic' }}>
                 {answerKey ? <strong>{item.sentence}</strong> : '______________________________________________'}
               </span>

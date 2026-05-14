@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import { Volume2 } from "lucide-react";
 import { getGameDebugger } from "../../utils/gameDebug";
+import { useLanguage } from "../../hooks/useLanguage";
+import { gameAriasT } from "../../locales/student/game-arias";
 import { cleanWordForDisplay } from "../../utils/answerMatch";
 import type { Word } from "../../data/vocabulary";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
@@ -34,6 +36,8 @@ export default function WordPromptCard({
   currentIndex, gameWordsLength, currentWord, gameMode, targetLanguage,
   feedback, isFlipped, scrambledWord, speakWord, themeColor,
 }: WordPromptCardProps) {
+  const { language } = useLanguage();
+  const tAria = gameAriasT[language];
   const themed = themeColor ? getThemeColors(themeColor) : null;
   return (
     <div
@@ -88,8 +92,8 @@ export default function WordPromptCard({
               ? `${themed.pillBg} hover:opacity-80`
               : "bg-stone-100 hover:bg-stone-200"
           }`}
-          aria-label="Play pronunciation"
-          title="Play pronunciation"
+          aria-label={tAria.playPronunciation}
+          title={tAria.playPronunciation}
         >
           <Volume2 size={24} className={themed ? themed.pillText : "text-stone-600"} />
         </button>

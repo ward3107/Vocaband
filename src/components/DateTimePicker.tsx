@@ -19,6 +19,7 @@
  */
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Calendar as CalendarIcon, X, ChevronLeft, ChevronRight, Clock, Check } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
 
 interface DateTimePickerProps {
   /** ISO string — accepts "YYYY-MM-DD" (legacy, date-only) or "YYYY-MM-DDTHH:mm" */
@@ -29,11 +30,24 @@ interface DateTimePickerProps {
   minDate?: Date;
 }
 
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_LABELS = [
+// Default English labels — overridden inside the component with the
+// useLanguage-driven set so EN/HE/AR calendars get the right strings.
+const WEEKDAY_LABELS_DEFAULT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_LABELS_DEFAULT = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+
+const WEEKDAY_LABELS_BY_LANG: Record<"en" | "he" | "ar", string[]> = {
+  en: WEEKDAY_LABELS_DEFAULT,
+  he: ["א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ש'"],
+  ar: ["أحد", "اثن", "ثلا", "أرب", "خمي", "جمع", "سبت"],
+};
+const MONTH_LABELS_BY_LANG: Record<"en" | "he" | "ar", string[]> = {
+  en: MONTH_LABELS_DEFAULT,
+  he: ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"],
+  ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
+};
 
 const MINUTES_OPTIONS = [0, 15, 30, 45];
 
@@ -62,9 +76,9 @@ function parseIsoDateTime(value: string): Date | null {
   return isNaN(date.getTime()) ? null : date;
 }
 
-function formatDisplay(date: Date): string {
-  const weekday = WEEKDAY_LABELS[date.getDay()];
-  const month = MONTH_LABELS[date.getMonth()].slice(0, 3);
+function formatDisplay(date: Date, weekdayLabels: string[] = WEEKDAY_LABELS_DEFAULT, monthLabels: string[] = MONTH_LABELS_DEFAULT): string {
+  const weekday = weekdayLabels[date.getDay()];
+  const month = monthLabels[date.getMonth()].slice(0, 3);
   const day = date.getDate();
   const year = date.getFullYear();
   const hh = String(date.getHours()).padStart(2, "0");
@@ -98,7 +112,16 @@ function getCalendarGrid(viewYear: number, viewMonth: number): Date[] {
   return cells;
 }
 
-export function DateTimePicker({ value, onChange, placeholder = "Pick a date and time", minDate }: DateTimePickerProps) {
+export function DateTimePicker({ value, onChange, placeholder, minDate }: DateTimePickerProps) {
+  const { language, dir } = useLanguage();
+  const WEEKDAY_LABELS = WEEKDAY_LABELS_BY_LANG[language];
+  const MONTH_LABELS = MONTH_LABELS_BY_LANG[language];
+  const labels = language === "he"
+    ? { placeholder: "בחרו תאריך ושעה", clearDate: "נקה תאריך", prev: "חודש קודם", next: "חודש הבא", hour: "שעה", minute: "דקה", time: "שעה", clear: "נקה", done: "סיום" }
+    : language === "ar"
+    ? { placeholder: "اختر تاريخاً ووقتاً", clearDate: "مسح التاريخ", prev: "الشهر السابق", next: "الشهر التالي", hour: "الساعة", minute: "الدقيقة", time: "الوقت", clear: "مسح", done: "تم" }
+    : { placeholder: "Pick a date and time", clearDate: "Clear date", prev: "Previous month", next: "Next month", hour: "Hour", minute: "Minute", time: "Time", clear: "Clear", done: "Done" };
+  const effectivePlaceholder = placeholder ?? labels.placeholder;
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -186,7 +209,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
 
   const draftHour = draftDate?.getHours() ?? 0;
   const draftMinute = draftDate?.getMinutes() ?? 0;
-  const displayText = parsed ? formatDisplay(parsed) : placeholder;
+  const displayText = parsed ? formatDisplay(parsed, WEEKDAY_LABELS, MONTH_LABELS) : effectivePlaceholder;
 
   return (
     <div className="relative" ref={containerRef}>
@@ -212,7 +235,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
               if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); clear(); }
             }}
             className="p-1 rounded-full hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] transition-colors"
-            aria-label="Clear date"
+            aria-label={labels.clearDate}
           >
             <X size={14} />
           </span>
@@ -228,7 +251,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
               type="button"
               onClick={prevMonth}
               className="w-8 h-8 rounded-lg hover:bg-primary/10 flex items-center justify-center text-[var(--vb-text-secondary)] transition-colors"
-              aria-label="Previous month"
+              aria-label={labels.prev}
             >
               <ChevronLeft size={18} />
             </button>
@@ -239,7 +262,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
               type="button"
               onClick={nextMonth}
               className="w-8 h-8 rounded-lg hover:bg-primary/10 flex items-center justify-center text-[var(--vb-text-secondary)] transition-colors"
-              aria-label="Next month"
+              aria-label={labels.next}
             >
               <ChevronRight size={18} />
             </button>
@@ -286,11 +309,11 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
           {/* Time row */}
           <div className="border-t border-[var(--vb-border)] px-4 py-3 flex items-center gap-3">
             <Clock size={16} className="text-primary shrink-0" />
-            <span className="text-xs font-bold text-[var(--vb-text-secondary)] uppercase tracking-wide">Time</span>
+            <span className="text-xs font-bold text-[var(--vb-text-secondary)] uppercase tracking-wide">{labels.time}</span>
             <select
               id="deadline-hour"
               name="hour"
-              aria-label="Hour"
+              aria-label={labels.hour}
               value={draftHour}
               onChange={(e) => setHour(parseInt(e.target.value, 10))}
               className="flex-1 px-2 py-1.5 rounded-lg border border-[var(--vb-border)] bg-[var(--vb-surface)] text-sm font-bold text-[var(--vb-text-primary)] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"
@@ -303,7 +326,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
             <select
               id="deadline-minute"
               name="minute"
-              aria-label="Minute"
+              aria-label={labels.minute}
               value={draftMinute}
               onChange={(e) => setMinute(parseInt(e.target.value, 10))}
               className="flex-1 px-2 py-1.5 rounded-lg border border-[var(--vb-border)] bg-[var(--vb-surface)] text-sm font-bold text-[var(--vb-text-primary)] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"
@@ -321,7 +344,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
               onClick={clear}
               className="flex-1 py-2 rounded-lg text-sm font-bold text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)] transition-colors"
             >
-              Clear
+              {labels.clear}
             </button>
             <button
               type="button"
@@ -330,7 +353,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date and
               className="flex-1 py-2 rounded-lg text-sm font-black bg-primary text-white hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
             >
               <Check size={14} />
-              Done
+              {labels.done}
             </button>
           </div>
         </div>

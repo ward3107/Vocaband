@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Loader2, CheckCircle2, ArrowRight, Pencil } from 'lucide-react';
 import { supabase } from '../core/supabase';
 import { readIntendedClassCode, clearIntendedClassCode } from '../utils/oauthIntent';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface OAuthClassCodeProps {
   email: string;
@@ -16,6 +17,8 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
   onSuccess,
   onError
 }) => {
+  const { language } = useLanguage();
+  const changeCodeAria = language === "he" ? "שנה את קוד הכיתה" : language === "ar" ? "تغيير رمز الصف" : "Change class code";
   // The class code the student typed on the previous (login) screen is
   // stashed in storage by `writeIntendedClassCode` before the Google
   // redirect.  Pre-fill from there so they don't retype it AND so the
@@ -186,7 +189,7 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
                 onClick={() => setCodeFromStorage(false)}
                 disabled={isLoading}
                 className="text-emerald-700 hover:text-emerald-900 font-bold text-xs flex items-center gap-1 px-2 py-1 rounded-md hover:bg-emerald-100 transition-colors"
-                aria-label="Change class code"
+                aria-label={changeCodeAria}
               >
                 <Pencil size={12} />
                 Change

@@ -23,6 +23,7 @@ import type { Word } from '../../data/vocabulary';
 import { useAudio } from '../../hooks/useAudio';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings } from '../../locales/student/class-show';
+import { gameAriasT } from '../../locales/student/game-arias';
 
 interface BaseProps {
   word: Word;
@@ -157,6 +158,7 @@ export function ScrambleProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
 export function LetterSoundsProjector({ word, pool, revealed }: BaseProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
+  const tAria = gameAriasT[language];
   const audio = useAudio();
 
   // 4 options: target word + 3 distractors that start with different
@@ -197,7 +199,7 @@ export function LetterSoundsProjector({ word, pool, revealed }: BaseProps) {
         type="button"
         onClick={() => audio.speak(word.id, word.english)}
         className="w-32 h-32 sm:w-44 sm:h-44 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center shadow-2xl hover:scale-105 transition-transform"
-        aria-label="Play sound"
+        aria-label={tAria.playSound}
       >
         <Volume2 size={64} />
       </button>
@@ -554,6 +556,7 @@ const SPEED_ROUND_DURATION_MS = 3000;
 
 export function SpeedRoundProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
   const { language } = useLanguage();
+  const tAria = gameAriasT[language];
   const audio = useAudio();
   const translation = language === 'he' ? word.hebrew : language === 'ar' ? word.arabic : word.hebrew;
 
@@ -583,7 +586,7 @@ export function SpeedRoundProjector({ word, revealed }: Omit<BaseProps, 'pool'>)
         onClick={() => audio.speak(word.id, word.english)}
         className="inline-flex items-center gap-2 px-4 py-2 rounded-full"
         style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
-        aria-label="Play audio"
+        aria-label={tAria.playAudio}
       >
         <Volume2 size={20} />
       </button>

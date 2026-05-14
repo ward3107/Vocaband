@@ -133,7 +133,7 @@ export default function SavedTasksSection({
                   touchAction: 'manipulation',
                   WebkitTapHighlightColor: 'transparent',
                 }}
-                aria-label="Delete"
+                aria-label={language === 'he' ? 'מחק' : language === 'ar' ? 'حذف' : 'Delete'}
               >
                 <Trash2 size={14} />
               </button>

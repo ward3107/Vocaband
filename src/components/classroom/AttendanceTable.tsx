@@ -104,11 +104,11 @@ export default function AttendanceTable({
           <table className="text-xs">
             <thead>
               <tr>
-                <th className="px-3 py-2 text-left font-bold sticky left-0" style={{ color: 'var(--vb-text-secondary)', backgroundColor: 'var(--vb-surface)' }}>Student</th>
+                <th className="px-3 py-2 text-left font-bold sticky left-0" style={{ color: 'var(--vb-text-secondary)', backgroundColor: 'var(--vb-surface)' }}>{t.attendanceColStudent}</th>
                 {attendance.days.map(d => (
                   <th key={d.iso} className="px-2 py-2 font-semibold whitespace-nowrap" style={{ color: 'var(--vb-text-muted)' }}>{d.label}</th>
                 ))}
-                <th className="px-3 py-2 text-right font-bold whitespace-nowrap" style={{ color: 'var(--vb-text-secondary)' }}>Days</th>
+                <th className="px-3 py-2 text-right font-bold whitespace-nowrap" style={{ color: 'var(--vb-text-secondary)' }}>{t.attendanceColDays}</th>
               </tr>
             </thead>
             <tbody>

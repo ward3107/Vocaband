@@ -3,6 +3,7 @@ import { Volume2 } from "lucide-react";
 import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
 import { gameActiveT } from "../../locales/student/game-active";
+import { gameAriasT } from "../../locales/student/game-arias";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
 import { cleanWordForDisplay } from "../../utils/answerMatch";
 
@@ -48,6 +49,7 @@ export default function FlashcardsGame({
 }: FlashcardsGameProps) {
   const { language } = useLanguage();
   const t = gameActiveT[language];
+  const tAria = gameAriasT[language];
   const themed = themeColor ? getThemeColors(themeColor) : null;
 
   const englishText = cleanWordForDisplay(currentWord?.english || "");
@@ -98,7 +100,7 @@ export default function FlashcardsGame({
                 e.stopPropagation();
                 if (currentWord) speakWord(currentWord.id, currentWord.english);
               }}
-              aria-label="Play pronunciation"
+              aria-label={tAria.playPronunciation}
               className={`p-4 sm:p-5 rounded-full shadow-md active:scale-90 transition-transform ${
                 themed ? `${themed.pillBg}` : "bg-stone-100 hover:bg-stone-200"
               }`}

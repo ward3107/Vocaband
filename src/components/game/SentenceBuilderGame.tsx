@@ -3,6 +3,7 @@ import { Volume2, X } from "lucide-react";
 import type { AssignmentData } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
 import { gameActiveT } from "../../locales/student/game-active";
+import { gameAriasT } from "../../locales/student/game-arias";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
 
 interface SentenceBuilderGameProps {
@@ -58,6 +59,7 @@ export default function SentenceBuilderGame({
 }: SentenceBuilderGameProps) {
   const { language } = useLanguage();
   const t = gameActiveT[language];
+  const tAria = gameAriasT[language];
   const themed = themeColor ? getThemeColors(themeColor) : null;
   const sentences = (activeAssignment as AssignmentData & { sentences?: string[] })?.sentences?.filter(s => s.trim()) || [];
 
@@ -93,7 +95,7 @@ export default function SentenceBuilderGame({
         <button
           type="button"
           onClick={() => speak(sentences[sentenceIndex])}
-          aria-label="Listen to sentence"
+          aria-label={tAria.listenToSentence}
           className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full shadow-md active:scale-90 transition-transform flex items-center justify-center ${
             themed ? `${themed.pillBg}` : "bg-white"
           }`}

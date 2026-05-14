@@ -153,7 +153,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
         <button
           type="button"
           onClick={onCancel}
-          aria-label="Back"
+          aria-label={language === 'he' ? 'חזרה' : language === 'ar' ? 'رجوع' : 'Back'}
           className={`absolute top-3 ${dir === "rtl" ? "right-3" : "left-3"} z-30 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-stone-600 hover:text-stone-900 shadow-sm flex items-center justify-center transition-colors`}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
         >

@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Volume2, Send, SkipForward, X } from "lucide-react";
 import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
+import { gameAriasT } from "../../locales/student/game-arias";
 import { type GameThemeColor, getThemeColors } from "./GameShell";
 
 interface WordChainsGameProps {
@@ -54,6 +55,7 @@ export default function WordChainsGame({
   onFinish,
 }: WordChainsGameProps) {
   const { language, dir } = useLanguage();
+  const tAria = gameAriasT[language];
   const theme = getThemeColors(themeColor);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -241,7 +243,7 @@ export default function WordChainsGame({
         type="button"
         onClick={() => speak(currentWord.id, currentWord.english)}
         className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-semibold transition"
-        aria-label="Replay audio"
+        aria-label={tAria.replayAudio}
       >
         <Volume2 size={12} /> {language === "he" ? "השמע" : language === "ar" ? "تشغيل" : "Play"}
       </button>
@@ -295,7 +297,7 @@ export default function WordChainsGame({
           type="submit"
           disabled={!input.trim()}
           className={`px-4 py-3 rounded-xl font-black text-white shadow-md disabled:opacity-50 ${theme.fill}`}
-          aria-label="Submit word"
+          aria-label={tAria.submitWord}
         >
           <Send size={18} />
         </button>

@@ -12,12 +12,14 @@ interface WordChainsSheetProps {
   answerKey?: boolean;
 }
 
-export function WordChainsSheet({ words, answerKey }: WordChainsSheetProps) {
+export function WordChainsSheet({ words, translationLang, answerKey }: WordChainsSheetProps) {
+  const needsTwo = translationLang === 'he' ? 'שרשרת מילים דורשת לפחות שתי מילים.' : translationLang === 'ar' ? 'يحتاج تسلسل الكلمات إلى كلمتين على الأقل.' : 'Word Chains needs at least two words.';
+  const buildChain = translationLang === 'he' ? 'בנו את השרשרת — מלאו מילה שמחברת בין כל זוג.' : translationLang === 'ar' ? 'ابنِ التسلسل — املأ كلمة تربط بين كل زوج.' : 'Build the chain — fill in a word that connects each pair.';
   // Need at least two words to form a chain.
   if (words.length < 2) {
     return (
       <p style={{ fontSize: '12pt', fontStyle: 'italic', color: '#666' }}>
-        Word Chains needs at least two words.
+        {needsTwo}
       </p>
     );
   }
@@ -30,7 +32,7 @@ export function WordChainsSheet({ words, answerKey }: WordChainsSheetProps) {
   return (
     <div>
       <p style={{ fontSize: '11pt', marginBottom: '0.75rem', fontStyle: 'italic' }}>
-        Build the chain — fill in a word that connects each pair.
+        {buildChain}
       </p>
       <ol style={{ fontSize: '13pt', paddingLeft: '1.25rem', margin: 0 }}>
         {pairs.map((pair, idx) => (

@@ -4,6 +4,7 @@ import { Delete } from "lucide-react";
 import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
 import { gameActiveT } from "../../locales/student/game-active";
+import { gameAriasT } from "../../locales/student/game-arias";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
 import { cleanWordForDisplay } from "../../utils/answerMatch";
 import { ShowAnswerFeedback } from "../ShowAnswerFeedback";
@@ -67,6 +68,7 @@ export default function ScrambleGame({
 }: ScrambleGameProps) {
   const { language } = useLanguage();
   const t = gameActiveT[language];
+  const tAria = gameAriasT[language];
   const themed = themeColor ? getThemeColors(themeColor) : null;
   const cleanAnswer = cleanWordForDisplay(currentWord?.english || "");
   const expectedLength = cleanAnswer.replace(/\s/g, "").length;
@@ -281,7 +283,7 @@ export default function ScrambleGame({
           type="button"
           onClick={handleClearLast}
           disabled={isLocked || usedTileIndexes.length === 0}
-          aria-label="Remove last letter"
+          aria-label={tAria.removeLastLetter}
           className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >

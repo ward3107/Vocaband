@@ -34,6 +34,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Play, X } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
 
 const STORAGE_KEY = "vocaband_qp_guest";
 const TTL_MS = 90 * 60 * 1000; // 90 minutes
@@ -84,6 +85,12 @@ export interface QuickPlayResumeBannerProps {
 }
 
 export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBannerProps) {
+  const { language } = useLanguage();
+  const tQp = language === "he"
+    ? { welcome: "ברוכים השבים!", hadScore: (n: number) => <>היה לכם <strong className="text-emerald-700">{n} נקודות</strong></>, gameStarted: "המשחק התחיל", resume: "המשך", dismiss: "סגירה", startOver: "התחל מחדש" }
+    : language === "ar"
+    ? { welcome: "مرحباً بعودتك!", hadScore: (n: number) => <>كان لديك <strong className="text-emerald-700">{n} نقطة</strong></>, gameStarted: "بدأت اللعبة", resume: "استئناف", dismiss: "إغلاق", startOver: "ابدأ من جديد" }
+    : { welcome: "Welcome back!", hadScore: (n: number) => <>You had <strong className="text-emerald-700">{n} points</strong></>, gameStarted: "Your game started", resume: "Resume", dismiss: "Dismiss", startOver: "Start over" };
   const [hint, setHint] = useState<ResumeHint | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -130,7 +137,7 @@ export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBanne
       >
         <div className="bg-white rounded-2xl shadow-2xl border-2 border-emerald-300 overflow-hidden">
           <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 px-4 py-2 text-white text-xs font-black uppercase tracking-widest">
-            Welcome back!
+            {tQp.welcome}
           </div>
           <div className="p-4 flex items-center gap-3">
             <div className="text-4xl shrink-0">{avatar}</div>
@@ -138,8 +145,8 @@ export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBanne
               <p className="font-bold text-stone-900 text-sm truncate">{name}</p>
               <p className="text-xs text-stone-500 mt-0.5">
                 {score > 0
-                  ? <>You had <strong className="text-emerald-700">{score} points</strong> · {ago}</>
-                  : <>Your game started {ago}</>}
+                  ? <>{tQp.hadScore(score)} · {ago}</>
+                  : <>{tQp.gameStarted} {ago}</>}
               </p>
             </div>
             <div className="flex flex-col gap-1.5 shrink-0">
@@ -150,17 +157,17 @@ export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBanne
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 <Play size={12} />
-                Resume
+                {tQp.resume}
               </button>
               <button
                 type="button"
                 onClick={handleDismiss}
-                aria-label="Dismiss"
+                aria-label={tQp.dismiss}
                 className="inline-flex items-center justify-center gap-1 px-3 py-1 rounded-lg text-[10px] font-semibold text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 <X size={10} />
-                Start over
+                {tQp.startOver}
               </button>
             </div>
           </div>

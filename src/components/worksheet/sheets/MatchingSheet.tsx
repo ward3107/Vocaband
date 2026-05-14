@@ -27,10 +27,11 @@ export function MatchingSheet({ words, translationLang, answerKey }: MatchingShe
     return { englishWords: english, translations: shuffled };
   }, [words, translationLang]);
 
+  const drawLines = translationLang === 'he' ? 'משכו קווים כדי לחבר כל מילה באנגלית לתרגום הנכון שלה.' : translationLang === 'ar' ? 'ارسم خطوطًا لربط كل كلمة بالإنجليزية بترجمتها الصحيحة.' : 'Draw lines to connect each English word with its correct translation.';
   return (
     <div style={{ fontSize: '13pt' }}>
       <p style={{ fontSize: '11pt', color: '#666', marginBottom: '1rem' }}>
-        Draw lines to connect each English word with its correct translation.
+        {drawLines}
       </p>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2rem' }}>
         {/* English column */}

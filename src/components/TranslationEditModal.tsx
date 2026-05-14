@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, RotateCcw } from 'lucide-react';
 import { saveCorrection, deleteCorrection } from '../utils/translationCorrections';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface TranslationEditModalProps {
   word: {
@@ -25,6 +26,9 @@ export const TranslationEditModal: React.FC<TranslationEditModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const { language } = useLanguage();
+  const phHe = language === "he" ? "הקלידו תרגום מתוקן לעברית..." : language === "ar" ? "أدخل ترجمة عبرية مصحّحة..." : "Enter corrected Hebrew translation...";
+  const phAr = language === "he" ? "הקלידו תרגום מתוקן לערבית..." : language === "ar" ? "أدخل ترجمة عربية مصحّحة..." : "Enter corrected Arabic translation...";
   const [hebrew, setHebrew] = useState(word.hebrew);
   const [arabic, setArabic] = useState(word.arabic);
   const [hasChanges, setHasChanges] = useState(false);
@@ -119,7 +123,7 @@ export const TranslationEditModal: React.FC<TranslationEditModalProps> = ({
                 setHebrew(e.target.value);
                 setHasChanges(true);
               }}
-              placeholder="Enter corrected Hebrew translation..."
+              placeholder={phHe}
               className="w-full px-4 py-3 rounded-xl bg-surface-container-highest border-2 border-surface-container-highest text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               dir="rtl"
             />
@@ -137,7 +141,7 @@ export const TranslationEditModal: React.FC<TranslationEditModalProps> = ({
                 setArabic(e.target.value);
                 setHasChanges(true);
               }}
-              placeholder="Enter corrected Arabic translation..."
+              placeholder={phAr}
               className="w-full px-4 py-3 rounded-xl bg-surface-container-highest border-2 border-surface-container-highest text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               dir="rtl"
             />

@@ -90,7 +90,7 @@ export default function AdaptiveDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="Close details"
+                aria-label={language === 'he' ? 'סגור פרטים' : language === 'ar' ? 'إغلاق التفاصيل' : 'Close details'}
                 className="w-10 h-10 rounded-xl hover:bg-[var(--vb-surface-alt)] flex items-center justify-center shrink-0"
                 style={{
                   color: 'var(--vb-text-secondary)',

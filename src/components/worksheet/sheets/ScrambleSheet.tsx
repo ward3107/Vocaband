@@ -23,16 +23,21 @@ export function ScrambleSheet({ words, translationLang, answerKey }: ScrambleShe
   // Memoise scrambling so re-renders don't re-randomise (same shape
   // for the worksheet vs the answer key).
   const scrambled = useMemo(() => words.map(w => scrambleWord(w.english.toUpperCase())), [words]);
+  const scrambledH = translationLang === 'he' ? 'מעורבל' : translationLang === 'ar' ? 'مخلوط' : 'Scrambled';
+  const hintH = translationLang === 'he' ? 'רמז' : translationLang === 'ar' ? 'تلميح' : 'Hint';
+  const answerH = answerKey
+    ? (translationLang === 'he' ? 'תשובה' : translationLang === 'ar' ? 'الإجابة' : 'Answer')
+    : (translationLang === 'he' ? 'התשובה שלך' : translationLang === 'ar' ? 'إجابتك' : 'Your answer');
 
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13pt' }}>
       <thead>
         <tr style={{ borderBottom: '2px solid #000' }}>
           <th style={{ textAlign: 'left', padding: '0.4rem', width: '8%' }}>#</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '30%' }}>Scrambled</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '30%' }}>Hint</th>
+          <th style={{ textAlign: 'left', padding: '0.4rem', width: '30%' }}>{scrambledH}</th>
+          <th style={{ textAlign: 'left', padding: '0.4rem', width: '30%' }}>{hintH}</th>
           <th style={{ textAlign: 'left', padding: '0.4rem', width: '32%' }}>
-            {answerKey ? 'Answer' : 'Your answer'}
+            {answerH}
           </th>
         </tr>
       </thead>

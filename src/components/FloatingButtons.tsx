@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Share2, MessageCircle, Link2, Check, ArrowUp, Facebook, Instagram, Music2 } from "lucide-react";
 import { motion } from "motion/react";
+import { useLanguage } from "../hooks/useLanguage";
 
 // Brand colors for social platforms
 const BRAND_COLORS = {
@@ -89,6 +90,9 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   className = "",
   shareLevel,
 }) => {
+  const { language } = useLanguage();
+  const shareAria = language === "he" ? "אפשרויות שיתוף" : language === "ar" ? "خيارات المشاركة" : "Share options";
+  const shareViaTpl = (provider: string) => language === "he" ? `שתף דרך ${provider}` : language === "ar" ? `مشاركة عبر ${provider}` : `Share via ${provider}`;
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showBackToTopBtn, setShowBackToTopBtn] = useState(false);
@@ -448,10 +452,10 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
         whileTap={{ scale: 0.95 }}
         className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300"
         style={getButtonStyle('share')}
-        aria-label="Share options"
+        aria-label={shareAria}
         aria-expanded={shareOpen}
         aria-haspopup="menu"
-        title="Share"
+        title={language === 'he' ? 'שיתוף' : language === 'ar' ? 'مشاركة' : 'Share'}
       >
         <Share2 size={18} strokeWidth={2.5} aria-hidden="true" />
       </motion.button>
@@ -466,7 +470,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
           className="absolute top-[-12px] left-[44px] flex items-center gap-2 p-2 z-50 min-w-fit max-w-[calc(100vw-70px)]"
           style={styles.popup}
           role="menu"
-          aria-label="Share options"
+          aria-label={shareAria}
         >
             {shareOptions.map((option, index) => {
               const Icon = option.icon;
@@ -510,7 +514,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
                   style={getBrandStyle()}
                   title={option.name}
                   role="menuitem"
-                  aria-label={`Share via ${option.name}`}
+                  aria-label={shareViaTpl(option.name)}
                 >
                   <Icon size={20} strokeWidth={2.5} aria-hidden="true" />
                 </motion.button>
@@ -532,7 +536,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
           whileTap={{ scale: 0.95 }}
           className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
           style={getButtonStyle('backToTop')}
-          title="Back to top"
+          title={language === 'he' ? 'חזרה למעלה' : language === 'ar' ? 'العودة إلى الأعلى' : 'Back to top'}
         >
           <ArrowUp size={22} strokeWidth={2.5} aria-hidden="true" />
         </motion.button>

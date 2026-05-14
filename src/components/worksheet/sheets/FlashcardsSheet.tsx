@@ -25,7 +25,7 @@ export function FlashcardsSheet({ words, translationLang }: FlashcardsSheetProps
   return (
     <div style={{ fontSize: '12pt' }}>
       <p style={{ fontSize: '11pt', color: '#666', fontStyle: 'italic', marginBottom: '1rem' }}>
-        Cut along the dotted lines. Fold each card in half. English on front, translation on back.
+        {translationLang === 'he' ? 'גזרו לאורך הקווים המקווקווים. קפלו כל כרטיס לחצי. אנגלית בצד אחד, תרגום בצד השני.' : translationLang === 'ar' ? 'قصّ على طول الخطوط المنقّطة. اطوِ كل بطاقة من المنتصف. الإنجليزية على الوجه، والترجمة على الخلف.' : 'Cut along the dotted lines. Fold each card in half. English on front, translation on back.'}
       </p>
       {pairs.map((pair, rowIdx) => (
         <div key={rowIdx} style={{ display: 'flex', marginBottom: '1rem', pageBreakInside: 'avoid' }}>

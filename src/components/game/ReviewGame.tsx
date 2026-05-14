@@ -26,6 +26,7 @@ import { Volume2, X, ArrowRight, Brain, CheckCircle2, Loader2 } from 'lucide-rea
 import type { Word } from '../../data/vocabulary';
 import { supabase } from '../../core/supabase';
 import { useLanguage } from '../../hooks/useLanguage';
+import { gameAriasT } from '../../locales/student/game-arias';
 import { useVocabularyLazy } from '../../hooks/useVocabularyLazy';
 import { type GameThemeColor, getThemeColors } from './GameShell';
 import type { ReviewScheduleRow } from '../../hooks/useDueReviews';
@@ -80,6 +81,7 @@ export default function ReviewGame({
   onFinish,
 }: ReviewGameProps) {
   const { language, dir } = useLanguage();
+  const tAria = gameAriasT[language];
   const theme = getThemeColors(themeColor);
 
   // Lazy-load the vocabulary chunk if the caller didn't pass one in.
@@ -257,7 +259,7 @@ export default function ReviewGame({
         type="button"
         onClick={() => speak(question.word.id, question.word.english)}
         className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-semibold transition"
-        aria-label="Replay audio"
+        aria-label={tAria.replayAudio}
       >
         <Volume2 size={14} />
         {language === 'he' ? 'השמע שוב' : language === 'ar' ? 'أعد التشغيل' : 'Replay'}

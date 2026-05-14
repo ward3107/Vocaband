@@ -11,6 +11,8 @@ import { WordMatch, PastedTerm, WordAnalysisResult } from '../utils/wordAnalysis
 import { applyCorrections, loadCorrectionsForWords, saveCorrection } from '../utils/translationCorrections';
 import type { TranslationCorrection } from '../utils/translationCorrections';
 import { useTranslate } from '../hooks/useTranslate';
+import { useLanguage } from '../hooks/useLanguage';
+import { pastePreviewT } from '../locales/teacher/paste-preview';
 
 interface PastePreviewModalProps {
   analysis: WordAnalysisResult | null;
@@ -31,6 +33,8 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
   onRemoveMatched,
   onQuickSave,
 }) => {
+  const { language, dir } = useLanguage();
+  const t = pastePreviewT[language];
   const [corrections, setCorrections] = useState<Map<number, TranslationCorrection>>(new Map());
   const [inlineEdits, setInlineEdits] = useState<Map<number, { hebrew: string; arabic: string }>>(new Map());
   const [editingWordId, setEditingWordId] = useState<number | null>(null);
@@ -140,31 +144,31 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-surface rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="bg-surface rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" dir={dir}>
           {/* Header */}
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
             <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
               <FileText size={24} />
-              Paste Analysis Results
+              {t.pasteAnalysisHeading}
             </h2>
           </div>
 
           {/* Stats Bar */}
           <div className="bg-surface-container-low px-6 py-3 border-b border-surface-container-highest flex flex-wrap gap-4 sm:gap-6 text-xs sm:text-sm">
             <div className="flex items-center gap-1">
-              <span className="font-bold text-on-surface">Total:</span>
+              <span className="font-bold text-on-surface">{t.statTotal}</span>
               <span className="font-black text-primary">{stats.totalTerms}</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="font-bold text-on-surface">Matched:</span>
+              <span className="font-bold text-on-surface">{t.statMatched}</span>
               <span className="font-black text-green-600">{stats.matchedCount}</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="font-bold text-on-surface">New:</span>
+              <span className="font-bold text-on-surface">{t.statNew}</span>
               <span className="font-black text-orange-600">{stats.unmatchedCount}</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="font-bold text-on-surface">Filtered:</span>
+              <span className="font-bold text-on-surface">{t.statFiltered}</span>
               <span className="font-black text-gray-500">{stats.stopWordCount}</span>
             </div>
             {stats.duplicateCount > 0 && (
@@ -175,13 +179,13 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
             )}
             {(stats as any).fuzzyMatchCount > 0 && (
               <div className="flex items-center gap-1">
-                <span className="font-bold text-on-surface">Fuzzy:</span>
+                <span className="font-bold text-on-surface">{t.statFuzzy}</span>
                 <span className="font-black text-purple-600">{(stats as any).fuzzyMatchCount}</span>
               </div>
             )}
             {((stats as any).hebrewMatchCount > 0 || (stats as any).arabicMatchCount > 0) && (
               <div className="flex items-center gap-1">
-                <span className="font-bold text-on-surface">HE/AR:</span>
+                <span className="font-bold text-on-surface">{t.statHebAr}</span>
                 <span className="font-black text-blue-600">{((stats as any).hebrewMatchCount || 0) + ((stats as any).arabicMatchCount || 0)}</span>
               </div>
             )}
@@ -202,7 +206,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
                   <Check className="text-green-600" size={16} />
-                  Added Words ({autoAdded.length})
+                  {t.addedWordsHeading(autoAdded.length)}
                 </h3>
                 <div className="space-y-2">
                   {autoAdded.map((mw, index) => {
@@ -260,7 +264,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                                 }
                               }}
                               className="p-2 hover:bg-surface-container-highest rounded-lg transition-colors"
-                              title={isEditing ? "Save changes" : "Edit translation"}
+                              title={isEditing ? t.saveChangesTitle : t.editTranslationTitle}
                             >
                               {isEditing ? (
                                 <Check size={16} className="text-green-600" />
@@ -272,7 +276,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                               <button
                                 onClick={() => onRemoveMatched(mw.word.id)}
                                 className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                                title="Remove this word"
+                                title={t.removeThisWordTitle}
                               >
                                 <Trash2 size={16} className="text-red-600" />
                               </button>
@@ -360,7 +364,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
                   <Sparkles className="text-amber-600" size={16} />
-                  Suggestions ({suggestions.length}) — click to add
+                  {t.suggestionsHeading(suggestions.length)} {t.clickToAddSuffix}
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
                   {suggestions.map((mw) => {
@@ -399,7 +403,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
                   <AlertCircle className="text-orange-600" size={16} />
-                  New Custom Words ({unmatchedTerms.length} unique)
+                  {t.customWordsHeading(unmatchedTerms.length)}
                 </h3>
                 <div className="space-y-2">
                   {unmatchedTerms.map((term, index) => {
@@ -427,7 +431,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                             <button
                               onClick={() => onRemoveUnmatched(term.term)}
                               className="p-1 hover:bg-orange-100 rounded-lg transition-colors"
-                              title="Remove this word"
+                              title={t.removeThisWordTitle}
                             >
                               <X size={16} className="text-orange-600" />
                             </button>
@@ -489,7 +493,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
                   <Sparkles className="text-purple-600" size={16} />
-                  Related Words — Suggestions ({analysis.wordFamilySuggestions.reduce((s, f) => s + f.familyMembers.length, 0)})
+                  {t.relatedWordsHeading(analysis.wordFamilySuggestions.reduce((s, f) => s + f.familyMembers.length, 0))}
                 </h3>
                 <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-3 space-y-2">
                   {analysis.wordFamilySuggestions.map((family) => (
@@ -560,7 +564,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
               onClick={onCancel}
               className="px-6 py-3 bg-surface-container text-on-surface font-bold rounded-xl hover:bg-surface-container-high border-2 border-outline transition-all"
             >
-              Cancel
+              {t.cancel}
             </button>
             <div className="flex gap-2">
               {unmatchedTerms.length > 0 && (
@@ -572,12 +576,12 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                   {isTranslating ? (
                     <>
                       <Loader2 size={14} className="animate-spin" />
-                      Translating...
+                      {t.translating}
                     </>
                   ) : (
                     <>
                       <Sparkles size={16} />
-                      Translate Custom Words
+                      {t.translateCustomWords}
                     </>
                   )}
                 </button>
@@ -588,7 +592,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                 className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center gap-2"
               >
                 <Check size={18} />
-                Save & Assign
+                {t.saveAndAssign}
               </button>
             </div>
           </div>

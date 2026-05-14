@@ -80,6 +80,13 @@ export interface WordInputStepStrings {
   enterRussian: string;
   renameGroupAria: (name: string) => string;
   deleteGroupAria: (name: string) => string;
+
+  // Word card action buttons
+  quickTranslateWithAi: string;
+  editTranslationsTitle: string;
+  removeWordTitle: string;
+  renameTitle: string;
+  deleteTitle: string;
 }
 
 export const wordInputStepT: Record<Language, WordInputStepStrings> = {
@@ -150,6 +157,11 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     enterRussian: "Enter Russian translation",
     renameGroupAria: (name) => `Rename ${name}`,
     deleteGroupAria: (name) => `Delete ${name}`,
+    quickTranslateWithAi: "Quick translate with AI",
+    editTranslationsTitle: "Edit translations",
+    removeWordTitle: "Remove word",
+    renameTitle: "Rename",
+    deleteTitle: "Delete",
   },
   he: {
     pasteTitle: "הדביקו כאן את רשימת המילים שלכם",
@@ -218,6 +230,11 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     enterRussian: "הקלידו תרגום ברוסית",
     renameGroupAria: (name) => `שנה שם ל-${name}`,
     deleteGroupAria: (name) => `מחק ${name}`,
+    quickTranslateWithAi: "תרגום מהיר עם AI",
+    editTranslationsTitle: "עריכת תרגומים",
+    removeWordTitle: "הסר מילה",
+    renameTitle: "שינוי שם",
+    deleteTitle: "מחיקה",
   },
   ar: {
     pasteTitle: "الصق قائمة المفردات هنا",
@@ -286,5 +303,10 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     enterRussian: "أدخل الترجمة الروسية",
     renameGroupAria: (name) => `إعادة تسمية ${name}`,
     deleteGroupAria: (name) => `حذف ${name}`,
+    quickTranslateWithAi: "ترجمة سريعة بالذكاء الاصطناعي",
+    editTranslationsTitle: "تعديل الترجمات",
+    removeWordTitle: "إزالة الكلمة",
+    renameTitle: "إعادة تسمية",
+    deleteTitle: "حذف",
   },
 };
