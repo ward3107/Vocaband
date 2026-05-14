@@ -103,6 +103,19 @@ export interface FreeResourcesT {
   bingoCallersTitle: string;
   bingoCallersInstructions: string;
 
+  // Teacher-only solution sheet appended to puzzle/quiz worksheets.
+  // Optional — defaults to on, but teachers can untick to print a
+  // clean student-facing copy.
+  includeAnswerKeyLabel: string;
+
+  // PDF export progress overlay — three stages so the wait feels
+  // staged instead of frozen. exportTip is the secondary line that
+  // tells the teacher roughly how long it'll take.
+  exportPreparing: string;
+  exportRendering: string;
+  exportSaving: string;
+  exportTip: string;
+
   // Matching Practice
   matchingPracticeTitle: string;
   matchingPracticeSubtitle: string;
@@ -204,6 +217,13 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     bingoCallersTitle: "Caller's Checklist",
     bingoCallersInstructions: "Read these English words to the class in any order. Tick each word as you call it.",
 
+    includeAnswerKeyLabel: "Include answer key",
+
+    exportPreparing: "Preparing your worksheet…",
+    exportRendering: "Rendering pages…",
+    exportSaving: "Saving your PDF…",
+    exportTip: "This usually takes a few seconds. Please don't close this window.",
+
     matchingPracticeTitle: "Interactive Practice",
     matchingPracticeSubtitle: "Practice matching words with translations",
     matchingPracticeHebrew: "English ↔ Hebrew",
@@ -302,6 +322,13 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     bingoCallersTitle: "רשימת הקראה למורה",
     bingoCallersInstructions: "הקריאו לתלמידים את המילים באנגלית בכל סדר שתבחרו. סמנו כל מילה אחרי שהקראתם אותה.",
 
+    includeAnswerKeyLabel: "כלול דף פתרונות",
+
+    exportPreparing: "מכין את הדף…",
+    exportRendering: "מעבד עמודים…",
+    exportSaving: "שומר PDF…",
+    exportTip: "זה לוקח בדרך כלל כמה שניות. אנא אל תסגרו את החלון.",
+
     matchingPracticeTitle: "תרגול אינטראקטיבי",
     matchingPracticeSubtitle: "תרגל התאמת מילים עם תרגומים",
     matchingPracticeHebrew: "אנגלית ↔ עברית",
@@ -399,6 +426,13 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     bingoCardCountLabel: "البطاقات",
     bingoCallersTitle: "قائمة المعلم للنداء",
     bingoCallersInstructions: "اقرأ هذه الكلمات الإنجليزية للصف بأي ترتيب. ضع علامة على كل كلمة بعد قراءتها.",
+
+    includeAnswerKeyLabel: "أرفق مفتاح الإجابة",
+
+    exportPreparing: "جارٍ تحضير الورقة…",
+    exportRendering: "جارٍ معالجة الصفحات…",
+    exportSaving: "جارٍ حفظ ملف PDF…",
+    exportTip: "يستغرق هذا عادة بضع ثوانٍ. يُرجى عدم إغلاق النافذة.",
 
     matchingPracticeTitle: "تمرين تفاعلي",
     matchingPracticeSubtitle: "تدرب على مطابقة الكلمات مع الترجمات",
