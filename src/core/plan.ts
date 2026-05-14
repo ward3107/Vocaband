@@ -16,6 +16,7 @@
  */
 
 import type { AppUser } from "./supabase";
+import { isDevEmail } from "./dev-allowlist";
 
 export type EffectivePlan = "free" | "pro" | "school";
 
@@ -24,14 +25,21 @@ export type EffectivePlan = "free" | "pro" | "school";
  *
  * - `school` if the school explicitly bought a license for them
  * - `pro` if they paid OR they're inside the 30-day trial window
+ * - `pro` if their email is in the developer allowlist (DEV_EMAILS)
+ * - `pro` if they have the `admin` role (developer / operator)
  * - `free` otherwise
  *
  * Students always read as `free` — plan only applies to teachers,
  * but rather than throw when a student is passed in, we just return
- * a safe default so callers don't need a separate guard.
+ * a safe default so callers don't need a separate guard.  Admin is
+ * treated as a teacher superset (matches hasTeacherAccess() in
+ * supabase.ts), so admins reach the teacher UI AND get Pro features.
  */
 export function getEffectivePlan(user: AppUser | null | undefined): EffectivePlan {
-  if (!user || user.role !== "teacher") return "free";
+  if (!user) return "free";
+  if (isDevEmail(user.email)) return "pro";
+  if (user.role === "admin") return "pro";
+  if (user.role !== "teacher") return "free";
   if (user.plan === "school") return "school";
   if (user.plan === "pro") return "pro";
   if (user.trialEndsAt && new Date(user.trialEndsAt).getTime() > Date.now()) {
@@ -49,9 +57,13 @@ export function isPro(user: AppUser | null | undefined): boolean {
 /** Is the teacher inside their 30-day trial window? (Used for the "X
  *  days of Pro left" banner.  Returns false for paid Pro/School users
  *  even though they have Pro features — the banner only makes sense
- *  for trialing free users.) */
+ *  for trialing free users.  Also false for admins and developer
+ *  allowlist emails so they never see the trial countdown banner.) */
 export function isTrialing(user: AppUser | null | undefined): boolean {
-  if (!user || user.role !== "teacher") return false;
+  if (!user) return false;
+  if (isDevEmail(user.email)) return false;
+  if (user.role === "admin") return false;
+  if (user.role !== "teacher") return false;
   if (user.plan !== "free") return false;
   if (!user.trialEndsAt) return false;
   return new Date(user.trialEndsAt).getTime() > Date.now();
