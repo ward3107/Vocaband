@@ -171,6 +171,23 @@ export interface AppUser {
   guidesSeen?: string[];
 }
 
+/** Treat `admin` as a superset of `teacher` for UI access.  Admins keep
+ *  their elevated DB privileges (RLS bypass via `is_admin()`) AND see
+ *  every teacher surface — dashboard, classes, gradebook, live challenge,
+ *  etc.  Without this helper the developer/admin account silently gets
+ *  rejected by the teacher-intent guard at sign-in and never reaches
+ *  the teacher dashboard.
+ *
+ *  Declared as a type predicate narrowing the role field so callers
+ *  like `if (hasTeacherAccess(user)) { use(user) }` get `user` narrowed
+ *  from `AppUser | null` to a non-null AppUser inside the branch,
+ *  while the else branch still sees the original `AppUser`. */
+export function hasTeacherAccess<T extends { role?: string }>(
+  user: T | null | undefined
+): user is T & { role: 'teacher' | 'admin' } {
+  return user?.role === 'teacher' || user?.role === 'admin';
+}
+
 export interface ClassData {
   id: string;
   name: string;

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { supabase, type AppUser } from "../core/supabase";
+import { supabase, hasTeacherAccess, type AppUser } from "../core/supabase";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "../config/privacy-config";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
@@ -107,7 +107,7 @@ export default function PrivacySettingsView({
       {exitConfirmModal}
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setView(user.role === "teacher" ? "teacher-dashboard" : "student-dashboard")} className="text-stone-500 hover:text-stone-700 font-bold flex items-center gap-1">
+          <button onClick={() => setView(hasTeacherAccess(user) ? "teacher-dashboard" : "student-dashboard")} className="text-stone-500 hover:text-stone-700 font-bold flex items-center gap-1">
             <ChevronRight className={isRTL ? "" : "rotate-180"} size={18} /> {t.back}
           </button>
           <h1 className="text-2xl font-black text-stone-900">{t.pageTitle}</h1>
