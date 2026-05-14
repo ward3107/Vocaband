@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
-import type { View, ShopTab } from "./core/views";
+import type { View } from "./core/views";
 import { type VocaId, ACTIVE_VOCA_KEY, getEntitledVocas } from "./core/subject";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import type { Word } from "./data/vocabulary";
@@ -43,7 +43,7 @@ import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
 
 // Lazy-loaded views (code-split into separate chunks)
-const ShopView = lazy(() => import("./views/ShopView"));
+const ShopView = lazy(() => import("./views/ShopMarketplaceView"));
 const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
 const GlobalLeaderboardView = lazy(() => import("./views/GlobalLeaderboardView"));
 const TeacherApprovalsView = lazy(() => import("./views/TeacherApprovalsView"));
@@ -329,7 +329,6 @@ export default function App() {
     } as const;
     setView(viewMap[page]);
   };
-  const [shopTab, setShopTab] = useState<ShopTab>("hub");
   const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
 
@@ -2766,7 +2765,6 @@ export default function App() {
           classSwitchModal={classSwitchModal}
           classNotFoundBanner={classNotFoundBanner}
           setView={setView}
-          setShopTab={setShopTab}
           setActiveAssignment={setActiveAssignment}
           setAssignmentWords={setAssignmentWords}
           setShowModeSelection={setShowModeSelection}
@@ -2872,7 +2870,7 @@ export default function App() {
     );
   }
 
-  // --- SHOP VIEW (lazy-loaded from ./views/ShopView) ---
+  // --- SHOP VIEW (single-screen marketplace, lazy-loaded) ---
   if (user?.role === "student" && view === "shop") {
     return (
       <LazyWrapper loadingMessage="Loading shop...">
@@ -2883,8 +2881,6 @@ export default function App() {
           setUser={setUser}
           setView={setView}
           showToast={showToast}
-          shopTab={shopTab}
-          setShopTab={setShopTab}
           activateBooster={boosters.activate}
         />
       </LazyWrapper>

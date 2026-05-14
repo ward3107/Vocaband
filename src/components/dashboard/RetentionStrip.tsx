@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Zap, Trophy, Sparkles } from "lucide-react";
+import { Trophy } from "lucide-react";
 import type { RetentionState } from "../../hooks/useRetention";
 import { WEEKLY_CHALLENGE_PLAYS } from "../../constants/game";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -22,14 +22,13 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
   const t = studentDashboardT[language];
   const {
     dailyChestAvailable, weeklyPlays, weeklyChallengeClaimable, comebackAvailable,
-    limitedItem,
     claimDailyChest, claimWeeklyChallenge, claimComebackBonus,
   } = retention;
 
   // If absolutely nothing is actionable AND no weekly progress exists,
   // skip rendering entirely so the dashboard stays clean for active users.
   const anyActionable = dailyChestAvailable || weeklyChallengeClaimable || comebackAvailable || weeklyPlays > 0;
-  if (!anyActionable && !limitedItem) return null;
+  if (!anyActionable) return null;
 
   const handleDaily = () => {
     const r = claimDailyChest();
@@ -136,27 +135,6 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
         </div>
       </div>
 
-      {/* Limited-time rotating drop */}
-      {limitedItem && (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 p-4 text-white shadow-lg shadow-pink-300/40">
-          <div aria-hidden className="pointer-events-none absolute -top-6 -left-6 w-28 h-28 bg-yellow-200/30 rounded-full blur-3xl" />
-          <div className="relative flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-2xl">
-              {limitedItem.kind === 'avatar' ? limitedItem.itemId : limitedItem.kind === 'title' ? '🏷️' : limitedItem.kind === 'frame' ? '🖼️' : '🎨'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/85 flex items-center gap-1">
-                <Sparkles size={10} /> {t.thisWeekOnly}
-              </p>
-              <p className="font-black text-sm">{limitedItem.tagline}</p>
-              <p className="text-xs text-white/90">
-                <Zap size={10} className="inline -mt-0.5 mr-0.5" />
-                {t.percentOffInShop(Math.round(limitedItem.discount * 100))}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -50,9 +50,6 @@ export interface StudentDashboardStrings {
   weeklyReadyToClaim: string;
   /** "{plays} / {target} games this week" */
   weeklyProgressText: (plays: number, target: number) => string;
-  thisWeekOnly: string;
-  /** "{percent}% off in shop" */
-  percentOffInShop: (percent: number) => string;
   dailyChestXpToast: (xp: number) => string;
   weeklyChallengeXpToast: (xp: number) => string;
 
@@ -106,11 +103,6 @@ export interface StudentDashboardStrings {
   powerUpRevealLetter: string;
   powerUpWithCount: (label: string, n: number) => string;
 
-  // DropOfTheWeekCard
-  dropOfTheWeek: string;
-  dropDiscountChip: (pct: number) => string;
-  dropThisWeekInShop: string;
-
   // StudentOverallProgress
   overallProgress: string;
 
@@ -160,9 +152,7 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     welcomeBackXpBonus: (xp) => `Welcome back! +${xp} XP bonus`,
     weeklyReadyToClaim: "Ready to claim!",
     weeklyProgressText: (plays, target) => `${plays} / ${target} games this week`,
-    thisWeekOnly: "This week only",
-    percentOffInShop: (p) => `${p}% off in shop`,
-    dailyChestXpToast: (xp) => `Daily chest: +${xp} XP`,
+    dailyChestXpToast: (xp) =>`Daily chest: +${xp} XP`,
     weeklyChallengeXpToast: (xp) => `Weekly challenge complete! +${xp} XP`,
     yourPowerUps: "Your power-ups",
     badges: "Badges",
@@ -195,9 +185,6 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "Reveal Letter",
     powerUpWithCount: (label, n) => `${label} ×${n}`,
-    dropOfTheWeek: "Drop of the week",
-    dropDiscountChip: (pct) => `${pct}% OFF`,
-    dropThisWeekInShop: "this week in the shop",
     overallProgress: "Overall Progress",
     loadingAssignments: "Loading your assignments...",
     playAgain: "Play again",
@@ -240,8 +227,6 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     welcomeBackXpBonus: (xp) => `ברוך שובך! בונוס +${xp} XP`,
     weeklyReadyToClaim: "מוכן לאיסוף!",
     weeklyProgressText: (plays, target) => `${plays} / ${target} משחקים השבוע`,
-    thisWeekOnly: "השבוע בלבד",
-    percentOffInShop: (p) => `${p}% הנחה בחנות`,
     dailyChestXpToast: (xp) => `תיבה יומית: +${xp} XP`,
     weeklyChallengeXpToast: (xp) => `אתגר שבועי הושלם! +${xp} XP`,
     yourPowerUps: "הכוחות שלך",
@@ -275,9 +260,6 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "חשוף אות",
     powerUpWithCount: (label, n) => `${label} ×${n}`,
-    dropOfTheWeek: "מבצע השבוע",
-    dropDiscountChip: (pct) => `${pct}% הנחה`,
-    dropThisWeekInShop: "השבוע בחנות",
     overallProgress: "התקדמות כוללת",
     loadingAssignments: "טוען את המטלות שלך...",
     playAgain: "שחק שוב",
@@ -320,8 +302,6 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     welcomeBackXpBonus: (xp) => `مرحباً بعودتك! مكافأة +${xp} XP`,
     weeklyReadyToClaim: "جاهز للاستلام!",
     weeklyProgressText: (plays, target) => `${plays} / ${target} ألعاب هذا الأسبوع`,
-    thisWeekOnly: "هذا الأسبوع فقط",
-    percentOffInShop: (p) => `خصم ${p}% في المتجر`,
     dailyChestXpToast: (xp) => `صندوق يومي: +${xp} XP`,
     weeklyChallengeXpToast: (xp) => `اكتمل التحدي الأسبوعي! +${xp} XP`,
     yourPowerUps: "قواك",
@@ -355,9 +335,6 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "كشف حرف",
     powerUpWithCount: (label, n) => `${label} ×${n}`,
-    dropOfTheWeek: "عرض الأسبوع",
-    dropDiscountChip: (pct) => `خصم ${pct}%`,
-    dropThisWeekInShop: "هذا الأسبوع في المتجر",
     overallProgress: "التقدم الإجمالي",
     loadingAssignments: "جاري تحميل المهام...",
     playAgain: "العب مرة أخرى",

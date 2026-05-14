@@ -16,7 +16,6 @@ import {
   WEEKLY_CHALLENGE_PLAYS,
   WEEKLY_CHALLENGE_REWARD_XP,
   COMEBACK_AFTER_DAYS,
-  LIMITED_ROTATION,
   PET_MILESTONES,
   type PetMilestone,
 } from '../constants/game';
@@ -47,8 +46,6 @@ export interface RetentionState {
   weeklyChallengeClaimable: boolean;
   /** True if the student just came back after being offline for COMEBACK_AFTER_DAYS+ days. */
   comebackAvailable: boolean;
-  /** The active limited-time rotating item for this ISO week. */
-  limitedItem: typeof LIMITED_ROTATION[number];
   /** The highest pet milestone the student has reached that's not yet claimed. */
   claimablePetMilestone: PetMilestone | null;
   /** The current pet stage (emoji + name) the student is in. */
@@ -171,17 +168,6 @@ export function useRetention(uid: string | null | undefined, xp: number): Retent
     return { eggFree: true };
   }, [comebackAvailable, userKey]);
 
-  // --- LIMITED ROTATION: one item per ISO week, same for all students ---
-  const limitedItem = useMemo(() => {
-    const week = isoWeekKey();
-    // Deterministic hash of the week string — same week = same item for
-    // everyone, creates the "everyone is talking about this week's drop" effect.
-    let hash = 0;
-    for (let i = 0; i < week.length; i++) hash = (hash * 31 + week.charCodeAt(i)) | 0;
-    const idx = Math.abs(hash) % LIMITED_ROTATION.length;
-    return LIMITED_ROTATION[idx];
-  }, []);
-
   // --- PET EVOLUTION: find the highest reached stage, mark unclaimed ones ---
   const [petClaimsRaw, setPetClaimsRaw] = useState<string>(() => {
     try { return localStorage.getItem(k(userKey, 'pet_claims')) ?? ''; } catch { return ''; }
@@ -232,7 +218,6 @@ export function useRetention(uid: string | null | undefined, xp: number): Retent
     weeklyPlays: weeklyState.plays,
     weeklyChallengeClaimable,
     comebackAvailable,
-    limitedItem,
     claimablePetMilestone,
     currentPetStage,
     nextPetStage,
