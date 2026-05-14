@@ -155,3 +155,5 @@ Never commit `.env.local`.
 | April 2026 session history | `docs/session-history-2026-04.md` |
 | Security overview + pen-test | `docs/SECURITY-OVERVIEW.md` |
 | i18n migration pattern | `docs/I18N-MIGRATION.md` |
+| Safe database changes checklist | `docs/safe-database-changes.md` |
+| Sentry alert setup (5-min guide) | `docs/sentry-alerts.md` |

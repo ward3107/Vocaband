@@ -1,0 +1,138 @@
+# Deploy-hours warning — a soft nudge, not a hard gate.
+#
+# WHY:
+#
+# Vocaband is used by Israeli schools during live class hours.  A bad
+# merge to main at 09:00 ships in ~2 minutes and lands in the middle
+# of a 7th-grade lesson.  If we have to redeploy during a lesson, the
+# teacher loses momentum and might lose the rest of the class.  This
+# workflow flags PRs being merged during school hours so the merger
+# pauses for a moment and asks "do I REALLY need this right now?"
+#
+# Israeli school hours: Sun-Thu, 06:00-15:00 Asia/Jerusalem.  Friday
+# and Saturday are weekend in Israel.
+#
+# NOT A BLOCK — emergencies happen.  We comment a warning on the PR
+# but do not fail the check.  The merger sees the comment and decides.
+#
+# Future iteration: convert to a hard block (`exit 1`) once we have
+# a clear "this is an emergency / hotfix" override mechanism (PR label
+# `emergency` would bypass the block, etc).
+
+name: Deploy-hours warning
+
+permissions:
+  pull-requests: write   # post / update the warning comment
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+    branches: [main]
+  # Also run when someone actually merges so the merger sees the
+  # warning at the moment of decision, not days before.
+  pull_request_target:
+    types: [opened, reopened, ready_for_review]
+    branches: [main]
+
+concurrency:
+  group: deploy-hours-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  warn:
+    name: Comment if merging during school hours
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Check current time in Asia/Jerusalem
+        id: check
+        run: |
+          # Asia/Jerusalem time, formatted as ISO + day-of-week.
+          # We use TZ env var so the date command applies the right
+          # offset (handles DST automatically).
+          NOW_HOUR=$(TZ=Asia/Jerusalem date +%H)
+          NOW_DOW=$(TZ=Asia/Jerusalem date +%u)   # 1=Mon ... 7=Sun
+          NOW_HUMAN=$(TZ=Asia/Jerusalem date '+%a %Y-%m-%d %H:%M %Z')
+
+          echo "now=$NOW_HUMAN" >> "$GITHUB_OUTPUT"
+
+          # Israeli school week: Sun (DOW=7) through Thu (DOW=4).
+          # Fri (5) and Sat (6) are weekend.
+          IS_SCHOOL_DAY=false
+          if [ "$NOW_DOW" = "7" ] || [ "$NOW_DOW" -le "4" ]; then
+            IS_SCHOOL_DAY=true
+          fi
+
+          # School-hours window (with buffer): 06:00 (kids arriving)
+          # through 15:00 (afternoon classes wrap up).  Bash arithmetic
+          # treats leading-zero numbers as octal, so strip the leading
+          # zero before comparing.
+          HOUR_NUM=$((10#$NOW_HOUR))
+          IS_SCHOOL_HOUR=false
+          if [ "$HOUR_NUM" -ge "6" ] && [ "$HOUR_NUM" -lt "15" ]; then
+            IS_SCHOOL_HOUR=true
+          fi
+
+          if [ "$IS_SCHOOL_DAY" = "true" ] && [ "$IS_SCHOOL_HOUR" = "true" ]; then
+            echo "in_school_hours=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "in_school_hours=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Find existing warning comment
+        if: steps.check.outputs.in_school_hours == 'true'
+        id: find_comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- deploy-hours-warning -->'
+
+      - name: Post / update warning comment
+        if: steps.check.outputs.in_school_hours == 'true'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find_comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: |
+            <!-- deploy-hours-warning -->
+            ## ⚠️ Merging during Israeli school hours
+
+            **Current time:** `${{ steps.check.outputs.now }}`
+
+            Israeli classes (Sun–Thu, 08:00–15:00) are likely in session right now.
+            A merge to `main` will deploy to production within ~2 minutes and
+            could disrupt a live lesson.
+
+            **Before merging, confirm at least one of:**
+            - This change is gated behind a feature flag (`isFlagOn(...)`) so it
+              won't reach students until you flip the switch later — see
+              `docs/safe-database-changes.md` and the feature_flags pattern.
+            - This is a critical bugfix that's actively worse than the risk
+              of a mid-lesson redeploy.
+            - You've checked Sentry and there are no schools actively
+              playing right now.
+
+            **Otherwise, wait until after 15:00 Asia/Jerusalem or merge on
+            Fri/Sat.** Schools don't forgive a broken Tuesday morning lesson.
+
+      - name: Remove warning comment if outside school hours
+        if: steps.check.outputs.in_school_hours == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # If the PR was opened during school hours and now we're
+          # outside them, the old warning is stale.  Delete it so the
+          # PR page isn't visually cluttered with a no-longer-relevant
+          # warning.
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          REPO="${{ github.repository }}"
+          COMMENT_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]") | select(.body | contains("<!-- deploy-hours-warning -->")) | .id' \
+            | head -n1)
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X DELETE "repos/$REPO/issues/comments/$COMMENT_ID"
+            echo "Deleted stale deploy-hours warning (comment $COMMENT_ID)."
+          fi
