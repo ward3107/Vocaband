@@ -104,6 +104,7 @@ export const ASSIGNMENT_COLUMNS =
   'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at,subject';
 export const PROGRESS_COLUMNS =
   'id,student_name,student_uid,assignment_id,class_code,score,mode,completed_at,mistakes,avatar,play_count';
+export const FEATURE_FLAG_COLUMNS = 'name,enabled,enabled_for_classes,description,updated_at';
 
 // ---------------------------------------------------------------------------
 // Row-to-interface mappers (DB uses snake_case, TS uses camelCase)
@@ -204,6 +205,21 @@ export interface AssignmentData {
   /** Denormalized from the parent class row — application code keeps
    *  it consistent with classes.subject. */
   subject?: 'english' | 'hebrew';
+}
+
+export interface FeatureFlag {
+  /** Snake-case identifier — permanent once set.  Matches the DB primary key. */
+  name: string;
+  /** Master switch.  true + empty enabledForClasses = on for everyone. */
+  enabled: boolean;
+  /** Class CODES that always see the feature, regardless of `enabled`.
+   *  Use for beta rollouts: list one or two trusted classes, watch for
+   *  a day, then flip `enabled=true` and empty this array for global. */
+  enabledForClasses: string[];
+  /** Human-readable note for the admin — what does this flag gate? */
+  description: string;
+  /** Server-managed timestamp (auto-bumped by trigger on update). */
+  updatedAt: string;
 }
 
 export interface ProgressData {
@@ -323,6 +339,17 @@ export function mapProgress(row: any): ProgressData {
     mistakes: row.mistakes,
     avatar: row.avatar,
     playCount: row.play_count ?? undefined,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapFeatureFlag(row: any): FeatureFlag {
+  return {
+    name: row.name,
+    enabled: row.enabled === true,
+    enabledForClasses: Array.isArray(row.enabled_for_classes) ? row.enabled_for_classes : [],
+    description: row.description ?? '',
+    updatedAt: row.updated_at,
   };
 }
 
