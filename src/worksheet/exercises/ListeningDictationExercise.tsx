@@ -8,25 +8,20 @@
  * attempts are allowed (so a kid can self-correct a typo) but only
  * the first counts toward score.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Eye, EyeOff, Headphones, Volume2 } from "lucide-react";
-import { getWordAudioUrl } from "../../utils/audioUrl";
+import { useAudio } from "../../hooks/useAudio";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { normaliseAnswer, shuffle, translationFor } from "../shared";
-
-// Only words that actually have an audio asset can be dictated.  The
-// audio URL helper returns null for missing entries, so we filter at
-// mount time rather than letting the student tap a silent play button.
-const hasAudio = (id: number) => !!getWordAudioUrl(id);
 
 export const ListeningDictationExercise: ExerciseComponent<ExerciseOf<"listening_dictation">> = ({
   words,
   targetLang,
   onComplete,
 }) => {
-  const playable = useMemo(() => words.filter((w) => hasAudio(w.id)), [words]);
-  const [order] = useState(() => shuffle(playable));
+  const { speak } = useAudio();
+  const [order] = useState(() => shuffle(words));
   const [idx, setIdx] = useState(0);
   const [typed, setTyped] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -40,14 +35,13 @@ export const ListeningDictationExercise: ExerciseComponent<ExerciseOf<"listening
   // Auto-play on each new word so students get the prompt without
   // tapping.  Browsers block autoplay until user interaction — that's
   // fine: the very first word requires the student to tap "play", and
-  // every subsequent word inherits the gesture allowance.
+  // every subsequent word inherits the gesture allowance. speak() falls
+  // back to browser TTS when the MP3 404s so silent words never happen.
   useEffect(() => {
     if (!current) return;
-    const url = getWordAudioUrl(current.id);
-    if (!url) return;
-    const a = new Audio(url);
-    a.play().catch(() => undefined);
+    speak(current.id, current.english);
     setTimeout(() => inputRef.current?.focus(), 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 
   useEffect(() => {
@@ -90,9 +84,7 @@ export const ListeningDictationExercise: ExerciseComponent<ExerciseOf<"listening
   };
 
   const playAudio = () => {
-    const url = getWordAudioUrl(current.id);
-    if (!url) return;
-    new Audio(url).play().catch(() => undefined);
+    speak(current.id, current.english);
   };
 
   const translation = translationFor(current, targetLang);

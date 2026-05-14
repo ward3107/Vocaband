@@ -9,7 +9,7 @@
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
-import { getWordAudioUrl } from "../../utils/audioUrl";
+import { useAudio } from "../../hooks/useAudio";
 import type { Word } from "../../data/vocabulary";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { shuffle, translationFor } from "../shared";
@@ -19,6 +19,7 @@ export const QuizExercise: ExerciseComponent<ExerciseOf<"quiz">> = ({
   targetLang,
   onComplete,
 }) => {
+  const { speak } = useAudio();
   const [order] = useState(() => shuffle(words));
   const [idx, setIdx] = useState(0);
   const [pickedId, setPickedId] = useState<number | null>(null);
@@ -63,14 +64,7 @@ export const QuizExercise: ExerciseComponent<ExerciseOf<"quiz">> = ({
 
   const playAudio = () => {
     if (!current) return;
-    try {
-      const url = getWordAudioUrl(current.id);
-      if (!url) return;
-      const audio = new Audio(url);
-      audio.play().catch(() => undefined);
-    } catch {
-      /* best-effort audio */
-    }
+    speak(current.id, current.english);
   };
 
   if (!current) {

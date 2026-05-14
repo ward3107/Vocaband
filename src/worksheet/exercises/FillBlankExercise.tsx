@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
-import { getWordAudioUrl } from "../../utils/audioUrl";
+import { useAudio } from "../../hooks/useAudio";
 import { FILLBLANK_SENTENCES } from "../../data/sentence-bank-fillblank";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { normaliseAnswer, shuffle } from "../shared";
@@ -31,6 +31,7 @@ export const FillBlankExercise: ExerciseComponent<ExerciseOf<"fill_blank">> = ({
   words,
   onComplete,
 }) => {
+  const { speak } = useAudio();
   const items: Item[] = useMemo(
     () =>
       words
@@ -95,9 +96,7 @@ export const FillBlankExercise: ExerciseComponent<ExerciseOf<"fill_blank">> = ({
   };
 
   const playAudio = () => {
-    const url = getWordAudioUrl(current.word_id);
-    if (!url) return;
-    new Audio(url).play().catch(() => undefined);
+    speak(current.word_id, current.english);
   };
 
   return (

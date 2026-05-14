@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
-import { getWordAudioUrl } from "../../utils/audioUrl";
+import { useAudio } from "../../hooks/useAudio";
 import type { Word } from "../../data/vocabulary";
 import { WORD_DEFINITIONS } from "../../data/word-definitions";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
@@ -32,6 +32,7 @@ export const DefinitionMatchExercise: ExerciseComponent<ExerciseOf<"definition_m
   words,
   onComplete,
 }) => {
+  const { speak } = useAudio();
   const items: Item[] = useMemo(() => {
     const out: Item[] = [];
     for (const w of words) {
@@ -98,9 +99,7 @@ export const DefinitionMatchExercise: ExerciseComponent<ExerciseOf<"definition_m
   };
 
   const playAudio = () => {
-    const url = getWordAudioUrl(current.word_id);
-    if (!url) return;
-    new Audio(url).play().catch(() => undefined);
+    speak(current.word_id, current.word.english);
   };
 
   // Need at least 2 items to render a quiz with 1 correct + ≥1

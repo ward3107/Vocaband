@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Check, Volume2 } from "lucide-react";
-import { getWordAudioUrl } from "../../utils/audioUrl";
+import { useAudio } from "../../hooks/useAudio";
 import { FILLBLANK_SENTENCES } from "../../data/sentence-bank-fillblank";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { normaliseAnswer, shuffle } from "../shared";
@@ -48,6 +48,7 @@ export const ClozeExercise: ExerciseComponent<ExerciseOf<"cloze">> = ({
   words,
   onComplete,
 }) => {
+  const { speak } = useAudio();
   const blanks: Blank[] = useMemo(() => {
     const candidates: Blank[] = [];
     for (const w of words) {
@@ -124,10 +125,8 @@ export const ClozeExercise: ExerciseComponent<ExerciseOf<"cloze">> = ({
     }
   };
 
-  const playAudio = (id: number) => {
-    const url = getWordAudioUrl(id);
-    if (!url) return;
-    new Audio(url).play().catch(() => undefined);
+  const playAudio = (blank: Blank) => {
+    speak(blank.word_id, blank.english);
   };
 
   return (
@@ -198,7 +197,7 @@ export const ClozeExercise: ExerciseComponent<ExerciseOf<"cloze">> = ({
                   {isDone && (
                     <button
                       type="button"
-                      onClick={() => playAudio(b.word_id)}
+                      onClick={() => playAudio(b)}
                       aria-label="Play word"
                       className="ms-1 p-1 rounded-full text-stone-400 hover:text-stone-700"
                     >

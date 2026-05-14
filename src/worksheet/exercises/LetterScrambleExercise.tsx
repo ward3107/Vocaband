@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Volume2, X } from "lucide-react";
-import { getWordAudioUrl } from "../../utils/audioUrl";
+import { useAudio } from "../../hooks/useAudio";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { shuffle, translationFor } from "../shared";
 
@@ -31,6 +31,7 @@ export const LetterScrambleExercise: ExerciseComponent<ExerciseOf<"letter_scramb
   targetLang,
   onComplete,
 }) => {
+  const { speak } = useAudio();
   const playable = useMemo(() => words.filter((w) => isSingleWord(w.english)), [words]);
   const [order] = useState(() => shuffle(playable));
   const [idx, setIdx] = useState(0);
@@ -111,13 +112,7 @@ export const LetterScrambleExercise: ExerciseComponent<ExerciseOf<"letter_scramb
   const handleClear = () => setPicked([]);
 
   const playAudio = () => {
-    try {
-      const url = getWordAudioUrl(current.id);
-      if (!url) return;
-      new Audio(url).play().catch(() => undefined);
-    } catch {
-      /* best-effort audio */
-    }
+    speak(current.id, current.english);
   };
 
   const translation = translationFor(current, targetLang);

@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
-import { getWordAudioUrl } from "../../utils/audioUrl";
+import { useAudio } from "../../hooks/useAudio";
 import { FILLBLANK_SENTENCES } from "../../data/sentence-bank-fillblank";
 import type { Word } from "../../data/vocabulary";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
@@ -49,6 +49,7 @@ export const WordInContextExercise: ExerciseComponent<ExerciseOf<"word_in_contex
   targetLang,
   onComplete,
 }) => {
+  const { speak } = useAudio();
   const items: Item[] = useMemo(() => {
     const out: Item[] = [];
     for (const w of words) {
@@ -113,9 +114,7 @@ export const WordInContextExercise: ExerciseComponent<ExerciseOf<"word_in_contex
   };
 
   const playAudio = () => {
-    const url = getWordAudioUrl(current.word_id);
-    if (!url) return;
-    new Audio(url).play().catch(() => undefined);
+    speak(current.word_id, current.word.english);
   };
 
   return (

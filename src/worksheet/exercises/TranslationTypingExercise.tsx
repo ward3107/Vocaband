@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
-import { getWordAudioUrl } from "../../utils/audioUrl";
+import { useAudio } from "../../hooks/useAudio";
 import type { Word } from "../../data/vocabulary";
 import type { Answer, ExerciseComponent, ExerciseOf, TranslationDirection } from "../types";
 import { normaliseAnswer, shuffle } from "../shared";
@@ -50,6 +50,7 @@ export const TranslationTypingExercise: ExerciseComponent<ExerciseOf<"translatio
   words,
   onComplete,
 }) => {
+  const { speak } = useAudio();
   const direction = config.direction;
   const items = useMemo(() => {
     const pairs: Array<{ word_id: number; word: Word; pair: SidePair }> = [];
@@ -113,9 +114,7 @@ export const TranslationTypingExercise: ExerciseComponent<ExerciseOf<"translatio
     // Only play TTS when the prompt is the English word — audio bundle
     // doesn't carry HE/AR pronunciations.
     if (pair.promptLang !== "en") return;
-    const url = getWordAudioUrl(current.word_id);
-    if (!url) return;
-    new Audio(url).play().catch(() => undefined);
+    speak(current.word_id, current.word.english);
   };
 
   const inputDir = pair.answerLang === "en" ? "ltr" : "rtl";
