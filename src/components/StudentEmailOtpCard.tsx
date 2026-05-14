@@ -27,6 +27,7 @@ import { motion } from "motion/react";
 import { ArrowLeft, Loader2, Mail, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useTeacherOtpAuth } from "../hooks/useTeacherOtpAuth";
 import { writeIntendedClassCode } from "../utils/oauthIntent";
+import { useLanguage } from "../hooks/useLanguage";
 
 export interface StudentEmailOtpCardProps {
   /** Class code the student typed on the parent screen.  Stashed
@@ -48,6 +49,27 @@ export default function StudentEmailOtpCard({
   onVerified,
   onUseGoogle,
 }: StudentEmailOtpCardProps) {
+  const { language } = useLanguage();
+  const s = {
+    useGoogle: language === 'he' ? 'השתמשו ב-Google במקום' : language === 'ar' ? 'استخدم Google بدلًا من ذلك' : 'Use Google instead',
+    emailSignIn: language === 'he' ? 'כניסה במייל' : language === 'ar' ? 'تسجيل دخول بالبريد' : 'Email sign-in',
+    yourEmail: language === 'he' ? 'המייל שלכם' : language === 'ar' ? 'بريدك الإلكتروني' : 'Your email',
+    classCodeFirst: language === 'he' ? 'הקלידו תחילה את קוד הכיתה — המורה נתן לכם.' : language === 'ar' ? 'أدخل رمز الفصل أولاً — أعطاك إياه المعلم.' : 'Type your class code first — your teacher gave it to you.',
+    sendingCode: language === 'he' ? 'שולח קוד…' : language === 'ar' ? 'جارٍ إرسال الرمز…' : 'Sending code…',
+    sendMe6Digit: language === 'he' ? 'שלחו לי קוד בן 6 ספרות' : language === 'ar' ? 'أرسل لي رمزًا من 6 أرقام' : 'Send me a 6-digit code',
+    weWillSend: language === 'he' ? 'נשלח קוד חד-פעמי לאימייל. אין צורך בסיסמה.' : language === 'ar' ? 'سنرسل رمزًا لمرة واحدة إلى بريدك. لا حاجة لكلمة مرور.' : "We'll send a one-time code to your email.  No password needed.",
+    weSent6Digit: (email: string) =>
+      language === 'he' ? <>שלחנו קוד בן 6 ספרות אל <strong>{email}</strong>.</> :
+      language === 'ar' ? <>أرسلنا رمزًا من 6 أرقام إلى <strong>{email}</strong>.</> :
+      <>We sent a 6-digit code to <strong>{email}</strong>.</>,
+    enterCode: language === 'he' ? 'הזינו את הקוד' : language === 'ar' ? 'أدخل الرمز' : 'Enter the code',
+    checkingCode: language === 'he' ? 'בודק קוד…' : language === 'ar' ? 'جارٍ التحقق…' : 'Checking code…',
+    signingIn: language === 'he' ? 'מחבר…' : language === 'ar' ? 'جارٍ تسجيل الدخول…' : 'Signing in…',
+    signIn: language === 'he' ? 'כניסה ←' : language === 'ar' ? 'تسجيل الدخول ←' : 'Sign in →',
+    useDifferentEmail: language === 'he' ? 'מייל אחר' : language === 'ar' ? 'استخدم بريدًا آخر' : 'Use a different email',
+    resendIn: (s: number) => language === 'he' ? `שלחו שוב בעוד ${s}ש׳` : language === 'ar' ? `إعادة الإرسال خلال ${s}ث` : `Resend in ${s}s`,
+    resendCode: language === 'he' ? 'שלחו שוב' : language === 'ar' ? 'إعادة إرسال' : 'Resend code',
+  };
   const otp = useTeacherOtpAuth();
   const [emailInput, setEmailInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
@@ -60,7 +82,7 @@ export default function StudentEmailOtpCard({
     e.preventDefault();
     setValidationError(null);
     if (!hasClassCode) {
-      setValidationError("Type your class code first — your teacher gave it to you.");
+      setValidationError(s.classCodeFirst);
       return;
     }
     if (otp.stage === "sending") return;
@@ -107,17 +129,17 @@ export default function StudentEmailOtpCard({
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
         >
           <ArrowLeft size={14} />
-          Use Google instead
+          {s.useGoogle}
         </button>
         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-stone-400">
-          Email sign-in
+          {s.emailSignIn}
         </span>
       </div>
 
       {showEmailForm && (
         <form onSubmit={handleSendCode}>
           <label htmlFor="student-otp-email" className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2">
-            Your email
+            {s.yourEmail}
           </label>
           <input
             id="student-otp-email"
@@ -159,17 +181,17 @@ export default function StudentEmailOtpCard({
             {otp.stage === "sending" ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                Sending code…
+                {s.sendingCode}
               </>
             ) : (
               <>
                 <Mail size={16} />
-                Send me a 6-digit code
+                {s.sendMe6Digit}
               </>
             )}
           </button>
           <p className="mt-3 text-[11px] text-stone-500 text-center leading-relaxed">
-            We'll send a one-time code to your email.  No password needed.
+            {s.weWillSend}
           </p>
         </form>
       )}
@@ -177,10 +199,10 @@ export default function StudentEmailOtpCard({
       {showCodeForm && (
         <form onSubmit={handleVerifyCode}>
           <p className="text-sm text-stone-600 mb-3 break-words">
-            We sent a 6-digit code to <strong>{otp.email}</strong>.
+            {s.weSent6Digit(otp.email ?? '')}
           </p>
           <label htmlFor="student-otp-code" className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2">
-            Enter the code
+            {s.enterCode}
           </label>
           <input
             id="student-otp-code"
@@ -210,15 +232,15 @@ export default function StudentEmailOtpCard({
             {otp.stage === "verifying" ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                Checking code…
+                {s.checkingCode}
               </>
             ) : otp.stage === "done" ? (
               <>
                 <CheckCircle2 size={16} />
-                Signing in…
+                {s.signingIn}
               </>
             ) : (
-              <>Sign in →</>
+              <>{s.signIn}</>
             )}
           </button>
           <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-stone-500">
@@ -228,7 +250,7 @@ export default function StudentEmailOtpCard({
               className="font-bold hover:text-stone-900 transition-colors"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
             >
-              Use a different email
+              {s.useDifferentEmail}
             </button>
             <button
               type="button"
@@ -237,7 +259,7 @@ export default function StudentEmailOtpCard({
               className="font-bold hover:text-stone-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
             >
-              {otp.resendInSeconds > 0 ? `Resend in ${otp.resendInSeconds}s` : "Resend code"}
+              {otp.resendInSeconds > 0 ? s.resendIn(otp.resendInSeconds) : s.resendCode}
             </button>
           </div>
         </form>

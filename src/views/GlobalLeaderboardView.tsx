@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { Trophy } from "lucide-react";
 import type { View } from "../core/views";
+import { useLanguage } from "../hooks/useLanguage";
 
 interface GlobalLeaderboardEntry {
   name: string;
@@ -19,18 +20,23 @@ export default function GlobalLeaderboardView({
   setView,
   globalLeaderboard,
 }: GlobalLeaderboardViewProps) {
+  const { language, dir } = useLanguage();
+  const backLabel = language === 'he' ? '← חזרה לדאשבורד' : language === 'ar' ? '← العودة للوحة' : '← Back to Dashboard';
+  const headingLabel = language === 'he' ? '10 המובילים בעולם' : language === 'ar' ? 'أفضل 10 في العالم' : 'Global Top 10';
+  const blurbLabel = language === 'he' ? 'התלמידים הטובים ביותר בכל הכיתות!' : language === 'ar' ? 'أفضل الطلاب في جميع الفصول!' : 'The best students across all classes!';
+  const pointsLabel = language === 'he' ? 'נקודות' : language === 'ar' ? 'نقاط' : 'Points';
   return (
-    <div className="min-h-screen bg-stone-100 p-6">
+    <div className="min-h-screen bg-stone-100 p-6" dir={dir}>
       <div className="max-w-2xl mx-auto">
-        <button onClick={() => setView(userRole === "teacher" ? "teacher-dashboard" : "student-dashboard")} className="mb-6 signature-gradient text-white px-6 py-3 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg">← Back to Dashboard</button>
+        <button onClick={() => setView(userRole === "teacher" ? "teacher-dashboard" : "student-dashboard")} className="mb-6 signature-gradient text-white px-6 py-3 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg">{backLabel}</button>
         <div className="bg-white rounded-[40px] shadow-xl p-6 sm:p-10">
           <div className="flex items-center gap-4 mb-8">
             <div className="p-4 bg-yellow-100 rounded-3xl">
               <Trophy size={40} className="text-yellow-600" />
             </div>
             <div>
-              <h2 className="text-3xl font-black text-stone-900">Global Top 10</h2>
-              <p className="text-stone-500">The best students across all classes!</p>
+              <h2 className="text-3xl font-black text-stone-900">{headingLabel}</h2>
+              <p className="text-stone-500">{blurbLabel}</p>
             </div>
           </div>
 
@@ -52,7 +58,7 @@ export default function GlobalLeaderboardView({
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-black text-blue-700">{entry.score}</p>
-                  <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Points</p>
+                  <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{pointsLabel}</p>
                 </div>
               </motion.div>
             ))}

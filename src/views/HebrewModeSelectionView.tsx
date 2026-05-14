@@ -15,6 +15,7 @@
 import { motion } from "motion/react";
 import { ArrowLeft } from "lucide-react";
 import type { AssignmentData } from "../core/supabase";
+import { useLanguage } from "../hooks/useLanguage";
 
 export type HebrewModeId = "niqqud" | "shoresh" | "synonym" | "listening";
 
@@ -43,12 +44,22 @@ interface HebrewModeSelectionViewProps {
 export default function HebrewModeSelectionView({
   activeAssignment, onPickMode, onExit,
 }: HebrewModeSelectionViewProps) {
+  const { language } = useLanguage();
   // Default to all 4 modes when the assignment doesn't constrain
   // (e.g. a teacher quick-launch from the dashboard) — same pattern
   // the English picker uses.
   const allowed = activeAssignment?.allowedModes ?? TILES.map((t) => t.id);
   const visibleTiles = TILES.filter((t) => allowed.includes(t.id));
   const lemmaCount = activeAssignment?.wordIds?.length ?? 0;
+  const backLabel = language === 'he' ? 'חזרה' : language === 'ar' ? 'رجوع' : 'Back';
+  const pickGameLabel = language === 'he' ? 'בחרו משחק' : language === 'ar' ? 'اختر لعبة' : 'Pick a game';
+  const defaultTitle = language === 'he' ? 'תרגול VocaHebrew' : language === 'ar' ? 'تدريب VocaHebrew' : 'VocaHebrew Practice';
+  const wordCountStr = (n: number) =>
+    language === 'he' ? `${n} ${n === 1 ? 'מילה' : 'מילים'} במשימה זו` :
+    language === 'ar' ? `${n} ${n === 1 ? 'كلمة' : 'كلمات'} في هذا الواجب` :
+    `${n} ${n === 1 ? 'word' : 'words'} in this assignment`;
+  const noModesLine1 = language === 'he' ? 'המורה שלכם לא הפעיל משחקי עברית.' : language === 'ar' ? 'لم يفعّل معلمك أي ألعاب عبرية بعد.' : "Your teacher hasn't enabled any Hebrew games yet.";
+  const noModesLine2 = language === 'he' ? 'בקשו ממנו להוסיף לפחות מצב אחד למשימה הזו.' : language === 'ar' ? 'اطلب منه إضافة وضع واحد على الأقل لهذا الواجب.' : 'Ask them to add at least one mode to this assignment.';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 p-4 sm:p-8">
@@ -61,7 +72,7 @@ export default function HebrewModeSelectionView({
             className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black tracking-widest uppercase hover:bg-white/15"
           >
             <ArrowLeft size={14} />
-            Back
+            {backLabel}
           </button>
           <div className="text-blue-200 font-black text-[11px] tracking-[0.25em] uppercase">
             VocaHebrew
@@ -70,22 +81,22 @@ export default function HebrewModeSelectionView({
 
         <div className="text-center mb-8 sm:mb-10">
           <p className="text-blue-300 font-black text-[10px] tracking-[0.25em] uppercase mb-3">
-            Pick a game
+            {pickGameLabel}
           </p>
           <h1 className="text-2xl sm:text-4xl font-black text-white drop-shadow-lg">
-            {activeAssignment?.title ?? "VocaHebrew Practice"}
+            {activeAssignment?.title ?? defaultTitle}
           </h1>
           {lemmaCount > 0 && (
             <p className="text-white/60 font-bold text-sm mt-2">
-              {lemmaCount} {lemmaCount === 1 ? "word" : "words"} in this assignment
+              {wordCountStr(lemmaCount)}
             </p>
           )}
         </div>
 
         {visibleTiles.length === 0 ? (
           <div className="text-center text-white/70 font-bold py-12">
-            <p className="mb-3">Your teacher hasn't enabled any Hebrew games yet.</p>
-            <p className="text-white/40 text-sm">Ask them to add at least one mode to this assignment.</p>
+            <p className="mb-3">{noModesLine1}</p>
+            <p className="text-white/40 text-sm">{noModesLine2}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
