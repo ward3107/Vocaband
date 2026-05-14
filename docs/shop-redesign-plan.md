@@ -1,7 +1,6 @@
 # Shop redesign — design plan
 
-**Status:** Decisions locked 2026-05-14, awaiting one final scope
-question on the Featured Game Mode 2× XP. See bottom.
+**Status:** All decisions locked 2026-05-14. Ready to build.
 **Branch:** `claude/shop-redesign-plan`
 
 ---
@@ -280,35 +279,47 @@ speaker to polish before shipping anyway.
 
 ---
 
-## 7. Decisions (locked) + remaining question
+## 7. Decisions (all locked, ready to build)
 
-### Locked
 - **Translations:** AI-draft HE + AR first via Gemini script, native
   polish later (operator task).
 - **Shipping:** all 7 phases in one PR.
-- **Hero slot:** Spotlight priority engine combining Featured Game
-  Mode 2× XP + Almost Unlocked + Daily Chest + Save for X.
-- **Drop of the Week:** removed entirely. The Spotlight engine is
-  the only hero.
+- **Hero slot:** Spotlight priority engine.
+- **Drop of the Week:** removed entirely.
 - **Dashboard ↔ Marketplace duplication:** Dashboard keeps its
   existing Daily Chest card. Marketplace gets the full Spotlight
-  engine. No duplicated weekly-drop card.
+  engine.
+- **2× XP enforcement:** **deferred to a follow-up PR.** Spotlight
+  ships with priority #1 returning `null` — the engine falls through
+  to priority #2 (Almost Unlocked). When the follow-up SQL
+  migration lands, Spotlight automatically lights up priority #1.
+  Architecture supports this without further code changes in the
+  Spotlight component itself.
 
-### Remaining question — Featured Mode 2× XP
+### Spotlight priorities (this PR — 4 active, 1 stub)
 
-The Spotlight's #1 priority is "Play *Sentence Builder* this week
-for 2× XP." If we promise 2× XP we have to deliver it.
-
-| Option | Scope | Risk |
+| # | Priority | Status this PR |
 |---|---|---|
-| **A. Frontend marketing only** — card says "Featured: Sentence Builder" without an XP multiplier. Real XP unchanged. | +0 backend lines | Promise mismatch if copy ever says "2×" |
-| **B. Real 2× XP, frontend-multiplied** — XP grants on the client get multiplied if mode === FEATURED_MODE. | +5 frontend lines | Trivially gameable — student edits the request |
-| **C. Real 2× XP, server-enforced** — server checks `mode + ISO_week` against a multiplier table on every XP grant. | +30 backend lines, 1 new column or constant on Fly.io | Most work, only safe option for a real promise |
+| 1 | Featured Mode 2× XP | **Stub** — returns null until SQL migration lands |
+| 2 | Almost Unlocked nudge | ✅ Active |
+| 3 | Daily Chest unclaimed | ✅ Active |
+| 4 | Save for X (pinned item) | ✅ Active |
+| 5 | Fallback recommendation | ✅ Active |
 
-Recommendation: **C**, because the whole point of the new hero is
-pedagogical credibility. A teacher who sees "2× XP this week" needs
-that to be real, or it undermines trust. The work is bounded:
-~30 lines in `server.ts` near the existing XP grant endpoint, plus a
-`FEATURED_MODE_THIS_WEEK` constant.
+### Follow-up PR scope (not in this branch)
 
-Open question to confirm before coding starts: **A, B, or C?**
+- Supabase migration: add `p_game_mode` param to `award_progress_xp`,
+  add `featured_mode_of_week` table or constant, raise XP clamp to
+  ±600.
+- Update every `award_progress_xp` caller to pass `p_game_mode`.
+- Flip Spotlight priority #1 from stub to active.
+
+### Implementation discoveries — folded into the plan
+
+- `PREMIUM_AVATARS` items have no `id` field — they're identified by
+  array index. **Phase 1 adds an `id` field** so the locale map can
+  key on stable strings.
+- `src/locales/student/shop.ts` already supports EN/HE/AR. Pattern is
+  `Record<Language, ShopStrings>`. New `shop-catalog.ts` matches.
+- XP grants run through Supabase RPCs, not `server.ts`. Confirms
+  that the 2× XP work belongs in `supabase/migrations/`, not Fly.io.

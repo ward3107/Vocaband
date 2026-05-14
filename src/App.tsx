@@ -43,7 +43,7 @@ import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
 
 // Lazy-loaded views (code-split into separate chunks)
-const ShopView = lazy(() => import("./views/ShopView"));
+const ShopView = lazy(() => import("./views/ShopMarketplaceView"));
 const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
 const GlobalLeaderboardView = lazy(() => import("./views/GlobalLeaderboardView"));
 const TeacherApprovalsView = lazy(() => import("./views/TeacherApprovalsView"));
@@ -2872,7 +2872,7 @@ export default function App() {
     );
   }
 
-  // --- SHOP VIEW (lazy-loaded from ./views/ShopView) ---
+  // --- SHOP VIEW (single-screen marketplace, lazy-loaded) ---
   if (user?.role === "student" && view === "shop") {
     return (
       <LazyWrapper loadingMessage="Loading shop...">
@@ -2883,8 +2883,6 @@ export default function App() {
           setUser={setUser}
           setView={setView}
           showToast={showToast}
-          shopTab={shopTab}
-          setShopTab={setShopTab}
           activateBooster={boosters.activate}
         />
       </LazyWrapper>
