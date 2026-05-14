@@ -3,14 +3,14 @@
  * renders each exercise type.  Adding a new exercise = drop a file in
  * this folder + register it here.
  *
- * The placeholder ComingSoonExercise is wired to any type without a
- * dedicated component, so the runner can still walk through it
- * (rendering "Coming soon" + Skip) instead of crashing on a missing
- * key.  Replace each pointer with the real component as it ships.
+ * Every exercise here is real.  The ComingSoonExercise placeholder
+ * (./ComingSoonExercise.tsx) is intentionally kept un-imported as a
+ * known-good stub for any future ExerciseType that lands in the
+ * union before its dedicated component is ready.
  */
 import type { ExerciseComponent, ExerciseType } from "../types";
 import { ClozeExercise } from "./ClozeExercise";
-import { ComingSoonExercise } from "./ComingSoonExercise";
+import { DefinitionMatchExercise } from "./DefinitionMatchExercise";
 import { FillBlankExercise } from "./FillBlankExercise";
 import { LetterScrambleExercise } from "./LetterScrambleExercise";
 import { ListeningDictationExercise } from "./ListeningDictationExercise";
@@ -32,10 +32,11 @@ export const EXERCISE_REGISTRY: Record<ExerciseType, ExerciseComponent> = {
   letter_scramble: LetterScrambleExercise as ExerciseComponent,
   listening_dictation: ListeningDictationExercise as ExerciseComponent,
   fill_blank: FillBlankExercise as ExerciseComponent,
-  // Definition match still needs Gemini-generated definitions before
-  // it can ship — kept as a placeholder so the type stays selectable
-  // in the share dialog without breaking the runner.
-  definition_match: ComingSoonExercise,
+  // Definition Match auto-degrades when the definitions bank is
+  // empty (it auto-completes with 0/0) — running
+  // scripts/generate-word-definitions.ts populates the bank and the
+  // exercise turns on without a code change.
+  definition_match: DefinitionMatchExercise as ExerciseComponent,
   synonym_antonym: SynonymAntonymExercise as ExerciseComponent,
   cloze: ClozeExercise as ExerciseComponent,
   sentence_building: SentenceBuildingExercise as ExerciseComponent,
