@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Camera, X, AlertTriangle, RefreshCw, Image as ImageIcon } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
 
 export interface InPageCameraProps {
   /** Called with a JPEG File when the user captures a frame. */
@@ -39,6 +40,12 @@ export interface InPageCameraProps {
 }
 
 export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPageCameraProps) {
+  const { language } = useLanguage();
+  const camLabels = language === "he"
+    ? { camera: "מצלמה", close: "סגור מצלמה", switch: "החלפת מצלמה", capture: "צילום" }
+    : language === "ar"
+    ? { camera: "الكاميرا", close: "إغلاق الكاميرا", switch: "تبديل الكاميرا", capture: "التقاط صورة" }
+    : { camera: "Camera", close: "Close camera", switch: "Switch camera", capture: "Capture photo" };
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -163,14 +170,14 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[10000] bg-black flex flex-col"
       role="dialog"
-      aria-label="Camera"
+      aria-label={camLabels.camera}
     >
       {/* Top bar — close button */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent">
         <button
           type="button"
           onClick={onCancel}
-          aria-label="Close camera"
+          aria-label={camLabels.close}
           className="w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
         >
@@ -182,7 +189,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
         <button
           type="button"
           onClick={handleSwitchCamera}
-          aria-label="Switch camera"
+          aria-label={camLabels.switch}
           disabled={!ready}
           className="w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white disabled:opacity-40"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
@@ -251,7 +258,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
               type="button"
               onClick={handleCapture}
               disabled={capturing}
-              aria-label="Capture photo"
+              aria-label={camLabels.capture}
               className="relative w-20 h-20 rounded-full bg-[var(--vb-surface)] border-4 border-white/40 active:scale-95 transition-transform disabled:opacity-60"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
             >
