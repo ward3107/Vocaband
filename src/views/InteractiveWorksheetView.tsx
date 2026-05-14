@@ -1,92 +1,47 @@
 /**
  * InteractiveWorksheetView — the public solver mounted at `/w/:slug`.
  *
- * Phase 1 reuses the presentational MatchingModeGame component and rolls
- * its own tiny state machine for the quiz format. No score persistence
- * yet — students see their result on a final card and screenshot it for
- * the teacher.
- *
- * The view is intentionally self-contained: it fetches the worksheet,
- * looks up the words from ALL_WORDS, runs the chosen exercise, and
- * shows a results screen. It does not depend on the larger App.tsx
- * game state machine — that machine is wired into the authenticated
- * student flow (assignments, XP, streaks) and is overkill here.
+ * Fetches the worksheet row, gates the student behind a name-entry
+ * card, hands off to WorksheetRunner to play through the exercises,
+ * and submits the aggregated result once everything is done.  The
+ * runner owns all per-exercise UI; this view owns load/submit/results.
  */
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "motion/react";
-import { ArrowLeft, CheckCircle2, Loader2, RotateCcw, Volume2, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, RotateCcw, XCircle } from "lucide-react";
 import { supabase } from "../core/supabase";
-import { ALL_WORDS } from "../data/vocabulary";
-import MatchingModeGame from "../components/game/MatchingModeGame";
 import { useLanguage } from "../hooks/useLanguage";
-import { getWordAudioUrl } from "../utils/audioUrl";
-
-type WorksheetFormat = "matching" | "quiz" | "fillblank" | "listening";
-
-// One row in the per-question answers JSONB.  Shape varies by format:
-// - quiz emits a `given` + `correct` pair for each question
-// - matching emits a `mistakes_count` instead (no single "given" since
-//   pairing requires matching tiles together, not picking one of N)
-// The teacher dashboard renders these format-specifically.
-type Answer =
-  | { kind: "quiz"; word_id: number; prompt: string; given: string; correct: string; is_correct: boolean }
-  | { kind: "matching"; word_id: number; english: string; translation: string; mistakes_count: number };
-
-interface FinishPayload {
-  score: number;
-  total: number;
-  answers: Answer[];
-}
+import WorksheetRunner from "../worksheet/WorksheetRunner";
+import type {
+  Answer,
+  Exercise,
+  ExerciseResult,
+  Language,
+  WorksheetSettings,
+} from "../worksheet/types";
+import { computeWorksheetScore } from "../worksheet/types";
 
 interface WorksheetRow {
   slug: string;
   topic_name: string;
-  word_ids: number[];
-  format: WorksheetFormat;
-  settings: { language?: "en" | "he" | "ar" } & Record<string, unknown>;
+  exercises: Exercise[];
+  // Kept for the rare legacy row that didn't get backfilled by the
+  // 20260609 migration — we synthesise an exercises array from it.
+  format: string | null;
+  word_ids: number[] | null;
+  settings: WorksheetSettings & Record<string, unknown>;
 }
 
-type Word = (typeof ALL_WORDS)[number];
-
-interface Props {
-  slug: string;
-  onBack: () => void;
-}
-
-// Reusable Fisher-Yates so the order of options/cards is randomised per
-// session — otherwise every student gets the same sequence and the
-// answers can be memorised from a friend's screen.
-const shuffle = <T,>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
-
-const translationFor = (w: Word, lang: "en" | "he" | "ar"): string => {
-  if (lang === "he") return w.hebrew || w.english;
-  if (lang === "ar") return w.arabic || w.english;
-  return w.english;
-};
-
-// Stage machine for the solver UI.  Keeps the render switch in one
-// place — adding a "review answers" step later is one new state.
 type Stage = "name-entry" | "in-progress" | "submitting" | "done" | "submit-error";
 
-// localStorage key for the per-browser fingerprint.  Re-used across
-// every worksheet on this browser so a student who solves two different
-// worksheets shows up as the same person to the teacher (when they
-// type the same name).
+// Per-browser fingerprint reused across every worksheet so a student
+// who solves two different worksheets shows up as the same person to
+// the teacher (when they type the same name).
 const FINGERPRINT_KEY = "vocaband:worksheet:fingerprint";
 
 const getOrCreateFingerprint = (): string | null => {
   try {
     let fp = localStorage.getItem(FINGERPRINT_KEY);
     if (!fp) {
-      // crypto.randomUUID is widely available; fall back to a longer
-      // Math.random string for the rare browser that lacks it.
       fp =
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
@@ -95,16 +50,18 @@ const getOrCreateFingerprint = (): string | null => {
     }
     return fp;
   } catch {
-    // Private mode or storage blocked — submission still works, just
-    // without duplicate-collapse on retries.
     return null;
   }
 };
 
-// localStorage key for the cached student name, scoped per slug so a
-// shared family device doesn't autofill one kid's name on another's
-// worksheet.
+// Cached student name, scoped per slug so a shared family device
+// doesn't autofill one kid's name on another's worksheet.
 const nameKey = (slug: string) => `vocaband:worksheet:${slug}:name`;
+
+interface Props {
+  slug: string;
+  onBack: () => void;
+}
 
 export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   const { language: iwvLang, isRTL } = useLanguage();
@@ -118,23 +75,16 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
       return "";
     }
   });
-  const [score, setScore] = useState(0);
-  const [total, setTotal] = useState(0);
+  const [results, setResults] = useState<ExerciseResult[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  // Wall-clock start, captured when the exercise begins so the teacher
-  // can see how long each student took.  Not used for time-pressure UI;
-  // students aren't graded on speed here.
   const [startedAt, setStartedAt] = useState<number | null>(null);
 
-  // Phase-1 worksheets are < 30 words, so a single SELECT is fine — no
-  // pagination, no realtime subscription. The slug is the credential and
-  // RLS already filters expired rows.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
         .from("interactive_worksheets")
-        .select("slug, topic_name, word_ids, format, settings")
+        .select("slug, topic_name, word_ids, format, exercises, settings")
         .eq("slug", slug)
         .maybeSingle();
       if (cancelled) return;
@@ -149,16 +99,19 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
     };
   }, [slug]);
 
-  // Words may load before vocabulary on slow networks, but vocabulary.ts is
-  // already imported statically by this module so ALL_WORDS is populated
-  // synchronously. No loading gate needed.
-  const words: Word[] = useMemo(() => {
+  // Prefer the new `exercises` array; fall back to synthesising it from
+  // the legacy single-format columns so any row that escaped the
+  // backfill (or any client that mints with the old RPC) still plays.
+  const exercises: Exercise[] = useMemo(() => {
     if (!row) return [];
-    const idSet = new Set(row.word_ids);
-    return ALL_WORDS.filter((w) => idSet.has(w.id));
+    if (Array.isArray(row.exercises) && row.exercises.length > 0) return row.exercises;
+    if (row.format && Array.isArray(row.word_ids) && row.word_ids.length > 0) {
+      return [{ type: row.format as Exercise["type"], word_ids: row.word_ids }];
+    }
+    return [];
   }, [row]);
 
-  const targetLang: "en" | "he" | "ar" = (row?.settings.language as "en" | "he" | "ar") ?? "he";
+  const targetLang: Language = (row?.settings?.language as Language) ?? "he";
 
   const handleStart = (name: string) => {
     const trimmed = name.trim();
@@ -173,28 +126,28 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
     setStage("in-progress");
   };
 
-  const handleFinish = async (payload: FinishPayload) => {
-    setScore(payload.score);
-    setTotal(payload.total);
+  const handleFinish = async (allResults: ExerciseResult[]) => {
+    setResults(allResults);
     setStage("submitting");
     setSubmitError(null);
 
+    const aggregateAnswers: Answer[] = allResults.flatMap((r) => r.answers);
+    const totalScore = allResults.reduce((sum, r) => sum + r.score, 0);
+    const totalQuestions = allResults.reduce((sum, r) => sum + r.total, 0);
     const duration_ms = startedAt ? Date.now() - startedAt : null;
     const fingerprint = getOrCreateFingerprint();
+
     try {
       const { error } = await supabase.rpc("submit_worksheet_attempt", {
         p_slug: slug,
         p_student_name: studentName,
-        p_answers: payload.answers,
-        p_score: payload.score,
-        p_total: payload.total,
+        p_answers: aggregateAnswers,
+        p_score: totalScore,
+        p_total: totalQuestions,
         p_duration_ms: duration_ms,
         p_fingerprint: fingerprint,
       });
       if (error) {
-        // We still mark `done` — the student saw their score, the
-        // submission just didn't reach the teacher.  Better than
-        // pretending the worksheet wasn't completed.
         setSubmitError(error.message);
         setStage("submit-error");
         return;
@@ -207,8 +160,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   };
 
   const handleRestart = () => {
-    setScore(0);
-    setTotal(0);
+    setResults([]);
     setSubmitError(null);
     setStartedAt(Date.now());
     setStage("in-progress");
@@ -242,8 +194,8 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
       <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
         <NameEntryCard
           topicName={row.topic_name}
-          wordCount={words.length}
-          format={row.format}
+          exerciseCount={exercises.length}
+          firstType={exercises[0]?.type ?? "matching"}
           initialName={studentName}
           onStart={handleStart}
         />
@@ -267,8 +219,8 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
     return (
       <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
         <ResultsCard
-          score={score}
-          total={total}
+          exercises={exercises}
+          results={results}
           topicName={row.topic_name}
           slug={row.slug}
           studentName={studentName}
@@ -282,55 +234,60 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   return (
     <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
       <div className="mb-6 text-center">
-        <p className="text-xs uppercase tracking-widest font-bold text-violet-300/80">{row.format}</p>
+        <p className="text-xs uppercase tracking-widest font-bold text-violet-300/80">
+          {exercises.length === 1 ? formatLabel(exercises[0].type) : `${exercises.length} exercises`}
+        </p>
         <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">{row.topic_name}</h1>
-        <p className="text-white/60 text-sm mt-1">Playing as <span className="font-bold text-white">{studentName}</span></p>
+        <p className="text-white/60 text-sm mt-1">
+          Playing as <span className="font-bold text-white">{studentName}</span>
+        </p>
       </div>
-      {row.format === "matching" && (
-        <MatchingExercise words={words} targetLang={targetLang} onFinish={handleFinish} />
-      )}
-      {row.format === "quiz" && (
-        <QuizExercise words={words} targetLang={targetLang} onFinish={handleFinish} />
-      )}
-      {(row.format === "fillblank" || row.format === "listening") && (
-        <div className="text-center max-w-md mx-auto p-8 rounded-3xl bg-white/10 border border-white/15 text-white">
-          <p className="font-bold text-lg mb-2">Coming soon</p>
-          <p className="text-white/70 text-sm">
-            This format isn't available in the online solver yet — try Matching or Quiz from the share page.
-          </p>
-        </div>
-      )}
+      <WorksheetRunner
+        exercises={exercises}
+        targetLang={targetLang}
+        onFinish={handleFinish}
+      />
     </Shell>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Name-entry gate.  Required step so the teacher dashboard has a label
-// for each attempt.  We pre-fill from localStorage so a "Try again" on
-// the same browser doesn't make the student re-type their name.
-// ─────────────────────────────────────────────────────────────────────────
+const FORMAT_LABEL: Record<string, string> = {
+  matching: "Matching exercise",
+  quiz: "Multiple-choice quiz",
+  letter_scramble: "Letter scramble",
+  listening_dictation: "Listening dictation",
+  fill_blank: "Fill in the blank",
+  definition_match: "Definition match",
+  synonym_antonym: "Synonyms & antonyms",
+  cloze: "Cloze paragraph",
+  sentence_building: "Sentence building",
+  translation_typing: "Translation typing",
+  word_in_context: "Word in context",
+  true_false: "True or false",
+};
+
+const formatLabel = (type: string) => FORMAT_LABEL[type] ?? "Worksheet";
+
 const NameEntryCard: React.FC<{
   topicName: string;
-  wordCount: number;
-  format: WorksheetFormat;
+  exerciseCount: number;
+  firstType: string;
   initialName: string;
   onStart: (name: string) => void;
-}> = ({ topicName, wordCount, format, initialName, onStart }) => {
+}> = ({ topicName, exerciseCount, firstType, initialName, onStart }) => {
   const { language: iwvLang } = useLanguage();
   const [name, setName] = useState(initialName);
   const trimmed = name.trim();
-  const formatLabel: Record<WorksheetFormat, string> = {
-    matching: "Matching exercise",
-    quiz: "Multiple-choice quiz",
-    fillblank: "Fill-in-the-blank",
-    listening: "Listening",
-  };
+  const subtitle =
+    exerciseCount === 1
+      ? formatLabel(firstType)
+      : `${exerciseCount} exercises`;
+
   return (
     <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md mx-auto">
       <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-6 text-center text-white">
-        <p className="text-xs uppercase tracking-widest font-bold opacity-90">{formatLabel[format]}</p>
+        <p className="text-xs uppercase tracking-widest font-bold opacity-90">{subtitle}</p>
         <h1 className="text-2xl sm:text-3xl font-black mt-1">{topicName}</h1>
-        <p className="opacity-90 text-sm mt-1">{wordCount} words</p>
       </div>
       <form
         className="p-6 sm:p-8"
@@ -389,306 +346,32 @@ const Shell: React.FC<{ children: React.ReactNode; onBack: () => void; isRTL: bo
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────
-// Matching exercise — wraps the existing presentational component with a
-// minimal state machine.  Pairs are batched into rounds of 6 so a 25-word
-// pack doesn't try to render 50 tiles on a small phone screen.
-// ─────────────────────────────────────────────────────────────────────────
-const ROUND_SIZE = 6;
-
-type MatchItem = { id: number; text: string; type: "english" | "arabic" };
-type MatchSelection = { id: number; type: "english" | "arabic" };
-
-const MatchingExercise: React.FC<{
-  words: Word[];
-  targetLang: "en" | "he" | "ar";
-  onFinish: (payload: FinishPayload) => void;
-}> = ({ words, targetLang, onFinish }) => {
-  // Pre-shuffle word order once at mount so the same student doesn't see
-  // the same sequence after a page reload (mount-time randomisation, not
-  // every render — that would re-shuffle on each tap and break matching).
-  const [rounds] = useState(() => {
-    const shuffled = shuffle(words);
-    const out: Word[][] = [];
-    for (let i = 0; i < shuffled.length; i += ROUND_SIZE) {
-      out.push(shuffled.slice(i, i + ROUND_SIZE));
-    }
-    return out;
-  });
-  const [roundIdx, setRoundIdx] = useState(0);
-  const [matchedIds, setMatchedIds] = useState<number[]>([]);
-  const [selected, setSelected] = useState<MatchSelection | null>(null);
-  const [processing, setProcessing] = useState(false);
-  const [correct, setCorrect] = useState(0);
-  const [attempts, setAttempts] = useState(0);
-  // Per-word mistake count for the teacher dashboard.  Indexed by
-  // word_id, lazily populated when the student first attempts that pair.
-  const [mistakesByWord, setMistakesByWord] = useState<Record<number, number>>({});
-
-  const roundWords = rounds[roundIdx] ?? [];
-  const pairs: MatchItem[] = useMemo(() => {
-    const englishTiles: MatchItem[] = roundWords.map((w) => ({
-      id: w.id,
-      text: w.english,
-      type: "english",
-    }));
-    const translationTiles: MatchItem[] = roundWords.map((w) => ({
-      id: w.id,
-      text: translationFor(w, targetLang),
-      // Reuse the "arabic" type slot for any non-English target — the
-      // presentational component only cares about left vs. right columns,
-      // not the actual language.
-      type: "arabic",
-    }));
-    return [...shuffle(englishTiles), ...shuffle(translationTiles)];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roundIdx, targetLang]);
-
-  const handleClick = (item: MatchSelection) => {
-    if (processing) return;
-    if (!selected) {
-      setSelected(item);
-      return;
-    }
-    // Second tap of the same tile cancels selection.
-    if (selected.id === item.id && selected.type === item.type) {
-      setSelected(null);
-      return;
-    }
-    // Must be one of each side — two English or two translation tiles
-    // can't form a pair.
-    if (selected.type === item.type) {
-      setSelected(item);
-      return;
-    }
-    setProcessing(true);
-    setAttempts((a) => a + 1);
-    if (selected.id === item.id) {
-      setMatchedIds((m) => [...m, item.id]);
-      setCorrect((c) => c + 1);
-      // Short delay so the connection-line animation plays before the
-      // tiles exit and the next round potentially loads.
-      setTimeout(() => {
-        setSelected(null);
-        setProcessing(false);
-      }, 420);
-    } else {
-      // Wrong pair — bump the mistakes_count for BOTH sides of the
-      // attempted pair so the teacher can see which words tripped the
-      // student up.  Same key gets incremented on each wrong tap.
-      setMistakesByWord((prev) => ({
-        ...prev,
-        [selected.id]: (prev[selected.id] ?? 0) + 1,
-        [item.id]: (prev[item.id] ?? 0) + 1,
-      }));
-      setTimeout(() => {
-        setSelected(null);
-        setProcessing(false);
-      }, 350);
-    }
-  };
-
-  // Advance rounds + finish when all matched.  Done inside an effect so
-  // we react to the matchedIds state update rather than chaining onto
-  // the setTimeout above (which would run before React commits state).
-  useEffect(() => {
-    if (roundWords.length === 0) return;
-    const allMatched = roundWords.every((w) => matchedIds.includes(w.id));
-    if (!allMatched) return;
-    if (roundIdx + 1 < rounds.length) {
-      const next = roundIdx + 1;
-      // Brief pause so the celebration finishes before the new tiles fade in.
-      const t = setTimeout(() => {
-        setRoundIdx(next);
-        setMatchedIds([]);
-      }, 600);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(() => {
-      // Build the per-question detail.  In matching every word is
-      // eventually "correct" (you can't progress otherwise), so the
-      // teacher's signal is the mistakes count per word, not a
-      // correct/incorrect boolean.
-      const answers: Answer[] = words.map((w) => ({
-        kind: "matching" as const,
-        word_id: w.id,
-        english: w.english,
-        translation: translationFor(w, targetLang),
-        mistakes_count: mistakesByWord[w.id] ?? 0,
-      }));
-      onFinish({ score: correct, total: attempts, answers });
-    }, 700);
-    return () => clearTimeout(t);
-  }, [matchedIds, roundWords, roundIdx, rounds.length, correct, attempts, mistakesByWord, words, targetLang, onFinish]);
-
-  return (
-    <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-2xl">
-      <div className="flex items-center justify-between mb-4 px-1">
-        <span className="text-xs font-bold text-stone-500">
-          Round {roundIdx + 1} / {rounds.length}
-        </span>
-        <span className="text-xs font-bold text-emerald-600">{correct} correct</span>
-      </div>
-      <MatchingModeGame
-        matchingPairs={pairs}
-        matchedIds={matchedIds}
-        selectedMatch={selected}
-        isMatchingProcessing={processing}
-        onMatchClick={handleClick}
-        themeColor="amber"
-        modeLabel="Matching"
-      />
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────
-// Quiz exercise — one word at a time, 4 translation options. Pure local
-// state, no external component dependency, because the existing
-// ClassicModeGame is tangled with App-level XP/feedback state we don't
-// want here.
-// ─────────────────────────────────────────────────────────────────────────
-const QuizExercise: React.FC<{
-  words: Word[];
-  targetLang: "en" | "he" | "ar";
-  onFinish: (payload: FinishPayload) => void;
-}> = ({ words, targetLang, onFinish }) => {
-  const { language: iwvLang } = useLanguage();
-  const [order] = useState(() => shuffle(words));
-  const [idx, setIdx] = useState(0);
-  const [pickedId, setPickedId] = useState<number | null>(null);
-  const [correct, setCorrect] = useState(0);
-  // Append-only log of each question's answer for the teacher dashboard.
-  const [answers, setAnswers] = useState<Answer[]>([]);
-
-  const current = order[idx];
-  // Distractors are sampled from the same word list so the difficulty is
-  // self-calibrating — students with a short pack get a small set of
-  // distractors, which is fine because the words they're learning are
-  // the only ones they need to disambiguate.
-  const options: Word[] = useMemo(() => {
-    if (!current) return [];
-    const distractors = shuffle(order.filter((w) => w.id !== current.id)).slice(0, 3);
-    return shuffle([current, ...distractors]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx]);
-
-  const handlePick = (w: Word) => {
-    if (pickedId !== null) return;
-    setPickedId(w.id);
-    const isRight = w.id === current.id;
-    if (isRight) setCorrect((c) => c + 1);
-    const answer: Answer = {
-      kind: "quiz",
-      word_id: current.id,
-      prompt: current.english,
-      given: translationFor(w, targetLang),
-      correct: translationFor(current, targetLang),
-      is_correct: isRight,
-    };
-    const nextAnswers = [...answers, answer];
-    setAnswers(nextAnswers);
-    setTimeout(() => {
-      if (idx + 1 < order.length) {
-        setIdx(idx + 1);
-        setPickedId(null);
-      } else {
-        // Use the post-pick score, not stale `correct` — increment
-        // mirrors what setCorrect just queued.
-        const finalScore = correct + (isRight ? 1 : 0);
-        onFinish({ score: finalScore, total: order.length, answers: nextAnswers });
-      }
-    }, 800);
-  };
-
-  const playAudio = () => {
-    try {
-      const url = getWordAudioUrl(current.id);
-      if (!url) return;
-      const audio = new Audio(url);
-      audio.play().catch(() => undefined);
-    } catch {
-      // best-effort audio; ignore unavailable hosts.
-    }
-  };
-
-  if (!current) return null;
-
-  return (
-    <div className="bg-white rounded-3xl p-4 sm:p-8 shadow-2xl">
-      <div className="flex items-center justify-between mb-6">
-        <span className="text-xs font-bold text-stone-500">
-          {idx + 1} / {order.length}
-        </span>
-        <span className="text-xs font-bold text-emerald-600">{correct} correct</span>
-      </div>
-
-      <div className="text-center mb-8">
-        <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-3">
-          Choose the translation
-        </p>
-        <div className="inline-flex items-center gap-3">
-          <h2 className="text-3xl sm:text-5xl font-black text-stone-900" dir="ltr">
-            {current.english}
-          </h2>
-          <button
-            type="button"
-            onClick={playAudio}
-            aria-label={iwvLang === 'he' ? 'השמע הגייה' : iwvLang === 'ar' ? 'تشغيل النطق' : 'Play pronunciation'}
-            className="p-2 rounded-full bg-violet-100 hover:bg-violet-200 text-violet-700 transition-all"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          >
-            <Volume2 size={20} />
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {options.map((opt) => {
-          const isPicked = pickedId === opt.id;
-          const isAnswer = opt.id === current.id;
-          const reveal = pickedId !== null;
-          const style = !reveal
-            ? "bg-violet-50 text-violet-900 border-violet-200 hover:bg-violet-100"
-            : isAnswer
-              ? "bg-emerald-500 text-white border-emerald-500"
-              : isPicked
-                ? "bg-rose-500 text-white border-rose-500"
-                : "bg-stone-100 text-stone-400 border-stone-200";
-          return (
-            <motion.button
-              key={opt.id}
-              type="button"
-              whileTap={{ scale: pickedId !== null ? 1 : 0.96 }}
-              disabled={pickedId !== null}
-              onClick={() => handlePick(opt)}
-              className={`p-4 rounded-2xl border-2 font-bold text-lg sm:text-xl transition-colors ${style}`}
-              dir="auto"
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            >
-              {translationFor(opt, targetLang)}
-            </motion.button>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────
-// Results screen — minimal celebration card so the student can screenshot
-// it and send back to their teacher.  No persistence in Phase 1.
-// ─────────────────────────────────────────────────────────────────────────
 const ResultsCard: React.FC<{
-  score: number;
-  total: number;
+  exercises: Exercise[];
+  results: ExerciseResult[];
   topicName: string;
   slug: string;
   studentName: string;
   submitError: string | null;
   onRestart: () => void;
-}> = ({ score, total, topicName, slug, studentName, submitError, onRestart }) => {
-  const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+}> = ({ exercises, results, topicName, slug, studentName, submitError, onRestart }) => {
+  const score = computeWorksheetScore(exercises, results);
+  const tier =
+    score.outOf100 >= 90
+      ? "gold"
+      : score.outOf100 >= 75
+        ? "silver"
+        : score.outOf100 >= 50
+          ? "bronze"
+          : "try-again";
+
+  const tierColor: Record<typeof tier, string> = {
+    gold: "from-amber-400 to-orange-500",
+    silver: "from-slate-300 to-slate-500",
+    bronze: "from-amber-600 to-rose-600",
+    "try-again": "from-stone-400 to-stone-600",
+  };
+
   return (
     <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-2xl text-center">
       <CheckCircle2 size={56} className="mx-auto mb-4 text-emerald-500" />
@@ -700,15 +383,36 @@ const ResultsCard: React.FC<{
         Nice work, <span className="font-bold text-stone-700">{studentName}</span>!
       </p>
 
-      <div className="inline-flex items-baseline gap-1 mb-6">
-        <span className="text-6xl sm:text-7xl font-black text-violet-700">{score}</span>
-        <span className="text-3xl sm:text-4xl font-bold text-stone-400">/ {total}</span>
+      <div
+        className={`inline-flex items-baseline gap-1 mb-2 bg-gradient-to-r ${tierColor[tier]} bg-clip-text text-transparent`}
+      >
+        <span className="text-6xl sm:text-7xl font-black">{score.outOf100}</span>
+        <span className="text-3xl sm:text-4xl font-bold">/ 100</span>
       </div>
-      <div className="text-lg font-bold text-stone-700 mb-6">{pct}%</div>
+      <div className="text-sm font-bold text-stone-500 mb-6">
+        {score.totalCorrect} / {score.totalQuestions} correct
+      </div>
+
+      {score.perExercise.length > 1 && (
+        <div className="text-start max-w-sm mx-auto rounded-2xl border border-stone-200 bg-stone-50 p-4 mb-6">
+          <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-3">
+            Section breakdown
+          </p>
+          <ul className="space-y-2">
+            {score.perExercise.map((row, i) => (
+              <li key={i} className="flex items-center justify-between text-sm">
+                <span className="font-bold text-stone-700">{formatLabel(row.type)}</span>
+                <span className="font-mono text-stone-500">
+                  {row.score}/{row.total}
+                  <span className="ml-2 text-emerald-600 font-bold">{row.percent}%</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {submitError ? (
-        // The student saw their score — the submission just didn't reach
-        // the teacher.  Tell them honestly so they can show the screen.
         <div className="mb-6 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm text-left">
           <p className="font-bold mb-1">Couldn't reach your teacher's dashboard</p>
           <p className="text-amber-800/80 text-xs">
@@ -716,9 +420,7 @@ const ResultsCard: React.FC<{
           </p>
         </div>
       ) : (
-        <p className="text-xs font-bold text-emerald-600 mb-6">
-          ✓ Sent to your teacher
-        </p>
+        <p className="text-xs font-bold text-emerald-600 mb-6">✓ Sent to your teacher</p>
       )}
 
       <div className="text-xs font-mono uppercase tracking-widest text-stone-400 mb-6">
