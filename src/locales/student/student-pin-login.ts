@@ -30,6 +30,9 @@ export interface StudentPinLoginStrings {
   loadFailed: string;
   invalidPinFormat: string;
   wrongPin: string;
+  /** Shown after 3 fails in one session — softens the dead-end of the
+   *  generic "wrong PIN" error by pointing at the recovery path. */
+  wrongPinPersistent: string;
   genericSignInError: string;
 }
 
@@ -49,7 +52,8 @@ export const studentPinLoginT: Record<Language, StudentPinLoginStrings> = {
     signingIn: "Signing in…",
     loadFailed: "Could not load class list",
     invalidPinFormat: "PIN must be 6 characters (letters A–Z and digits 2–9, no I/L/O/0/1).",
-    wrongPin: "That PIN doesn't match. Ask your teacher to check it, or to reset your PIN.",
+    wrongPin: "That PIN doesn't match. Try again.",
+    wrongPinPersistent: "That PIN still doesn't match. Ask your teacher to check it or to reset your PIN.",
     genericSignInError: "Sign-in failed. Try again.",
   },
   he: {
@@ -67,7 +71,8 @@ export const studentPinLoginT: Record<Language, StudentPinLoginStrings> = {
     signingIn: "מתחברים…",
     loadFailed: "לא ניתן לטעון את רשימת הכיתה",
     invalidPinFormat: "PIN חייב להיות 6 תווים (אותיות A–Z וספרות 2–9, בלי I/L/O/0/1).",
-    wrongPin: "ה-PIN לא תואם. בקשו מהמורה לבדוק או לאפס לכם PIN.",
+    wrongPin: "ה-PIN לא תואם. נסו שוב.",
+    wrongPinPersistent: "ה-PIN עדיין לא תואם. בקשו מהמורה לבדוק או לאפס לכם PIN.",
     genericSignInError: "ההתחברות נכשלה. נסו שוב.",
   },
   ar: {
@@ -85,7 +90,8 @@ export const studentPinLoginT: Record<Language, StudentPinLoginStrings> = {
     signingIn: "جارٍ تسجيل الدخول…",
     loadFailed: "تعذّر تحميل قائمة الصف",
     invalidPinFormat: "يجب أن يتكوّن PIN من 6 أحرف (حروف A–Z وأرقام 2–9، بدون I/L/O/0/1).",
-    wrongPin: "رمز PIN غير صحيح. اطلب من معلمك التحقق أو إعادة تعيين رمزك.",
+    wrongPin: "رمز PIN غير صحيح. حاول مرة أخرى.",
+    wrongPinPersistent: "رمز PIN ما زال غير صحيح. اطلب من معلمك التحقق أو إعادة تعيين رمزك.",
     genericSignInError: "فشل تسجيل الدخول. حاول مرة أخرى.",
   },
 };

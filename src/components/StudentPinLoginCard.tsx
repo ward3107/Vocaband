@@ -15,6 +15,12 @@ interface RosterEntry {
 
 interface Props {
   classCode: string;
+  /** Optional student_profiles.id from `?s=` on the teacher invite link.
+   *  When provided AND it matches a row in the loaded roster, we skip
+   *  the pick-your-name step and land directly on the PIN entry.  The
+   *  student can still tap "Not me" to back out, and a stale / wrong
+   *  id silently falls through to the normal picker. */
+  prefilledStudentId?: string | null;
   /** Called after successful signInWithPassword.  App.tsx's auth listener
    *  then hydrates the AppUser from public.users. */
   onSuccess: () => void;
@@ -28,7 +34,7 @@ const PIN_LENGTH = 6;
 // (no I/L/O, no 0/1).
 const PIN_REGEX = /^[A-HJ-KM-NP-Z2-9]{6}$/;
 
-const StudentPinLoginCard: FC<Props> = ({ classCode, onSuccess, onUseDifferentMethod }) => {
+const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSuccess, onUseDifferentMethod }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = studentPinLoginT[language];
   const [step, setStep] = useState<"pick" | "pin">("pick");
@@ -40,6 +46,11 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, onSuccess, onUseDifferentMe
   const [pin, setPin] = useState("");
   const [signingIn, setSigningIn] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
+  // Per-session wrong-PIN counter.  After 3 fails we swap to the
+  // "ask your teacher to reset" copy — purely a UX softening, not a
+  // security limit (state is in-memory + resets on refresh).  Real
+  // brute-force protection lives in GoTrue's per-IP defaults.
+  const [wrongPinCount, setWrongPinCount] = useState(0);
   const pinInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load the class roster on mount (or when classCode changes).
@@ -75,6 +86,31 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, onSuccess, onUseDifferentMe
     loadRoster();
   }, [loadRoster]);
 
+  // Teacher-invite-link prefill: once the roster has loaded, if the
+  // URL carried a ?s=<student_profile_id> and it matches a row, jump
+  // straight to the PIN step.  Only fires once per page-load by
+  // tracking whether we've already consumed the prefilled id.  If the
+  // student taps "Not me" we don't re-arm — they're already in the
+  // picker by then and re-prefilling would feel haunted.
+  const consumedPrefillRef = useRef(false);
+  useEffect(() => {
+    if (consumedPrefillRef.current) return;
+    if (!prefilledStudentId) return;
+    if (rosterLoading || roster.length === 0) return;
+    const match = roster.find(r => r.id.toLowerCase() === prefilledStudentId.toLowerCase());
+    if (!match) {
+      // Stale or wrong id — silently fall through to the normal
+      // picker instead of confusing the student with an error.
+      consumedPrefillRef.current = true;
+      return;
+    }
+    consumedPrefillRef.current = true;
+    setSelected(match);
+    setPin("");
+    setPinError(null);
+    setStep("pin");
+  }, [prefilledStudentId, roster, rosterLoading]);
+
   // Auto-focus the PIN input when the student moves to the PIN step.
   // On mobile this cues the soft keyboard, on desktop their first
   // keystroke lands in the right place.
@@ -88,6 +124,8 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, onSuccess, onUseDifferentMe
     setSelected(s);
     setPin("");
     setPinError(null);
+    // Different student selected → start the wrong-PIN counter fresh.
+    setWrongPinCount(0);
     setStep("pin");
   };
 
@@ -113,7 +151,9 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, onSuccess, onUseDifferentMe
       });
       if (error) {
         if (/invalid login/i.test(error.message)) {
-          setPinError(t.wrongPin);
+          const nextCount = wrongPinCount + 1;
+          setWrongPinCount(nextCount);
+          setPinError(nextCount >= 3 ? t.wrongPinPersistent : t.wrongPin);
         } else {
           setPinError(error.message);
         }

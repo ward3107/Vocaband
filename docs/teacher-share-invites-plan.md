@@ -21,7 +21,7 @@ hand over the account.
 | Class code format | **Keep 6 alphanumeric** (`ABC123`) | Stronger than Kahoot's 7-digit numeric, still readable |
 | Delivery model | **Two separate buttons** per student | Link and PIN travel on different channels |
 | Auth flow | **Unchanged** | Student still picks name on landing + types PIN |
-| Rate limiting | **Ship Phase 1 in same PR** (`student_pin_attempts` table + RPC wrapper) | Invite links reveal which email to attack; per-account lockout closes the gap |
+| Rate limiting | **Deferred** — relies on GoTrue's per-IP defaults + a 3-fail UX hint in `StudentPinLoginCard`. See §6. | Per-account lockout would have created a trivial class-wide DoS (anyone with a class code can fetch all student emails). Tightening GoTrue defaults is a separate operator task. |
 | Invite URL host | **bare `vocaband.com`** (no `www`) | Matches the existing print template at `ClassRosterModal.tsx:251` |
 | Button labels | **Short text + icon** — "Link" / "PIN" | Distinct labels prevent a teacher tapping the wrong button and leaking the PIN through the wrong channel |
 | PIN message tone | **"It's like your secret password — keep it private."** | Concrete metaphor 4th-graders and parents both understand |
@@ -160,107 +160,123 @@ We can't prevent this. We mitigate with:
 
 ---
 
-## 6. Rate limiting — gap analysis
+## 6. Rate limiting — gap analysis (DECISION 2026-05-14: defer)
 
-### Current state
+**Original plan:** ship a `student_pin_attempts` table + RPC wrapper
+in this PR that locks an account out after N wrong PINs.
+
+**Why we changed our mind mid-implementation:** the invite link reveals
+the class code. The class code lets *anyone* call
+`class_roster_for_login` and get the **full list of student emails in
+that class**. With per-account lockout, an attacker with a single
+invite link could lock out every student in the class by recording
+fake failures against each email — trivial class-wide DoS.
+
+**What we shipped instead:**
+1. **A 3-fail UX hint** in `StudentPinLoginCard` — after 3 wrong PINs
+   in the current session, the error swaps from *"That PIN doesn't
+   match"* to *"That PIN still doesn't match — ask your teacher to
+   check it or reset your PIN."* Pure UX softening, in-memory only,
+   reset on refresh. No security claim.
+2. **Operator task** in `docs/operator-tasks.md` §5 to verify +
+   tighten GoTrue dashboard rate limits (per-IP) and document them.
+
+### Why this is "good enough"
+
+| Threat | Mitigation today |
+|---|---|
+| Sibling guesses 5 PINs | GoTrue per-IP default + 3-fail UX hint |
+| Determined brute force, single IP | 31⁶ ≈ 887M ÷ 30 attempts/5min ≈ 5M years |
+| Determined brute force, botnet | Still bounded (per-IP scales with attacker IPs) |
+| Class-wide DoS via lockout | **Avoided** — no lockout exists |
+
+### Background — why we even considered it
 
 PIN auth goes **directly** from the client to Supabase GoTrue via
 `supabase.auth.signInWithPassword`
 (`src/components/StudentPinLoginCard.tsx:110-113`).
 
-This means **our Express middleware does not see PIN attempts.**
-`express-rate-limit` in `server.ts:29-150` protects `/api/ocr`,
-`/api/translate`, `/socket.io/*` — but NOT auth.
+Our Express middleware in `server.ts:29-150` does NOT see PIN attempts.
+The only protection is whatever Supabase GoTrue enforces server-side:
+roughly **30 requests per 5 minutes per IP** by default.
 
-The only rate limiting currently applied to PIN attempts is whatever
-**Supabase GoTrue** enforces server-side.
+6-char PIN over the 31-char `[A-HJ-KM-NP-Z2-9]` alphabet → search space
+31⁶ ≈ 887 million combinations. At 30 attempts/5min from one IP that's
+~5 million years; from a 1000-IP botnet, ~5000 years. **Bounded.**
 
-### GoTrue defaults (verify on dashboard)
+The gap we considered closing: a distributed attacker targeting a
+specific student is only rate-limited in aggregate, not per-account.
+And we have no audit trail of which student is being targeted.
 
-GoTrue's default token-endpoint rate limit is roughly **30 requests per
-5 minutes per IP**. Per-email throttling exists but is laxer.
+### Why we deferred
 
-### Why this is "probably fine" but not great
+Adding per-account lockout requires the client to be able to tell the
+server "this attempt failed". Either:
+- **Anyone can record fails** (`anon` execute) → trivial DoS, anyone
+  with a class code locks out every student
+- **Only authenticated callers** → fails can't be recorded (the
+  attacker has no session), defeats the purpose
 
-With a 6-char PIN over the 31-char `[A-HJ-KM-NP-Z2-9]` alphabet:
-- Search space: 31⁶ ≈ 887 million
-- At 30 attempts/5min from one IP: ~5 million years to exhaust
-- At 30 attempts/5min from 1000 botnet IPs: ~5000 years
+The only DoS-safe design is server-side auth (Supabase Edge Function
+between client and GoTrue), which is a substantial infrastructure
+change. Out of scope for this PR.
 
-So a casual attacker is bounded. Our gap is:
-1. **No per-account counter** — a distributed attacker targeting a
-   specific student is rate-limited only on aggregate, not on Sara's
-   account specifically.
-2. **No audit trail** — we can't tell the teacher "5 wrong PIN attempts
-   on Sara's account in the last hour".
-3. **No CAPTCHA / lockout escalation** — GoTrue just returns the same
-   error indefinitely.
+### Follow-up work (see `docs/operator-tasks.md` §5)
 
-### Recommendation (phased)
-
-| Phase | Change | Effort |
-|---|---|---|
-| **0 (now)** | Verify Supabase dashboard rate-limit settings; document the numbers in `docs/SECURITY-OVERVIEW.md` | 15 min |
-| **1 (with this feature)** | Add a `student_pin_attempts` table + RPC that wraps `signInWithPassword`. Track per-account failures, lock out for 30s after 5 fails, 5min after 10. | 1 day |
-| **2 (later)** | Surface the attempt counter to teachers in `ClassRosterModal` (red badge on a student with recent fail spikes). | 2-3 hours |
-
-**Open question for the user:** ship Phase 1 in the same PR, or in a
-follow-up? (My recommendation: same PR. Without it, the new invite
-links materially increase brute-force exposure because the link reveals
-which email to attack.)
+- Verify + tighten GoTrue dashboard rate limits (operator task)
+- Add passive `student_pin_attempts` logging table (engineering
+  follow-up) — no auto-lockout, just visibility for teachers
 
 ---
 
-## 7. Files that need to change
+## 7. Files that changed (shipped 2026-05-14)
 
-### Edits
+- `src/locales/teacher/roster.ts` — 12 new keys (button labels,
+  tooltips, share-sheet titles + bodies, toasts) × 3 languages.
+- `src/locales/student/student-pin-login.ts` — new `wrongPinPersistent`
+  key (× 3 langs) for the 3-fail UX hint.
 - `src/components/ClassRosterModal.tsx`
-  - Add two new buttons (Share link, Share PIN) to the per-row controls
-    (lines 408-448).
-  - Add `handleShareLink(student)` and `handleSharePin(student)`
-    methods near `handleCopyAll` (line 192).
-- `src/locales/teacher/roster.ts`
-  - Add 6 new keys (3 langs × 2 messages) + button labels.
-- `src/App.tsx`
-  - Extend the existing `?class=` parser at line 216 to also read `?s=`
-    and forward it to `StudentPinLoginCard` via prop.
+  - New imports: `KeyRound`, `Link2`.
+  - New state: `shareCopied`.
+  - New helpers: `buildInviteUrl`, `tryShare`, `flashCopied`,
+    `handleShareLink`, `handleSharePin`.
+  - Two new buttons (Link / PIN) in each roster row, between the
+    show-PIN toggle and the reset/delete cluster.
+  - "Copied" toast above the footer (only fires on clipboard fallback).
+- `src/views/StudentAccountLoginView.tsx`
+  - New `prefilledStudentId` state captured from `?s=<uuid>` on mount.
+  - Passed to `StudentPinLoginCard` as new prop.
 - `src/components/StudentPinLoginCard.tsx`
-  - Accept optional `prefilledStudentId?: string` prop.
-  - On mount, if `prefilledStudentId` is present **and** roster is
-    loaded, auto-call `handlePick(matchingStudent)` to skip the picker
-    step.
+  - New `prefilledStudentId?: string | null` prop.
+  - New `consumedPrefillRef` + auto-select effect: when roster loads
+    and the prefilled id matches, jump straight to the PIN step.
+  - New `wrongPinCount` state. After 3 fails the error swaps to
+    `wrongPinPersistent`. Resets on `handlePick`.
 
-### New (only if Phase 1 rate limiting is approved)
-- `supabase/migrations/<timestamp>_student_pin_rate_limit.sql`
-  - Table: `student_pin_attempts(profile_id, ts, ok)` with a TTL index.
-  - RPC: `student_pin_attempt_check(p_profile_id)` → returns
-    `{locked_until: timestamp | null}`.
-  - RPC: `student_pin_attempt_record(p_profile_id, p_ok bool)`.
-- Update `StudentPinLoginCard.tsx` to call the check before
-  `signInWithPassword` and the record after.
-
-### No changes needed
+### Files NOT changed (out of scope this PR)
 - `server.ts` — PIN auth bypasses Express.
 - `worker/index.ts` — same.
+- `src/App.tsx` — existing `?class=` parser at line 216 was sufficient;
+  `?s=` is captured directly in `StudentAccountLoginView` where it's
+  actually used.
+- No new Supabase migration — rate limiting deferred (see §6).
 - `src/views/QuickPlayStudentView.tsx` — Quick Play is a different flow
   (live challenge), unaffected.
 
 ---
 
-## 8. Implementation phases
+## 8. Implementation status
 
-1. **Locale strings + UI buttons** in `ClassRosterModal` (no behaviour
-   change yet, buttons stub to `console.log`). Visual review.
-2. **Share handlers** with `navigator.share` + clipboard fallback +
-   toast. Manual test on iOS Safari, Android Chrome, desktop Chrome.
-3. **URL schema** — `?s=` parsing in App.tsx, prefill prop in
-   StudentPinLoginCard. End-to-end test: click own invite link in
-   incognito → land on PIN step preselected.
-4. **(If approved)** Rate-limit migration + RPCs + client wiring.
-5. **i18n review** — read EN/HE/AR strings aloud to catch awkward
-   phrasing, esp. the "share PIN separately" reminder.
-6. **Commit + push** to `claude/fix-nav-points-display-JVzjT`. Wait for
-   review before merging.
+| Phase | Status |
+|---|---|
+| Locale strings (EN/HE/AR) | ✅ Shipped |
+| UI buttons in `ClassRosterModal` | ✅ Shipped |
+| Share handlers (navigator.share + clipboard fallback) | ✅ Shipped |
+| URL schema `?s=` + auto-prefill | ✅ Shipped |
+| 3-fail UX hint | ✅ Shipped (replaces deferred rate-limit) |
+| Per-account rate limit | ❌ Deferred (see §6) |
+| Manual testing on iOS Safari + Android Chrome | ⏳ Operator |
+| GoTrue rate-limit verification | ⏳ Operator (see operator-tasks.md §5) |
 
 ---
 

@@ -7,6 +7,8 @@ import {
   Copy,
   Eye,
   EyeOff,
+  KeyRound,
+  Link2,
   Plus,
   Printer,
   RefreshCw,
@@ -63,6 +65,10 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [allRevealed, setAllRevealed] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
+  // Set when the per-row Share button copied to the clipboard (because
+  // navigator.share was unavailable or the user dismissed it).  Drives
+  // the brief "Copied — paste it into a message" toast.
+  const [shareCopied, setShareCopied] = useState(false);
 
   const loadRoster = useCallback(async () => {
     setLoading(true);
@@ -186,6 +192,67 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       setStudents(prev => prev.filter(r => r.id !== s.id));
     } catch (e) {
       setError(e instanceof Error ? e.message : t.errorDeleteFailed);
+    }
+  };
+
+  // Build the per-student invite URL that lands on the student-login
+  // page with the class code pre-filled AND the roster picker pre-
+  // selected.  `?class=` is read by StudentAccountLoginView; `?s=` is
+  // read by StudentPinLoginCard.  Bare `vocaband.com` matches the
+  // existing print template at the bottom of this file.
+  const buildInviteUrl = (studentId: string) =>
+    `https://vocaband.com/student?class=${classCode}&s=${studentId}`;
+
+  // Try the native share sheet first.  Returns true when the browser
+  // handled the share (including the user-cancelled case — that's not
+  // a failure, just a different user choice), false when share isn't
+  // available or threw a non-Abort error so we should fall back to
+  // copying.
+  const tryShare = async (data: { title: string; text: string; url?: string }): Promise<boolean> => {
+    if (typeof navigator.share !== "function") return false;
+    try {
+      await navigator.share(data);
+      return true;
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return true;
+      return false;
+    }
+  };
+
+  const flashCopied = () => {
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2500);
+  };
+
+  // Channel-separation primary path: invite URL without the PIN.
+  const handleShareLink = async (s: RosterStudent) => {
+    const url = buildInviteUrl(s.id);
+    const text = t.inviteShareMessage(s.displayName, className, url);
+    const title = t.inviteShareTitle(className);
+    setError(null);
+    if (await tryShare({ title, text, url })) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      flashCopied();
+    } catch {
+      setError(t.shareFailedToast);
+    }
+  };
+
+  // Channel-separation secondary path: the PIN alone, intended for a
+  // different chat than the invite link.  Disabled when the row has no
+  // PIN (shouldn't happen for roster students, but guard anyway).
+  const handleSharePin = async (s: RosterStudent) => {
+    if (!s.pin) return;
+    const text = t.pinShareMessage(s.pin, className, classCode);
+    const title = t.pinShareTitle(s.displayName);
+    setError(null);
+    if (await tryShare({ title, text })) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      flashCopied();
+    } catch {
+      setError(t.shareFailedToast);
     }
   };
 
@@ -405,7 +472,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                               {s.xp ? t.xpSuffix(s.xp) : ""}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                             {s.pin ? (
                               isRevealed ? (
                                 <span className="font-mono font-black text-base text-indigo-700 tracking-[0.15em] px-3 py-1.5 bg-indigo-50 rounded-lg select-all">
@@ -425,6 +492,32 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                             ) : (
                               <span className="text-xs text-stone-400 px-3 py-1.5">—</span>
                             )}
+                            {/* Channel-separation share buttons.  Distinct colours
+                                (indigo / fuchsia) so a teacher can't tap the wrong
+                                one and leak the PIN through the link channel. */}
+                            <button
+                              onClick={() => handleShareLink(s)}
+                              type="button"
+                              title={t.shareLinkTitle}
+                              aria-label={t.shareLinkAria(s.displayName)}
+                              className="h-9 px-2.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 hover:bg-indigo-100 inline-flex items-center gap-1.5 transition-colors"
+                              style={{ touchAction: "manipulation" }}
+                            >
+                              <Link2 size={13} />
+                              {t.shareLinkButton}
+                            </button>
+                            <button
+                              onClick={() => handleSharePin(s)}
+                              type="button"
+                              disabled={!s.pin}
+                              title={t.sharePinTitle}
+                              aria-label={t.sharePinAria(s.displayName)}
+                              className="h-9 px-2.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-fuchsia-700 bg-fuchsia-50 hover:bg-fuchsia-100 inline-flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              style={{ touchAction: "manipulation" }}
+                            >
+                              <KeyRound size={13} />
+                              {t.sharePinButton}
+                            </button>
                             <button
                               onClick={() => handleResetPin(s)}
                               type="button"
@@ -453,6 +546,25 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                 </>
               )}
             </div>
+
+            {/* Share-copied toast — only appears when the clipboard
+                fallback fired (no native share sheet was available).  The
+                native share sheet provides its own feedback so we stay
+                silent on that path. */}
+            <AnimatePresence>
+              {shareCopied && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="mx-6 mb-2 px-3 py-2 rounded-lg bg-stone-900 text-white text-xs font-bold inline-flex items-center gap-2 self-center shadow-lg"
+                  role="status"
+                >
+                  <Check size={14} className="text-emerald-400" />
+                  {t.shareCopiedToast}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Footer */}
             <div className="p-4 border-t border-stone-200 bg-stone-50 rounded-b-3xl flex items-center justify-between gap-3 flex-wrap">

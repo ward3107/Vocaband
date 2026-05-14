@@ -67,6 +67,24 @@ export interface ClassRosterStrings {
   printTitle: (className: string) => string;
   printClassCodeLabel: string;
   printInstructions: string;
+
+  // Per-student Share buttons — "Link" sends the join URL on one channel,
+  // "PIN" sends the secret on a separate channel.  See
+  // docs/teacher-share-invites-plan.md.
+  shareLinkButton: string;
+  sharePinButton: string;
+  shareLinkTitle: string;
+  sharePinTitle: string;
+  shareLinkAria: (name: string) => string;
+  sharePinAria: (name: string) => string;
+  // Share-sheet body templates
+  inviteShareTitle: (className: string) => string;
+  inviteShareMessage: (studentName: string, className: string, url: string) => string;
+  pinShareTitle: (studentName: string) => string;
+  pinShareMessage: (pin: string, className: string, classCode: string) => string;
+  // Toasts
+  shareCopiedToast: string;
+  shareFailedToast: string;
 }
 
 export const classRosterT: Record<Language, ClassRosterStrings> = {
@@ -114,6 +132,20 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     printTitle: (className) => `${className} — Class roster`,
     printClassCodeLabel: "Class code",
     printInstructions: "Each student logs in at vocaband.com with the class code, picks their name, and types their PIN. Keep this sheet safe.",
+    shareLinkButton: "Link",
+    sharePinButton: "PIN",
+    shareLinkTitle: "Share invite link (no PIN)",
+    sharePinTitle: "Share PIN (separately!)",
+    shareLinkAria: (name) => `Share invite link for ${name}`,
+    sharePinAria: (name) => `Share PIN for ${name}`,
+    inviteShareTitle: (className) => `Vocaband — ${className}`,
+    inviteShareMessage: (studentName, className, url) =>
+      `Hi ${studentName}! Your Vocaband class "${className}" is waiting 🎮\nTap to join: ${url}\nYour teacher will share your secret PIN separately.`,
+    pinShareTitle: (studentName) => `Vocaband PIN for ${studentName}`,
+    pinShareMessage: (pin, className, classCode) =>
+      `🔐 Your Vocaband PIN: ${pin}\nClass: ${className} (${classCode})\nIt's like your secret password — keep it private.`,
+    shareCopiedToast: "Copied — paste it into a message.",
+    shareFailedToast: "Couldn't share — try copying instead.",
   },
   he: {
     title: "רשימת הכיתה",
@@ -159,6 +191,20 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     printTitle: (className) => `${className} — רשימת הכיתה`,
     printClassCodeLabel: "קוד הכיתה",
     printInstructions: "כל תלמיד מתחבר ב-vocaband.com עם קוד הכיתה, בוחר את השם שלו, ומקליד את ה-PIN. שמרו את הדף במקום בטוח.",
+    shareLinkButton: "קישור",
+    sharePinButton: "PIN",
+    shareLinkTitle: "שיתוף קישור הצטרפות (ללא PIN)",
+    sharePinTitle: "שיתוף PIN (בנפרד!)",
+    shareLinkAria: (name) => `שיתוף קישור הצטרפות עבור ${name}`,
+    sharePinAria: (name) => `שיתוף PIN עבור ${name}`,
+    inviteShareTitle: (className) => `Vocaband — ${className}`,
+    inviteShareMessage: (studentName, className, url) =>
+      `היי ${studentName}! הכיתה שלכם ב-Vocaband "${className}" מחכה 🎮\nהקליקו להצטרפות: ${url}\nהמורה תשלח לכם את ה-PIN בנפרד.`,
+    pinShareTitle: (studentName) => `PIN של ${studentName} ב-Vocaband`,
+    pinShareMessage: (pin, className, classCode) =>
+      `🔐 ה-PIN שלכם ב-Vocaband: ${pin}\nכיתה: ${className} (${classCode})\nזה כמו הסיסמה הסודית שלכם — שמרו עליה בסוד.`,
+    shareCopiedToast: "הועתק — הדביקו בהודעה.",
+    shareFailedToast: "לא ניתן לשתף — נסו להעתיק במקום.",
   },
   ar: {
     title: "قائمة الصف",
@@ -204,5 +250,19 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     printTitle: (className) => `${className} — قائمة الصف`,
     printClassCodeLabel: "رمز الصف",
     printInstructions: "يسجّل كل طالب الدخول في vocaband.com باستخدام رمز الصف، يختار اسمه، ويكتب رمز PIN. احتفظ بهذه الورقة في مكان آمن.",
+    shareLinkButton: "رابط",
+    sharePinButton: "PIN",
+    shareLinkTitle: "مشاركة رابط الانضمام (بدون PIN)",
+    sharePinTitle: "مشاركة PIN (بشكل منفصل!)",
+    shareLinkAria: (name) => `مشاركة رابط الانضمام لـ ${name}`,
+    sharePinAria: (name) => `مشاركة PIN لـ ${name}`,
+    inviteShareTitle: (className) => `Vocaband — ${className}`,
+    inviteShareMessage: (studentName, className, url) =>
+      `مرحباً ${studentName}! صف Vocaband "${className}" بانتظارك 🎮\nاضغط للانضمام: ${url}\nسيرسل لك معلمك رمز PIN بشكل منفصل.`,
+    pinShareTitle: (studentName) => `رمز PIN لـ ${studentName} في Vocaband`,
+    pinShareMessage: (pin, className, classCode) =>
+      `🔐 رمز PIN الخاص بك في Vocaband: ${pin}\nالصف: ${className} (${classCode})\nإنها مثل كلمة سرّك السرّية — احتفظ بها لنفسك.`,
+    shareCopiedToast: "تم النسخ — الصقه في رسالة.",
+    shareFailedToast: "تعذّرت المشاركة — حاول النسخ بدلاً من ذلك.",
   },
 };
