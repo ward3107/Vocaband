@@ -14,26 +14,14 @@ import {
   FileText,
   Rocket,
   Loader2,
-  Gamepad2,
   CreditCard,
-  Grid3x3,
   Search,
   Printer,
   X,
   Settings,
-  PencilLine,
-  Mic,
-  Shuffle,
   ListChecks,
-  Hash,
-  BookOpen,
-  Pencil,
   Layers,
-  Palette,
-  Heart,
   Sparkles,
-  Music,
-  Presentation,
 } from "lucide-react";
 import PublicNav from "../components/PublicNav";
 import html2pdf from "html2pdf.js";
@@ -2135,60 +2123,20 @@ interface ResourceCardProps {
   description: string;
   size: string;
   downloadLabel: string;
-  matchingLabel: string;
   flashcardsLabel: string;
-  bingoLabel: string;
   wordSearchLabel: string;
-  fillBlankLabel: string;
-  spellingTestLabel: string;
-  scrambleLabel: string;
   quizLabel: string;
-  crosswordLabel: string;
-  clozeLabel: string;
-  tracingLabel: string;
-  memoryLabel: string;
-  pictionaryLabel: string;
-  parentLabel: string;
-  categoryPracticeLabel: string;
-  categoryGamesLabel: string;
-  categoryAssessLabel: string;
-  categoryFamilyLabel: string;
   moreFormatsLabel: string;
   hideFormatsLabel: string;
-  audioZipTitle: string;
-  audioZipDesc: string;
-  audioZipDownloadLabel: string;
-  topicWordIds: number[];
   gradient: string;
   delay: number;
   onDownload: () => void;
   onShareInteractive: () => void;
-  onMatching: () => void;
   onFlashcards: () => void;
-  onBingo: () => void;
   onWordSearch: () => void;
-  onFillBlank: () => void;
-  onSpellingTest: () => void;
-  onScramble: () => void;
   onQuiz: () => void;
-  onCrossword: () => void;
-  onCloze: () => void;
-  onTracing: () => void;
-  onMemory: () => void;
-  onPictionary: () => void;
-  onParent: () => void;
   isDownloading: boolean;
 }
-
-// Faint divider with an uppercase category label centred on it. Keeps each
-// resource card's 14 buttons scannable instead of a wall of colour.
-const CategoryLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex items-center gap-2 mt-3 mb-1 first:mt-1">
-    <div className="h-px flex-1 bg-white/10" />
-    <span className="text-[10px] uppercase tracking-widest font-bold text-white/50">{children}</span>
-    <div className="h-px flex-1 bg-white/10" />
-  </div>
-);
 
 const ResourceCard: React.FC<ResourceCardProps> = ({
   icon,
@@ -2196,48 +2144,18 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
   description,
   size,
   downloadLabel,
-  matchingLabel,
   flashcardsLabel,
-  bingoLabel,
   wordSearchLabel,
-  fillBlankLabel,
-  spellingTestLabel,
-  scrambleLabel,
   quizLabel,
-  crosswordLabel,
-  clozeLabel,
-  tracingLabel,
-  memoryLabel,
-  pictionaryLabel,
-  parentLabel,
-  categoryPracticeLabel,
-  categoryGamesLabel,
-  categoryAssessLabel,
-  categoryFamilyLabel,
   moreFormatsLabel,
   hideFormatsLabel,
-  audioZipTitle,
-  audioZipDesc,
-  audioZipDownloadLabel,
-  topicWordIds,
   gradient,
   delay,
   onDownload,
   onShareInteractive,
-  onMatching,
   onFlashcards,
-  onBingo,
   onWordSearch,
-  onFillBlank,
-  onSpellingTest,
-  onScramble,
   onQuiz,
-  onCrossword,
-  onCloze,
-  onTracing,
-  onMemory,
-  onPictionary,
-  onParent,
   isDownloading,
 }) => {
   const { isRTL } = useLanguage();
@@ -2361,155 +2279,35 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             />
           </button>
 
-        <div className={formatsOpen ? "block" : "hidden"}>
-          <CategoryLabel>{categoryPracticeLabel}</CategoryLabel>
-          <div className="grid grid-cols-2 gap-2">
-            <FormatButton
-              onClick={onScramble}
-              label={scrambleLabel}
-              icon={<Shuffle size={14} />}
-              gradient="from-orange-500/20 to-yellow-500/20 hover:from-orange-500/30 hover:to-yellow-500/30"
-              textClass="text-orange-300"
-              borderClass="border-orange-400/30"
-            />
-            <FormatButton
-              onClick={onTracing}
-              label={tracingLabel}
-              icon={<Pencil size={14} />}
-              gradient="from-purple-500/20 to-fuchsia-500/20 hover:from-purple-500/30 hover:to-fuchsia-500/30"
-              textClass="text-purple-300"
-              borderClass="border-purple-400/30"
-            />
-            <FormatButton
-              onClick={onCloze}
-              label={clozeLabel}
-              icon={<BookOpen size={14} />}
-              gradient="from-cyan-500/20 to-teal-500/20 hover:from-cyan-500/30 hover:to-teal-500/30"
-              textClass="text-cyan-300"
-              borderClass="border-cyan-400/30"
-            />
-            <FormatButton
-              onClick={onFillBlank}
-              label={fillBlankLabel}
-              icon={<PencilLine size={14} />}
-              gradient="from-sky-500/20 to-cyan-500/20 hover:from-sky-500/30 hover:to-cyan-500/30"
-              textClass="text-sky-300"
-              borderClass="border-sky-400/30"
-            />
-          </div>
-
-          <CategoryLabel>{categoryGamesLabel}</CategoryLabel>
-          <div className="grid grid-cols-2 gap-2">
-            <FormatButton
-              onClick={onMatching}
-              label={matchingLabel}
-              icon={<Gamepad2 size={14} />}
-              gradient="from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30"
-              textClass="text-emerald-300"
-              borderClass="border-emerald-400/30"
-            />
-            <FormatButton
-              onClick={onBingo}
-              label={bingoLabel}
-              icon={<Grid3x3 size={14} />}
-              gradient="from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30"
-              textClass="text-amber-300"
-              borderClass="border-amber-400/30"
-            />
-            <FormatButton
-              onClick={onWordSearch}
-              label={wordSearchLabel}
-              icon={<Search size={14} />}
-              gradient="from-pink-500/20 to-rose-500/20 hover:from-pink-500/30 hover:to-rose-500/30"
-              textClass="text-pink-300"
-              borderClass="border-pink-400/30"
-            />
-            <FormatButton
-              onClick={onCrossword}
-              label={crosswordLabel}
-              icon={<Hash size={14} />}
-              gradient="from-red-500/20 to-rose-500/20 hover:from-red-500/30 hover:to-rose-500/30"
-              textClass="text-red-300"
-              borderClass="border-red-400/30"
-            />
-            <FormatButton
-              onClick={onMemory}
-              label={memoryLabel}
-              icon={<Layers size={14} />}
-              gradient="from-fuchsia-500/20 to-pink-500/20 hover:from-fuchsia-500/30 hover:to-pink-500/30"
-              textClass="text-fuchsia-300"
-              borderClass="border-fuchsia-400/30"
-            />
-            <FormatButton
-              onClick={onPictionary}
-              label={pictionaryLabel}
-              icon={<Palette size={14} />}
-              gradient="from-teal-500/20 to-emerald-500/20 hover:from-teal-500/30 hover:to-emerald-500/30"
-              textClass="text-teal-300"
-              borderClass="border-teal-400/30"
-            />
-          </div>
-
-          <CategoryLabel>{categoryAssessLabel}</CategoryLabel>
-          <div className="grid grid-cols-2 gap-2">
-            <FormatButton
-              onClick={onFlashcards}
-              label={flashcardsLabel}
-              icon={<CreditCard size={14} />}
-              gradient="from-blue-500/20 to-indigo-500/20 hover:from-blue-500/30 hover:to-indigo-500/30"
-              textClass="text-blue-300"
-              borderClass="border-blue-400/30"
-            />
-            <FormatButton
-              onClick={onSpellingTest}
-              label={spellingTestLabel}
-              icon={<Mic size={14} />}
-              gradient="from-lime-500/20 to-green-500/20 hover:from-lime-500/30 hover:to-green-500/30"
-              textClass="text-lime-300"
-              borderClass="border-lime-400/30"
-            />
-            <FormatButton
-              onClick={onQuiz}
-              label={quizLabel}
-              icon={<ListChecks size={14} />}
-              gradient="from-violet-500/20 to-fuchsia-500/20 hover:from-violet-500/30 hover:to-fuchsia-500/30"
-              textClass="text-violet-300"
-              borderClass="border-violet-400/30"
-              fullWidth
-            />
-          </div>
-
-          <CategoryLabel>{categoryFamilyLabel}</CategoryLabel>
-          <div className="grid grid-cols-2 gap-2">
-            <FormatButton
-              onClick={onParent}
-              label={parentLabel}
-              icon={<Heart size={14} />}
-              gradient="from-rose-500/20 to-red-500/20 hover:from-rose-500/30 hover:to-red-500/30"
-              textClass="text-rose-300"
-              borderClass="border-rose-400/30"
-              fullWidth
-            />
-          </div>
-        </div>
-
-          {/* Audio pack download — fetches all topic MP3s from Supabase Storage
-              via the Cloudflare Worker's /api/audio-pack route, which streams
-              them as a ZIP using client-zip. The Worker handles this at the
-              edge so MP3s never touch Fly.io. */}
-          <a
-            href={`/api/audio-pack?ids=${topicWordIds.join(",")}&name=${encodeURIComponent(title)}`}
-            download
-            aria-label={`${audioZipDownloadLabel} — ${title}`}
-            className="mt-3 px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-3"
-          >
-            <Music size={18} className="text-white/70 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-white text-sm font-bold truncate">{audioZipTitle}</div>
-              <div className="text-white/50 text-xs truncate">{audioZipDesc}</div>
+          <div className={formatsOpen ? "block mt-2" : "hidden"}>
+            <div className="grid grid-cols-2 gap-2">
+              <FormatButton
+                onClick={onFlashcards}
+                label={flashcardsLabel}
+                icon={<CreditCard size={14} />}
+                gradient="from-blue-500/20 to-indigo-500/20 hover:from-blue-500/30 hover:to-indigo-500/30"
+                textClass="text-blue-300"
+                borderClass="border-blue-400/30"
+              />
+              <FormatButton
+                onClick={onWordSearch}
+                label={wordSearchLabel}
+                icon={<Search size={14} />}
+                gradient="from-pink-500/20 to-rose-500/20 hover:from-pink-500/30 hover:to-rose-500/30"
+                textClass="text-pink-300"
+                borderClass="border-pink-400/30"
+              />
+              <FormatButton
+                onClick={onQuiz}
+                label={quizLabel}
+                icon={<ListChecks size={14} />}
+                gradient="from-violet-500/20 to-fuchsia-500/20 hover:from-violet-500/30 hover:to-fuchsia-500/30"
+                textClass="text-violet-300"
+                borderClass="border-violet-400/30"
+                fullWidth
+              />
             </div>
-            <Download size={14} className="text-white/70 shrink-0" />
-          </a>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -3056,6 +2854,22 @@ const THEMED_BUNDLES: { name: string; icon: string; ids: number[] }[] = [
   },
 ];
 
+// Free Resources surfaces a curated subset of the full TOPIC_PACKS catalogue
+// — full catalogue still ships through CreateAssignmentWizard / class flows.
+// Keep the elementary essentials any K-9 EFL teacher reaches for first.
+const CURATED_PACK_NAMES = new Set<string>([
+  "Animals 🐾",
+  "Food & Drinks 🍕",
+  "School 📚",
+  "Family 👨‍👩‍👧",
+  "Weather 🌤️",
+  "Sports & Games ⚽",
+  "Colors 🎨",
+  "Numbers 🔢",
+  "Body Parts 👂",
+  "Feelings & Emotions 😊",
+]);
+
 // Worksheet language is decoupled from the global UI language.  An
 // Arabic-speaking teacher whose Vocaband UI is in English should be
 // able to print worksheets in Arabic for her students without
@@ -3098,33 +2912,6 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     try { window.localStorage.setItem(WORKSHEET_LANG_KEY, worksheetLang); } catch { /* ignore */ }
   }, [worksheetLang]);
 
-  // Slides generator state.  Default to the first themed bundle so a
-  // teacher's first click yields something useful with no dropdown
-  // hunting; the rest of the catalogue is one keystroke away.
-  const [slidesPackChoice, setSlidesPackChoice] = useState<string>(THEMED_BUNDLES[0]?.name ?? "");
-  const [isSlidesGenerating, setIsSlidesGenerating] = useState(false);
-  const handleSlidesDownload = async () => {
-    if (isSlidesGenerating || !slidesPackChoice) return;
-    const pack =
-      TOPIC_PACKS.find((p) => p.name === slidesPackChoice) ??
-      THEMED_BUNDLES.find((b) => b.name === slidesPackChoice);
-    if (!pack) return;
-    const uniqueIds = Array.from(new Set(pack.ids));
-    const words = uniqueIds
-      .map((id) => ALL_WORDS.find((w) => w.id === id))
-      .filter((w): w is Word => Boolean(w));
-    if (words.length === 0) return;
-    setIsSlidesGenerating(true);
-    try {
-      const { downloadSlidesPPTX } = await import("../utils/generateSlidesPPTX");
-      await downloadSlidesPPTX(pack.name, words, worksheetLang);
-    } catch (err) {
-      console.error("[Slides] generation failed:", err);
-    } finally {
-      setIsSlidesGenerating(false);
-    }
-  };
-
   // 20 words is the sweet spot for a single-page worksheet AND for a
   // student to actually memorise in one sitting.  We cap here so EVERY
   // downstream path — preview, PDF, share link, audio zip — uses the
@@ -3135,8 +2922,9 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const filteredPacks = useMemo(() => {
     const q = topicSearch.trim().toLowerCase();
     const cap = (p: typeof TOPIC_PACKS[number]) => ({ ...p, ids: p.ids.slice(0, TOPIC_PACK_MAX_WORDS) });
-    if (!q) return TOPIC_PACKS.map(cap);
-    return TOPIC_PACKS.filter((p) => p.name.toLowerCase().includes(q)).map(cap);
+    const curated = TOPIC_PACKS.filter((p) => CURATED_PACK_NAMES.has(p.name));
+    if (!q) return curated.map(cap);
+    return curated.filter((p) => p.name.toLowerCase().includes(q)).map(cap);
   }, [topicSearch]);
 
   const updateSetting = <K extends keyof WorksheetSettings>(key: K, value: WorksheetSettings[K]) =>
@@ -3438,17 +3226,11 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                 const bundleData = THEMED_BUNDLES.find((b) => b.name === bundle.lookup);
                 const wordCount = bundleData ? new Set(bundleData.ids).size : 0;
                 const isOpen = expandedBundle === bundle.lookup;
-                // Six headline formats per bundle. Worksheet stays the
-                // default direct download; the rest are surfaced when the
-                // teacher expands the picker so the bundle isn't locked
-                // to a single sheet type.
                 const bundleFormats: { key: Format; label: string }[] = [
                   { key: "worksheet", label: t.download },
                   { key: "flashcards", label: t.downloadFlashcards },
                   { key: "quiz", label: t.downloadQuiz },
-                  { key: "crossword", label: t.downloadCrossword },
                   { key: "wordsearch", label: t.downloadWordSearch },
-                  { key: "bingo", label: t.downloadBingo },
                 ];
                 return (
                   <div
@@ -3506,57 +3288,6 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             </div>
           </motion.div>
 
-          {/* Slides generator — picks any TopicPack/bundle and produces a
-              .pptx via pptxgenjs (lazy-loaded).  Replaces the previous
-              Google-hosted-template link, which required us to maintain
-              a Google Drive file and didn't include the teacher's
-              chosen vocabulary anyway.  This generates a real deck
-              with one slide per word + the active worksheetLang
-              translation.  Opens in PowerPoint, Keynote, or via
-              File → Import Slides in Google Slides. */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
-            className="mb-12"
-          >
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-5 flex flex-wrap items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
-                <Presentation size={22} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-[200px]">
-                <h3 className="text-lg font-bold text-white">{t.slidesTitle}</h3>
-                <p className="text-white/60 text-sm">{t.slidesDesc}</p>
-              </div>
-              <select
-                value={slidesPackChoice}
-                onChange={(e) => setSlidesPackChoice(e.target.value)}
-                aria-label={t.slidesTitle}
-                className="shrink-0 px-3 py-2 rounded-lg bg-slate-900/70 text-white border border-white/20 hover:border-white/30 text-sm font-bold focus:outline-none focus:border-amber-400"
-              >
-                <optgroup label="Bundles">
-                  {THEMED_BUNDLES.map((b) => (
-                    <option key={b.name} value={b.name}>{b.icon} {b.name}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Topic packs">
-                  {TOPIC_PACKS.map((p) => (
-                    <option key={p.name} value={p.name}>{p.name}</option>
-                  ))}
-                </optgroup>
-              </select>
-              <button
-                type="button"
-                onClick={handleSlidesDownload}
-                disabled={isSlidesGenerating}
-                className="shrink-0 px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-bold flex items-center gap-1.5 shadow-md transition-all"
-              >
-                <Download size={14} />
-                {isSlidesGenerating ? "..." : t.slidesOpen}
-              </button>
-            </div>
-          </motion.div>
-
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3603,7 +3334,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                 <p className="text-violet-200/80 text-xs font-semibold mt-2 px-1" dir={dir}>
                   {t.searchResults
                     .replace("{matched}", String(filteredPacks.length))
-                    .replace("{total}", String(TOPIC_PACKS.length))}
+                    .replace("{total}", String(CURATED_PACK_NAMES.size))}
                 </p>
               )}
             </div>
@@ -3632,48 +3363,18 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                       description={t.topicPackDescription.replace("{count}", wordCount.toString())}
                       size={t.topicPackSize.replace("{words}", wordCount.toString()).replace("{pages}", pagesCount.toString())}
                       downloadLabel={t.download}
-                      matchingLabel={t.downloadMatching}
                       flashcardsLabel={t.downloadFlashcards}
-                      bingoLabel={t.downloadBingo}
                       wordSearchLabel={t.downloadWordSearch}
-                      fillBlankLabel={t.downloadFillBlank}
-                      spellingTestLabel={t.downloadSpellingTest}
-                      scrambleLabel={t.downloadScramble}
                       quizLabel={t.downloadQuiz}
-                      crosswordLabel={t.downloadCrossword}
-                      clozeLabel={t.downloadCloze}
-                      tracingLabel={t.downloadTracing}
-                      memoryLabel={t.downloadMemory}
-                      pictionaryLabel={t.downloadPictionary}
-                      parentLabel={t.downloadParent}
-                      categoryPracticeLabel={t.categoryPractice}
-                      categoryGamesLabel={t.categoryGames}
-                      categoryAssessLabel={t.categoryAssess}
-                      categoryFamilyLabel={t.categoryFamily}
                       moreFormatsLabel={t.moreFormats}
                       hideFormatsLabel={t.hideFormats}
-                      audioZipTitle={t.audioZipTitle}
-                      audioZipDesc={t.audioZipDesc}
-                      audioZipDownloadLabel={t.audioZipDownload}
-                      topicWordIds={topic.ids}
                       gradient={gradient}
                       delay={Math.min(index * 0.05, 0.5)}
                       onDownload={() => openPreview(topic.name, "worksheet")}
                       onShareInteractive={() => setShareSource({ topicName: topic.name, wordIds: topic.ids })}
-                      onMatching={() => openPreview(topic.name, "matching")}
                       onFlashcards={() => openPreview(topic.name, "flashcards")}
-                      onBingo={() => openPreview(topic.name, "bingo")}
                       onWordSearch={() => openPreview(topic.name, "wordsearch")}
-                      onFillBlank={() => openPreview(topic.name, "fillblank")}
-                      onSpellingTest={() => openPreview(topic.name, "spelling")}
-                      onScramble={() => openPreview(topic.name, "scramble")}
                       onQuiz={() => openPreview(topic.name, "quiz")}
-                      onCrossword={() => openPreview(topic.name, "crossword")}
-                      onCloze={() => openPreview(topic.name, "cloze")}
-                      onTracing={() => openPreview(topic.name, "tracing")}
-                      onMemory={() => openPreview(topic.name, "memory")}
-                      onPictionary={() => openPreview(topic.name, "pictionary")}
-                      onParent={() => openPreview(topic.name, "parent")}
                       isDownloading={isDownloading}
                     />
                   );
