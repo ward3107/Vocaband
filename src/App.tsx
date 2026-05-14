@@ -272,24 +272,22 @@ export default function App() {
     };
   }, [user]);
 
-  // VocaHebrew routing — when an entitled teacher (subjects_taught
-  // length >= 2) lands on teacher-dashboard without an activeVoca
-  // chosen yet, redirect to the picker.  Single-Voca teachers get
-  // their activeVoca auto-set so the rest of the app (which checks
-  // activeVoca for content gating) never sees a null on a real
-  // teacher session.
+  // Voca routing — teachers belong to exactly one Voca (users.subject)
+  // so getEntitledVocas returns a single id and their activeVoca is
+  // auto-set without showing the picker.  Admins are entitled to every
+  // Voca and land on the picker until they pick one for this session.
   useEffect(() => {
     if (!user || !hasTeacherAccess(user)) return;
     const entitled = getEntitledVocas(user);
-    if (entitled.length === 0) return; // shouldn't happen; defaults to ['english']
+    if (entitled.length === 0) return; // shouldn't happen for teacher/admin
     if (entitled.length === 1) {
       if (activeVoca !== entitled[0]) setActiveVoca(entitled[0]);
       return;
     }
-    // 2+ Vocas: must pick.  If we're sitting on teacher-dashboard
-    // without a pick, send to picker.  Don't redirect mid-flow
-    // (create-assignment, classroom, etc.) — only the dashboard
-    // entry-point triggers this.
+    // 2+ Vocas (admin only): must pick.  If we're sitting on
+    // teacher-dashboard without a pick, send to picker.  Don't redirect
+    // mid-flow (create-assignment, classroom, etc.) — only the
+    // dashboard entry-point triggers this.
     if (!activeVoca && view === "teacher-dashboard") {
       setView("voca-picker");
     }
@@ -2876,10 +2874,10 @@ export default function App() {
       </LazyWrapper>
     );
   }
-  // VocaHebrew — picker shown when a teacher has 2+ Vocas and hasn't
-  // picked one this session.  Picking writes activeVoca and routes
-  // into the right dashboard.  Teachers with a single Voca never see
-  // this view (the routing effect auto-sets activeVoca for them).
+  // Voca picker — admin-only entry point.  Teachers have a single
+  // users.subject so they auto-route past this view via the routing
+  // effect above.  Admins land here on first dashboard visit each
+  // session; picking writes activeVoca and routes into that dashboard.
   if (hasTeacherAccess(user) && view === "voca-picker") {
     return (
       <LazyWrapper loadingMessage="Loading...">
