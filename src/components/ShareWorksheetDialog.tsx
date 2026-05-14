@@ -2,20 +2,24 @@
  * ShareWorksheetDialog — mint an interactive worksheet link from any
  * surface in the app (Free Resources, WorksheetView, Create Assignment).
  *
- * Originally lived inside FreeResourcesView; extracted so the same
- * dialog mounts identically wherever a teacher has a word list in hand.
- * The create_interactive_worksheet RPC stamps teacher_uid from
- * auth.uid() automatically, so logged-in teachers' shares land in
- * their Worksheet Results dashboard, while anonymous mints from the
- * public marketing page stay invisible to everyone but the student.
+ * The dialog assembles an ordered list of exercises and posts it to
+ * the `create_interactive_worksheet_v2` RPC.  Each toggled exercise
+ * carries its own type-specific config (translation direction,
+ * synonym vs. antonym, etc.) and shares the worksheet's full word
+ * pool — per-exercise word subsets are a phase-2 polish item.
+ *
+ * Anonymous mints (no auth.uid()) stay invisible to teacher
+ * dashboards by design — the RPC stamps `teacher_uid` only when the
+ * caller is signed in.
  */
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Share2, X, Loader2, Check, Copy, MessageCircle } from "lucide-react";
+import { Share2, X, Loader2, Check, Copy, MessageCircle, Plus } from "lucide-react";
 import qrcode from "qrcode-generator";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { shareWorksheetT } from "../locales/teacher/share-worksheet";
+import type { Exercise, ExerciseType, TranslationDirection } from "../worksheet/types";
 
 export type WorksheetLang = "en" | "he" | "ar";
 
@@ -24,25 +28,68 @@ export interface ShareSource {
   wordIds: number[];
 }
 
-type InteractiveFormat = "matching" | "quiz";
-
-// Visual-only metadata for the format picker — translated label /
-// description are pulled from the active locale at render time.
-const SUPPORTED_INTERACTIVE_FORMATS: InteractiveFormat[] = ["matching", "quiz"];
-
 interface Props {
   source: ShareSource;
   defaultLang: WorksheetLang;
   onClose: () => void;
 }
 
+// Order shown in the picker.  Matching + Quiz lead because they're the
+// established formats; the typed-input exercises follow; the
+// content-heavy types (cloze, definition match) sit at the bottom
+// since they may render empty for vocabulary that has no associated
+// content yet.
+const EXERCISE_ORDER: ExerciseType[] = [
+  "matching",
+  "quiz",
+  "translation_typing",
+  "letter_scramble",
+  "listening_dictation",
+  "fill_blank",
+  "true_false",
+  "synonym_antonym",
+  "definition_match",
+  "sentence_building",
+  "word_in_context",
+  "cloze",
+];
+
+// Per-exercise default config — used when a type is first toggled on.
+// Translation typing and synonym/antonym are the only ones with knobs
+// today; everything else just rides the worksheet's word pool.
+const defaultConfig = (
+  type: ExerciseType,
+  wordIds: number[],
+  defaultLang: WorksheetLang,
+): Exercise => {
+  if (type === "translation_typing") {
+    const direction: TranslationDirection =
+      defaultLang === "ar" ? "en_to_ar" : "en_to_he";
+    return { type, word_ids: wordIds, direction };
+  }
+  if (type === "synonym_antonym") {
+    return { type, word_ids: wordIds, mode: "synonym" };
+  }
+  return { type, word_ids: wordIds } as Exercise;
+};
+
 export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onClose }) => {
   const { language, dir } = useLanguage();
   const t = shareWorksheetT[language];
-  const [format, setFormat] = useState<InteractiveFormat>("matching");
-  // Default to a *translation* target — if the source list is already
-  // English we land on Hebrew, the safe default for the IL audience.
-  const [lang, setLang] = useState<WorksheetLang>(defaultLang === "en" ? "he" : defaultLang);
+  const uniqueIds = useMemo(
+    () => Array.from(new Set(source.wordIds)),
+    [source.wordIds],
+  );
+
+  // Mixed-type plan: ordered list of exercises the teacher has toggled
+  // on.  Default seeds with Matching so the dialog opens in a usable
+  // state — most teachers leave the default and just hit Generate.
+  const [plan, setPlan] = useState<Exercise[]>(() => [
+    defaultConfig("matching", uniqueIds, defaultLang === "en" ? "he" : defaultLang),
+  ]);
+  const [lang, setLang] = useState<WorksheetLang>(
+    defaultLang === "en" ? "he" : defaultLang,
+  );
   const [slug, setSlug] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,11 +97,6 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
 
   const shareUrl = slug ? `${window.location.origin}/w/${slug}` : "";
 
-  // Inline SVG QR so a teacher can project the dialog to a screen and
-  // students scan with their phones — no extra app or screenshot
-  // needed.  Same `qrcode-generator` library FreeResourcesView already
-  // uses for printed sheets; error level M is a balance between visual
-  // density and scan reliability from a projected screen.
   const qrSvgMarkup = useMemo(() => {
     if (!shareUrl) return "";
     const qr = qrcode(0, "M");
@@ -63,20 +105,50 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
     return qr.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
   }, [shareUrl]);
 
+  const isActive = (type: ExerciseType) => plan.some((e) => e.type === type);
+
+  const toggle = (type: ExerciseType) => {
+    setPlan((prev) => {
+      if (prev.some((e) => e.type === type)) {
+        return prev.filter((e) => e.type !== type);
+      }
+      return [...prev, defaultConfig(type, uniqueIds, lang)];
+    });
+  };
+
+  const updateExercise = <T extends ExerciseType>(
+    type: T,
+    patch: Partial<Extract<Exercise, { type: T }>>,
+  ) => {
+    setPlan((prev) =>
+      prev.map((e) =>
+        e.type === type
+          ? ({ ...(e as Extract<Exercise, { type: T }>), ...patch } as Exercise)
+          : e,
+      ),
+    );
+  };
+
   const handleGenerate = async () => {
+    if (plan.length === 0) {
+      setError(t.pickAtLeastOne);
+      return;
+    }
     setCreating(true);
     setError(null);
     try {
-      // De-dupe word ids — bundles compose from overlapping packs and
-      // the RPC accepts the array as-is.  Front-loading the dedup
-      // saves round-tripping a malformed payload.
-      const uniqueIds = Array.from(new Set(source.wordIds));
-      const { data, error: rpcErr } = await supabase.rpc("create_interactive_worksheet", {
-        p_topic_name: source.topicName,
-        p_word_ids: uniqueIds,
-        p_format: format,
-        p_settings: { language: lang },
-      });
+      // Stamp every exercise's word_ids with the current pool so a
+      // teacher who toggled Matching first, narrowed the pool, then
+      // added Quiz still gets the latest list in both.
+      const exercises = plan.map((e) => ({ ...e, word_ids: uniqueIds }));
+      const { data, error: rpcErr } = await supabase.rpc(
+        "create_interactive_worksheet_v2",
+        {
+          p_topic_name: source.topicName,
+          p_exercises: exercises,
+          p_settings: { language: lang },
+        },
+      );
       if (rpcErr || !data) {
         setError(rpcErr?.message ?? t.generateError);
         return;
@@ -93,8 +165,6 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      // clipboard API may be blocked over http — show the URL so the
-      // teacher can long-press to copy manually.
       window.prompt(t.copyPromptTitle, shareUrl);
     }
   };
@@ -117,7 +187,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
         url: shareUrl,
       });
     } catch {
-      // User cancelled the share sheet — no-op.
+      /* user cancelled */
     }
   };
 
@@ -131,7 +201,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden"
+        className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
         dir={dir}
       >
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-4 flex items-center gap-3">
@@ -147,43 +217,23 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 overflow-y-auto">
           <div>
-            <p className="text-xs uppercase tracking-widest font-bold text-stone-400">{t.topicLabel}</p>
-            <p className="font-bold text-stone-900 text-lg">{source.topicName}</p>
-            <p className="text-xs text-stone-500">
-              {t.wordsCount(Array.from(new Set(source.wordIds)).length)}
+            <p className="text-xs uppercase tracking-widest font-bold text-stone-400">
+              {t.topicLabel}
             </p>
+            <p className="font-bold text-stone-900 text-lg">{source.topicName}</p>
+            <p className="text-xs text-stone-500">{t.wordsCount(uniqueIds.length)}</p>
           </div>
 
           {!slug && (
             <>
-              <div>
-                <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-2">{t.exerciseLabel}</p>
-                <div className="grid gap-2">
-                  {SUPPORTED_INTERACTIVE_FORMATS.map((value) => {
-                    const active = format === value;
-                    const label = value === "matching" ? t.matchingLabel : t.quizLabel;
-                    const desc = value === "matching" ? t.matchingDesc : t.quizDesc;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setFormat(value)}
-                        className={`text-start px-4 py-3 rounded-xl border-2 transition-all ${
-                          active
-                            ? "bg-emerald-50 border-emerald-500 text-emerald-900"
-                            : "bg-white border-stone-200 text-stone-700 hover:border-stone-300"
-                        }`}
-                        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      >
-                        <div className="font-bold">{label}</div>
-                        <div className="text-xs text-stone-500">{desc}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <ExercisePicker
+                t={t}
+                plan={plan}
+                onToggle={toggle}
+                onUpdate={updateExercise}
+              />
 
               <div>
                 <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-2">
@@ -220,8 +270,8 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={creating}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-60 transition-all"
+                disabled={creating || plan.length === 0}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 {creating ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
@@ -232,11 +282,6 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
 
           {slug && (
             <>
-              {/* Scannable QR — useful when the dialog is projected to
-                  a screen and students point their phones at it.
-                  dangerouslySetInnerHTML is safe here because the QR
-                  library produces a pure SVG string with no user input
-                  that could carry script tags. */}
               <div className="flex items-center justify-center bg-white rounded-xl border border-stone-200 p-4">
                 <div
                   className="w-44 h-44"
@@ -246,11 +291,11 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
               </div>
 
               <div className="rounded-xl bg-stone-50 border border-stone-200 px-3 py-3">
-                <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-1">{t.linkLabel}</p>
-                <p className="font-mono text-sm break-all text-stone-800">{shareUrl}</p>
-                <p className="text-xs text-stone-500 mt-1">
-                  {t.expiresNote}
+                <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-1">
+                  {t.linkLabel}
                 </p>
+                <p className="font-mono text-sm break-all text-stone-800">{shareUrl}</p>
+                <p className="text-xs text-stone-500 mt-1">{t.expiresNote}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -300,5 +345,147 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
     </div>
   );
 };
+
+const ExercisePicker: React.FC<{
+  t: ReturnType<typeof getTranslator>;
+  plan: Exercise[];
+  onToggle: (type: ExerciseType) => void;
+  onUpdate: <T extends ExerciseType>(
+    type: T,
+    patch: Partial<Extract<Exercise, { type: T }>>,
+  ) => void;
+}> = ({ t, plan, onToggle, onUpdate }) => {
+  const planByType = useMemo(() => {
+    const m = new Map<ExerciseType, Exercise>();
+    for (const e of plan) m.set(e.type, e);
+    return m;
+  }, [plan]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs uppercase tracking-widest font-bold text-stone-400">
+          {t.exerciseLabel}
+        </p>
+        <p className="text-xs font-bold text-emerald-700">{plan.length} picked</p>
+      </div>
+      <div className="grid gap-2">
+        {EXERCISE_ORDER.map((type) => {
+          const active = planByType.has(type);
+          const meta = t.exercises[type];
+          const exercise = planByType.get(type);
+          return (
+            <div
+              key={type}
+              className={`rounded-xl border-2 transition-all ${
+                active ? "bg-emerald-50 border-emerald-500" : "bg-white border-stone-200"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => onToggle(type)}
+                className="w-full text-start px-4 py-3 flex items-center gap-3"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className={`font-bold ${active ? "text-emerald-900" : "text-stone-700"}`}>
+                    {meta?.label ?? type}
+                  </div>
+                  <div className="text-xs text-stone-500 truncate">{meta?.desc ?? ""}</div>
+                </div>
+                <div
+                  className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                    active ? "bg-emerald-500 border-emerald-500" : "border-stone-300"
+                  }`}
+                  aria-hidden
+                >
+                  {active ? (
+                    <Check size={14} className="text-white" />
+                  ) : (
+                    <Plus size={14} className="text-stone-300" />
+                  )}
+                </div>
+              </button>
+              {active && exercise && (
+                <ExerciseConfigRow exercise={exercise} t={t} onUpdate={onUpdate} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const ExerciseConfigRow: React.FC<{
+  exercise: Exercise;
+  t: ReturnType<typeof getTranslator>;
+  onUpdate: <T extends ExerciseType>(
+    type: T,
+    patch: Partial<Extract<Exercise, { type: T }>>,
+  ) => void;
+}> = ({ exercise, t, onUpdate }) => {
+  if (exercise.type === "translation_typing") {
+    const dirs: Array<{ v: TranslationDirection; l: string }> = [
+      { v: "en_to_he", l: "EN → HE" },
+      { v: "he_to_en", l: "HE → EN" },
+      { v: "en_to_ar", l: "EN → AR" },
+      { v: "ar_to_en", l: "AR → EN" },
+    ];
+    return (
+      <div className="px-4 pb-3 -mt-1">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-1">
+          {t.translationDirectionLabel}
+        </p>
+        <div className="grid grid-cols-4 gap-1">
+          {dirs.map((d) => (
+            <button
+              key={d.v}
+              type="button"
+              onClick={() => onUpdate("translation_typing", { direction: d.v })}
+              className={`py-1.5 rounded-md text-xs font-bold transition-all ${
+                exercise.direction === d.v
+                  ? "bg-emerald-600 text-white"
+                  : "bg-white text-stone-600 hover:bg-stone-50 border border-stone-200"
+              }`}
+            >
+              {d.l}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (exercise.type === "synonym_antonym") {
+    return (
+      <div className="px-4 pb-3 -mt-1">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-1">
+          {t.synonymModeLabel}
+        </p>
+        <div className="inline-flex rounded-lg bg-white border border-stone-200 p-0.5 w-full">
+          {(["synonym", "antonym"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onUpdate("synonym_antonym", { mode })}
+              className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all ${
+                exercise.mode === mode
+                  ? "bg-emerald-600 text-white"
+                  : "text-stone-500 hover:text-stone-700"
+              }`}
+            >
+              {mode === "synonym" ? t.synonymOption : t.antonymOption}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+// Convenience type-extractor so the helper components don't repeat the
+// long `(typeof shareWorksheetT)[Language]` shape in their props.
+const getTranslator = (): typeof shareWorksheetT["en"] => shareWorksheetT.en;
 
 export default ShareWorksheetDialog;

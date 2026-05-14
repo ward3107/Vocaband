@@ -41,8 +41,11 @@ interface Worksheet {
 }
 
 // One row in worksheet_attempts.answers — discriminated union mirrors
-// the shape the solver writes.  Kept loose because older rows may
-// predate fields we add later.
+// the shape the solver writes.  Quiz and matching are rendered with
+// type-specific layouts; everything else falls through to a generic
+// renderer that reads `is_correct` and any "word"/"english"-shaped
+// label field.  The generic branch keeps the dashboard from crashing
+// when a new exercise type ships before its dedicated renderer does.
 type QuizAnswer = {
   kind: "quiz";
   word_id: number;
@@ -58,7 +61,25 @@ type MatchingAnswer = {
   translation: string;
   mistakes_count: number;
 };
-type AnswerRow = QuizAnswer | MatchingAnswer;
+type GenericAnswer = {
+  kind: string;
+  word_id?: number;
+  word?: string;
+  prompt?: string;
+  english?: string;
+  statement?: string;
+  given?: unknown;
+  correct?: unknown;
+  typed?: string;
+  is_correct?: boolean;
+  solved?: boolean;
+  attempts?: number;
+  mistakes_count?: number;
+  sentence?: string;
+  given_sentence?: string;
+  target?: string;
+};
+type AnswerRow = QuizAnswer | MatchingAnswer | GenericAnswer;
 
 interface Attempt {
   id: string;
@@ -420,26 +441,27 @@ const AnswerBreakdown: React.FC<{ answers: AnswerRow[] }> = ({ answers }) => {
     <div className="p-3 sm:p-4 space-y-2">
       {answers.map((ans, idx) => {
         if (ans.kind === "quiz") {
+          const a = ans as QuizAnswer;
           return (
             <div
               key={idx}
               className={`flex items-center gap-3 p-3 rounded-xl text-sm ${
-                ans.is_correct
+                a.is_correct
                   ? "bg-emerald-50 border border-emerald-100"
                   : "bg-rose-50 border border-rose-100"
               }`}
             >
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[var(--vb-text-primary)]" dir="ltr">
-                  {ans.prompt}
+                  {a.prompt}
                 </p>
                 <p className="text-xs text-[var(--vb-text-secondary)] mt-0.5" dir="auto">
-                  {ans.is_correct ? (
-                    <>Picked: {ans.given}</>
+                  {a.is_correct ? (
+                    <>Picked: {a.given}</>
                   ) : (
                     <>
-                      Picked: <span className="text-rose-700 font-bold">{ans.given}</span> ·
-                      Correct: <span className="text-emerald-700 font-bold">{ans.correct}</span>
+                      Picked: <span className="text-rose-700 font-bold">{a.given}</span> ·
+                      Correct: <span className="text-emerald-700 font-bold">{a.correct}</span>
                     </>
                   )}
                 </p>
@@ -447,33 +469,97 @@ const AnswerBreakdown: React.FC<{ answers: AnswerRow[] }> = ({ answers }) => {
             </div>
           );
         }
-        // matching
-        return (
-          <div
-            key={idx}
-            className={`flex items-center gap-3 p-3 rounded-xl text-sm ${
-              ans.mistakes_count === 0
-                ? "bg-emerald-50 border border-emerald-100"
-                : ans.mistakes_count <= 2
-                  ? "bg-amber-50 border border-amber-100"
-                  : "bg-rose-50 border border-rose-100"
-            }`}
-          >
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-[var(--vb-text-primary)]" dir="auto">
-                <span dir="ltr">{ans.english}</span> · {ans.translation}
-              </p>
+        if (ans.kind === "matching") {
+          const a = ans as MatchingAnswer;
+          return (
+            <div
+              key={idx}
+              className={`flex items-center gap-3 p-3 rounded-xl text-sm ${
+                a.mistakes_count === 0
+                  ? "bg-emerald-50 border border-emerald-100"
+                  : a.mistakes_count <= 2
+                    ? "bg-amber-50 border border-amber-100"
+                    : "bg-rose-50 border border-rose-100"
+              }`}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-[var(--vb-text-primary)]" dir="auto">
+                  <span dir="ltr">{a.english}</span> · {a.translation}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-xs font-bold text-[var(--vb-text-muted)] tabular-nums">
+                  {a.mistakes_count === 0
+                    ? "First try"
+                    : `${a.mistakes_count} ${a.mistakes_count === 1 ? "miss" : "misses"}`}
+                </p>
+              </div>
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-xs font-bold text-[var(--vb-text-muted)] tabular-nums">
-                {ans.mistakes_count === 0
-                  ? "First try"
-                  : `${ans.mistakes_count} ${ans.mistakes_count === 1 ? "miss" : "misses"}`}
-              </p>
-            </div>
-          </div>
-        );
+          );
+        }
+        return <GenericAnswerRow key={idx} answer={ans as GenericAnswer} />;
       })}
+    </div>
+  );
+};
+
+// Fallback renderer for any answer kind that doesn't have a dedicated
+// branch above.  Reads whatever label-shaped field is present so the
+// dashboard shows *something* meaningful per question instead of
+// dropping the answer or crashing.
+const GenericAnswerRow: React.FC<{ answer: GenericAnswer }> = ({ answer }) => {
+  const correct = answer.is_correct ?? (answer.solved !== undefined ? answer.solved : undefined);
+  const label =
+    answer.prompt ??
+    answer.word ??
+    answer.english ??
+    answer.statement ??
+    answer.sentence ??
+    answer.given_sentence ??
+    answer.target ??
+    `Question`;
+
+  // Build the detail line from whatever the kind happens to expose.
+  const detailParts: string[] = [];
+  if (typeof answer.typed === "string" && answer.typed.length > 0) {
+    detailParts.push(`Typed: ${answer.typed}`);
+  }
+  if (
+    typeof answer.given === "string" &&
+    answer.given.length > 0 &&
+    typeof answer.typed !== "string"
+  ) {
+    detailParts.push(`Picked: ${answer.given}`);
+  }
+  if (typeof answer.correct === "string" && correct === false) {
+    detailParts.push(`Correct: ${answer.correct}`);
+  }
+  if (typeof answer.attempts === "number" && answer.attempts > 1) {
+    detailParts.push(`${answer.attempts} tries`);
+  }
+
+  const bg =
+    correct === true
+      ? "bg-emerald-50 border-emerald-100"
+      : correct === false
+        ? "bg-rose-50 border-rose-100"
+        : "bg-stone-50 border-stone-100";
+
+  return (
+    <div className={`flex items-start gap-3 p-3 rounded-xl text-sm border ${bg}`}>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-[var(--vb-text-primary)]" dir="auto">
+          {label}
+        </p>
+        {detailParts.length > 0 && (
+          <p className="text-xs text-[var(--vb-text-secondary)] mt-0.5" dir="auto">
+            {detailParts.join(" · ")}
+          </p>
+        )}
+        <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--vb-text-muted)] mt-1">
+          {answer.kind}
+        </p>
+      </div>
     </div>
   );
 };
