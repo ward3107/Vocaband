@@ -2792,13 +2792,28 @@ export default function App() {
             luckyCharms: boosters.luckyCharms,
           }}
           onGrantXp={(amount, reason) => {
-            // Grant retention rewards through the same path as gameplay XP.
-            // Persist to the server and show a celebration toast so students
-            // feel the reward landing, not just a silent number bump.
-            const newXp = xp + amount;
-            setXp(newXp);
-            if (user) {
-              supabase.from('users').update({ xp: newXp }).eq('uid', user.uid).then(() => {});
+            // Persist retention rewards (daily chest, weekly challenge,
+            // comeback, pet evolution) through claim_retention_xp.
+            // Direct UPDATE on public.users used to work but RLS now
+            // restricts xp writes to SECURITY DEFINER paths — see
+            // supabase/migrations/20260514130000_claim_retention_xp.sql
+            // for context.  Optimistically bump local xp so the
+            // celebration toast lands instantly;  the RPC reconciles
+            // (and clamps) authoritatively.
+            setXp(prev => prev + amount);
+            if (user && amount > 0) {
+              supabase.rpc('claim_retention_xp', { p_xp_delta: amount }).then(({ data, error }) => {
+                if (error) {
+                  console.error('[onGrantXp] claim_retention_xp failed:', error);
+                  // Roll back the optimistic bump so the dashboard
+                  // doesn't show a phantom XP value the server didn't
+                  // accept.
+                  setXp(prev => Math.max(0, prev - amount));
+                  return;
+                }
+                const serverXp = (data as { new_xp?: number } | null)?.new_xp;
+                if (typeof serverXp === 'number') setXp(serverXp);
+              });
             }
             showToast(reason, 'success');
           }}
