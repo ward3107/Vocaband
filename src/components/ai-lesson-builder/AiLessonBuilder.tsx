@@ -17,6 +17,8 @@ import {
   Sparkles, X, Loader2, Check, ChevronDown, ChevronUp,
   RefreshCw, BookOpen, HelpCircle, FileText, Plus, Minus, Printer
 } from 'lucide-react';
+import { useLanguage } from '../../hooks/useLanguage';
+import { aiLessonBuilderT } from '../../locales/teacher/ai-lesson-builder';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -67,19 +69,21 @@ export interface AiLessonBuilderProps {
 
 // ── Question Type Definitions ───────────────────────────────────────────────────
 
-const COMPREHENSION_TYPES: Array<{ key: keyof QuestionTypeConfig; label: string; icon: string; color: string }> = [
-  { key: 'yesNo', label: 'Yes/No', icon: '✓', color: 'bg-blue-100 text-blue-700' },
-  { key: 'wh', label: 'WH- Questions', icon: '?', color: 'bg-purple-100 text-purple-700' },
-  { key: 'literal', label: 'Literal (Facts)', icon: '📖', color: 'bg-green-100 text-green-700' },
-  { key: 'inferential', label: 'Thinking', icon: '🧠', color: 'bg-amber-100 text-amber-700' },
+type QuestionTypeMeta = { key: keyof QuestionTypeConfig; labelKey: 'qYesNo' | 'qWh' | 'qLiteral' | 'qInferential' | 'qFillBlank' | 'qTrueFalse' | 'qMatching' | 'qMultipleChoice' | 'qSentenceComplete'; icon: string; color: string };
+
+const COMPREHENSION_TYPES: QuestionTypeMeta[] = [
+  { key: 'yesNo',       labelKey: 'qYesNo',       icon: '✓',   color: 'bg-blue-100 text-blue-700' },
+  { key: 'wh',          labelKey: 'qWh',          icon: '?',   color: 'bg-purple-100 text-purple-700' },
+  { key: 'literal',     labelKey: 'qLiteral',     icon: '📖', color: 'bg-green-100 text-green-700' },
+  { key: 'inferential', labelKey: 'qInferential', icon: '🧠', color: 'bg-amber-100 text-amber-700' },
 ];
 
-const EXERCISE_TYPES: Array<{ key: keyof QuestionTypeConfig; label: string; icon: string; color: string }> = [
-  { key: 'fillBlank', label: 'Fill-in-blank', icon: '___', color: 'bg-cyan-100 text-cyan-700' },
-  { key: 'trueFalse', label: 'True/False', icon: 'T/F', color: 'bg-rose-100 text-rose-700' },
-  { key: 'matching', label: 'Matching', icon: '🔗', color: 'bg-indigo-100 text-indigo-700' },
-  { key: 'multipleChoice', label: 'Multiple Choice', icon: 'ABC', color: 'bg-fuchsia-100 text-fuchsia-700' },
-  { key: 'sentenceComplete', label: 'Sentence Complete', icon: '...', color: 'bg-teal-100 text-teal-700' },
+const EXERCISE_TYPES: QuestionTypeMeta[] = [
+  { key: 'fillBlank',        labelKey: 'qFillBlank',        icon: '___', color: 'bg-cyan-100 text-cyan-700' },
+  { key: 'trueFalse',        labelKey: 'qTrueFalse',        icon: 'T/F', color: 'bg-rose-100 text-rose-700' },
+  { key: 'matching',         labelKey: 'qMatching',         icon: '🔗', color: 'bg-indigo-100 text-indigo-700' },
+  { key: 'multipleChoice',   labelKey: 'qMultipleChoice',   icon: 'ABC', color: 'bg-fuchsia-100 text-fuchsia-700' },
+  { key: 'sentenceComplete', labelKey: 'qSentenceComplete', icon: '...', color: 'bg-teal-100 text-teal-700' },
 ];
 
 // ── Stepper Component ─────────────────────────────────────────────────────────────
@@ -136,8 +140,10 @@ export default function AiLessonBuilder({
   onSaveLesson,
   showToast,
 }: AiLessonBuilderProps) {
+  const { language, dir } = useLanguage();
+  const t = aiLessonBuilderT[language];
   // Text generation config
-  const [textDifficulty, setTextDifficulty] = useState('A2 (Grade 6-7, comfortable with everyday topics)');
+  const [textDifficulty, setTextDifficulty] = useState(t.studentLevelDefault);
   const [textType, setTextType] = useState('');
   const [wordCount, setWordCount] = useState(200);
 
@@ -189,17 +195,17 @@ export default function AiLessonBuilder({
     });
 
     setQuestionTypes(balanced);
-    showToast?.(`Balanced ${total} questions across ${types.length} types`, 'success');
-  }, [totalQuestions, showToast]);
+    showToast?.(t.balancedToast(total, types.length), 'success');
+  }, [totalQuestions, showToast, t]);
 
   // Generate lesson
   const handleGenerate = useCallback(async () => {
     if (selectedWords.length === 0) {
-      showToast?.('Please select some words first', 'error');
+      showToast?.(t.selectWordsFirst, 'error');
       return;
     }
     if (totalQuestions === 0) {
-      showToast?.('Please select at least one question type', 'error');
+      showToast?.(t.selectAtLeastOneType, 'error');
       return;
     }
 
@@ -207,7 +213,7 @@ export default function AiLessonBuilder({
     try {
       const lesson = await onGenerate({
         textDifficulty,
-        textType: textType || `Create a coherent text using these ${selectedWords.length} vocabulary words`,
+        textType: textType || t.defaultTextTypePrompt(selectedWords.length),
         wordCount,
         questionTypes,
         includeAnswers,
@@ -215,12 +221,12 @@ export default function AiLessonBuilder({
       setGeneratedLesson(lesson);
       setShowPreview(true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to generate lesson';
+      const message = error instanceof Error ? error.message : t.failedToGenerate;
       showToast?.(message, 'error');
     } finally {
       setIsGenerating(false);
     }
-  }, [selectedWords, textDifficulty, textType, wordCount, questionTypes, includeAnswers, totalQuestions, onGenerate, showToast]);
+  }, [selectedWords, textDifficulty, textType, wordCount, questionTypes, includeAnswers, totalQuestions, onGenerate, showToast, t]);
 
   // Reset when modal closes
   const handleClose = useCallback(() => {
@@ -232,7 +238,7 @@ export default function AiLessonBuilder({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" dir={dir}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -242,12 +248,13 @@ export default function AiLessonBuilder({
         <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 text-white">
             <Sparkles className="w-5 h-5" />
-            <span className="font-bold text-lg">🤖 AI Lesson Builder</span>
-            <span className="text-sm text-white/80">({selectedWords.length} words)</span>
+            <span className="font-bold text-lg">{t.headerTitle}</span>
+            <span className="text-sm text-white/80">{t.selectedWordsCount(selectedWords.length)}</span>
           </div>
           <button
             onClick={handleClose}
             type="button"
+            aria-label={t.closeAria}
             className="text-white/80 hover:text-white"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
           >
@@ -270,7 +277,7 @@ export default function AiLessonBuilder({
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="w-5 h-5 text-violet-600" />
-                    <h3 className="font-bold text-[var(--vb-text-primary)]">Reading Text</h3>
+                    <h3 className="font-bold text-[var(--vb-text-primary)]">{t.readingTextHeading}</h3>
                   </div>
                   {expandedSection === 'text' ? <ChevronUp className="w-5 h-5 text-[var(--vb-text-muted)]" /> : <ChevronDown className="w-5 h-5 text-[var(--vb-text-muted)]" />}
                 </button>
@@ -284,40 +291,40 @@ export default function AiLessonBuilder({
                     {/* Difficulty/Description */}
                     <div>
                       <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
-                        Student Level / Difficulty
+                        {t.studentLevelLabel}
                       </label>
                       <input
                         type="text"
                         value={textDifficulty}
                         onChange={(e) => setTextDifficulty(e.target.value)}
-                        placeholder="e.g., Grade 7, mixed abilities, ESL learners..."
+                        placeholder={t.studentLevelPlaceholder}
                         className="w-full px-4 py-3 border-2 border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-[var(--vb-text-primary)]"
                       />
                       <p className="mt-1 text-xs text-[var(--vb-text-muted)]">
-                        Describe your students — no need for CEFR codes
+                        {t.studentLevelHelper}
                       </p>
                     </div>
 
                     {/* Text Type */}
                     <div>
                       <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
-                        What kind of text do you want?
+                        {t.textTypeLabel}
                       </label>
                       <textarea
                         value={textType}
                         onChange={(e) => setTextType(e.target.value)}
-                        placeholder="e.g., A story about friendship that uses these words in context, or An informational text about environmental issues..."
+                        placeholder={t.textTypePlaceholder}
                         className="w-full px-4 py-3 border-2 border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-[var(--vb-text-primary)] resize-none h-24"
                       />
                       <p className="mt-1 text-xs text-[var(--vb-text-muted)]">
-                        Leave empty for AI to decide based on the vocabulary
+                        {t.textTypeHelper}
                       </p>
                     </div>
 
                     {/* Word Count */}
                     <div>
                       <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
-                        Text Length: {wordCount} words
+                        {t.textLengthLabel(wordCount)}
                       </label>
                       <input
                         type="range"
@@ -348,7 +355,7 @@ export default function AiLessonBuilder({
                 >
                   <div className="flex items-center gap-2">
                     <HelpCircle className="w-5 h-5 text-violet-600" />
-                    <h3 className="font-bold text-[var(--vb-text-primary)]">Questions</h3>
+                    <h3 className="font-bold text-[var(--vb-text-primary)]">{t.questionsHeading}</h3>
                     <span className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full text-sm font-semibold">
                       {totalQuestions}
                     </span>
@@ -360,7 +367,7 @@ export default function AiLessonBuilder({
                       className="text-xs px-3 py-1 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-lg transition-colors"
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                     >
-                      Auto-balance
+                      {t.autoBalance}
                     </button>
                     {expandedSection === 'questions' ? <ChevronUp className="w-5 h-5 text-[var(--vb-text-muted)]" /> : <ChevronDown className="w-5 h-5 text-[var(--vb-text-muted)]" />}
                   </div>
@@ -374,7 +381,7 @@ export default function AiLessonBuilder({
                   >
                     {/* Comprehension Types */}
                     <div>
-                      <h4 className="text-sm font-bold text-[var(--vb-text-secondary)] mb-3">Comprehension Questions</h4>
+                      <h4 className="text-sm font-bold text-[var(--vb-text-secondary)] mb-3">{t.comprehensionHeading}</h4>
                       <div className="space-y-2">
                         {COMPREHENSION_TYPES.map((type) => (
                           <div key={type.key} className="flex items-center justify-between p-3 bg-[var(--vb-surface)] rounded-lg">
@@ -382,7 +389,7 @@ export default function AiLessonBuilder({
                               <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${type.color}`}>
                                 {type.icon}
                               </span>
-                              <span className="font-medium text-[var(--vb-text-secondary)]">{type.label}</span>
+                              <span className="font-medium text-[var(--vb-text-secondary)]">{t[type.labelKey]}</span>
                             </div>
                             <Stepper
                               value={questionTypes[type.key]}
@@ -396,7 +403,7 @@ export default function AiLessonBuilder({
 
                     {/* Exercise Types */}
                     <div>
-                      <h4 className="text-sm font-bold text-[var(--vb-text-secondary)] mb-3">Exercise Types</h4>
+                      <h4 className="text-sm font-bold text-[var(--vb-text-secondary)] mb-3">{t.exerciseHeading}</h4>
                       <div className="space-y-2">
                         {EXERCISE_TYPES.map((type) => (
                           <div key={type.key} className="flex items-center justify-between p-3 bg-[var(--vb-surface)] rounded-lg">
@@ -404,7 +411,7 @@ export default function AiLessonBuilder({
                               <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${type.color}`}>
                                 {type.icon}
                               </span>
-                              <span className="font-medium text-[var(--vb-text-secondary)]">{type.label}</span>
+                              <span className="font-medium text-[var(--vb-text-secondary)]">{t[type.labelKey]}</span>
                             </div>
                             <Stepper
                               value={questionTypes[type.key]}
@@ -425,8 +432,8 @@ export default function AiLessonBuilder({
                         className="w-5 h-5 rounded border-[var(--vb-text-muted)] text-violet-600 focus:ring-violet-300"
                       />
                       <div>
-                        <p className="text-sm font-bold text-[var(--vb-text-secondary)]">Include answer key</p>
-                        <p className="text-xs text-[var(--vb-text-muted)]">Add answers to all generated questions</p>
+                        <p className="text-sm font-bold text-[var(--vb-text-secondary)]">{t.includeAnswerKey}</p>
+                        <p className="text-xs text-[var(--vb-text-muted)]">{t.includeAnswerKeyHelper}</p>
                       </div>
                     </label>
                   </motion.div>
@@ -444,12 +451,12 @@ export default function AiLessonBuilder({
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Generating lesson...</span>
+                    <span>{t.generatingLesson}</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    <span>✨ Generate Lesson</span>
+                    <span>{t.generateLesson}</span>
                   </>
                 )}
               </button>
@@ -460,9 +467,9 @@ export default function AiLessonBuilder({
               {/* Preview Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-[var(--vb-text-primary)]">Lesson Generated!</p>
+                  <p className="font-bold text-[var(--vb-text-primary)]">{t.lessonGenerated}</p>
                   <p className="text-sm text-[var(--vb-text-muted)]">
-                    {generatedLesson.wordCount} words • {generatedLesson.questions.length} questions
+                    {t.wordsAndQuestionsSummary(generatedLesson.wordCount, generatedLesson.questions.length)}
                   </p>
                 </div>
                 <button
@@ -475,7 +482,7 @@ export default function AiLessonBuilder({
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <RefreshCw className="w-4 h-4" />
-                  <span>Regenerate</span>
+                  <span>{t.regenerate}</span>
                 </button>
               </div>
 
@@ -489,7 +496,7 @@ export default function AiLessonBuilder({
                 >
                   <h3 className="font-bold text-[var(--vb-text-primary)] flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-violet-600" />
-                    Reading Text
+                    {t.readingTextHeading}
                   </h3>
                   <span className={`text-[var(--vb-text-muted)] transition-transform ${showPreview ? 'rotate-180' : ''}`}>
                     ▼
@@ -508,24 +515,24 @@ export default function AiLessonBuilder({
               <div className="border-2 border-[var(--vb-border)] rounded-xl p-4">
                 <h3 className="font-bold text-[var(--vb-text-primary)] flex items-center gap-2 mb-3">
                   <HelpCircle className="w-5 h-5 text-violet-600" />
-                  Questions ({generatedLesson.questions.length})
+                  {t.questionsCountHeading(generatedLesson.questions.length)}
                 </h3>
                 <div className="space-y-3 max-h-80 overflow-y-auto">
                   {generatedLesson.questions.map((q, i) => {
-                    const typeConfig = [...COMPREHENSION_TYPES, ...EXERCISE_TYPES].find(t => t.key === q.type);
+                    const typeConfig = [...COMPREHENSION_TYPES, ...EXERCISE_TYPES].find(tc => tc.key === q.type);
                     return (
                       <div key={i} className="p-3 bg-[var(--vb-surface)] rounded-lg">
                         <div className="flex items-start gap-2 mb-2">
                           {typeConfig && (
                             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${typeConfig.color}`}>
-                              {typeConfig.label}
+                              {t[typeConfig.labelKey]}
                             </span>
                           )}
-                          <p className="font-medium text-[var(--vb-text-primary)]">Q{i + 1}: {q.question}</p>
+                          <p className="font-medium text-[var(--vb-text-primary)]">{t.questionNumber(i + 1, q.question)}</p>
                         </div>
                         {includeAnswers && (
                           <p className="text-sm text-[var(--vb-text-secondary)] ml-1">
-                            <span className="font-semibold">Answer:</span> {q.answer}
+                            <span className="font-semibold">{t.answerLabel}</span> {q.answer}
                           </p>
                         )}
                         {q.options && (
@@ -557,7 +564,7 @@ export default function AiLessonBuilder({
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <Printer className="w-5 h-5" />
-                  Print / Save as PDF
+                  {t.printOrSavePdf}
                 </button>
                 {onSaveLesson && (
                   <button
@@ -570,7 +577,7 @@ export default function AiLessonBuilder({
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                   >
                     <Check className="w-5 h-5" />
-                    Save
+                    {t.save}
                   </button>
                 )}
                 <button
@@ -579,7 +586,7 @@ export default function AiLessonBuilder({
                   className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-border)] transition-all"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
-                  Done
+                  {t.done}
                 </button>
               </div>
             </div>
@@ -597,18 +604,18 @@ export default function AiLessonBuilder({
           <div className="vb-print-only vb-print-avoid-break" style={{ padding: '0', color: '#000' }}>
             <header style={{ marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '0.75rem' }}>
               <h1 style={{ fontSize: '24pt', fontWeight: 900, margin: 0 }}>
-                Reading Comprehension Lesson
+                {t.printDocTitle}
               </h1>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '11pt' }}>
-                <span><strong>Date:</strong> {new Date().toLocaleDateString()}</span>
-                <span><strong>Name:</strong> ____________________</span>
+                <span><strong>{t.printDateLabel}</strong> {new Date().toLocaleDateString()}</span>
+                <span><strong>{t.printNameLabel}</strong> ____________________</span>
               </div>
             </header>
 
             {/* Reading text */}
             <section style={{ marginBottom: '2rem' }}>
               <h2 style={{ fontSize: '16pt', fontWeight: 800, marginBottom: '0.75rem' }}>
-                Reading
+                {t.printReadingHeading}
               </h2>
               <p style={{ fontSize: '12pt', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
                 {generatedLesson.text}
@@ -618,7 +625,7 @@ export default function AiLessonBuilder({
             {/* Questions */}
             <section className="vb-print-avoid-break" style={{ marginBottom: '2rem' }}>
               <h2 style={{ fontSize: '16pt', fontWeight: 800, marginBottom: '0.75rem' }}>
-                Questions ({generatedLesson.questions.length})
+                {t.questionsCountHeading(generatedLesson.questions.length)}
               </h2>
               <ol style={{ paddingLeft: '1.5rem', fontSize: '12pt', lineHeight: 1.8 }}>
                 {generatedLesson.questions.map((q, i) => (
@@ -643,7 +650,7 @@ export default function AiLessonBuilder({
             {includeAnswers && (
               <section className="vb-print-avoid-break vb-print-page-break" style={{ marginTop: '2rem' }}>
                 <h2 style={{ fontSize: '16pt', fontWeight: 800, marginBottom: '0.75rem', borderBottom: '2px solid #000', paddingBottom: '0.4rem' }}>
-                  Answer Key
+                  {t.printAnswerKey}
                 </h2>
                 <ol style={{ paddingLeft: '1.5rem', fontSize: '11pt', lineHeight: 1.7 }}>
                   {generatedLesson.questions.map((q, i) => (
