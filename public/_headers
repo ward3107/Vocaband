@@ -10,13 +10,16 @@
 #                      then loads the external static.cloudflareinsights.com
 #                      script — the inline bit is allowlisted by SHA-256
 #                      hash so it passes CSP without `unsafe-inline`.
-#                      Hash history (Cloudflare rotates this periodically):
-#                        2026-05-08: cRrVW07TNPw6CwTVu0Nako6M1nwd0redd0jH+9Pue/U=
+#                      Hash history (Cloudflare rotates this periodically
+#                      and currently serves more than one variant — keep
+#                      every active hash in the allowlist):
+#                        2026-05-08:  cRrVW07TNPw6CwTVu0Nako6M1nwd0redd0jH+9Pue/U=
 #                        2026-05-14a: Kg6BgNpWYAx3ZohK5fDHOod813SSB3htrlMqC/RegYE=
 #                        2026-05-14b: wpdwqdJ/DWld5If3gFm26J7wuG+DgBvahjrDDEa9y70=
-#                      Cloudflare appears to serve two different bootstrap
-#                      variants — both currently allowlisted.  When more
-#                      appear in the console, add the new hash too.
+#                      When the console reports a violation with a new
+#                      hash, ADD it (don't replace) — Cloudflare may keep
+#                      rotating between multiple bootstraps for the same
+#                      page.
 #                      *** This is the high-value XSS-defence win. ***
 #   * style-src-elem — `'unsafe-inline'` KEPT. motion/react injects
 #                      <style>...</style> blocks at runtime for animation

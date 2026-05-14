@@ -23,6 +23,7 @@ import {
 } from "../data/wordLookup";
 import {
   supabase,
+  performUserLogout,
   type ProgressData,
   type AssignmentData,
   type ClassData,
@@ -407,7 +408,7 @@ export default function AnalyticsView({
           onBack={() => setView("teacher-dashboard")}
           userName={user?.displayName}
           userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+          onLogout={() => performUserLogout()}
         />
       )}
 

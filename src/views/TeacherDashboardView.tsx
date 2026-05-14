@@ -6,7 +6,7 @@ import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import RatingPrompt from "../components/RatingPrompt";
-import { supabase } from "../core/supabase";
+import { performUserLogout } from "../core/supabase";
 import TeacherThemeMenu from "../components/dashboard/TeacherThemeMenu";
 import { useTeacherTheme } from "../hooks/useTeacherTheme";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
@@ -253,7 +253,7 @@ export default function TeacherDashboardView({
           subtitle={subject === "hebrew" ? "כיתות ד–ט · אוצר מילים בעברית" : "CEFR A1–B2 • ESL VOCABULARY"}
           userName={user?.displayName}
           userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+          onLogout={() => performUserLogout()}
           showScaleControl
           extraTrailing={headerExtra}
         />
