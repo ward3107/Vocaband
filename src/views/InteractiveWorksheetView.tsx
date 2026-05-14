@@ -107,7 +107,7 @@ const getOrCreateFingerprint = (): string | null => {
 const nameKey = (slug: string) => `vocaband:worksheet:${slug}:name`;
 
 export default function InteractiveWorksheetView({ slug, onBack }: Props) {
-  const { isRTL } = useLanguage();
+  const { language: iwvLang, isRTL } = useLanguage();
   const [row, setRow] = useState<WorksheetRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("name-entry");
@@ -216,7 +216,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
 
   if (loadError) {
     return (
-      <Shell onBack={onBack} isRTL={isRTL}>
+      <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
         <div className="text-center max-w-md mx-auto p-8 rounded-3xl bg-white/10 border border-white/15 text-white">
           <XCircle size={40} className="mx-auto mb-4 text-rose-300" />
           <p className="font-bold text-lg mb-2">Worksheet not found</p>
@@ -228,7 +228,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
 
   if (!row) {
     return (
-      <Shell onBack={onBack} isRTL={isRTL}>
+      <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
         <div className="flex items-center justify-center gap-3 text-white">
           <Loader2 size={20} className="animate-spin" />
           <span className="font-semibold">Loading worksheet…</span>
@@ -239,7 +239,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
 
   if (stage === "name-entry") {
     return (
-      <Shell onBack={onBack} isRTL={isRTL}>
+      <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
         <NameEntryCard
           topicName={row.topic_name}
           wordCount={words.length}
@@ -253,7 +253,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
 
   if (stage === "submitting") {
     return (
-      <Shell onBack={onBack} isRTL={isRTL}>
+      <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
         <div className="bg-white rounded-3xl p-8 sm:p-12 shadow-2xl text-center max-w-md mx-auto">
           <Loader2 size={40} className="mx-auto mb-4 animate-spin text-violet-500" />
           <p className="text-stone-700 font-bold text-lg">Submitting your answers…</p>
@@ -265,7 +265,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
 
   if (stage === "done" || stage === "submit-error") {
     return (
-      <Shell onBack={onBack} isRTL={isRTL}>
+      <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
         <ResultsCard
           score={score}
           total={total}
@@ -280,7 +280,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   }
 
   return (
-    <Shell onBack={onBack} isRTL={isRTL}>
+    <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
       <div className="mb-6 text-center">
         <p className="text-xs uppercase tracking-widest font-bold text-violet-300/80">{row.format}</p>
         <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">{row.topic_name}</h1>
@@ -316,6 +316,7 @@ const NameEntryCard: React.FC<{
   initialName: string;
   onStart: (name: string) => void;
 }> = ({ topicName, wordCount, format, initialName, onStart }) => {
+  const { language: iwvLang } = useLanguage();
   const [name, setName] = useState(initialName);
   const trimmed = name.trim();
   const formatLabel: Record<WorksheetFormat, string> = {
@@ -347,7 +348,7 @@ const NameEntryCard: React.FC<{
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Type your name"
+          placeholder={iwvLang === 'he' ? 'הקלידו את שמכם' : iwvLang === 'ar' ? 'اكتب اسمك' : 'Type your name'}
           maxLength={60}
           className="w-full px-4 py-3 rounded-xl border-2 border-stone-200 focus:border-violet-500 focus:outline-none font-bold text-stone-900 text-lg"
         />
@@ -367,10 +368,11 @@ const NameEntryCard: React.FC<{
   );
 };
 
-const Shell: React.FC<{ children: React.ReactNode; onBack: () => void; isRTL: boolean }> = ({
+const Shell: React.FC<{ children: React.ReactNode; onBack: () => void; isRTL: boolean; language: "en" | "he" | "ar" }> = ({
   children,
   onBack,
   isRTL,
+  language,
 }) => (
   <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 px-4 py-6 sm:py-10">
     <div className="max-w-3xl mx-auto">
@@ -380,7 +382,7 @@ const Shell: React.FC<{ children: React.ReactNode; onBack: () => void; isRTL: bo
         className="flex items-center gap-2 text-violet-300 font-bold hover:text-violet-200 transition-all mb-6"
       >
         <ArrowLeft size={18} className={isRTL ? "rotate-180" : ""} />
-        <span>Back</span>
+        <span>{language === 'he' ? 'חזרה' : language === 'ar' ? 'رجوع' : 'Back'}</span>
       </button>
       {children}
     </div>
@@ -551,6 +553,7 @@ const QuizExercise: React.FC<{
   targetLang: "en" | "he" | "ar";
   onFinish: (payload: FinishPayload) => void;
 }> = ({ words, targetLang, onFinish }) => {
+  const { language: iwvLang } = useLanguage();
   const [order] = useState(() => shuffle(words));
   const [idx, setIdx] = useState(0);
   const [pickedId, setPickedId] = useState<number | null>(null);
@@ -631,7 +634,7 @@ const QuizExercise: React.FC<{
           <button
             type="button"
             onClick={playAudio}
-            aria-label="Play pronunciation"
+            aria-label={iwvLang === 'he' ? 'השמע הגייה' : iwvLang === 'ar' ? 'تشغيل النطق' : 'Play pronunciation'}
             className="p-2 rounded-full bg-violet-100 hover:bg-violet-200 text-violet-700 transition-all"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >

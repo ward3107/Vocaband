@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Volume2, X, ArrowRight } from "lucide-react";
 import { IDIOMS, pickRandomIdioms, type Idiom } from "../../data/idioms";
 import { useLanguage } from "../../hooks/useLanguage";
+import { gameAriasT } from "../../locales/student/game-arias";
 import { type GameThemeColor, getThemeColors } from "./GameShell";
 
 interface IdiomGameProps {
@@ -74,6 +75,7 @@ export default function IdiomGame({
   questionsPerRound = 10,
 }: IdiomGameProps) {
   const { language, dir } = useLanguage();
+  const tAria = gameAriasT[language];
   const theme = getThemeColors(themeColor);
 
   // Build the round's question list once on mount.  Picking N random
@@ -157,7 +159,7 @@ export default function IdiomGame({
         type="button"
         onClick={() => speak(current.english)}
         className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-semibold transition"
-        aria-label="Replay idiom"
+        aria-label={tAria.replayIdiom}
       >
         <Volume2 size={14} />
         {language === "he" ? "השמע שוב" : language === "ar" ? "أعد التشغيل" : "Replay"}
@@ -237,7 +239,7 @@ export default function IdiomGame({
                 type="button"
                 onClick={() => speak(current.example)}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/70 hover:bg-white text-stone-600 text-[11px] font-semibold transition shrink-0"
-                aria-label="Hear example sentence"
+                aria-label={tAria.hearExampleSentence}
               >
                 <Volume2 size={12} />
                 {language === "he" ? "דוגמה" : language === "ar" ? "مثال" : "Example"}

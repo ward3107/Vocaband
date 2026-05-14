@@ -476,8 +476,10 @@ export default function TeacherDashboardView({
         <button
           type="button"
           onClick={adaptiveTheme.togglePresentationMode}
-          title={adaptiveTheme.presentationMode ? 'Exit presentation mode' : 'Presentation mode (bigger text for projecting)'}
-          aria-label="Toggle presentation mode"
+          title={adaptiveTheme.presentationMode
+            ? (language === 'he' ? 'יציאה ממצב הצגה' : language === 'ar' ? 'الخروج من وضع العرض' : 'Exit presentation mode')
+            : (language === 'he' ? 'מצב הצגה (טקסט גדול יותר להקרנה)' : language === 'ar' ? 'وضع العرض (نص أكبر للعرض)' : 'Presentation mode (bigger text for projecting)')}
+          aria-label={language === 'he' ? 'החלף מצב הצגה' : language === 'ar' ? 'تبديل وضع العرض' : 'Toggle presentation mode'}
           aria-pressed={adaptiveTheme.presentationMode}
           style={{
             touchAction: 'manipulation',

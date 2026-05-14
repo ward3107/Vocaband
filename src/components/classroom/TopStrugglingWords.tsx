@@ -124,11 +124,11 @@ export default function TopStrugglingWords({
                 className="text-left text-xs uppercase tracking-wider border-b"
                 style={{ color: 'var(--vb-text-muted)', borderColor: 'var(--vb-border)' }}
               >
-                <th className="px-3 py-2 font-bold">Word</th>
-                <th className="px-3 py-2 font-bold">Hebrew</th>
-                <th className="px-3 py-2 font-bold">Arabic</th>
-                <th className="px-3 py-2 font-bold text-right">Misses</th>
-                <th className="px-3 py-2 font-bold text-right">% of class</th>
+                <th className="px-3 py-2 font-bold">{t.reteachColWord}</th>
+                <th className="px-3 py-2 font-bold">{t.reteachColHebrew}</th>
+                <th className="px-3 py-2 font-bold">{t.reteachColArabic}</th>
+                <th className="px-3 py-2 font-bold text-right">{t.reteachColMisses}</th>
+                <th className="px-3 py-2 font-bold text-right">{t.reteachColPctOfClass}</th>
               </tr>
             </thead>
             <tbody>

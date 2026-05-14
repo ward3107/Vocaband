@@ -31,6 +31,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, X, Volume2 } from 'lucide-react';
 import { RELATIONS, ALL_RELATION_WORDS, type WordRelation } from '../../data/word-relations';
 import { useLanguage } from '../../hooks/useLanguage';
+import { gameAriasT } from '../../locales/student/game-arias';
 import { type GameThemeColor, getThemeColors } from './GameShell';
 
 interface RelationsGameProps {
@@ -108,6 +109,7 @@ export default function RelationsGame({
   questionsPerRound = 10,
 }: RelationsGameProps) {
   const { language, dir } = useLanguage();
+  const tAria = gameAriasT[language];
   const theme = getThemeColors(themeColor);
 
   // Build the round's questions once on mount.  Alternate syn/ant
@@ -218,7 +220,7 @@ export default function RelationsGame({
         type="button"
         onClick={() => speak(current.base)}
         className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-semibold transition"
-        aria-label="Replay audio"
+        aria-label={tAria.replayAudio}
       >
         <Volume2 size={14} />
         {language === 'he' ? 'השמע שוב' : language === 'ar' ? 'أعد التشغيل' : 'Replay'}

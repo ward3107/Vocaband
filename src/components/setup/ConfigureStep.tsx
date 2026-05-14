@@ -857,7 +857,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                           onSentencesChange?.(updated);
                         }}
                         className="text-[var(--vb-text-secondary)] hover:text-error opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                        title="Remove sentence"
+                        title={language === 'he' ? 'הסר משפט' : language === 'ar' ? 'إزالة الجملة' : 'Remove sentence'}
                       >
                         <X size={14} />
                       </button>

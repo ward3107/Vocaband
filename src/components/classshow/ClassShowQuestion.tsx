@@ -12,6 +12,7 @@ import type { MultiChoiceQuestion, TrueFalseQuestion } from '../../utils/buildQu
 import type { ClassShowMode } from './ClassShowSetup';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings } from '../../locales/student/class-show';
+import { gameAriasT } from '../../locales/student/game-arias';
 import { useAudio } from '../../hooks/useAudio';
 import {
   SpellingProjector,
@@ -44,6 +45,7 @@ const LETTERS = ['A', 'B', 'C', 'D'];
 export default function ClassShowQuestion(props: ClassShowQuestionProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
+  const tAria = gameAriasT[language];
   const audio = useAudio();
   const { mode, word, multiChoice, trueFalse, revealed, batch, pool } = props;
 
@@ -238,6 +240,8 @@ function MultiChoiceLayout({
   correctLabel: string;
   onPlayAudio: () => void;
 }) {
+  const { language } = useLanguage();
+  const tAria = gameAriasT[language];
   const isListening = mode === 'listening';
   const isFillBlank = mode === 'fill-blank';
   return (
@@ -249,7 +253,7 @@ function MultiChoiceLayout({
             type="button"
             onClick={onPlayAudio}
             className="w-32 h-32 sm:w-44 sm:h-44 rounded-full bg-gradient-to-br from-sky-500 to-cyan-600 text-white flex items-center justify-center shadow-2xl hover:scale-105 transition-transform"
-            aria-label="Play audio"
+            aria-label={tAria.playAudio}
           >
             <Volume2 size={64} />
           </button>
@@ -275,7 +279,7 @@ function MultiChoiceLayout({
               onClick={onPlayAudio}
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
-              aria-label="Play audio"
+              aria-label={tAria.playAudio}
             >
               <Volume2 size={28} />
             </button>

@@ -73,7 +73,7 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
             type="button"
             style={{ color: 'var(--vb-text-muted)' }}
             className="p-2 rounded-full hover:opacity-80"
-            aria-label="Close theme picker"
+            aria-label={language === 'he' ? 'סגור בוחר ערכת נושא' : language === 'ar' ? 'إغلاق منتقي السمات' : 'Close theme picker'}
           >
             <X size={20} />
           </button>
