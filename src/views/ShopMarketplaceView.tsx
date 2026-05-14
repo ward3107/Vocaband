@@ -166,12 +166,12 @@ export default function ShopMarketplaceView({
     if (xp < egg.cost) { showToast(t.notEnoughXp, "error"); return; }
     setOpeningEgg({ egg, phase: 'zoom' });
     setTimeout(() => setOpeningEgg(prev => prev ? { ...prev, phase: 'shake' } : prev), 300);
+    // `open_mystery_egg` is planned for a follow-up Supabase migration
+    // (server-side reward roll + cosmetic drops). Until that ships, roll
+    // the XP reward on the client and book the net cost via the generic
+    // `purchase_item` RPC. Avoids the 404 the missing RPC would otherwise
+    // spam in the console every egg open.
     const rpcPromise = (async () => {
-      const { data, error } = await supabase.rpc('open_mystery_egg', { egg_id: egg.id, egg_cost: egg.cost });
-      if (!error && data?.success) {
-        setXp(data.new_xp);
-        return data.reward_label || `+${data.reward_xp ?? 0} XP`;
-      }
       const rewardXp = Math.floor(egg.minXp + Math.random() * (egg.maxXp - egg.minXp + 1));
       const { data: pData, error: pErr } = await supabase.rpc('purchase_item', { item_type: 'egg', item_id: egg.id, item_cost: egg.cost - rewardXp });
       if (pErr || !pData?.success) { showToast(pData?.error || t.couldNotOpenEgg, "error"); return null; }
