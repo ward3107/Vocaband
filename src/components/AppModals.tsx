@@ -83,20 +83,113 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
 };
 
 // ── ExitConfirmModal ──────────────────────────────────────────────────────
+//
+// Two rendering modes:
+//   - When `student` is supplied (we're showing this to a logged-in
+//     student), render a friendly "See you tomorrow, [Name]!"
+//     soft-landing.  Primary CTA = Keep playing (the kid almost
+//     certainly hit back by accident).  Tiny secondary link = Switch
+//     class (real logout).  Children of Israeli classrooms ages 9–14
+//     don't have a mental model for "log out"; this framing matches
+//     theirs.
+//   - When `student` is null, fall back to the original neutral
+//     "Leave Vocaband?" copy (used for teachers + guests).
 export interface ExitConfirmModalProps {
   show: boolean;
   onStay: () => void;
   onLeave: () => void;
+  /** When set, renders the student-friendly soft-landing.  Pass null
+   *  for teachers / guests to get the neutral copy. */
+  student?: { name: string; classCode: string | null } | null;
 }
+
+const STUDENT_STRINGS: Record<'en' | 'he' | 'ar', {
+  headline: (n: string) => string;
+  classCodeLabel: string;
+  hint: string;
+  keepPlaying: string;
+  switchClass: string;
+}> = {
+  en: {
+    headline: n => `See you tomorrow, ${n}! 👋`,
+    classCodeLabel: 'Your class code:',
+    hint: "Scan the QR or open your teacher's link to come back.",
+    keepPlaying: 'Keep playing',
+    switchClass: 'Switch class',
+  },
+  he: {
+    headline: n => `נתראה מחר, ${n}! 👋`,
+    classCodeLabel: 'קוד הכיתה שלך:',
+    hint: 'סרוק את הקוד או פתח את הקישור של המורה כדי לחזור.',
+    keepPlaying: 'המשך לשחק',
+    switchClass: 'החלף כיתה',
+  },
+  ar: {
+    headline: n => `نراك غدًا، ${n}! 👋`,
+    classCodeLabel: 'رمز صفك:',
+    hint: 'امسح رمز QR أو افتح رابط معلمك للعودة.',
+    keepPlaying: 'تابع اللعب',
+    switchClass: 'تغيير الصف',
+  },
+};
 
 export const ExitConfirmModal: React.FC<ExitConfirmModalProps> = ({
   show,
   onStay,
   onLeave,
+  student,
 }) => {
   const { language, dir } = useLanguage();
-  const t = appModalsT[language];
   if (!show) return null;
+
+  // ── Student soft-landing variant ─────────────────────────────
+  if (student) {
+    const t = STUDENT_STRINGS[language] || STUDENT_STRINGS.en;
+    return (
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50"
+        dir={dir}
+      >
+        <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl border border-white/80 text-center">
+          <h2 className="text-2xl sm:text-3xl font-black text-stone-900 mb-3 break-words">
+            {t.headline(student.name)}
+          </h2>
+          {student.classCode && (
+            <div className="mb-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-1">
+                {t.classCodeLabel}
+              </p>
+              <p className="text-2xl font-black tracking-[0.2em] text-amber-700 font-mono">
+                {student.classCode}
+              </p>
+            </div>
+          )}
+          <p className="text-sm text-stone-600 mb-6 leading-relaxed">
+            {t.hint}
+          </p>
+          <button
+            onClick={onStay}
+            type="button"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+            className="w-full py-4 rounded-2xl font-black text-white bg-gradient-to-r from-orange-500 to-rose-500 shadow-lg active:scale-[0.98] transition-all text-base mb-3"
+          >
+            {t.keepPlaying}
+          </button>
+          <button
+            onClick={onLeave}
+            type="button"
+            style={{ touchAction: 'manipulation' }}
+            className="text-xs font-semibold text-stone-500 hover:text-stone-700 underline-offset-2 hover:underline transition-colors"
+          >
+            {t.switchClass}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Default neutral variant (teachers / guests) ──────────────
+  const t = appModalsT[language];
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
       <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl" dir={dir}>

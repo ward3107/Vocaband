@@ -81,18 +81,14 @@ interface TeacherDashboardViewProps {
    *  shared interactive worksheets.  Optional because Hebrew teachers
    *  don't get this tile (the feature is English-Set only for now). */
   onWorksheetResultsClick?: () => void;
-  /** Impromptu Class Show — projector mode for phone-less classrooms. */
-  onClassShowClick: () => void;
-  /** Project a specific assignment to the class via Class Show. */
+  /** Project a specific assignment to the class via Class Show.
+   *  The standalone "Class Show" entry point lives in the New Activity
+   *  wizard's tab strip now, not as a dashboard tile. */
   onProjectAssignmentToClass: (a: AssignmentData) => void;
-  /** Impromptu Worksheet builder — print word lists / scrambles / etc. */
-  onWorksheetClick: () => void;
-  /** Print a specific assignment as a worksheet. */
+  /** Print a specific assignment as a worksheet.  The standalone
+   *  "Worksheet" entry point lives in the New Activity wizard's tab
+   *  strip now, not as a dashboard tile. */
   onPrintAssignmentWorksheet: (a: AssignmentData) => void;
-  /** Vocabagrut — Bagrut-style mock exam generator. */
-  onVocabagrutClick: () => void;
-  /** Hot Seat — pass-around single-device classroom mode. */
-  onHotSeatClick: () => void;
 
   // Classes section handlers
   onNewClass: () => void;
@@ -148,10 +144,8 @@ export default function TeacherDashboardView({
   toasts, confirmDialog, setConfirmDialog,
   onQuickPlayClick, onClassroomClick, onApprovalsClick,
   onWorksheetResultsClick,
-  onClassShowClick, onProjectAssignmentToClass,
-  onWorksheetClick, onPrintAssignmentWorksheet,
-  onVocabagrutClick,
-  onHotSeatClick,
+  onProjectAssignmentToClass,
+  onPrintAssignmentWorksheet,
   onNewClass, onAssignClass, onDeleteClass,
   editingClass, onEditClass, onCloseEditClass, onSaveClassEdit,
   onNameChange, onAvatarChange,
@@ -352,10 +346,6 @@ export default function TeacherDashboardView({
             onClassroomClick={onClassroomClick}
             onApprovalsClick={onApprovalsClick}
             onWorksheetResultsClick={onWorksheetResultsClick}
-            onClassShowClick={onClassShowClick}
-            onWorksheetClick={onWorksheetClick}
-            onVocabagrutClick={onVocabagrutClick}
-            onHotSeatClick={onHotSeatClick}
           />
 
           <TeacherClassesSection

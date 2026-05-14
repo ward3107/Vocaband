@@ -19,9 +19,9 @@
 
 ## What it does
 
-Vocaband turns vocabulary drills into a short, competitive classroom experience. Students join a class with a 6-character code (or scan a QR code for a Quick Play session — no account needed), pick from **11 interactive game modes**, and their progress streams live to the teacher's dashboard.
+Vocaband turns vocabulary drills into a short, competitive classroom experience. Students join a class with a short class code (or scan a QR code for a Quick Play session — no account needed), pick from a wide library of interactive game modes, and their progress streams live to the teacher's dashboard.
 
-Every word is available in **English + Hebrew + Arabic** so the UI fits Israel's two dominant first languages, fully RTL-aware. Curriculum-aligned across **Set 1 / Set 2 / Set 3** (CEFR A1 → B2).
+Every word is available in **English + Hebrew + Arabic** so the UI fits Israel's two dominant first languages, fully RTL-aware. Curriculum-aligned to the Israeli Ministry of Education English vocabulary (CEFR A1 → B2).
 
 No app store. No personal data required for students. Works on any device with a browser.
 
@@ -29,10 +29,10 @@ No app store. No personal data required for students. Works on any device with a
 
 ## Table of contents
 
-- [Screenshots](#screenshots)
 - [Why Vocaband](#why-vocaband)
+- [What's new (2026)](#whats-new-2026)
 - [Features](#features)
-  - [Game modes](#-10-game-modes)
+  - [Game modes](#-game-modes)
   - [For teachers](#-for-teachers)
   - [For students](#-for-students)
   - [Quick Play](#-quick-play--qr-scan-no-login)
@@ -46,36 +46,6 @@ No app store. No personal data required for students. Works on any device with a
 
 ---
 
-## Screenshots
-
-<table>
-  <tr>
-    <td align="center"><b>Landing page — meet Vocaband</b></td>
-  </tr>
-  <tr>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td align="center"><b>Teacher dashboard — Quick Play, Classroom, Approvals</b></td>
-  </tr>
-  <tr>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td align="center"><b>Student experience — pick a mode, pick a language, play</b></td>
-  </tr>
-  <tr>
-  </tr>
-</table>
-
-> More screenshots in [`docs/screenshots/`](./docs/screenshots/) — accessibility toolbar, high-contrast mode, classroom analytics panels, and more.
-
----
-
 ## Why Vocaband
 
 | Feature | Vocaband | Typical vocab apps |
@@ -84,49 +54,54 @@ No app store. No personal data required for students. Works on any device with a
 | Quick Play — QR scan, no login | ✅ Yes | ❌ No |
 | Live classroom competition | ✅ Real-time leaderboard | ❌ No |
 | No student account needed | ✅ Join by class code + name | ❌ Registration required |
-| Game modes | ✅ 11 built-in (each with its own visual identity) | ❌ 1–2 max |
-| Smart word matching (paste, OCR, AI translate) | ✅ Deep | ❌ Manual only |
-| Teacher analytics (per-word mistakes) | ✅ Per-student, per-word | ❌ Basic |
+| Game modes | ✅ Multiple modes, each with its own visual identity | ❌ 1–2 max |
+| Smart word input (paste, OCR, AI translate) | ✅ Deep | ❌ Manual only |
+| Teacher analytics (per-word, per-student) | ✅ | ❌ Basic |
 | Accessibility (WCAG 2.0 AA, IS 5568) | ✅ 10-feature toolbar | ❌ Limited |
-| Aligned to Israeli MoE curriculum | ✅ Set 1 / Set 2 / Set 3 | ❌ Generic |
+| Aligned to Israeli MoE curriculum | ✅ | ❌ Generic |
 | Adjustable display size for teachers | ✅ A / A / A toolbar control | ❌ Browser zoom only |
 
 ---
 
-## Recent improvements (April–May 2026)
+## What's new (2026)
 
-- **Per-mode visual identity** — each of the 11 modes redesigned with its own colour theme, mechanic-specific layout, and bigger mobile tap targets (88px+).  No more generic stone/blue tiles.  See the modes table below for the per-mode theme.
-- **NEW MODE: Memory Flip** — face-down card flip game that reuses the Matching word pool but tests memory + meaning.
-- **Matching → drag-line** — two-column layout with finger-drag SVG line drawing instead of flat tap-tap.  Tap-tap fallback preserved for accessibility.
-- **Scramble → tap-to-assemble** — letter tiles in a tray instead of an on-screen keyboard.  No more typing on a phone keyboard that eats half the screen.
-- **Spelling letter slots** — see the word's shape before typing.  Positional feedback on submit (green for matching letter, rose for wrong).
-- **Quick Play language picker** — students pick EN/HE/AR right after entering nickname + avatar.  Mode-selection screen also has an inline picker bar so the language can be switched mid-session.
-- **Tabbed avatar picker for Quick Play** — ~30 emojis × 6 themed groups + 30 lucide vector icons (Crown, Star, Rocket, etc.) for kids who want a non-cartoon identity.
-- **Saved word groups across auth methods** — re-keyed by email so a teacher who signs in with magic link AND Google OAuth sees the same groups (Supabase otherwise treats those as separate users).
-- **Resend SMTP integration** — magic-link + teacher-OTP emails now deliver via Resend instead of Supabase's rate-limited demo SMTP.  Operator setup walkthrough at [docs/RESEND-SMTP-SETUP.md](./docs/RESEND-SMTP-SETUP.md).
+The platform has matured significantly in 2026. Headline improvements:
+
+- **Trilingual UI everywhere** — every student-facing screen, every teacher-facing screen, every dashboard module, every onboarding flow, every privacy/cookie banner, every live-challenge / setup wizard / Quick Play monitor, and every analytics/gradebook view now renders cleanly in English, Hebrew, and Arabic with full RTL mirroring.
+- **Streamlined teacher dashboard** — assignment building, Quick Play, and roster tools were consolidated into a single "New Activity" surface. Fewer clicks, no hunting for buttons.
+- **Per-mode visual identity** — each game mode has its own colour theme, mechanic-specific layout, and bigger mobile tap targets (88px+).
+- **Memory Flip** — a face-down card flip game that reuses the Matching word pool but tests memory + meaning.
+- **Matching → drag-line** — two-column layout with finger-drag SVG line drawing. Tap-tap fallback preserved for accessibility.
+- **Scramble → tap-to-assemble** — letter tiles in a tray instead of an on-screen keyboard.
+- **Spelling letter slots** — see the word's shape before typing; positional feedback on submit.
+- **Quick Play language picker** — students pick EN/HE/AR right after entering nickname + avatar; switchable mid-session.
+- **Tabbed avatar picker** — themed emoji groups + vector icons for kids who want a non-cartoon identity.
+- **Roster-based student login** — teachers can pre-create a roster; students sign in with a short PIN — no Google account, no email required.
+- **Interactive worksheets** — assign self-paced worksheets; attempts are recorded and surfaced in the teacher dashboard.
+- **Certificate v2** — class certificates now include a "words mastered" stat.
+- **Friendly soft-exit for students** — accidental back-button presses get a confirmation instead of yanking kids out of a session.
+- **Email reliability** — magic-link and OTP emails now route through a production-grade SMTP provider.
 
 ---
 
 ## Features
 
-### 🎮 11 game modes
+### 🎮 Game modes
 
-Every mode has its own visual identity (colour theme, mechanic-specific layout, dedicated mode pill). The full list:
+Vocaband ships a deep library of game modes — each with its own visual theme, mechanic, and pacing:
 
-| Mode | Theme | Description |
-|---|---|---|
-| **Flashcards** | cyan | Self-paced review — true 3D flip card with English on the front, target language on the back |
-| **Classic** | emerald | See the English word, hear it pronounced, choose the correct translation |
-| **Fill-in-the-Blank** | lime | A sentence with one word missing — pick the word that fits (sentence card has a real visible slot box, not inline underscores) |
-| **Listening** | emerald | Audio only — no text shown. Trains the ear |
-| **Spelling** | violet | Hear the word, type it in English. Letter slots show the word's shape; positional feedback on submit |
-| **Matching** | amber | Two-column drag-line — drag a finger from a left tile to a right tile to draw a match (tap-tap fallback for non-touch) |
-| **Memory Flip** | pink | Cards face-down — flip two at a time to find pairs. Same word pool as Matching, classic memory mechanic |
-| **True / False** | rose ↔ emerald | Decide if the word–translation pair is correct. Big swipe-friendly buttons + paired colours for instant judgement |
-| **Word Scramble** | indigo | Tap-to-assemble letter tiles from a tray instead of typing. No on-screen keyboard eating half the phone screen |
-| **Reverse** | emerald | See the Hebrew/Arabic word, pick the English translation |
-| **Letter Sounds** | violet | Phonics — each letter lights up + sounds out, then type the full word |
-| **Sentence Builder** | teal | Listen to an audio sentence, then tap word tiles in order to build it. Big speaker hero so the audio prompt is unmissable |
+- **Flashcards** — self-paced review with a true 3D flip card.
+- **Classic** — see the English word, hear it, choose the correct translation.
+- **Fill-in-the-Blank** — a sentence with one word missing; pick the word that fits.
+- **Listening** — audio only, no text. Trains the ear.
+- **Spelling** — hear the word, type it. Letter slots reveal the word's shape; positional feedback on submit.
+- **Matching** — two-column drag-line, finger-drag to match (tap-tap fallback).
+- **Memory Flip** — face-down card flips, classic memory mechanic on the Matching pool.
+- **True / False** — decide if a word–translation pair is correct.
+- **Word Scramble** — tap-to-assemble letter tiles from a tray.
+- **Reverse** — see the Hebrew/Arabic word, pick the English translation.
+- **Letter Sounds** — phonics-driven: each letter lights up and sounds out.
+- **Sentence Builder** — listen to a sentence, tap word tiles in order to build it.
 
 Teachers can restrict which modes are available per assignment or Quick Play session.
 
@@ -135,53 +110,57 @@ Teachers can restrict which modes are available per assignment or Quick Play ses
 ### 👩‍🏫 For teachers
 
 - **Quick Play** — Generate a QR code for instant vocabulary sessions. Students scan and play; no login required. Live podium with leader-change celebration chime, kick-student control, and a final-results modal.
-- **Class management** — Create classes with shareable 6-character codes (WhatsApp-friendly). Rename classes and pick curated avatars any time without disturbing students or progress.
-- **Assignment builder** — Pick from thousands of curriculum words, upload a `.docx`, paste a list, snap a photo (OCR), or pick from **46 curated topic packs** (Animals, Food, Family, Weather, Sports, House Rooms, Opposites, At the Doctor, Money & Shopping, Daily Routine, In the City, Holidays & Celebrations, Tools & Gadgets, Question Words, Greetings, and 31 more).
-- **Saved templates** — Tick "Save as template" on any assignment and reuse the exact words + modes + settings in one tap from the dashboard.
-- **Saved word groups** — Saving a template also saves its words to "Saved Groups" so future assignments can pick them up instantly.
+- **Class management** — Create classes with shareable, WhatsApp-friendly codes. Rename classes and pick curated avatars any time without disturbing students or progress.
+- **Roster + PIN login** — Pre-create your students; they sign in with a short PIN. No Google accounts, no email collection.
+- **Assignment builder** — Pick from thousands of curriculum words, upload a `.docx`, paste a list, snap a photo (OCR), or pick from **dozens of curated topic packs** (Animals, Food, Family, Weather, Sports, House Rooms, Opposites, At the Doctor, Money & Shopping, Daily Routine, In the City, Holidays & Celebrations, Tools & Gadgets, Question Words, Greetings, and many more).
+- **Saved templates** — Tick "Save as template" on any assignment and reuse the exact words + modes + settings in one tap.
+- **Saved word groups** — Saving a template also saves its words to "Saved Groups" for instant reuse.
 - **Smart paste** — Paste words from any source. Exact matches auto-add; fuzzy matches show as click-to-add suggestions. Hebrew + Arabic paste supported.
 - **AI translation** — Custom teacher words are automatically translated to Hebrew and Arabic.
 - **Word families** — Toggle to see related forms (happy → happier, happiness) as suggestions.
-- **Mode control** — Choose which of the 10 modes each assignment includes.
-- **Sentence Builder config** — 4 difficulty levels with auto-generated sentences from your vocabulary.
-- **Approvals queue** — New students sign up with "Request Account"; teacher approves from the dashboard tray (auto-refreshed so new requests appear without reloading).
-- **Display-size control** — A / A / A buttons in the top bar scale the entire interface up to 138% for older eyes or projector view. Persists per device.
+- **Interactive worksheets** — Assign printable / interactive worksheets; student submissions stream back to the dashboard.
+- **Mode control** — Choose which modes each assignment includes.
+- **Sentence Builder config** — Multiple difficulty levels with auto-generated sentences from your vocabulary.
+- **Approvals queue** — New students sign up with "Request Account"; teacher approves from the dashboard tray (auto-refreshes).
+- **Analytics & gradebook** — Per-student trend charts, top struggling words, class-average comparisons, mistake patterns by mode.
+- **Class certificates** — One-click PDF certificates that include a "words mastered" stat and render Hebrew/Arabic names correctly.
+- **Display-size control** — A / A / A buttons scale the interface for older eyes or projector view. Persists per device.
 - **First-time guide** — Step-by-step onboarding tour highlights every dashboard feature for new teachers.
 
 ---
 
 ### 🎓 For students
 
-- **Join instantly** — Class code + name + emoji avatar. No email, no password. Or sign up with a Google OAuth or magic-link email — both work, both share saved word groups (saved-groups are keyed by email so identity follows the teacher across auth methods).
+- **Join instantly** — Class code + name + emoji avatar. No email, no password. Or sign up with Google OAuth, magic-link email, or a teacher-issued PIN — whatever your teacher configured.
 - **Returning or new** — Clear "I'm returning / I'm new" toggle on the login screen.
-- **Tabbed avatar picker** — ~30 emojis × 6 themed groups (Animals / Faces / Food / Sports / Space / Vehicles) plus a Geometric tab with 30 vector icons. Identity choice without collisions even when 30+ students join the same Quick Play session.
-- **Language choice** — Inline EN/HE/AR picker bar at the top of the mode-selection screen. Tap to switch instantly; every mode tile + tooltip + intro re-renders in the chosen language. Quick Play students also see a dedicated language-pick step right after entering their nickname + avatar.
-- **11 game modes** — Each assignment can include any subset of the 11.
-- **XP, streaks, badges** — "Perfect Score", "Streak Master", "XP Hunter" and more.
+- **Tabbed avatar picker** — Themed emoji groups (Animals / Faces / Food / Sports / Space / Vehicles) plus a Geometric tab with vector icons.
+- **Language choice** — Inline EN/HE/AR picker at the top of the mode-selection screen. Switches everything — tiles, tooltips, intros — instantly.
+- **A library of game modes** — Each assignment can include any subset.
+- **XP, streaks, badges** — "Perfect Score", "Streak Master", "XP Hunter", and more.
 - **Mode intro screens** — Brief instructions in English, Hebrew, or Arabic before each game.
-- **Cumulative session scoring** — Quick Play sessions accumulate points across multiple modes for a fair leaderboard. Score restored on rescan-the-QR (90-min TTL) so kids who walk away don't lose their lead.
+- **Cumulative session scoring** — Quick Play sessions accumulate points across multiple modes for a fair leaderboard. Score restored on rescan so kids who walk away don't lose their lead.
+- **Friendly back-button** — Accidental back-button presses prompt for confirmation instead of dropping you mid-session.
 - **Motivational feedback** — Audio + visual encouragement on correct answers.
 
 ---
 
 ### ⚡ Quick Play — QR scan, no login
 
-Teachers pick words, hit Launch, and students scan a QR code to join instantly. What's shipped:
+Teachers pick words, hit Launch, and students scan a QR code to join instantly:
 
-- 6-character session code + QR code side by side
-- All 11 game modes selectable per session (teacher's choice is respected end-to-end)
+- Short session code + QR code side by side
+- All game modes selectable per session (teacher's choice is respected end-to-end)
 - Real-time teacher monitor with live podium
-- **Join flow**: scan QR → pick avatar (tabbed picker, 6 themed emoji groups + 30 lucide vector icons) → enter nickname → pick UI language (EN/HE/AR) → join. Game UI from the moment of join is in the picked language.
-- **QR collapses to a 64px floating icon** when the teacher hides it, with a live-joined badge. Tap to re-expand.
-- **All teacher actions in one place** — Words list + End Session buttons live inside the QR card, no fixed footer competing for screen space
-- Leader-change celebration chime + auto-music shuffle every 2 minutes (8 background tracks, teacher-selectable theme)
-- Live connection indicator so teachers know if updates are instant or fallback
-- Polling fallback keeps the podium fresh even if real-time is degraded
-- Teacher can kick a student mid-session (top-3 podium kick affordance + rank-4+ inline kick)
-- **Same-nickname re-join** — if a student loses connection or accidentally closes the tab, rescanning the QR with the same nickname adopts their old slot with score preserved (server-side); the local "Welcome back!" banner offers Resume in-place for up to 90 minutes
-- Final-results screen for students — rank + top-3 mini podium highlighting "(you)"
-- Custom teacher-added words supported alongside curriculum words (with AI translation)
-- Per-session cumulative scoring — students keep their points across the modes they play
+- **Join flow**: scan → pick avatar (themed emoji groups + vector icons) → enter nickname → pick UI language → join.
+- QR collapses to a small floating icon when the teacher hides it, with a live-joined badge.
+- All teacher actions (Words list + End Session) live inside the QR card.
+- Leader-change celebration chime + auto-music shuffle every 2 minutes (multiple background tracks, teacher-selectable theme).
+- Live connection indicator + polling fallback so the podium stays fresh.
+- Teacher can kick a student mid-session.
+- **Same-nickname re-join** — if a student loses connection, rescanning with the same nickname adopts their old slot with score preserved.
+- Final-results screen for students — rank + top-3 mini podium highlighting "(you)".
+- Custom teacher-added words supported alongside curriculum words (with AI translation).
+- Per-session cumulative scoring across the modes played.
 
 ---
 
@@ -198,14 +177,14 @@ A real-time competition mode for whole classes. Students join their class channe
 
 ### 📊 Analytics that matter
 
-- **Reports dashboard** — Per-week trend chart, top struggling words across roster, plays-per-day histogram, attendance grid (✓/· per student per day for the last 14 days).
+- **Reports dashboard** — Per-week trend chart, top struggling words across roster, plays-per-day histogram, attendance grid.
 - **Performance matrix** — Every student × every assignment, color-coded by score. Click any cell to see details.
 - **Most-missed words** — Which words students get wrong most, with Hebrew/Arabic translations and which students missed each one.
-- **Students needing attention** — Auto-identifies students scoring below 70% or with high mistake rates.
-- **Score by game mode** — Bar chart of average performance per mode, so you know what to practice next.
+- **Students needing attention** — Auto-identifies students scoring below threshold or with high mistake rates.
+- **Score by game mode** — Bar chart of average performance per mode.
 - **Student profiles** — Score trend chart, class average comparison, most challenging words, full attempt history.
 - **Gradebook** — All students with expandable score details, mistake counts, and last-active dates.
-- **CSV + PDF export** — Full reports in either format. CSV is UTF-8 with BOM (renders Hebrew/Arabic correctly in Excel); PDF embeds Noto Sans fonts so non-Latin names render correctly with right-aligned RTL.
+- **CSV + PDF export** — UTF-8 CSV that renders Hebrew/Arabic correctly in Excel; PDF embeds Noto Sans fonts so non-Latin names render correctly with right-aligned RTL.
 
 ---
 
@@ -225,18 +204,17 @@ Vocaband meets **WCAG 2.0 Level AA** and **Israeli Standard IS 5568**:
 ## Privacy & security
 
 - **No personal data required for students** — class code + first name + emoji is enough.
-- **Teacher accounts are allowlisted** — applications are reviewed manually before access is granted.
+- **Teacher accounts are gated** — applications are reviewed manually before access is granted.
 - **Trilingual privacy policy** at [/privacy-policy](https://www.vocaband.com/privacy-policy) (English, Hebrew, Arabic).
 - **Vulnerability disclosure** — see [SECURITY.md](./SECURITY.md). Responsible disclosure encouraged; report privately to [contact@vocaband.com](mailto:contact@vocaband.com).
-- **Public audit summary (redacted)** — [SECURITY_AUDIT.md](./SECURITY_AUDIT.md).
 
-Specific operational and infrastructure details are intentionally omitted from public documentation. For commercial integrations or detailed security questions, please reach out via [contact@vocaband.com](mailto:contact@vocaband.com).
+Operational, infrastructure, and implementation details are intentionally kept out of public documentation. For commercial integrations or specific security questions under NDA, please reach out via [contact@vocaband.com](mailto:contact@vocaband.com).
 
 ---
 
 ## Getting started (users)
 
-**Teachers:** visit [www.vocaband.com](https://www.vocaband.com), sign in with Google (your email must be allowlisted — contact us at [contact@vocaband.com](mailto:contact@vocaband.com) for access), create a class, and share the 6-character code with your students.
+**Teachers:** visit [www.vocaband.com](https://www.vocaband.com), request access (your email must be approved — contact us at [contact@vocaband.com](mailto:contact@vocaband.com)), create a class, and share the class code with your students.
 
 **Students:** go to [www.vocaband.com](https://www.vocaband.com), tap "I'm a student", enter the class code your teacher gave you, pick your name (or tap "I'm new" to request a new account — your teacher approves it), then start playing.
 
@@ -254,6 +232,6 @@ Source-available for personal, educational, and non-commercial use. Commercial u
 
 ## Acknowledgments
 
-- Vocabulary lists derived from the **Israeli Ministry of Education English curriculum** (Sets 1–3)
+- Vocabulary lists derived from the **Israeli Ministry of Education English curriculum**
 - Hebrew + Arabic font support powered by Google's **Noto Sans** family
 - Every teacher and student who has tested the app and told us what to fix next

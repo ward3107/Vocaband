@@ -72,9 +72,6 @@ export interface WordInputStepStrings {
   allWords: string;
   addSelected: string;
   alreadyAdded: string;
-  aiGenerate: string;
-  aiGenerateSubtitle: string;
-  aiGenerateCard: string;
 
   // Translation editor (added Phase 2 i18n)
   editTranslations: string;
@@ -154,9 +151,6 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     allWords: "All words",
     addSelected: "Add selected words",
     alreadyAdded: "Already added",
-    aiGenerate: "AI Generate",
-    aiGenerateSubtitle: "Topic to words",
-    aiGenerateCard: "✨ Generate",
     editTranslations: "Edit Translations",
     enterHebrew: "Enter Hebrew translation",
     enterArabic: "Enter Arabic translation",
@@ -230,9 +224,6 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     allWords: "כל המילים",
     addSelected: "הוסף מילים נבחרות",
     alreadyAdded: "כבר נוסף",
-    aiGenerate: "יצירה ב-AI",
-    aiGenerateSubtitle: "נושא למילים",
-    aiGenerateCard: "✨ צור",
     editTranslations: "ערוך תרגומים",
     enterHebrew: "הקלידו תרגום בעברית",
     enterArabic: "הקלידו תרגום בערבית",
@@ -306,9 +297,6 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     allWords: "كل الكلمات",
     addSelected: "إضافة الكلمات المختارة",
     alreadyAdded: "تمت الإضافة بالفعل",
-    aiGenerate: "توليد بالذكاء",
-    aiGenerateSubtitle: "موضوع إلى كلمات",
-    aiGenerateCard: "✨ توليد",
     editTranslations: "تعديل الترجمات",
     enterHebrew: "أدخل الترجمة العبرية",
     enterArabic: "أدخل الترجمة العربية",

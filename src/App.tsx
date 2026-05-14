@@ -678,70 +678,6 @@ export default function App() {
   // word (Auto-translate button). Hook owns the cache + fetch plumbing.
   const { translateWord, translateWordsBatch } = useTranslate();
 
-  // AI Vocabulary Generator — calls /api/ai-generate-words endpoint
-  const handleAiGenerateWords = async (params: {
-    topic: string;
-    level: 'A1' | 'A2' | 'B1' | 'B2';
-    examplesToAnchor?: string;
-    skipCurriculumDuplicates: boolean;
-  }) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) {
-      showToast?.('Authentication required', 'error');
-      throw new Error('No auth token');
-    }
-
-    const response = await fetch('/api/ai-generate-words', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      const isPaywall = response.status === 403 && error.error === 'ai_requires_pro';
-      // Prefer the human-readable `message` (e.g. paywall text) over the
-      // machine `error` code when both are present.
-      const msg = error.message || error.error || 'AI generation failed';
-      // Surface the paywall toast (with Upgrade button) directly here
-      // so the action is shown regardless of how the caller handles the
-      // re-thrown Error.
-      if (isPaywall) showPaywallToast(msg);
-      throw new Error(msg);
-    }
-
-    const data = await response.json();
-
-    // Mark curriculum words by checking against ALL_WORDS
-    const curriculumWords = new Map(
-      ALL_WORDS.map(w => [w.english.toLowerCase(), w])
-    );
-
-    return data.words.map((w: {
-      english: string;
-      hebrew: string;
-      arabic: string;
-      example?: string;
-    }) => {
-      const curriculumMatch = curriculumWords.get(w.english.toLowerCase());
-      if (curriculumMatch) {
-        return {
-          ...w,
-          isFromCurriculum: true,
-          curriculumId: curriculumMatch.id,
-        };
-      }
-      return {
-        ...w,
-        isFromCurriculum: false,
-      };
-    });
-  };
-
   // AI Lesson Generator — calls /api/ai-generate-lesson endpoint
   const handleGenerateLesson = async (params: {
     words: Array<{ english: string; hebrew: string; arabic: string }>;
@@ -1924,6 +1860,27 @@ export default function App() {
           // actually see — they can click "Start Learning" or "Teacher
           // Login" to jump back to their dashboard if they want.
           setLoading(false);
+        } else if (!session?.user) {
+          // FALLBACK: no session here means we're logged out. The
+          // INITIAL_SESSION event fires shortly after with the same data
+          // and its handler clears loading — but on slow mobile networks
+          // (and specifically after a logout-triggered location.replace)
+          // that event can be delayed past the 20s safety timeout, leaving
+          // the teacher staring at a spinner. Clear loading here too, but
+          // only when no OAuth callback or saved-student handoff is in
+          // play (those paths manage their own loading state inside the
+          // INITIAL_SESSION branch and we mustn't clobber them).
+          const isOAuthCallback =
+            window.location.search.includes("code=") ||
+            window.location.hash.includes("access_token=");
+          const hasOAuthFlag =
+            sessionStorage.getItem('oauth_session_ready') ||
+            sessionStorage.getItem('oauth_exchange_failed');
+          const savedStudent = localStorage.getItem('vocaband_student_login');
+          const savedPending = sessionStorage.getItem('vocaband_pending_approval');
+          if (!isOAuthCallback && !hasOAuthFlag && !savedStudent && !savedPending) {
+            setLoading(false);
+          }
         }
       } catch { /* getSession failed — let onAuthStateChange handle it */ }
     })();
@@ -2003,6 +1960,14 @@ export default function App() {
         // into the logged-out experience (otherwise pad entries from
         // the previous session would still block navigation).
         try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
+        // Clear loading + swap the SPA view BEFORE the hard reload so React
+        // flushes the post-logout tree to the screen first. Without this
+        // ordering, window.location.replace() pre-empts the pending state
+        // updates and the teacher sees a stuck spinner from the previous
+        // page until the new document finishes loading (the "endless
+        // loading after logout" report).
+        setLoading(false);
+        setView(postLogoutView);
         // Don't redirect Quick Play students — they don't need auth
         if (!quickPlaySessionParam) {
           // Hard reload after the SPA route swap to drop every piece of
@@ -2014,15 +1979,13 @@ export default function App() {
           // session change.  Replacing the URL clears the query
           // (?assignment=... etc) so a stale assignment can't be picked
           // up by the bootstrap effects on first paint.
-          setView(postLogoutView);
-          try {
-            // Students land on /student (handled by the initial-view
-            // resolver above), teachers/guests on the marketing root.
-            const target = wasStudent ? '/student' : '/';
-            window.location.replace(target);
-          } catch {}
+          // Defer to next tick so the state updates above commit before
+          // the page unloads — same reason as setLoading(false) ordering.
+          const target = wasStudent ? '/student' : '/';
+          setTimeout(() => {
+            try { window.location.replace(target); } catch {}
+          }, 0);
         }
-        setLoading(false);
       } else if (event === 'INITIAL_SESSION') {
         // No session exists — user needs to log in.
         // Exception: if the URL has an OAuth code (?code=) or implicit token
@@ -2741,6 +2704,11 @@ export default function App() {
       show={showExitConfirmModal}
       onStay={() => setShowExitConfirmModal(false)}
       onLeave={handleExitConfirmLeave}
+      student={
+        user?.role === 'student' && !user.isGuest
+          ? { name: user.displayName || '', classCode: user.classCode ?? null }
+          : null
+      }
     />
   );
 
@@ -3167,14 +3135,10 @@ export default function App() {
           }}
           onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
           onWorksheetResultsClick={activeVoca === "hebrew" ? undefined : () => setView("worksheet-attempts")}
-          onClassShowClick={() => { setClassShowAssignment(null); setView("class-show"); }}
           onProjectAssignmentToClass={(a) => {
             setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("class-show");
           }}
-          onWorksheetClick={() => { setWorksheetAssignment(null); setView("worksheet"); }}
-          onVocabagrutClick={() => { setView("vocabagrut"); }}
-          onHotSeatClick={() => { setView("hot-seat"); }}
           onPrintAssignmentWorksheet={(a) => {
             setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
             setView("worksheet");
@@ -3504,8 +3468,28 @@ export default function App() {
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
         isProUser={isPro(user)}
-        onAiGenerateWords={handleAiGenerateWords}
         onGenerateLesson={handleGenerateLesson}
+        // Activity-type tabs at the top of the wizard.  When the
+        // teacher picks a non-Assignment tab, close the wizard and
+        // open the chosen tool's view with this class preselected.
+        // The existing class-aware entry points
+        // (setClassShowAssignment / setWorksheetAssignment) take an
+        // assignment-shaped object — for the empty-state launch we
+        // pass null so the tool opens to its own picker UI but with
+        // the class name pre-filled via selectedClass.
+        onSwitchActivity={(type) => {
+          if (type === 'class-show') {
+            setClassShowAssignment(null);
+            setView('class-show');
+          } else if (type === 'worksheet') {
+            setWorksheetAssignment(null);
+            setView('worksheet');
+          } else if (type === 'hot-seat') {
+            setView('hot-seat');
+          } else if (type === 'vocabagrut') {
+            setView('vocabagrut');
+          }
+        }}
       />
       </LazyWrapper>
     );
@@ -3774,12 +3758,6 @@ export default function App() {
         onSaveTemplate={savedTasks.save}
         initialSelectedWords={quickPlayInitialWords}
         initialSelectedModes={quickPlayInitialModes}
-        // use2026WordInput + OCR/DOCX handlers + custom-words state make
-        // Quick Play's step 1 look and behave identically to Assignment's.
-        // Without these the QP teacher got the older WordInputStep UI
-        // (just paste + topics) while assignment teachers got the richer
-        // 2026 redesign (library, OCR photo, DOCX upload, custom words).
-        use2026WordInput={true}
         onOcrUpload={handleOcrUpload}
         isOcrProcessing={isOcrProcessing}
         ocrProgress={ocrProgress}
@@ -3865,7 +3843,6 @@ export default function App() {
         showToast={showToast}
         onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
         onTranslateWord={translateWord}
-        onAiGenerateWords={handleAiGenerateWords}
         onGenerateLesson={handleGenerateLesson}
         topicPacks={TOPIC_PACKS}
         user={user}
@@ -3957,7 +3934,6 @@ export default function App() {
             onTranslateWord: translateWord,
             onTranslateBatch: translateWordsBatch,
             onOcrUpload: onPickerOcrUpload,
-            onAiGenerateWords: handleAiGenerateWords,
             topicPacks: TOPIC_PACKS,
             // savedGroups: pass [] for now — wiring useSavedWordGroups
             // through App-level state is a future PR.  WordPicker's
@@ -4026,7 +4002,6 @@ export default function App() {
             onTranslateWord: translateWord,
             onTranslateBatch: translateWordsBatch,
             onOcrUpload: onPickerOcrUpload,
-            onAiGenerateWords: handleAiGenerateWords,
             topicPacks: TOPIC_PACKS,
             savedGroups: [],
             showToast,

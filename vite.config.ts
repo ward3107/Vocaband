@@ -6,8 +6,10 @@ import {defineConfig} from 'vite';
 // in dev) — kept as a comment so future edits don't re-import it.
 // import { cloudflare } from "@cloudflare/vite-plugin";
 import { VitePWA } from 'vite-plugin-pwa';
+import { visualizer } from 'rollup-plugin-visualizer';
 export default defineConfig(() => {
   const isTest = process.env.PLAYWRIGHT_TEST === 'true';
+  const analyze = process.env.ANALYZE === 'true';
   return {
     plugins: [
       react(),
@@ -52,6 +54,32 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
+          // Precache only the SPA shell — the JS/CSS chunks, HTML, and
+          // critical icons.  Excluded from precache:
+          //   - Heavy export-only vendor chunks (~2.6 MB combined raw).
+          //     jspdf / pptxgen / html2pdf / html2canvas* / exceljs all
+          //     fire only when a teacher clicks "Export to …" inside
+          //     ReportExportBar or the Gradebook export modal.  They're
+          //     already lazy-imported, so excluding them from precache
+          //     means the SW won't pre-fetch them on first visit — the
+          //     teacher's click triggers a one-time fetch instead.
+          //     90 %+ of teachers never click these buttons.
+          //   - stats.html — only emitted when ANALYZE=true.
+          //   - PDFs, MP4s, MP3s — explicit belt-and-suspenders even
+          //     though the default globPatterns wouldn't include them.
+          globIgnores: [
+            '**/node_modules/**/*',
+            '**/assets/jspdf*.js',
+            '**/assets/pptxgen*.js',
+            '**/assets/html2pdf*.js',
+            '**/assets/html2canvas*.js',
+            '**/assets/exceljs*.js',
+            '**/assets/mammoth*.js',
+            '**/*.pdf',
+            '**/*.mp4',
+            '**/*.mp3',
+            '**/stats.html',
+          ],
           // Clean up any caches left behind by the previous (broken)
           // SW so returning users don't carry stale entries forward.
           cleanupOutdatedCaches: true,
@@ -229,7 +257,21 @@ export default defineConfig(() => {
             },
             {
               // Fonts + small images.  CacheFirst with a generous TTL.
-              urlPattern: ({ request }) => ['font', 'image'].includes(request.destination),
+              //
+              // Scope intentionally limited to same-origin + fonts.gstatic.com.
+              // Previously this matched ANY image destination, which meant
+              // third-party icons (e.g. ssl.gstatic.com/ui/v1/icons/common/x_8px.png
+              // loaded by Google Sign-In) hit the SW's fetch path.  CSP
+              // `connect-src` doesn't allowlist those hosts (correctly — we
+              // don't make API calls there), so workbox's fetch was blocked,
+              // which then cascaded into "IDBDatabase: The database connection
+              // is closing" errors as the cache-put plugin spammed
+              // updateTimestamp against an aborted transaction.  Leaving the
+              // request unhandled lets the browser fetch it directly under
+              // `img-src 'self' data: blob: https:`, which permits it.
+              urlPattern: ({ request, url, sameOrigin }) =>
+                ['font', 'image'].includes(request.destination) &&
+                (sameOrigin || url.hostname === 'fonts.gstatic.com'),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'vocaband-media',
@@ -265,12 +307,31 @@ export default defineConfig(() => {
         },
       })] : []),
       tailwindcss(),
+      // Bundle analyzer — opt-in via ANALYZE=true npm run build.
+      // Writes dist/stats.html with a treemap of every chunk so we can
+      // see what's shipping (heavy deps, dead exports, unintended top
+      // level imports).  Not in the default plugin list because the
+      // post-build write adds ~1s to every build.
+      ...(analyze ? [visualizer({
+        filename: 'dist/stats.html',
+        template: 'treemap',
+        gzipSize: true,
+        brotliSize: true,
+      })] : []),
       // Cloudflare plugin disabled — causing white screen in dev
       // ...(!isTest ? [cloudflare()] : []),
     ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // html2pdf.js bundles html2canvas v1.x, which doesn't support
+        // CSS oklch() colors — Tailwind v4's entire palette is oklch,
+        // so the certificate rendered as black-on-white nonsense in the
+        // PDF.  html2canvas-pro is a drop-in fork that handles oklch
+        // (plus oklab and color()) correctly.  Aliasing here means
+        // every internal `require('html2canvas')` resolves to the pro
+        // build without forking html2pdf.js itself.
+        'html2canvas': path.resolve(__dirname, 'node_modules/html2canvas-pro'),
       },
     },
     build: {
@@ -285,13 +346,22 @@ export default defineConfig(() => {
       },
     },
     server: {
-      port: 3000,
+      // Vite on 5173 (already on Supabase's OAuth allowlist) so Google
+      // OAuth can bounce back to localhost. 3000/3001 collide with
+      // sibling projects on this dev machine, so we settled on the
+      // Vite default and pushed the backend to 3002 below.
+      port: 5173,
       hmr: process.env.DISABLE_HMR !== 'true',
       host: true,
       proxy: {
         '/api': {
           target: 'http://localhost:3002',
           changeOrigin: true,
+        },
+        '/socket.io': {
+          target: 'http://localhost:3002',
+          changeOrigin: true,
+          ws: true,
         },
       },
     },

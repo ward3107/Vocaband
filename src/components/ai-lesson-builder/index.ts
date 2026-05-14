@@ -12,13 +12,3 @@ export type {
   QuestionTypeConfig,
   AiLessonBuilderProps,
 } from './AiLessonBuilder';
-
-// Vocabulary generator (Phase 1) - can be used standalone
-export { default as AiVocabularyModal } from './AiVocabularyModal';
-export type {
-  GeneratedWord,
-  AiVocabularyModalProps,
-  GenerateWordsParams,
-  ProficiencyLevel,
-} from './AiVocabularyModal';
-

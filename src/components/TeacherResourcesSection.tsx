@@ -36,7 +36,11 @@ interface PdfLangSpec {
 }
 
 const PDF_LANGUAGES: PdfLangSpec[] = [
-  { code: "en", name: "English", flag: "🇬🇧", dir: "ltr" },
+  // No flag for English — Windows renders 🇬🇧 as literal "GB"
+  // letters (no emoji font fallback for regional indicator pairs),
+  // which collided with the "EN" label sitting right next to it.
+  // The other regional flags render correctly across our target OSes.
+  { code: "en", name: "English", flag: "",   dir: "ltr" },
   { code: "he", name: "עברית",   flag: "🇮🇱", dir: "rtl" },
   { code: "ar", name: "العربية", flag: "🇸🇦", dir: "rtl" },
   { code: "ru", name: "Русский", flag: "🇷🇺", dir: "ltr" },
@@ -56,8 +60,7 @@ type CardKey =
   | "teacher-guide"
   | "quick-start"
   | "student-guide"
-  | "parent-letter"
-  | "privacy-sheet";
+  | "parent-letter";
 
 interface PdfCardSpec {
   key: CardKey;
@@ -67,7 +70,6 @@ interface PdfCardSpec {
   gradient: string;
   ring: string;
   iconBg: string;
-  draft?: boolean;
   /** Languages that have a generated PDF for this card.  Defaults to
    *  the global AVAILABLE_PDF_LANGUAGES when omitted — set explicitly
    *  for cards that ship fewer languages (e.g. school pitch is HE/AR
@@ -126,15 +128,6 @@ const TEACHER_CARDS: PdfCardSpec[] = [
     iconBg: "from-pink-400 to-fuchsia-500",
     hrefFor: (lang) => `/docs/parent-letter-${lang}.pdf`,
   },
-  {
-    key: "privacy-sheet",
-    emoji: "🛡️",
-    gradient: "from-slate-600 via-slate-700 to-slate-900",
-    ring: "ring-slate-300/40",
-    iconBg: "from-slate-400 to-slate-600",
-    draft: true,
-    hrefFor: (lang) => `/docs/privacy-sheet-${lang}.pdf`,
-  },
 ];
 
 function titleFor(card: PdfCardSpec, t: ReturnType<typeof useLocale>) {
@@ -144,7 +137,6 @@ function titleFor(card: PdfCardSpec, t: ReturnType<typeof useLocale>) {
     case "quick-start":    return t.quickStartTitle;
     case "student-guide":  return t.studentGuideTitle;
     case "parent-letter":  return t.parentLetterTitle;
-    case "privacy-sheet":  return t.privacyTitle;
   }
 }
 
@@ -155,7 +147,6 @@ function blurbFor(card: PdfCardSpec, t: ReturnType<typeof useLocale>) {
     case "quick-start":    return t.quickStartBlurb;
     case "student-guide":  return t.studentGuideBlurb;
     case "parent-letter":  return t.parentLetterBlurb;
-    case "privacy-sheet":  return t.privacyBlurb;
   }
 }
 
@@ -287,16 +278,9 @@ const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRT
                   <span aria-hidden="true">{card.emoji}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
-                    <h3 className="text-base md:text-lg font-black leading-tight truncate">
-                      {title}
-                    </h3>
-                    {card.draft && (
-                      <span className="px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-950 text-[9px] font-black uppercase tracking-widest shrink-0">
-                        {t.privacyDraftPill}
-                      </span>
-                    )}
-                  </div>
+                  <h3 className="text-base md:text-lg font-black leading-tight truncate">
+                    {title}
+                  </h3>
                   <p className="text-white/80 text-xs leading-snug line-clamp-2 mt-0.5">
                     {blurb}
                   </p>
@@ -338,7 +322,9 @@ const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRT
                         isCurrent && available ? "ring-2 ring-white/70" : "ring-1 ring-white/15",
                       ].join(" ")}
                     >
-                      <span className="text-sm leading-none" aria-hidden="true">{lang.flag}</span>
+                      {lang.flag && (
+                        <span className="text-sm leading-none" aria-hidden="true">{lang.flag}</span>
+                      )}
                       <span className="uppercase tracking-wide" dir="ltr">{lang.code}</span>
                       {available ? (
                         <Download size={12} aria-hidden="true" className="opacity-90" />

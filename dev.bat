@@ -1,8 +1,8 @@
 @echo off
 echo Starting Vocaband dev servers...
 echo.
-echo Backend: http://localhost:3001
-echo Frontend: http://localhost:3000
+echo Backend: http://localhost:3002
+echo Frontend: http://localhost:5173
 echo.
 echo Press Ctrl+C to stop both servers
 echo.

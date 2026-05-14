@@ -86,20 +86,6 @@ export interface CreateAssignmentWizardProps {
   /** Effective Pro plan flag — gates AI sentence generation in
    *  ConfigureStep.  Forwarded straight through to SetupWizard. */
   isProUser?: boolean;
-  /** AI vocabulary generation — used by the AI Lesson Builder in SetupWizard. */
-  onAiGenerateWords?: (params: {
-    topic: string;
-    level: 'A1' | 'A2' | 'B1' | 'B2';
-    examplesToAnchor?: string;
-    skipCurriculumDuplicates: boolean;
-  }) => Promise<Array<{
-    english: string;
-    hebrew: string;
-    arabic: string;
-    example?: string;
-    isFromCurriculum?: boolean;
-    curriculumId?: number;
-  }>>;
   /** AI lesson generator — generates reading text + questions from selected words. */
   onGenerateLesson?: (params: {
     words: Array<{ english: string; hebrew: string; arabic: string }>;
@@ -142,6 +128,11 @@ export interface CreateAssignmentWizardProps {
     sentenceDifficulty?: SentenceDifficulty;
     sentences?: string[];
   }) => void;
+
+  /** Wires the ActivityTypeTabs strip inside SetupWizard.  When the
+   *  teacher picks a non-Assignment tab, the parent (App.tsx) closes
+   *  the wizard and opens the chosen tool with this class preselected. */
+  onSwitchActivity?: (type: 'class-show' | 'worksheet' | 'hot-seat' | 'vocabagrut') => void;
 }
 
 export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
@@ -194,9 +185,9 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   showToast,
   onPlayWord,
   isProUser = false,
-  onAiGenerateWords,
   onGenerateLesson,
   onSaveTemplate,
+  onSwitchActivity,
 }) => {
   const { language, dir } = useLanguage();
   const t = teacherWizardsT[language];
@@ -395,7 +386,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       allWords={allWords}
       set1Words={set1Words}
       set2Words={set2Words}
-      use2026WordInput={true}
       onComplete={handleWizardComplete}
       onBack={handleWizardBack}
       onSaveTemplate={onSaveTemplate}
@@ -450,7 +440,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
         return result;
       }}
       onTranslateBatch={translateWordsBatch}
-      onAiGenerateWords={onAiGenerateWords}
       onGenerateLesson={onGenerateLesson}
       topicPacks={TOPIC_PACKS}
       onOcrUpload={handleOcrUpload}
@@ -460,6 +449,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       onDocxUpload={handleDocxUpload}
       customWords={customWords}
       onCustomWordsChange={setCustomWords}
+      onSwitchActivity={onSwitchActivity}
     />
   );
 };

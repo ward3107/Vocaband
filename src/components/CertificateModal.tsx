@@ -13,6 +13,12 @@
  * chain only loads when a teacher actually clicks Download (keeps the
  * Gradebook bundle slim).
  *
+ * The Vite alias in vite.config.ts re-routes html2pdf.js's internal
+ * `require('html2canvas')` to html2canvas-pro, which understands
+ * Tailwind v4's oklch() colours.  Without that alias the PDF came
+ * out monochrome / blank because the legacy html2canvas couldn't
+ * parse the new colour space and silently dropped every styled cell.
+ *
  * Localized in EN / HE / AR with proper RTL on the certificate body.
  *
  * Metrics shown (all derived from data the gradebook already has):
@@ -30,7 +36,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Download, Printer, X, Award, Sparkles } from "lucide-react";
+import { Download, Printer, X, Award, Share2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 
 interface CertificateModalProps {
@@ -59,85 +65,100 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
   modalSubtitle: string;
   download: string;
   print: string;
+  share: string;
   exporting: string;
+  sharing: string;
   certTitle: string;
+  certSubtitle: string;
   awardedTo: string;
   ofClass: (n: string) => string;
   body: string;
-  gamesPlayed: (n: number) => string;
-  avgScore: (p: number) => string;
-  wordsMastered: (n: number) => string;
+  gamesPlayed: string;
+  avgScore: string;
+  wordsMastered: string;
   issuedBy: string;
   yourTeacher: string;
   date: string;
   brand: string;
   brandTagline: string;
   closeAria: string;
+  signatureSeal: string;
 }> = {
   en: {
     modalTitle: 'Certificate of Achievement',
-    modalSubtitle: 'Print or save as PDF for parents.',
+    modalSubtitle: 'Print or share with parents.',
     download: 'Download PDF',
     print: 'Print',
+    share: 'Share',
     exporting: 'Preparing PDF…',
-    certTitle: 'Certificate of Achievement',
-    awardedTo: 'is awarded to',
+    sharing: 'Preparing…',
+    certTitle: 'Certificate',
+    certSubtitle: 'of Achievement',
+    awardedTo: 'is proudly presented to',
     ofClass: n => `of ${n}`,
-    body: 'for outstanding progress in English vocabulary.',
-    gamesPlayed: n => `${n} ${n === 1 ? 'game' : 'games'} played`,
-    avgScore: p => `${p}% average score`,
-    wordsMastered: n => `${n} ${n === 1 ? 'word' : 'words'} mastered`,
-    issuedBy: 'Issued by',
-    yourTeacher: 'Your teacher',
+    body: 'in recognition of outstanding progress and dedication to learning English vocabulary.',
+    gamesPlayed: 'games played',
+    avgScore: 'average score',
+    wordsMastered: 'words mastered',
+    issuedBy: 'Teacher',
+    yourTeacher: 'Your Teacher',
     date: 'Date',
     brand: 'Vocaband',
     brandTagline: 'English vocabulary for Israeli schools',
     closeAria: 'Close',
+    signatureSeal: 'Verified',
   },
   he: {
     modalTitle: 'תעודת הצטיינות',
-    modalSubtitle: 'הדפיסו או שמרו כ-PDF עבור ההורים.',
+    modalSubtitle: 'הדפיסו או שתפו עם ההורים.',
     download: 'הורד PDF',
     print: 'הדפס',
+    share: 'שיתוף',
     exporting: 'מכין PDF…',
-    certTitle: 'תעודת הצטיינות',
-    awardedTo: 'מוענקת ל',
+    sharing: 'מכין…',
+    certTitle: 'תעודת',
+    certSubtitle: 'הצטיינות',
+    awardedTo: 'מוענקת בגאווה ל',
     ofClass: n => `מכיתה ${n}`,
-    body: 'על התקדמות מצוינת באוצר מילים באנגלית.',
-    gamesPlayed: n => `${n} ${n === 1 ? 'משחק' : 'משחקים'}`,
-    avgScore: p => `${p}% ממוצע`,
-    wordsMastered: n => `${n} ${n === 1 ? 'מילה' : 'מילים'} נשלטו`,
-    issuedBy: 'הוענק על ידי',
+    body: 'הוקרה על התקדמות מצוינת והתמדה בלימוד אוצר מילים באנגלית.',
+    gamesPlayed: 'משחקים',
+    avgScore: 'ציון ממוצע',
+    wordsMastered: 'מילים שנשלטו',
+    issuedBy: 'המורה',
     yourTeacher: 'המורה שלך',
     date: 'תאריך',
     brand: 'Vocaband',
     brandTagline: 'אוצר מילים באנגלית לבתי ספר ישראליים',
     closeAria: 'סגירה',
+    signatureSeal: 'מאומת',
   },
   ar: {
     modalTitle: 'شهادة تقدير',
-    modalSubtitle: 'اطبع أو احفظ كملف PDF لأولياء الأمور.',
+    modalSubtitle: 'اطبع أو شارك مع أولياء الأمور.',
     download: 'تنزيل PDF',
     print: 'طباعة',
+    share: 'مشاركة',
     exporting: 'جارٍ تحضير الملف…',
-    certTitle: 'شهادة تقدير',
-    awardedTo: 'تُمنح إلى',
+    sharing: 'جارٍ التحضير…',
+    certTitle: 'شهادة',
+    certSubtitle: 'تقدير',
+    awardedTo: 'تُمنح بفخر إلى',
     ofClass: n => `من ${n}`,
-    body: 'لتقدمه المتميز في مفردات اللغة الإنجليزية.',
-    gamesPlayed: n => `${n} ${n === 1 ? 'لعبة' : 'ألعاب'}`,
-    avgScore: p => `${p}٪ متوسط النتيجة`,
-    wordsMastered: n => `${n} ${n === 1 ? 'كلمة' : 'كلمات'} متقنة`,
-    issuedBy: 'منحت من قبل',
+    body: 'تقديراً للتقدم المتميز والمثابرة في تعلّم مفردات اللغة الإنجليزية.',
+    gamesPlayed: 'الألعاب',
+    avgScore: 'متوسط النتيجة',
+    wordsMastered: 'كلمات متقنة',
+    issuedBy: 'المعلم',
     yourTeacher: 'معلمك',
     date: 'التاريخ',
     brand: 'Vocaband',
     brandTagline: 'مفردات الإنجليزية للمدارس الإسرائيلية',
     closeAria: 'إغلاق',
+    signatureSeal: 'موثّق',
   },
 };
 
 function safeFilename(s: string): string {
-  // Strip path-hostile chars; preserve unicode letters / digits / spaces / dash.
   return s.replace(/[^\p{L}\d\s\-]/gu, "_").trim() || "certificate";
 }
 
@@ -154,9 +175,8 @@ export default function CertificateModal({
   const { language, dir } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
   const printRef = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState(false);
+  const [busy, setBusy] = useState<null | 'download' | 'share'>(null);
 
-  // Esc-to-close — mirrors ShareClassLinkModal's pattern.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -171,26 +191,91 @@ export default function CertificateModal({
     { day: 'numeric', month: 'long', year: 'numeric' },
   );
 
+  // Build the html2pdf chain once so download + share reuse the same
+  // config.  `pagebreak: { mode: ['avoid-all'] }` is the fix for the
+  // two-page PDF bug — html2pdf was splitting the certificate across
+  // pages because its automatic break detection thought the gold
+  // frame was a sensible boundary.  Forcing avoid-all keeps the
+  // whole certificate on the first page (it already fits A4).
+  const buildPdfBlob = async (): Promise<Blob | null> => {
+    if (!printRef.current) return null;
+    const html2pdf = (await import('html2pdf.js')).default;
+    // html2pdf's fluent API extends Promise via a Worker class, so
+    // awaiting it directly unwraps a Worker (not a Blob).  Drop into
+    // the raw worker chain and call .output('blob') after .save()
+    // would lose the buffer — use .outputPdf('blob') which is the
+    // documented escape hatch for "give me the PDF, don't save it".
+    // `pagebreak` isn't in html2pdf.js's TS types but is a documented
+    // runtime option — without `avoid-all` the certificate spills onto
+    // a second blank page on some Chrome versions.  Cast to bypass the
+    // narrow Html2PdfOptions surface.
+    const opts = {
+      margin: 0,
+      filename: `${safeFilename(studentName)}-certificate.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+      pagebreak: { mode: ['avoid-all'] },
+    };
+    const worker = html2pdf().from(printRef.current).set(opts as never);
+    return (await worker.outputPdf('blob')) as Blob;
+  };
+
   const handleDownload = async () => {
-    if (!printRef.current || exporting) return;
-    setExporting(true);
+    if (!printRef.current || busy) return;
+    setBusy('download');
     try {
-      // Dynamic import keeps html2pdf out of the Gradebook chunk —
-      // ~200kb worth of html2canvas + jsPDF only loads when a teacher
-      // actually clicks Download.
-      const html2pdf = (await import('html2pdf.js')).default;
-      await html2pdf()
-        .from(printRef.current)
-        .set({
-          margin: 0,
-          filename: `${safeFilename(studentName)}-certificate.pdf`,
-          image: { type: "jpeg", quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
-        })
-        .save();
+      const blob = await buildPdfBlob();
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${safeFilename(studentName)}-certificate.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
     } finally {
-      setExporting(false);
+      setBusy(null);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!printRef.current || busy) return;
+    setBusy('share');
+    try {
+      const blob = await buildPdfBlob();
+      if (!blob) return;
+      const filename = `${safeFilename(studentName)}-certificate.pdf`;
+      const file = new File([blob], filename, { type: 'application/pdf' });
+      // Web Share API Level 2 — works on iOS Safari, Android Chrome,
+      // PWAs.  Desktop browsers usually don't have canShare for files,
+      // so we fall through to a plain download there.
+      const canShare =
+        typeof navigator !== 'undefined' &&
+        typeof navigator.canShare === 'function' &&
+        navigator.canShare({ files: [file] });
+      if (canShare) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: t.modalTitle,
+            text: `${studentName} — ${t.modalTitle}`,
+          });
+          return;
+        } catch (err) {
+          // User cancelled the system share sheet — nothing to do.
+          if ((err as Error)?.name === 'AbortError') return;
+          // Real failure — fall through to download as a graceful
+          // fallback rather than leaving the teacher with nothing.
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -205,7 +290,7 @@ export default function CertificateModal({
     // closes), then clean up.  No double-render on screen because
     // `.vb-print-stack` is `display: none` outside @media print.
     const wrapper = document.createElement('div');
-    wrapper.className = 'vb-print-stack';
+    wrapper.className = 'vb-print-stack vb-cert-print';
     wrapper.appendChild(printRef.current.cloneNode(true));
     document.body.appendChild(wrapper);
     try {
@@ -223,7 +308,10 @@ export default function CertificateModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center px-4 py-6 bg-black/60 backdrop-blur-sm overflow-y-auto print:hidden"
+          // onClick on the backdrop (and any padding around the modal)
+          // closes — gives teachers a familiar "tap outside to dismiss"
+          // affordance without forcing them to find the small X.
+          className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center px-4 py-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto print:hidden"
           onClick={onClose}
           dir={dir}
         >
@@ -235,143 +323,253 @@ export default function CertificateModal({
             className="relative w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden bg-white"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal header — print:hidden so the PDF/print output
-                only contains the certificate body below */}
-            <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 py-4 text-white flex items-start justify-between gap-3 print:hidden">
+            {/* Modal header — navy/gold to match the diploma palette */}
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-6 py-4 text-white flex items-start justify-between gap-3 print:hidden">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.28em] text-white/70">
+                <p className="text-xs font-black uppercase tracking-[0.32em] text-amber-300/90">
                   {t.modalTitle}
                 </p>
-                <p className="text-sm text-white/85 mt-0.5">{t.modalSubtitle}</p>
+                <p className="text-sm text-white/75 mt-0.5">{t.modalSubtitle}</p>
               </div>
               <button
                 onClick={onClose}
                 type="button"
                 aria-label={t.closeAria}
-                className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors shrink-0"
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
                 style={{ touchAction: "manipulation" }}
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Certificate body — this is what html2pdf captures.
-                Designed as a self-contained card that prints cleanly
-                whether via the PDF export pipeline or window.print(). */}
-            <div className="p-4 sm:p-6 print:p-0">
+            {/* Certificate body — what html2pdf captures.  Designed as
+                a self-contained card that prints cleanly via the PDF
+                pipeline or window.print().  Navy + gold "diploma"
+                look: ivory parchment, double gold frame, large
+                medallion, two-tier serif headline, navy stat tiles. */}
+            <div className="p-4 sm:p-6 print:p-0 bg-gradient-to-b from-slate-50 to-slate-100">
               <div
                 ref={printRef}
-                className="relative bg-white text-stone-900 overflow-hidden"
+                className="vb-certificate relative text-slate-900 overflow-hidden mx-auto"
                 style={{
-                  // A4 portrait aspect ratio (210:297 ≈ 0.707).  Fixed
-                  // aspect keeps the on-screen preview matching the
-                  // PDF output so what teachers see is what prints.
                   aspectRatio: '210 / 297',
                   width: '100%',
+                  maxWidth: '720px',
                   fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif',
+                  backgroundColor: '#fffaf0',
+                  backgroundImage:
+                    'radial-gradient(ellipse at top, rgba(217, 119, 6, 0.12) 0%, transparent 55%), ' +
+                    'radial-gradient(ellipse at bottom, rgba(217, 119, 6, 0.08) 0%, transparent 60%)',
                 }}
               >
-                {/* Decorative gradient border via inset shadow */}
+                {/* Sunburst behind the medallion — pale gold radial
+                    rays from the centre, fades to nothing well before
+                    the frame so it doesn't fight with the border. */}
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    background:
-                      'linear-gradient(135deg, #fef3c7 0%, #fff 30%, #fff 70%, #fef3c7 100%)',
+                    backgroundImage:
+                      'repeating-conic-gradient(from 0deg, rgba(217, 119, 6, 0.06) 0deg 4deg, transparent 4deg 12deg)',
+                    maskImage:
+                      'radial-gradient(circle at 50% 38%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 25%, transparent 55%)',
+                    WebkitMaskImage:
+                      'radial-gradient(circle at 50% 38%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 25%, transparent 55%)',
+                  }}
+                />
+
+                {/* Outer + inner gold frames */}
+                <div
+                  className="absolute inset-3 rounded-md pointer-events-none"
+                  style={{
+                    border: '6px solid #c08719',
+                    boxShadow: 'inset 0 0 0 2px #fffaf0, inset 0 0 0 3px #c08719',
                   }}
                 />
                 <div
-                  className="absolute inset-3 border-[3px] rounded-lg pointer-events-none"
-                  style={{ borderColor: '#d97706' }}
-                />
-                <div
-                  className="absolute inset-5 border rounded pointer-events-none"
-                  style={{ borderColor: '#f59e0b' }}
+                  className="absolute inset-7 rounded-sm pointer-events-none"
+                  style={{ border: '1px solid #c08719' }}
                 />
 
+                {/* Corner medallions — small gilt circles at each
+                    inside corner of the frame */}
+                {[
+                  { top: '12px', left: '12px' },
+                  { top: '12px', right: '12px' },
+                  { bottom: '12px', left: '12px' },
+                  { bottom: '12px', right: '12px' },
+                ].map((pos, i) => (
+                  <div
+                    key={i}
+                    className="absolute w-6 h-6 rounded-full pointer-events-none"
+                    style={{
+                      ...pos,
+                      background: 'radial-gradient(circle, #f5c97a 0%, #c08719 60%, #8a5a08 100%)',
+                      boxShadow: '0 0 0 2px #fffaf0, 0 0 0 3px #c08719',
+                    }}
+                  />
+                ))}
+
                 {/* Content stack */}
-                <div className="relative h-full flex flex-col items-center justify-between px-[6%] py-[7%] text-center" dir={dir}>
-                  {/* Top — brand */}
+                <div
+                  className="relative h-full flex flex-col items-center justify-between text-center"
+                  style={{ padding: '9% 8% 7%' }}
+                  dir={dir}
+                >
+                  {/* Top — brand wordmark in a slim navy strip */}
                   <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="text-amber-600" size={20} />
-                      <span className="text-xs sm:text-sm font-black uppercase tracking-[0.32em] text-amber-700">
-                        {t.brand}
-                      </span>
-                      <Sparkles className="text-amber-600" size={20} />
-                    </div>
-                    <p className="text-[10px] sm:text-xs text-stone-500 font-semibold">
+                    <p
+                      className="text-[10px] sm:text-xs font-black uppercase tracking-[0.45em] text-slate-700"
+                      style={{ fontFamily: '"Inter", sans-serif' }}
+                    >
+                      {t.brand}
+                    </p>
+                    <div
+                      className="mt-1 w-12 h-px"
+                      style={{ background: 'linear-gradient(to right, transparent, #c08719, transparent)' }}
+                    />
+                    <p className="text-[9px] sm:text-[10px] text-slate-500 font-semibold mt-1 italic">
                       {t.brandTagline}
                     </p>
                   </div>
 
-                  {/* Middle — headline + body */}
+                  {/* Middle — medallion + headline + name */}
                   <div className="flex-1 flex flex-col items-center justify-center w-full">
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md mb-3 sm:mb-4">
-                      <Award size={28} className="text-white" />
+                    {/* Layered medallion with ribbon tails */}
+                    <div className="relative mb-3 sm:mb-4">
+                      <div
+                        className="absolute -inset-2 rounded-full opacity-40"
+                        style={{
+                          background: 'radial-gradient(circle, #f5c97a 0%, transparent 70%)',
+                        }}
+                      />
+                      <div
+                        className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center"
+                        style={{
+                          background: 'radial-gradient(circle at 30% 30%, #fde68a 0%, #c08719 70%, #7c4a08 100%)',
+                          boxShadow:
+                            '0 0 0 3px #fffaf0, 0 0 0 5px #c08719, 0 8px 16px -4px rgba(124, 74, 8, 0.4)',
+                        }}
+                      >
+                        <Award size={40} className="text-white drop-shadow" />
+                      </div>
+                      {/* Ribbon tails */}
+                      <div
+                        className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-12 h-6 pointer-events-none"
+                        style={{
+                          background:
+                            'linear-gradient(135deg, #c08719 0%, #c08719 45%, transparent 45%), ' +
+                            'linear-gradient(225deg, #c08719 0%, #c08719 45%, transparent 45%)',
+                          backgroundSize: '50% 100%',
+                          backgroundPosition: 'left top, right top',
+                          backgroundRepeat: 'no-repeat',
+                          clipPath: 'polygon(0 0, 50% 0, 50% 100%, 25% 80%, 0 100%, 50% 0, 50% 100%, 75% 80%, 100% 100%, 100% 0)',
+                        }}
+                      />
                     </div>
+
+                    {/* Two-tier serif headline */}
                     <h1
-                      className="text-2xl sm:text-4xl font-black tracking-tight text-stone-900 mb-4 sm:mb-6"
-                      style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                      className="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 leading-[1.05]"
+                      style={{ fontFamily: '"Playfair Display", "Georgia", serif' }}
                     >
                       {t.certTitle}
                     </h1>
-                    <p className="text-xs sm:text-sm text-stone-600 mb-2">{t.awardedTo}</p>
                     <h2
-                      className="text-3xl sm:text-5xl font-black text-amber-700 mb-1 break-words max-w-full px-2"
-                      style={{ fontFamily: '"Playfair Display", Georgia, serif', lineHeight: 1.1 }}
+                      className="text-xl sm:text-2xl font-bold tracking-[0.18em] uppercase mt-1 mb-4 sm:mb-5"
+                      style={{ fontFamily: '"Playfair Display", "Georgia", serif', color: '#c08719' }}
+                    >
+                      {t.certSubtitle}
+                    </h2>
+
+                    <p
+                      className="text-xs sm:text-sm text-slate-600 mb-2"
+                      style={{ fontFamily: '"Playfair Display", "Georgia", serif', fontStyle: 'italic' }}
+                    >
+                      {t.awardedTo}
+                    </p>
+
+                    {/* Student name — huge gold script with flourish */}
+                    <h3
+                      className="font-black break-words max-w-full px-2"
+                      style={{
+                        fontFamily: '"Playfair Display", "Georgia", serif',
+                        fontSize: 'clamp(2rem, 5.5vw, 3rem)',
+                        lineHeight: 1.05,
+                        color: '#8a5a08',
+                        textShadow: '0 1px 0 rgba(255, 255, 255, 0.6)',
+                      }}
                     >
                       {studentName}
-                    </h2>
-                    <p className="text-sm sm:text-base font-semibold text-stone-700 mb-4 sm:mb-6">
+                    </h3>
+                    <div
+                      className="mx-auto mt-2 w-32 sm:w-40 h-px"
+                      style={{ background: 'linear-gradient(to right, transparent, #c08719, transparent)' }}
+                    />
+
+                    <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-2 mb-3">
                       {t.ofClass(className)}
                     </p>
-                    <p className="text-xs sm:text-sm text-stone-600 max-w-md leading-relaxed mb-4 sm:mb-6">
+                    <p
+                      className="text-xs sm:text-sm text-slate-600 max-w-md leading-relaxed mb-5 sm:mb-6 italic"
+                      style={{ fontFamily: '"Playfair Display", "Georgia", serif' }}
+                    >
                       {t.body}
                     </p>
 
-                    {/* Stats row.  Words-mastered is hidden for brand-new
-                        students (count = 0) so the certificate doesn't
-                        print a depressing "0 words mastered" headline. */}
-                    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-2">
-                      <div className="text-center">
-                        <p className="text-xl sm:text-3xl font-black text-amber-700 tabular-nums">{attempts}</p>
-                        <p className="text-[10px] sm:text-xs text-stone-500 font-bold uppercase tracking-wider mt-0.5">
-                          {t.gamesPlayed(attempts).replace(String(attempts), '').trim()}
-                        </p>
-                      </div>
-                      <div className="w-px h-10 sm:h-12 bg-amber-200" />
-                      <div className="text-center">
-                        <p className="text-xl sm:text-3xl font-black text-amber-700 tabular-nums">{avgScore}%</p>
-                        <p className="text-[10px] sm:text-xs text-stone-500 font-bold uppercase tracking-wider mt-0.5">
-                          {t.avgScore(avgScore).replace(`${avgScore}%`, '').trim()}
-                        </p>
-                      </div>
+                    {/* Stat tiles — navy bordered, gold numbers.
+                        Words-mastered is hidden for new students (0)
+                        so the certificate doesn't headline a sad
+                        "0 words mastered" stat. */}
+                    <div className="flex flex-wrap items-stretch justify-center gap-2 sm:gap-3 mt-2 w-full">
+                      <StatTile value={attempts} label={t.gamesPlayed} />
+                      <StatTile value={`${avgScore}%`} label={t.avgScore} />
                       {wordsMastered != null && wordsMastered > 0 && (
-                        <>
-                          <div className="w-px h-10 sm:h-12 bg-amber-200" />
-                          <div className="text-center">
-                            <p className="text-xl sm:text-3xl font-black text-amber-700 tabular-nums">{wordsMastered}</p>
-                            <p className="text-[10px] sm:text-xs text-stone-500 font-bold uppercase tracking-wider mt-0.5">
-                              {t.wordsMastered(wordsMastered).replace(String(wordsMastered), '').trim()}
-                            </p>
-                          </div>
-                        </>
+                        <StatTile value={wordsMastered} label={t.wordsMastered} />
                       )}
                     </div>
                   </div>
 
-                  {/* Bottom — signature + date */}
-                  <div className="w-full flex items-end justify-between text-left px-2" dir="ltr">
-                    <div className="flex flex-col items-start">
-                      <div className="w-32 sm:w-40 border-t border-stone-400 mb-1" />
-                      <p className="text-[10px] sm:text-xs text-stone-500 font-semibold">
-                        {t.issuedBy}: <span className="text-stone-700">{teacherName || t.yourTeacher}</span>
+                  {/* Bottom — signatures flanking a centre seal */}
+                  <div className="w-full flex items-end justify-between gap-4 px-2" dir="ltr">
+                    <div className="flex flex-col items-center flex-1">
+                      <p
+                        className="font-black text-slate-900 text-sm sm:text-base"
+                        style={{ fontFamily: '"Playfair Display", "Georgia", serif', fontStyle: 'italic' }}
+                      >
+                        {teacherName || t.yourTeacher}
+                      </p>
+                      <div className="w-full max-w-[140px] border-t border-slate-400 my-1" />
+                      <p className="text-[9px] sm:text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
+                        {t.issuedBy}
                       </p>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <div className="w-24 sm:w-32 border-t border-stone-400 mb-1" />
-                      <p className="text-[10px] sm:text-xs text-stone-500 font-semibold">
-                        {t.date}: <span className="text-stone-700">{today}</span>
+
+                    {/* Centre seal — small embossed disc */}
+                    <div
+                      className="vb-cert-seal relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shrink-0"
+                      style={{
+                        background: 'radial-gradient(circle at 30% 30%, #fde68a 0%, #c08719 70%, #7c4a08 100%)',
+                        boxShadow: '0 0 0 2px #fffaf0, 0 0 0 3px #c08719',
+                      }}
+                    >
+                      <span
+                        className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-white text-center leading-tight"
+                        style={{ fontFamily: '"Inter", sans-serif' }}
+                      >
+                        {t.signatureSeal}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col items-center flex-1">
+                      <p
+                        className="font-black text-slate-900 text-sm sm:text-base"
+                        style={{ fontFamily: '"Playfair Display", "Georgia", serif', fontStyle: 'italic' }}
+                      >
+                        {today}
+                      </p>
+                      <div className="w-full max-w-[140px] border-t border-slate-400 my-1" />
+                      <p className="text-[9px] sm:text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
+                        {t.date}
                       </p>
                     </div>
                   </div>
@@ -379,23 +577,38 @@ export default function CertificateModal({
               </div>
             </div>
 
-            {/* Action row */}
-            <div className="px-4 sm:px-6 pb-4 sm:pb-6 grid grid-cols-2 gap-2 print:hidden">
+            {/* Action row — Download / Share / Print */}
+            <div className="px-4 sm:px-6 pb-4 sm:pb-6 grid grid-cols-3 gap-2 print:hidden">
               <button
                 type="button"
                 onClick={handleDownload}
-                disabled={exporting}
+                disabled={busy !== null}
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-sm shadow-md hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] disabled:opacity-60 transition-all"
+                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 text-amber-200 font-black text-sm shadow-md hover:from-slate-800 hover:to-slate-700 active:scale-[0.98] disabled:opacity-60 transition-all"
               >
                 <Download size={16} />
-                {exporting ? t.exporting : t.download}
+                {busy === 'download' ? t.exporting : t.download}
+              </button>
+              <button
+                type="button"
+                onClick={handleShare}
+                disabled={busy !== null}
+                style={{
+                  touchAction: 'manipulation',
+                  background: 'linear-gradient(135deg, #c08719 0%, #f5c97a 50%, #c08719 100%)',
+                }}
+                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-white font-black text-sm shadow-md active:scale-[0.98] disabled:opacity-60 transition-all"
+                aria-label={t.share}
+              >
+                <Share2 size={16} />
+                {busy === 'share' ? t.sharing : t.share}
               </button>
               <button
                 type="button"
                 onClick={handlePrint}
+                disabled={busy !== null}
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-black text-sm active:scale-[0.98] transition-all"
+                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm active:scale-[0.98] disabled:opacity-60 transition-all"
               >
                 <Printer size={16} />
                 {t.print}
@@ -405,5 +618,32 @@ export default function CertificateModal({
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+interface StatTileProps {
+  value: number | string;
+  label: string;
+}
+
+function StatTile({ value, label }: StatTileProps) {
+  return (
+    <div
+      className="flex-1 min-w-[80px] max-w-[140px] rounded-md py-2 px-3 text-center"
+      style={{
+        backgroundColor: 'rgba(15, 23, 42, 0.04)',
+        border: '1px solid #1e293b',
+      }}
+    >
+      <p
+        className="text-xl sm:text-2xl font-black tabular-nums leading-none"
+        style={{ color: '#8a5a08', fontFamily: '"Playfair Display", "Georgia", serif' }}
+      >
+        {value}
+      </p>
+      <p className="text-[9px] sm:text-[10px] text-slate-600 font-bold uppercase tracking-wider mt-1">
+        {label}
+      </p>
+    </div>
   );
 }

@@ -80,19 +80,18 @@ export interface TeacherClassroomT {
   histogramSubtitle: string;
   histogramAxisPlays: string;
 
-  // ─── ReportExportBar ───────────────────────────────────────────
+  // ─── ReportExportBar (Excel + Report buttons) ──────────────────
   exportThisClass: string;
   exportEmpty: string;
   /** "{n} students · {m} plays · {className}". */
   exportSummary: (students: number, plays: number, className: string) => string;
-  csvButton: string;
-  pdfButton: string;
+  excelButton: string;
+  reportButton: string;
   exportNothingToast: string;
-  exportCsvSuccess: string;
-  exportCsvFailed: string;
-  exportPdfSuccess: string;
-  exportPdfFailed: string;
-  pdfCoverTitle: string;
+  exportExcelSuccess: string;
+  exportExcelFailed: string;
+  // Shared report/excel column labels (Excel sheets reuse these so the
+  // download names line up with the on-screen Report modal).
   pdfClassLabel: string;
   pdfExportedAt: string;
   /** "{n} students  ·  {m} plays  ·  avg {p}%  ·  roster {r}". */
@@ -109,12 +108,46 @@ export interface TeacherClassroomT {
   pdfColMode: string;
   pdfColScore: string;
   pdfColDate: string;
-  /** "Page {i} of {n}". */
-  pdfPageOf: (i: number, n: number) => string;
-  csvHeaderTitle: (className: string) => string;
-  csvHeaderExportedAt: (when: string) => string;
   allClasses: string;
   quickPlayLabel: string;
+
+  // Excel workbook sheet names + section headings
+  excelSheetOverview: string;
+  excelSheetGameHistory: string;
+  excelSheetWordMastery: string;
+  excelOverviewTitle: (className: string) => string;
+  excelColStatus: string;
+  excelColWord: string;
+  excelColTimesMissed: string;
+  excelColStudentsAffected: string;
+  excelStatusGreen: string;
+  excelStatusAmber: string;
+  excelStatusRed: string;
+
+  // ─── ClassReportModal ──────────────────────────────────────────
+  reportModalTitle: string;
+  reportModalSubtitle: (className: string) => string;
+  reportCloseAria: string;
+  reportEmpty: string;
+  reportSummaryStudents: string;
+  reportSummaryPlays: string;
+  reportSummaryAvg: string;
+  reportSummaryMistakes: string;
+  reportPerStudentTitle: string;
+  reportPerStudentSubtitle: string;
+  reportPerStudentAxis: string;
+  reportTopWordsTitle: string;
+  reportTopWordsSubtitle: string;
+  reportTopWordsAxis: string;
+  reportTopWordsEmpty: string;
+  reportStatusTableHeading: string;
+  reportStatusGreen: string;
+  reportStatusAmber: string;
+  reportStatusRed: string;
+  reportDownloadPdf: string;
+  reportPrintBtn: string;
+  reportPdfSuccess: string;
+  reportPdfFailed: string;
 
   // ─── AdaptiveDrawer ────────────────────────────────────────────
   closeDetailsAria: string;
@@ -179,14 +212,11 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
     exportThisClass: "Export this class",
     exportEmpty: "No gameplay in this class yet — exports unlock once students start playing.",
     exportSummary: (students, plays, className) => `${students} students · ${plays} plays · ${className}`,
-    csvButton: "CSV",
-    pdfButton: "PDF",
+    excelButton: "Excel",
+    reportButton: "Report",
     exportNothingToast: "Nothing to export yet — no gameplay in this class.",
-    exportCsvSuccess: "CSV exported",
-    exportCsvFailed: "CSV export failed — try again.",
-    exportPdfSuccess: "PDF exported",
-    exportPdfFailed: "PDF export failed — try again.",
-    pdfCoverTitle: "Vocaband Gradebook",
+    exportExcelSuccess: "Excel exported",
+    exportExcelFailed: "Excel export failed — try again.",
     pdfClassLabel: "Class",
     pdfExportedAt: "Exported",
     pdfHeadlineStats: (students, plays, avg, roster) => `${students} students  ·  ${plays} plays  ·  avg ${avg}%  ·  roster ${roster}`,
@@ -202,11 +232,44 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
     pdfColMode: "Mode",
     pdfColScore: "Score",
     pdfColDate: "Date",
-    pdfPageOf: (i, n) => `Page ${i} of ${n}`,
-    csvHeaderTitle: (className) => `Vocaband gradebook — ${className}`,
-    csvHeaderExportedAt: (when) => `Exported ${when}`,
     allClasses: "All classes",
     quickPlayLabel: "Quick Play",
+
+    excelSheetOverview: "Overview",
+    excelSheetGameHistory: "Game History",
+    excelSheetWordMastery: "Word Mastery",
+    excelOverviewTitle: (className) => `Vocaband Gradebook — ${className}`,
+    excelColStatus: "Status",
+    excelColWord: "Word",
+    excelColTimesMissed: "Times missed",
+    excelColStudentsAffected: "Students affected",
+    excelStatusGreen: "On track",
+    excelStatusAmber: "Watch",
+    excelStatusRed: "Needs support",
+
+    reportModalTitle: "Class report",
+    reportModalSubtitle: (className) => `Visual summary — ${className}`,
+    reportCloseAria: "Close report",
+    reportEmpty: "Nothing to chart yet — no gameplay in this class.",
+    reportSummaryStudents: "Students",
+    reportSummaryPlays: "Plays",
+    reportSummaryAvg: "Avg score",
+    reportSummaryMistakes: "Mistakes",
+    reportPerStudentTitle: "Average score per student",
+    reportPerStudentSubtitle: "Across every play in this class",
+    reportPerStudentAxis: "Avg %",
+    reportTopWordsTitle: "Words to review",
+    reportTopWordsSubtitle: "Most-missed words across the class",
+    reportTopWordsAxis: "Times missed",
+    reportTopWordsEmpty: "No missed words logged yet — perfect run!",
+    reportStatusTableHeading: "Per-student status",
+    reportStatusGreen: "On track",
+    reportStatusAmber: "Watch",
+    reportStatusRed: "Needs support",
+    reportDownloadPdf: "Download PDF",
+    reportPrintBtn: "Print",
+    reportPdfSuccess: "Report exported",
+    reportPdfFailed: "Report export failed — try again.",
 
     closeDetailsAria: "Close details",
   },
@@ -269,14 +332,11 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
     exportThisClass: "ייצא את הכיתה",
     exportEmpty: "אין עדיין משחקים בכיתה הזו — הייצוא ייפתח כשתלמידים יתחילו לשחק.",
     exportSummary: (students, plays, className) => `${students} תלמידים · ${plays} משחקים · ${className}`,
-    csvButton: "CSV",
-    pdfButton: "PDF",
+    excelButton: "Excel",
+    reportButton: "דוח",
     exportNothingToast: "אין מה לייצא — עוד לא היו משחקים בכיתה.",
-    exportCsvSuccess: "CSV יוצא",
-    exportCsvFailed: "ייצוא CSV נכשל — נסה שוב.",
-    exportPdfSuccess: "PDF יוצא",
-    exportPdfFailed: "ייצוא PDF נכשל — נסה שוב.",
-    pdfCoverTitle: "פנקס ציונים — Vocaband",
+    exportExcelSuccess: "Excel יוצא",
+    exportExcelFailed: "ייצוא Excel נכשל — נסה שוב.",
     pdfClassLabel: "כיתה",
     pdfExportedAt: "יוצא",
     pdfHeadlineStats: (students, plays, avg, roster) => `${students} תלמידים  ·  ${plays} משחקים  ·  ממוצע ${avg}%  ·  כיתה ${roster}`,
@@ -292,11 +352,44 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
     pdfColMode: "מצב",
     pdfColScore: "ציון",
     pdfColDate: "תאריך",
-    pdfPageOf: (i, n) => `עמוד ${i} מתוך ${n}`,
-    csvHeaderTitle: (className) => `פנקס ציונים Vocaband — ${className}`,
-    csvHeaderExportedAt: (when) => `יוצא ${when}`,
     allClasses: "כל הכיתות",
     quickPlayLabel: "משחק מהיר",
+
+    excelSheetOverview: "סקירה",
+    excelSheetGameHistory: "היסטוריית משחקים",
+    excelSheetWordMastery: "שליטה במילים",
+    excelOverviewTitle: (className) => `פנקס ציונים Vocaband — ${className}`,
+    excelColStatus: "סטטוס",
+    excelColWord: "מילה",
+    excelColTimesMissed: "החמצות",
+    excelColStudentsAffected: "תלמידים מושפעים",
+    excelStatusGreen: "במסלול",
+    excelStatusAmber: "במעקב",
+    excelStatusRed: "זקוק לתמיכה",
+
+    reportModalTitle: "דוח כיתה",
+    reportModalSubtitle: (className) => `סיכום ויזואלי — ${className}`,
+    reportCloseAria: "סגור דוח",
+    reportEmpty: "אין עדיין נתונים להצגה — הכיתה לא שיחקה.",
+    reportSummaryStudents: "תלמידים",
+    reportSummaryPlays: "משחקים",
+    reportSummaryAvg: "ציון ממוצע",
+    reportSummaryMistakes: "טעויות",
+    reportPerStudentTitle: "ציון ממוצע לכל תלמיד",
+    reportPerStudentSubtitle: "ממוצע של כל המשחקים בכיתה",
+    reportPerStudentAxis: "ממוצע %",
+    reportTopWordsTitle: "מילים לחזרה",
+    reportTopWordsSubtitle: "המילים שהוחמצו הכי הרבה בכיתה",
+    reportTopWordsAxis: "מספר החמצות",
+    reportTopWordsEmpty: "אין מילים שהוחמצו עדיין — כל הכבוד!",
+    reportStatusTableHeading: "סטטוס לפי תלמיד",
+    reportStatusGreen: "במסלול",
+    reportStatusAmber: "במעקב",
+    reportStatusRed: "זקוק לתמיכה",
+    reportDownloadPdf: "הורד PDF",
+    reportPrintBtn: "הדפס",
+    reportPdfSuccess: "הדוח יוצא",
+    reportPdfFailed: "ייצוא הדוח נכשל — נסה שוב.",
 
     closeDetailsAria: "סגור פרטים",
   },
@@ -359,14 +452,11 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
     exportThisClass: "تصدير هذا الفصل",
     exportEmpty: "لا توجد لعبات في هذا الفصل بعد — تُفتح الصادرات بمجرد بدء الطلاب باللعب.",
     exportSummary: (students, plays, className) => `${students} طلاب · ${plays} لعبات · ${className}`,
-    csvButton: "CSV",
-    pdfButton: "PDF",
+    excelButton: "Excel",
+    reportButton: "تقرير",
     exportNothingToast: "لا شيء للتصدير — لم تُلعب لعبات في الفصل.",
-    exportCsvSuccess: "تم تصدير CSV",
-    exportCsvFailed: "فشل تصدير CSV — حاول مرة أخرى.",
-    exportPdfSuccess: "تم تصدير PDF",
-    exportPdfFailed: "فشل تصدير PDF — حاول مرة أخرى.",
-    pdfCoverTitle: "كشف درجات Vocaband",
+    exportExcelSuccess: "تم تصدير Excel",
+    exportExcelFailed: "فشل تصدير Excel — حاول مرة أخرى.",
     pdfClassLabel: "الفصل",
     pdfExportedAt: "صُدِّر في",
     pdfHeadlineStats: (students, plays, avg, roster) => `${students} طلاب  ·  ${plays} لعبات  ·  متوسط ${avg}%  ·  قائمة ${roster}`,
@@ -382,11 +472,44 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
     pdfColMode: "النمط",
     pdfColScore: "الدرجة",
     pdfColDate: "التاريخ",
-    pdfPageOf: (i, n) => `الصفحة ${i} من ${n}`,
-    csvHeaderTitle: (className) => `كشف درجات Vocaband — ${className}`,
-    csvHeaderExportedAt: (when) => `صُدِّر ${when}`,
     allClasses: "كل الفصول",
     quickPlayLabel: "لعب سريع",
+
+    excelSheetOverview: "نظرة عامة",
+    excelSheetGameHistory: "سجل اللعبات",
+    excelSheetWordMastery: "إتقان الكلمات",
+    excelOverviewTitle: (className) => `كشف درجات Vocaband — ${className}`,
+    excelColStatus: "الحالة",
+    excelColWord: "الكلمة",
+    excelColTimesMissed: "مرات الخطأ",
+    excelColStudentsAffected: "طلاب متأثرون",
+    excelStatusGreen: "على المسار",
+    excelStatusAmber: "للمتابعة",
+    excelStatusRed: "بحاجة لدعم",
+
+    reportModalTitle: "تقرير الفصل",
+    reportModalSubtitle: (className) => `ملخص مرئي — ${className}`,
+    reportCloseAria: "إغلاق التقرير",
+    reportEmpty: "لا توجد بيانات للعرض بعد — لم يلعب أحد بعد.",
+    reportSummaryStudents: "الطلاب",
+    reportSummaryPlays: "اللعبات",
+    reportSummaryAvg: "متوسط الدرجة",
+    reportSummaryMistakes: "الأخطاء",
+    reportPerStudentTitle: "متوسط الدرجة لكل طالب",
+    reportPerStudentSubtitle: "عبر كل اللعبات في هذا الفصل",
+    reportPerStudentAxis: "المتوسط %",
+    reportTopWordsTitle: "كلمات للمراجعة",
+    reportTopWordsSubtitle: "الكلمات الأكثر خطأ في الفصل",
+    reportTopWordsAxis: "مرات الخطأ",
+    reportTopWordsEmpty: "لا أخطاء مُسجَّلة بعد — أداء مثالي!",
+    reportStatusTableHeading: "الحالة حسب الطالب",
+    reportStatusGreen: "على المسار",
+    reportStatusAmber: "للمتابعة",
+    reportStatusRed: "بحاجة لدعم",
+    reportDownloadPdf: "تنزيل PDF",
+    reportPrintBtn: "طباعة",
+    reportPdfSuccess: "تم تصدير التقرير",
+    reportPdfFailed: "فشل تصدير التقرير — حاول مرة أخرى.",
 
     closeDetailsAria: "إغلاق التفاصيل",
   },
