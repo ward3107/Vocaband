@@ -19,6 +19,14 @@ interface Props {
   exercises: Exercise[];
   targetLang: Language;
   onFinish: (results: ExerciseResult[]) => void;
+  // Resume support: start mid-plan with previously collected results.
+  // Both optional and treated as one-shot at mount — parent should
+  // remount the runner (key prop) if it needs to reset.
+  initialIdx?: number;
+  initialResults?: ExerciseResult[];
+  // Fires after every exercise completes so the parent can persist
+  // progress to localStorage between exercises.
+  onProgress?: (results: ExerciseResult[]) => void;
 }
 
 // Local lookup so each exercise doesn't pay the O(n) cost of filtering
@@ -39,15 +47,23 @@ const resolveWords = (ids: number[]): Word[] => {
   return out;
 };
 
-export const WorksheetRunner: React.FC<Props> = ({ exercises, targetLang, onFinish }) => {
-  const [idx, setIdx] = useState(0);
-  const [results, setResults] = useState<ExerciseResult[]>([]);
+export const WorksheetRunner: React.FC<Props> = ({
+  exercises,
+  targetLang,
+  onFinish,
+  initialIdx = 0,
+  initialResults = [],
+  onProgress,
+}) => {
+  const [idx, setIdx] = useState(initialIdx);
+  const [results, setResults] = useState<ExerciseResult[]>(initialResults);
 
   const current = exercises[idx];
   const words = useMemo(() => (current ? resolveWords(current.word_ids) : []), [current]);
 
   const handleComplete = (result: ExerciseResult) => {
     const next = [...results, result];
+    onProgress?.(next);
     if (idx + 1 < exercises.length) {
       setResults(next);
       setIdx(idx + 1);

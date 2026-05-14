@@ -18,7 +18,7 @@ import type {
   Language,
   WorksheetSettings,
 } from "../worksheet/types";
-import { computeWorksheetScore } from "../worksheet/types";
+import { computeWorksheetScore, extractMisses } from "../worksheet/types";
 
 interface WorksheetRow {
   slug: string;
@@ -58,6 +58,56 @@ const getOrCreateFingerprint = (): string | null => {
 // doesn't autofill one kid's name on another's worksheet.
 const nameKey = (slug: string) => `vocaband:worksheet:${slug}:name`;
 
+// In-progress save so a student who closes the tab mid-worksheet can
+// pick up where they left off.  Saved after every completed exercise
+// (not every keystroke — losing the in-flight exercise on a crash is
+// acceptable, losing 4 of 5 completed exercises is not).
+const progressKey = (slug: string) => `vocaband:worksheet:${slug}:progress`;
+
+interface SavedProgress {
+  studentName: string;
+  startedAt: number;
+  // The next index to play — results.length should equal exerciseIdx
+  // when saved.  Stored explicitly anyway for robustness if the
+  // schema evolves.
+  exerciseIdx: number;
+  results: ExerciseResult[];
+}
+
+const loadProgress = (slug: string): SavedProgress | null => {
+  try {
+    const raw = localStorage.getItem(progressKey(slug));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedProgress;
+    if (
+      !parsed.studentName ||
+      typeof parsed.exerciseIdx !== "number" ||
+      !Array.isArray(parsed.results)
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const saveProgress = (slug: string, state: SavedProgress) => {
+  try {
+    localStorage.setItem(progressKey(slug), JSON.stringify(state));
+  } catch {
+    /* storage blocked / quota — non-fatal */
+  }
+};
+
+const clearProgress = (slug: string) => {
+  try {
+    localStorage.removeItem(progressKey(slug));
+  } catch {
+    /* non-fatal */
+  }
+};
+
 interface Props {
   slug: string;
   onBack: () => void;
@@ -78,6 +128,13 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   const [results, setResults] = useState<ExerciseResult[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [savedProgress, setSavedProgress] = useState<SavedProgress | null>(() =>
+    loadProgress(slug),
+  );
+  // Resume-fed start index for the runner.  Only honoured on the
+  // first mount (the runner reads it via initialIdx) — clearing it
+  // afterwards has no effect on already-mounted runners.
+  const [resumeIdx, setResumeIdx] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,8 +179,34 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
     } catch {
       /* storage blocked — non-fatal */
     }
+    // Starting fresh — discard any prior in-progress run.
+    clearProgress(slug);
+    setResults([]);
+    setResumeIdx(0);
+    setSavedProgress(null);
     setStartedAt(Date.now());
     setStage("in-progress");
+  };
+
+  const handleResume = () => {
+    if (!savedProgress) return;
+    setStudentName(savedProgress.studentName);
+    setResults(savedProgress.results);
+    setResumeIdx(savedProgress.exerciseIdx);
+    setStartedAt(savedProgress.startedAt);
+    setStage("in-progress");
+  };
+
+  const handleProgress = (currentResults: ExerciseResult[]) => {
+    setResults(currentResults);
+    if (currentResults.length < exercises.length) {
+      saveProgress(slug, {
+        studentName,
+        startedAt: startedAt ?? Date.now(),
+        exerciseIdx: currentResults.length,
+        results: currentResults,
+      });
+    }
   };
 
   const handleFinish = async (allResults: ExerciseResult[]) => {
@@ -152,6 +235,10 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
         setStage("submit-error");
         return;
       }
+      // Successfully submitted — clear the in-progress save so a
+      // refresh of the results screen doesn't offer to "resume"
+      // a finished worksheet.
+      clearProgress(slug);
       setStage("done");
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Network error");
@@ -160,7 +247,10 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   };
 
   const handleRestart = () => {
+    clearProgress(slug);
     setResults([]);
+    setResumeIdx(0);
+    setSavedProgress(null);
     setSubmitError(null);
     setStartedAt(Date.now());
     setStage("in-progress");
@@ -190,6 +280,13 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   }
 
   if (stage === "name-entry") {
+    // Only offer to resume if the saved plan is still applicable —
+    // exercises.length must cover the saved index, otherwise we'd
+    // try to start past the end of a re-edited worksheet.
+    const canResume =
+      savedProgress !== null &&
+      savedProgress.exerciseIdx > 0 &&
+      savedProgress.exerciseIdx < exercises.length;
     return (
       <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
         <NameEntryCard
@@ -198,6 +295,16 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
           firstType={exercises[0]?.type ?? "matching"}
           initialName={studentName}
           onStart={handleStart}
+          resume={
+            canResume
+              ? {
+                  studentName: savedProgress.studentName,
+                  exerciseIdx: savedProgress.exerciseIdx,
+                  total: exercises.length,
+                  onResume: handleResume,
+                }
+              : null
+          }
         />
       </Shell>
     );
@@ -246,6 +353,9 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
         exercises={exercises}
         targetLang={targetLang}
         onFinish={handleFinish}
+        initialIdx={resumeIdx}
+        initialResults={results}
+        onProgress={handleProgress}
       />
     </Shell>
   );
@@ -274,7 +384,13 @@ const NameEntryCard: React.FC<{
   firstType: string;
   initialName: string;
   onStart: (name: string) => void;
-}> = ({ topicName, exerciseCount, firstType, initialName, onStart }) => {
+  resume: {
+    studentName: string;
+    exerciseIdx: number;
+    total: number;
+    onResume: () => void;
+  } | null;
+}> = ({ topicName, exerciseCount, firstType, initialName, onStart, resume }) => {
   const { language: iwvLang } = useLanguage();
   const [name, setName] = useState(initialName);
   const trimmed = name.trim();
@@ -289,38 +405,58 @@ const NameEntryCard: React.FC<{
         <p className="text-xs uppercase tracking-widest font-bold opacity-90">{subtitle}</p>
         <h1 className="text-2xl sm:text-3xl font-black mt-1">{topicName}</h1>
       </div>
-      <form
-        className="p-6 sm:p-8"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (trimmed) onStart(trimmed);
-        }}
-      >
-        <label htmlFor="student-name" className="block text-sm font-bold text-stone-700 mb-2">
-          What's your name?
-        </label>
-        <input
-          id="student-name"
-          type="text"
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={iwvLang === 'he' ? 'הקלידו את שמכם' : iwvLang === 'ar' ? 'اكتب اسمك' : 'Type your name'}
-          maxLength={60}
-          className="w-full px-4 py-3 rounded-xl border-2 border-stone-200 focus:border-violet-500 focus:outline-none font-bold text-stone-900 text-lg"
-        />
-        <p className="text-xs text-stone-500 mt-2">
-          Your teacher will see your name and your score.
-        </p>
-        <button
-          type="submit"
-          disabled={!trimmed}
-          className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition-all flex items-center justify-center gap-2"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+      <div className="p-6 sm:p-8">
+        {resume && (
+          <div className="mb-5 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4">
+            <p className="text-xs uppercase tracking-widest font-bold text-emerald-700 mb-1">
+              Continue where you left off
+            </p>
+            <p className="text-sm text-emerald-900 mb-3">
+              <span className="font-bold">{resume.studentName}</span> · exercise{" "}
+              {resume.exerciseIdx + 1} of {resume.total}
+            </p>
+            <button
+              type="button"
+              onClick={resume.onResume}
+              className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all"
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            >
+              Resume
+            </button>
+          </div>
+        )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (trimmed) onStart(trimmed);
+          }}
         >
-          Start worksheet
-        </button>
-      </form>
+          <label htmlFor="student-name" className="block text-sm font-bold text-stone-700 mb-2">
+            {resume ? "Or start over — what's your name?" : "What's your name?"}
+          </label>
+          <input
+            id="student-name"
+            type="text"
+            autoFocus={!resume}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={iwvLang === 'he' ? 'הקלידו את שמכם' : iwvLang === 'ar' ? 'اكتب اسمك' : 'Type your name'}
+            maxLength={60}
+            className="w-full px-4 py-3 rounded-xl border-2 border-stone-200 focus:border-violet-500 focus:outline-none font-bold text-stone-900 text-lg"
+          />
+          <p className="text-xs text-stone-500 mt-2">
+            Your teacher will see your name and your score.
+          </p>
+          <button
+            type="submit"
+            disabled={!trimmed}
+            className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition-all flex items-center justify-center gap-2"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          >
+            {resume ? "Start over" : "Start worksheet"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
@@ -356,6 +492,8 @@ const ResultsCard: React.FC<{
   onRestart: () => void;
 }> = ({ exercises, results, topicName, slug, studentName, submitError, onRestart }) => {
   const score = computeWorksheetScore(exercises, results);
+  const allAnswers = results.flatMap((r) => r.answers);
+  const misses = extractMisses(allAnswers);
   const tier =
     score.outOf100 >= 90
       ? "gold"
@@ -410,6 +548,36 @@ const ResultsCard: React.FC<{
             ))}
           </ul>
         </div>
+      )}
+
+      {misses.length > 0 && (
+        <details className="text-start max-w-sm mx-auto rounded-2xl border border-rose-200 bg-rose-50 p-4 mb-6">
+          <summary className="text-xs uppercase tracking-widest font-bold text-rose-700 cursor-pointer">
+            Words to study ({misses.length})
+          </summary>
+          <ul className="space-y-1.5 mt-3">
+            {misses.slice(0, 10).map((m) => (
+              <li key={m.word_id} className="flex items-start justify-between gap-2 text-sm">
+                <span className="font-bold text-stone-800 truncate" dir="ltr">
+                  {m.english}
+                </span>
+                <span className="text-stone-600 text-end shrink-0 max-w-[50%]" dir="auto">
+                  {m.translation}
+                  {m.note && (
+                    <span className="block text-[10px] uppercase tracking-widest font-bold text-rose-500">
+                      {m.note}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+            {misses.length > 10 && (
+              <li className="text-xs italic text-stone-500 pt-1 border-t border-rose-200">
+                …and {misses.length - 10} more
+              </li>
+            )}
+          </ul>
+        </details>
       )}
 
       {submitError ? (

@@ -131,3 +131,115 @@ export const computeWorksheetScore = (
     outOf100: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
   };
 };
+
+// One row in the "words to study" review section.  Deduplicated by
+// word_id so a word missed in two different exercises shows up once
+// with the worst note collapsed in.
+export interface MissedWord {
+  word_id: number;
+  english: string;
+  translation: string;
+  note?: string;
+}
+
+// Walk the flat answer list, pull out the ones that represent a
+// failed attempt, and dedupe by word_id.  Each exercise variant
+// surfaces a different label — handled in one place so the renderer
+// stays a simple list.
+export const extractMisses = (answers: Answer[]): MissedWord[] => {
+  const byId = new Map<number, MissedWord>();
+
+  const upsert = (m: MissedWord) => {
+    if (!byId.has(m.word_id)) byId.set(m.word_id, m);
+  };
+
+  for (const a of answers) {
+    switch (a.kind) {
+      case "quiz":
+        if (!a.is_correct) {
+          upsert({ word_id: a.word_id, english: a.prompt, translation: a.correct });
+        }
+        break;
+      case "matching":
+        if (a.mistakes_count > 0) {
+          upsert({
+            word_id: a.word_id,
+            english: a.english,
+            translation: a.translation,
+            note:
+              a.mistakes_count === 1
+                ? "1 miss"
+                : `${a.mistakes_count} misses`,
+          });
+        }
+        break;
+      case "letter_scramble":
+        if (a.attempts > 1) {
+          upsert({
+            word_id: a.word_id,
+            english: a.word,
+            translation: "",
+            note: `${a.attempts} tries`,
+          });
+        }
+        break;
+      case "listening_dictation":
+        if (!a.is_correct) {
+          upsert({ word_id: a.word_id, english: a.word, translation: a.typed || "—" });
+        }
+        break;
+      case "fill_blank":
+        if (!a.is_correct) {
+          upsert({ word_id: a.word_id, english: a.sentence, translation: a.typed || "—" });
+        }
+        break;
+      case "definition_match":
+        if (!a.is_correct) {
+          upsert({ word_id: a.word_id, english: a.word, translation: a.correct });
+        }
+        break;
+      case "synonym_antonym":
+        if (!a.is_correct) {
+          upsert({
+            word_id: a.word_id,
+            english: a.word,
+            translation: a.correct,
+            note: a.mode,
+          });
+        }
+        break;
+      case "cloze":
+        if (!a.is_correct) {
+          upsert({ word_id: a.word_id, english: a.sentence, translation: a.typed || "—" });
+        }
+        break;
+      case "sentence_building":
+        if (!a.is_correct) {
+          upsert({ word_id: a.word_id, english: a.target, translation: a.given || "—" });
+        }
+        break;
+      case "translation_typing":
+        if (!a.is_correct) {
+          upsert({ word_id: a.word_id, english: a.prompt, translation: a.correct });
+        }
+        break;
+      case "word_in_context":
+        if (!a.is_correct) {
+          upsert({ word_id: a.word_id, english: a.given_sentence, translation: "" });
+        }
+        break;
+      case "true_false":
+        if (!a.is_correct) {
+          upsert({
+            word_id: a.word_id,
+            english: a.statement,
+            translation: "",
+            note: a.correct ? "actually true" : "actually false",
+          });
+        }
+        break;
+    }
+  }
+
+  return Array.from(byId.values());
+};
