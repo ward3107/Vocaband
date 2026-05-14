@@ -30,7 +30,7 @@ import {
 import TopAppBar from "../components/TopAppBar";
 import { HelpIcon } from "../components/HelpTooltip";
 import CertificateModal from "../components/CertificateModal";
-import { supabase, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
+import { supabase, performUserLogout, type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
 import type { View } from "../core/views";
 import { buildWordIdSubjectMap, getDisplayLabel } from "../data/wordLookup";
 import { MASTERY_THRESHOLD } from "../constants/game";
@@ -522,7 +522,7 @@ export default function GradebookView({
           onBack={() => setView('teacher-dashboard')}
           userName={user?.displayName}
           userAvatar={user?.avatar}
-          onLogout={() => supabase.auth.signOut()}
+          onLogout={() => performUserLogout()}
         />
       )}
 
