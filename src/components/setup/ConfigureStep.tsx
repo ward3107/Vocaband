@@ -6,7 +6,7 @@ import {
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty, DIFFICULTY_CONFIG } from '../../constants/game';
 import { supabase } from '../../core/supabase';
-import { GAME_MODE_LEVELS, ALL_GAME_MODE_IDS, DEFAULT_ASSIGNMENT_MODE_IDS, WizardMode, AssignmentData, getGameModeConfig, DIFFICULTY_META, getModeDifficulty } from './types';
+import { ALL_GAME_MODE_IDS, DEFAULT_ASSIGNMENT_MODE_IDS, WizardMode, AssignmentData, getGameModeConfig, DIFFICULTY_META, getModeDifficulty, ASSIGNMENT_MODE_SECTIONS } from './types';
 import { DateTimePicker } from '../DateTimePicker';
 import AiLessonBuilder from '../ai-lesson-builder/AiLessonBuilder';
 import type { GeneratedLesson } from '../ai-lesson-builder/AiLessonBuilder';
@@ -435,119 +435,100 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           </button>
         </div>
 
-        {/* Difficulty legend — teachers see the same 1/2/3-star rating
-            their students will see on the mode picker, so picking
-            modes for an assignment they can mentally weight by level. */}
-        <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
-          {(['easy', 'medium', 'hard'] as const).map(tier => {
-            const m = DIFFICULTY_META[tier];
-            return (
-              <div
-                key={tier}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${m.badgeBg} ${m.badgeText}`}
-                title={m.description}
-              >
-                <span className="inline-flex items-center gap-0.5">
-                  {[0, 1, 2].map(i => (
-                    <Star key={i} size={10} strokeWidth={2}
-                      className={i < m.stars ? m.starColor : 'text-[var(--vb-border)]'}
-                      fill={i < m.stars ? 'currentColor' : 'none'}
-                    />
-                  ))}
-                </span>
-                {m.label}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Compact grid layout — 5 columns for all modes */}
-        <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 ${aiGeneratedLesson ? 'opacity-50 pointer-events-none' : ''}`}>
-          {Object.values(GAME_MODE_LEVELS).flat().map((gameMode) => {
-            const isSelected = selectedModes.includes(gameMode.id);
-            return (
-              <motion.button
-                key={gameMode.id}
-                onClick={() => toggleGameMode(gameMode.id)}
-                whileHover={{ scale: isSelected ? 1.05 : 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                className={`relative p-3 sm:p-4 rounded-2xl border-2 transition-all duration-300 text-center ${
-                  isSelected
-                    ? 'border-primary bg-gradient-to-br from-primary to-primary-dim shadow-xl shadow-primary/40 scale-105'
-                    : 'border-outline/20 bg-[var(--vb-surface-alt)] hover:border-primary/40 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 hover:shadow-md'
-                }`}
-              >
-                {/* Animated emoji with float animation */}
-                <motion.div
-                  className={`text-3xl sm:text-4xl mb-2 ${isSelected ? 'drop-shadow-lg' : ''}`}
-                  animate={isSelected ? 'bounce' : 'float'}
-                  transition={{ duration: 0.3 }}
-                >
-                  {gameMode.emoji}
-                </motion.div>
-                <div className={`text-xs sm:text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-[var(--vb-text-secondary)]'}`}>
-                  {gameMode.name}
-                </div>
-                {/* Star rating under the name — same 1/2/3 scale the
-                    student sees on their mode picker. */}
-                {(() => {
-                  const tier = getModeDifficulty(gameMode.id);
-                  const meta = DIFFICULTY_META[tier];
-                  return (
-                    <span className="inline-flex items-center gap-0.5 mt-1">
+        {/* Mode sections — ordered easy → hard, AI-powered band at the
+            bottom.  Each section reuses the difficulty badge as a section
+            header so it doubles as a legend (no separate legend strip
+            needed).  AI band uses fuchsia to match the AI Text Generator
+            tab styling. */}
+        <div className={`space-y-5 ${aiGeneratedLesson ? 'opacity-50 pointer-events-none' : ''}`}>
+          {ASSIGNMENT_MODE_SECTIONS.map((section) => (
+            <div key={section.id} className="space-y-2.5">
+              {/* Section header */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${section.badgeBg} ${section.badgeText}`}>
+                  {section.stars !== null ? (
+                    <span className="inline-flex items-center gap-0.5">
                       {[0, 1, 2].map(i => (
                         <Star key={i} size={10} strokeWidth={2}
-                          className={i < meta.stars ? (isSelected ? 'text-white' : meta.starColor) : (isSelected ? 'text-white/40' : 'text-[var(--vb-border)]')}
-                          fill={i < meta.stars ? 'currentColor' : 'none'}
+                          className={i < section.stars! ? section.starColor : 'text-[var(--vb-border)]'}
+                          fill={i < section.stars! ? 'currentColor' : 'none'}
                         />
                       ))}
                     </span>
-                  );
-                })()}
-                {isSelected && (
-                  <motion.div
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-                    className="absolute -top-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[var(--vb-surface)] flex items-center justify-center shadow-lg border-2 border-primary"
-                  >
-                    <Check size={14} className="text-primary" strokeWidth={3} />
-                  </motion.div>
-                )}
-                {/* Subtle glow effect for selected modes */}
-                {isSelected && (
-                  <motion.div
-                    className="absolute inset-0 bg-white/20 rounded-2xl"
-                    animate={{
-                      scale: [1, 1.05, 1],
-                      opacity: [0.3, 0.1, 0.3],
-                    }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                )}
-              </motion.button>
-            );
-          })}
-        </div>
+                  ) : (
+                    <Sparkles size={11} />
+                  )}
+                  {section.label}
+                </span>
+                <span className="text-[11px] text-[var(--vb-text-muted)]">{section.description}</span>
+              </div>
 
-        {/* Difficulty indicators (compact legend) */}
-        <div className="flex flex-wrap gap-4 text-xs text-[var(--vb-text-secondary)] pt-1">
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-            <span>{t.diffBeginner}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-violet-500"></div>
-            <span>{t.diffIntermediate}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-            <span>{t.diffAdvanced}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-            <span>{t.diffMastery}</span>
-          </div>
+              {/* Mode grid for this section */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {section.modes.map((gameMode) => {
+                  const isSelected = selectedModes.includes(gameMode.id);
+                  return (
+                    <motion.button
+                      key={gameMode.id}
+                      onClick={() => toggleGameMode(gameMode.id)}
+                      whileHover={{ scale: isSelected ? 1.05 : 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`relative p-3 sm:p-4 rounded-2xl border-2 transition-all duration-300 text-center ${
+                        isSelected
+                          ? 'border-primary bg-gradient-to-br from-primary to-primary-dim shadow-xl shadow-primary/40 scale-105'
+                          : 'border-outline/20 bg-[var(--vb-surface-alt)] hover:border-primary/40 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 hover:shadow-md'
+                      }`}
+                    >
+                      <motion.div
+                        className={`text-3xl sm:text-4xl mb-2 ${isSelected ? 'drop-shadow-lg' : ''}`}
+                        animate={isSelected ? 'bounce' : 'float'}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {gameMode.emoji}
+                      </motion.div>
+                      <div className={`text-xs sm:text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-[var(--vb-text-secondary)]'}`}>
+                        {gameMode.name}
+                      </div>
+                      {(() => {
+                        const tier = getModeDifficulty(gameMode.id);
+                        const meta = DIFFICULTY_META[tier];
+                        return (
+                          <span className="inline-flex items-center gap-0.5 mt-1">
+                            {[0, 1, 2].map(i => (
+                              <Star key={i} size={10} strokeWidth={2}
+                                className={i < meta.stars ? (isSelected ? 'text-white' : meta.starColor) : (isSelected ? 'text-white/40' : 'text-[var(--vb-border)]')}
+                                fill={i < meta.stars ? 'currentColor' : 'none'}
+                              />
+                            ))}
+                          </span>
+                        );
+                      })()}
+                      {isSelected && (
+                        <motion.div
+                          initial={{ scale: 0, rotate: -180 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
+                          className="absolute -top-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[var(--vb-surface)] flex items-center justify-center shadow-lg border-2 border-primary"
+                        >
+                          <Check size={14} className="text-primary" strokeWidth={3} />
+                        </motion.div>
+                      )}
+                      {isSelected && (
+                        <motion.div
+                          className="absolute inset-0 bg-white/20 rounded-2xl"
+                          animate={{
+                            scale: [1, 1.05, 1],
+                            opacity: [0.3, 0.1, 0.3],
+                          }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Progress nudge — a subtle "↓ next step" indicator that only
