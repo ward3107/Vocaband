@@ -269,6 +269,16 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   {t.footerSchoolOnePagerAr}
                 </a>
               </motion.li>
+              <motion.li variants={footerItemVariant} custom={17.7}>
+                <a
+                  href="/Vocaband-Presentation-AR.pptx"
+                  download="Vocaband-Presentation-AR.pptx"
+                  className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                >
+                  <Presentation size={14} aria-hidden="true" />
+                  {t.footerSchoolPptxAr}
+                </a>
+              </motion.li>
               <motion.li variants={footerItemVariant} custom={18}>
                 <a
                   href={`/docs/teacher-guide-${language}.pdf`}
