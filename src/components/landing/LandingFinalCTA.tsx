@@ -3,7 +3,6 @@ import { motion } from "motion/react";
 import { Rocket, Sparkles, GraduationCap } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { landingPageT } from "../../locales/student/landing-page";
-import LazyBgVideo from "../LazyBgVideo";
 
 interface LandingFinalCTAProps {
   onTryDemo?: () => void;
@@ -17,17 +16,21 @@ const LandingFinalCTA: React.FC<LandingFinalCTAProps> = ({ onTryDemo, onTeacherL
 
   return (
     <section className="py-8 md:py-24 px-4 md:px-6 bg-violet-950 relative overflow-hidden">
-      {/* Cosmic trilingual backdrop — silent looping video.  Lazy-
-          loaded (4.5 MB clip, well below the fold) — the violet
-          section background stays in place while the source
-          attaches as the user scrolls down. */}
-      <LazyBgVideo
-        src="/cta-bg.mp4"
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-      {/* Section-level darkening overlay so heading + buttons stay
-          readable on top of the busy image. */}
-      <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
+      {/* Cosmic backdrop — pure CSS gradient + animated mesh replaces the
+          old 4.5 MB MP4 with GPU-cheap motion. */}
+      <div className="absolute inset-0 -z-20 bg-gradient-to-br from-violet-950 via-purple-950 to-indigo-950" aria-hidden="true" />
+      <div className="absolute inset-0 overflow-hidden -z-10" aria-hidden="true">
+        <motion.div
+          animate={{ scale: [1, 1.3, 1], rotate: [0, 120, 0], x: [0, 60, 0], y: [0, -40, 0] }}
+          transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
+          className="absolute top-1/4 -left-32 w-[28rem] h-[28rem] bg-gradient-to-br from-fuchsia-500/25 to-violet-500/25 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], rotate: [0, -120, 0], x: [0, -60, 0], y: [0, 40, 0] }}
+          transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-1/4 -right-32 w-96 h-96 bg-gradient-to-br from-indigo-500/25 to-cyan-500/25 rounded-full blur-3xl"
+        />
+      </div>
 
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 50 }}
