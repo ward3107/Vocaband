@@ -40,6 +40,21 @@ const AUTH_VIEWS = new Set<string>([
   'student-pending-approval', 'oauth-class-code', 'oauth-callback',
 ]);
 
+// Views safe to land on when there is NO authenticated user. Used to
+// reject popstate back-navigation into a pre-logout private view (e.g.
+// game-active, teacher-dashboard) — window.location.replace('/') on
+// logout swaps only the current history entry, leaving the previous
+// dashboard / game-active entries reachable via the back button.
+// Without this guard a teacher pressing back from the landing page
+// would get dropped into the last quiz they were previewing.
+const PUBLIC_VIEWS = new Set<string>([
+  'landing', 'public-landing', 'public-terms', 'public-privacy',
+  'public-security', 'public-free-resources', 'public-interactive-worksheet',
+  'public-status', 'accessibility-statement', 'teacher-login',
+  'student-account-login', 'student-pending-approval',
+  'oauth-class-code', 'oauth-callback',
+]);
+
 // Number of padding entries pushed beneath the dashboard.
 const PAD_COUNT = 10;
 
@@ -210,6 +225,14 @@ export function useBackButtonTrap(
       // CASE C: normal in-app back navigation between real views
       //         (e.g., create-assignment → teacher-dashboard).
       if (prevView && !isPad) {
+        // After logout the hard reload only replaces the current
+        // history entry; pre-logout dashboard / game-active entries
+        // remain reachable via back. Block any back-press that would
+        // restore a private view when there's no user.
+        if (!currentUser && !PUBLIC_VIEWS.has(prevView)) {
+          window.history.pushState({ view: currentView }, '');
+          return;
+        }
         isPopStateNavRef.current = true;
         setView(prevView as View);
         return;
