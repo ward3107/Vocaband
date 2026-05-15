@@ -3,16 +3,20 @@
  * list, render `[word1] → ___ → [word2]` so the student writes a
  * connecting word that bridges the two.  Covers `words.length - 1`
  * pairs.
+ *
+ * There's no canonical answer key for this sheet — the student picks
+ * any reasonable bridging word — so `answerKey` is intentionally a
+ * no-op.  The orchestrator excludes this sheet type from the
+ * consolidated answer key table for the same reason.
  */
 import type { Word } from '../../../data/vocabulary';
 
 interface WordChainsSheetProps {
   words: Word[];
   translationLang: 'he' | 'ar' | 'en';
-  answerKey?: boolean;
 }
 
-export function WordChainsSheet({ words, translationLang, answerKey }: WordChainsSheetProps) {
+export function WordChainsSheet({ words, translationLang }: WordChainsSheetProps) {
   const needsTwo = translationLang === 'he' ? 'שרשרת מילים דורשת לפחות שתי מילים.' : translationLang === 'ar' ? 'يحتاج تسلسل الكلمات إلى كلمتين على الأقل.' : 'Word Chains needs at least two words.';
   const buildChain = translationLang === 'he' ? 'בנו את השרשרת — מלאו מילה שמחברת בין כל זוג.' : translationLang === 'ar' ? 'ابنِ التسلسل — املأ كلمة تربط بين كل زوج.' : 'Build the chain — fill in a word that connects each pair.';
   // Need at least two words to form a chain.
@@ -44,14 +48,9 @@ export function WordChainsSheet({ words, translationLang, answerKey }: WordChain
                 display: 'inline-block',
                 minWidth: '8rem',
                 borderBottom: '1px solid #555',
-                fontStyle: answerKey ? 'normal' : 'italic',
-                color: answerKey ? '#10b981' : '#aaa',
-                fontWeight: answerKey ? 700 : 400,
                 textAlign: 'center',
                 padding: '0 0.5rem',
-              }}>
-                {answerKey ? '?' : ''}
-              </span>
+              }} />
               <span style={{ color: '#888' }}>→</span>
               <span style={{ fontWeight: 700 }}>{pair.b.english}</span>
             </div>

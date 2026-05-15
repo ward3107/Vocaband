@@ -80,10 +80,9 @@ export interface WorksheetStrings {
   tableAnswer: string;
   vocabandFooter: string;
 
-  // Sheet type indicator (for multi-sheet prints)
-  answerOptionA: string;
+  // Answer key cell labels
   answerTrue: string;
-  answerTrueWithHint: string;
+  answerFalse: string;
   answerCompleteSentence: string;
 }
 
@@ -148,9 +147,8 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     tableWord: 'Word',
     tableAnswer: 'Answer',
     vocabandFooter: 'Vocaband · vocaband.com',
-    answerOptionA: 'A',
     answerTrue: 'True',
-    answerTrueWithHint: 'True (when shown with correct translation)',
+    answerFalse: 'False',
     answerCompleteSentence: 'Complete sentence',
   },
   he: {
@@ -213,9 +211,8 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     tableWord: 'מילה',
     tableAnswer: 'תשובה',
     vocabandFooter: 'ווקאבנד · vocaband.com',
-    answerOptionA: 'א',
     answerTrue: 'נכון',
-    answerTrueWithHint: 'נכון (כאשר מוצג עם התרגום הנכון)',
+    answerFalse: 'לא נכון',
     answerCompleteSentence: 'משפט שלם',
   },
   ar: {
@@ -278,9 +275,8 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     tableWord: 'كلمة',
     tableAnswer: 'إجابة',
     vocabandFooter: 'فوكاباند · vocaband.com',
-    answerOptionA: 'أ',
     answerTrue: 'صح',
-    answerTrueWithHint: 'صح (عند عرضه مع الترجمة الصحيحة)',
+    answerFalse: 'خطأ',
     answerCompleteSentence: 'جملة كاملة',
   },
 };

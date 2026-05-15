@@ -20,17 +20,13 @@
  *     `answerKeyOnNewPage` prop forces it to a separate page for
  *     teachers who want to hand out questions without the answers
  *
- * The teacher can still force per-sheet pages via the
- * `forcePageBreak` prop — wired to a checkbox in WorksheetView.
- *
- * The teacher's on-screen flow is:
- *   1. Click "Print worksheet" on the dashboard or an assignment
- *   2. WorksheetSetup modal opens — pick sheet type + source + answer key
- *   3. WorksheetView mounts (foreground UI), renders a preview, and
- *      offers a "Print" button which calls window.print()
- *   4. Browser print dialog appears.  The visible UI is suppressed by
- *      `@media print { body * { visibility: hidden } .vb-print-only *
- *      { visibility: visible } }` so only the worksheet prints.
+ * Question shapes (multiple-choice options, true/false pattern,
+ * match-up permutation, scramble letters, sentence-builder scrambles)
+ * are computed ONCE in WorksheetView and passed in via `shapes` so
+ * preview and print show the same dice roll.  The consolidated answer
+ * key reads from those shapes to render the actual correct answer per
+ * row — replacing the old hard-coded "A / True / translation" guesses
+ * that were wrong for the majority of questions.
  */
 import { WordListSheet } from './sheets/WordListSheet';
 import { ScrambleSheet } from './sheets/ScrambleSheet';
@@ -46,6 +42,7 @@ import { IdiomSheet } from './sheets/IdiomSheet';
 import { WordChainsSheet } from './sheets/WordChainsSheet';
 import type { Word } from '../../data/vocabulary';
 import { worksheetStrings } from '../../locales/student/worksheet';
+import type { QuestionShapes } from './buildShapes';
 
 export type WorksheetSheetType =
   | 'word-list'
@@ -80,6 +77,10 @@ interface WorksheetProps {
   translationLang: 'he' | 'ar' | 'en';
   /** AI-generated sentences keyed by word ID — for Fill-in-the-blank and Sentence Builder sheets */
   aiSentences?: Record<number, string>;
+  /** Pre-rolled question shapes from WorksheetView.  Required for the
+   *  preview/print sync to work; without them each renderer re-rolls
+   *  independently. */
+  shapes?: QuestionShapes;
   /** Add page break before this worksheet (for multi-sheet printouts).
    *  Default false — sheets flow naturally and only break when they
    *  don't fit on the current page.  WorksheetView sets this true
@@ -101,8 +102,10 @@ interface WorksheetProps {
 function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
   if (lang === 'he') return w.hebrew;
   if (lang === 'ar') return w.arabic;
-  return w.english;
+  return '';
 }
+
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 function getSheetLabel(type: WorksheetSheetType, t: any): string {
   const labelMap: Record<WorksheetSheetType, keyof typeof t> = {
@@ -122,8 +125,95 @@ function getSheetLabel(type: WorksheetSheetType, t: any): string {
   return t[labelMap[type]] || type;
 }
 
+/** Sheet types where a per-word row in the consolidated answer key
+ *  doesn't make sense.  Word list and flashcards have no "answer".
+ *  Word chains has no canonical answer.  Sentence builder + fill-blank
+ *  render their own variable-length content via dedicated rows. */
+function hasPerWordAnswer(type: WorksheetSheetType): boolean {
+  return type !== 'word-list' && type !== 'flashcards' && type !== 'word-chains';
+}
+
+/** Returns the correct answer cell content for a given sheet type
+ *  at row idx, using the precomputed shape when available.  Without
+ *  shapes the renderer falls back to a generic best-effort value so
+ *  the table doesn't crash, but printed output will be inconsistent
+ *  with the on-screen preview. */
+function renderAnswer(
+  type: WorksheetSheetType,
+  w: Word,
+  idx: number,
+  lang: 'he' | 'ar' | 'en',
+  shapes: QuestionShapes | undefined,
+  aiSentences: Record<number, string> | undefined,
+  t: any,
+): React.ReactNode {
+  const translation = pickTranslation(w, lang);
+
+  if (type === 'scramble') return w.english.toUpperCase();
+
+  if (type === 'multiple-choice') {
+    const q = shapes?.['multiple-choice'].questions[idx];
+    if (!q) return <span style={{ fontWeight: 700, color: '#10b981' }}>—</span>;
+    const letter = LETTERS[q.correctIndex] ?? '?';
+    return (
+      <span style={{ fontWeight: 700, color: '#10b981' }}>
+        {letter} ({q.options[q.correctIndex]})
+      </span>
+    );
+  }
+
+  if (type === 'true-false') {
+    const q = shapes?.['true-false'].questions[idx];
+    const label = q?.isTrue ? t.answerTrue : t.answerFalse;
+    return (
+      <span style={{ fontWeight: 700, color: '#10b981' }}>
+        {label ?? (q?.isTrue ? 'True' : 'False')}
+      </span>
+    );
+  }
+
+  if (type === 'match-up') {
+    const rightOrder = shapes?.['match-up'].rightOrder;
+    if (!rightOrder) return <span dir="auto">{translation}</span>;
+    const rightPos = rightOrder.indexOf(idx);
+    return <span><strong>{LETTERS[rightPos] ?? '?'}</strong></span>;
+  }
+
+  if (type === 'matching') {
+    const order = shapes?.matching.translationOrder;
+    if (!order) return <span dir="auto">{translation}</span>;
+    const rightPos = order.indexOf(idx);
+    return (
+      <span>
+        <strong>{LETTERS[idx]}</strong> → <strong>{rightPos + 1}</strong>
+      </span>
+    );
+  }
+
+  if (type === 'reverse-translation') {
+    return <strong>{w.english}</strong>;
+  }
+
+  if (type === 'fill-blank') {
+    const raw = aiSentences?.[w.id] ?? w.sentence ?? w.example;
+    return raw ? <span style={{ fontSize: '9pt' }}>{raw}</span> : <strong>{w.english}</strong>;
+  }
+
+  if (type === 'idiom') {
+    return translation ? <span dir="auto">{translation}</span> : <strong>{w.english}</strong>;
+  }
+
+  if (type === 'sentence-builder') {
+    const item = shapes?.['sentence-builder'].items[idx];
+    if (item?.sentence) return <span style={{ fontSize: '9pt' }}>{item.sentence}</span>;
+    return <span style={{ color: '#999' }}>{t.answerCompleteSentence ?? '—'}</span>;
+  }
+
+  return null;
+}
+
 export default function Worksheet({
-  sheetType, title, words, className, includeAnswerKey, translationLang, aiSentences,
+  sheetType, title, words, className, includeAnswerKey, translationLang, aiSentences, shapes,
   pageBreakBefore = false, answerKeyOnNewPage = false,
   sheetIndex = 0, totalSheets = 1, allSelectedSheetTypes,
 }: WorksheetProps) {
@@ -181,15 +271,15 @@ export default function Worksheet({
       )}
 
       {sheetType === 'word-list' && <WordListSheet words={words} translationLang={translationLang} />}
-      {sheetType === 'scramble' && <ScrambleSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'scramble' && <ScrambleSheet words={words} translationLang={translationLang} shape={shapes?.scramble} />}
       {sheetType === 'fill-blank' && <FillBlankSheet words={words} aiSentences={aiSentences} translationLang={translationLang} />}
-      {sheetType === 'match-up' && <MatchUpSheet words={words} translationLang={translationLang} />}
-      {sheetType === 'multiple-choice' && <MultipleChoiceSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'match-up' && <MatchUpSheet words={words} translationLang={translationLang} shape={shapes?.['match-up']} />}
+      {sheetType === 'multiple-choice' && <MultipleChoiceSheet words={words} translationLang={translationLang} shape={shapes?.['multiple-choice']} />}
       {sheetType === 'reverse-translation' && <ReverseTranslationSheet words={words} translationLang={translationLang} />}
-      {sheetType === 'true-false' && <TrueFalseSheet words={words} translationLang={translationLang} />}
+      {sheetType === 'true-false' && <TrueFalseSheet words={words} translationLang={translationLang} shape={shapes?.['true-false']} />}
       {sheetType === 'flashcards' && <FlashcardsSheet words={words} translationLang={translationLang} />}
-      {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} />}
-      {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} aiSentences={aiSentences} />}
+      {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} shape={shapes?.matching} />}
+      {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} aiSentences={aiSentences} shape={shapes?.['sentence-builder']} />}
       {sheetType === 'idiom' && <IdiomSheet words={words} translationLang={translationLang} />}
       {sheetType === 'word-chains' && <WordChainsSheet words={words} translationLang={translationLang} />}
 
@@ -206,72 +296,56 @@ export default function Worksheet({
 
           {allSelectedSheetTypes && allSelectedSheetTypes.length > 0 ? (
             <div>
-              {allSelectedSheetTypes.map((answerType) => (
+              {allSelectedSheetTypes.filter(hasPerWordAnswer).map((answerType) => (
                 <div key={answerType} style={{ marginBottom: '1.5rem' }}>
                   <h3 style={{ fontSize: '13pt', fontWeight: 700, marginBottom: '0.5rem', color: '#555' }}>{getSheetLabel(answerType, t)}</h3>
-                  {answerType === 'word-list' || answerType === 'flashcards' || answerType === 'word-chains' ? null : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid #999', backgroundColor: '#f5f5f5' }}>
-                          <th style={{ textAlign: 'left', padding: '0.3rem', width: '5%' }}>{t.tableNumber}</th>
-                          <th style={{ textAlign: 'left', padding: '0.3rem', width: '30%' }}>{t.tableWord}</th>
-                          <th style={{ textAlign: 'left', padding: '0.3rem' }}>{t.tableAnswer}</th>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #999', backgroundColor: '#f5f5f5' }}>
+                        <th style={{ textAlign: 'left', padding: '0.3rem', width: '5%' }}>{t.tableNumber}</th>
+                        <th style={{ textAlign: 'left', padding: '0.3rem', width: '30%' }}>{t.tableWord}</th>
+                        <th style={{ textAlign: 'left', padding: '0.3rem' }}>{t.tableAnswer}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {words.map((w, idx) => (
+                        <tr key={w.id} style={{ borderBottom: '1px solid #eee', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
+                          <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
+                          <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
+                          <td style={{ padding: '0.3rem', color: '#333' }}>
+                            {renderAnswer(answerType, w, idx, translationLang, shapes, aiSentences, t)}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {words.map((w, idx) => (
-                          <tr key={w.id} style={{ borderBottom: '1px solid #eee', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
-                            <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
-                            <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
-                            <td style={{ padding: '0.3rem', color: '#333' }}>
-                                                              {answerType === 'scramble' && w.english}
-                              {answerType === 'multiple-choice' && <span style={{ fontWeight: 700, color: '#10b981' }}>{t.answerOptionA}</span>}
-                              {answerType === 'reverse-translation' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
-                              {answerType === 'true-false' && <span style={{ fontWeight: 700, color: '#10b981' }}>{t.answerTrueWithHint}</span>}
-                              {answerType === 'fill-blank' && (aiSentences?.[w.id] ? <span style={{ fontSize: '9pt' }}>"...{w.english}..."</span> : w.english)}
-                              {answerType === 'match-up' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
-                              {answerType === 'matching' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
-                              {answerType === 'sentence-builder' && (aiSentences?.[w.id] || <span>{t.answerCompleteSentence}</span>)}
-                              {answerType === 'idiom' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ))}
             </div>
           ) : (
-            /* Fallback for single worksheet - compact format */
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #999', backgroundColor: '#f5f5f5' }}>
-                  <th style={{ textAlign: 'left', padding: '0.3rem', width: '5%' }}>{t.tableNumber}</th>
-                  <th style={{ textAlign: 'left', padding: '0.3rem', width: '30%' }}>{t.tableWord}</th>
-                  <th style={{ textAlign: 'left', padding: '0.3rem' }}>{t.tableAnswer}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {words.map((w, idx) => (
-                  <tr key={w.id} style={{ borderBottom: '1px solid #eee', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
-                    <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
-                    <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
-                    <td style={{ padding: '0.3rem', color: '#333' }}>
-                      {sheetType === 'scramble' && w.english}
-                      {sheetType === 'multiple-choice' && <span style={{ fontWeight: 700, color: '#10b981' }}>{t.answerOptionA}</span>}
-                      {sheetType === 'reverse-translation' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
-                      {sheetType === 'true-false' && <span style={{ fontWeight: 700, color: '#10b981' }}>{t.answerTrue}</span>}
-                      {sheetType === 'fill-blank' && (aiSentences?.[w.id] || w.english)}
-                      {sheetType === 'match-up' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
-                      {sheetType === 'matching' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
-                      {sheetType === 'sentence-builder' && (aiSentences?.[w.id] || t.answerCompleteSentence)}
-                      {sheetType === 'idiom' && <span dir="auto">{pickTranslation(w, translationLang)}</span>}
-                    </td>
+            /* Fallback for single worksheet — same per-row renderer, just one section */
+            hasPerWordAnswer(sheetType) ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #999', backgroundColor: '#f5f5f5' }}>
+                    <th style={{ textAlign: 'left', padding: '0.3rem', width: '5%' }}>{t.tableNumber}</th>
+                    <th style={{ textAlign: 'left', padding: '0.3rem', width: '30%' }}>{t.tableWord}</th>
+                    <th style={{ textAlign: 'left', padding: '0.3rem' }}>{t.tableAnswer}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {words.map((w, idx) => (
+                    <tr key={w.id} style={{ borderBottom: '1px solid #eee', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
+                      <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
+                      <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
+                      <td style={{ padding: '0.3rem', color: '#333' }}>
+                        {renderAnswer(sheetType, w, idx, translationLang, shapes, aiSentences, t)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : null
           )}
         </div>
       )}

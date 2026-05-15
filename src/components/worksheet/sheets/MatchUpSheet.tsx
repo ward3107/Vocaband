@@ -3,33 +3,39 @@
  * shuffled translations on the right.  The student draws a line
  * between matching pairs.  Each row is numbered/lettered for written
  * pairing as a fallback (e.g. "1 — C").
+ *
+ * Right-column ordering comes from the shared `shape` prop so preview
+ * + print stay in sync.
  */
 import { useMemo } from 'react';
 import type { Word } from '../../../data/vocabulary';
+import type { MatchUpShape } from '../buildShapes';
+import { buildQuestionShapes } from '../buildShapes';
 
 interface MatchUpSheetProps {
   words: Word[];
   translationLang: 'he' | 'ar' | 'en';
   answerKey?: boolean;
+  shape?: MatchUpShape;
 }
 
 function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
   if (lang === 'he') return w.hebrew;
   if (lang === 'ar') return w.arabic;
-  return w.english;
+  // English UI mode: translation column would just echo the English
+  // word, which makes the exercise meaningless.  Leave it blank so the
+  // teacher can fill in their own prompt by hand if needed.
+  return '';
 }
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-export function MatchUpSheet({ words, translationLang, answerKey }: MatchUpSheetProps) {
-  const rightOrder = useMemo(() => {
-    const indices = words.map((_, i) => i);
-    for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
-    }
-    return indices;
-  }, [words]);
+export function MatchUpSheet({ words, translationLang, answerKey, shape }: MatchUpSheetProps) {
+  const fallback = useMemo(
+    () => (shape ? null : buildQuestionShapes(words, translationLang, undefined)['match-up']),
+    [shape, words, translationLang],
+  );
+  const rightOrder = (shape ?? fallback!).rightOrder;
 
   // The right column letter for each LEFT-column row's correct match.
   const correctLetterForLeft = (leftIdx: number) => {

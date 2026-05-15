@@ -44,6 +44,7 @@ import { MatchingSheet } from '../components/worksheet/sheets/MatchingSheet';
 import { SentenceBuilderSheet } from '../components/worksheet/sheets/SentenceBuilderSheet';
 import { IdiomSheet } from '../components/worksheet/sheets/IdiomSheet';
 import { WordChainsSheet } from '../components/worksheet/sheets/WordChainsSheet';
+import { buildQuestionShapes } from '../components/worksheet/buildShapes';
 import WordPicker from '../components/setup/WordPicker';
 import type { ClassShowWordPickerWiring } from '../components/classshow/ClassShowSetup';
 import type { Word } from '../data/vocabulary';
@@ -62,6 +63,20 @@ interface WorksheetViewProps {
    *  Reuses the same shape as Class Show — see ClassShowSetup. */
   pickerWiring?: ClassShowWordPickerWiring;
 }
+
+// Sheet types whose whole point is to compare English to its
+// Hebrew/Arabic translation.  In English UI mode they degenerate into
+// English-vs-English rows (cat ↔ cat, "What does cat mean?" → "cat"),
+// so we hide them from the picker.  The remaining sheets work fine
+// monolingually as study aids.
+const TRANSLATION_DEPENDENT_SHEETS: ReadonlySet<WorksheetSheetType> = new Set([
+  'match-up',
+  'matching',
+  'multiple-choice',
+  'reverse-translation',
+  'true-false',
+  'idiom',
+]);
 
 // Build sheet types with translations (called inside component where t is available)
 function buildSheetTypes(t: WorksheetStrings): Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string; needsSentences?: boolean }> {
@@ -90,7 +105,12 @@ export default function WorksheetView({
   const guide = useFirstTimeGuide('worksheet');
   const guideStrings = teacherGuidesT[language].worksheet;
   const translationLang: 'he' | 'ar' | 'en' = language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'en';
-  const SHEET_TYPES = buildSheetTypes(t);
+  // In English UI mode, hide sheet types that depend on a translation
+  // (match-up, matching, MC, T/F, reverse-translation, idiom).  They
+  // would degenerate to English↔English rows or tautological prompts.
+  const SHEET_TYPES = buildSheetTypes(t).filter(
+    (s) => translationLang !== 'en' || !TRANSLATION_DEPENDENT_SHEETS.has(s.id),
+  );
 
   const [selectedSheetTypes, setSelectedSheetTypes] = useState<Set<WorksheetSheetType>>(new Set(['word-list']));
   const [title, setTitle] = useState(initialTitle ?? 'Vocabulary worksheet');
@@ -171,7 +191,47 @@ export default function WorksheetView({
   const [shareSource, setShareSource] = useState<ShareSource | null>(null);
 
   const source = effectiveSources[Math.min(sourceIdx, effectiveSources.length - 1)];
-  const wordsForSheet = source?.words ?? [];
+  // Dedupe by `english` (case-insensitive) — a custom paste can carry
+  // the same word twice (e.g. once typed, once OCR'd), and printing
+  // duplicate rows confuses the student and breaks the MC distractor
+  // dedupe.  Keep first occurrence to preserve teacher-chosen order.
+  const wordsForSheet = useMemo(() => {
+    const raw = source?.words ?? [];
+    const seen = new Set<string>();
+    const out: Word[] = [];
+    for (const w of raw) {
+      const key = w.english.trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(w);
+    }
+    return out;
+  }, [source]);
+
+  // Drop any selected sheet that's no longer in the picker after the
+  // language-filter pass — otherwise a teacher who picked Match-up in
+  // Hebrew and then switched UI to English would still have it
+  // queued for print.
+  useEffect(() => {
+    if (translationLang !== 'en') return;
+    setSelectedSheetTypes((prev) => {
+      const allowed = new Set(SHEET_TYPES.map((s) => s.id));
+      const filtered = new Set([...prev].filter((id) => allowed.has(id)));
+      if (filtered.size === 0) filtered.add('word-list');
+      return filtered.size === prev.size ? prev : filtered;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [translationLang]);
+
+  // Single source of randomness for every sheet that shuffles content.
+  // Rolling the dice once here and passing the result to BOTH the
+  // preview AND the print stack guarantees the teacher prints exactly
+  // what they reviewed — without this, the preview's <MatchUpSheet>
+  // and the print's <MatchUpSheet> would each re-randomise on mount.
+  const questionShapes = useMemo(
+    () => buildQuestionShapes(wordsForSheet, translationLang, aiSentences),
+    [wordsForSheet, translationLang, aiSentences],
+  );
 
   // Clear AI sentences when word source changes
   useEffect(() => {
@@ -494,7 +554,7 @@ export default function WorksheetView({
             </label>
           )}
 
-          {Array.from(selectedSheetTypes).some(type => type !== 'word-list' && type !== 'flashcards') && (
+          {Array.from(selectedSheetTypes).some(type => type !== 'word-list' && type !== 'flashcards' && type !== 'word-chains') && (
             <>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
@@ -560,15 +620,15 @@ export default function WorksheetView({
                     </h3>
                   )}
                   {type === 'word-list' && <WordListSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'scramble' && <ScrambleSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'fill-blank' && <FillBlankSheet words={wordsForSheet} aiSentences={aiSentences} />}
-                  {type === 'match-up' && <MatchUpSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'multiple-choice' && <MultipleChoiceSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'scramble' && <ScrambleSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes.scramble} />}
+                  {type === 'fill-blank' && <FillBlankSheet words={wordsForSheet} aiSentences={aiSentences} translationLang={translationLang} />}
+                  {type === 'match-up' && <MatchUpSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes['match-up']} />}
+                  {type === 'multiple-choice' && <MultipleChoiceSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes['multiple-choice']} />}
                   {type === 'reverse-translation' && <ReverseTranslationSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'true-false' && <TrueFalseSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'true-false' && <TrueFalseSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes['true-false']} />}
                   {type === 'flashcards' && <FlashcardsSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'matching' && <MatchingSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'sentence-builder' && <SentenceBuilderSheet words={wordsForSheet} translationLang={translationLang} aiSentences={aiSentences} />}
+                  {type === 'matching' && <MatchingSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes.matching} />}
+                  {type === 'sentence-builder' && <SentenceBuilderSheet words={wordsForSheet} translationLang={translationLang} aiSentences={aiSentences} shape={questionShapes['sentence-builder']} />}
                   {type === 'idiom' && <IdiomSheet words={wordsForSheet} translationLang={translationLang} />}
                   {type === 'word-chains' && <WordChainsSheet words={wordsForSheet} translationLang={translationLang} />}
                 </div>
@@ -652,6 +712,7 @@ export default function WorksheetView({
               includeAnswerKey={includeAnswerKey}
               translationLang={translationLang}
               aiSentences={aiSentences}
+              shapes={questionShapes}
               pageBreakBefore={!compactLayout && idx > 0}
               answerKeyOnNewPage={answerKeyOnNewPage}
               sheetIndex={idx}
