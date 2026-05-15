@@ -44,6 +44,7 @@ import { MatchingSheet } from '../components/worksheet/sheets/MatchingSheet';
 import { SentenceBuilderSheet } from '../components/worksheet/sheets/SentenceBuilderSheet';
 import { IdiomSheet } from '../components/worksheet/sheets/IdiomSheet';
 import { WordChainsSheet } from '../components/worksheet/sheets/WordChainsSheet';
+import { buildQuestionShapes } from '../components/worksheet/buildShapes';
 import WordPicker from '../components/setup/WordPicker';
 import type { ClassShowWordPickerWiring } from '../components/classshow/ClassShowSetup';
 import type { Word } from '../data/vocabulary';
@@ -172,6 +173,16 @@ export default function WorksheetView({
 
   const source = effectiveSources[Math.min(sourceIdx, effectiveSources.length - 1)];
   const wordsForSheet = source?.words ?? [];
+
+  // Single source of randomness for every sheet that shuffles content.
+  // Rolling the dice once here and passing the result to BOTH the
+  // preview AND the print stack guarantees the teacher prints exactly
+  // what they reviewed — without this, the preview's <MatchUpSheet>
+  // and the print's <MatchUpSheet> would each re-randomise on mount.
+  const questionShapes = useMemo(
+    () => buildQuestionShapes(wordsForSheet, translationLang, aiSentences),
+    [wordsForSheet, translationLang, aiSentences],
+  );
 
   // Clear AI sentences when word source changes
   useEffect(() => {
@@ -560,15 +571,15 @@ export default function WorksheetView({
                     </h3>
                   )}
                   {type === 'word-list' && <WordListSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'scramble' && <ScrambleSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'fill-blank' && <FillBlankSheet words={wordsForSheet} aiSentences={aiSentences} />}
-                  {type === 'match-up' && <MatchUpSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'multiple-choice' && <MultipleChoiceSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'scramble' && <ScrambleSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes.scramble} />}
+                  {type === 'fill-blank' && <FillBlankSheet words={wordsForSheet} aiSentences={aiSentences} translationLang={translationLang} />}
+                  {type === 'match-up' && <MatchUpSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes['match-up']} />}
+                  {type === 'multiple-choice' && <MultipleChoiceSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes['multiple-choice']} />}
                   {type === 'reverse-translation' && <ReverseTranslationSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'true-false' && <TrueFalseSheet words={wordsForSheet} translationLang={translationLang} />}
+                  {type === 'true-false' && <TrueFalseSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes['true-false']} />}
                   {type === 'flashcards' && <FlashcardsSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'matching' && <MatchingSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'sentence-builder' && <SentenceBuilderSheet words={wordsForSheet} translationLang={translationLang} aiSentences={aiSentences} />}
+                  {type === 'matching' && <MatchingSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes.matching} />}
+                  {type === 'sentence-builder' && <SentenceBuilderSheet words={wordsForSheet} translationLang={translationLang} aiSentences={aiSentences} shape={questionShapes['sentence-builder']} />}
                   {type === 'idiom' && <IdiomSheet words={wordsForSheet} translationLang={translationLang} />}
                   {type === 'word-chains' && <WordChainsSheet words={wordsForSheet} translationLang={translationLang} />}
                 </div>
@@ -652,6 +663,7 @@ export default function WorksheetView({
               includeAnswerKey={includeAnswerKey}
               translationLang={translationLang}
               aiSentences={aiSentences}
+              shapes={questionShapes}
               pageBreakBefore={!compactLayout && idx > 0}
               answerKeyOnNewPage={answerKeyOnNewPage}
               sheetIndex={idx}

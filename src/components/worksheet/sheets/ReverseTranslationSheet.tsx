@@ -1,6 +1,9 @@
 /**
  * Reverse Translation worksheet — shows translation (Hebrew/Arabic),
- * students write the English word.
+ * students write the English word.  Only meaningful for non-English
+ * UI; in English mode the translation column would just echo the
+ * English word, so it renders blank and the worksheet becomes a
+ * recall prompt the teacher reads aloud.
  */
 import type { Word } from '../../../data/vocabulary';
 
@@ -13,7 +16,7 @@ interface ReverseTranslationSheetProps {
 function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
   if (lang === 'he') return w.hebrew;
   if (lang === 'ar') return w.arabic;
-  return w.english;
+  return '';
 }
 
 export function ReverseTranslationSheet({ words, translationLang, answerKey }: ReverseTranslationSheetProps) {
