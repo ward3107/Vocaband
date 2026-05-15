@@ -3,7 +3,6 @@ import { motion } from "motion/react";
 import { Sparkles } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { landingPageT } from "../../locales/student/landing-page";
-import LazyBgVideo from "../LazyBgVideo";
 
 const LandingAI: React.FC = () => {
   const { language, dir, isRTL } = useLanguage();
@@ -11,20 +10,24 @@ const LandingAI: React.FC = () => {
 
   return (
     <section id="ai" className="py-8 md:py-20 px-4 md:px-6 relative isolate overflow-hidden bg-gradient-to-b from-transparent via-violet-950/20 to-transparent scroll-mt-20">
-      {/* Ambient video background — silent, looping.  Lazy-loaded
-          (source attaches when the section nears the viewport) so
-          the 3 MB clip doesn't compete with the hero for bandwidth
-          on first paint.  The brand tint overlay below pushes the
-          footage toward Vocaband's violet palette so a generic
-          clip still feels on-brand. */}
-      <LazyBgVideo
-        src="/ai-bg.mp4"
-        className="absolute inset-0 w-full h-full object-cover -z-30"
-      />
+      {/* Brand-tint backdrop + animated gradient mesh — replaces the
+          3 MB MP4 with pure GPU motion. */}
       <div
-        className="absolute inset-0 -z-20 bg-gradient-to-br from-indigo-950/80 via-violet-900/70 to-fuchsia-900/80"
+        className="absolute inset-0 -z-20 bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900"
         aria-hidden="true"
       />
+      <div className="absolute inset-0 overflow-hidden -z-10" aria-hidden="true">
+        <motion.div
+          animate={{ scale: [1, 1.25, 1], rotate: [0, 90, 0], x: [0, 80, 0], y: [0, -40, 0] }}
+          transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
+          className="absolute top-1/3 -right-32 w-96 h-96 bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.3, 1], rotate: [0, -90, 0], x: [0, -80, 0], y: [0, 60, 0] }}
+          transition={{ duration: 26, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-1/4 -left-32 w-[28rem] h-[28rem] bg-gradient-to-br from-emerald-500/25 to-cyan-500/25 rounded-full blur-3xl"
+        />
+      </div>
       <motion.div
         initial={{ opacity: 0, x: isRTL ? -100 : 100 }}
         whileInView={{ opacity: 1, x: 0 }}
