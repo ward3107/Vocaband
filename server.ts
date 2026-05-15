@@ -690,7 +690,7 @@ async function startServer() {
       }
 
       const userData = await getUserRoleAndClass(verifiedUid);
-      if (!userData || userData.role !== "teacher") {
+      if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
         return rejectChallenge("observe_challenge", `not a teacher (role=${userData?.role ?? 'none'})`);
       }
 
@@ -1425,7 +1425,7 @@ async function startServer() {
     }
 
     const userData = await getUserRoleAndClass(uid);
-    if (!userData || userData.role !== "teacher") {
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
       console.warn(`[abuse] /api/translate non-teacher caller: ip=${ip} uid=${uid} role=${userData?.role ?? 'none'}`);
       return res.status(403).json({ error: "Only teachers can translate" });
     }
@@ -1883,7 +1883,7 @@ Quality rules:
       return res.status(401).json({ error: "Invalid token" });
     }
     const userData = await getUserRoleAndClass(authData.uid);
-    if (!userData || userData.role !== "teacher") {
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
       return res.status(403).json({ error: "Only teachers can generate custom audio" });
     }
 
@@ -1990,7 +1990,7 @@ Quality rules:
       return reply(false, "invalid_token");
     }
     const userData = await getUserRoleAndClass(authData.uid);
-    if (!userData || userData.role !== "teacher") {
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
       console.log(`[features] aiSentences=false: user is not a teacher (role=${userData?.role ?? "none"}, email=${authData.email})`);
       return reply(false, "not_teacher", { role: userData?.role ?? null });
     }
@@ -2650,7 +2650,7 @@ Important notes:
     if (!auth) return res.status(401).json({ error: "Invalid token" });
 
     const userData = await getUserRoleAndClass(auth.uid);
-    if (!userData || userData.role !== "teacher") {
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
       return res.status(403).json({ error: "Only teachers can generate mock exams" });
     }
 
