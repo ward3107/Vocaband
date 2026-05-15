@@ -18,7 +18,7 @@
     --amber: #d97706;
     --emerald: #059669;
     --ink: #1f1147;
-    --muted: #6b6792;
+    --muted: #5b5780;
   }
   html, body {
     font-family: "Cairo", "Tajawal", "Noto Naskh Arabic", "Arial", "Tahoma", sans-serif;
@@ -27,11 +27,11 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  body { font-size: 11pt; line-height: 1.7; }
+  body { font-size: 13.5pt; line-height: 1.75; }
   .page {
     width: 210mm;
     min-height: 297mm;
-    padding: 16mm 14mm 12mm 14mm;
+    padding: 15mm 13mm 11mm 13mm;
     page-break-after: always;
     position: relative;
     overflow: hidden;
@@ -48,72 +48,75 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 28mm 22mm;
+    padding: 26mm 20mm;
   }
   .cover .top-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     position: absolute;
-    top: 18mm; left: 22mm; right: 22mm;
+    top: 17mm; left: 20mm; right: 20mm;
   }
   .cover .logo-box {
     background: rgba(255,255,255,.15);
     border: 1px solid rgba(255,255,255,.3);
-    border-radius: 12px;
-    padding: 6px 14px;
+    border-radius: 14px;
+    padding: 8px 18px;
     font-weight: 800;
-    font-size: 11pt;
+    font-size: 14pt;
     letter-spacing: .05em;
   }
   .cover .date-tag {
-    font-size: 10pt;
-    opacity: .7;
+    font-size: 13pt;
+    opacity: .8;
     letter-spacing: .05em;
+    font-weight: 600;
   }
   .cover h1 {
-    font-size: 92pt;
+    font-size: 104pt;
     font-weight: 900;
     letter-spacing: -.04em;
     line-height: .95;
-    margin-bottom: 14px;
+    margin-bottom: 18px;
     text-shadow: 0 8px 40px rgba(0,0,0,.25);
   }
   .cover .strap {
-    font-size: 22pt;
-    font-weight: 700;
+    font-size: 28pt;
+    font-weight: 800;
     line-height: 1.5;
-    margin-bottom: 24px;
-    max-width: 600px;
+    margin-bottom: 26px;
+    max-width: 660px;
   }
   .cover .sub {
-    font-size: 13pt;
-    opacity: .9;
-    max-width: 540px;
-    line-height: 1.8;
-    margin-bottom: 40px;
+    font-size: 17pt;
+    opacity: .95;
+    max-width: 600px;
+    line-height: 1.75;
+    margin-bottom: 36px;
+    font-weight: 500;
   }
   .cover .pills {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     flex-wrap: wrap;
   }
   .cover .pill {
-    padding: 8px 16px;
-    background: rgba(255,255,255,.12);
-    border: 1px solid rgba(255,255,255,.25);
+    padding: 10px 20px;
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.28);
     border-radius: 999px;
-    font-size: 10.5pt;
-    font-weight: 600;
+    font-size: 13.5pt;
+    font-weight: 700;
   }
   .cover .bottom {
     position: absolute;
-    bottom: 18mm; left: 22mm; right: 22mm;
+    bottom: 16mm; left: 20mm; right: 20mm;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 10.5pt;
-    opacity: .85;
+    font-size: 13.5pt;
+    opacity: .9;
+    font-weight: 600;
   }
   .cover .bottom strong { font-weight: 800; letter-spacing: .03em; }
 
@@ -126,7 +129,7 @@
     border-bottom: 2px solid #ccfbf1;
   }
   .brand-mini {
-    font-size: 13pt;
+    font-size: 16pt;
     font-weight: 900;
     background: linear-gradient(135deg, var(--teal), var(--fuchsia));
     -webkit-background-clip: text;
@@ -134,25 +137,25 @@
     color: transparent;
   }
   .page-num {
-    font-size: 9.5pt;
+    font-size: 12pt;
     color: var(--muted);
     letter-spacing: .1em;
-    font-weight: 600;
+    font-weight: 700;
   }
   .eyebrow {
-    font-size: 10pt;
+    font-size: 13pt;
     font-weight: 800;
-    letter-spacing: .15em;
+    letter-spacing: .12em;
     color: var(--teal);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     text-transform: uppercase;
   }
   h2 {
-    font-size: 26pt;
+    font-size: 30pt;
     font-weight: 900;
     color: var(--ink);
-    line-height: 1.25;
-    margin-bottom: 18px;
+    line-height: 1.18;
+    margin-bottom: 14px;
     letter-spacing: -.02em;
   }
   h2 .accent {
@@ -162,46 +165,47 @@
     color: transparent;
   }
   h3 {
-    font-size: 13pt;
+    font-size: 16pt;
     font-weight: 800;
     color: var(--teal);
-    margin: 0 0 8px 0;
+    margin: 0 0 10px 0;
   }
-  p { margin-bottom: 7px; color: #2b2150; }
+  p { margin-bottom: 8px; color: #2b2150; font-size: 13.5pt; }
   strong { color: var(--teal); font-weight: 800; }
 
   .stat-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 14px;
     margin: 14px 0;
   }
   .stat {
-    padding: 18px 20px;
-    border-radius: 18px;
+    padding: 20px 22px;
+    border-radius: 20px;
     background: linear-gradient(135deg, #f0fdfa, #faf5ff);
     border: 1px solid #ccfbf1;
   }
   .stat .num {
-    font-size: 38pt;
+    font-size: 46pt;
     font-weight: 900;
     line-height: 1;
     background: linear-gradient(135deg, var(--teal), var(--fuchsia));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     letter-spacing: -.03em;
   }
   .stat .label {
-    font-size: 11pt;
-    font-weight: 700;
+    font-size: 14pt;
+    font-weight: 800;
     color: var(--ink);
   }
   .stat .sub-label {
-    font-size: 9.5pt;
+    font-size: 12pt;
     color: var(--muted);
-    margin-top: 2px;
+    margin-top: 3px;
+    font-weight: 500;
   }
   .stat.amber { background: linear-gradient(135deg, #fffbeb, #fff7ed); border-color: #fde68a; }
   .stat.amber .num { background: linear-gradient(135deg, #d97706, #e11d48); -webkit-background-clip: text; background-clip: text; }
@@ -213,46 +217,48 @@
   .card {
     background: linear-gradient(135deg, #f0fdfa, #faf5ff);
     border: 1px solid #ccfbf1;
-    border-radius: 18px;
-    padding: 16px 18px;
+    border-radius: 20px;
+    padding: 14px 18px;
     margin: 10px 0;
   }
   .card.amber { background: linear-gradient(135deg, #fffbeb, #fff7ed); border-color: #fde68a; }
   .card.emerald { background: linear-gradient(135deg, #ecfdf5, #f0fdfa); border-color: #a7f3d0; }
   .card.rose { background: linear-gradient(135deg, #fff1f2, #fdf2f8); border-color: #fbcfe8; }
   .card.indigo { background: linear-gradient(135deg, #eef2ff, #f5f3ff); border-color: #c7d2fe; }
+  .card.fuchsia { background: linear-gradient(135deg, #fdf4ff, #fff1f2); border-color: #f5d0fe; }
   .card-title {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 13pt;
+    gap: 12px;
+    font-size: 16pt;
     font-weight: 800;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
   .card-title .ico {
-    width: 32px; height: 32px;
+    width: 38px; height: 38px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     background: #fff;
-    border-radius: 10px;
-    font-size: 16pt;
-    box-shadow: 0 2px 6px rgba(0,0,0,.04);
+    border-radius: 12px;
+    font-size: 19pt;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    flex-shrink: 0;
   }
   ul { list-style: none; padding: 0; }
   li {
     position: relative;
-    padding-right: 22px;
-    margin-bottom: 7px;
-    font-size: 10.5pt;
-    line-height: 1.7;
+    padding-right: 24px;
+    margin-bottom: 8px;
+    font-size: 13pt;
+    line-height: 1.75;
   }
   li::before {
     content: "";
     position: absolute;
     right: 0;
-    top: 10px;
-    width: 7px; height: 7px;
+    top: 11px;
+    width: 9px; height: 9px;
     background: linear-gradient(135deg, var(--teal), var(--fuchsia));
     border-radius: 50%;
   }
@@ -260,82 +266,40 @@
   .mode-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+    gap: 9px;
     margin: 10px 0;
   }
   .mode-pill {
     background: #fff;
     border: 1px solid #99f6e4;
-    border-radius: 12px;
-    padding: 8px 10px;
-    font-size: 10pt;
-    font-weight: 600;
+    border-radius: 14px;
+    padding: 10px 10px;
+    font-size: 12.5pt;
+    font-weight: 700;
     text-align: center;
     color: var(--ink);
   }
-  .mode-pill .em { font-size: 14pt; display: block; margin-bottom: 2px; }
-
-  .price-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-    margin: 12px 0;
-  }
-  .price-card {
-    border-radius: 16px;
-    padding: 16px 14px;
-    border: 1px solid #ccfbf1;
-    background: #fff;
-  }
-  .price-card.featured {
-    background: linear-gradient(135deg, var(--teal), var(--fuchsia));
-    color: #fff;
-    border: 0;
-    box-shadow: 0 8px 24px rgba(13,148,136,.25);
-  }
-  .price-card .tier {
-    font-size: 10pt;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    color: var(--muted);
-    margin-bottom: 6px;
-  }
-  .price-card.featured .tier { color: rgba(255,255,255,.85); }
-  .price-card .amt {
-    font-size: 22pt;
-    font-weight: 900;
-    letter-spacing: -.02em;
-  }
-  .price-card .per {
-    font-size: 10pt;
-    opacity: .75;
-    margin-bottom: 8px;
-  }
-  .price-card ul { font-size: 9.5pt; }
-  .price-card li::before { background: var(--teal); }
-  .price-card.featured li::before { background: #fff; }
-  .price-card.featured li { color: rgba(255,255,255,.95); }
-  .price-card.featured strong { color: #fff9c4; }
+  .mode-pill .em { font-size: 17pt; display: block; margin-bottom: 3px; }
 
   .cta {
     margin-top: 14px;
-    padding: 22px 24px;
+    padding: 24px 28px;
     background: linear-gradient(135deg, var(--teal), var(--fuchsia));
     color: #fff;
-    border-radius: 22px;
+    border-radius: 24px;
     text-align: center;
-    box-shadow: 0 12px 32px rgba(13,148,136,.25);
+    box-shadow: 0 14px 38px rgba(13,148,136,.28);
   }
   .cta .big {
-    font-size: 22pt;
+    font-size: 26pt;
     font-weight: 900;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     letter-spacing: -.01em;
   }
   .cta .small {
-    font-size: 11pt;
-    opacity: .92;
+    font-size: 13.5pt;
+    opacity: .95;
+    font-weight: 500;
   }
 
   .footer {
@@ -343,72 +307,109 @@
     bottom: 7mm;
     right: 14mm; left: 14mm;
     text-align: center;
-    font-size: 9pt;
+    font-size: 11pt;
     color: var(--muted);
-    padding-top: 5px;
+    padding-top: 6px;
     border-top: 1px solid #ccfbf1;
+    font-weight: 600;
   }
 
-  .check-list li { padding-right: 28px; }
+  .check-list li { padding-right: 32px; }
   .check-list li::before {
-    width: 16px; height: 16px;
-    border-radius: 6px;
+    width: 20px; height: 20px;
+    border-radius: 7px;
     background: linear-gradient(135deg, var(--teal), var(--fuchsia));
     top: 4px;
   }
   .check-list li::after {
     content: "✓";
     position: absolute;
-    right: 3px; top: 1px;
+    right: 4px; top: 1px;
     color: #fff;
-    font-size: 11pt;
-    font-weight: 800;
+    font-size: 14pt;
+    font-weight: 900;
   }
 
   .quote {
     background: #fff;
-    border-right: 4px solid var(--fuchsia);
-    padding: 14px 18px;
-    margin: 12px 0;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    border-right: 5px solid var(--fuchsia);
+    padding: 12px 18px;
+    margin: 10px 0;
+    border-radius: 14px;
+    box-shadow: 0 3px 10px rgba(0,0,0,.05);
   }
   .quote .q {
-    font-size: 13pt;
+    font-size: 14pt;
     font-weight: 700;
     color: var(--ink);
     font-style: italic;
-    line-height: 1.6;
+    line-height: 1.5;
   }
   .quote .who {
-    font-size: 10pt;
+    font-size: 11pt;
     color: var(--muted);
     margin-top: 6px;
+    font-weight: 600;
   }
 
   .roadmap {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 11px;
   }
   .road-item {
-    padding: 12px 14px;
+    padding: 14px 16px;
     background: #fff;
     border: 1px dashed #5eead4;
-    border-radius: 12px;
+    border-radius: 14px;
   }
   .road-item .when {
-    font-size: 9.5pt;
+    font-size: 11.5pt;
     font-weight: 800;
     color: var(--fuchsia);
     text-transform: uppercase;
     letter-spacing: .08em;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
   }
   .road-item .what {
-    font-size: 10.5pt;
+    font-size: 13pt;
     font-weight: 700;
     color: var(--ink);
+  }
+
+  .new-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 7px;
+    margin-top: 4px;
+  }
+  .new-item {
+    background: #fff;
+    border-radius: 11px;
+    padding: 7px 11px;
+    border: 1px solid #f5d0fe;
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+  }
+  .new-item .em {
+    font-size: 17pt;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .new-item .tx {
+    font-size: 11pt;
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1.35;
+  }
+  .new-item .tx small {
+    display: block;
+    font-size: 9.5pt;
+    color: var(--muted);
+    font-weight: 500;
+    margin-top: 1px;
+    line-height: 1.35;
   }
 </style>
 </head>
@@ -418,14 +419,14 @@
 <section class="page cover">
   <div class="top-row">
     <div class="logo-box">VOCABAND</div>
-    <div class="date-tag">2026 • EDITION العربية</div>
+    <div class="date-tag">2026 • النسخة العربية</div>
   </div>
   <h1>Vocaband</h1>
-  <div class="strap">نُغلق فجوة المفردات.<br>صفًّا تلو الآخر.</div>
-  <div class="sub">منصّة تعلّم للمدارس في إسرائيل — مبنيّة خصّيصًا لمعلّمي الإنجليزية، متوافقة مع منهاج وزارة التربية والتعليم، وتتحدّث العربية والعبرية والروسية.</div>
+  <div class="strap">نسدّ فجوة المفردات.<br>صفّاً تلو الآخر.</div>
+  <div class="sub">منصّة تعلّم للمدارس في البلاد — مبنيّة خصّيصاً لمعلّمي اللغة الإنجليزية، متوافقة مع منهاج وزارة المعارف، وتدعم العربية والعبرية والروسية.</div>
   <div class="pills">
     <div class="pill">6,482 مفردة</div>
-    <div class="pill">15 وضع لعب</div>
+    <div class="pill">15 نمط لعب</div>
     <div class="pill">WCAG 2.0 AA</div>
     <div class="pill">GDPR + التعديل 13</div>
   </div>
@@ -439,26 +440,26 @@
 <section class="page">
   <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">02 / 07</div></div>
   <div class="eyebrow">الأرقام خلف المنتج</div>
-  <h2>ليس مجرّد تطبيق — <span class="accent">منظومة كاملة</span></h2>
+  <h2>ليس مجرّد تطبيق — <span class="accent">منظومة تعليميّة كاملة</span></h2>
 
   <div class="stat-grid">
-    <div class="stat"><div class="num">6,482</div><div class="label">مفردة من منهاج وزارة التعليم</div><div class="sub-label">Set 1 (4,365) • Set 2 (789) • Set 3 (1,328)</div></div>
-    <div class="stat amber"><div class="num">15</div><div class="label">وضع لعب مختلف</div><div class="sub-label">تمرين دون ملل، بنفس المفردات</div></div>
-    <div class="stat emerald"><div class="num">4</div><div class="label">لغات مدعومة</div><div class="sub-label">الإنجليزية، العبرية، العربية، الروسية</div></div>
-    <div class="stat rose"><div class="num">100%</div><div class="label">WCAG 2.0 AA</div><div class="sub-label">38 معيارًا — يُتاح لكلّ طالب</div></div>
+    <div class="stat"><div class="num">6,482</div><div class="label">مفردة من منهاج وزارة المعارف</div><div class="sub-label">Set 1 (4,365) • Set 2 (789) • Set 3 (1,328)</div></div>
+    <div class="stat amber"><div class="num">15</div><div class="label">نمط لعب وتمرين</div><div class="sub-label">تنوّع يقتل الملل — على نفس قائمة المفردات</div></div>
+    <div class="stat emerald"><div class="num">4</div><div class="label">لغات للواجهة والترجمة</div><div class="sub-label">الإنجليزية • العربية • العبرية • الروسية</div></div>
+    <div class="stat rose"><div class="num">100%</div><div class="label">امتثال WCAG 2.0 AA</div><div class="sub-label">جميع المعايير الـ 38 — متاح لكل طالب</div></div>
   </div>
 
   <div class="card rose" style="margin-top: 14px;">
-    <div class="card-title"><span class="ico">⚠️</span>المشكلة — لن تَزول وحدها</div>
+    <div class="card-title"><span class="ico">⚠️</span>المشكلة — لن تَزول من تلقاء نفسها</div>
     <ul>
-      <li>طلّاب الصفّ التاسع يُنهون السنة برصيد مفردات بمستوى السادس.</li>
-      <li>فروق ضخمة داخل الصفّ الواحد — بعضهم يقرأ بطلاقة وآخرون يواجهون صعوبة في الحروف.</li>
-      <li>لا يملك المعلّم/ة وقتًا لتقديم تمرين فرديّ لـ 30 طالبًا في الوقت ذاته.</li>
-      <li>الوظائف البيتيّة في المفردات تَضيع — لا أحد يُصحّحها.</li>
+      <li>طلّاب الصفّ التاسع يُنهون السنة برصيد مفردات بمستوى الصفّ السادس.</li>
+      <li>فروق ضخمة داخل الصفّ الواحد — بعضهم يقرأ بطلاقة وآخرون يتعثّرون في الأحرف.</li>
+      <li>لا يملك المعلّم/ة وقتاً كافياً لتقديم تمرين فرديّ لـ 30 طالباً في الحصّة ذاتها.</li>
+      <li>الواجبات البيتيّة في المفردات تَضيع بين الأوراق — لا أحد يتابعها أو يصحّحها.</li>
     </ul>
   </div>
 
-  <div class="footer">Vocaband — مفردات تناسب الصفوف في إسرائيل</div>
+  <div class="footer">Vocaband — مفردات مصمّمة لصفوف المدارس في إسرائيل</div>
 </section>
 
 <!-- PAGE 3 — FOR STUDENTS -->
@@ -467,157 +468,166 @@
   <div class="eyebrow">للطالب</div>
   <h2>تمرينٌ <span class="accent">يرغبون</span> في القيام به</h2>
 
-  <p>15 وضع لعب مختلف على نفس رصيد المفردات. الطالب لا يَملّ، والمعلّم لا يُكرّر نفسه.</p>
+  <p>15 نمط لعب مختلف على نفس قائمة المفردات. الطالب لا يَملّ، والمعلّم لا يُكرّر نفسه.</p>
 
   <div class="mode-grid">
-    <div class="mode-pill"><span class="em">🎴</span>بطاقات</div>
-    <div class="mode-pill"><span class="em">⚡</span>كلاسيكي</div>
+    <div class="mode-pill"><span class="em">🎴</span>بطاقات تعليميّة</div>
+    <div class="mode-pill"><span class="em">⚡</span>اختيار من متعدّد</div>
     <div class="mode-pill"><span class="em">📝</span>اِملأ الفراغ</div>
-    <div class="mode-pill"><span class="em">🎧</span>استماع</div>
-    <div class="mode-pill"><span class="em">🔤</span>تهجئة</div>
-    <div class="mode-pill"><span class="em">🃏</span>مطابقة</div>
-    <div class="mode-pill"><span class="em">🧠</span>الذاكرة</div>
-    <div class="mode-pill"><span class="em">✔️</span>صح / خطأ</div>
-    <div class="mode-pill"><span class="em">🔀</span>ترتيب</div>
-    <div class="mode-pill"><span class="em">↩️</span>عكسي</div>
+    <div class="mode-pill"><span class="em">🎧</span>الاستماع</div>
+    <div class="mode-pill"><span class="em">🔤</span>التهجئة</div>
+    <div class="mode-pill"><span class="em">🃏</span>المطابقة</div>
+    <div class="mode-pill"><span class="em">🧠</span>لعبة الذاكرة</div>
+    <div class="mode-pill"><span class="em">✔️</span>صواب / خطأ</div>
+    <div class="mode-pill"><span class="em">🔀</span>خَلط الحروف</div>
+    <div class="mode-pill"><span class="em">↩️</span>الترجمة المعكوسة</div>
     <div class="mode-pill"><span class="em">🔠</span>أصوات الحروف</div>
     <div class="mode-pill"><span class="em">📚</span>بناء الجملة</div>
     <div class="mode-pill"><span class="em">🔗</span>سلاسل الكلمات</div>
-    <div class="mode-pill"><span class="em">💬</span>تعابير</div>
-    <div class="mode-pill"><span class="em">⏱️</span>جولة سريعة</div>
+    <div class="mode-pill"><span class="em">💬</span>التعابير</div>
+    <div class="mode-pill"><span class="em">⏱️</span>الجولة السريعة</div>
   </div>
 
   <div class="card indigo" style="margin-top: 12px;">
-    <div class="card-title"><span class="ico">🎮</span>نظام دافعيّة حقيقي</div>
+    <div class="card-title"><span class="ico">🎮</span>نظام دافعيّة حقيقي — وليس مجرّد نقاط</div>
     <ul>
-      <li><strong>30 شخصيّة</strong> و-<strong>11 سمة ألوان</strong> في المتجر، يُمكن شراؤها بنقاط XP.</li>
-      <li><strong>حيوان أليف يتطوّر عبر 8 مراحل</strong> مع تقدّم الطالب.</li>
-      <li>4 رحلات تقدّم: الحديقة، المدينة، الصاروخ، القلعة — كل منها 10 مراحل.</li>
-      <li><strong>8 رتب ألقاب</strong> من Beginner إلى Mythic ثم Ascended.</li>
-      <li>سلاسل يوميّة، كنوز أسبوعيّة، ومضاعفات XP لوقت محدود.</li>
+      <li><strong>30 شخصيّة</strong> و<strong>11 سمة ألوان</strong> في المتجر، تُشترى بنقاط الخبرة XP.</li>
+      <li><strong>حيوان أليف يتطوّر عبر 8 مراحل</strong> بحسب تقدّم الطالب اليومي.</li>
+      <li>4 رحلات تقدّم: الحديقة، المدينة، الصاروخ، القلعة — كلٌّ منها 10 مستويات.</li>
+      <li><strong>8 رتب وألقاب</strong> من Beginner إلى Mythic فـ Ascended.</li>
+      <li>سلاسل أيّام يوميّة، صناديق كنوز أسبوعيّة، ومضاعفات XP لوقتٍ محدود.</li>
     </ul>
   </div>
 
-  <div class="footer">Vocaband — مفردات تناسب الصفوف في إسرائيل</div>
+  <div class="footer">Vocaband — مفردات مصمّمة لصفوف المدارس في إسرائيل</div>
 </section>
 
 <!-- PAGE 4 — FOR TEACHERS -->
 <section class="page">
   <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">04 / 07</div></div>
-  <div class="eyebrow">للمعلّم</div>
+  <div class="eyebrow">للمعلّم/ة</div>
   <h2>عملٌ أقل. <span class="accent">تدريسٌ أكثر.</span></h2>
 
-  <div class="card emerald">
-    <div class="card-title"><span class="ico">📸</span>جديد 2026 — كاميرا OCR لأوراق العمل</div>
-    <p>صوّروا ورقة عمل المفردات → التطبيق <strong>يستخرج تلقائيًّا</strong> كل الكلمات → وظيفة جاهزة للطلاب. دون إدخال يدوي.</p>
+  <div class="card fuchsia">
+    <div class="card-title"><span class="ico">✨</span>جديد في 2026 — ميّزات أطلقناها هذا العام</div>
+    <div class="new-grid">
+      <div class="new-item"><span class="em">📸</span><div class="tx">كاميرا OCR لأوراق العمل<small>صوّروا الورقة، التطبيق يستخرج الكلمات تلقائيّاً.</small></div></div>
+      <div class="new-item"><span class="em">📊</span><div class="tx">لوحة نتائج الواجبات التفاعليّة<small>أرسلوا واجباً برمز QR، وشاهدوا الإجابات في لوحة المعلّم.</small></div></div>
+      <div class="new-item"><span class="em">✍️</span><div class="tx">جمل تمرين بالذكاء الاصطناعيّ<small>الذكاء الاصطناعي يُنتج جُمل اِملأ الفراغ لكل مفردة جديدة.</small></div></div>
+      <div class="new-item"><span class="em">🔁</span><div class="tx">المراجعة الذكيّة (التكرار المُتباعَد)<small>التطبيق يُعيد للطالب المفردات التي نسيها — في الوقت المناسب.</small></div></div>
+      <div class="new-item"><span class="em">⏱️</span><div class="tx">دقيقة الصفّ اليوميّة<small>تمرين خاطف 60 ثانية يُفعَّل ببداية الحصّة.</small></div></div>
+      <div class="new-item"><span class="em">🎲</span><div class="tx">Hot Seat — لعبة الجهاز الواحد<small>هاتف واحد يدور بين الطلّاب — مثاليّة للصفوف بلا أجهزة.</small></div></div>
+      <div class="new-item"><span class="em">🏆</span><div class="tx">شهادات PDF قابلة للطباعة<small>شهادة فرديّة لكل طالب — كم كلمة أتقن وما هو معدّله.</small></div></div>
+      <div class="new-item"><span class="em">💬</span><div class="tx">مشاركة الواجب عبر واتساب<small>زرّ مباشر يُرسل الرابط إلى أولياء الأمور.</small></div></div>
+    </div>
   </div>
 
   <div class="card">
-    <div class="card-title"><span class="ico">⚡</span>روتين المعلّم اليوميّ</div>
+    <div class="card-title"><span class="ico">⚡</span>روتين المعلّم اليوميّ — ما الذي يُنجزه التطبيق بدلاً منكم</div>
     <ul class="check-list">
-      <li>إنشاء صف خلال 60 ثانية — يدخل الطلاب بـ<strong>رمز الصف</strong>، بدون تسجيلات.</li>
-      <li>وظائف جاهزة وفقًا لوحدات وزارة التعليم — أو قائمة مفردات مخصّصة.</li>
-      <li><strong>تصحيح آليّ للواجبات</strong> — التطبيق يفحص، يضع علامة، ويُعطي تغذية راجعة.</li>
-      <li>"Quick Play" — بدء نشاط صفّيّ برمز QR خلال 30 ثانية.</li>
-      <li><strong>تحدٍّ حيّ</strong> — لوحة نتائج فوريّة على الشاشة الكبيرة في الصف.</li>
-      <li>تحليلات على مستوى المادّة — ليس فقط XP، بل ما يعرفه الطالب فعلًا.</li>
+      <li>إنشاء صفّ في أقلّ من دقيقة — يدخل الطلّاب بـ<strong>رمز الصفّ</strong> دون الحاجة إلى تسجيل.</li>
+      <li>واجبات جاهزة وفقاً لوحدات وزارة المعارف — أو ارفعوا قائمة مفرداتكم الخاصّة.</li>
+      <li><strong>تصحيح آليّ للواجبات</strong> — التطبيق يفحص، يُقيّم، ويُعطي الطالب تغذية راجعة فوريّة.</li>
+      <li>"Quick Play" — تشغيل نشاطٍ صفّيّ برمز QR في أقلّ من 30 ثانية.</li>
+      <li><strong>التحدّي الحيّ</strong> — لوحة نتائج فوريّة على الشاشة الكبيرة في الصفّ.</li>
+      <li>تقارير تقدّم لكلّ طالب — تعرفون من يتقدّم، من يتعثّر، ومن جاهزٌ للامتحان.</li>
     </ul>
   </div>
 
   <div class="quote">
-    <div class="q">"بدلًا من تصحيح 30 دفترًا في المساء — أرى في 10 ثوانٍ من يعاني ومن جاهز للامتحان."</div>
-    <div class="who">— تجربة معلّمي الإنجليزية في الميدان</div>
+    <div class="q">"بدلاً من تصحيح 30 دفتراً في المساء — أرى في 10 ثوانٍ من يحتاج المساعدة ومن جاهز للامتحان."</div>
+    <div class="who">— من خبرة معلّمات ومعلّمي اللغة الإنجليزية في الميدان</div>
   </div>
 
-  <div class="footer">Vocaband — مفردات تناسب الصفوف في إسرائيل</div>
+  <div class="footer">Vocaband — مفردات مصمّمة لصفوف المدارس في إسرائيل</div>
 </section>
 
 <!-- PAGE 5 — FOR PRINCIPALS + SECURITY -->
 <section class="page">
   <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">05 / 07</div></div>
-  <div class="eyebrow">للمدير/ة</div>
-  <h2>تحكّم. رقابة. <span class="accent">بيانات حقيقيّة.</span></h2>
+  <div class="eyebrow">للإدارة المدرسيّة</div>
+  <h2>إشراف. متابعة. <span class="accent">بيانات حقيقيّة.</span></h2>
 
   <div class="card amber">
-    <div class="card-title"><span class="ico">🎖️</span>طبقة الإدارة</div>
+    <div class="card-title"><span class="ico">🎖️</span>طبقة الإدارة المدرسيّة</div>
     <ul>
       <li>نظرة شاملة على جميع صفوف المدرسة في شاشة واحدة.</li>
-      <li><strong>بيانات تقدّم موضوعيّة</strong> — وليست انطباعات شخصيّة.</li>
-      <li>اكتشاف مبكر للطلّاب المعرّضين للخطر — قبل وقت طويل من امتحان المِبْحَن.</li>
-      <li>تقارير قابلة للعرض على أولياء الأمور، المفتّشين، ووزارة التعليم.</li>
+      <li><strong>بيانات تقدّم موضوعيّة</strong> — أرقام واضحة، وليست انطباعاتٍ شخصيّة.</li>
+      <li>اكتشاف مبكر للطلّاب المعرّضين للتأخّر — قبل وقتٍ طويل من الامتحانات القُطريّة (مِيتساف / מפ"ה).</li>
+      <li>تقارير قابلة للعرض على أولياء الأمور، المفتّشين، ووزارة المعارف.</li>
     </ul>
   </div>
 
   <div class="card emerald" style="margin-top: 12px;">
-    <div class="card-title"><span class="ico">🔒</span>الأمان والخصوصيّة والوصوليّة — مدمجة من البداية</div>
+    <div class="card-title"><span class="ico">🔒</span>الأمان والخصوصيّة وإتاحة الوصول — مدمجة منذ اليوم الأوّل</div>
     <ul class="check-list">
       <li>الاستضافة <strong>في أوروبا (فرانكفورت)</strong> — امتثال كامل لـ GDPR.</li>
-      <li>قانون حماية الخصوصيّة الإسرائيلي + <strong>التعديل 13 (2025)</strong>.</li>
-      <li><strong>WCAG 2.0 AA</strong> — جميع المعايير الـ 38. مُتاح لطلّاب يعانون من صعوبات قراءة وعُسر القراءة.</li>
-      <li>تشفير TLS 1.2+، تصنيف <strong>CSP A+</strong>، Row-Level Security في كل الجداول.</li>
-      <li>سجلّ تدقيق مع <strong>حفظ لمدّة سنتين</strong>.</li>
-      <li>اختبارات اختراق (pen-test) دوريّة — بدون إعلانات، بدون مشاركة مع طرف ثالث.</li>
+      <li>قانون حماية الخصوصيّة الإسرائيليّ + <strong>التعديل 13 (2025)</strong>.</li>
+      <li><strong>WCAG 2.0 AA</strong> — جميع المعايير الـ 38. مُتاح للطلّاب ذوي صعوبات القراءة وعُسر القراءة (Dyslexia).</li>
+      <li>تشفير TLS 1.2+، تصنيف <strong>CSP A+</strong>، وأمان على مستوى الصفّ في كل جداول البيانات.</li>
+      <li>سجلّ تدقيق (Audit Log) مع <strong>حفظٍ لمدّة سنتين</strong>.</li>
+      <li>اختبارات اختراق دوريّة (pen-test) — بدون إعلانات، بدون بيع بيانات، بدون مشاركة مع طرف ثالث.</li>
     </ul>
   </div>
 
-  <div class="footer">Vocaband — مفردات تناسب الصفوف في إسرائيل</div>
+  <div class="footer">Vocaband — مفردات مصمّمة لصفوف المدارس في إسرائيل</div>
 </section>
 
 <!-- PAGE 6 — ROADMAP -->
 <section class="page">
   <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">06 / 07</div></div>
   <div class="eyebrow">الخطوة التالية</div>
-  <h2>الإنجليزيّة اليوم. <span class="accent">كل مادّة غدًا.</span></h2>
+  <h2>الإنجليزيّة اليوم. <span class="accent">كلّ مادّة غداً.</span></h2>
 
-  <p>محرّك Vocaband مبنيٌّ على بنية تحتيّة تدعم أي مادّة تتطلّب الحفظ والاستيعاب. اليوم نفسه، التحليلات تُميّز بين موادّ مختلفة في الصف الواحد.</p>
+  <p>محرّك Vocaband مبنيّ على بنية تحتيّة تدعم أيّ مادّة تتطلّب الحفظ والاستيعاب. اليوم نفسه، التحليلات تُميّز بين المواد المختلفة داخل الصفّ الواحد.</p>
 
   <div class="roadmap" style="margin-top: 14px;">
     <div class="road-item"><div class="when">صيف 2026</div><div class="what">AI Lesson Builder — درس كامل من موضوع واحد</div></div>
-    <div class="road-item"><div class="when">خريف 2026</div><div class="what">العبريّة كلغة ثانية — للناطقين بالعربيّة</div></div>
-    <div class="road-item"><div class="when">خريف 2026</div><div class="what">العربيّة — للناطقين بالعبريّة</div></div>
-    <div class="road-item"><div class="when">شتاء 2027</div><div class="what">مفردات في العلوم، التاريخ، الدراسات الدينيّة</div></div>
+    <div class="road-item"><div class="when">خريف 2026</div><div class="what">العبريّة كلغة ثانية — للطلّاب الناطقين بالعربيّة</div></div>
+    <div class="road-item"><div class="when">خريف 2026</div><div class="what">العربيّة — للطلّاب الناطقين بالعبريّة</div></div>
+    <div class="road-item"><div class="when">شتاء 2027</div><div class="what">مفردات العلوم، التاريخ، والدراسات الدينيّة</div></div>
     <div class="road-item"><div class="when">شتاء 2027</div><div class="what">الفرنسيّة، الإسبانيّة، الروسيّة</div></div>
-    <div class="road-item"><div class="when">2027</div><div class="what">لوحة تحكّم إقليميّة للإشراف</div></div>
+    <div class="road-item"><div class="when">2027</div><div class="what">لوحة تحكّم إقليميّة لمفتّشي وزارة المعارف</div></div>
   </div>
 
   <div class="card indigo" style="margin-top: 14px;">
     <div class="card-title"><span class="ico">🤖</span>AI Lesson Builder — ما هو؟</div>
-    <p>يُدخل المعلّم موضوعًا ("Renewable Energy")، فيُنتج النظام: قائمة مفردات مناسبة للمستوى ← نص قراءة ← أسئلة فَهم ← تمرين في أوضاع اللعب. <strong>15 دقيقة من التحضير تتحوّل إلى 30 ثانية.</strong></p>
+    <p>يُدخل المعلّم/ة موضوعاً ("Renewable Energy")، فيُنتج النظام: قائمة مفردات مناسبة للمستوى ← نصّ قراءة ← أسئلة فَهم ← تمرين في كل أنماط اللعب. <strong>15 دقيقة من التحضير تتحوّل إلى 30 ثانية.</strong></p>
   </div>
 
-  <div class="footer">Vocaband — مفردات تناسب الصفوف في إسرائيل</div>
+  <div class="footer">Vocaband — مفردات مصمّمة لصفوف المدارس في إسرائيل</div>
 </section>
 
 <!-- PAGE 7 — CONTACT + CTA -->
 <section class="page">
   <div class="head"><div class="brand-mini">Vocaband</div><div class="page-num">07 / 07</div></div>
   <div class="eyebrow">هيّا نبدأ</div>
-  <h2>صفٌّ واحد. <span class="accent">مرحلة تجريبيّة واحدة.</span></h2>
+  <h2>صفٌّ واحد. <span class="accent">مرحلة تجريبيّة واحدة. بدون التزام.</span></h2>
 
   <div class="card">
     <div class="card-title"><span class="ico">🚀</span>كيف نبدأ — 3 خطوات</div>
     <ul class="check-list">
-      <li><strong>لقاء أوّل (15 دقيقة)</strong> — نختار معًا معلّمًا واحدًا وصفّه.</li>
-      <li><strong>الإعداد (10 دقائق)</strong> — نُنشئ الصف معكم، ونرفع قائمة المفردات الأولى.</li>
-      <li><strong>تجريب داخل الصف</strong> — يبدأ المعلّم العمل، ونحن إلى جانبكم لأيّ سؤال.</li>
+      <li><strong>لقاء أوّل (15 دقيقة)</strong> — نختار معاً معلّماً/ةً واحدة وصفّاً واحداً.</li>
+      <li><strong>الإعداد (10 دقائق)</strong> — نُنشئ الصفّ معكم، ونرفع قائمة المفردات الأولى.</li>
+      <li><strong>تجربة داخل الصفّ</strong> — يبدأ المعلّم/ة العمل، ونحن إلى جانبكم لأيّ سؤال.</li>
     </ul>
   </div>
 
-  <h3 style="margin-top: 16px;">ماذا تحتاج المدرسة؟</h3>
+  <h3 style="margin-top: 16px;">ماذا تحتاج المدرسة؟ الحدّ الأدنى فقط:</h3>
   <div class="card indigo">
     <ul>
-      <li>اتّصال إنترنت عاديّ. <strong>لا حاجة إلى تثبيت</strong> — التطبيق يعمل في المتصفّح.</li>
-      <li>هاتف / لوحي / حاسوب لكل طالب (يعمل بشكل ممتاز حتى في ثنائيّات).</li>
-      <li>10 دقائق من المعلّم/ة لإنشاء الصف الأوّل. هذا كل شيء.</li>
+      <li>اتّصال إنترنت عاديّ. <strong>لا حاجة إلى تنزيل أو تثبيت</strong> — التطبيق يعمل في المتصفّح مباشرة.</li>
+      <li>هاتف / لوحيّ / حاسوب لكلّ طالب (يعمل بشكل ممتاز حتّى في ثنائيّات بجهازٍ واحد).</li>
+      <li>10 دقائق من المعلّم/ة لإنشاء الصفّ الأوّل. هذا كلّ ما يلزم.</li>
     </ul>
   </div>
 
   <div class="cta">
     <div class="big">www.vocaband.com</div>
-    <div class="small">افتحوا الموقع في المتصفّح ← سجّلوا الدخول كمعلّم ← أنشئوا صفًّا ← خلال 60 ثانية تكونون جاهزين للدرس الأوّل.</div>
+    <div class="small">افتحوا الموقع في المتصفّح ← سجّلوا الدخول كمعلّم ← أنشئوا الصفّ ← خلال 60 ثانية تكونون جاهزين للحصّة الأولى.</div>
   </div>
 
-  <div class="footer" style="margin-top: 10px;">Vocaband • 2026 • جميع الحقوق محفوظة • مُستضاف في الاتحاد الأوروبي • مصنوع للصفوف في إسرائيل</div>
+  <div class="footer" style="margin-top: 10px;">Vocaband • 2026 • جميع الحقوق محفوظة • مُستضاف في الاتحاد الأوروبي • مصنوع لصفوف المدارس في إسرائيل</div>
 </section>
 
 </body>
