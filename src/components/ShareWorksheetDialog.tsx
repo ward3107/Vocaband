@@ -14,12 +14,12 @@
  */
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Share2, X, Loader2, Check, Copy, MessageCircle, Plus } from "lucide-react";
-import qrcode from "qrcode-generator";
+import { Share2, X, Loader2, Check, Plus } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { shareWorksheetT } from "../locales/teacher/share-worksheet";
 import type { Exercise, ExerciseType, TranslationDirection } from "../worksheet/types";
+import { WorksheetShareCard } from "./WorksheetShareCard";
 
 export type WorksheetLang = "en" | "he" | "ar";
 
@@ -93,19 +93,6 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
   const [slug, setSlug] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const shareUrl = slug ? `${window.location.origin}/w/${slug}` : "";
-
-  const qrSvgMarkup = useMemo(() => {
-    if (!shareUrl) return "";
-    const qr = qrcode(0, "M");
-    qr.addData(shareUrl);
-    qr.make();
-    return qr.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
-  }, [shareUrl]);
-
-  const isActive = (type: ExerciseType) => plan.some((e) => e.type === type);
 
   const toggle = (type: ExerciseType) => {
     setPlan((prev) => {
@@ -156,38 +143,6 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       setSlug(String(data));
     } finally {
       setCreating(false);
-    }
-  };
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      window.prompt(t.copyPromptTitle, shareUrl);
-    }
-  };
-
-  const handleWhatsApp = () => {
-    const text = t.whatsappText(source.topicName, shareUrl);
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  const handleNativeShare = async () => {
-    if (typeof navigator.share !== "function") {
-      handleWhatsApp();
-      return;
-    }
-    try {
-      await navigator.share({
-        title: t.nativeShareTitle(source.topicName),
-        text: t.nativeShareText,
-        url: shareUrl,
-      });
-    } catch {
-      /* user cancelled */
     }
   };
 
@@ -281,64 +236,11 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
           )}
 
           {slug && (
-            <>
-              <div className="flex items-center justify-center bg-white rounded-xl border border-stone-200 p-4">
-                <div
-                  className="w-44 h-44"
-                  aria-label={t.qrAria}
-                  dangerouslySetInnerHTML={{ __html: qrSvgMarkup }}
-                />
-              </div>
-
-              <div className="rounded-xl bg-stone-50 border border-stone-200 px-3 py-3">
-                <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-1">
-                  {t.linkLabel}
-                </p>
-                <p className="font-mono text-sm break-all text-stone-800">{shareUrl}</p>
-                <p className="text-xs text-stone-500 mt-1">{t.expiresNote}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center gap-2 transition-all"
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                >
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
-                  {copied ? t.copiedBtn : t.copyBtn}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleWhatsApp}
-                  className="py-2.5 rounded-xl bg-[#25D366] hover:opacity-90 text-white font-bold flex items-center justify-center gap-2 transition-all"
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                >
-                  <MessageCircle size={16} />
-                  {t.whatsappBtn}
-                </button>
-              </div>
-
-              {typeof navigator.share === "function" && (
-                <button
-                  type="button"
-                  onClick={handleNativeShare}
-                  className="w-full py-2.5 rounded-xl bg-violet-100 hover:bg-violet-200 text-violet-700 font-bold flex items-center justify-center gap-2 transition-all"
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                >
-                  <Share2 size={16} />
-                  {t.moreShareBtn}
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => window.open(shareUrl, "_blank", "noopener,noreferrer")}
-                className="w-full text-center text-sm font-bold text-emerald-700 hover:text-emerald-900 py-1"
-              >
-                {t.openAsStudent}
-              </button>
-            </>
+            <WorksheetShareCard
+              slug={slug}
+              topicName={source.topicName}
+              t={t}
+            />
           )}
         </div>
       </motion.div>

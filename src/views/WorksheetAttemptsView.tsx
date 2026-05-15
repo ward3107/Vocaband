@@ -19,15 +19,19 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   ClipboardList,
   Clock,
   Inbox,
   Loader2,
+  QrCode,
   Users,
 } from "lucide-react";
 import { supabase } from "../core/supabase";
 import type { AppUser } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
+import { shareWorksheetT } from "../locales/teacher/share-worksheet";
+import { WorksheetShareCard } from "../components/WorksheetShareCard";
 
 type WorksheetFormat = "matching" | "quiz" | "fillblank" | "listening";
 
@@ -307,7 +311,16 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
   worksheet,
   attempts,
 }) => {
+  const { language } = useLanguage();
+  const shareT = shareWorksheetT[language];
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Default the share panel open when there are no submissions yet —
+  // that's exactly when a teacher needs the QR back. Once results come
+  // in the panel is collapsed by default so the results are above the
+  // fold; tapping the chip re-opens it.
+  const [shareOpen, setShareOpen] = useState<boolean>(() =>
+    attempts.filter((a) => a.completed_at).length === 0,
+  );
   const completed = attempts.filter((a) => a.completed_at);
   const avgPct =
     completed.length > 0
@@ -344,15 +357,56 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
         </p>
       </div>
 
+      <div className="mb-6 rounded-2xl border border-[var(--vb-border)] bg-[var(--vb-surface)] overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShareOpen((v) => !v)}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--vb-surface-alt)] transition-colors"
+        >
+          <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+            <QrCode size={18} />
+          </div>
+          <div className="flex-1 text-left min-w-0">
+            <p className="font-bold text-[var(--vb-text-primary)]">
+              Share again
+            </p>
+            <p className="text-xs text-[var(--vb-text-muted)]">
+              QR + link + save as image / PDF
+            </p>
+          </div>
+          {shareOpen ? (
+            <ChevronUp size={18} className="text-[var(--vb-text-muted)]" />
+          ) : (
+            <ChevronDown size={18} className="text-[var(--vb-text-muted)]" />
+          )}
+        </button>
+        <AnimatePresence initial={false}>
+          {shareOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="border-t border-[var(--vb-border)]"
+            >
+              <div className="p-4">
+                <WorksheetShareCard
+                  slug={worksheet.slug}
+                  topicName={worksheet.topic_name}
+                  t={shareT}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       {completed.length === 0 ? (
         <div className="text-center p-10 rounded-3xl bg-[var(--vb-surface)] border border-[var(--vb-border)]">
           <Inbox size={36} className="mx-auto mb-3 text-[var(--vb-text-muted)]" />
           <p className="text-sm text-[var(--vb-text-secondary)]">
-            No submissions yet. Share the link with your students:
-            <br />
-            <span className="font-mono text-xs text-[var(--vb-text-primary)]">
-              {window.location.origin}/w/{worksheet.slug}
-            </span>
+            No submissions yet. Share the QR or link above with your students.
           </p>
         </div>
       ) : (

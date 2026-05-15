@@ -53,6 +53,8 @@ export interface ShareWorksheetStrings {
   whatsappBtn: string;
   moreShareBtn: string;
   openAsStudent: string;
+  downloadPngBtn: string;
+  downloadPdfBtn: string;
 
   // Clipboard fallback prompt
   copyPromptTitle: string;
@@ -110,6 +112,8 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
     whatsappBtn: "WhatsApp",
     moreShareBtn: "More share options",
     openAsStudent: "Open as a student →",
+    downloadPngBtn: "Save as image",
+    downloadPdfBtn: "Save as PDF",
     copyPromptTitle: "Copy this link",
     whatsappText: (topic, url) => `Solve this worksheet on your phone: ${topic}\n${url}`,
     nativeShareTitle: (topic) => `Worksheet: ${topic}`,
@@ -157,6 +161,8 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
     whatsappBtn: "WhatsApp",
     moreShareBtn: "אפשרויות שיתוף נוספות",
     openAsStudent: "פתח כתלמיד ←",
+    downloadPngBtn: "שמירה כתמונה",
+    downloadPdfBtn: "שמירה כ-PDF",
     copyPromptTitle: "העתיקו את הקישור",
     whatsappText: (topic, url) => `פתרו את דף העבודה הזה בטלפון: ${topic}\n${url}`,
     nativeShareTitle: (topic) => `דף עבודה: ${topic}`,
@@ -204,6 +210,8 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
     whatsappBtn: "WhatsApp",
     moreShareBtn: "خيارات مشاركة إضافية",
     openAsStudent: "افتح كطالب ←",
+    downloadPngBtn: "حفظ كصورة",
+    downloadPdfBtn: "حفظ كـ PDF",
     copyPromptTitle: "انسخ هذا الرابط",
     whatsappText: (topic, url) => `حلّ ورقة العمل هذه على هاتفك: ${topic}\n${url}`,
     nativeShareTitle: (topic) => `ورقة عمل: ${topic}`,
