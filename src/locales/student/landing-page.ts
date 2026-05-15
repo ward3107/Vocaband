@@ -272,6 +272,7 @@ export interface LandingPageT {
   footerSchoolDeck: string;
   footerSchoolPdfHe: string;
   footerSchoolPdfAr: string;
+  footerSchoolOnePagerAr: string;
   footerStatus: string;
   footerCopyright: (year: number) => string;
 }
@@ -498,6 +499,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerSchoolDeck: "School Pitch Deck",
     footerSchoolPdfHe: "PDF Hebrew for School",
     footerSchoolPdfAr: "PDF Arabic for School",
+    footerSchoolOnePagerAr: "Arabic 1-Page Summary",
     footerStatus: "System Status",
     footerCopyright: (year) =>
       `© ${year} Vocaband. Made with 💙 for learners everywhere.`,
@@ -724,6 +726,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerSchoolDeck: "מצגת מכירות לבתי ספר",
     footerSchoolPdfHe: "PDF עברית לבית הספר",
     footerSchoolPdfAr: "PDF ערבית לבית הספר",
+    footerSchoolOnePagerAr: "סיכום עמוד אחד בערבית",
     footerStatus: "סטטוס מערכת",
     footerCopyright: (year) =>
       `© ${year} Vocaband. נוצר עם 💙 ללומדים בכל העולם.`,
@@ -950,6 +953,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerSchoolDeck: "عرض المبيعات للمدارس",
     footerSchoolPdfHe: "PDF بالعبرية للمدرسة",
     footerSchoolPdfAr: "PDF بالعربية للمدرسة",
+    footerSchoolOnePagerAr: "ملخّص صفحة واحدة بالعربية",
     footerStatus: "حالة النظام",
     footerCopyright: (year) =>
       `© ${year} Vocaband. صُنع بحب 💙 للمتعلمين في كل مكان.`,
