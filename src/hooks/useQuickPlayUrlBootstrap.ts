@@ -415,7 +415,28 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
                     console.error('[Quick Play Resume] hebrew lemma import failed', err);
                   }
                 } else {
-                  dbWords = (getCachedVocabulary()?.ALL_WORDS ?? []).filter(w => (data.word_ids || []).includes(w.id));
+                  // Same cold-cache guard as the QR-scan branch above: on
+                  // a tab refresh the vocabulary chunk hasn't been loaded
+                  // yet, so getCachedVocabulary() returns null and the
+                  // filter yields []. Without this dynamic import the
+                  // "no words" branch below would wipe the saved guest
+                  // session and dump the student back to landing.
+                  let vocab = getCachedVocabulary();
+                  if (!vocab) {
+                    try {
+                      const m = await import("../data/vocabulary");
+                      vocab = {
+                        ALL_WORDS: m.ALL_WORDS,
+                        SET_1_WORDS: m.SET_1_WORDS,
+                        SET_2_WORDS: m.SET_2_WORDS,
+                        SET_3_WORDS: (m as { SET_3_WORDS?: Word[] }).SET_3_WORDS ?? [],
+                        TOPIC_PACKS: m.TOPIC_PACKS,
+                      };
+                    } catch (err) {
+                      console.error('[Quick Play Resume] vocabulary import failed', err);
+                    }
+                  }
+                  dbWords = (vocab?.ALL_WORDS ?? []).filter(w => (data.word_ids || []).includes(w.id));
                 }
                 let customWords: Word[] = [];
                 if (data.custom_words) {
