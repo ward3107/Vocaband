@@ -304,7 +304,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSubtitle:
       "The vocabulary game students worldwide actually want to play — and the easiest classroom tool teachers will use all year.",
     heroCtaStart: "Get Started Free",
-    heroCtaStudent: "I'm a student → Log in",
+    heroCtaStudent: "I'm a student → enter class code",
     heroPlayItWord: "Play it",
     heroLearnItWord: "Learn it",
     heroTrustCurriculum: "MoE-Aligned Curriculum",
@@ -532,7 +532,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSubtitle:
       "משחק אוצר מילים שתלמידים בכל העולם באמת רוצים לשחק — וכלי הכיתה הקל ביותר שמורים ישתמשו בו לאורך כל השנה.",
     heroCtaStart: "התחילו בחינם",
-    heroCtaStudent: "אני תלמיד ← כניסה",
+    heroCtaStudent: "אני תלמיד ← הזינו קוד כיתה",
     heroPlayItWord: "שחקו אותה",
     heroLearnItWord: "למדו אותה",
     heroTrustCurriculum: "מותאם לתוכנית משרד החינוך",
@@ -760,7 +760,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSubtitle:
       "لعبة المفردات التي يريد الطلاب حول العالم أن يلعبوها فعلاً — وأسهل أداة صفية سيستخدمها المعلمون طوال العام.",
     heroCtaStart: "ابدأ مجانًا",
-    heroCtaStudent: "أنا طالب ← تسجيل الدخول",
+    heroCtaStudent: "أنا طالب ← أدخل رمز الفصل",
     heroPlayItWord: "العبها",
     heroLearnItWord: "تعلمها",
     heroTrustCurriculum: "متوافق مع منهج وزارة التربية",

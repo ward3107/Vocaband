@@ -252,6 +252,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <span className="text-white/60 text-xs">·</span>
                     <span className="text-white/70 text-xs font-semibold">{t.pricingFreeFeature1}</span>
                   </motion.button>
+
+                  {/* Student entry — routes to /student (class-code +
+                      name picker).  Tinted amber so it's visually
+                      distinct from the violet teacher CTAs above; kids
+                      typing the URL their teacher wrote on the board
+                      now have an on-page path to the login screen. */}
+                  <motion.button
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.6 }}
+                    whileHover={{ scale: 1.02 }}
+                    onClick={onGetStarted}
+                    style={{ touchAction: 'manipulation' }}
+                    type="button"
+                    aria-label={t.heroCtaStudent}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-amber-100 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-300/30 hover:border-amber-300/50 backdrop-blur-sm transition-colors"
+                  >
+                    <BookOpen size={14} aria-hidden="true" />
+                    <span>{t.heroCtaStudent}</span>
+                  </motion.button>
                 </div>
 
                 {/* Hero trust strip — factual claims only.
