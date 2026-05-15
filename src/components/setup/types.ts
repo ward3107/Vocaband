@@ -120,6 +120,84 @@ export function getModeDifficulty(modeId: string): ModeDifficulty {
   return MODE_DIFFICULTY[modeId] ?? 'medium';
 }
 
+// ── Assignment mode picker sections ──────────────────────────────────────
+// Teachers asked for the mode picker to read easy → hard top-to-bottom and
+// for the AI-powered modes to stand on their own.  Sentence Builder and
+// Fill-in-the-Blank live in their own band because they're the only modes
+// that consume a sentence bank, and that sentence bank can be auto-generated
+// by the Pro AI feature — so they need extra setup and shouldn't blend in
+// with ordinary "hard" recall modes.
+export interface AssignmentModeSection {
+  id: 'easy' | 'medium' | 'hard' | 'ai';
+  label: string;
+  description: string;
+  stars: number | null;          // 1-3 for difficulty bands, null for AI band
+  starColor: string;
+  badgeBg: string;
+  badgeText: string;
+  modes: GameModeDef[];
+}
+
+// Ordering within each section is intentional — runs from gentlest to
+// hardest mode within the section so the whole picker reads top-down.
+const SECTION_MODE_ORDER: Record<AssignmentModeSection['id'], string[]> = {
+  easy:   ['flashcards', 'matching', 'classic', 'memory-flip', 'true-false'],
+  medium: ['listening', 'reverse', 'idiom', 'speed-round'],
+  hard:   ['scramble', 'letter-sounds', 'spelling', 'word-chains'],
+  ai:     ['sentence-builder', 'fill-blank'],
+};
+
+const ALL_MODES_FLAT = Object.values(GAME_MODE_LEVELS).flat();
+
+function lookupModes(ids: string[]): GameModeDef[] {
+  return ids
+    .map(id => ALL_MODES_FLAT.find(m => m.id === id))
+    .filter((m): m is GameModeDef => m !== undefined);
+}
+
+export const ASSIGNMENT_MODE_SECTIONS: AssignmentModeSection[] = [
+  {
+    id: 'easy',
+    label: DIFFICULTY_META.easy.label,
+    description: DIFFICULTY_META.easy.description,
+    stars: DIFFICULTY_META.easy.stars,
+    starColor: DIFFICULTY_META.easy.starColor,
+    badgeBg: DIFFICULTY_META.easy.badgeBg,
+    badgeText: DIFFICULTY_META.easy.badgeText,
+    modes: lookupModes(SECTION_MODE_ORDER.easy),
+  },
+  {
+    id: 'medium',
+    label: DIFFICULTY_META.medium.label,
+    description: DIFFICULTY_META.medium.description,
+    stars: DIFFICULTY_META.medium.stars,
+    starColor: DIFFICULTY_META.medium.starColor,
+    badgeBg: DIFFICULTY_META.medium.badgeBg,
+    badgeText: DIFFICULTY_META.medium.badgeText,
+    modes: lookupModes(SECTION_MODE_ORDER.medium),
+  },
+  {
+    id: 'hard',
+    label: DIFFICULTY_META.hard.label,
+    description: DIFFICULTY_META.hard.description,
+    stars: DIFFICULTY_META.hard.stars,
+    starColor: DIFFICULTY_META.hard.starColor,
+    badgeBg: DIFFICULTY_META.hard.badgeBg,
+    badgeText: DIFFICULTY_META.hard.badgeText,
+    modes: lookupModes(SECTION_MODE_ORDER.hard),
+  },
+  {
+    id: 'ai',
+    label: 'AI-powered',
+    description: 'Sentence-based modes — generate with AI or add your own.',
+    stars: null,
+    starColor: 'text-fuchsia-500',
+    badgeBg: 'bg-fuchsia-50',
+    badgeText: 'text-fuchsia-700',
+    modes: lookupModes(SECTION_MODE_ORDER.ai),
+  },
+];
+
 // --- Wizard Result ---
 export interface WizardResult {
   words: Word[];

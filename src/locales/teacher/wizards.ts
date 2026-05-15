@@ -38,10 +38,6 @@ export interface TeacherWizardsT {
   gameModesLabel: string;
   resetDefault: string;
   selectAll: string;
-  diffBeginner: string;
-  diffIntermediate: string;
-  diffAdvanced: string;
-  diffMastery: string;
   nextNameIt: string;
 
   // ─── Title + instructions ──────────────────────────────────────
@@ -162,10 +158,6 @@ export const teacherWizardsT: Record<Language, TeacherWizardsT> = {
     gameModesLabel: "Game modes",
     resetDefault: "Reset default",
     selectAll: "Select all",
-    diffBeginner: "Beginner",
-    diffIntermediate: "Intermediate",
-    diffAdvanced: "Advanced",
-    diffMastery: "Mastery",
     nextNameIt: "next: name it",
 
     detailsLabelAssignment: "Name and instruct",
@@ -272,10 +264,6 @@ export const teacherWizardsT: Record<Language, TeacherWizardsT> = {
     gameModesLabel: "מצבי משחק",
     resetDefault: "שחזר ברירת מחדל",
     selectAll: "בחר הכול",
-    diffBeginner: "מתחיל",
-    diffIntermediate: "בינוני",
-    diffAdvanced: "מתקדם",
-    diffMastery: "שליטה",
     nextNameIt: "הבא: תן שם",
 
     detailsLabelAssignment: "שם והוראות",
@@ -382,10 +370,6 @@ export const teacherWizardsT: Record<Language, TeacherWizardsT> = {
     gameModesLabel: "أنماط اللعب",
     resetDefault: "إعادة الافتراضي",
     selectAll: "اختر الكل",
-    diffBeginner: "مبتدئ",
-    diffIntermediate: "متوسط",
-    diffAdvanced: "متقدم",
-    diffMastery: "إتقان",
     nextNameIt: "التالي: سمِّه",
 
     detailsLabelAssignment: "الاسم والإرشادات",
