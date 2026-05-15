@@ -138,12 +138,13 @@ export function useOAuthFlow(params: UseOAuthFlowParams) {
         const { data: intendedClassRows, error: lookupErr } = await supabase
           .rpc('class_lookup_by_code', { p_code: intendedNorm });
         if (lookupErr) {
-          // Surface the real reason instead of the generic "not found"
-          // banner. Common causes: migration 20260428 requires auth but
-          // auth.uid() was null mid-OAuth; rate limit hit; migration
-          // 20260426 never applied so the RPC doesn't exist server-side.
+          // Diagnostic stays in the console — RLS / rate-limit / missing
+          // RPC reasons are useful for the operator but don't belong in
+          // the banner shown to the student (and any onlookers during
+          // a sales demo).  The banner falls back to the clean
+          // "class not found" treatment.
           console.error('[OAuth class switch] RPC failed:', lookupErr);
-          setClassNotFoundIntent(`${intendedNorm} (lookup failed: ${lookupErr.message})`);
+          setClassNotFoundIntent(intendedNorm);
           clearIntendedClassCode();
         } else if (intendedClassRows && intendedClassRows.length > 0) {
           const { data: currentClassRows } = await supabase
