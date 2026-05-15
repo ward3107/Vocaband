@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Zap, Check, Copy, Flame, ShoppingBag, Pencil, X as XIcon, Crown } from "lucide-react";
-import { getXpTitle, NAME_FRAMES, NAME_TITLES } from "../../constants/game";
+import { getXpTitle, NAME_FRAMES, NAME_TITLES, XP_TITLES } from "../../constants/game";
 import { getTitleStyle } from "../../constants/titleStyles";
 import type { AppUser } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -93,6 +93,20 @@ export default function StudentGreetingCard({
   };
 
   const xpTitle = getXpTitle(xp);
+
+  // Progress to next title — drives the level bar in the hero.  When
+  // the student is on the final tier there is no "next", so the bar
+  // pins to 100% and hides the right-hand emoji.
+  const currentTierIndex = XP_TITLES.findIndex(t => t.title === xpTitle.title);
+  const nextTier = currentTierIndex >= 0 && currentTierIndex < XP_TITLES.length - 1
+    ? XP_TITLES[currentTierIndex + 1]
+    : null;
+  const tierFloor = xpTitle.min;
+  const tierCeil = nextTier?.min ?? xpTitle.min;
+  const progressPct = nextTier
+    ? Math.min(100, Math.max(0, Math.round(((xp - tierFloor) / Math.max(1, tierCeil - tierFloor)) * 100)))
+    : 100;
+  const xpToNext = nextTier ? Math.max(0, tierCeil - xp) : 0;
 
   // Render the equipped cosmetics so shop purchases actually show up
   // on the legacy dashboard (the Structure UX dashboard already does
@@ -283,6 +297,32 @@ export default function StudentGreetingCard({
                 <Copy size={12} className="opacity-70" />
               )}
             </button>
+          </div>
+
+          {/* Level progress bar — quintessential "profile page" element.
+              Shows how close the student is to the next XP-derived title.
+              On the max tier, the bar pins to 100% and the next-emoji
+              hides; the line below switches to a "max level" message. */}
+          <div className="mt-3 max-w-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-base sm:text-lg leading-none" aria-hidden>{xpTitle.emoji}</span>
+              <div className="relative flex-1 h-2 rounded-full bg-white/20 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPct}%` }}
+                  transition={{ duration: 0.9, ease: 'easeOut', delay: 0.2 }}
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-200 rounded-full shadow-[0_0_8px_rgba(253,224,71,0.7)]"
+                />
+              </div>
+              {nextTier && (
+                <span className="text-base sm:text-lg leading-none opacity-70" aria-hidden>{nextTier.emoji}</span>
+              )}
+            </div>
+            <div className="mt-1 text-[10px] sm:text-[11px] font-bold text-white/80 tracking-wide tabular-nums">
+              {nextTier
+                ? `${xp.toLocaleString()} / ${tierCeil.toLocaleString()} XP · ${xpToNext.toLocaleString()} to ${nextTier.emoji} ${nextTier.title}`
+                : `${xp.toLocaleString()} XP · ${xpTitle.title}`}
+            </div>
           </div>
         </div>
 
