@@ -14,7 +14,7 @@
  */
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Share2, X, Loader2, Check, Plus } from "lucide-react";
+import { Share2, X, Loader2, Check, CheckCircle2, Plus, Sparkles, TriangleAlert } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { ALL_WORDS } from "../data/vocabulary";
 import { FILLBLANK_SENTENCES } from "../data/sentence-bank-fillblank";
@@ -107,13 +107,49 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // AI sentence generation state — shared across all sentence-dependent
+  // exercises because they all draw from the same word pool. Phase is
+  // a small state machine: idle → generating → ready (or failed).
+  type AiPhase = "idle" | "generating" | "ready" | "failed";
+  const [aiPhase, setAiPhase] = useState<AiPhase>("idle");
+  const [aiSentences, setAiSentences] = useState<Record<string, string>>({});
+  // Inline confirm shown on the card the teacher just toggled. Tapping
+  // the card again, or hitting Skip, clears it without adding the
+  // exercise. Yes adds the exercise AND kicks off generation if it
+  // hasn't run yet.
+  const [pendingConfirm, setPendingConfirm] = useState<ExerciseType | null>(null);
+
+  const hasMissingFromBank = useMemo(
+    () => uniqueIds.some((id) => !FILLBLANK_SENTENCES.has(id)),
+    [uniqueIds],
+  );
+
   const toggle = (type: ExerciseType) => {
-    setPlan((prev) => {
-      if (prev.some((e) => e.type === type)) {
-        return prev.filter((e) => e.type !== type);
-      }
-      return [...prev, defaultConfig(type, uniqueIds, lang)];
-    });
+    // Tap the same card that's currently asking for confirmation =
+    // cancel (Skip). The exercise was never added; nothing to remove.
+    if (pendingConfirm === type) {
+      setPendingConfirm(null);
+      return;
+    }
+    // Toggle OFF an active exercise.
+    if (plan.some((e) => e.type === type)) {
+      setPlan((prev) => prev.filter((e) => e.type !== type));
+      return;
+    }
+    // Toggle ON a sentence-dependent exercise whose word pool has gaps
+    // the static bank can't fill — show the inline confirm so the
+    // teacher decides up front rather than getting silent skip cards.
+    if (
+      SENTENCE_DEPENDENT_TYPES.has(type) &&
+      hasMissingFromBank &&
+      aiPhase !== "ready" &&
+      aiPhase !== "generating"
+    ) {
+      setPendingConfirm(type);
+      return;
+    }
+    // Normal add.
+    setPlan((prev) => [...prev, defaultConfig(type, uniqueIds, lang)]);
   };
 
   const updateExercise = <T extends ExerciseType>(
@@ -129,35 +165,37 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
     );
   };
 
-  // Best-effort: ask the server for AI sentences for any words missing
-  // from the static FILLBLANK_SENTENCES bank when the teacher picks a
-  // sentence-dependent exercise. Returns a JSONB-safe map keyed by the
-  // stringified word ID. Silently returns an empty map on auth/network
-  // failure — the kid's solver will just auto-skip the affected
-  // exercises (the existing fallback) instead of blocking the mint.
-  const fetchAiSentences = async (): Promise<Record<string, string>> => {
-    const needsSentences = plan.some((e) => SENTENCE_DEPENDENT_TYPES.has(e.type));
-    if (!needsSentences) return {};
-
+  // Best-effort AI sentence fetch for words missing from the static
+  // FILLBLANK_SENTENCES bank. Anonymous mints (no auth token) and
+  // network/server errors all resolve to phase: 'failed' so the UI
+  // can show "couldn't generate" instead of hanging — the kid's
+  // solver then falls back to the visible skip card for that word.
+  const runAiGeneration = async () => {
+    if (aiPhase === "generating" || aiPhase === "ready") return;
     const missingIds = uniqueIds.filter((id) => !FILLBLANK_SENTENCES.has(id));
-    if (missingIds.length === 0) return {};
-
+    if (missingIds.length === 0) {
+      // Static bank already covers every word — nothing to fetch.
+      setAiPhase("ready");
+      return;
+    }
+    setAiPhase("generating");
     const wordById = new Map(ALL_WORDS.map((w) => [w.id, w]));
-    // The server caps each call at 50 words; chunk to stay under that
-    // even when a teacher minted a 200-word custom list.
     const CHUNK = 40;
     const out: Record<string, string> = {};
-    const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || "";
+    const apiUrl =
+      (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || "";
     const token = (await supabase.auth.getSession()).data.session?.access_token;
-    if (!token) return {};
-
-    for (let i = 0; i < missingIds.length; i += CHUNK) {
-      const slice = missingIds.slice(i, i + CHUNK);
-      const englishWords = slice
-        .map((id) => wordById.get(id)?.english)
-        .filter((w): w is string => !!w && w.trim().length > 0);
-      if (englishWords.length === 0) continue;
-      try {
+    if (!token) {
+      setAiPhase("failed");
+      return;
+    }
+    try {
+      for (let i = 0; i < missingIds.length; i += CHUNK) {
+        const slice = missingIds.slice(i, i + CHUNK);
+        const englishWords = slice
+          .map((id) => wordById.get(id)?.english)
+          .filter((w): w is string => !!w && w.trim().length > 0);
+        if (englishWords.length === 0) continue;
         const res = await fetch(`${apiUrl}/api/generate-sentences`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -169,11 +207,31 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
           const s = sentences?.[idx];
           if (s) out[String(id)] = s;
         });
-      } catch {
-        /* network / auth — fall back to auto-skip */
       }
+    } catch {
+      // network / auth — fall back to failed; keep any partial results.
     }
-    return out;
+    setAiSentences(out);
+    setAiPhase(Object.keys(out).length > 0 ? "ready" : "failed");
+  };
+
+  const handleConfirmGenerate = () => {
+    if (!pendingConfirm) return;
+    const type = pendingConfirm;
+    setPlan((prev) =>
+      prev.some((e) => e.type === type)
+        ? prev
+        : [...prev, defaultConfig(type, uniqueIds, lang)],
+    );
+    setPendingConfirm(null);
+    // Fire and forget — the picker shows a "Generating sentences…"
+    // badge while this resolves and the Generate share link button is
+    // disabled until it completes.
+    void runAiGeneration();
+  };
+
+  const handleSkipGenerate = () => {
+    setPendingConfirm(null);
   };
 
   const handleGenerate = async () => {
@@ -188,7 +246,6 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       // teacher who toggled Matching first, narrowed the pool, then
       // added Quiz still gets the latest list in both.
       const exercises = plan.map((e) => ({ ...e, word_ids: uniqueIds }));
-      const aiSentences = await fetchAiSentences();
       const settings: Record<string, unknown> = { language: lang };
       if (Object.keys(aiSentences).length > 0) {
         settings.sentences = aiSentences;
@@ -253,6 +310,11 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
                 plan={plan}
                 onToggle={toggle}
                 onUpdate={updateExercise}
+                pendingConfirm={pendingConfirm}
+                onConfirmGenerate={handleConfirmGenerate}
+                onSkipGenerate={handleSkipGenerate}
+                aiPhase={aiPhase}
+                wordCount={uniqueIds.length}
               />
 
               <div>
@@ -290,12 +352,25 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={creating || plan.length === 0}
+                disabled={
+                  creating ||
+                  plan.length === 0 ||
+                  aiPhase === "generating" ||
+                  pendingConfirm !== null
+                }
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
-                {creating ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
-                {creating ? t.generating : t.generateBtn}
+                {creating || aiPhase === "generating" ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Share2 size={16} />
+                )}
+                {creating
+                  ? t.generating
+                  : aiPhase === "generating"
+                    ? t.aiStatusGenerating
+                    : t.generateBtn}
               </button>
             </>
           )}
@@ -321,7 +396,22 @@ const ExercisePicker: React.FC<{
     type: T,
     patch: Partial<Extract<Exercise, { type: T }>>,
   ) => void;
-}> = ({ t, plan, onToggle, onUpdate }) => {
+  pendingConfirm: ExerciseType | null;
+  onConfirmGenerate: () => void;
+  onSkipGenerate: () => void;
+  aiPhase: "idle" | "generating" | "ready" | "failed";
+  wordCount: number;
+}> = ({
+  t,
+  plan,
+  onToggle,
+  onUpdate,
+  pendingConfirm,
+  onConfirmGenerate,
+  onSkipGenerate,
+  aiPhase,
+  wordCount,
+}) => {
   const planByType = useMemo(() => {
     const m = new Map<ExerciseType, Exercise>();
     for (const e of plan) m.set(e.type, e);
@@ -338,9 +428,16 @@ const ExercisePicker: React.FC<{
       </div>
       <div className="grid gap-2">
         {EXERCISE_ORDER.map((type) => {
-          const active = planByType.has(type);
+          const inPlan = planByType.has(type);
+          const isPending = pendingConfirm === type;
+          // The card visually reads as active while the confirm panel
+          // is showing so the toggle feels immediate — Skip restores
+          // the unchecked state.
+          const active = inPlan || isPending;
           const meta = t.exercises[type];
           const exercise = planByType.get(type);
+          const showStatus =
+            inPlan && SENTENCE_DEPENDENT_TYPES.has(type) && aiPhase !== "idle";
           return (
             <div
               key={type}
@@ -359,6 +456,9 @@ const ExercisePicker: React.FC<{
                     {meta?.label ?? type}
                   </div>
                   <div className="text-xs text-stone-500 truncate">{meta?.desc ?? ""}</div>
+                  {showStatus && (
+                    <AiStatusPill phase={aiPhase} t={t} />
+                  )}
                 </div>
                 <div
                   className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
@@ -373,7 +473,15 @@ const ExercisePicker: React.FC<{
                   )}
                 </div>
               </button>
-              {active && exercise && (
+              {isPending && (
+                <AiConfirmPanel
+                  t={t}
+                  wordCount={wordCount}
+                  onConfirm={onConfirmGenerate}
+                  onSkip={onSkipGenerate}
+                />
+              )}
+              {inPlan && exercise && !isPending && (
                 <ExerciseConfigRow exercise={exercise} t={t} onUpdate={onUpdate} />
               )}
             </div>
@@ -382,6 +490,73 @@ const ExercisePicker: React.FC<{
       </div>
     </div>
   );
+};
+
+const AiConfirmPanel: React.FC<{
+  t: ReturnType<typeof getTranslator>;
+  wordCount: number;
+  onConfirm: () => void;
+  onSkip: () => void;
+}> = ({ t, wordCount, onConfirm, onSkip }) => (
+  <div className="px-4 pb-4 pt-1 border-t border-emerald-200 bg-emerald-50">
+    <div className="flex items-start gap-2 mb-2">
+      <Sparkles size={16} className="text-violet-600 mt-0.5 shrink-0" />
+      <div>
+        <p className="text-sm font-bold text-stone-900">{t.aiConfirmTitle(wordCount)}</p>
+        <p className="text-xs text-stone-600 mt-1">{t.aiConfirmBody}</p>
+      </div>
+    </div>
+    <div className="grid grid-cols-2 gap-2 mt-3">
+      <button
+        type="button"
+        onClick={onSkip}
+        className="py-2 rounded-lg bg-white text-stone-700 border border-stone-200 font-bold text-sm hover:bg-stone-50 transition-all"
+        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+      >
+        {t.aiConfirmSkip}
+      </button>
+      <button
+        type="button"
+        onClick={onConfirm}
+        className="py-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold text-sm flex items-center justify-center gap-1.5 hover:shadow-lg hover:shadow-violet-500/30 transition-all"
+        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+      >
+        <Sparkles size={14} />
+        {t.aiConfirmYes}
+      </button>
+    </div>
+  </div>
+);
+
+const AiStatusPill: React.FC<{
+  phase: "idle" | "generating" | "ready" | "failed";
+  t: ReturnType<typeof getTranslator>;
+}> = ({ phase, t }) => {
+  if (phase === "generating") {
+    return (
+      <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-violet-700">
+        <Loader2 size={11} className="animate-spin" />
+        {t.aiStatusGenerating}
+      </span>
+    );
+  }
+  if (phase === "ready") {
+    return (
+      <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-emerald-700">
+        <CheckCircle2 size={11} />
+        {t.aiStatusReady}
+      </span>
+    );
+  }
+  if (phase === "failed") {
+    return (
+      <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-amber-700">
+        <TriangleAlert size={11} />
+        {t.aiStatusFailed}
+      </span>
+    );
+  }
+  return null;
 };
 
 const ExerciseConfigRow: React.FC<{

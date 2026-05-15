@@ -36,6 +36,18 @@ export interface ShareWorksheetStrings {
   synonymOption: string;
   antonymOption: string;
 
+  // AI sentence generation confirm — shown inline on a sentence-dependent
+  // card the moment the teacher toggles it on, before it's added to the
+  // plan. "Skip" untoggles the card; "Yes, generate" enables the card
+  // and kicks off generation in the background.
+  aiConfirmTitle: (n: number) => string;
+  aiConfirmBody: string;
+  aiConfirmYes: string;
+  aiConfirmSkip: string;
+  aiStatusGenerating: string;
+  aiStatusReady: string;
+  aiStatusFailed: string;
+
   // Translation language picker
   translationLabel: string;
 
@@ -100,6 +112,14 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
     synonymModeLabel: "Mode",
     synonymOption: "Synonyms",
     antonymOption: "Antonyms",
+    aiConfirmTitle: (n) => `Generate AI sentences for the ${n} words you picked?`,
+    aiConfirmBody:
+      "This exercise needs a context sentence per word. We'll generate one using AI so the kid actually has questions to play.",
+    aiConfirmYes: "Yes, generate",
+    aiConfirmSkip: "Skip",
+    aiStatusGenerating: "Generating sentences…",
+    aiStatusReady: "AI sentences ready",
+    aiStatusFailed: "Couldn't generate sentences",
     translationLabel: "Translation",
     generateBtn: "Generate share link",
     generating: "Creating link…",
@@ -149,6 +169,14 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
     synonymModeLabel: "מצב",
     synonymOption: "נרדפות",
     antonymOption: "הפוכות",
+    aiConfirmTitle: (n) => `ליצור משפטי AI עבור ${n} המילים שבחרתם?`,
+    aiConfirmBody:
+      "התרגיל הזה זקוק למשפט הקשר לכל מילה. ניצור אחד באמצעות AI כדי שתהיינה לתלמיד שאלות אמיתיות לשחק.",
+    aiConfirmYes: "כן, צרו",
+    aiConfirmSkip: "דלגו",
+    aiStatusGenerating: "יוצר משפטים…",
+    aiStatusReady: "משפטי AI מוכנים",
+    aiStatusFailed: "לא ניתן ליצור משפטים",
     translationLabel: "שפת תרגום",
     generateBtn: "יצירת קישור שיתוף",
     generating: "יוצר קישור…",
@@ -198,6 +226,14 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
     synonymModeLabel: "الوضع",
     synonymOption: "مرادفات",
     antonymOption: "أضداد",
+    aiConfirmTitle: (n) => `إنشاء جمل AI للكلمات الـ ${n} التي اخترتها؟`,
+    aiConfirmBody:
+      "يحتاج هذا التمرين إلى جملة سياق لكل كلمة. سننشئ واحدة باستخدام الذكاء الاصطناعي حتى تكون هناك أسئلة فعلية للطالب.",
+    aiConfirmYes: "نعم، أنشئ",
+    aiConfirmSkip: "تخطّى",
+    aiStatusGenerating: "جارٍ إنشاء الجمل…",
+    aiStatusReady: "جمل AI جاهزة",
+    aiStatusFailed: "تعذّر إنشاء الجمل",
     translationLabel: "لغة الترجمة",
     generateBtn: "إنشاء رابط مشاركة",
     generating: "جارٍ إنشاء الرابط…",
