@@ -19,9 +19,11 @@
  *   4. done         — podium with medals + Play Again / Exit
  *
  * Scope decisions for v1:
- *   - Word source is SET_2_WORDS (the curriculum-2 pool).  Picker for
- *     specific assignments is a v2 — keeps the setup screen short and
- *     gets the demo running tonight.
+ *   - Word source is teacher-selectable: either the curriculum SET_2
+ *     pool (default) OR a paste-in list of English words that we
+ *     match against ALL_WORDS to pull translations from.  Words the
+ *     teacher pastes that aren't in the vocabulary are surfaced as
+ *     "not found" so they can correct the spelling.
  *   - Scores live in component state only.  Nothing is saved to
  *     Supabase — the players aren't logged in (they're sharing the
  *     teacher's device), so there's no user.uid to attribute to.  The
@@ -32,7 +34,7 @@
  *     breaking other modes for a v1.  Worth factoring out in a v2 if
  *     a third pass-around mode shows up.
  */
-import { useState, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
@@ -46,6 +48,7 @@ interface HotSeatViewProps {
 
 type Phase = 'setup' | 'interstitial' | 'question' | 'done';
 type TargetLang = 'hebrew' | 'arabic';
+type WordSource = 'curriculum' | 'custom';
 
 interface PlayerScore {
   name: string;
@@ -87,6 +90,15 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
   playersLabel: string;
   playersPlaceholder: string;
   playersHint: string;
+  wordSourceLabel: string;
+  sourceCurriculum: string;
+  sourceCustom: string;
+  customWordsLabel: string;
+  customWordsPlaceholder: string;
+  customWordsHint: string;
+  matchedCount: (n: number) => string;
+  notFoundPrefix: string;
+  needFourWords: string;
   translateTo: string;
   hebrew: string;
   arabic: string;
@@ -117,6 +129,15 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersLabel: 'Players (one name per line)',
     playersPlaceholder: 'Sarah\nDaniel\nMaya\n…',
     playersHint: 'Need at least 2 players.',
+    wordSourceLabel: 'Word source',
+    sourceCurriculum: 'Curriculum (Set 2)',
+    sourceCustom: 'My word list',
+    customWordsLabel: 'Paste English words',
+    customWordsPlaceholder: 'apple\nbanana\ncat\n…',
+    customWordsHint: 'One word per line (or comma-separated). We\'ll match translations.',
+    matchedCount: (n) => `${n} matched`,
+    notFoundPrefix: 'Not found',
+    needFourWords: 'Need at least 4 matched words to start.',
     translateTo: 'Translate to:',
     hebrew: 'Hebrew',
     arabic: 'Arabic',
@@ -147,6 +168,15 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersLabel: 'שחקנים (שם אחד בכל שורה)',
     playersPlaceholder: 'שרה\nדניאל\nמאיה\n…',
     playersHint: 'צריך לפחות 2 שחקנים.',
+    wordSourceLabel: 'מקור המילים',
+    sourceCurriculum: 'תוכנית לימודים (סט 2)',
+    sourceCustom: 'רשימת המילים שלי',
+    customWordsLabel: 'הדבק מילים באנגלית',
+    customWordsPlaceholder: 'apple\nbanana\ncat\n…',
+    customWordsHint: 'מילה אחת בכל שורה (או מופרדות בפסיקים). נמצא את התרגומים.',
+    matchedCount: (n) => `נמצאו ${n}`,
+    notFoundPrefix: 'לא נמצאו',
+    needFourWords: 'צריך לפחות 4 מילים תואמות כדי להתחיל.',
     translateTo: 'תרגום ל:',
     hebrew: 'עברית',
     arabic: 'ערבית',
@@ -177,6 +207,15 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersLabel: 'اللاعبون (اسم واحد في كل سطر)',
     playersPlaceholder: 'سارة\nدانيال\nمايا\n…',
     playersHint: 'تحتاج إلى لاعبَين على الأقل.',
+    wordSourceLabel: 'مصدر الكلمات',
+    sourceCurriculum: 'المنهج (مجموعة 2)',
+    sourceCustom: 'قائمة كلماتي',
+    customWordsLabel: 'الصق الكلمات بالإنجليزية',
+    customWordsPlaceholder: 'apple\nbanana\ncat\n…',
+    customWordsHint: 'كلمة واحدة في كل سطر (أو مفصولة بفواصل). سنطابق الترجمات.',
+    matchedCount: (n) => `${n} مطابقة`,
+    notFoundPrefix: 'غير موجودة',
+    needFourWords: 'تحتاج إلى 4 كلمات مطابقة على الأقل للبدء.',
     translateTo: 'الترجمة إلى:',
     hebrew: 'العبرية',
     arabic: 'العربية',
@@ -214,12 +253,50 @@ export default function HotSeatView({ onExit, speak }: HotSeatViewProps) {
   // loading line in that brief window so the Start button can't fire
   // against an empty pool.
   const vocab = useVocabularyLazy(true);
-  const wordPool: Word[] = vocab?.SET_2_WORDS ?? [];
 
   const [phase, setPhase] = useState<Phase>('setup');
   const [playersText, setPlayersText] = useState('');
   const [questionsPerPlayer, setQuestionsPerPlayer] = useState(5);
   const [targetLang, setTargetLang] = useState<TargetLang>('hebrew');
+  const [wordSource, setWordSource] = useState<WordSource>('curriculum');
+  const [customWordsText, setCustomWordsText] = useState('');
+
+  // Lowercase English → Word lookup, built once per vocab load.  Used
+  // to resolve teacher-pasted words against the full library so we
+  // can pull existing Hebrew/Arabic translations rather than asking
+  // the teacher to retype them.
+  const englishIndex = useMemo(() => {
+    if (!vocab) return null;
+    const map = new Map<string, Word>();
+    for (const w of vocab.ALL_WORDS) map.set(w.english.toLowerCase(), w);
+    return map;
+  }, [vocab]);
+
+  const { customMatched, customUnmatched } = useMemo(() => {
+    if (!englishIndex) return { customMatched: [] as Word[], customUnmatched: [] as string[] };
+    const tokens = customWordsText
+      .split(/[\n,;]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    const matched: Word[] = [];
+    const unmatched: string[] = [];
+    const seen = new Set<number>();
+    for (const tok of tokens) {
+      const w = englishIndex.get(tok.toLowerCase());
+      const hasTranslation = w && (targetLang === 'hebrew' ? w.hebrew : w.arabic);
+      if (w && hasTranslation && !seen.has(w.id)) {
+        matched.push(w);
+        seen.add(w.id);
+      } else {
+        unmatched.push(tok);
+      }
+    }
+    return { customMatched: matched, customUnmatched: unmatched };
+  }, [englishIndex, customWordsText, targetLang]);
+
+  const wordPool: Word[] = wordSource === 'custom'
+    ? customMatched
+    : (vocab?.SET_2_WORDS ?? []);
 
   // Round state — only meaningful after Start was tapped.
   const [players, setPlayers] = useState<PlayerScore[]>([]);
@@ -338,6 +415,59 @@ export default function HotSeatView({ onExit, speak }: HotSeatViewProps) {
               </div>
 
               <div>
+                <p className="text-sm font-bold text-stone-700 mb-2">{t.wordSourceLabel}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['curriculum', 'custom'] as WordSource[]).map(src => (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => setWordSource(src)}
+                      style={{ touchAction: 'manipulation' }}
+                      className={`py-2.5 rounded-xl font-bold text-sm border-2 transition-all ${
+                        wordSource === src
+                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                          : 'bg-white text-stone-600 border-stone-200 hover:border-orange-200'
+                      }`}
+                    >
+                      {src === 'curriculum' ? t.sourceCurriculum : t.sourceCustom}
+                    </button>
+                  ))}
+                </div>
+                {wordSource === 'custom' && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                      {t.customWordsLabel}
+                    </label>
+                    <textarea
+                      value={customWordsText}
+                      onChange={e => setCustomWordsText(e.target.value)}
+                      placeholder={t.customWordsPlaceholder}
+                      rows={5}
+                      dir="ltr"
+                      className="w-full rounded-xl border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
+                    />
+                    <p className="mt-1 text-xs text-stone-500">{t.customWordsHint}</p>
+                    {customWordsText.trim().length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        <span className="font-bold text-emerald-700">
+                          ✓ {t.matchedCount(customMatched.length)}
+                        </span>
+                        {customUnmatched.length > 0 && (
+                          <span className="font-semibold text-rose-600 break-all">
+                            {t.notFoundPrefix}: {customUnmatched.slice(0, 5).join(', ')}
+                            {customUnmatched.length > 5 ? ` +${customUnmatched.length - 5}` : ''}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {customWordsText.trim().length > 0 && customMatched.length < 4 && (
+                      <p className="mt-1 text-xs text-rose-600 font-semibold">{t.needFourWords}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div>
                 <p className="text-sm font-bold text-stone-700 mb-2">{t.translateTo}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(['hebrew', 'arabic'] as TargetLang[]).map(lang => (
@@ -389,8 +519,8 @@ export default function HotSeatView({ onExit, speak }: HotSeatViewProps) {
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
               >
                 <Play size={18} />
-                {wordPool.length < 4 ? t.loadingWords : t.startBtn}
-                {wordPool.length >= 4 && <ChevronRight size={18} />}
+                {wordSource === 'curriculum' && wordPool.length < 4 ? t.loadingWords : t.startBtn}
+                {canStart && <ChevronRight size={18} />}
               </button>
               {parsedNameCount < 2 && (
                 <p className="text-xs text-rose-600 font-semibold text-center -mt-2">{t.needTwo}</p>
