@@ -85,9 +85,16 @@ export function useTeacherData(params: UseTeacherDataParams) {
     code: string,
     studentUid: string,
   ) => {
-    // Use RPC to bypass RLS for assignments
-    const { data: assignResult, error: assignError } = await supabase
-      .rpc('get_assignments_for_class', { p_class_id: classData.id });
+    // Assignments (RPC, bypasses RLS) and progress (student's own rows)
+    // are independent queries — fire them in parallel so the student's
+    // first-load saves a full round-trip.  Previously these awaited
+    // sequentially, costing ~150–300 ms on every login.
+    const [assignResp, progressResp] = await Promise.all([
+      supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
+      supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid),
+    ]);
+    const { data: assignResult, error: assignError } = assignResp;
+    const { data: progressResult } = progressResp;
 
     if (assignError) {
       // Surface the real PostgREST error body — the plain 400 line in
@@ -100,15 +107,7 @@ export function useTeacherData(params: UseTeacherDataParams) {
         hint: assignError.hint,
         classId: classData.id,
       });
-    }
-
-    // Progress still uses direct query (should work for student's own progress)
-    const { data: progressResult } = await supabase
-      .from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid);
-
-    if (assignError) {
-      console.error('Assignments RPC error:', assignError);
-      // Fallback to direct query
+      // Fallback to direct query when the RPC fails.
       const { data: fallbackData } = await supabase
         .from('assignments').select(ASSIGNMENT_COLUMNS).eq('class_id', classData.id);
       setStudentAssignments((fallbackData ?? []).map(mapAssignment));
