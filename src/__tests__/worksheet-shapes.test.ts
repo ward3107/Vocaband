@@ -35,6 +35,21 @@ describe('buildQuestionShapes — multiple choice', () => {
     });
   });
 
+  it('dedupes distractors by english text', () => {
+    // Two entries share the same english text — the second's id is
+    // different (custom paste with OCR + typing).  MC must not list
+    // the same english twice in the options.
+    const wordsWithDup: Word[] = [
+      ...WORDS,
+      { id: 99, english: 'apple', hebrew: 'תפוח 2', arabic: 'تفاحة 2', level: 'Custom' },
+    ];
+    const { 'multiple-choice': mc } = buildQuestionShapes(wordsWithDup, 'he', undefined);
+    mc.questions.forEach((q) => {
+      const unique = new Set(q.options.map((o) => o.toLowerCase()));
+      expect(unique.size).toBe(q.options.length);
+    });
+  });
+
   it('includes the target exactly once in options', () => {
     const { 'multiple-choice': mc } = buildQuestionShapes(WORDS, 'he', undefined);
     mc.questions.forEach((q) => {
