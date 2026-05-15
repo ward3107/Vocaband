@@ -356,6 +356,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
         initialIdx={resumeIdx}
         initialResults={results}
         onProgress={handleProgress}
+        aiSentences={row.settings?.sentences}
       />
     </Shell>
   );

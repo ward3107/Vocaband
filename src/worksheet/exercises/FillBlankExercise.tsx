@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
 import { useAudio } from "../../hooks/useAudio";
-import { FILLBLANK_SENTENCES } from "../../data/sentence-bank-fillblank";
+import { useSentenceResolver } from "../SentencesContext";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { normaliseAnswer, shuffle } from "../shared";
 
@@ -32,11 +32,12 @@ export const FillBlankExercise: ExerciseComponent<ExerciseOf<"fill_blank">> = ({
   onComplete,
 }) => {
   const { speak } = useAudio();
+  const sentences = useSentenceResolver();
   const items: Item[] = useMemo(
     () =>
       words
         .map((w) => {
-          const sentence = FILLBLANK_SENTENCES.get(w.id);
+          const sentence = sentences.get(w.id);
           if (!sentence) return null;
           return {
             word_id: w.id,
@@ -46,7 +47,7 @@ export const FillBlankExercise: ExerciseComponent<ExerciseOf<"fill_blank">> = ({
           };
         })
         .filter((x): x is Item => x !== null),
-    [words],
+    [words, sentences],
   );
 
   const [order] = useState(() => shuffle(items));

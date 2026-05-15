@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
 import { useAudio } from "../../hooks/useAudio";
-import { FILLBLANK_SENTENCES } from "../../data/sentence-bank-fillblank";
+import { useSentenceResolver } from "../SentencesContext";
 import type { Word } from "../../data/vocabulary";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { shuffle, translationFor } from "../shared";
@@ -50,17 +50,18 @@ export const WordInContextExercise: ExerciseComponent<ExerciseOf<"word_in_contex
   onComplete,
 }) => {
   const { speak } = useAudio();
+  const sentences = useSentenceResolver();
   const items: Item[] = useMemo(() => {
     const out: Item[] = [];
     for (const w of words) {
-      const sentence = FILLBLANK_SENTENCES.get(w.id);
+      const sentence = sentences.get(w.id);
       if (!sentence) continue;
       const parts = splitAround(sentence, w.english);
       if (!parts) continue;
       out.push({ word_id: w.id, word: w, sentence, parts });
     }
     return shuffle(out);
-  }, [words]);
+  }, [words, sentences]);
 
   const [idx, setIdx] = useState(0);
   const [pickedId, setPickedId] = useState<number | null>(null);

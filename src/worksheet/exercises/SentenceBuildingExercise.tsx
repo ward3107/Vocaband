@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { X } from "lucide-react";
-import { FILLBLANK_SENTENCES } from "../../data/sentence-bank-fillblank";
+import { useSentenceResolver } from "../SentencesContext";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { shuffle } from "../shared";
 
@@ -38,10 +38,11 @@ export const SentenceBuildingExercise: ExerciseComponent<ExerciseOf<"sentence_bu
   words,
   onComplete,
 }) => {
+  const sentences = useSentenceResolver();
   const items: Item[] = useMemo(() => {
     const out: Item[] = [];
     for (const w of words) {
-      const sentence = FILLBLANK_SENTENCES.get(w.id);
+      const sentence = sentences.get(w.id);
       if (!sentence) continue;
       const tokens = tokenise(sentence);
       // Skip degenerate one-word "sentences" — nothing to scramble.
@@ -49,7 +50,7 @@ export const SentenceBuildingExercise: ExerciseComponent<ExerciseOf<"sentence_bu
       out.push({ word_id: w.id, target: sentence, tokens });
     }
     return shuffle(out);
-  }, [words]);
+  }, [words, sentences]);
 
   const [idx, setIdx] = useState(0);
   const [attempts, setAttempts] = useState(0);

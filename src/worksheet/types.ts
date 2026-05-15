@@ -100,6 +100,14 @@ export type ExerciseComponent<C extends Exercise = Exercise> = React.FC<Exercise
 // (timer, retries, etc.) can slot in without a schema migration.
 export interface WorksheetSettings {
   language?: Language;
+  // AI-generated context sentences keyed by word ID (stringified for
+  // JSONB safety). Populated at mint time by ShareWorksheetDialog when
+  // the teacher picks a sentence-dependent exercise type (fill_blank,
+  // sentence_building, cloze, word_in_context) and the word pool has
+  // entries missing from the static FILLBLANK_SENTENCES bank. The
+  // solver merges these with the static bank so the exercise has
+  // material to run instead of auto-skipping.
+  sentences?: Record<string, string>;
 }
 
 // Aggregate score across all exercises.  The total-out-of-100 is what

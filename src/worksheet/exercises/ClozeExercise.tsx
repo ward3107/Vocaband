@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Check, Volume2 } from "lucide-react";
 import { useAudio } from "../../hooks/useAudio";
-import { FILLBLANK_SENTENCES } from "../../data/sentence-bank-fillblank";
+import { useSentenceResolver } from "../SentencesContext";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { normaliseAnswer, shuffle } from "../shared";
 
@@ -49,10 +49,11 @@ export const ClozeExercise: ExerciseComponent<ExerciseOf<"cloze">> = ({
   onComplete,
 }) => {
   const { speak } = useAudio();
+  const sentences = useSentenceResolver();
   const blanks: Blank[] = useMemo(() => {
     const candidates: Blank[] = [];
     for (const w of words) {
-      const sentence = FILLBLANK_SENTENCES.get(w.id);
+      const sentence = sentences.get(w.id);
       if (!sentence) continue;
       const parts = splitAround(sentence, w.english);
       if (!parts) continue;
@@ -65,7 +66,7 @@ export const ClozeExercise: ExerciseComponent<ExerciseOf<"cloze">> = ({
       });
     }
     return shuffle(candidates).slice(0, PASSAGE_SIZE);
-  }, [words]);
+  }, [words, sentences]);
 
   const [typed, setTyped] = useState<string[]>(() => blanks.map(() => ""));
   const [submitted, setSubmitted] = useState<boolean[]>(() => blanks.map(() => false));
