@@ -16,10 +16,23 @@ import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Share2, X, Loader2, Check, Plus } from "lucide-react";
 import { supabase } from "../core/supabase";
+import { ALL_WORDS } from "../data/vocabulary";
+import { FILLBLANK_SENTENCES } from "../data/sentence-bank-fillblank";
 import { useLanguage } from "../hooks/useLanguage";
 import { shareWorksheetT } from "../locales/teacher/share-worksheet";
 import type { Exercise, ExerciseType, TranslationDirection } from "../worksheet/types";
 import { WorksheetShareCard } from "./WorksheetShareCard";
+
+// Exercise types that need a context sentence for each word. When the
+// teacher picks any of these, the dialog also calls /api/generate-sentences
+// for any words missing from the static FILLBLANK_SENTENCES bank so the
+// kid actually has questions to play instead of an empty auto-skip card.
+const SENTENCE_DEPENDENT_TYPES = new Set<ExerciseType>([
+  "fill_blank",
+  "sentence_building",
+  "cloze",
+  "word_in_context",
+]);
 
 export type WorksheetLang = "en" | "he" | "ar";
 
@@ -116,6 +129,53 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
     );
   };
 
+  // Best-effort: ask the server for AI sentences for any words missing
+  // from the static FILLBLANK_SENTENCES bank when the teacher picks a
+  // sentence-dependent exercise. Returns a JSONB-safe map keyed by the
+  // stringified word ID. Silently returns an empty map on auth/network
+  // failure — the kid's solver will just auto-skip the affected
+  // exercises (the existing fallback) instead of blocking the mint.
+  const fetchAiSentences = async (): Promise<Record<string, string>> => {
+    const needsSentences = plan.some((e) => SENTENCE_DEPENDENT_TYPES.has(e.type));
+    if (!needsSentences) return {};
+
+    const missingIds = uniqueIds.filter((id) => !FILLBLANK_SENTENCES.has(id));
+    if (missingIds.length === 0) return {};
+
+    const wordById = new Map(ALL_WORDS.map((w) => [w.id, w]));
+    // The server caps each call at 50 words; chunk to stay under that
+    // even when a teacher minted a 200-word custom list.
+    const CHUNK = 40;
+    const out: Record<string, string> = {};
+    const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || "";
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    if (!token) return {};
+
+    for (let i = 0; i < missingIds.length; i += CHUNK) {
+      const slice = missingIds.slice(i, i + CHUNK);
+      const englishWords = slice
+        .map((id) => wordById.get(id)?.english)
+        .filter((w): w is string => !!w && w.trim().length > 0);
+      if (englishWords.length === 0) continue;
+      try {
+        const res = await fetch(`${apiUrl}/api/generate-sentences`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ words: englishWords, difficulty: 2 }),
+        });
+        if (!res.ok) continue;
+        const { sentences } = (await res.json()) as { sentences: string[] };
+        slice.forEach((id, idx) => {
+          const s = sentences?.[idx];
+          if (s) out[String(id)] = s;
+        });
+      } catch {
+        /* network / auth — fall back to auto-skip */
+      }
+    }
+    return out;
+  };
+
   const handleGenerate = async () => {
     if (plan.length === 0) {
       setError(t.pickAtLeastOne);
@@ -128,12 +188,17 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       // teacher who toggled Matching first, narrowed the pool, then
       // added Quiz still gets the latest list in both.
       const exercises = plan.map((e) => ({ ...e, word_ids: uniqueIds }));
+      const aiSentences = await fetchAiSentences();
+      const settings: Record<string, unknown> = { language: lang };
+      if (Object.keys(aiSentences).length > 0) {
+        settings.sentences = aiSentences;
+      }
       const { data, error: rpcErr } = await supabase.rpc(
         "create_interactive_worksheet_v2",
         {
           p_topic_name: source.topicName,
           p_exercises: exercises,
-          p_settings: { language: lang },
+          p_settings: settings,
         },
       );
       if (rpcErr || !data) {

@@ -15,6 +15,7 @@ import { SkipForward } from "lucide-react";
 import { ALL_WORDS, type Word } from "../data/vocabulary";
 import type { Exercise, ExerciseResult, ExerciseType, Language } from "./types";
 import { EXERCISE_REGISTRY } from "./exercises/registry";
+import { SentencesProvider } from "./SentencesContext";
 
 interface Props {
   exercises: Exercise[];
@@ -28,6 +29,10 @@ interface Props {
   // Fires after every exercise completes so the parent can persist
   // progress to localStorage between exercises.
   onProgress?: (results: ExerciseResult[]) => void;
+  // Per-worksheet AI sentences (settings.sentences from the
+  // interactive_worksheets row). Merged with the static
+  // FILLBLANK_SENTENCES bank by the sentence-dependent exercises.
+  aiSentences?: Record<string, string>;
 }
 
 // Local lookup so each exercise doesn't pay the O(n) cost of filtering
@@ -54,6 +59,8 @@ const resolveWords = (ids: number[]): Word[] => {
 // empty sections doesn't feel stalled.
 const SKIP_NOTICE_MS = 1400;
 
+const EMPTY_SENTENCES: Record<string, string> = {};
+
 export const WorksheetRunner: React.FC<Props> = ({
   exercises,
   targetLang,
@@ -61,7 +68,11 @@ export const WorksheetRunner: React.FC<Props> = ({
   initialIdx = 0,
   initialResults = [],
   onProgress,
+  aiSentences,
 }) => {
+  // Stable identity for the empty case so the SentencesContext value
+  // doesn't tear consumers' useMemo when the prop is omitted.
+  const sentences = aiSentences ?? EMPTY_SENTENCES;
   const [idx, setIdx] = useState(initialIdx);
   const [results, setResults] = useState<ExerciseResult[]>(initialResults);
   // When set, the runner is showing a "skipping" placeholder for the
@@ -120,37 +131,39 @@ export const WorksheetRunner: React.FC<Props> = ({
   const Component = EXERCISE_REGISTRY[current.type];
 
   return (
-    <div>
-      {exercises.length > 1 && (
-        <ExerciseProgressBar
-          currentIndex={idx}
-          total={exercises.length}
-          exercises={exercises}
-        />
-      )}
-      {/* Keying on idx forces a fresh mount per exercise so each one
-          gets its own clean state — otherwise stale `useState(() =>
-          shuffle(...))` from the previous exercise would leak in.
-          Reset the once-per-idx onComplete guard on every fresh mount
-          via the key change below. */}
-      <motion.div
-        key={idx}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-      >
-        {skipping ? (
-          <SkipNotice type={skipping} />
-        ) : (
-          <Component
-            config={current}
-            words={words}
-            targetLang={targetLang}
-            onComplete={handleComplete}
+    <SentencesProvider value={sentences}>
+      <div>
+        {exercises.length > 1 && (
+          <ExerciseProgressBar
+            currentIndex={idx}
+            total={exercises.length}
+            exercises={exercises}
           />
         )}
-      </motion.div>
-    </div>
+        {/* Keying on idx forces a fresh mount per exercise so each one
+            gets its own clean state — otherwise stale `useState(() =>
+            shuffle(...))` from the previous exercise would leak in.
+            Reset the once-per-idx onComplete guard on every fresh mount
+            via the key change below. */}
+        <motion.div
+          key={idx}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+        >
+          {skipping ? (
+            <SkipNotice type={skipping} />
+          ) : (
+            <Component
+              config={current}
+              words={words}
+              targetLang={targetLang}
+              onComplete={handleComplete}
+            />
+          )}
+        </motion.div>
+      </div>
+    </SentencesProvider>
   );
 };
 
