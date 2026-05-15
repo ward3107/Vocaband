@@ -18,10 +18,12 @@
  *                     1.2s back to the next player's interstitial
  *   4. done         — podium with medals + Play Again / Exit
  *
- * Scope decisions for v1:
- *   - Word source is SET_2_WORDS (the curriculum-2 pool).  Picker for
- *     specific assignments is a v2 — keeps the setup screen short and
- *     gets the demo running tonight.
+ * Scope decisions:
+ *   - Word source: teacher picks from curriculum Sets 1/2/3 or one of
+ *     their saved assignments (when launched from the New Activity
+ *     wizard, the parent passes the class's assignments).  Default is
+ *     Set 2 — that's what v1 hard-coded, so unchanged for teachers
+ *     who don't touch the picker.
  *   - Scores live in component state only.  Nothing is saved to
  *     Supabase — the players aren't logged in (they're sharing the
  *     teacher's device), so there's no user.uid to attribute to.  The
@@ -32,20 +34,32 @@
  *     breaking other modes for a v1.  Worth factoring out in a v2 if
  *     a third pass-around mode shows up.
  */
-import { useState, useRef } from "react";
+import { useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play } from "lucide-react";
+import { Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play, BookOpen } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import type { Word } from "../data/vocabulary";
 
+export interface HotSeatAssignment {
+  id: string;
+  title: string;
+  wordIds: number[];
+  words?: Word[];
+}
+
 interface HotSeatViewProps {
   onExit: () => void;
   speak: (wordId: number, fallbackText?: string) => void;
+  /** Teacher's saved assignments offered as a word source.  Optional —
+   *  if empty/undefined, the picker only shows the three curriculum
+   *  Sets.  Filter to the relevant class + language before passing. */
+  assignments?: HotSeatAssignment[];
 }
 
 type Phase = 'setup' | 'interstitial' | 'question' | 'done';
 type TargetLang = 'hebrew' | 'arabic';
+type SourceKind = 'set-1' | 'set-2' | 'set-3' | 'assignment';
 
 interface PlayerScore {
   name: string;
@@ -87,6 +101,14 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
   playersLabel: string;
   playersPlaceholder: string;
   playersHint: string;
+  wordsLabel: string;
+  sourceSet1: string;
+  sourceSet2: string;
+  sourceSet3: string;
+  sourceAssignment: string;
+  pickAssignment: string;
+  poolHint: (count: number) => string;
+  poolTooSmall: string;
   translateTo: string;
   hebrew: string;
   arabic: string;
@@ -117,6 +139,14 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersLabel: 'Players (one name per line)',
     playersPlaceholder: 'Sarah\nDaniel\nMaya\n…',
     playersHint: 'Need at least 2 players.',
+    wordsLabel: 'Word source',
+    sourceSet1: 'Set 1',
+    sourceSet2: 'Set 2',
+    sourceSet3: 'Set 3',
+    sourceAssignment: 'Assignment',
+    pickAssignment: 'Pick an assignment',
+    poolHint: (count) => `${count} words available`,
+    poolTooSmall: 'Need at least 4 words with the chosen translation.',
     translateTo: 'Translate to:',
     hebrew: 'Hebrew',
     arabic: 'Arabic',
@@ -147,6 +177,14 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersLabel: 'שחקנים (שם אחד בכל שורה)',
     playersPlaceholder: 'שרה\nדניאל\nמאיה\n…',
     playersHint: 'צריך לפחות 2 שחקנים.',
+    wordsLabel: 'מאגר המילים',
+    sourceSet1: 'סט 1',
+    sourceSet2: 'סט 2',
+    sourceSet3: 'סט 3',
+    sourceAssignment: 'מטלה',
+    pickAssignment: 'בחר מטלה',
+    poolHint: (count) => `${count} מילים זמינות`,
+    poolTooSmall: 'צריך לפחות 4 מילים עם התרגום שנבחר.',
     translateTo: 'תרגום ל:',
     hebrew: 'עברית',
     arabic: 'ערבית',
@@ -177,6 +215,14 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersLabel: 'اللاعبون (اسم واحد في كل سطر)',
     playersPlaceholder: 'سارة\nدانيال\nمايا\n…',
     playersHint: 'تحتاج إلى لاعبَين على الأقل.',
+    wordsLabel: 'مصدر الكلمات',
+    sourceSet1: 'المجموعة 1',
+    sourceSet2: 'المجموعة 2',
+    sourceSet3: 'المجموعة 3',
+    sourceAssignment: 'مهمة',
+    pickAssignment: 'اختر مهمة',
+    poolHint: (count) => `${count} كلمة متاحة`,
+    poolTooSmall: 'يلزم 4 كلمات على الأقل لها الترجمة المختارة.',
     translateTo: 'الترجمة إلى:',
     hebrew: 'العبرية',
     arabic: 'العربية',
@@ -205,21 +251,52 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-export default function HotSeatView({ onExit, speak }: HotSeatViewProps) {
+export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewProps) {
   const { language, dir } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
-  // Lazy-loads the vocabulary chunk on mount.  wordPool stays empty
-  // until the dynamic import resolves; the setup phase shows a
-  // loading line in that brief window so the Start button can't fire
+  // Lazy-loads the vocabulary chunk on mount.  The setup phase shows a
+  // loading line until the dynamic import resolves so Start can't fire
   // against an empty pool.
   const vocab = useVocabularyLazy(true);
-  const wordPool: Word[] = vocab?.SET_2_WORDS ?? [];
 
   const [phase, setPhase] = useState<Phase>('setup');
   const [playersText, setPlayersText] = useState('');
   const [questionsPerPlayer, setQuestionsPerPlayer] = useState(5);
   const [targetLang, setTargetLang] = useState<TargetLang>('hebrew');
+  const [sourceKind, setSourceKind] = useState<SourceKind>('set-2');
+  // Stable reference so the useMemo below doesn't re-run on every parent
+  // re-render — `assignments ?? []` would otherwise produce a fresh
+  // array each pass and bust the memo.
+  const availableAssignments = useMemo(() => assignments ?? [], [assignments]);
+  const [assignmentId, setAssignmentId] = useState<string | null>(
+    availableAssignments[0]?.id ?? null,
+  );
+
+  // Resolve the raw pool from the picked source.  Assignment-sourced
+  // pools merge in any teacher-uploaded custom words (which carry their
+  // own hebrew/arabic from the OCR/Gemini pipeline).
+  const rawPool: Word[] = useMemo(() => {
+    if (!vocab) return [];
+    if (sourceKind === 'set-1') return vocab.SET_1_WORDS;
+    if (sourceKind === 'set-3') return vocab.SET_3_WORDS;
+    if (sourceKind === 'assignment') {
+      const a = availableAssignments.find(x => x.id === assignmentId);
+      if (!a) return [];
+      const known = vocab.ALL_WORDS.filter(w => a.wordIds.includes(w.id));
+      const customs = a.words ?? [];
+      return [...known, ...customs.filter(c => !known.some(k => k.id === c.id))];
+    }
+    return vocab.SET_2_WORDS;
+  }, [vocab, sourceKind, assignmentId, availableAssignments]);
+
+  // Filter to words that actually have the chosen target translation.
+  // A custom word missing its hebrew/arabic would otherwise show up as
+  // an English option and break the multi-choice.
+  const wordPool: Word[] = useMemo(
+    () => rawPool.filter(w => translationOf(w, targetLang).trim().length > 0),
+    [rawPool, targetLang],
+  );
 
   // Round state — only meaningful after Start was tapped.
   const [players, setPlayers] = useState<PlayerScore[]>([]);
@@ -338,6 +415,55 @@ export default function HotSeatView({ onExit, speak }: HotSeatViewProps) {
               </div>
 
               <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <BookOpen size={14} className="text-stone-600" />
+                  <p className="text-sm font-bold text-stone-700">{t.wordsLabel}</p>
+                </div>
+                <div className={`grid gap-2 ${availableAssignments.length > 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
+                  {([
+                    { kind: 'set-1' as SourceKind, label: t.sourceSet1 },
+                    { kind: 'set-2' as SourceKind, label: t.sourceSet2 },
+                    { kind: 'set-3' as SourceKind, label: t.sourceSet3 },
+                    ...(availableAssignments.length > 0
+                      ? [{ kind: 'assignment' as SourceKind, label: t.sourceAssignment }]
+                      : []),
+                  ]).map(opt => (
+                    <button
+                      key={opt.kind}
+                      type="button"
+                      onClick={() => setSourceKind(opt.kind)}
+                      style={{ touchAction: 'manipulation' }}
+                      className={`py-2.5 rounded-xl font-bold text-sm border-2 transition-all ${
+                        sourceKind === opt.kind
+                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                          : 'bg-white text-stone-600 border-stone-200 hover:border-orange-200'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {sourceKind === 'assignment' && availableAssignments.length > 0 && (
+                  <select
+                    value={assignmentId ?? ''}
+                    onChange={e => setAssignmentId(e.target.value || null)}
+                    dir={dir}
+                    aria-label={t.pickAssignment}
+                    className="mt-2 w-full rounded-xl border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
+                  >
+                    {availableAssignments.map(a => (
+                      <option key={a.id} value={a.id}>{a.title}</option>
+                    ))}
+                  </select>
+                )}
+                {vocab && (
+                  <p className={`mt-1.5 text-xs font-semibold ${wordPool.length < 4 ? 'text-rose-600' : 'text-stone-500'}`}>
+                    {wordPool.length < 4 ? t.poolTooSmall : t.poolHint(wordPool.length)}
+                  </p>
+                )}
+              </div>
+
+              <div>
                 <p className="text-sm font-bold text-stone-700 mb-2">{t.translateTo}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(['hebrew', 'arabic'] as TargetLang[]).map(lang => (
@@ -389,8 +515,8 @@ export default function HotSeatView({ onExit, speak }: HotSeatViewProps) {
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
               >
                 <Play size={18} />
-                {wordPool.length < 4 ? t.loadingWords : t.startBtn}
-                {wordPool.length >= 4 && <ChevronRight size={18} />}
+                {!vocab ? t.loadingWords : t.startBtn}
+                {vocab && <ChevronRight size={18} />}
               </button>
               {parsedNameCount < 2 && (
                 <p className="text-xs text-rose-600 font-semibold text-center -mt-2">{t.needTwo}</p>
