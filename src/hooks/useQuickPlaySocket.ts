@@ -178,6 +178,22 @@ export interface QuickPlaySocketApi {
 let cachedSocket: Socket | null = null;
 let cachedSocketUrl: string | null = null;
 
+/**
+ * Tear down the module-level socket explicitly.  Used by the SIGNED_OUT
+ * path in App.tsx so the cached connection doesn't outlive the React
+ * tree and keep reconnecting (reconnectionAttempts: Infinity) in the
+ * background after a user logs out.  Without this, network tab on the
+ * landing page after logout shows steady WS reconnection traffic and
+ * memory holds the previous socket forever.
+ */
+export function disconnectQuickPlaySocket(): void {
+  try {
+    cachedSocket?.disconnect();
+  } catch { /* best-effort */ }
+  cachedSocket = null;
+  cachedSocketUrl = null;
+}
+
 async function getSocket(): Promise<Socket> {
   // VITE_SOCKET_URL is "" in production (post-Render→Fly migration) so
   // socket.io connects to the same origin (vocaband.com) and the

@@ -104,7 +104,7 @@ import {
 } from "./constants/game";
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
-import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
+import { useQuickPlaySocket, disconnectQuickPlaySocket } from "./hooks/useQuickPlaySocket";
 import { useTeacherActions } from "./hooks/useTeacherActions";
 import { useGameModeActions } from "./hooks/useGameModeActions";
 import { useGameFinish } from "./hooks/useGameFinish";
@@ -1920,6 +1920,12 @@ export default function App() {
         // doesn't get serenaded by leftovers from the previous session.
         try { stopAllAudio(); } catch {}
         try { window.speechSynthesis?.cancel(); } catch {}
+        // Tear down the cached Quick Play socket explicitly.  It's a
+        // module-level singleton with reconnectionAttempts: Infinity, so
+        // without this call it would keep retrying WS connections in the
+        // background after the user logs out — visible as endless
+        // reconnect traffic in the Network tab and a slow memory leak.
+        try { disconnectQuickPlaySocket(); } catch {}
         setUser(null);
         // Reset all game-playing state so the back button can't resurrect
         // a ghost of the previous session.  Symptom before this clear:
@@ -1965,36 +1971,32 @@ export default function App() {
         const wasStudent = lastUserRoleRef.current === 'student';
         const postLogoutView: View = wasStudent ? 'student-account-login' : 'public-landing';
         lastUserRoleRef.current = null;
-        // Reset history state so the back-button trap doesn't persist
-        // into the logged-out experience (otherwise pad entries from
-        // the previous session would still block navigation).
-        try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
-        // Clear loading + swap the SPA view BEFORE the hard reload so React
-        // flushes the post-logout tree to the screen first. Without this
-        // ordering, window.location.replace() pre-empts the pending state
-        // updates and the teacher sees a stuck spinner from the previous
-        // page until the new document finishes loading (the "endless
-        // loading after logout" report).
+        // Swap the URL + reset history state in one shot.  The third arg
+        // to replaceState rewrites the path so a stale ?assignment=… or
+        // similar query param can't be picked up by bootstrap effects,
+        // and the state payload anchors the back-button trap on the
+        // public landing entry so pad/dashboard entries from the
+        // previous session no longer match.  Previous in-memory state
+        // (audio, speech, sockets) is already cleared above — see
+        // stopAllAudio / speechSynthesis.cancel / disconnectQuickPlaySocket
+        // and the React resets below — so we don't need a hard reload
+        // to get a clean slate any more.  Skipping the reload makes
+        // logout feel instant (<100 ms vs. the 1–3 s the full page
+        // navigation used to take).
+        const target = wasStudent ? '/student' : '/';
+        if (!quickPlaySessionParam) {
+          try { window.history.replaceState({ view: postLogoutView }, '', target); } catch {
+            try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
+          }
+        } else {
+          try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
+        }
+        // Clear loading + swap the SPA view so React paints the public
+        // landing immediately.  Order matters: setLoading(false) first
+        // so any global "Loading…" overlay tears down before the view
+        // swap renders the landing tree.
         setLoading(false);
         setView(postLogoutView);
-        // Don't redirect Quick Play students — they don't need auth
-        if (!quickPlaySessionParam) {
-          // Hard reload after the SPA route swap to drop every piece of
-          // in-memory state (audio handles, demo speech utterances, mode
-          // intros, popstate back-button trap entries).  Without this the
-          // teacher reported "after logout I still hear the demo voices
-          // and the back button takes me through every screen I just
-          // visited" — that's React state + history surviving the
-          // session change.  Replacing the URL clears the query
-          // (?assignment=... etc) so a stale assignment can't be picked
-          // up by the bootstrap effects on first paint.
-          // Defer to next tick so the state updates above commit before
-          // the page unloads — same reason as setLoading(false) ordering.
-          const target = wasStudent ? '/student' : '/';
-          setTimeout(() => {
-            try { window.location.replace(target); } catch {}
-          }, 0);
-        }
       } else if (event === 'INITIAL_SESSION') {
         // No session exists — user needs to log in.
         // Exception: if the URL has an OAuth code (?code=) or implicit token
