@@ -166,7 +166,7 @@
   <div class="toolbar">
     <h1>📋 Classroom poster</h1>
     <span class="help">Click Print → save as PDF, or print straight to paper. A4.</span>
-    <button onclick="window.print()" type="button">🖨️ Print / Save as PDF</button>
+    <button id="print-btn" type="button">🖨️ Print / Save as PDF</button>
   </div>
 
   <div class="poster">
@@ -207,64 +207,11 @@
 
   </div>
 
+  <!-- External-only scripts to satisfy the strict CSP shipped via
+       public/_headers (no 'unsafe-inline' on script-src).  The QR is
+       drawn by /poster.js using the qrcode-generator library loaded
+       just above. -->
   <script src="/qrcode.min.js"></script>
-  <script>
-    (function () {
-      var params = new URLSearchParams(window.location.search);
-      var ref = params.get('ref');
-      var classCode = params.get('class');
-      // Deep-link straight to /student so scanning the poster lands
-      // students on the dedicated join screen (no marketing detour,
-      // no public-landing CTA confusion). The student-account-login
-      // view auto-fills the class-code field from ?class=.
-      var url = 'https://www.vocaband.com/student';
-      var qs = [];
-      if (classCode) qs.push('class=' + encodeURIComponent(classCode));
-      if (ref)       qs.push('ref=' + encodeURIComponent(ref));
-      if (qs.length) url += '?' + qs.join('&');
-
-      document.getElementById('poster-url').textContent = url.replace(/^https?:\/\//, '');
-      if (classCode) document.title = 'Vocaband poster — class ' + classCode;
-
-      var target = document.getElementById('qr-target');
-
-      // Render QR locally with qrcode-generator. typeNumber=0 auto-picks
-      // the smallest version that fits the payload. Error correction 'M'
-      // (15% recovery) is the sweet spot for print — survives smudges
-      // and whiteboard markers without bloating the module count.
-      try {
-        if (typeof qrcode !== 'function') throw new Error('qrcode-generator not loaded');
-        var qr = qrcode(0, 'M');
-        qr.addData(url);
-        qr.make();
-        // createSvgTag gives us a scalable vector — crisp at any print
-        // size without the blur of a 720x720 PNG stretched to 62mm.
-        target.innerHTML = qr.createSvgTag({
-          cellSize: 8,
-          margin: 2,
-          scalable: true,
-        });
-        // Style the SVG to fill the container + apply brand colour
-        var svg = target.querySelector('svg');
-        if (svg) {
-          svg.setAttribute('width', '100%');
-          svg.setAttribute('height', '100%');
-          svg.style.display = 'block';
-          // Dark squares in brand slate instead of pure black
-          var paths = svg.querySelectorAll('path, rect');
-          paths.forEach(function (el) {
-            if (el.getAttribute('fill') === '#000000' || el.getAttribute('fill') === 'black' || !el.getAttribute('fill')) {
-              el.setAttribute('fill', '#1F2937');
-            }
-          });
-        }
-      } catch (e) {
-        // Last-resort fallback — teacher can still type the URL below.
-        target.textContent = 'Type the link →';
-        target.style.cssText = 'width:62mm;height:62mm;border:1px dashed #9ca3af;border-radius:3mm;display:flex;align-items:center;justify-content:center;color:#374151;font-weight:700;font-size:12pt;text-align:center;padding:4mm;flex-shrink:0;';
-        console.warn('[poster] QR generation failed:', e);
-      }
-    })();
-  </script>
+  <script src="/poster.js"></script>
 </body>
 </html>
