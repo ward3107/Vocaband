@@ -223,6 +223,7 @@ import { createEnglishQuickPlaySession, createHebrewQuickPlaySession } from "./h
 import { generateAiLesson, type AiLessonParams } from "./utils/aiLesson";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { stripUrlParam } from "./utils/url";
+import { resolveInitialView } from "./utils/resolveInitialView";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
@@ -287,33 +288,7 @@ export default function App() {
   // their dashboard and make the preview useless).
   const fromShareLinkRef = useRef(new URLSearchParams(window.location.search).get('share') === '1');
 
-  const [view, setView] = useState<View>(() => {
-    if (quickPlaySessionParam) return "quick-play-student";
-    if (window.location.pathname === "/accessibility-statement") return "accessibility-statement";
-    // Public interactive worksheet — WhatsApp-shareable link teachers paste
-    // from the Free Resources page.  Path is /w/<slug>; the slug is read in
-    // the render switch below.  Auth state is ignored, since logged-in
-    // teachers should also be able to test their own shares.
-    if (window.location.pathname.startsWith("/w/")) return "public-interactive-worksheet";
-    // Dedicated student URL — `vocaband.com/student` lands directly on
-    // the student login page, separate from the teacher-focused
-    // marketing landing.  Teachers can share this URL with their class.
-    if (window.location.pathname === "/student") return "student-account-login";
-    // Classroom-poster QR code / teacher-shared invite link.  When the
-    // URL carries a `?class=XXX` parameter and there's no already-active
-    // session, skip the landing page and drop the visitor straight on
-    // the student-login screen so they can tap their name.  Without
-    // this, QR-scanners land on the generic landing page, see no
-    // obvious "enter my classroom" CTA, and give up.  Auth restore
-    // still runs afterwards — a logged-in user's session override
-    // this initial view (they'll go to their dashboard, and if their
-    // classCode differs, the class-switch modal handles the rest).
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('class')) return "student-account-login";
-    } catch { /* URLSearchParams unavailable — fall through */ }
-    return "public-landing";
-  });
+  const [view, setView] = useState<View>(resolveInitialView);
   // Which Voca the teacher is currently working in.  null until they
   // pick (or are auto-picked into) one.  Persisted across same-tab
   // refreshes via sessionStorage so we don't pop the picker again.
