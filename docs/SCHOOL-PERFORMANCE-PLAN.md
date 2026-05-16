@@ -115,31 +115,25 @@ mislead. Order is by classroom-perceived impact.
 
 ### R1 — Read-side cache for dashboard / assignments
 
-**Status:** 📋 not started · **Why it's #1:** This is the single most visible
+**Status:** ✅ shipped 2026-05-16 (commit `46b5ac8`) · **Why it's #1:** This is the single most visible
 school-Wi-Fi pain ("assignments load too slow"). Today every dashboard
 mount waits on Supabase Frankfurt RTT; with a cache it renders instantly
 from local and refreshes in the background.
 
-- [ ] Create `src/core/readCache.ts` — `localStorage`-backed, namespaced by
+- [x] Create `src/core/readCache.ts` — `localStorage`-backed, namespaced by
   user id (so shared classroom devices don't leak between students).
-  API shape:
-  ```ts
-  cachedRead<T>(key: string, fetcher: () => Promise<T>, opts: {
-    ttlMs: number; userScope: string;
-    onCacheHit?: (v: T) => void;
-  }): Promise<T>
-  ```
-  Reads return cache immediately (via `onCacheHit`) and fire the network
+  Shipped as `cachedRead<T>(key, fetcher, { userScope, ttlMs, onCacheHit })`.
+  Reads return cache via microtask `onCacheHit` and fire the network
   fetch in parallel; the network result overwrites the cache and resolves
-  the promise.
-- [ ] Apply to `src/hooks/useTeacherData.ts` — classes, assignments,
-  rosters. TTL 5 min on classes, 2 min on assignments.
-- [ ] Apply to the student dashboard's assignment fetch in
-  `StudentDashboardView` (or its loader in `App.tsx`).
-- [ ] Clear cache on logout (`performUserLogout` in `core/supabase.ts`
-  is already the central exit — hook in there).
-- [ ] Cap cache entry size + total localStorage budget (refuse to write
-  if a single value > 256 KB; LRU-evict oldest if total > 4 MB).
+  the promise. Falls back to cache on fetcher rejection.
+- [x] Apply to `src/hooks/useTeacherData.ts` — classes (5 min TTL) and
+  assignment list (2 min TTL). Progress kept live (too dynamic).
+- [ ] Apply to the student dashboard's standalone assignment fetch
+  paths (separate from `loadAssignmentsForClass`). Follow-up if time.
+- [x] Clear cache on logout — `clearAllReadCache()` fires in the
+  `SIGNED_OUT` handler in `App.tsx` alongside the other localStorage scrubs.
+- [x] Cap cache entry size + total localStorage budget (256 KB per value,
+  4 MB total ceiling, oldest-25% eviction on quota).
 
 **Verify:**
 1. Throttle to Slow 4G, load teacher dashboard once. Reload — dashboard
@@ -150,7 +144,7 @@ from local and refreshes in the background.
 3. Quota math: 5 classes × ~2 KB + 50 assignments × ~1 KB ≈ 60 KB per
    teacher. Well under budget.
 
-**Commit:** `feat(cache): localStorage read cache for dashboard/assignments` — SHA: `____`
+**Commit:** `feat(cache): localStorage SWR read cache for teacher dashboard` — SHA: `46b5ac8`
 
 ---
 
