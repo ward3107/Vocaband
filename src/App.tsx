@@ -178,7 +178,7 @@ import {
 import { celebrate } from "./utils/celebrate";
 import { compressImageForUpload } from "./utils/compressImage";
 // ImageCropModal moved to a React.lazy at the top of this file.
-import { setGuideStore, type GuideKey } from "./hooks/useFirstTimeGuide";
+import { useTeacherGuidesSync } from "./hooks/useTeacherGuidesSync";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
@@ -324,44 +324,9 @@ export default function App() {
     } catch { /* sessionStorage may be blocked; non-fatal */ }
   }, [activeVoca]);
 
-  // First-time-guide persistence — push the signed-in teacher's
-  // dismissed-guide list into the module-level store consumed by
-  // useFirstTimeGuide.  On dismissal, the hook calls markSeen here
-  // which appends to user.guides_seen + writes it back to Supabase, so
-  // a teacher signing in on a second device never re-sees a guide they
-  // already closed.  Students/guests get null → hook falls back to
-  // localStorage (still works, just per-device).
-  useEffect(() => {
-    if (!user || !hasTeacherAccess(user)) {
-      setGuideStore(null);
-      return;
-    }
-    const seen = user.guidesSeen ?? [];
-    setGuideStore({
-      seen,
-      markSeen: async (key: GuideKey) => {
-        if (seen.includes(key)) return;
-        const next = Array.from(new Set([...seen, key]));
-        // Optimistic in-memory update first — the dashboard re-renders
-        // immediately without waiting for the round-trip.
-        setUser(prev => prev ? { ...prev, guidesSeen: next } : prev);
-        const { error } = await supabase
-          .from("users")
-          .update({ guides_seen: next })
-          .eq("uid", user.uid);
-        if (error) {
-          // Roll back the optimistic update so a retry from another
-          // device can re-attempt.  localStorage still suppresses
-          // re-shows on THIS device until storage clears.
-          console.warn("[guides] persist failed; rolling back:", error);
-          setUser(prev => prev ? { ...prev, guidesSeen: seen } : prev);
-        }
-      },
-    });
-    return () => {
-      setGuideStore(null);
-    };
-  }, [user]);
+  // First-time-guide persistence (teacher-only) wired through a hook
+  // so the optimistic-update + rollback dance lives next to the store.
+  useTeacherGuidesSync(user, setUser);
 
   // Voca routing — teachers belong to exactly one Voca (users.subject)
   // so getEntitledVocas returns a single id and their activeVoca is
