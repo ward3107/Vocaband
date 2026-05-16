@@ -83,6 +83,16 @@ const setGlobalLanguage = (lang: Language) => {
     // Set dir attribute for RTL support (Hebrew/Arabic)
     const dir = (lang === 'he' || lang === 'ar') ? 'rtl' : 'ltr';
     document.documentElement.setAttribute('dir', dir);
+    // Heebo + Fredoka are NOT in index.html's blocking <link> for
+    // English-default visitors. When a user toggles to HE/AR for the
+    // first time in a session, boot-debug.js's window-scoped loader
+    // injects the RTL font CSS so subsequent renders don't fall back to
+    // system-ui Hebrew (which on Windows is Arial — visually jarring
+    // mid-session). No-op on repeat calls.
+    if (dir === 'rtl') {
+      const load = (window as unknown as { __vocabandLoadRtlFonts?: () => void }).__vocabandLoadRtlFonts;
+      if (typeof load === 'function') load();
+    }
   }
   // Notify all listeners
   listeners.forEach(listener => listener(lang));

@@ -1,6 +1,10 @@
 import React, { ErrorInfo, ReactNode } from "react";
 import { isChunkLoadError, attemptChunkReload, forceFullRecovery } from "./utils/chunkReload";
-import { reportError } from "./core/sentry";
+// Sentry is imported dynamically inside componentDidCatch so the ~41 kB
+// gz @sentry/react chunk stays off the critical DCL path. Errors that
+// arrive before the chunk has loaded fall back to console.error; once a
+// real ErrorBoundary catch happens the import resolves and the report
+// is forwarded normally.
 
 interface Props {
   children: ReactNode;
@@ -51,10 +55,12 @@ class ErrorBoundary extends React.Component<Props, State> {
         this.setState({ isReloading: false });
       }
     } else {
-      reportError(error, {
-        componentStack: errorInfo.componentStack ?? "(none)",
-        url: typeof window !== "undefined" ? window.location.href : "(unknown)",
-      });
+      void import("./core/sentry").then(({ reportError }) => {
+        reportError(error, {
+          componentStack: errorInfo.componentStack ?? "(none)",
+          url: typeof window !== "undefined" ? window.location.href : "(unknown)",
+        });
+      }).catch(() => { /* sentry chunk failed to load — console.error above is the fallback */ });
     }
   }
 
