@@ -9,6 +9,56 @@ This is the single source of truth for the sprint. Update the checkboxes as we g
 
 ---
 
+## Survey results — 2026-05-16 (read this first!)
+
+Before writing a single line of code on this sprint, a survey of the
+codebase revealed that **most of Tier 1 was already shipped** by a prior
+engineer. Concretely:
+
+- **Day 1 (PWA + Workbox): ✅ DONE.** `vite.config.ts:30-315` has a
+  comprehensive vite-plugin-pwa config — runtime caching for HTML
+  (NetworkFirst with 3s timeout + handlerDidError fallback), JS/CSS
+  (CacheFirst), fonts/images, word audio MP3s (2000-entry LRU), praise
+  audio. Kill switch via `?unregisterSW=1` (see `src/main.tsx:43-70`).
+  Build emits `dist/sw.js` + `workbox-c0947cf6.js` with 155 precache
+  entries (4.8 MB).
+- **Day 2 (lazy views): ✅ DONE.** All 35 views in `src/App.tsx:45-...`
+  are already `lazy(() => import(...))`. Build output confirms separate
+  chunks for `StudentDashboardView`, `TeacherDashboardView`,
+  `ShopMarketplaceView`, `GameActiveView`, `ClassroomView`, `DemoMode`,
+  etc. The 6,482-word `vocabulary` chunk is lazy via `useVocabularyLazy`.
+- **Day 3 (write queue): ✅ DONE (alt impl).** `src/core/saveQueue.ts`
+  (353 lines) is a complete Kahoot-style offline write queue with:
+  retry-on-online + on-tab-refocus + interval flush, MAX_ATTEMPTS=20,
+  two flavours (Quick Play direct INSERT + class assignment RPC).
+  Uses `localStorage` instead of IndexedDB — fine for small queues.
+
+**Day-1 build numbers (baseline for this sprint):**
+
+| Chunk | Raw | Gzip | Target | Gap |
+|---|---|---|---|---|
+| `index-*.js` (entry) | 289 kB | **94 kB** | ≤ 70 kB | -24 kB |
+| `App-*.js` | 269 kB | **74 kB** | ≤ 40 kB | -34 kB |
+| `ClassroomView` | 403 kB | 116 kB | (lazy ✅) | — |
+| `vocabulary` | 404 kB | 151 kB | (lazy ✅) | — |
+
+**Real remaining gaps:**
+
+1. **Read-side cache** — `useTeacherData`, dashboard fetches, assignment
+   lists are NOT cached locally. Every dashboard open waits on Supabase
+   Frankfurt round-trip. *This is the visible school-Wi-Fi pain.*
+2. **Online/offline UI indicator** — no banner today, no "saved locally,
+   will sync" toast even though the write queue does the right thing.
+3. **Entry chunk slim** — 94 kB gz entry is fat (Sentry + React DOM + a11y
+   widget). Some lazy-import opportunities.
+4. **Cloudflare edge cache rules** for `/api/*` — see Day 4.
+5. **Real Slow-4G test + Sentry web-vitals** — never done.
+
+Sprint is therefore re-scoped to those 5 items. Everything below this
+section reflects the new scope.
+
+---
+
 ## How to use this file
 
 1. Each tier has a checklist. Tick `[x]` when shipped to `main`.
@@ -32,109 +82,175 @@ A prior pass (`docs/perf-audit-2026-04-28.md`) lazy-loaded the vocabulary chunk.
 
 ---
 
-## Tier 1 — Free wins (this week, ship before the demo)
+## Tier 1 — Free wins (re-scoped 2026-05-16 after codebase survey)
 
-These are the must-do items. Everything in Tier 1 must be live before we touch Tier 2.
+### ✅ Day 1 — PWA shell + Workbox SW — DONE (pre-existing)
 
-### Day 1 — PWA shell + Workbox service worker
+Shipped before this sprint. See `vite.config.ts:30-315` + `src/main.tsx:43-70`.
+Build confirmed 2026-05-16: `dist/sw.js` + `workbox-c0947cf6.js`, 155 precache
+entries (4.8 MB), runtime cache buckets `vocaband-html`, `vocaband-assets`,
+`vocaband-media`, `vocaband-word-audio`, `vocaband-praise-audio`.
 
-**Status:** 📋 not started
+### ✅ Day 2 — Lazy views — DONE (pre-existing)
 
-- [ ] Install `vite-plugin-pwa` and `workbox-window`.
-- [ ] Configure `vite.config.ts` with `VitePWA({ registerType: 'autoUpdate', workbox: { ... } })`.
-- [ ] Precache the app shell (`index.html`, entry JS, CSS, fonts, logo).
-- [ ] Runtime caching rules:
-  - `/api/*` GETs → `StaleWhileRevalidate`, 5 min max-age, network timeout 3 s.
-  - `*.mp3` (word audio) → `CacheFirst`, 30-day expiration, max 500 entries.
-  - Supabase REST `*.supabase.co/rest/v1/*` GETs → `StaleWhileRevalidate`, 1 min.
-  - Images / avatars → `CacheFirst`, 30 days.
-- [ ] Add a "new version available" toast that triggers `skipWaiting` so users don't get stuck on old builds.
-- [ ] Update `manifest.webmanifest` — icons, theme color, display `standalone`, scope `/`, start_url `/`.
-- [ ] Make sure the worker is scoped only to production (`devOptions.enabled: false` unless we want to test).
+All 35 views in `App.tsx:45-...` are `lazy()`. Build output confirms separate
+chunks for every view. `vocabulary.ts` is lazy via `useVocabularyLazy`.
 
-**Verify:**
-1. `npm run build && npm run preview` → DevTools → Application → Service Workers shows the SW registered.
-2. Reload with **Offline** checked in Network panel — landing page still renders.
-3. Lighthouse PWA score ≥ 90 on production build.
-4. Visit the live URL from a phone, airplane-mode, reopen — app shell loads.
+Residual nit (not blocking the demo): the entry chunk is still **94 kB gz**
+(target was ≤ 70 kB) and `App-*.js` is **74 kB gz** (target ≤ 40 kB). See
+Task R3 below — only do this if Tasks R1+R2 land with time to spare.
 
-**Commit:** `feat(pwa): vite-plugin-pwa + workbox runtime caching` — SHA: `____`
+### ✅ Day 3 — Write queue — DONE (pre-existing, alt impl)
+
+`src/core/saveQueue.ts` (353 lines). Kahoot-style optimistic UI + retry
+queue, MAX_ATTEMPTS=20, `online` + tab-refocus + interval flush. Uses
+`localStorage` not IndexedDB — acceptable for small queues.
 
 ---
 
-### Day 2 — Code-split `App.tsx` + lazy-load heavy data
+## What actually needs to ship — re-scoped task list
 
-**Status:** 📋 not started
+Tasks renamed R1…R5 (Re-scoped) so the original day numbering doesn't
+mislead. Order is by classroom-perceived impact.
 
-`App.tsx` ships as one giant chunk today. Break it up so the landing page doesn't pull teacher/student/shop code.
+### R1 — Read-side cache for dashboard / assignments
 
-- [ ] Convert all view imports in `App.tsx` to `React.lazy(() => import('./views/...'))`:
-  - `StudentDashboardView`, `TeacherDashboardView`, `ShopView`, `GameModeSelectionView`, `GameActiveView`, `LiveChallengeView`, `QuickPlayStudentView`, `DemoMode`, `WorksheetAttemptsView`.
-- [ ] Wrap each `<Suspense fallback={<ViewSkeleton />}>` — build a tiny skeleton component (`components/ViewSkeleton.tsx`) so users see structure, not blank screen.
-- [ ] Audit `data/vocabulary.ts` and `data/sentence-bank.ts` — confirm both are still imported lazily via the existing `useVocabularyLazy` hook. Add `sentence-bank` lazy hook if missing.
-- [ ] Pre-warm likely next views on idle: `requestIdleCallback(() => import('./views/GameActiveView'))` after dashboard mounts.
-- [ ] Manually check there are no `import type` violations re-introducing eager loads (the Apr-28 audit lesson).
+**Status:** 📋 not started · **Why it's #1:** This is the single most visible
+school-Wi-Fi pain ("assignments load too slow"). Today every dashboard
+mount waits on Supabase Frankfurt RTT; with a cache it renders instantly
+from local and refreshes in the background.
 
-**Verify:**
-1. `npm run build` → entry chunk under **70 kB gzipped** (today it's bigger).
-2. `App-*.js` chunk ≤ **40 kB gzipped** (was 79 kB on Apr-28).
-3. Network tab on landing page: only entry + landing chunks load, nothing teacher/shop.
-4. Lighthouse mobile performance score ≥ 80 on `https://www.vocaband.com`.
-
-**Commit:** `perf(routing): lazy-load views + suspense skeletons` — SHA: `____`
-
----
-
-### Day 3 — Offline data + write queue (IndexedDB via Dexie)
-
-**Status:** 📋 not started
-
-Right now if Wi-Fi blips during a class, students lose progress mid-game. Fix with a local-first cache.
-
-- [ ] `npm i dexie` and create `src/core/db.ts` (Dexie schema with tables: `assignments`, `classRoster`, `progressQueue`, `vocabularyCache`).
-- [ ] Wrap Supabase reads for these tables in a "cache-then-network" helper:
+- [ ] Create `src/core/readCache.ts` — `localStorage`-backed, namespaced by
+  user id (so shared classroom devices don't leak between students).
+  API shape:
   ```ts
-  const cached = await db.assignments.where({ classId }).toArray();
-  if (cached.length) render(cached);              // instant
-  const fresh = await supabase.from('assignments')...;
-  if (fresh) { db.assignments.bulkPut(fresh); render(fresh); }
+  cachedRead<T>(key: string, fetcher: () => Promise<T>, opts: {
+    ttlMs: number; userScope: string;
+    onCacheHit?: (v: T) => void;
+  }): Promise<T>
   ```
-- [ ] Outbound writes (progress save, leaderboard updates) → enqueue in `progressQueue` first, then attempt POST. On failure, retry with exponential backoff (2/4/8/16 s). Drain queue on `online` event.
-- [ ] Add a top-bar offline indicator (existing `useOnlineStatus` hook? — search; if missing, write one in `hooks/useOnlineStatus.ts`).
-- [ ] Show "saved locally, will sync" toast when a write was queued.
+  Reads return cache immediately (via `onCacheHit`) and fire the network
+  fetch in parallel; the network result overwrites the cache and resolves
+  the promise.
+- [ ] Apply to `src/hooks/useTeacherData.ts` — classes, assignments,
+  rosters. TTL 5 min on classes, 2 min on assignments.
+- [ ] Apply to the student dashboard's assignment fetch in
+  `StudentDashboardView` (or its loader in `App.tsx`).
+- [ ] Clear cache on logout (`performUserLogout` in `core/supabase.ts`
+  is already the central exit — hook in there).
+- [ ] Cap cache entry size + total localStorage budget (refuse to write
+  if a single value > 256 KB; LRU-evict oldest if total > 4 MB).
 
 **Verify:**
-1. Throttle to "Offline" mid-game → game still completes, no error.
-2. Reconnect → check Supabase row appears with the right `score` and `created_at`.
-3. Reload page offline → assignment list still renders from Dexie.
-4. No duplicate rows in Supabase after replay.
+1. Throttle to Slow 4G, load teacher dashboard once. Reload — dashboard
+   renders in ≤ 100 ms (cache hit) and the freshness fetch resolves
+   silently in the background.
+2. Sign out, sign in as a different teacher — none of the previous
+   teacher's data appears.
+3. Quota math: 5 classes × ~2 KB + 50 assignments × ~1 KB ≈ 60 KB per
+   teacher. Well under budget.
 
-**Commit:** `feat(offline): dexie cache + write queue with retry` — SHA: `____`
+**Commit:** `feat(cache): localStorage read cache for dashboard/assignments` — SHA: `____`
 
 ---
 
-### Day 4 — Edge caching + observability + real-network test
+### R2 — Online/offline indicator + sync toast
 
-**Status:** 📋 not started
+**Status:** 📋 not started · **Why:** The write queue does the right thing
+silently. Teachers and students don't *know* it's working, so a Wi-Fi
+drop feels like a freeze even when it isn't. A subtle indicator + a
+"saved locally, will sync" toast closes the perception gap.
 
-Final layer of polish + measurement.
-
-- [ ] Add Cloudflare cache rules for read-mostly endpoints. In `worker/index.ts`:
-  - Cache `/api/class/:id/roster` and `/api/assignments/:classId` for 60 s with `s-maxage=60, stale-while-revalidate=300`.
-  - Make sure auth-bearing requests bypass cache (vary on `Authorization`).
-- [ ] Turn on Sentry **web-vitals** + **session replay-on-error** (Sentry MCP is already configured — confirm DSN + sample rate).
-- [ ] Add a `<link rel="preconnect">` for `*.supabase.co` and the Cloudflare R2 audio bucket in `index.html`.
-- [ ] Brotli/gzip — confirm Cloudflare is compressing `*.js` and `*.json`. Manual check: response headers should show `content-encoding: br`.
-- [ ] **Real-network test.** Chrome DevTools → Network → throttle to "Slow 4G" → run the full flow: landing → login → assignments → play one game → finish. Record metrics.
-- [ ] Update `docs/perf-audit-2026-04-28.md` with new before/after numbers (or create a follow-up audit doc).
+- [ ] `src/hooks/useOnlineStatus.ts` — `navigator.onLine` + `online`/
+  `offline` listeners, returns `{ online: boolean, since: number }`.
+- [ ] Tiny global indicator (top-left or in the existing header) when
+  offline: amber dot + i18n string "Offline — your work is being saved
+  locally" (EN/HE/AR via `useLanguage`).
+- [ ] In `enqueueQuickPlaySave` + `enqueueAssignmentSave`, when the
+  immediate flush fails: surface a `toast.info` "Saved locally — will
+  sync when online". When the queue successfully drains: toast.success
+  "All progress synced".
+- [ ] Use the existing toast system (search `src/` for the current one
+  — probably hand-rolled in `App.tsx`).
 
 **Verify:**
-1. On Slow 4G, landing page interactive in ≤ 3 s.
-2. Assignment list shows within 1 s of dashboard mount (cache hit).
-3. Lighthouse mobile performance ≥ 85 on production.
-4. Web-vitals appearing in Sentry dashboard.
+1. DevTools → Offline → finish a game. Toast shows "Saved locally".
+2. Toggle back online — toast shows "All progress synced".
+3. Indicator dot appears/disappears with the network event.
 
-**Commit:** `perf(edge): cache rules + preconnect + web-vitals` — SHA: `____`
+**Commit:** `feat(offline-ui): online indicator + sync toasts` — SHA: `____`
+
+---
+
+### R3 — Trim the entry chunk (optional, only if R1+R2 land early)
+
+**Status:** 📋 not started · **Why optional:** Entry-chunk slim is a
+performance polish, not a school-demo unblocker. Don't burn time on it
+unless R1 and R2 are already shipped.
+
+- [ ] Defer Sentry init until `requestIdleCallback` or first idle
+  after React mount (currently runs synchronously in `main.tsx:10`).
+  This may move ~20 kB gz out of the entry critical path.
+- [ ] Check whether `AccessibilityWidget` can be `lazy()` — the comment
+  says it can't because of an event listener. Evaluate: could a tiny
+  vanilla listener live in `main.tsx` and only hydrate the React widget
+  when the trigger event fires?
+- [ ] Manual chunks: split `@sentry/react` into its own chunk so it
+  doesn't bloat the entry.
+
+**Verify:**
+1. `npm run build` shows entry ≤ 70 kB gzipped.
+2. Sentry still catches a thrown error in production.
+3. A11y widget still appears on the landing page when navigating.
+
+**Commit:** `perf(entry): defer sentry + sentry chunk` — SHA: `____`
+
+---
+
+### R4 — Edge cache rules in the Cloudflare Worker
+
+**Status:** 📋 not started · **Why:** Move read-mostly responses to the
+edge so Israeli users pay edge latency (~20 ms) instead of Supabase
+Frankfurt (~80 ms+).
+
+- [ ] In `worker/index.ts`, add cache rules for stable read endpoints
+  exposed via `/api/*`. Cache key MUST vary on `Authorization` header
+  so authenticated responses never leak across users.
+- [ ] Use `cf.cacheTtl` + `s-maxage` + `stale-while-revalidate` so
+  cache misses still serve quickly while revalidating.
+- [ ] Confirm Brotli is on for `*.js` and `*.json` responses.
+- [ ] Add `<link rel="preconnect">` for the Supabase origin in `index.html`.
+
+**Verify:**
+1. `curl -I https://www.vocaband.com/api/...` shows `cf-cache-status: HIT`
+   on the second request (where appropriate).
+2. Same endpoint with a different bearer token gets a distinct cache hit
+   (no leakage).
+3. Response headers show `content-encoding: br`.
+
+**Commit:** `perf(edge): cache rules + preconnect` — SHA: `____`
+
+---
+
+### R5 — Real Slow-4G test + Sentry web-vitals + audit doc
+
+**Status:** 📋 not started · **Why:** None of this is real until measured
+on a throttled network. Also: we want classroom data after the demo.
+
+- [ ] Sentry web-vitals + replay-on-error (Sentry React is already
+  installed, see `src/core/sentry.ts`). Sample rate: 10% sessions,
+  100% on error.
+- [ ] Run the school flow under Chrome DevTools "Slow 4G": landing →
+  login → dashboard → assignment → game → finish. Record numbers.
+- [ ] Write `docs/perf-audit-2026-05-XX.md` with before/after, methodology,
+  and what's still slow.
+
+**Verify:**
+1. Web-vitals events visible in Sentry dashboard.
+2. Audit doc committed with concrete numbers.
+3. Acceptance criteria checklist (below) passes on Slow 4G.
+
+**Commit:** `perf(observability): web-vitals + post-demo audit` — SHA: `____`
 
 ---
 
@@ -241,3 +357,8 @@ If anything in Tier 1 breaks production:
 ## Changelog
 
 - 2026-05-16 — Plan created. Tier 1 owner: Claude. Tier 2 deferred until post-demo.
+- 2026-05-16 (later) — **Major re-scope.** Codebase survey showed Days 1, 2,
+  and 3 of original plan were already shipped by a prior engineer (PWA in
+  `vite.config.ts:30-315`, lazy views throughout `App.tsx`, write queue in
+  `core/saveQueue.ts`). Replaced day-1-4 checklists with R1…R5 by impact:
+  read cache → offline UI → entry trim (optional) → edge cache → measure.
