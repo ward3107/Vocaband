@@ -1988,15 +1988,15 @@ Quality rules:
   });
 
   // AI feature gate — checks if the authenticated teacher has AI access.
-  // Two layers: ANTHROPIC_API_KEY must be set AND teacher email in ai_allowlist.
-  // Logs the exact reason for aiSentences=false so Render logs can diagnose
-  // "why doesn't the AI button show up" without needing devtools access.
+  // Mirrors the enforcement in requireProTeacher (used by /api/generate-sentences
+  // and the OCR endpoint) so the frontend button state matches what the backend
+  // would actually accept.  The legacy ai_allowlist gate was retired here on
+  // 2026-05-16 in favour of the unified plan check, matching the 2026-05-09
+  // OCR migration.
   //
-  // Additionally, when the query param ?debug=1 is passed, the response body
-  // includes a `reason` field so the user can see the failure mode in the
-  // browser DevTools Network tab without having to check Render logs at all.
-  // Safe to expose because the reasons are generic enum-like strings that
-  // don't leak user data beyond what the allowlist admin already knows.
+  // When the query param ?debug=1 is passed, the response body includes a
+  // `reason` field so the user can see the failure mode in the browser DevTools
+  // Network tab.  Safe to expose because the reasons are generic enum strings.
   app.get("/api/features", async (req, res) => {
     const debug = req.query.debug === "1";
     const reply = (aiSentences: boolean, reason?: string, extra?: Record<string, unknown>) =>
@@ -2016,24 +2016,36 @@ Quality rules:
       console.log("[features] aiSentences=false: token verification failed (invalid or expired)");
       return reply(false, "invalid_token");
     }
-    const userData = await getUserRoleAndClass(authData.uid);
-    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
-      console.log(`[features] aiSentences=false: user is not a teacher (role=${userData?.role ?? "none"}, email=${authData.email})`);
-      return reply(false, "not_teacher", { role: userData?.role ?? null });
+    if (!supabaseAdmin) {
+      console.error("[features] aiSentences=false: supabaseAdmin not configured");
+      return reply(false, "supabase_not_configured");
     }
-    const { allowed, error } = await isPremiumTeacher(authData.email);
-    if (error) {
-      console.error(`[features] ai_allowlist check error for ${authData.email}: ${error}`);
-      return reply(false, "allowlist_error");
+    const { data: userRow, error: userErr } = await supabaseAdmin
+      .from("users")
+      .select("plan, trial_ends_at, role, email")
+      .eq("uid", authData.uid)
+      .maybeSingle();
+    if (userErr || !userRow) {
+      console.log(`[features] aiSentences=false: users row lookup failed for ${authData.email} (err=${userErr?.message ?? "no_row"})`);
+      return reply(false, "user_lookup_failed");
     }
-    if (!allowed) {
-      // SQL hint kept in the SERVER LOG only (operator's eyes), never in
-      // the response body — operators have Render log access; the body
-      // is shipped over the network and could end up in shared logs.
-      console.log(`[features] aiSentences=false: ${authData.email} is not in ai_allowlist (run: INSERT INTO public.ai_allowlist (email) VALUES ('${authData.email}');)`);
-      return reply(false, "not_in_allowlist");
+    const role = userRow.role as string | null;
+    if (role !== "teacher" && role !== "admin") {
+      console.log(`[features] aiSentences=false: user is not a teacher (role=${role ?? "none"}, email=${authData.email})`);
+      return reply(false, "not_teacher", { role: role ?? null });
     }
-    console.log(`[features] aiSentences=true for ${authData.email}`);
+    const plan = userRow.plan as "free" | "pro" | "school" | null;
+    const trialEndsAt = userRow.trial_ends_at as string | null;
+    const email = (userRow.email as string | null) ?? authData.email;
+    const isPaid = plan === "pro" || plan === "school";
+    const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
+    const isAdmin = role === "admin";
+    const isDev = isDevEmail(email);
+    if (!isPaid && !isTrialing && !isAdmin && !isDev) {
+      console.log(`[features] aiSentences=false: ${email} is on free plan with no trial (plan=${plan ?? "null"}, trial=${trialEndsAt ?? "null"})`);
+      return reply(false, "not_pro", { plan, trialEndsAt });
+    }
+    console.log(`[features] aiSentences=true for ${email} (plan=${plan}, trial=${trialEndsAt}, admin=${isAdmin}, dev=${isDev})`);
     return reply(true, "ok");
   });
 
