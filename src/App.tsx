@@ -1056,26 +1056,8 @@ export default function App() {
   const emitScoreUpdate = (newScore: number) => {
     const now = Date.now();
     const shouldEmit = now - lastScoreEmitRef.current > 2000 || isFinished;
-    if (!shouldEmit) {
-      console.log('[emitScoreUpdate] throttled', { newScore, msSinceLast: now - lastScoreEmitRef.current, isFinished });
-      return;
-    }
+    if (!shouldEmit) return;
     lastScoreEmitRef.current = now;
-
-    // Diagnostic — surfaces WHY a Quick Play student's score doesn't
-    // reach the server.  When teachers reported "students show 0 pts
-    // on my podium even after they played", the fly logs showed zero
-    // SCORE_UPDATE events.  These three conditions are the gate; if
-    // any is false the QP branch silently bails into the Live Challenge
-    // branch which itself bails because guests have no classCode.
-    console.log('[emitScoreUpdate] gate check', {
-      newScore,
-      QUICKPLAY_V2,
-      isGuest: user?.isGuest,
-      hasQpSession: !!quickPlayActiveSession,
-      qpSessionCode: quickPlayActiveSession?.sessionCode,
-      hasClassCode: !!user?.classCode,
-    });
 
     if (QUICKPLAY_V2 && quickPlayActiveSession) {
       // Add the per-mode score on top of the cumulative running total
@@ -1090,7 +1072,6 @@ export default function App() {
       // them too; dropping the isGuest guard removes the failsafe that
       // had no business being there.
       const cumulative = qpCumulativeScoreRef.current + newScore;
-      console.log('[emitScoreUpdate] QP path → updateScore', { mode: newScore, cumulative });
       setTimeout(() => quickPlaySocket.updateScore(cumulative), 0);
       // Also refresh the localStorage resume hint with the latest score
       // and a fresh joinedAt timestamp.  This (a) lets the
@@ -1111,10 +1092,7 @@ export default function App() {
       return;
     }
 
-    if (!socket || !user?.classCode) {
-      console.log('[emitScoreUpdate] both paths bailed — no emit');
-      return;
-    }
+    if (!socket || !user?.classCode) return;
     setTimeout(() => {
       socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
     }, 0);
@@ -2423,7 +2401,6 @@ export default function App() {
     // the server would reject as a regress.
     quickPlaySocketUpdateScore: (finalScore: number) => {
       qpCumulativeScoreRef.current += Math.max(0, finalScore);
-      console.log('[QP cumulative] mode finished', { mode: finalScore, totalNow: qpCumulativeScoreRef.current });
       quickPlaySocket.updateScore(qpCumulativeScoreRef.current);
     },
     xp, setXp, streak, setStreak, badges, studentProgress, setStudentProgress,
