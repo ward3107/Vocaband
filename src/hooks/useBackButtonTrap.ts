@@ -30,7 +30,7 @@
  * close + history reset so the caller just has to do signOut.
  */
 import { useCallback, useEffect, useRef } from 'react';
-import { supabase, type AppUser } from '../core/supabase';
+import { supabase, hasTeacherAccess, type AppUser } from '../core/supabase';
 import type { View } from '../core/views';
 
 // Views that a logged-in user should never land on via back button.
@@ -115,7 +115,7 @@ export function useBackButtonTrap(
 
   // The "home" view for each role — back button cannot go past this.
   const getHomeView = (): string =>
-    userRef.current?.role === 'teacher' ? 'teacher-dashboard' : 'student-dashboard';
+    hasTeacherAccess(userRef.current) ? 'teacher-dashboard' : 'student-dashboard';
 
   // Push a full dashboard trap: refill the pad buffer, then push the
   // dashboard on top.  Called on login transitions and whenever a pad

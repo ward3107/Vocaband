@@ -5,6 +5,7 @@ import {
   mapAssignment,
   mapProgress,
   handleDbError,
+  hasTeacherAccess,
   OperationType,
   ASSIGNMENT_COLUMNS,
   type AppUser,
@@ -765,7 +766,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   };
 
   const fetchStudents = async () => {
-    if (!user || user.role !== "teacher" || classes.length === 0) return;
+    if (!hasTeacherAccess(user) || classes.length === 0) return;
     const now = Date.now();
     if (now - (lastFetchRef.current.students ?? 0) < 10000) return;
     lastFetchRef.current.students = now;
@@ -813,7 +814,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   };
 
   const fetchScores = async () => {
-    if (!user || user.role !== "teacher") return;
+    if (!hasTeacherAccess(user)) return;
     const now = Date.now();
     if (now - (lastFetchRef.current.scores ?? 0) < 10000) return;
 
