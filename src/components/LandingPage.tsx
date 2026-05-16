@@ -119,6 +119,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
 
+  // Sticky Teacher Sign-In: a fixed-position twin of the hero button
+  // that slides up from the bottom once the user scrolls past the
+  // hero.  Lets teachers tap "Sign in" from anywhere on the marketing
+  // page on phones AND desktop without scrolling back to the top.
+  // Hidden while the hero CTA is in view to avoid a double-button.
+  const heroSignInRef = useRef<HTMLButtonElement>(null);
+  const [heroSignInVisible, setHeroSignInVisible] = useState(true);
+  useEffect(() => {
+    const el = heroSignInRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setHeroSignInVisible(entry.isIntersecting),
+      { threshold: 0.1 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   // Mobile scroll-snap: tag the body while LandingPage is mounted so the
   // matching @media rule in index.css kicks in. Cleaned up on unmount so
   // the rest of the app keeps free scroll behavior.
@@ -432,6 +450,39 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
       </main>
 
       <FloatingButtons />
+
+      {/* Sticky Teacher Sign-In — slides up once the hero CTA scrolls
+          out of view so the primary conversion path is always one tap
+          away.  Hidden when the hero button is on-screen to avoid
+          competing with itself.  Same gradient + iconography as the
+          hero so it reads as the same action, just compact. */}
+      <motion.button
+        type="button"
+        onClick={onTeacherLogin}
+        aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
+        initial={false}
+        animate={{
+          y: heroSignInVisible ? 120 : 0,
+          opacity: heroSignInVisible ? 0 : 1,
+        }}
+        transition={{ type: "spring", stiffness: 260, damping: 26 }}
+        style={{
+          touchAction: "manipulation",
+          WebkitTapHighlightColor: "transparent",
+          bottom: "max(1rem, env(safe-area-inset-bottom))",
+          pointerEvents: heroSignInVisible ? "none" : "auto",
+        }}
+        className="fixed left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-3.5 rounded-2xl text-base sm:text-lg font-black text-white shadow-[0_10px_0_0_#581c87,0_18px_36px_rgba(168,85,247,0.55)] hover:shadow-[0_12px_0_0_#4c1d95,0_22px_44px_rgba(168,85,247,0.7)] active:translate-y-0.5 active:shadow-[0_4px_0_0_#581c87] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60 transition-shadow"
+      >
+        <GraduationCap size={20} strokeWidth={2.5} />
+        <span className={`flex flex-col leading-tight ${isRTL ? "items-end" : "items-start"}`}>
+          <span>{t.navSignIn}</span>
+          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.18em] text-violet-100/90">
+            {t.heroSignInForTeachers}
+          </span>
+        </span>
+        <LogIn size={18} strokeWidth={2.5} className="opacity-90" />
+      </motion.button>
 
       {isSubjectModalOpen && (
         <Suspense fallback={null}>
