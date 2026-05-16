@@ -344,7 +344,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
 const MEDAL = ['🥇', '🥈', '🥉'];
 
 export default function HotSeatView({ onExit, speak, assignments, topicPacks }: HotSeatViewProps) {
-  const { language, dir } = useLanguage();
+  const { language, dir, isRTL } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
   // Lazy-loads the vocabulary chunk on mount.  The setup phase shows a
@@ -553,6 +553,18 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
       setQuestionNumber(nextQ);
       setPhase('interstitial');
     }, 1200);
+  };
+
+  // Cancel an in-progress round.  Drops back to the setup screen so the
+  // teacher can tweak names/settings and restart, or use setup's own
+  // Back button to exit the mode entirely.  Without this, once "Start
+  // Hot Seat" was tapped there was no way out until the last player's
+  // last question.
+  const handleCancel = () => {
+    setPhase('setup');
+    setQuestion(null);
+    setPicked(null);
+    submittedRef.current = false;
   };
 
   const handlePlayAgain = () => {
@@ -932,7 +944,16 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
   if (phase === 'interstitial') {
     const player = players[currentPlayerIdx];
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-100 via-amber-100 to-rose-100 flex items-center justify-center p-4" dir={dir}>
+      <div className="min-h-screen bg-gradient-to-br from-orange-100 via-amber-100 to-rose-100 flex items-center justify-center p-4 relative" dir={dir}>
+        <button
+          type="button"
+          onClick={handleCancel}
+          style={{ touchAction: 'manipulation' }}
+          className={`absolute top-4 ${isRTL ? 'right-4' : 'left-4'} inline-flex items-center gap-1.5 text-sm font-bold text-stone-700 hover:text-stone-900 bg-white/70 backdrop-blur px-3 py-1.5 rounded-full shadow-sm`}
+        >
+          <X size={16} />
+          {t.exitBtn}
+        </button>
         <motion.div
           key={`${currentPlayerIdx}-${questionNumber}`}
           initial={{ opacity: 0, scale: 0.95 }}
@@ -970,6 +991,20 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
     const optionDir = targetLang === 'hebrew' || targetLang === 'arabic' ? 'rtl' : 'ltr';
     return (
       <div className="h-screen bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50 px-4 py-4 sm:px-8 sm:py-6 flex flex-col" dir="ltr">
+        {/* Cancel row — kept from main's cancel-button patch so the
+            teacher can bail out mid-question, sized small so it doesn't
+            steal vertical room from the full-screen prompt layout. */}
+        <div className="w-full flex items-center mb-2" dir={dir}>
+          <button
+            type="button"
+            onClick={handleCancel}
+            style={{ touchAction: 'manipulation' }}
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-stone-600 hover:text-stone-900 px-2 py-1.5 -mx-2 rounded-full"
+          >
+            <X size={16} />
+            {t.exitBtn}
+          </button>
+        </div>
         {/* Status strip — full width, slightly bigger pills */}
         <div className="w-full flex items-center justify-between gap-3" dir={dir}>
           <div className="px-4 py-2 rounded-full bg-orange-100 text-orange-800 text-sm sm:text-base font-black uppercase tracking-wider truncate max-w-[40%]">

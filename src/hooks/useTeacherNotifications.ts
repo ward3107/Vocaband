@@ -18,7 +18,7 @@
  * notification per cycle per type.
  */
 import { useEffect, useRef } from 'react';
-import type { AppUser, ProgressData } from '../core/supabase';
+import { hasTeacherAccess, type AppUser, type ProgressData } from '../core/supabase';
 import type { View } from '../core/views';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -54,7 +54,7 @@ export function useTeacherNotifications(params: UseTeacherNotificationsParams): 
   const pendingStudentsPrevRef = useRef<Set<string>>(new Set());
   const pendingStudentsSeededRef = useRef(false);
   useEffect(() => {
-    if (user?.role !== 'teacher') return;
+    if (!hasTeacherAccess(user)) return;
     const currentIds = new Set(pendingStudents.map(p => p.id));
     if (!pendingStudentsSeededRef.current) {
       pendingStudentsPrevRef.current = currentIds;
@@ -74,7 +74,7 @@ export function useTeacherNotifications(params: UseTeacherNotificationsParams): 
   const allScoresPrevRef = useRef<Set<string>>(new Set());
   const allScoresSeededRef = useRef(false);
   useEffect(() => {
-    if (user?.role !== 'teacher') return;
+    if (!hasTeacherAccess(user)) return;
     const currentIds = new Set(allScores.map(s => s.id).filter(Boolean));
     if (!allScoresSeededRef.current) {
       allScoresPrevRef.current = currentIds;

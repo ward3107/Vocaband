@@ -34,6 +34,9 @@ import {
 import { useLanguage } from '../hooks/useLanguage';
 import type { AppUser } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
+import type { TranslationLang as PickerTranslationLang } from '../components/setup/WordInputStep2026';
+
+const TRANSLATION_LANG_STORAGE_KEY = 'vocaband.classShow.translationLang';
 
 interface ClassShowViewProps {
   user: AppUser | null;
@@ -77,7 +80,6 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
   useTeacherTheme(user?.teacherDashboardTheme);
 
   const { language } = useLanguage();
-  const translationLang: TranslationLang = language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'he';
 
   const [phase, setPhase] = useState<Phase>({ kind: 'setup' });
 
@@ -85,6 +87,38 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
   // (e.g., when switching modes or returning from playing → setup)
   const [customWords, setCustomWords] = useState<Word[]>([]);
   const [customWordsCustomTier, setCustomWordsCustomTier] = useState<Word[]>([]);
+
+  // Teacher's translation-language preference for the show. Lifted +
+  // persisted to localStorage so the choice survives the setup →
+  // playing → setup loop AND page reloads — teachers complained that
+  // they had to re-pick HE/AR every time they went back to choose
+  // another word.  Default 'both' matches the picker's prior local
+  // default.
+  const [pickerTranslationLang, setPickerTranslationLang] = useState<PickerTranslationLang>(() => {
+    if (typeof window === 'undefined') return 'both';
+    const stored = window.localStorage.getItem(TRANSLATION_LANG_STORAGE_KEY);
+    return stored === 'hebrew' || stored === 'arabic' || stored === 'both' ? stored : 'both';
+  });
+  const handleTranslationLangChange = (lang: PickerTranslationLang) => {
+    setPickerTranslationLang(lang);
+    try {
+      window.localStorage.setItem(TRANSLATION_LANG_STORAGE_KEY, lang);
+    } catch {
+      // localStorage may be unavailable (private mode, quota) — the
+      // in-memory state still survives the phase loop, which is the
+      // primary fix.
+    }
+  };
+
+  // Translation language used to build multiple-choice / true-false
+  // questions during the show.  When the teacher picked HE-only or
+  // AR-only in the picker, honour that; for 'both' we fall back to the
+  // current UI language so Hebrew teachers see Hebrew distractors and
+  // Arabic teachers see Arabic ones — same behaviour as before.
+  const translationLang: TranslationLang =
+    pickerTranslationLang === 'hebrew' ? 'he'
+    : pickerTranslationLang === 'arabic' ? 'ar'
+    : language === 'ar' ? 'ar' : 'he';
 
   // Build the current question (memoised so distractor randomisation
   // stays stable while the teacher is on the same word).
@@ -134,6 +168,8 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
         onCustomWordsChange={setCustomWords}
         customWordsCustomTier={customWordsCustomTier}
         onCustomWordsCustomTierChange={setCustomWordsCustomTier}
+        translationLang={pickerTranslationLang}
+        onTranslationLangChange={handleTranslationLangChange}
         onStart={({ mode, source, questionCount }) => {
           const order = shuffleIndices(source.words.length).slice(0, questionCount);
           setPhase({

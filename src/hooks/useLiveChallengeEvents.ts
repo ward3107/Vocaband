@@ -39,7 +39,7 @@
  */
 import { useEffect, useRef } from 'react';
 import type { Socket } from 'socket.io-client';
-import { supabase, type AppUser, type ClassData } from '../core/supabase';
+import { supabase, hasTeacherAccess, type AppUser, type ClassData } from '../core/supabase';
 import { SOCKET_EVENTS } from '../core/types';
 
 export interface UseLiveChallengeEventsParams {
@@ -96,7 +96,7 @@ export function useLiveChallengeEvents(params: UseLiveChallengeEventsParams): vo
 
   // ─── Teacher OBSERVE_CHALLENGE re-emit on reconnect ───────────────
   useEffect(() => {
-    if (!user || user.role !== 'teacher') return;
+    if (!hasTeacherAccess(user)) return;
     if (!socket || !socketConnected) return;
     if (!selectedClass || !isLiveChallenge) return;
     socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: selectedClass.code });

@@ -16,6 +16,7 @@ import {
 import {
   supabase,
   mapProgressToDb,
+  hasTeacherAccess,
   type AppUser,
   type AssignmentData,
   type ProgressData,
@@ -709,7 +710,7 @@ export function useGameState(params: UseGameStateParams) {
     setSentenceFeedback(null);
     setHiddenOptions([]);
 
-    if (user?.role === "teacher") {
+    if (hasTeacherAccess(user)) {
       setView("teacher-dashboard");
     } else if (user?.role === "student") {
       if (showModeSelection) {

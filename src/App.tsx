@@ -159,7 +159,7 @@ const STUDENT_VIEWS = new Set<View>([
 /** Check if current view should be preserved during auth restore. */
 const shouldPreserveView = (role: string, currentView: View): boolean => {
   if (PUBLIC_VIEWS.has(currentView)) return false;
-  return role === "teacher"
+  return (role === "teacher" || role === "admin")
     ? TEACHER_VIEWS.has(currentView)
     : STUDENT_VIEWS.has(currentView);
 };
@@ -4285,7 +4285,6 @@ export default function App() {
           gameMode={gameMode}
           hasChosenLanguage={hasChosenLanguage}
           setHasChosenLanguage={setHasChosenLanguage}
-          targetLanguage={targetLanguage}
           setTargetLanguage={setTargetLanguage}
           setShowModeIntro={setShowModeIntro}
           setShowModeSelection={setShowModeSelection}
