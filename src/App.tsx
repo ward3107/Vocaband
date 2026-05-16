@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, hasTeacherAccess, performUserLogout, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { freshTrialEndsAt, isPro } from "./core/plan";
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
+import { clearAllReadCache } from "./core/readCache";
 import { setSentryUser, clearSentryUser } from "./core/sentry";
 import { useAudio } from "./hooks/useAudio";
 import { useLanguage } from "./hooks/useLanguage";
@@ -1941,6 +1942,11 @@ export default function App() {
         try { localStorage.removeItem('vocaband_student_login'); } catch {}
         try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
         try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+        // Wipe the SWR read cache (classes/assignments) so the next
+        // teacher or student signing in on this device can't see a
+        // flash of the previous session's data before their own fetch
+        // resolves.  See src/core/readCache.ts.
+        try { clearAllReadCache(); } catch {}
         // Students log out back to the student-login screen (not the
         // teacher-focused public landing) so they can immediately re-enter
         // their class code or pick their name.  Teachers/guests/unknown
