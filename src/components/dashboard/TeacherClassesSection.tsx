@@ -1,6 +1,6 @@
 import { Users, Plus } from "lucide-react";
 import ClassCard from "../ClassCard";
-import type { ClassData, AssignmentData } from "../../core/supabase";
+import type { ClassData, AssignmentData, CompetitionData } from "../../core/supabase";
 import type { VocaId } from "../../core/subject";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
@@ -57,6 +57,10 @@ interface TeacherClassesSectionProps {
    *  Vocas can tell at a glance which side they're on.  Defaults to
    *  'english' for source-compat. */
   subject?: VocaId;
+  /** Competitions keyed by assignment id — populated by the dashboard's
+   *  useCompetitionsForClassIds hook.  Forwarded to ClassCard so each
+   *  assignment row can show a badge linking to the standings modal. */
+  competitionsByAssignment?: Map<string, CompetitionData>;
 }
 
 export default function TeacherClassesSection({
@@ -68,6 +72,7 @@ export default function TeacherClassesSection({
   onEditAssignment, onDuplicateAssignment, onDeleteAssignment,
   onProjectAssignmentToClass, onPrintAssignmentWorksheet,
   subject = "english",
+  competitionsByAssignment,
 }: TeacherClassesSectionProps) {
   const { language } = useLanguage();
   // VocaHebrew is intrinsically a Hebrew product; force the chrome to
@@ -192,6 +197,7 @@ export default function TeacherClassesSection({
                 onDeleteAssignment={onDeleteAssignment}
                 onProjectAssignmentToClass={onProjectAssignmentToClass}
                 onPrintAssignmentWorksheet={onPrintAssignmentWorksheet}
+                competitionsByAssignment={competitionsByAssignment}
               />
             );
           })}

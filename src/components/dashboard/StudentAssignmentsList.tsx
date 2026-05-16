@@ -1,6 +1,6 @@
 import { BookOpen, RefreshCw } from "lucide-react";
 import StudentAssignmentCard from "./StudentAssignmentCard";
-import type { AssignmentData, ProgressData } from "../../core/supabase";
+import type { AssignmentData, CompetitionData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
 import type { View } from "../../core/views";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -13,6 +13,11 @@ interface StudentAssignmentsListProps {
   /** Student's uid — forwarded to each card so the rounds counter
    * reads from this student's localStorage bucket. */
   userUid: string;
+  /** Optional map of competitions keyed by assignment id.  Cards
+   *  whose assignment is in this map render the competition badge
+   *  + open the leaderboard modal on tap.  Optional so callers that
+   *  haven't wired the hook yet still render fine. */
+  competitionsByAssignment?: Map<string, CompetitionData>;
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -21,6 +26,7 @@ interface StudentAssignmentsListProps {
 
 export default function StudentAssignmentsList({
   studentAssignments, studentProgress, studentDataLoading, userUid,
+  competitionsByAssignment,
   setActiveAssignment, setAssignmentWords, setView, setShowModeSelection,
 }: StudentAssignmentsListProps) {
   const { language } = useLanguage();
@@ -52,6 +58,7 @@ export default function StudentAssignmentsList({
               assignmentIdx={assignmentIdx}
               studentProgress={studentProgress}
               userUid={userUid}
+              competition={competitionsByAssignment?.get(assignment.id) ?? null}
               setActiveAssignment={setActiveAssignment}
               setAssignmentWords={setAssignmentWords}
               setView={setView}

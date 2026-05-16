@@ -86,7 +86,7 @@ export interface SetupWizardProps {
   allWords: Word[];
   set1Words?: Word[];
   set2Words?: Word[];
-  onComplete: (result: { words: Word[]; modes: string[] }) => void;
+  onComplete: (result: { words: Word[]; modes: string[]; enableCompetition?: boolean }) => void;
   onBack: () => void;
 
   // Word input config
@@ -274,6 +274,11 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   const guideStrings = teacherGuidesT[language].createAssignment;
   // ── Step State ─────────────────────────────────────────────────────────────
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  // Competition toggle lives at the wizard level (not ReviewStep) so it
+  // survives a back-and-forth between steps if the teacher edits and
+  // returns.  Only meaningful in assignment mode with a deadline set —
+  // ReviewStep enforces the deadline gate visually.
+  const [enableCompetition, setEnableCompetition] = useState(false);
 
   // Scroll the viewport to the top whenever the step changes. The old
   // AnimatePresence transition just swapped the content underneath,
@@ -351,7 +356,15 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   };
 
   const handleLaunch = () => {
-    onComplete({ words: selectedWords, modes: selectedModes });
+    // Only forward enableCompetition when a deadline is set — the toggle
+    // is meaningless without one and the parent shouldn't have to
+    // re-check.  See ReviewStep's `hasDeadline` gate.
+    const hasDeadline = !!assignmentDeadline && !Number.isNaN(new Date(assignmentDeadline).getTime());
+    onComplete({
+      words: selectedWords,
+      modes: selectedModes,
+      enableCompetition: enableCompetition && hasDeadline,
+    });
   };
 
   const handleQuickStart = () => {
@@ -542,6 +555,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
               selectedClassName={selectedClass?.name}
               editingAssignment={editingAssignment}
               aiGeneratedLesson={aiGeneratedLesson}
+              enableCompetition={enableCompetition}
+              onCompetitionChange={mode === 'assignment' ? setEnableCompetition : undefined}
             />
           )}
         </AnimatePresence>

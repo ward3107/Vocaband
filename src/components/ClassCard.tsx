@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Users } from "lucide-react";
+import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Users, Trophy } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
+import type { CompetitionData } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
+import { competitionsT } from "../locales/competitions";
 import ShareClassLinkModal from "./ShareClassLinkModal";
+import CompetitionLeaderboardModal from "./CompetitionLeaderboardModal";
 
 interface Assignment {
   id: string;
@@ -58,6 +61,10 @@ interface ClassCardProps {
    *  on each assignment row.  Defaults to 'english' so cards omitting
    *  the prop render exactly as before. */
   subject?: VocaId;
+  /** Optional map of competitions keyed by assignment id.  When set,
+   *  assignment rows whose id is in the map render a clickable
+   *  "🏆 Live standings" badge that opens the leaderboard. */
+  competitionsByAssignment?: Map<string, CompetitionData>;
 }
 
 const ClassCard: React.FC<ClassCardProps> = ({
@@ -85,13 +92,16 @@ const ClassCard: React.FC<ClassCardProps> = ({
   openDropdownClassId,
   onToggleDropdown,
   subject = "english",
+  competitionsByAssignment,
 }) => {
   const { language } = useLanguage();
+  const [activeCompetition, setActiveCompetition] = useState<CompetitionData | null>(null);
   // Hebrew classes belong to VocaHebrew — force the card chrome to
   // Hebrew copy so a teacher with English UI still sees Hebrew on
   // their VocaHebrew classes (matches the unified dashboard rule).
   const effectiveLanguage = subject === "hebrew" ? "he" : language;
   const t = teacherDashboardT[effectiveLanguage];
+  const tComp = competitionsT[effectiveLanguage];
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const showAssignments = openDropdownClassId === code;
@@ -618,7 +628,9 @@ const ClassCard: React.FC<ClassCardProps> = ({
           }}
           className="border-t px-5 py-4 space-y-2 rounded-b-2xl"
         >
-          {assignments.map((assignment) => (
+          {assignments.map((assignment) => {
+            const competition = competitionsByAssignment?.get(assignment.id) ?? null;
+            return (
             <div
               key={assignment.id}
               style={{
@@ -644,6 +656,21 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   {" · "}
                   {assignment.deadline ? new Date(assignment.deadline).toLocaleDateString() : "No deadline"}
                 </p>
+                {competition && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveCompetition(competition)}
+                    className={`mt-1.5 inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full transition-transform active:scale-95 ${
+                      competition.status === 'live'
+                        ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm'
+                        : 'bg-stone-700 text-white'
+                    }`}
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <Trophy size={10} className="fill-current" />
+                    {competition.status === 'live' ? tComp.badgeLive : tComp.badgeEnded}
+                  </button>
+                )}
               </div>
               <div className="flex gap-1.5 flex-shrink-0">
                 <button
@@ -725,7 +752,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -751,6 +779,14 @@ const ClassCard: React.FC<ClassCardProps> = ({
       code={code}
       playMode="class-minute"
     />
+    {activeCompetition && (
+      <CompetitionLeaderboardModal
+        competition={activeCompetition}
+        canEnd
+        onClose={() => setActiveCompetition(null)}
+        onEnded={() => setActiveCompetition(null)}
+      />
+    )}
     </>
   );
 };

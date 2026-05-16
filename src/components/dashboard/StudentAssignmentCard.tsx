@@ -1,14 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "motion/react";
-import { Zap, Sparkles, Lock } from "lucide-react";
+import { Zap, Sparkles, Lock, Trophy } from "lucide-react";
 import { ALL_WORDS } from "../../data/vocabulary";
 import { MAX_ASSIGNMENT_ROUNDS, ALL_GAME_MODES } from "../../constants/game";
 import { resolveAssignmentPlays, computeRoundsCompleted, isAssignmentLocked } from "../../hooks/useAssignmentPlays";
-import type { AppUser, AssignmentData, ProgressData } from "../../core/supabase";
+import type { AssignmentData, CompetitionData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
 import type { View } from "../../core/views";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
+import { competitionsT } from "../../locales/competitions";
+import CompetitionLeaderboardModal from "../CompetitionLeaderboardModal";
 
 const DEFAULT_MODES = ALL_GAME_MODES;
 
@@ -31,6 +33,9 @@ interface StudentAssignmentCardProps {
    * from localStorage (scoped per user so multi-student devices don't
    * clobber each other's progress). */
   userUid: string;
+  /** Optional competition row for this assignment. When set, the card
+   *  renders a leaderboard badge that opens the standings modal. */
+  competition?: CompetitionData | null;
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -74,11 +79,13 @@ function ProgressRing({
 }
 
 export default function StudentAssignmentCard({
-  assignment, assignmentIdx, studentProgress, userUid,
+  assignment, assignmentIdx, studentProgress, userUid, competition,
   setActiveAssignment, setAssignmentWords, setView, setShowModeSelection,
 }: StudentAssignmentCardProps) {
   const { language } = useLanguage();
   const t = studentDashboardT[language];
+  const tComp = competitionsT[language];
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const allowedModes = (assignment.allowedModes || DEFAULT_MODES).filter(m => m !== "flashcards");
   const totalModes = allowedModes.length;
 
@@ -195,6 +202,22 @@ export default function StudentAssignmentCard({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {competition && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowLeaderboard(true); }}
+                className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-full transition-transform active:scale-95 ${
+                  competition.status === 'live'
+                    ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm shadow-amber-500/30'
+                    : 'bg-stone-700 text-white'
+                }`}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                aria-label={tComp.viewStandings}
+              >
+                <Trophy size={11} className="fill-current" />
+                {competition.status === 'live' ? tComp.badgeLive : tComp.badgeEnded}
+              </button>
+            )}
             {!isLocked && (
               <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${accent.chip}`}>
                 <Zap size={11} className="fill-current" />
@@ -247,6 +270,14 @@ export default function StudentAssignmentCard({
           <Lock size={12} />
           You've completed all {MAX_ASSIGNMENT_ROUNDS} rounds of this assignment. Great practice! Check your other assignments.
         </div>
+      )}
+
+      {competition && showLeaderboard && (
+        <CompetitionLeaderboardModal
+          competition={competition}
+          currentUid={userUid}
+          onClose={() => setShowLeaderboard(false)}
+        />
       )}
     </motion.div>
   );

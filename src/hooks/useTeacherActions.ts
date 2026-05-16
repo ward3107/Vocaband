@@ -23,6 +23,7 @@ import { compressImageForUpload } from "../utils/compressImage";
 import { requestCustomWordAudio } from "../utils/requestCustomWordAudio";
 import { logAudit } from "../utils/audit";
 import { isPro, FREE_TIER_LIMITS } from "../core/plan";
+import { createCompetition } from "./useCompetitions";
 
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_IMPORT_WORDS = 500;
@@ -528,6 +529,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   const handleSaveAssignment = async (
     wordsOverride?: number[],
     modesOverride?: string[],
+    enableCompetition?: boolean,
   ) => {
     // Use override values if provided (e.g. from SetupWizard completion)
     // so the wizard's latest in-memory picks take effect even if they
@@ -656,8 +658,36 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
           insertPayload.sentences = newAssignment.sentences;
         }
 
-        const { error } = await supabase.from('assignments').insert(insertPayload);
+        // Capture the new row's id so we can optionally create a
+        // companion `competitions` row referencing it.  Returning a
+        // single column keeps the round-trip cheap.
+        const { data: insertedRows, error } = await supabase
+          .from('assignments')
+          .insert(insertPayload)
+          .select('id')
+          .single();
         if (error) throw error;
+        const newAssignmentId = insertedRows?.id as string | undefined;
+
+        // Companion competition row.  Best-effort: failure here doesn't
+        // roll back the assignment — the teacher can re-toggle it later
+        // by re-saving.  Deadline must parse as a real timestamp;
+        // ReviewStep already prevented the toggle from being on without
+        // one, but we re-check here as a defensive measure.
+        if (
+          enableCompetition
+          && newAssignmentId
+          && newAssignment.deadline
+        ) {
+          const closesAtDate = new Date(newAssignment.deadline);
+          if (!Number.isNaN(closesAtDate.getTime()) && closesAtDate.getTime() > Date.now()) {
+            await createCompetition({
+              assignmentId: newAssignmentId,
+              classId: newAssignment.classId,
+              closesAt: closesAtDate.toISOString(),
+            });
+          }
+        }
         showToast("Assignment created successfully!", "success");
 
         // Refresh assignments list — await so the teacher-dashboard

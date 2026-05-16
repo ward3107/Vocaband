@@ -11,6 +11,7 @@ import TeacherThemeMenu from "../components/dashboard/TeacherThemeMenu";
 import { useTeacherTheme } from "../hooks/useTeacherTheme";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
+import { useCompetitionsForClassIds } from "../hooks/useCompetitions";
 import SavedTasksSection from "../components/dashboard/SavedTasksSection";
 import CreateClassModal from "../components/dashboard/CreateClassModal";
 import EditClassModal from "../components/dashboard/EditClassModal";
@@ -220,6 +221,17 @@ export default function TeacherDashboardView({
     return classes.length >= 1 && teacherAssignments.length >= 1;
   }, [user?.firstRating, user?.ratingDismissedAt, classes.length, teacherAssignments.length, ratingDismissedThisSession, ratingDelayElapsed]);
 
+  // Active + recently-ended competitions across all of the teacher's
+  // classes.  Realtime-pushed; cheap to compute since competitions are
+  // a small table.  Indexed Map for O(1) lookup by assignment id when
+  // ClassCard renders its assignment list.
+  const teacherClassIds = useMemo(() => classes.map(c => c.id), [classes]);
+  const { competitions: teacherCompetitions } = useCompetitionsForClassIds(teacherClassIds);
+  const competitionsByAssignment = useMemo(
+    () => new Map(teacherCompetitions.map(c => [c.assignmentId, c] as const)),
+    [teacherCompetitions],
+  );
+
   return (
     <>
       <div dir={dir} className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-12`}>
@@ -359,6 +371,7 @@ export default function TeacherDashboardView({
             subject={subject}
             classes={classes}
             teacherAssignments={teacherAssignments}
+            competitionsByAssignment={competitionsByAssignment}
             copiedCode={copiedCode}
             setCopiedCode={setCopiedCode}
             openDropdownClassId={openDropdownClassId}
