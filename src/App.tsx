@@ -13,8 +13,9 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, hasTeacherAccess, performUserLogout, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { freshTrialEndsAt, isPro } from "./core/plan";
-import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
+import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher, subscribeQueueDepth } from "./core/saveQueue";
 import { clearAllReadCache } from "./core/readCache";
+import { OfflineIndicator } from "./components/OfflineIndicator";
 import { setSentryUser, clearSentryUser } from "./core/sentry";
 import { useAudio } from "./hooks/useAudio";
 import { useLanguage } from "./hooks/useLanguage";
@@ -2178,6 +2179,33 @@ export default function App() {
     user, isSaving, saveQueueHasPending, processSaveQueue,
   });
 
+  // Surface save-queue transitions as toasts so the offline write
+  // flow (saveQueue.ts) feels visible to teachers/students:
+  //   * "Saved locally — will sync when online" when a write was
+  //     enqueued AND the browser believes we're offline. We don't
+  //     fire on every queue growth because a transient depth bump
+  //     while online usually resolves within a few hundred ms
+  //     and would just be noise.
+  //   * "All progress synced" when the queue drains from non-empty
+  //     to empty — confirmation that the backlog cleared.
+  //
+  // Companion to the silent retry logic the queue already runs and
+  // the OfflineIndicator pill mounted below.  See R2 in
+  // docs/SCHOOL-PERFORMANCE-PLAN.md for context.
+  const queueDepthRef = useRef<number>(0);
+  useEffect(() => {
+    const unsubscribe = subscribeQueueDepth((depth) => {
+      const prev = queueDepthRef.current;
+      queueDepthRef.current = depth;
+      if (depth > prev && typeof navigator !== 'undefined' && navigator.onLine === false) {
+        showToast(appToasts.savedLocally, 'info');
+      } else if (depth === 0 && prev > 0) {
+        showToast(appToasts.allSynced, 'success');
+      }
+    });
+    return unsubscribe;
+  }, [showToast, appToasts]);
+
 
   // Pre-fetch all word audio at Quick Play join time.  The TTS MP3s
   // are stored on Supabase Storage; downloading them up-front means
@@ -2478,6 +2506,10 @@ export default function App() {
         <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
       )}
       <QuickPlayResumeBanner suppress={qpResumeSuppress} />
+      {/* Global amber pill when the browser reports the network is down.
+          See OfflineIndicator + useOnlineStatus for the implementation,
+          and R2 in docs/SCHOOL-PERFORMANCE-PLAN.md for the rationale. */}
+      <OfflineIndicator />
     </>
   );
 

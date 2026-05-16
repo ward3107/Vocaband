@@ -28,6 +28,10 @@ export interface AppToastStrings {
 
   // Quick Play / Live session
   failedCreateSession: (message: string) => string;
+
+  // Offline write queue (saveQueue.ts)
+  savedLocally: string;
+  allSynced: string;
 }
 
 export const appToastsT: Record<Language, AppToastStrings> = {
@@ -41,6 +45,8 @@ export const appToastsT: Record<Language, AppToastStrings> = {
     assignmentDeleted: "Assignment deleted successfully",
     couldNotSetupClass: "Couldn't set up your class — please try again.",
     failedCreateSession: (m) => `Failed to create session: ${m}`,
+    savedLocally: "Saved locally — will sync when online",
+    allSynced: "All progress synced",
   },
   he: {
     couldNotRestoreSession: "לא ניתן לשחזר את ההתחברות. אנא היכנסו שוב.",
@@ -52,6 +58,8 @@ export const appToastsT: Record<Language, AppToastStrings> = {
     assignmentDeleted: "המטלה נמחקה בהצלחה",
     couldNotSetupClass: "לא הצלחנו להקים את הכיתה — נסו שוב.",
     failedCreateSession: (m) => `יצירת המשחק נכשלה: ${m}`,
+    savedLocally: "נשמר מקומית — יסונכרן כשתחזרו לרשת",
+    allSynced: "כל ההתקדמות סונכרנה",
   },
   ar: {
     couldNotRestoreSession: "تعذّر استعادة الجلسة. الرجاء تسجيل الدخول مرة أخرى.",
@@ -63,5 +71,7 @@ export const appToastsT: Record<Language, AppToastStrings> = {
     assignmentDeleted: "تم حذف المهمة بنجاح",
     couldNotSetupClass: "تعذّر إعداد صفّك — حاول مرة أخرى.",
     failedCreateSession: (m) => `فشل إنشاء الجلسة: ${m}`,
+    savedLocally: "تم الحفظ محلياً — ستتم المزامنة عند عودة الاتصال",
+    allSynced: "تمت مزامنة كل التقدم",
   },
 };
