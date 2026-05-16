@@ -120,30 +120,37 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
     : pickerTranslationLang === 'arabic' ? 'ar'
     : language === 'ar' ? 'ar' : 'he';
 
-  // Build the current question (memoised so distractor randomisation
-  // stays stable while the teacher is on the same word).
+  // Memoise on the specific fields that choose the question, NOT the
+  // whole `phase` — otherwise toggling `revealed` re-shuffles the four
+  // options and the green highlight jumps to a different grid cell.
+  const playingMode = phase.kind === 'playing' ? phase.mode : null;
+  const playingSource = phase.kind === 'playing' ? phase.source : null;
+  const playingWordOrder = phase.kind === 'playing' ? phase.wordOrder : null;
+  const playingCurrentIndex = phase.kind === 'playing' ? phase.currentIndex : 0;
   const { multiChoice, trueFalse } = useMemo(() => {
-    if (phase.kind !== 'playing') return { multiChoice: null, trueFalse: null };
-    const word = phase.source.words[phase.wordOrder[phase.currentIndex]];
+    if (!playingMode || !playingSource || !playingWordOrder) {
+      return { multiChoice: null, trueFalse: null };
+    }
+    const word = playingSource.words[playingWordOrder[playingCurrentIndex]];
     if (!word) return { multiChoice: null, trueFalse: null };
-    const pool = phase.source.words;
-    if (phase.mode === 'classic' || phase.mode === 'listening') {
+    const pool = playingSource.words;
+    if (playingMode === 'classic' || playingMode === 'listening') {
       return { multiChoice: buildClassicQuestion(word, pool, translationLang), trueFalse: null };
     }
-    if (phase.mode === 'reverse') {
+    if (playingMode === 'reverse') {
       return { multiChoice: buildReverseQuestion(word, pool, translationLang), trueFalse: null };
     }
-    if (phase.mode === 'fill-blank') {
+    if (playingMode === 'fill-blank') {
       const q = buildFillBlankQuestion(word, pool);
       // Fall back to classic if this word lacks a usable sentence.
       return { multiChoice: q ?? buildClassicQuestion(word, pool, translationLang), trueFalse: null };
     }
-    if (phase.mode === 'true-false') {
+    if (playingMode === 'true-false') {
       return { multiChoice: null, trueFalse: buildTrueFalseQuestion(word, pool, translationLang) };
     }
     // flashcards: no options
     return { multiChoice: null, trueFalse: null };
-  }, [phase, translationLang]);
+  }, [playingMode, playingSource, playingWordOrder, playingCurrentIndex, translationLang]);
 
   // Block the back-button while a show is in progress so a stray
   // browser-back doesn't yank the teacher out of the lesson.
