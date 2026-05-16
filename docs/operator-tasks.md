@@ -142,27 +142,21 @@ Fly Starter has no cold starts but still good belt-and-suspenders.
 
 ---
 
-## 5. Tighten + verify Supabase GoTrue auth rate limits
+## 5. Verify Supabase GoTrue auth rate limits (10 min)
 
-The teacher share-invite feature (shipped 2026-05-14) gives anyone who
-gets an invite link the class code, and via `class_roster_for_login`
-the full list of student emails in that class.  Brute-forcing one
-student's PIN is still bounded by GoTrue's per-IP throttle (default
-~30 sign-in attempts / 5 min), but we should:
+**Step-by-step walkthrough:** `docs/auth-rate-limits.md`. Open that doc,
+follow §1–§2, done.
 
-1. **Verify** the current values in the Supabase dashboard
-   (Auth → Rate Limits → "Token endpoint" / "Sign-in/up").  Anything
-   over 30/5min/IP is too lax.
-2. **Tighten** to e.g. 10 sign-in attempts per 5 min per IP if
-   teachers don't report false positives during legit classroom logins
-   (30 kids logging in simultaneously from the same school NAT *can*
-   trip per-IP limits — verify first).
-3. **Document** the chosen values in `docs/SECURITY-OVERVIEW.md`.
+Short version: every default in Auth → Rate Limits and Auth → Sessions
+is already at the conservative-end-for-a-public-app value (sign-ins
+30/h/IP, OTP verifies 30/5min/IP, JWT 1h, refresh 1w). **Verify, don't
+tighten.** Going lower would DoS a 30-student class on a shared school
+NAT — analysis in `docs/teacher-share-invites-plan.md` §6.
 
-We deliberately chose NOT to add a per-account lockout in the
-share-invite PR because it would have created a trivial class-wide
-DoS (anyone with a class code could lock out every student).  See
-`docs/teacher-share-invites-plan.md` §6 for the analysis.
+**Do NOT enable hCaptcha** from Auth → Settings — `src/` has zero
+`captchaToken` call sites, so flipping it on breaks teacher OTP and
+student PIN login immediately. Pre-requisite frontend wiring is described
+in `docs/auth-rate-limits.md` §3.
 
 Future engineering follow-up (not for an operator): passive logging
 table `student_pin_attempts` with success/fail rows so teachers can
