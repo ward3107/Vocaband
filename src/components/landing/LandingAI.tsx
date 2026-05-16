@@ -9,7 +9,7 @@ const LandingAI: React.FC = () => {
   const t = landingPageT[language];
 
   return (
-    <section id="ai" className="py-8 md:py-20 px-4 md:px-6 relative isolate overflow-hidden bg-gradient-to-b from-transparent via-violet-950/20 to-transparent scroll-mt-20">
+    <section className="py-8 md:py-20 px-4 md:px-6 relative isolate overflow-hidden bg-gradient-to-b from-transparent via-violet-950/20 to-transparent">
       {/* Brand-tint backdrop + animated gradient mesh — replaces the
           3 MB MP4 with pure GPU motion. */}
       <div

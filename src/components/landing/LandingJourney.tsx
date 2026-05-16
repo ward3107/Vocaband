@@ -30,7 +30,7 @@ const LandingJourney: React.FC = () => {
   const stamp3Glow = useTransform(journeyProgress, [0.76, 0.88], [0, 1]);
 
   return (
-    <section id="curriculum" className="py-8 md:py-20 px-4 md:px-6 relative overflow-hidden scroll-mt-20">
+    <section className="py-8 md:py-20 px-4 md:px-6 relative overflow-hidden">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}

@@ -167,11 +167,10 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
 
   return (
     <section
-      id={isHero ? "guides" : undefined}
       dir={dir}
       className={
         isHero
-          ? "px-4 md:px-6 py-16 md:py-24 bg-gradient-to-b from-white via-violet-50/40 to-white scroll-mt-20"
+          ? "px-4 md:px-6 py-16 md:py-24 bg-gradient-to-b from-white via-violet-50/40 to-white"
           : "px-4 py-8"
       }
     >
