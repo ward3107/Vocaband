@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Share2, MessageCircle, Link2, Check, ArrowUp, Facebook, Instagram, Music2 } from "lucide-react";
-import { motion } from "motion/react";
+// motion/react removed — FloatingButtons is statically imported by
+// LandingPage, so its motion dep pulled the ~43 kB gz chunk into the
+// landing-page chunk graph. Static positioning + Tailwind hover
+// classes preserve the same affordance without the JS animation lib.
 import { useLanguage } from "../hooks/useLanguage";
 
 // Brand colors for social platforms
@@ -441,7 +444,8 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
           messaging app).  Falls back to the per-network menu when
           the browser doesn't support navigator.share (most desktop
           browsers, older mobile Safari). */}
-      <motion.button
+      <button
+        type="button"
         onClick={async (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -462,9 +466,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
         }}
         onMouseEnter={() => setIsHovered('share')}
         onMouseLeave={() => setIsHovered(null)}
-        whileHover={{ scale: shareOpen ? 1 : 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300"
+        className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
         style={getButtonStyle('share')}
         aria-label={shareAria}
         aria-expanded={shareOpen}
@@ -472,15 +474,11 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
         title={language === 'he' ? 'שיתוף' : language === 'ar' ? 'مشاركة' : 'Share'}
       >
         <Share2 size={18} strokeWidth={2.5} aria-hidden="true" />
-      </motion.button>
+      </button>
 
       {/* Share Options - Horizontal popup */}
       {shareOpen && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
+        <div
           className="absolute top-[-12px] left-[44px] flex items-center gap-2 p-2 z-50 min-w-fit max-w-[calc(100vw-70px)]"
           style={styles.popup}
           role="menu"
@@ -511,7 +509,8 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
               };
 
               return (
-                <motion.button
+                <button
+                  type="button"
                   key={option.name}
                   onClick={() => {
                     option.action();
@@ -519,41 +518,32 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
                   }}
                   onMouseEnter={() => setIsHovered(option.name)}
                   onMouseLeave={() => setIsHovered(null)}
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ scale: 1.15 }}
-                  whileTap={{ scale: 0.9 }}
-                  className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 border-2 border-white/20"
+                  className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 border-2 border-white/20 hover:scale-115 active:scale-90"
                   style={getBrandStyle()}
                   title={option.name}
                   role="menuitem"
                   aria-label={shareViaTpl(option.name)}
                 >
                   <Icon size={20} strokeWidth={2.5} aria-hidden="true" />
-                </motion.button>
+                </button>
               );
             })}
-          </motion.div>
+          </div>
         )}
 
       {/* Back to Top */}
       {showBackToTop && showBackToTopBtn && (
-        <motion.button
+        <button
+          type="button"
           onClick={scrollToTop}
           onMouseEnter={() => setIsHovered('backToTop')}
           onMouseLeave={() => setIsHovered(null)}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
+          className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
           style={getButtonStyle('backToTop')}
           title={language === 'he' ? 'חזרה למעלה' : language === 'ar' ? 'العودة إلى الأعلى' : 'Back to top'}
         >
           <ArrowUp size={22} strokeWidth={2.5} aria-hidden="true" />
-        </motion.button>
+        </button>
       )}
     </div>
   );

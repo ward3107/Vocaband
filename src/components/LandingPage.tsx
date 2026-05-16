@@ -1,5 +1,10 @@
 import React, { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
-import { MotionConfig, motion } from "motion/react";
+// motion/react was removed from this file (was ~43 kB gz / 133 kB raw).
+// The hero used motion.div / motion.h1 / motion.button for entry +
+// hover animations; replaced with static layout so the landing page
+// hydrates without a separate JS chunk on cold visit. Cards still
+// have a subtle `transition-transform` + `hover:scale-105` via
+// Tailwind for desktop hover affordance.
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
 import {
@@ -133,7 +138,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
   ];
 
   return (
-    <MotionConfig reducedMotion="user">
     <div className="min-h-screen signature-gradient overflow-x-hidden">
       <PublicNav
         currentPage="home"
@@ -153,36 +157,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             aria-hidden="true"
           />
 
-          {/* Animated Gradient Mesh Background */}
+          {/* Static gradient mesh — three blurred radial blobs placed
+              for visual depth. Previously animated via motion.div
+              keyframes; static positioning is just as effective behind
+              the foreground content and removes the motion runtime. */}
           <div className="absolute inset-0 overflow-hidden -z-10">
-            <motion.div
-              animate={{
-                scale: [1, 1.2, 1],
-                rotate: [0, 90, 0],
-                x: [0, 100, 0],
-                y: [0, -50, 0],
-              }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="absolute top-1/4 -right-32 w-96 h-96 bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 rounded-full blur-3xl"
-            />
-            <motion.div
-              animate={{
-                scale: [1, 1.3, 1],
-                rotate: [0, -90, 0],
-                x: [0, -100, 0],
-                y: [0, 50, 0],
-              }}
-              transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-              className="absolute bottom-1/4 -left-32 w-80 h-80 bg-gradient-to-br from-blue-500/30 to-cyan-500/30 rounded-full blur-3xl"
-            />
-            <motion.div
-              animate={{
-                scale: [1, 1.1, 1],
-                x: [50, -50, 50],
-              }}
-              transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full blur-3xl"
-            />
+            <div className="absolute top-1/4 -right-32 w-96 h-96 bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 rounded-full blur-3xl" />
+            <div className="absolute bottom-1/4 -left-32 w-80 h-80 bg-gradient-to-br from-blue-500/30 to-cyan-500/30 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full blur-3xl" />
           </div>
 
           <div className="max-w-7xl mx-auto w-full relative z-10">
@@ -190,12 +172,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               {/* Left Content */}
               <div className="text-center lg:text-left">
                 {/* Main Headline - 3D Text Effect */}
-                <motion.h1
-                  initial={{ opacity: 0, x: isRTL ? 50 : -50, y: 30 }}
-                  animate={{ opacity: 1, x: 0, y: 0 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="relative z-20 text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black font-headline italic leading-tight break-words mb-6"
-                >
+                <h1 className="relative z-20 text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black font-headline italic leading-tight break-words mb-6">
                   <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
                     {t.heroTitleLine1}
                   </span>
@@ -203,18 +180,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
                     {t.heroTitleLine2}
                   </span>
-                </motion.h1>
+                </h1>
 
                 {/* Subtitle */}
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
+                <p
                   className="text-lg md:text-xl text-white/80 mb-8 max-w-xl"
                   dir={dir}
                 >
                   {t.heroSubtitle}
-                </motion.p>
+                </p>
 
                 {/* Hero CTAs — dominant Teacher Sign In with a small
                     secondary "Start free" link beneath it.  Same OAuth
@@ -224,11 +198,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     Students don't browse the marketing site — they
                     arrive via a teacher-shared link or `/student`. */}
                 <div className="flex flex-col items-center lg:items-start gap-3">
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
-                    whileHover={{ scale: 1.03 }}
+                  <button
                     onClick={onTeacherLogin}
                     style={{ touchAction: 'manipulation' }}
                     type="button"
@@ -243,17 +213,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       </span>
                     </div>
                     <LogIn size={26} strokeWidth={2.5} className="relative z-10 opacity-90 group-hover:translate-x-1 transition-transform" />
-                  </motion.button>
+                  </button>
 
                   {/* Secondary — small, quiet "Start free" reassurance
                       pill.  Same OAuth target; smaller padding + ghost
                       outline so it sits visually below the dominant
                       Sign In without competing with it. */}
-                  <motion.button
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.5 }}
-                    whileHover={{ scale: 1.02 }}
+                  <button
                     onClick={onTeacherLogin}
                     style={{ touchAction: 'manipulation' }}
                     type="button"
@@ -263,18 +229,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <span>{t.navStartFree}</span>
                     <span className="text-white/60 text-xs">·</span>
                     <span className="text-white/70 text-xs font-semibold">{t.pricingFreeFeature1}</span>
-                  </motion.button>
+                  </button>
 
                   {/* Student entry — routes to /student (class-code +
                       name picker).  Tinted amber so it's visually
                       distinct from the violet teacher CTAs above; kids
                       typing the URL their teacher wrote on the board
                       now have an on-page path to the login screen. */}
-                  <motion.button
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.6 }}
-                    whileHover={{ scale: 1.02 }}
+                  <button
                     onClick={onGetStarted}
                     style={{ touchAction: 'manipulation' }}
                     type="button"
@@ -283,7 +245,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   >
                     <BookOpen size={14} aria-hidden="true" />
                     <span>{t.heroCtaStudent}</span>
-                  </motion.button>
+                  </button>
                 </div>
 
                 {/* Hero trust strip — factual claims only.
@@ -292,10 +254,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     can defend in writing.  Engagement / endorsement
                     stats live elsewhere (or wait for real data).
                     See docs/PRICING-MODEL.md for positioning. */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.6 }}
+                <div
                   className={`mt-8 flex flex-wrap items-center gap-2 ${isRTL ? "justify-center lg:justify-end" : "justify-center lg:justify-start"}`}
                   dir={dir}
                 >
@@ -315,126 +274,54 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <MapPin size={12} aria-hidden="true" />
                     {t.heroTrustOrigin}
                   </span>
-                </motion.div>
+                </div>
               </div>
 
               {/* Right - Hero Lottie + Floating 3D Cards Grid */}
               <div className="hidden lg:flex flex-col gap-6 relative items-center">
-                {/* Try Demo Icon - 3D Gamepad + Book + Text */}
+                {/* Try Demo Icon — "Play it · 3D gamepad · Learn it"
+                    Was previously per-letter wave animation + bobbing
+                    icon (motion.span × ~12 + motion.div × 4). Now a
+                    static row with the same gradient/glow styling. */}
                 {onTryDemo && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.5 }}
+                  <div
                     className="flex items-center gap-8 cursor-pointer"
                     dir={dir}
                     onClick={onTryDemo}
                   >
-                    {/* "Play it" text - connected for Arabic/Hebrew, wavy letters for English */}
-                    {language === "en" ? (
-                      <div className="flex gap-0.5" dir={dir}>
-                        {t.heroPlayItWord.split("").map((letter, i) => (
-                          <motion.span
-                            key={`play-${i}`}
-                            animate={{ y: [0, -8, 0] }}
-                            transition={{
-                              duration: 2,
-                              repeat: Infinity,
-                              ease: "easeInOut",
-                              delay: i * 0.1
-                            }}
-                            className="text-2xl font-black text-white drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"
-                            style={{
-                              textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
-                            }}
-                          >
-                            {letter}
-                          </motion.span>
-                        ))}
-                      </div>
-                    ) : (
-                      <motion.span
-                        animate={{ y: [0, -8, 0] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                        className="text-2xl font-black text-white drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"
-                        style={{
-                          textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
-                        }}
-                      >
-                        {t.heroPlayItWord}
-                      </motion.span>
-                    )}
+                    <span
+                      className="text-2xl font-black text-white"
+                      style={{
+                        textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
+                      }}
+                    >
+                      {t.heroPlayItWord}
+                    </span>
 
-                    {/* Animated 3D Icon */}
-                    <motion.div
-                      animate={{ y: [0, -12, 0] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="relative w-24 h-24 flex-shrink-0"
+                    <div
+                      className="relative w-24 h-24 flex-shrink-0 transition-transform hover:scale-110 active:scale-95"
                       style={{ touchAction: 'manipulation' }}
                     >
                       {/* 3D shadow layer */}
-                      <motion.div
-                        animate={{ y: [0, 10, 0], scale: [1, 0.85, 1] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
-                        className="absolute inset-2 bg-gradient-to-br from-primary/50 to-fuchsia-600/50 rounded-3xl blur-xl"
-                      />
-
+                      <div className="absolute inset-2 bg-gradient-to-br from-primary/50 to-fuchsia-600/50 rounded-3xl blur-xl" />
                       {/* Main icon container */}
                       <div className="relative w-full h-full bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600 rounded-3xl shadow-2xl shadow-primary/40 flex items-center justify-center overflow-hidden">
-                        {/* Shine sweep */}
-                        <motion.div
-                          animate={{ x: ['-100%', '200%'] }}
-                          transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
-                        />
-
-                        {/* Gamepad icon */}
                         <Gamepad2 size={42} strokeWidth={2.5} className="relative z-10 text-white" />
-
-                        {/* Book icon overlay - bottom right */}
                         <div className="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-lg">
                           <BookOpen size={14} strokeWidth={2.5} className="text-primary" />
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
 
-                    {/* "Learn it" text - connected for Arabic/Hebrew, wavy letters for English */}
-                    {language === "en" ? (
-                      <div className="flex gap-0.5" dir={dir}>
-                        {t.heroLearnItWord.split("").map((letter, i) => (
-                          <motion.span
-                            key={`learn-${i}`}
-                            animate={{ y: [0, -8, 0] }}
-                            transition={{
-                              duration: 2,
-                              repeat: Infinity,
-                              ease: "easeInOut",
-                              delay: (i + 4) * 0.1
-                            }}
-                            className="text-2xl font-black text-white drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"
-                            style={{
-                              textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
-                            }}
-                          >
-                            {letter}
-                          </motion.span>
-                        ))}
-                      </div>
-                    ) : (
-                      <motion.span
-                        animate={{ y: [0, -8, 0] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-                        className="text-2xl font-black text-white drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"
-                        style={{
-                          textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
-                        }}
-                      >
-                        {t.heroLearnItWord}
-                      </motion.span>
-                    )}
-                  </motion.div>
+                    <span
+                      className="text-2xl font-black text-white"
+                      style={{
+                        textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
+                      }}
+                    >
+                      {t.heroLearnItWord}
+                    </span>
+                  </div>
                 )}
 
                 {/* Cards Grid - Large Rectangular Cards.
@@ -444,27 +331,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     Desktop: two columns at 4:3. */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 max-w-4xl mx-auto relative">
                 {floatingCards.map((card, i) => (
-                  <motion.div
+                  <div
                     key={i}
-                    initial={{ opacity: 0, scale: 0, rotate: -20 }}
-                    animate={{
-                      opacity: 1,
-                      scale: 1,
-                      rotate: 0,
-                      y: [0, -10, 0],
-                    }}
-                    transition={{
-                      duration: 0.6,
-                      delay: card.delay,
-                      y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: card.delay },
-                    }}
-                    whileHover={{
-                      scale: 1.05,
-                      rotateX: 5,
-                      rotateY: 5,
-                      z: 50,
-                    }}
-                    className="relative"
+                    className="relative transition-transform hover:scale-105"
                   >
                     {/* Large Rectangular Card.
                         Mobile: 5:4 aspect with bigger padding and icon
@@ -481,7 +350,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     </div>
                     {/* Floating shadow */}
                     <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-black/20 rounded-full blur-xl" />
-                  </motion.div>
+                  </div>
                 ))}
 
                 {/* Center Glow */}
@@ -596,7 +465,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           <AccessibilityWidget /> in main.tsx, which is now visible on every
           page. Two triggers at different positions was confusing. */}
     </div>
-    </MotionConfig>
   );
 };
 

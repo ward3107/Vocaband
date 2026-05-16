@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+// motion/react removed — PublicNav (eagerly rendered on every public
+// route, including the landing-page hero) statically imports this
+// component, so its motion dep ended up in the landing chunk graph.
+// Dropdown uses a plain conditional render; the chevron arrow uses
+// CSS rotation for the open/closed state.
 import { Globe } from "lucide-react";
 import { useLanguage, Language } from "../hooks/useLanguage";
 
@@ -87,13 +91,8 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
       onMouseLeave={handleMouseLeave}
     >
       {/* Dropdown menu */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
+      {isOpen && (
+          <div
             className={`absolute top-full mt-2 py-2 rounded-2xl bg-white shadow-2xl border border-stone-200 overflow-hidden min-w-[160px] z-[200] ${dropdownPosition}`}
             role="menu"
           >
@@ -117,59 +116,42 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
                 <Globe size={18} strokeWidth={2.25} aria-hidden />
                 <span>{lang.label}</span>
                 {language === lang.code && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="ml-auto"
-                  >
-                    ✓
-                  </motion.span>
+                  <span className="ml-auto">✓</span>
                 )}
               </button>
             ))}
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
 
       {/* Globe button — click toggles the menu on every device.  Hover
           is layered on top for mouse users (handled by the parent
           mouseenter/leave above) but click is the canonical action so
           touch devices don't depend on synthesised hover events. */}
-      <motion.button
-        whileTap={{ scale: 0.95 }}
+      <button
         onClick={(e) => {
           e.stopPropagation();
           cancelClose();
           setIsOpen((v) => !v);
         }}
-        className="relative bg-white text-slate-700 px-3 py-2.5 rounded-full shadow-lg hover:shadow-xl flex items-center gap-2 border-2 border-slate-200 hover:border-violet-400 transition-all cursor-pointer"
+        className="relative bg-white text-slate-700 px-3 py-2.5 rounded-full shadow-lg hover:shadow-xl flex items-center gap-2 border-2 border-slate-200 hover:border-violet-400 transition-all cursor-pointer active:scale-95"
         type="button"
         aria-label={language === 'he' ? 'החלף שפה' : language === 'ar' ? 'تغيير اللغة' : 'Change language'}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         style={{ touchAction: "manipulation" }}
       >
-        {/* Animated shine sweep */}
-        <motion.div
-          animate={{ x: ['-100%', '200%'] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
-        />
-
         {/* Inner shadow for depth */}
         <div className="absolute inset-0 bg-black/10 rounded-full pointer-events-none" />
 
         {/* Globe icon */}
         <Globe size={18} className="relative z-10" strokeWidth={2.5} aria-hidden />
 
-        {/* Dropdown arrow */}
-        <motion.svg
+        {/* Dropdown arrow — CSS rotation tied to open state */}
+        <svg
           width="8"
           height="8"
           viewBox="0 0 8 8"
-          className="relative z-10"
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.15 }}
+          className={`relative z-10 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
         >
           <path
             d="M1.5 2.5L4 5L6.5 2.5"
@@ -179,8 +161,8 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-        </motion.svg>
-      </motion.button>
+        </svg>
+      </button>
     </div>
   );
 };
