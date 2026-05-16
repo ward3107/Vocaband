@@ -164,6 +164,31 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
     );
   };
 
+  // Swap a typing exercise's direction to track the worksheet language
+  // toggle. The teacher's forward/reverse intent (EN→target vs target→EN)
+  // is preserved; only the non-English language axis flips. Without this,
+  // a teacher who added Translation Typing while the worksheet was
+  // Hebrew, then flipped to Arabic, would end up shipping an EN→HE
+  // exercise inside an Arabic worksheet.
+  const handleLangChange = (newLang: WorksheetLang) => {
+    setLang(newLang);
+    setPlan((prev) =>
+      prev.map((e) => {
+        if (e.type !== "translation_typing") return e;
+        const reverse = e.direction === "he_to_en" || e.direction === "ar_to_en";
+        const nextDir: TranslationDirection =
+          newLang === "ar"
+            ? reverse
+              ? "ar_to_en"
+              : "en_to_ar"
+            : reverse
+              ? "he_to_en"
+              : "en_to_he";
+        return { ...e, direction: nextDir };
+      }),
+    );
+  };
+
   // Best-effort AI sentence fetch for words missing from the static
   // FILLBLANK_SENTENCES bank. Anonymous mints (no auth token) and
   // network/server errors all resolve to phase: 'failed' so the UI
@@ -334,7 +359,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
                       <button
                         key={opt.v}
                         type="button"
-                        onClick={() => setLang(opt.v)}
+                        onClick={() => handleLangChange(opt.v)}
                         className={`flex-1 px-3 py-2 rounded-md text-sm font-bold transition-all ${
                           active ? "bg-white text-emerald-700 shadow-sm" : "text-stone-500"
                         }`}
