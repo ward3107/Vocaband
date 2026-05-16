@@ -32,19 +32,30 @@ function vocabandHtmlPerf(): Plugin {
   const BOOT_CSS_FALLBACK_LINK = '<link rel="stylesheet" href="/boot.css" />';
 
   // Chunk prefixes whose `.js` outputs deserve a modulepreload hint on
-  // the landing page. Currently empty — a previous version preloaded
-  // App-, LandingPage-, landing-page-, PublicNav-, FloatingButtons-.
-  // On Slow 4G that adds ~75 kB gz of parallel high-priority fetches
-  // alongside the 4 entries Vite already preloads (motion, lucide,
-  // react-vendor, runtime), and a real test showed it starved the
-  // render-critical CSS + entry of bandwidth on a ~50 KB/s pipe — DCL
-  // and Load both regressed ~800 ms in the field. Leaving the list
-  // empty defers chunk discovery to Vite's runtime __vitePreload, which
-  // fetches them serially when the entry actually resolves the dynamic
-  // import. Slower in theory, faster in practice on bandwidth-bound
-  // networks. Keeping the array so a future test on faster networks
-  // can re-enable specific chunks if measurements show a win.
-  const PRELOAD_CHUNK_PREFIXES: string[] = [];
+  // the landing page.
+  //
+  // Tuning history:
+  //  v1 — preloaded 5 chunks (App, LandingPage, landing-page, PublicNav,
+  //       FloatingButtons). Slow-4G field test regressed DCL ~800 ms;
+  //       too much parallel pressure on a bandwidth-bound pipe.
+  //  v2 — empty (no extras). Better on Slow 4G, but a Slow-3G test
+  //       showed DCL 8.2 s because the serial dynamic-import chain
+  //       (entry → App → LandingPage) paid 3 × 2 s RTT.
+  //  v3 — narrow: App and LandingPage only. The two biggest serial
+  //       RTT saves in the chain, picked because Israeli school Wi-Fi
+  //       is typically latency-bound (50-500 ms RTT, many devices
+  //       contending) more than bandwidth-bound. The asymmetry
+  //       favours preload: ~4 s win on high-latency profiles costs
+  //       ~200-500 ms on bandwidth-bound profiles. We accept the
+  //       smaller loss on the better network to fix the worse case.
+  //
+  // landing-page-*, PublicNav-*, FloatingButtons-* deliberately
+  // skipped — they're smaller chunks whose RTT savings are modest
+  // and they ride App's parallel-import wave once App resolves.
+  const PRELOAD_CHUNK_PREFIXES = [
+    'App-',
+    'LandingPage-',
+  ];
 
   return {
     name: 'vocaband-html-perf',
