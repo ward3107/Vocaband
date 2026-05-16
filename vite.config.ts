@@ -61,32 +61,69 @@ export default defineConfig(() => {
           // injects it BEFORE workbox boots so every subsequent
           // expiration update is covered.
           importScripts: ['/sw-error-suppress.js'],
-          // Precache only the SPA shell — the JS/CSS chunks, HTML, and
-          // critical icons.  Excluded from precache:
-          //   - Heavy export-only vendor chunks (~2.6 MB combined raw).
-          //     jspdf / pptxgen / html2pdf / html2canvas* / exceljs all
-          //     fire only when a teacher clicks "Export to …" inside
-          //     ReportExportBar or the Gradebook export modal.  They're
-          //     already lazy-imported, so excluding them from precache
-          //     means the SW won't pre-fetch them on first visit — the
-          //     teacher's click triggers a one-time fetch instead.
-          //     90 %+ of teachers never click these buttons.
-          //   - stats.html — only emitted when ANALYZE=true.
-          //   - PDFs, MP4s, MP3s — explicit belt-and-suspenders even
-          //     though the default globPatterns wouldn't include them.
-          globIgnores: [
-            '**/node_modules/**/*',
-            '**/assets/jspdf*.js',
-            '**/assets/pptxgen*.js',
-            '**/assets/html2pdf*.js',
-            '**/assets/html2canvas*.js',
-            '**/assets/exceljs*.js',
-            '**/assets/mammoth*.js',
-            '**/*.pdf',
-            '**/*.mp4',
-            '**/*.mp3',
-            '**/stats.html',
+          // Precache ONLY the SPA bootstrap shell.
+          //
+          // History: a previous config precached every file under dist/
+          // (~162 entries, ~4.8 MB) and relied on globIgnores to carve
+          // out the obvious heavies (jspdf, pptxgen, exceljs, …). That
+          // worked but background-fetched 30+ s of asset traffic on a
+          // school's first cold install over Slow-4G, which crowded
+          // every other student's download on saturated classroom
+          // Wi-Fi. Most precached chunks were never used by 99 % of
+          // visitors (teacher dashboard, gradebook, classroom drilldowns,
+          // hebrew modes, gameplay screens, the 404 kB vocabulary
+          // dataset, the 497 kB pptxgen XML core, …).
+          //
+          // New approach — allowlist instead of denylist:
+          //   1. Precache the absolute minimum needed to bootstrap the
+          //      landing page + offline-second-visit shell.
+          //   2. Trust the runtime CacheFirst handler below (now bumped
+          //      from 60 → 200 entries) to cache everything else on
+          //      first encounter. Returning users get the same offline
+          //      experience for any view they've already visited.
+          //   3. Standalone static pages (poster, terms, privacy,
+          //      answers/*, jobs/*, security-policy, acknowledgements)
+          //      are NOT in the SPA shell and fetched on demand.
+          //
+          // Result: precache shrinks from ~4.8 MB → ~250 kB.
+          globPatterns: [
+            // Static SPA shell
+            'index.html',
+            'boot.css',
+            'boot-debug.js',
+            'sw-error-suppress.js',
+            'manifest.webmanifest',
+            'favicon.ico',
+            'icon-*.png',
+            // Critical bootstrap chunks (always loaded on every page)
+            'assets/index-*.js',
+            'assets/rolldown-runtime-*.js',
+            'assets/react-vendor-*.js',
+            // App orchestrator + landing page — React.lazy targets
+            // resolved within ms of first paint.
+            'assets/App-*.js',
+            'assets/LandingPage-*.js',
+            // motion + lucide ship in App.tsx's modulepreload chain so
+            // they fetch in parallel with App. Keep them precached so
+            // offline second visits don't fall back to network for the
+            // landing page's animations / icons.
+            'assets/motion-*.js',
+            'assets/lucide-*.js',
+            // Above-the-fold landing dependencies
+            'assets/PublicNav-*.js',
+            'assets/landing-page-*.js',
+            'assets/FloatingButtons-*.js',
+            // Main Tailwind stylesheet
+            'assets/index-*.css',
           ],
+          // Cap precached file size to keep accidental wildcard matches
+          // from pulling in heavy chunks. App.tsx (~200 kB raw) and
+          // the index Tailwind stylesheet (~375 kB raw) are the
+          // heaviest legitimate entries; 400 kB clears them while
+          // still excluding vocabulary (404 kB), the pptxgen lib
+          // chunk (497 kB), and ClassroomView (403 kB) if a glob
+          // pattern ever accidentally matches.
+          maximumFileSizeToCacheInBytes: 400_000,
           // Clean up any caches left behind by the previous (broken)
           // SW so returning users don't carry stale entries forward.
           cleanupOutdatedCaches: true,
@@ -255,11 +292,20 @@ export default defineConfig(() => {
               // Content-hashed JS/CSS — immutable, CacheFirst is safe
               // because a new deploy changes the hash (and therefore
               // the cache key) automatically.
+              //
+              // Bumped maxEntries 60 → 200 in tandem with the precache
+              // slim (see workbox.globPatterns above). With the
+              // bootstrap shell as the only precached set, the runtime
+              // cache now has to hold every view/hook/vendor chunk a
+              // returning user has ever loaded. 200 × ~30 kB gz avg ≈
+              // 6 MB on disk — well inside the SW storage budget on
+              // every modern device, and protects offline access to
+              // any view the user has opened.
               urlPattern: ({ request }) => request.destination === 'script' || request.destination === 'style',
               handler: 'CacheFirst',
               options: {
                 cacheName: 'vocaband-assets',
-                expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
               },
             },
             {
