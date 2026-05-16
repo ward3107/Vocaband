@@ -87,6 +87,11 @@ export interface WordInputStepStrings {
   removeWordTitle: string;
   renameTitle: string;
   deleteTitle: string;
+
+  // Live spell-suggestions under the paste textarea (English typos)
+  suggestionsTitle: string;
+  suggestionAcceptTitle: (typo: string, suggestion: string) => string;
+  suggestionDismissAria: (typo: string) => string;
 }
 
 export const wordInputStepT: Record<Language, WordInputStepStrings> = {
@@ -162,6 +167,9 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     removeWordTitle: "Remove word",
     renameTitle: "Rename",
     deleteTitle: "Delete",
+    suggestionsTitle: "Did you mean…?",
+    suggestionAcceptTitle: (typo, suggestion) => `Replace "${typo}" with "${suggestion}"`,
+    suggestionDismissAria: (typo) => `Ignore suggestion for ${typo}`,
   },
   he: {
     pasteTitle: "הדביקו כאן את רשימת המילים שלכם",
@@ -235,6 +243,9 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     removeWordTitle: "הסר מילה",
     renameTitle: "שינוי שם",
     deleteTitle: "מחיקה",
+    suggestionsTitle: "אולי התכוונתם ל…?",
+    suggestionAcceptTitle: (typo, suggestion) => `החלף "${typo}" ב-"${suggestion}"`,
+    suggestionDismissAria: (typo) => `התעלם מההצעה עבור ${typo}`,
   },
   ar: {
     pasteTitle: "الصق قائمة المفردات هنا",
@@ -308,5 +319,8 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     removeWordTitle: "إزالة الكلمة",
     renameTitle: "إعادة تسمية",
     deleteTitle: "حذف",
+    suggestionsTitle: "هل قصدت…؟",
+    suggestionAcceptTitle: (typo, suggestion) => `استبدل "${typo}" بـ "${suggestion}"`,
+    suggestionDismissAria: (typo) => `تجاهل اقتراح ${typo}`,
   },
 };
