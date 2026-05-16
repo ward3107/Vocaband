@@ -171,7 +171,7 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
 
   // ─── 2. Teacher pending-student approvals — Realtime + fallback ───
   useEffect(() => {
-    if (!(userRole === 'teacher' && view === 'teacher-dashboard' && classCodesKey.length > 0)) {
+    if (!((userRole === 'teacher' || userRole === 'admin') && view === 'teacher-dashboard' && classCodesKey.length > 0)) {
       return;
     }
     loadPendingStudentsRef.current();

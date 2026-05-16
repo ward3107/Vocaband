@@ -639,7 +639,11 @@ async function startServer() {
       }
 
       const canJoinAsStudent = userData.role === "student" && userData.classCode === classCode;
-      const canJoinAsTeacher = userData.role === "teacher" && await isTeacherForClass(uid, classCode);
+      // Admins are treated as teachers everywhere else in the app
+      // (isPro, requireProTeacher, /api/features all accept admin).
+      // Mirror that here so admin teachers can observe their own
+      // class's live challenge.
+      const canJoinAsTeacher = (userData.role === "teacher" || userData.role === "admin") && await isTeacherForClass(uid, classCode);
       if (!canJoinAsStudent && !canJoinAsTeacher) {
         return rejectChallenge("join_challenge", `role/class mismatch — role=${userData.role} userClassCode=${userData.classCode} requestedClassCode=${classCode}`);
       }
