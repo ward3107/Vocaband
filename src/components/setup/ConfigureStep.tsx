@@ -745,32 +745,51 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             })}
           </div>
 
-          {/* AI Generate Button — only shown if teacher has AI access
-              (server allowlist) AND is on a Pro / trialing plan.  Server
-              allowlist is the kill-switch; the plan check enforces the
-              public landing-page promise that AI sentence generation is a
-              Pro-tier feature.  Free teachers don't see the button.
-              Server-side plan enforcement is a follow-up. */}
-          {aiEnabled && isProUser && selectedWords.length > 0 && (
-            <button
-              type="button"
-              onClick={generateAISentences}
-              disabled={isGeneratingAI}
-              className="mt-3 w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-lg"
-            >
-              {isGeneratingAI ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  {t.generatingAi}
-                </>
-              ) : (
-                <>
-                  <Sparkles size={18} />
-                  {t.generateAi}
-                </>
-              )}
-            </button>
-          )}
+          {/* AI Generate Button — always rendered so teachers can discover
+              the feature.  Previously this was hidden whenever the server
+              allowlist, Pro plan, or word-selection check failed, leaving
+              teachers staring at a configure screen with no obvious way
+              to generate sentences.  Now the button is always visible and
+              uses its disabled state + an inline hint to explain exactly
+              what's blocking it (no words, not Pro, or AI unavailable). */}
+          {(() => {
+            const noWords = selectedWords.length === 0;
+            const blocked = !aiEnabled || !isProUser || noWords;
+            const hint = noWords
+              ? (language === 'he' ? 'בחר תחילה מילים בשלב 1.' : language === 'ar' ? 'اختر الكلمات أولاً في الخطوة 1.' : 'Select words in Step 1 first.')
+              : !isProUser
+                ? (language === 'he' ? 'יצירת משפטים בעזרת AI היא תכונת Pro.' : language === 'ar' ? 'إنشاء الجمل بالذكاء الاصطناعي ميزة Pro.' : 'AI sentence generation is a Pro feature.')
+                : !aiEnabled
+                  ? (language === 'he' ? 'יצירת AI אינה זמינה כעת.  פנה לתמיכה.' : language === 'ar' ? 'إنشاء الذكاء الاصطناعي غير متاح حاليًا. اتصل بالدعم.' : 'AI generation is unavailable right now. Contact support.')
+                  : null;
+            return (
+              <>
+                <button
+                  type="button"
+                  onClick={generateAISentences}
+                  disabled={blocked || isGeneratingAI}
+                  className="mt-3 w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-lg disabled:cursor-not-allowed"
+                >
+                  {isGeneratingAI ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      {t.generatingAi}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={18} />
+                      {t.generateAi}
+                    </>
+                  )}
+                </button>
+                {hint && (
+                  <p className="mt-2 text-xs text-[var(--vb-text-secondary)] text-center">
+                    {hint}
+                  </p>
+                )}
+              </>
+            );
+          })()}
 
           {/* Add Custom Sentence */}
           <div className="mt-4 space-y-2">
