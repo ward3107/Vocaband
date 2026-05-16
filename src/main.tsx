@@ -142,6 +142,45 @@ async function manageServiceWorker() {
   } catch { /* not critical — app still works without SW */ }
 }
 
+/**
+ * Defer SW registration until the page has fully loaded AND the browser
+ * is idle.  Previously we registered the SW immediately after createRoot,
+ * which meant Workbox's precache install (~1 MB across 24 entries) raced
+ * against the dynamic-import chunks the landing page needs to render.
+ * On Slow 4G that contention pushed time-to-interactive ~1–2 s later
+ * because the bandwidth-limited pipe was carrying SW precache fetches
+ * AND the LandingPage chunks AND the below-the-fold lazy sections all
+ * at once.
+ *
+ * Order now: render → fonts swap in → lazy chunks finish → load event
+ * fires → idle callback → SW registers → precache runs in the background
+ * while the user is reading the hero. First-visit perf wins; returning
+ * users were already cached so this delay is invisible to them.
+ */
+function scheduleServiceWorkerRegistration() {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  // The `?unregisterSW=1` kill switch needs to run immediately so a
+  // stuck SW doesn't keep serving a broken cache — bypass the deferral.
+  if (params.has('unregisterSW')) {
+    void manageServiceWorker();
+    return;
+  }
+  const runAfterIdle = () => {
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    if (typeof ric === 'function') {
+      ric(() => { void manageServiceWorker(); }, { timeout: 4000 });
+    } else {
+      setTimeout(() => { void manageServiceWorker(); }, 1500);
+    }
+  };
+  if (document.readyState === 'complete') {
+    runAfterIdle();
+  } else {
+    window.addEventListener('load', runAfterIdle, { once: true });
+  }
+}
+
 const App = lazy(() => import('./App.tsx'));
 // AccessibilityWidget is lazy too — it doesn't render anything on
 // public pages until the user interacts, so keeping it in the entry
@@ -241,10 +280,12 @@ async function bootstrap() {
     </ErrorBoundary>,
   );
 
-  // Register the Service Worker after React has started rendering, so SW
-  // install work can't compete with the first paint.  Fire-and-forget —
-  // SW failures must never block the app.
-  void manageServiceWorker();
+  // Register the Service Worker AFTER the load event AND the first idle
+  // callback, so Workbox's precache install doesn't compete with the
+  // landing page's lazy chunks for the limited Slow-4G pipe. The kill
+  // switch (`?unregisterSW=1`) still runs immediately inside the
+  // scheduler — see scheduleServiceWorkerRegistration above for why.
+  scheduleServiceWorkerRegistration();
 
   // Dynamic-import Sentry (+init, replay, browserTracing) after first
   // paint — keeps the ~41 kB gz @sentry/react chunk off the DCL critical

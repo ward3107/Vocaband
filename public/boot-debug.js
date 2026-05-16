@@ -6,6 +6,36 @@
 // Lives as an external file so the page CSP can drop `unsafe-inline` from
 // `script-src` — the SPA only needs `'self'` to load this.
 (function () {
+  // Promote a preload-as-style link to a render-applied stylesheet.
+  // index.html ships the Latin Google Fonts <link> with media="print" so
+  // it downloads at low priority WITHOUT blocking first paint. We swap
+  // media back to "all" here (after this script has loaded) so the fonts
+  // apply to the rendered page. With font-display:swap already in the URL,
+  // fallback text renders immediately and the web fonts swap in when ready.
+  // CSP blocks inline onload handlers; this external swap is the workaround.
+  function applyDeferredStylesheet(link) {
+    if (!link) return;
+    if (link.media === 'print') link.media = 'all';
+  }
+  var latinFontLink = document.querySelector(
+    'link[data-vocaband-defer-style="latin-fonts"]'
+  );
+  if (latinFontLink) {
+    // If the link already finished downloading, apply immediately.
+    // Otherwise wait for load. Either way browser will apply CSS without
+    // blocking the parser since it was loaded with media="print".
+    if (latinFontLink.sheet) {
+      applyDeferredStylesheet(latinFontLink);
+    } else {
+      latinFontLink.addEventListener('load', function () {
+        applyDeferredStylesheet(latinFontLink);
+      }, { once: true });
+      // Belt-and-braces — if the load event was missed (e.g. cached
+      // response landed before this script ran), poll briefly. Cheap.
+      setTimeout(function () { applyDeferredStylesheet(latinFontLink); }, 0);
+    }
+  }
+
   // RTL font loader.
   //
   // index.html only blocks on the Latin font CSS (Plus Jakarta Sans + Be

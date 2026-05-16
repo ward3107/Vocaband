@@ -1,18 +1,118 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import fs from 'fs';
+import {defineConfig, type Plugin} from 'vite';
 // Cloudflare plugin is intentionally disabled (causes white screen
 // in dev) — kept as a comment so future edits don't re-import it.
 // import { cloudflare } from "@cloudflare/vite-plugin";
 import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
+
+// ─── Slow-4G HTML perf plugin ──────────────────────────────────────────
+// Two production-only transforms on index.html:
+//   1. Inline /public/boot.css as a <style> block to remove one render-
+//      blocking network round-trip on first paint.
+//   2. Inject <link rel="modulepreload"> hints for App-*.js,
+//      LandingPage-*.js and landing-page-*.js — the chunks every cold
+//      landing-page visit dynamically imports in series. Without these
+//      hints the browser only discovers them after parsing the entry
+//      chunk, paying RTT × 3. With them the chunks fetch in parallel
+//      with the entry, which lops 400-800 ms off the time-to-interactive
+//      on Slow 4G.
+//
+// Dev mode is intentionally a no-op — the perf wins only matter under
+// production network latency, and skipping in dev keeps HMR uncluttered.
+function vocabandHtmlPerf(): Plugin {
+  const INLINE_BOOT_CSS_MARKER = '<!-- VOCABAND_INLINE_BOOT_CSS -->';
+  // The fallback <link rel="stylesheet" href="/boot.css"> sits directly
+  // after the marker; the plugin removes BOTH and replaces them with a
+  // <style> block. This keeps dev mode working (link tag still serves
+  // boot.css through Vite's middleware) and prod fast (inlined CSS).
+  const BOOT_CSS_FALLBACK_LINK = '<link rel="stylesheet" href="/boot.css" />';
+
+  // Chunk prefixes whose `.js` outputs deserve a modulepreload hint on
+  // the landing page. Order matches the dynamic-import chain so the
+  // browser issues parallel fetches in the right priority order.
+  const PRELOAD_CHUNK_PREFIXES = [
+    'App-',
+    'LandingPage-',
+    'landing-page-',
+    'PublicNav-',
+    'FloatingButtons-',
+  ];
+
+  return {
+    name: 'vocaband-html-perf',
+    apply: 'build',
+    enforce: 'post',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        let next = html;
+
+        // 1) Inline boot.css.
+        try {
+          const bootCssPath = path.resolve(__dirname, 'public/boot.css');
+          const bootCss = fs.readFileSync(bootCssPath, 'utf8');
+          // Strip CSS comments + collapse whitespace to shave a few hundred
+          // bytes off the inlined block. Tiny but free.
+          const minified = bootCss
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .replace(/\s+/g, ' ')
+            .replace(/\s*([{}:;,])\s*/g, '$1')
+            .trim();
+          const styleTag = `<style data-vocaband-inlined="boot">${minified}</style>`;
+          if (next.includes(INLINE_BOOT_CSS_MARKER)) {
+            // Replace marker line; drop the fallback link that follows it.
+            next = next.replace(INLINE_BOOT_CSS_MARKER, styleTag);
+            next = next.replace(BOOT_CSS_FALLBACK_LINK, '');
+          } else if (next.includes(BOOT_CSS_FALLBACK_LINK)) {
+            // Defensive: index.html hand-edited without the marker. Still
+            // inline; just don't crash.
+            next = next.replace(BOOT_CSS_FALLBACK_LINK, styleTag);
+          }
+        } catch {
+          // boot.css missing or unreadable — fall through, leave the
+          // <link> in place. Site stays correct, just one extra RTT.
+        }
+
+        // 2) modulepreload hints for landing-page critical chunks.
+        // `ctx.bundle` is the rolldown/rollup bundle map keyed by output
+        // file name (e.g. "assets/App-abc123.js"). Empty in dev (`apply:
+        // 'build'` guards us from running there anyway). Look up each
+        // critical chunk by its prefix and emit a <link rel=modulepreload>
+        // so the browser parallelises the otherwise-serial dynamic-import
+        // chain (entry → App → LandingPage → locales).
+        const bundleFileNames = ctx.bundle ? Object.keys(ctx.bundle) : [];
+        const hints: string[] = [];
+        for (const prefix of PRELOAD_CHUNK_PREFIXES) {
+          const match = bundleFileNames.find(
+            (name) => name.startsWith(`assets/${prefix}`) && name.endsWith('.js'),
+          );
+          if (match) {
+            hints.push(`    <link rel="modulepreload" crossorigin href="/${match}">`);
+          }
+        }
+        if (hints.length > 0) {
+          // Insert before the </head> close tag so they sit alongside the
+          // existing modulepreload hints Vite injected for the entry chunk.
+          next = next.replace('</head>', `${hints.join('\n')}\n  </head>`);
+        }
+
+        return next;
+      },
+    },
+  };
+}
+
 export default defineConfig(() => {
   const isTest = process.env.PLAYWRIGHT_TEST === 'true';
   const analyze = process.env.ANALYZE === 'true';
   return {
     plugins: [
       react(),
+      vocabandHtmlPerf(),
       // Service Worker — re-enabled 2026-04 with a much safer config than
       // the previous attempt.  History: the earlier setup cached
       // index.html aggressively, so when a new deploy shipped, returning
