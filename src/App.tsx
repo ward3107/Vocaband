@@ -4284,7 +4284,6 @@ export default function App() {
           gameMode={gameMode}
           hasChosenLanguage={hasChosenLanguage}
           setHasChosenLanguage={setHasChosenLanguage}
-          targetLanguage={targetLanguage}
           setTargetLanguage={setTargetLanguage}
           setShowModeIntro={setShowModeIntro}
           setShowModeSelection={setShowModeSelection}
