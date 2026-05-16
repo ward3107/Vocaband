@@ -89,11 +89,20 @@ export interface WordInputStep2026Props {
    *  same picking UX can be embedded inside flows that have their
    *  own next-step button (Class Show, Worksheet builder). */
   hideContinueButton?: boolean;
+  /** Controlled translation-language preference.  When both
+   *  `translationLang` and `onTranslationLangChange` are supplied the
+   *  parent owns the state — useful when the component re-mounts
+   *  across navigation (e.g. Class Show setup → playing → setup loop)
+   *  and the teacher's HE/AR choice must survive.  When omitted the
+   *  component falls back to internal state, preserving the original
+   *  uncontrolled behaviour for the assignment wizard. */
+  translationLang?: TranslationLang;
+  onTranslationLangChange?: (lang: TranslationLang) => void;
 }
 
 type OcrState = 'idle' | 'uploading' | 'processing' | 'success' | 'error';
 type PanelType = 'topic-packs' | 'saved-groups' | 'browse-library' | null;
-type TranslationLang = 'both' | 'hebrew' | 'arabic';
+export type TranslationLang = 'both' | 'hebrew' | 'arabic';
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -1587,6 +1596,8 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   customWords = [],
   onCustomWordsChange,
   hideContinueButton = false,
+  translationLang: controlledTranslationLang,
+  onTranslationLangChange,
 }) => {
   const { language } = useLanguage();
   // Language-aware string lookup — shadows the module-level TEXT const
@@ -1617,8 +1628,14 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     return () => cancelAnimationFrame(id);
   }, [shouldScrollToSelected, selectedWords.length]);
 
-  // Language preference for translations
-  const [translationLang, setTranslationLang] = useState<TranslationLang>('both');
+  // Language preference for translations — controlled by the parent
+  // when both `translationLang` + `onTranslationLangChange` are passed
+  // (Class Show lifts this state so the teacher's HE/AR pick survives
+  // the setup → playing → setup loop); otherwise we keep our own state
+  // for the assignment-wizard call site that owned the local default.
+  const [internalTranslationLang, setInternalTranslationLang] = useState<TranslationLang>('both');
+  const translationLang = controlledTranslationLang ?? internalTranslationLang;
+  const setTranslationLang = onTranslationLangChange ?? setInternalTranslationLang;
 
   // Panel State
   const [openPanel, setOpenPanel] = useState<PanelType>(null);
