@@ -42,6 +42,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play, BookOpen,
   Camera, Sparkles, Eye, ClipboardPaste, Loader2, AlertTriangle, Image as ImageIcon,
+  Trash2, Pencil, Check,
 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
@@ -148,6 +149,12 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
   reviewEmpty: string;
   reviewStartBtn: string;
   reviewCancelBtn: string;
+  removeWord: string;
+  editTranslation: string;
+  saveEdit: string;
+  cancelEdit: string;
+  missingTranslation: string;
+  translationPlaceholder: string;
   startBtn: string;
   exitBtn: string;
   needTwo: string;
@@ -205,6 +212,12 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     reviewEmpty: 'Pick a source above first.',
     reviewStartBtn: 'Start Hot Seat',
     reviewCancelBtn: 'Cancel',
+    removeWord: 'Remove word',
+    editTranslation: 'Edit translation',
+    saveEdit: 'Save',
+    cancelEdit: 'Cancel edit',
+    missingTranslation: 'Missing translation',
+    translationPlaceholder: 'Type a translation…',
     startBtn: 'Start Hot Seat',
     exitBtn: 'Back',
     needTwo: 'Add at least 2 player names to start.',
@@ -262,6 +275,12 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     reviewEmpty: 'בחר מקור למעלה קודם.',
     reviewStartBtn: 'התחל כיסא חם',
     reviewCancelBtn: 'ביטול',
+    removeWord: 'הסר מילה',
+    editTranslation: 'ערוך תרגום',
+    saveEdit: 'שמור',
+    cancelEdit: 'בטל עריכה',
+    missingTranslation: 'חסר תרגום',
+    translationPlaceholder: 'הקלד תרגום…',
     startBtn: 'התחל כיסא חם',
     exitBtn: 'חזור',
     needTwo: 'הוסף לפחות 2 שמות שחקנים כדי להתחיל.',
@@ -319,6 +338,12 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     reviewEmpty: 'اختر مصدرًا أعلاه أولاً.',
     reviewStartBtn: 'ابدأ الكرسي الساخن',
     reviewCancelBtn: 'إلغاء',
+    removeWord: 'إزالة الكلمة',
+    editTranslation: 'تعديل الترجمة',
+    saveEdit: 'حفظ',
+    cancelEdit: 'إلغاء التعديل',
+    missingTranslation: 'الترجمة مفقودة',
+    translationPlaceholder: 'اكتب ترجمة…',
     startBtn: 'ابدأ الكرسي الساخن',
     exitBtn: 'رجوع',
     needTwo: 'أضف اسمَي لاعبَين على الأقل للبدء.',
@@ -382,6 +407,17 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
   // "Review N words →" to see the matched word list with its target-
   // language translation before committing to a round.
   const [showReview, setShowReview] = useState(false);
+
+  // Per-word teacher edits made inside the review modal.  Apply regardless
+  // of source so paste / assignment / camera / topic all support culling
+  // bad OCR matches and fixing translations the teacher disagrees with.
+  // Stored by word id so they survive source/language switches harmlessly.
+  const [excludedIds, setExcludedIds] = useState<Set<number>>(() => new Set());
+  const [translationOverrides, setTranslationOverrides] = useState<
+    Map<number, { hebrew?: string; arabic?: string }>
+  >(() => new Map());
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState('');
 
   // Build a lowercase-english → Word lookup once per vocab load so the
   // paste-source pool doesn't scan ALL_WORDS for every typed line.
@@ -456,12 +492,33 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
     return matched;
   }, [vocab, sourceKind, assignmentId, availableAssignments, pastedLines, englishLookup, topicIdx, availableTopics, ocrWords]);
 
+  // Apply teacher edits from the review modal: drop excluded ids and
+  // bake translation overrides into the Word objects so everything
+  // downstream (question rendering, the reveal flash) sees the edits
+  // without each call site needing to know about the override map.
+  const effectiveRawPool: Word[] = useMemo(() => {
+    if (excludedIds.size === 0 && translationOverrides.size === 0) return rawPool;
+    const filtered = excludedIds.size > 0
+      ? rawPool.filter(w => !excludedIds.has(w.id))
+      : rawPool;
+    if (translationOverrides.size === 0) return filtered;
+    return filtered.map(w => {
+      const ov = translationOverrides.get(w.id);
+      if (!ov) return w;
+      return {
+        ...w,
+        hebrew: ov.hebrew !== undefined ? ov.hebrew : w.hebrew,
+        arabic: ov.arabic !== undefined ? ov.arabic : w.arabic,
+      };
+    });
+  }, [rawPool, excludedIds, translationOverrides]);
+
   // Filter to words that actually have the chosen target translation.
   // A custom word missing its hebrew/arabic would otherwise show up as
   // an English option and break the multi-choice.
   const wordPool: Word[] = useMemo(
-    () => rawPool.filter(w => translationOf(w, targetLang).trim().length > 0),
-    [rawPool, targetLang],
+    () => effectiveRawPool.filter(w => translationOf(w, targetLang).trim().length > 0),
+    [effectiveRawPool, targetLang],
   );
 
   // Round state — only meaningful after Start was tapped.
@@ -505,6 +562,54 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
     if (e.target) e.target.value = '';
   }, [handleOcrFile]);
 
+  const handleRemoveWord = useCallback((id: number) => {
+    setExcludedIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    setEditingId(prev => (prev === id ? null : prev));
+  }, []);
+
+  const handleStartEdit = useCallback((w: Word) => {
+    setEditingId(w.id);
+    setEditingValue(translationOf(w, targetLang));
+  }, [targetLang]);
+
+  const handleSaveEdit = useCallback(() => {
+    if (editingId === null) return;
+    const trimmed = editingValue.trim();
+    setTranslationOverrides(prev => {
+      const next = new Map(prev);
+      const existing = next.get(editingId) ?? {};
+      next.set(editingId, { ...existing, [targetLang]: trimmed });
+      return next;
+    });
+    setEditingId(null);
+    setEditingValue('');
+  }, [editingId, editingValue, targetLang]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingId(null);
+    setEditingValue('');
+  }, []);
+
+  // Close the review modal AND drop any half-typed edit so reopening
+  // doesn't strand a random word in edit mode with stale input.
+  const closeReview = useCallback(() => {
+    setShowReview(false);
+    setEditingId(null);
+    setEditingValue('');
+  }, []);
+
+  // Switch target language AND drop any in-flight edit so its value
+  // doesn't end up saved against the wrong language.
+  const chooseTargetLang = useCallback((lang: TargetLang) => {
+    setTargetLang(lang);
+    setEditingId(null);
+    setEditingValue('');
+  }, []);
+
   const handleStart = () => {
     const names = playersText
       .split('\n')
@@ -513,6 +618,8 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
     if (names.length < 2) return;
     if (wordPool.length < 4) return;
     setShowReview(false);
+    setEditingId(null);
+    setEditingValue('');
     setPlayers(names.map(name => ({ name, correct: 0, total: 0 })));
     setCurrentPlayerIdx(0);
     setQuestionNumber(1);
@@ -586,7 +693,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
     const canStart = parsedNameCount >= 2 && wordPool.length >= 4;
     return (
       <div className="min-h-screen bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50 p-4 sm:p-6" dir={dir}>
-        <div className="max-w-xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           <button
             type="button"
             onClick={onExit}
@@ -774,7 +881,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                     <button
                       key={lang}
                       type="button"
-                      onClick={() => setTargetLang(lang)}
+                      onClick={() => chooseTargetLang(lang)}
                       style={{ touchAction: 'manipulation' }}
                       className={`py-2.5 rounded-xl font-bold text-sm border-2 transition-all ${
                         targetLang === lang
@@ -856,7 +963,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-[90] bg-stone-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-              onClick={() => setShowReview(false)}
+              onClick={closeReview}
               role="dialog"
               aria-modal="true"
               aria-label={t.reviewTitle}
@@ -868,7 +975,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                 transition={{ type: 'spring', damping: 24, stiffness: 240 }}
                 onClick={(e) => e.stopPropagation()}
                 dir={dir}
-                className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                className="w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
               >
                 <div className="bg-gradient-to-br from-orange-500 via-amber-500 to-rose-500 px-5 py-4 text-white">
                   <div className="flex items-center justify-between gap-3">
@@ -878,7 +985,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                     </div>
                     <button
                       type="button"
-                      onClick={() => setShowReview(false)}
+                      onClick={closeReview}
                       aria-label={t.reviewCancelBtn}
                       className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center"
                     >
@@ -888,26 +995,112 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-5 py-4">
-                  {wordPool.length === 0 ? (
+                  {effectiveRawPool.length === 0 ? (
                     <p className="text-sm font-semibold text-stone-500 text-center py-6">
                       {t.reviewEmpty}
                     </p>
                   ) : (
                     <ul className="space-y-1.5">
-                      {wordPool.map(w => (
-                        <li
-                          key={w.id}
-                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-stone-50 border border-stone-100"
-                        >
-                          <span className="text-base font-bold text-stone-900" dir="ltr">{w.english}</span>
-                          <span
-                            className="text-base font-bold text-stone-600"
-                            dir={targetLang === 'arabic' || targetLang === 'hebrew' ? 'rtl' : 'ltr'}
+                      {effectiveRawPool.map(w => {
+                        const translation = translationOf(w, targetLang);
+                        const missing = translation.trim().length === 0;
+                        const isEditing = editingId === w.id;
+                        const translationDir =
+                          targetLang === 'arabic' || targetLang === 'hebrew' ? 'rtl' : 'ltr';
+                        return (
+                          <li
+                            key={w.id}
+                            className={`flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-xl border ${
+                              missing && !isEditing
+                                ? 'bg-rose-50/60 border-rose-200'
+                                : 'bg-stone-50 border-stone-100'
+                            }`}
                           >
-                            {translationOf(w, targetLang)}
-                          </span>
-                        </li>
-                      ))}
+                            <span
+                              className="text-base font-bold text-stone-900 shrink-0 min-w-[6rem] truncate"
+                              dir="ltr"
+                            >
+                              {w.english}
+                            </span>
+
+                            {isEditing ? (
+                              <input
+                                autoFocus
+                                value={editingValue}
+                                onChange={e => setEditingValue(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSaveEdit();
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    handleCancelEdit();
+                                  }
+                                }}
+                                placeholder={t.translationPlaceholder}
+                                dir={translationDir}
+                                aria-label={t.editTranslation}
+                                className="flex-1 min-w-0 rounded-lg border-2 border-orange-300 focus:border-orange-500 focus:outline-none px-2.5 py-1.5 text-base font-bold text-stone-800 bg-white"
+                              />
+                            ) : (
+                              <span
+                                className={`flex-1 min-w-0 truncate text-base font-bold ${
+                                  missing ? 'text-rose-500 italic' : 'text-stone-700'
+                                } ${translationDir === 'rtl' ? 'text-right' : 'text-left'}`}
+                                dir={translationDir}
+                              >
+                                {missing ? t.missingTranslation : translation}
+                              </span>
+                            )}
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              {isEditing ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={handleSaveEdit}
+                                    aria-label={t.saveEdit}
+                                    style={{ touchAction: 'manipulation' }}
+                                    className="w-9 h-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition active:scale-95"
+                                  >
+                                    <Check size={16} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelEdit}
+                                    aria-label={t.cancelEdit}
+                                    style={{ touchAction: 'manipulation' }}
+                                    className="w-9 h-9 rounded-lg bg-stone-200 hover:bg-stone-300 text-stone-700 flex items-center justify-center transition active:scale-95"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEdit(w)}
+                                    aria-label={t.editTranslation}
+                                    style={{ touchAction: 'manipulation' }}
+                                    className="w-9 h-9 rounded-lg bg-white hover:bg-orange-50 text-stone-600 hover:text-orange-600 border border-stone-200 flex items-center justify-center transition active:scale-95"
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveWord(w.id)}
+                                    aria-label={t.removeWord}
+                                    style={{ touchAction: 'manipulation' }}
+                                    className="w-9 h-9 rounded-lg bg-white hover:bg-rose-50 text-stone-600 hover:text-rose-600 border border-stone-200 flex items-center justify-center transition active:scale-95"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
@@ -915,7 +1108,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                 <div className="px-5 py-4 grid grid-cols-2 gap-2 border-t border-stone-100">
                   <button
                     type="button"
-                    onClick={() => setShowReview(false)}
+                    onClick={closeReview}
                     style={{ touchAction: 'manipulation' }}
                     className="py-3 rounded-xl bg-stone-100 text-stone-700 font-black text-sm hover:bg-stone-200 active:scale-[0.98] transition"
                   >
@@ -1103,7 +1296,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
     .sort((a, b) => b.correct - a.correct || a.originalIdx - b.originalIdx);
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-rose-50 p-4 sm:p-6" dir={dir}>
-      <div className="max-w-xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <div className="rounded-3xl bg-white shadow-lg border border-amber-100 overflow-hidden">
           <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 py-6 text-white text-center">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center mb-3">
