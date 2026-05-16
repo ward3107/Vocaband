@@ -391,6 +391,15 @@ export default function ClassroomView(props: ClassroomViewProps) {
                     useDrawerDrill
                     selectedClassCode={classCode}
                     onSelectedClassChange={setClassCode}
+                    onReteach={(targetClassCode, wordIds) => {
+                      // Mirror the class-level TopStrugglingWords wiring:
+                      // pick the right class for the student we drilled
+                      // into, set the words, jump to Create-Assignment.
+                      const target = classes.find(c => c.code === targetClassCode) ?? selectedClass;
+                      if (target) setSelectedClass(target);
+                      setSelectedWords(wordIds);
+                      setView("create-assignment");
+                    }}
                   />
                   {/* "Who needs help" — moved here from Reports tab on
                       2026-04-28.  Lives next to the per-student roster

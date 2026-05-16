@@ -2,9 +2,9 @@
  * AdaptiveDrawer — the drill-shell for the v2 Classroom.
  *
  * Adaptive = two layouts in one component, chosen by breakpoint:
- *   - Desktop (≥lg, 1024 px): right-side drawer, 40 % width (clamped to
- *     max-w-xl), dim backdrop; the list behind stays visible so the
- *     teacher can jump between rows without losing context.
+ *   - Desktop (≥lg, 1024 px): right-side drawer, 72 % width (clamped to
+ *     max-w-6xl ≈ 1152 px), dim backdrop; the list behind stays peekable
+ *     so the teacher can jump between rows without losing context.
  *   - Mobile / tablet (<lg): full-screen page with a sticky header and
  *     a back button; the small screen stays uncramped.
  *
@@ -13,7 +13,7 @@
  *
  * Close triggers: backdrop click (desktop), back button (both), Esc key.
  */
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X, ArrowLeft } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -28,9 +28,9 @@ interface AdaptiveDrawerProps {
   subtitle?: string;
   /** Optional emoji shown to the left of the title. */
   avatar?: string;
-  children: React.ReactNode;
+  children: ReactNode;
   /** Optional trailing slot for header-level action buttons (e.g. reward). */
-  headerRight?: React.ReactNode;
+  headerRight?: ReactNode;
 }
 
 export default function AdaptiveDrawer({
@@ -81,7 +81,7 @@ export default function AdaptiveDrawer({
             exit={{ x: "100%" }}
             transition={{ type: "tween", ease: [0.22, 1, 0.36, 1], duration: 0.28 }}
             style={{ backgroundColor: 'var(--vb-surface)' }}
-            className="fixed inset-0 lg:inset-y-0 lg:right-0 lg:left-auto lg:w-1/2 lg:max-w-3xl z-50 shadow-2xl flex flex-col"
+            className="fixed inset-0 lg:inset-y-0 lg:right-0 lg:left-auto lg:w-[72%] lg:max-w-6xl z-50 shadow-2xl flex flex-col"
           >
             <header
               className="flex items-center gap-3 px-4 py-3 border-b sticky top-0 z-10"
@@ -90,7 +90,7 @@ export default function AdaptiveDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                aria-label={language === 'he' ? 'סגור פרטים' : language === 'ar' ? 'إغلاق التفاصيل' : 'Close details'}
+                aria-label={t.closeDetailsAria}
                 className="w-10 h-10 rounded-xl hover:bg-[var(--vb-surface-alt)] flex items-center justify-center shrink-0"
                 style={{
                   color: 'var(--vb-text-secondary)',
