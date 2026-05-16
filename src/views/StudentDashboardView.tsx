@@ -506,6 +506,20 @@ export default function StudentDashboardView({
         />
         <ActiveBoostersStrip {...boosters} />
         <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
+        {/* ── Spaced-Repetition Review Queue ────────────────────
+            Same card the STRUCTURE_UX branch renders at line 332.
+            Duplicated here because the legacy branch is the
+            production-default render path — without this mount,
+            students never see the "X words due for review" tile
+            even though useDueReviews already runs. Drop one of
+            the two when STRUCTURE_UX flips on for everyone. */}
+        {onStartReview && (
+          <ReviewQueueCard
+            dueCount={dueReviews.dueCount}
+            isLoading={dueReviews.isLoading}
+            onStart={onStartReview}
+          />
+        )}
         {/* ── Class Minute — daily 60-second drill ──────────────
             Habit-forming daily ritual.  Same card the STRUCTURE_UX
             branch renders; this duplicate lives here because the
