@@ -2,12 +2,85 @@ import {lazy, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.tsx';
 import { runSafariDiagnostics } from './utils/safariDiagnostics';
-import { initSentry, addReplayIntegrationLazy, addBrowserTracingLazy } from './core/sentry';
 import './index.css';
 
-// Init Sentry as early as possible so any subsequent throw is captured.
-// No-op in dev (init() short-circuits when import.meta.env.PROD is false).
-initSentry();
+// Tiny pre-Sentry error buffer.
+//
+// Sentry's import is deferred to after first paint (see loadSentryDeferred
+// below) so its ~41 kB gz chunk stays off the critical DCL path. The
+// few-hundred-ms gap between page boot and Sentry loading is covered by
+// these listeners: any window error or unhandled rejection fires before
+// React mounts gets queued, then drained the moment Sentry's
+// captureException is available.
+//
+// The buffer is bounded (10 events) so a runaway throw loop can't grow
+// unboundedly while we're waiting on idle.
+type BufferedEvent =
+  | { kind: 'error'; error: unknown; message?: string; source?: string; lineno?: number; colno?: number }
+  | { kind: 'rejection'; reason: unknown };
+const errorBuffer: BufferedEvent[] = [];
+const MAX_BUFFERED_ERRORS = 10;
+let sentryLoaded = false;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    if (sentryLoaded) return;
+    if (errorBuffer.length >= MAX_BUFFERED_ERRORS) return;
+    errorBuffer.push({
+      kind: 'error',
+      error: event.error,
+      message: event.message,
+      source: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+    });
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    if (sentryLoaded) return;
+    if (errorBuffer.length >= MAX_BUFFERED_ERRORS) return;
+    errorBuffer.push({ kind: 'rejection', reason: event.reason });
+  });
+}
+
+/** Dynamic-import Sentry after first paint and replay any buffered errors. */
+function loadSentryDeferred() {
+  if (typeof window === 'undefined') return;
+
+  const schedule = (cb: () => void): void => {
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    if (typeof ric === 'function') {
+      ric(cb, { timeout: 3000 });
+    } else {
+      setTimeout(cb, 800);
+    }
+  };
+
+  schedule(async () => {
+    try {
+      const sentry = await import('./core/sentry');
+      sentry.initSentry();
+      sentryLoaded = true;
+      // Drain the pre-load buffer.
+      for (const ev of errorBuffer) {
+        try {
+          if (ev.kind === 'error') {
+            const err = ev.error instanceof Error ? ev.error : new Error(ev.message || 'pre-sentry error');
+            sentry.reportError(err, { source: ev.source, lineno: ev.lineno, colno: ev.colno });
+          } else {
+            const reason = ev.reason instanceof Error ? ev.reason : new Error(String(ev.reason ?? 'unhandled rejection'));
+            sentry.reportError(reason, { type: 'unhandledrejection' });
+          }
+        } catch { /* best-effort */ }
+      }
+      errorBuffer.length = 0;
+      sentry.addReplayIntegrationLazy();
+      sentry.addBrowserTracingLazy();
+    } catch {
+      // Sentry chunk failed to load (blocked CDN, offline, CSP). Not
+      // app-critical — keep going without it.
+    }
+  });
+}
 
 // Apply the teacher's saved display scale BEFORE React renders, so
 // the first paint already uses the right rem base.  Without this,
@@ -173,16 +246,11 @@ async function bootstrap() {
   // SW failures must never block the app.
   void manageServiceWorker();
 
-  // Lazy-load Sentry's session replay integration AFTER first paint.
-  // Replay is ~50 KB gz; it's pulled from browser.sentry-cdn.com when
-  // the page goes idle so it never blocks the user's first interaction.
-  // See addReplayIntegrationLazy in src/core/sentry.ts and R5 in
-  // docs/SCHOOL-PERFORMANCE-PLAN.md.
-  addReplayIntegrationLazy();
-  // Same idea for browserTracing — bundled it's ~25 kB gz of perf-API
-  // wiring on the critical path.  Adding it after idle still lets it
-  // back-fill the page-load transaction via the Performance Timeline.
-  addBrowserTracingLazy();
+  // Dynamic-import Sentry (+init, replay, browserTracing) after first
+  // paint — keeps the ~41 kB gz @sentry/react chunk off the DCL critical
+  // path. The window listeners installed above buffer anything that
+  // throws in the gap so nothing is lost. See loadSentryDeferred above.
+  loadSentryDeferred();
 }
 
 // If we're redirecting to the canonical host, let the navigation tear the

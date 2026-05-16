@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback, lazy } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import type { View } from "./core/views";
 import { type VocaId, ACTIVE_VOCA_KEY, getEntitledVocas } from "./core/subject";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
@@ -10,7 +10,13 @@ import {
   AlertTriangle,
   ArrowLeftRight,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+// motion is no longer imported eagerly here. Its three eager consumers
+// (CookieBanner, QuickPlayResumeBanner, ImageCropModal — all defined
+// further down as React.lazy) carry it in their own chunks now, so the
+// ~43 kB gz motion bundle drops out of the App.tsx modulepreload chain
+// on cold first-paint. AnimatePresence / motion.div weren't used in
+// this file anyway, so the original `import { motion, AnimatePresence }`
+// was a dead import.
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, hasTeacherAccess, performUserLogout, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { freshTrialEndsAt, isPro } from "./core/plan";
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher, subscribeQueueDepth } from "./core/saveQueue";
@@ -38,8 +44,14 @@ import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import { isAnswerCorrect } from './utils/answerMatch';
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
 // CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
-import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
-import QuickPlayResumeBanner from "./components/QuickPlayResumeBanner";
+// CookieBanner, QuickPlayResumeBanner, ImageCropModal — eager-imported
+// before; now React.lazy so motion (~43 kB gz) is removed from the
+// App.tsx static-import graph and stops being preloaded on cold visit.
+// All three render conditionally / with null Suspense fallback so the
+// extra round-trip is invisible to the user.
+const CookieBanner = lazy(() => import("./components/CookieBanner"));
+const QuickPlayResumeBanner = lazy(() => import("./components/QuickPlayResumeBanner"));
+const ImageCropModal = lazy(() => import("./components/ImageCropModal"));
 import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
 
@@ -93,7 +105,7 @@ import {
 } from "./utils/oauthIntent";
 import { celebrate } from "./utils/celebrate";
 import { compressImageForUpload } from "./utils/compressImage";
-import ImageCropModal from "./components/ImageCropModal";
+// ImageCropModal moved to a React.lazy at the top of this file.
 import { setGuideStore, type GuideKey } from "./hooks/useFirstTimeGuide";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
@@ -2503,9 +2515,13 @@ export default function App() {
   const cookieBannerOverlay = (
     <>
       {showCookieBanner && !user && (
-        <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
+        <Suspense fallback={null}>
+          <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
+        </Suspense>
       )}
-      <QuickPlayResumeBanner suppress={qpResumeSuppress} />
+      <Suspense fallback={null}>
+        <QuickPlayResumeBanner suppress={qpResumeSuppress} />
+      </Suspense>
       {/* Global amber pill when the browser reports the network is down.
           See OfflineIndicator + useOnlineStatus for the implementation,
           and R2 in docs/SCHOOL-PERFORMANCE-PLAN.md for the rationale. */}
@@ -2515,14 +2531,16 @@ export default function App() {
 
   // Image crop modal for OCR — shown when user picks a photo, before uploading
   const ocrCropModal = ocrPendingFile ? (
-    <ImageCropModal
-      file={ocrPendingFile.file}
-      onConfirm={(croppedFile) => processOcrFile(croppedFile, ocrPendingFile.inputRef)}
-      onCancel={() => {
-        if (ocrPendingFile.inputRef?.target) ocrPendingFile.inputRef.target.value = '';
-        setOcrPendingFile(null);
-      }}
-    />
+    <Suspense fallback={null}>
+      <ImageCropModal
+        file={ocrPendingFile.file}
+        onConfirm={(croppedFile) => processOcrFile(croppedFile, ocrPendingFile.inputRef)}
+        onCancel={() => {
+          if (ocrPendingFile.inputRef?.target) ocrPendingFile.inputRef.target.value = '';
+          setOcrPendingFile(null);
+        }}
+      />
+    </Suspense>
   ) : null;
 
   if (loading && !quickPlaySessionParam) {

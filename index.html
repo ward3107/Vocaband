@@ -99,7 +99,19 @@
          Especially valuable on weak school Wi-Fi where the TLS round-
          trips dominate.  See R4 in docs/SCHOOL-PERFORMANCE-PLAN.md. -->
     <link rel="preconnect" href="https://auth.vocaband.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;700;900&family=Heebo:wght@400;500;600;700;800;900&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <!-- Latin fonts only — Plus Jakarta Sans (headlines) + Be Vietnam
+         Pro (body), no weight 800 (font-extrabold is unused across the
+         codebase, verified via grep). Hebrew/Arabic fonts (Heebo +
+         Fredoka, 10 weights) are NOT loaded here — boot-debug.js
+         injects them dynamically when the visitor's saved language or
+         browser preference is HE/AR. English visitors (the majority of
+         landing-page traffic) no longer pay for the Google Fonts CSS
+         round-trip for fonts they will never see characters of. -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@400;500;700;900&display=swap" rel="stylesheet"/>
+    <!-- Pre-computed RTL fonts URL so boot-debug.js can inject it as a
+         single <link> without string-building. Kept as a meta tag so
+         CSP `style-src` doesn't have to allow inline href construction. -->
+    <meta name="vocaband-rtl-fonts" content="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;900&family=Fredoka:wght@400;500;600;700&display=swap" />
     <!-- Material Symbols link was removed: the font was loaded on every
          page but never actually rendered (lucide-react is used
          exclusively for icons).  On school networks that block

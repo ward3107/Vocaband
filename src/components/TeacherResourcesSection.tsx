@@ -16,7 +16,9 @@
  */
 
 import React from "react";
-import { motion } from "motion/react";
+// motion/react removed — TeacherResourcesSection is statically
+// imported by LandingPage, so its motion usage pulled the chunk into
+// the landing graph. Hero text + cards render statically now.
 import { Download, Eye } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherResourcesT } from "../locales/student/teacher-resources";
@@ -178,32 +180,15 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
         {/* Hero header — landing page only */}
         {isHero && (
           <div className="text-center mb-10 md:mb-14">
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-black uppercase tracking-[0.15em] mb-4"
-            >
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-black uppercase tracking-[0.15em] mb-4">
               {t.sectionEyebrow}
-            </motion.div>
-            <motion.h2
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ delay: 0.05 }}
-              className="text-3xl md:text-5xl font-black text-stone-900 tracking-tight mb-3"
-            >
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black text-stone-900 tracking-tight mb-3">
               {t.sectionHeading}
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ delay: 0.1 }}
-              className="text-stone-600 max-w-2xl mx-auto text-sm md:text-base leading-relaxed"
-            >
+            </h2>
+            <p className="text-stone-600 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
               {t.sectionSubtitle}
-            </motion.p>
+            </p>
           </div>
         )}
 
@@ -233,14 +218,9 @@ interface CardGroupProps {
 const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRTL }) => {
   return (
     <div>
-      <motion.h3
-        initial={{ opacity: 0, y: 8 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        className={`text-xs md:text-sm font-black text-violet-700 uppercase tracking-[0.18em] mb-4 ${isRTL ? "text-right" : "text-left"}`}
-      >
+      <h3 className={`text-xs md:text-sm font-black text-violet-700 uppercase tracking-[0.18em] mb-4 ${isRTL ? "text-right" : "text-left"}`}>
         {heading}
-      </motion.h3>
+      </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 items-stretch">
         {cards.map((card, i) => {
           const title = titleFor(card, t);
@@ -261,12 +241,8 @@ const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRT
             : orderedLanguages.find((l) => availableSet.has(l.code))?.code;
 
           return (
-            <motion.div
+            <div
               key={card.key}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ delay: i * 0.05 }}
               className={`relative overflow-hidden rounded-2xl p-4 md:p-4 h-full bg-gradient-to-br ${card.gradient} text-white shadow-md shadow-violet-500/10 ring-1 ${card.ring} flex flex-col gap-3`}
             >
               {/* Header row — compact: smaller emoji + title side-by-side.
@@ -351,7 +327,7 @@ const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRT
                   );
                 })}
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>
