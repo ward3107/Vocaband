@@ -11,7 +11,7 @@ import {
   ArrowLeftRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, hasTeacherAccess, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, hasTeacherAccess, performUserLogout, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { freshTrialEndsAt, isPro } from "./core/plan";
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher } from "./core/saveQueue";
 import { setSentryUser, clearSentryUser } from "./core/sentry";
@@ -3876,7 +3876,7 @@ export default function App() {
         onGenerateLesson={handleGenerateLesson}
         topicPacks={TOPIC_PACKS}
         user={user}
-        onLogout={() => supabase.auth.signOut()}
+        onLogout={() => performUserLogout()}
         // Sentence Builder config — without these props the Sentence
         // Difficulty buttons in ConfigureStep call an undefined handler
         // and silently no-op (user-reported "not clickable"), and the
