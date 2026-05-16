@@ -50,6 +50,11 @@ interface Worksheet {
   expires_at: string;
   created_at: string;
   settings: { language?: WorksheetLang } | null;
+  // Set when this worksheet was minted as a follow-up practice for a
+  // student's missed words on another worksheet. The dashboard hides
+  // children from the top-level list and surfaces them under the
+  // parent's per-student row instead.
+  parent_slug: string | null;
 }
 
 // One row in worksheet_attempts.answers — discriminated union mirrors
@@ -102,6 +107,11 @@ interface Attempt {
   total: number;
   duration_ms: number | null;
   completed_at: string | null;
+  // Fingerprint links the same browser's attempts across the parent
+  // worksheet and any practice rounds the teacher sent afterwards.
+  // Null in private-mode / fingerprint-blocked browsers — those
+  // attempts can't be tied to a practice round.
+  fingerprint: string | null;
 }
 
 interface Props {
@@ -124,7 +134,9 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
       setError(null);
       const { data: wData, error: wErr } = await supabase
         .from("interactive_worksheets")
-        .select("slug, topic_name, format, word_ids, expires_at, created_at, settings")
+        .select(
+          "slug, topic_name, format, word_ids, expires_at, created_at, settings, parent_slug",
+        )
         .eq("teacher_uid", user.uid)
         .order("created_at", { ascending: false });
       if (cancelled) return;
@@ -145,7 +157,9 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
       const slugs = list.map((w) => w.slug);
       const { data: aData, error: aErr } = await supabase
         .from("worksheet_attempts")
-        .select("id, slug, student_name, answers, score, total, duration_ms, completed_at")
+        .select(
+          "id, slug, student_name, answers, score, total, duration_ms, completed_at, fingerprint",
+        )
         .in("slug", slugs)
         .order("completed_at", { ascending: false });
       if (cancelled) return;
@@ -174,6 +188,30 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
     return map;
   }, [attempts]);
 
+  // Map a parent slug → its child worksheets, oldest-first so the
+  // teacher reads practice rounds in the order they were sent.
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, Worksheet[]>();
+    for (const w of worksheets) {
+      if (!w.parent_slug) continue;
+      const arr = map.get(w.parent_slug);
+      if (arr) arr.push(w);
+      else map.set(w.parent_slug, [w]);
+    }
+    for (const arr of map.values()) {
+      arr.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    }
+    return map;
+  }, [worksheets]);
+
+  // Top-level cards only — children appear nested inside the parent's
+  // detail view so the dashboard doesn't double-count practice rounds
+  // as standalone worksheets.
+  const topLevelWorksheets = useMemo(
+    () => worksheets.filter((w) => !w.parent_slug),
+    [worksheets],
+  );
+
   const selectedWorksheet = useMemo(
     () => worksheets.find((w) => w.slug === selectedSlug) ?? null,
     [worksheets, selectedSlug]
@@ -181,6 +219,10 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
   const selectedAttempts = useMemo(
     () => (selectedSlug ? attemptsBySlug.get(selectedSlug) ?? [] : []),
     [selectedSlug, attemptsBySlug]
+  );
+  const selectedChildren = useMemo(
+    () => (selectedSlug ? childrenByParent.get(selectedSlug) ?? [] : []),
+    [selectedSlug, childrenByParent],
   );
 
   return (
@@ -205,12 +247,18 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
           <ErrorCard message={error} />
         ) : !selectedWorksheet ? (
           <WorksheetList
-            worksheets={worksheets}
+            worksheets={topLevelWorksheets}
             attemptsBySlug={attemptsBySlug}
+            childrenByParent={childrenByParent}
             onSelect={setSelectedSlug}
           />
         ) : (
-          <WorksheetDetail worksheet={selectedWorksheet} attempts={selectedAttempts} />
+          <WorksheetDetail
+            worksheet={selectedWorksheet}
+            attempts={selectedAttempts}
+            childWorksheets={selectedChildren}
+            attemptsBySlug={attemptsBySlug}
+          />
         )}
       </div>
     </div>
@@ -223,8 +271,9 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
 const WorksheetList: React.FC<{
   worksheets: Worksheet[];
   attemptsBySlug: Map<string, Attempt[]>;
+  childrenByParent: Map<string, Worksheet[]>;
   onSelect: (slug: string) => void;
-}> = ({ worksheets, attemptsBySlug, onSelect }) => {
+}> = ({ worksheets, attemptsBySlug, childrenByParent, onSelect }) => {
   if (worksheets.length === 0) {
     return (
       <div className="text-center max-w-md mx-auto p-10 rounded-3xl bg-[var(--vb-surface)] border border-[var(--vb-border)]">
@@ -259,8 +308,18 @@ const WorksheetList: React.FC<{
       <div className="space-y-3">
         {worksheets.map((w) => {
           const att = attemptsBySlug.get(w.slug) ?? [];
+          const children = childrenByParent.get(w.slug) ?? [];
+          // "Most recent activity" rolls in practice attempts so the
+          // teacher's sort by recency still surfaces worksheets where
+          // students are actively practicing, not just initially solving.
+          const childAttempts = children.flatMap((c) => attemptsBySlug.get(c.slug) ?? []);
           const completedCount = att.filter((a) => a.completed_at).length;
-          const latest = att[0]?.completed_at ?? null;
+          const practiceCount = childAttempts.filter((a) => a.completed_at).length;
+          const latest =
+            [...att, ...childAttempts]
+              .filter((a) => a.completed_at)
+              .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""))[0]
+              ?.completed_at ?? null;
           return (
             <motion.button
               key={w.slug}
@@ -284,11 +343,17 @@ const WorksheetList: React.FC<{
                   <h3 className="text-lg font-black text-[var(--vb-text-primary)] truncate mb-1">
                     {w.topic_name}
                   </h3>
-                  <div className="flex items-center gap-4 text-xs text-[var(--vb-text-muted)]">
+                  <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-[var(--vb-text-muted)]">
                     <span className="flex items-center gap-1">
                       <Users size={12} />
                       {completedCount} {completedCount === 1 ? "submission" : "submissions"}
                     </span>
+                    {practiceCount > 0 && (
+                      <span className="flex items-center gap-1 text-fuchsia-600 font-bold">
+                        <Target size={12} />
+                        {practiceCount} {practiceCount === 1 ? "practice round" : "practice rounds"}
+                      </span>
+                    )}
                     {latest && (
                       <span className="flex items-center gap-1">
                         <Clock size={12} />
@@ -315,10 +380,12 @@ const WorksheetList: React.FC<{
 // ─────────────────────────────────────────────────────────────────────
 // Screen 2: per-worksheet attempts list with expandable rows.
 // ─────────────────────────────────────────────────────────────────────
-const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> = ({
-  worksheet,
-  attempts,
-}) => {
+const WorksheetDetail: React.FC<{
+  worksheet: Worksheet;
+  attempts: Attempt[];
+  childWorksheets: Worksheet[];
+  attemptsBySlug: Map<string, Attempt[]>;
+}> = ({ worksheet, attempts, childWorksheets, attemptsBySlug }) => {
   const { language } = useLanguage();
   const shareT = shareWorksheetT[language];
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -341,6 +408,26 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
   const retryLang: WorksheetLang =
     worksheet.settings?.language ?? (language === "en" ? "he" : language);
   const completed = attempts.filter((a) => a.completed_at);
+
+  // Per-student practice rounds — same browser fingerprint linking the
+  // parent attempt to any completed child attempts. Sorted oldest-first
+  // so the progression reads chronologically (Practice 1 → Practice 2 →…).
+  const practiceByFingerprint = useMemo(() => {
+    const map = new Map<string, Attempt[]>();
+    for (const child of childWorksheets) {
+      const childAttempts = attemptsBySlug.get(child.slug) ?? [];
+      for (const a of childAttempts) {
+        if (!a.completed_at || !a.fingerprint) continue;
+        const arr = map.get(a.fingerprint);
+        if (arr) arr.push(a);
+        else map.set(a.fingerprint, [a]);
+      }
+    }
+    for (const arr of map.values()) {
+      arr.sort((a, b) => (a.completed_at ?? "").localeCompare(b.completed_at ?? ""));
+    }
+    return map;
+  }, [childWorksheets, attemptsBySlug]);
   const avgPct =
     completed.length > 0
       ? Math.round(
@@ -433,6 +520,9 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
           {completed.map((a) => {
             const pct = a.total > 0 ? Math.round((a.score / a.total) * 100) : 0;
             const isOpen = expandedId === a.id;
+            const practiceRounds = a.fingerprint
+              ? practiceByFingerprint.get(a.fingerprint) ?? []
+              : [];
             // Score colour bands match the gradebook — green ≥ 80, amber
             // 60-79, rose < 60.  Keeps a teacher's mental colour map
             // consistent across the product.
@@ -461,6 +551,12 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
                       {a.completed_at ? formatRelative(a.completed_at) : "—"}
                       {a.duration_ms != null && ` · ${formatDuration(a.duration_ms)}`}
                     </p>
+                    {practiceRounds.length > 0 && (
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-fuchsia-600 mt-1">
+                        + {practiceRounds.length}{" "}
+                        {practiceRounds.length === 1 ? "practice round" : "practice rounds"}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right shrink-0">
                     <p className={`text-2xl font-black tabular-nums ${scoreColor}`}>{pct}%</p>
@@ -489,6 +585,9 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
                         attempt={a}
                         onSendRetry={() => setRetryFor(a)}
                       />
+                      {practiceRounds.length > 0 && (
+                        <PracticeRounds firstAttempt={a} rounds={practiceRounds} />
+                      )}
                       <AnswerBreakdown answers={a.answers} />
                     </motion.div>
                   )}
@@ -508,6 +607,7 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
             ),
           }}
           defaultLang={retryLang}
+          parentSlug={worksheet.slug}
           onClose={() => setRetryFor(null)}
         />
       )}
@@ -594,6 +694,91 @@ const AttemptSummary: React.FC<{
           <Send size={14} />
           Send retry worksheet
         </motion.button>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// Practice rounds — strip beneath the per-mode summary that shows the
+// student's progression on follow-up worksheets the teacher minted from
+// their missed words. Linked by browser fingerprint, oldest-first, so
+// the teacher reads the storyline left-to-right: first attempt at the
+// parent, then practice 1, then practice 2…
+// ─────────────────────────────────────────────────────────────────────
+const PracticeRounds: React.FC<{
+  firstAttempt: Attempt;
+  rounds: Attempt[];
+}> = ({ firstAttempt, rounds }) => {
+  const firstPct =
+    firstAttempt.total > 0 ? Math.round((firstAttempt.score / firstAttempt.total) * 100) : 0;
+  // The parent + every round laid out as a sequence so the rendered
+  // chip strip reads as one timeline rather than "original score" +
+  // separate "rounds" sections. Last round wins the "best so far" badge.
+  const timeline = useMemo(
+    () => [
+      { label: "First attempt", pct: firstPct, score: firstAttempt.score, total: firstAttempt.total, isFirst: true },
+      ...rounds.map((r, i) => ({
+        label: `Practice ${i + 1}`,
+        pct: r.total > 0 ? Math.round((r.score / r.total) * 100) : 0,
+        score: r.score,
+        total: r.total,
+        isFirst: false,
+      })),
+    ],
+    [firstAttempt, firstPct, rounds],
+  );
+  const latest = timeline[timeline.length - 1];
+  const delta = latest.pct - firstPct;
+
+  return (
+    <div className="p-3 sm:p-4 bg-fuchsia-50 border-t border-fuchsia-100">
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-fuchsia-700">
+          Practice progression
+        </p>
+        {delta !== 0 && (
+          <span
+            className={`text-[10px] font-black tabular-nums px-1.5 py-0.5 rounded-full ${
+              delta > 0
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-rose-100 text-rose-700"
+            }`}
+          >
+            {delta > 0 ? "+" : ""}
+            {delta} pts
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 overflow-x-auto -mx-3 sm:-mx-4 px-3 sm:px-4 pb-1">
+        {timeline.map((step, i) => {
+          const color =
+            step.pct >= 80
+              ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+              : step.pct >= 60
+                ? "border-amber-300 bg-amber-50 text-amber-700"
+                : "border-rose-300 bg-rose-50 text-rose-700";
+          return (
+            <div key={i} className="flex items-center gap-1.5 shrink-0">
+              <div
+                className={`min-w-[88px] rounded-xl border px-2.5 py-1.5 text-center ${color}`}
+              >
+                <p className="text-[9px] uppercase tracking-widest font-bold opacity-80">
+                  {step.label}
+                </p>
+                <p className="text-base font-black tabular-nums leading-tight">
+                  {step.pct}%
+                </p>
+                <p className="text-[10px] font-bold tabular-nums opacity-80">
+                  {step.score}/{step.total}
+                </p>
+              </div>
+              {i < timeline.length - 1 && (
+                <ChevronRight size={14} className="text-fuchsia-400 shrink-0" />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
