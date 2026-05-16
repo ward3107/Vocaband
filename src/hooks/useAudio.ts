@@ -332,6 +332,14 @@ export const useAudio = (options: UseAudioOptions = {}) => {
       }
       wordCache[key] = new Howl({
         src: [getAudioUrl(wordId, lang)],
+        // HTML5 <audio> playback instead of howler's default Web Audio path.
+        // Web Audio mode uses XHR to fetch the file, which triggers a CORS
+        // preflight — R2's *.r2.dev public bucket doesn't return
+        // Access-Control-Allow-Origin, so every word fetch was blocked in
+        // production. HTML5 mode bypasses the preflight; we don't need Web
+        // Audio features (sprites, gain, panning) for single-word playback.
+        html5: true,
+        format: ['mp3'],
         preload: true,
         onloaderror: () => {
           console.warn(`Audio load failed for ${key}`)
@@ -454,6 +462,10 @@ export const useAudio = (options: UseAudioOptions = {}) => {
       if (!motivationalCache[key]) {
         motivationalCache[key] = new Howl({
           src: [getMotivationalUrl(key)],
+          // See word Howl above — html5 mode avoids the CORS preflight against
+          // R2's *.r2.dev public bucket.
+          html5: true,
+          format: ['mp3'],
           preload: true,
           onloaderror: () => { delete motivationalCache[key] },
         })
@@ -473,6 +485,10 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     if (!motivationalCache[key]) {
       motivationalCache[key] = new Howl({
         src: [getMotivationalUrl(key)],
+        // See word Howl above — html5 mode avoids the CORS preflight against
+        // R2's *.r2.dev public bucket.
+        html5: true,
+        format: ['mp3'],
         preload: true,
         onloaderror: () => { delete motivationalCache[key] },
       })
