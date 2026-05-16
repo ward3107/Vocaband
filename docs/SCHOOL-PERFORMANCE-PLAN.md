@@ -150,29 +150,29 @@ from local and refreshes in the background.
 
 ### R2 — Online/offline indicator + sync toast
 
-**Status:** 📋 not started · **Why:** The write queue does the right thing
+**Status:** ✅ shipped 2026-05-16 · **Why:** The write queue does the right thing
 silently. Teachers and students don't *know* it's working, so a Wi-Fi
 drop feels like a freeze even when it isn't. A subtle indicator + a
 "saved locally, will sync" toast closes the perception gap.
 
-- [ ] `src/hooks/useOnlineStatus.ts` — `navigator.onLine` + `online`/
-  `offline` listeners, returns `{ online: boolean, since: number }`.
-- [ ] Tiny global indicator (top-left or in the existing header) when
-  offline: amber dot + i18n string "Offline — your work is being saved
-  locally" (EN/HE/AR via `useLanguage`).
-- [ ] In `enqueueQuickPlaySave` + `enqueueAssignmentSave`, when the
-  immediate flush fails: surface a `toast.info` "Saved locally — will
-  sync when online". When the queue successfully drains: toast.success
-  "All progress synced".
-- [ ] Use the existing toast system (search `src/` for the current one
-  — probably hand-rolled in `App.tsx`).
+- [x] `src/hooks/useOnlineStatus.ts` — returns a `boolean`, wraps
+  `navigator.onLine` and the `online`/`offline` window events.
+- [x] `src/components/OfflineIndicator.tsx` — amber pill, RTL-aware,
+  EN/HE/AR strings inline. Mounted globally via `cookieBannerOverlay`
+  in `App.tsx` so it appears on every public/student/teacher view.
+- [x] Generic depth-subscription in `saveQueue.ts` — kept the module
+  dependency-free. App.tsx's `useEffect` listens and fires toasts:
+  "Saved locally" only when `navigator.onLine === false` (avoids noise
+  on transient depth bumps), "All progress synced" on drain-to-zero.
+- [x] Reused the existing hand-rolled toast system in App.tsx — three
+  new i18n strings added to `app-toasts.ts` (en/he/ar).
 
 **Verify:**
 1. DevTools → Offline → finish a game. Toast shows "Saved locally".
 2. Toggle back online — toast shows "All progress synced".
 3. Indicator dot appears/disappears with the network event.
 
-**Commit:** `feat(offline-ui): online indicator + sync toasts` — SHA: `____`
+**Commit:** `feat(offline-ui): online indicator + queue sync toasts` — SHA: `ec0c4eb`
 
 ---
 
@@ -203,17 +203,25 @@ unless R1 and R2 are already shipped.
 
 ### R4 — Edge cache rules in the Cloudflare Worker
 
-**Status:** 📋 not started · **Why:** Move read-mostly responses to the
+**Status:** ✅ shipped 2026-05-16 (commit `a309557`) · **Why:** Move read-mostly responses to the
 edge so Israeli users pay edge latency (~20 ms) instead of Supabase
 Frankfurt (~80 ms+).
 
-- [ ] In `worker/index.ts`, add cache rules for stable read endpoints
-  exposed via `/api/*`. Cache key MUST vary on `Authorization` header
-  so authenticated responses never leak across users.
-- [ ] Use `cf.cacheTtl` + `s-maxage` + `stale-while-revalidate` so
-  cache misses still serve quickly while revalidating.
-- [ ] Confirm Brotli is on for `*.js` and `*.json` responses.
-- [ ] Add `<link rel="preconnect">` for the Supabase origin in `index.html`.
+- [x] `worker/index.ts` now edge-caches GET `/api/features` and
+  `/api/version` for 60 s with a 300 s stale-while-revalidate
+  window. Limited to public, no-PII endpoints — auth-bearing
+  endpoints intentionally NOT cached at the edge (they cache
+  client-side via R1's readCache instead).
+- [x] All other `/api/*` responses are now wrapped with
+  `Vary: Authorization` as defence-in-depth. A future cache rule
+  added by mistake can't cross-contaminate users on shared classroom
+  devices.
+- [ ] Brotli check deferred — Cloudflare enables it by default for
+  text MIME types. Verify with `curl -I` after deploy.
+- [x] Added `<link rel="preconnect">` to `auth.vocaband.com` (the
+  Supabase custom-domain CNAME) in `index.html`. Pre-warms TLS so the
+  first supabase-js call after bootstrap doesn't pay the handshake
+  on the user's critical path.
 
 **Verify:**
 1. `curl -I https://www.vocaband.com/api/...` shows `cf-cache-status: HIT`
@@ -222,7 +230,7 @@ Frankfurt (~80 ms+).
    (no leakage).
 3. Response headers show `content-encoding: br`.
 
-**Commit:** `perf(edge): cache rules + preconnect` — SHA: `____`
+**Commit:** `perf(edge): supabase preconnect + cautious /api edge cache` — SHA: `a309557`
 
 ---
 
@@ -356,3 +364,7 @@ If anything in Tier 1 breaks production:
   `vite.config.ts:30-315`, lazy views throughout `App.tsx`, write queue in
   `core/saveQueue.ts`). Replaced day-1-4 checklists with R1…R5 by impact:
   read cache → offline UI → entry trim (optional) → edge cache → measure.
+- 2026-05-16 (later still) — **R1, R2, R4 shipped.** Read cache + offline UI
+  + edge cache/preconnect all live on branch. R3 (entry trim) skipped as
+  per-plan-prioritisation (optional, low ROI for school demo). R5 (Slow-4G
+  audit) is the remaining work — needs a real browser, can't be done in CI.
