@@ -226,7 +226,7 @@ import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { completeTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
 import { persistHebrewScore, type HebrewMode } from "./handlers/hebrewScore";
-import { grantRetentionXp } from "./handlers/retentionGrants";
+import { grantRetentionXp, applyServerRewards, grantNonXpReward } from "./handlers/retentionGrants";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -2755,36 +2755,12 @@ export default function App() {
           onGrantXp={(amount, reason) =>
             grantRetentionXp(amount, reason, { user, setXp, showToast })
           }
-          onApplyServerRewards={({ xpToAdd, badgesToAppend }) => {
-            // Teacher-given rewards arrive already-applied on the server
-            // (award_reward RPC increments users.xp and appends badges in
-            // the same transaction as the teacher_rewards insert).  This
-            // callback exists to sync the dashboard's LOCAL snapshot to
-            // the DB when RewardInboxCard detects a newly-polled reward.
-            // Writing to Supabase here would double-count — do NOT.
-            if (xpToAdd > 0) setXp(prev => prev + xpToAdd);
-            if (badgesToAppend.length > 0) {
-              setBadges(prev => {
-                const next = [...prev];
-                for (const b of badgesToAppend) {
-                  if (!next.includes(b)) next.push(b);
-                }
-                return next;
-              });
-            }
-          }}
-          onGrantReward={(kind, value) => {
-            // Apply a non-XP reward (title/frame/avatar unlock) into
-            // user state + DB.  Gets called from the pet milestone claim.
-            if (!user) return;
-            if (kind === 'unlock_avatar') {
-              setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), String(value)] } : prev);
-            } else if (kind === 'unlock_title') {
-              setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `title_${value}`] } : prev);
-            } else if (kind === 'unlock_frame') {
-              setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${value}`] } : prev);
-            }
-          }}
+          onApplyServerRewards={({ xpToAdd, badgesToAppend }) =>
+            applyServerRewards(xpToAdd, badgesToAppend, { setXp, setBadges })
+          }
+          onGrantReward={(kind, value) =>
+            grantNonXpReward(kind, value, { user, setUser })
+          }
           onRenameDisplayName={renameStudentDisplayName}
           structure={structure}
           celebrateStructureKeys={celebrateStructureKeys}

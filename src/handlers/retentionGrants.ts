@@ -12,6 +12,7 @@
  */
 import type React from 'react';
 import { supabase, type AppUser } from '../core/supabase';
+import type { PetRewardKind } from '../constants/game';
 
 export interface GrantRetentionXpDeps {
   user: AppUser | null;
@@ -40,4 +41,62 @@ export function grantRetentionXp(
       });
   }
   showToast(reason, 'success');
+}
+
+export interface ApplyServerRewardsDeps {
+  setXp: React.Dispatch<React.SetStateAction<number>>;
+  setBadges: React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+/**
+ * Sync the dashboard's LOCAL XP + badges snapshot to a server-applied
+ * teacher-reward burst.  The award_reward RPC already incremented
+ * users.xp and appended badges in the same transaction as the
+ * teacher_rewards insert — writing to Supabase here would double-count.
+ * Called from RewardInboxCard when polling detects new rewards.
+ */
+export function applyServerRewards(
+  xpToAdd: number,
+  badgesToAppend: string[],
+  deps: ApplyServerRewardsDeps,
+): void {
+  if (xpToAdd > 0) deps.setXp((prev) => prev + xpToAdd);
+  if (badgesToAppend.length > 0) {
+    deps.setBadges((prev) => {
+      const next = [...prev];
+      for (const b of badgesToAppend) {
+        if (!next.includes(b)) next.push(b);
+      }
+      return next;
+    });
+  }
+}
+
+export interface GrantNonXpRewardDeps {
+  user: AppUser | null;
+  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
+}
+
+/**
+ * Apply a non-XP reward (title/frame/avatar unlock) into local user
+ * state.  Called from pet-milestone claims; the DB row is already
+ * authoritative by the time we get here.  'xp' is a valid PetRewardKind
+ * but flows through grantRetentionXp, not this path.
+ */
+export function grantNonXpReward(
+  kind: PetRewardKind,
+  value: number | string,
+  deps: GrantNonXpRewardDeps,
+): void {
+  if (!deps.user) return;
+  let tagged: string | null = null;
+  if (kind === 'unlock_avatar') tagged = String(value);
+  else if (kind === 'unlock_title') tagged = `title_${value}`;
+  else if (kind === 'unlock_frame') tagged = `frame_${value}`;
+  if (!tagged) return;
+  deps.setUser((prev) =>
+    prev
+      ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), tagged as string] }
+      : prev,
+  );
 }
