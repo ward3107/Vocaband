@@ -36,6 +36,38 @@ Applied to production via MCP, in order:
 
 Verified via DB introspection that the 3 local June files (`20260609_vocabagrut`, `20260610_school_inquiries`, `20260611_teacher_plan_and_trial`) were pure duplicates of earlier-applied versions (`20260506130131_vocabagrut`, `20260507104138_school_inquiries`, `20260507121937_teacher_plan_and_trial`). Deleted the duplicates from local repo (commit `f07b76d`).
 
+## ✅ DONE 2026-05-16 — Supabase GoTrue auth rate-limits verified
+
+Walked the operator through every Auth → Rate Limits, Auth → Sessions,
+and Project Settings → JWT Keys field. All at safe defaults:
+
+```
+Rate Limits        emails           30/h            (built-in SMTP fallback; we use Resend)
+                   sms              30/h            (unused)
+                   token refreshes  150 / 5 min     (= 1800/h per IP)
+                   otp verifies     30 / 5 min      (= 360/h per IP)
+                   anon sign-ins    30/h
+                   signup+signin    30 / 5 min      (= 360/h per IP)
+                   web3             30 / 5 min      (unused)
+
+Sessions           refresh reuse    10 s            (network-jitter tolerance)
+                   compromise detect  ON
+                   single-session    OFF            (students use phone + class PC)
+                   time-box         0 (never)
+                   inactivity       0 (never)
+
+JWT Keys (legacy)  JWT expiry       3600 s (1 h)    (blast-radius bound)
+```
+
+Operator walkthrough: `docs/auth-rate-limits.md`. hCaptcha was
+deliberately left OFF — codebase has zero `captchaToken` call sites,
+flipping it on would break teacher OTP + student PIN login.
+
+If a school ever reports "we can't all log in at once" from a shared
+NAT, raise signup+signin to 60/5min — don't tighten it.
+
+---
+
 ## ✅ DONE 2026-05-07 — June feature migration backlog
 
 Applied to production via MCP, in dependency order:
@@ -142,26 +174,15 @@ Fly Starter has no cold starts but still good belt-and-suspenders.
 
 ---
 
-## 5. Verify Supabase GoTrue auth rate limits (10 min)
+## 5. Future engineering follow-up — passive PIN-attempt logging
 
-**Step-by-step walkthrough:** `docs/auth-rate-limits.md`. Open that doc,
-follow §1–§2, done.
+Not an operator task — engineering. The DONE block above closes the
+2026-05-14 share-invite security follow-up.
 
-Short version: every default in Auth → Rate Limits and Auth → Sessions
-is already at the conservative-end-for-a-public-app value (sign-ins
-30/h/IP, OTP verifies 30/5min/IP, JWT 1h, refresh 1w). **Verify, don't
-tighten.** Going lower would DoS a 30-student class on a shared school
-NAT — analysis in `docs/teacher-share-invites-plan.md` §6.
-
-**Do NOT enable hCaptcha** from Auth → Settings — `src/` has zero
-`captchaToken` call sites, so flipping it on breaks teacher OTP and
-student PIN login immediately. Pre-requisite frontend wiring is described
-in `docs/auth-rate-limits.md` §3.
-
-Future engineering follow-up (not for an operator): passive logging
-table `student_pin_attempts` with success/fail rows so teachers can
-later see "Sara had 7 failed attempts today" without any automatic
-lockout.
+Add a `student_pin_attempts` table with success/fail rows so teachers
+can later see "Sara had 7 failed attempts today" without any automatic
+lockout (we deliberately rejected per-account lockout — see
+`docs/teacher-share-invites-plan.md` §6 for why).
 
 ---
 
