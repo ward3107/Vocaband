@@ -41,23 +41,26 @@ export function initSentry(): void {
     // we don't want localhost stack traces clogging the project.
     enabled: import.meta.env.PROD,
     environment: import.meta.env.MODE,
-    integrations: [
-      // Browser tracing — captures Web Vitals (LCP, CLS, INP, TTFB)
-      // and page-load / navigation transactions, the data we need
-      // for R5's post-school-demo performance audit.  Trace headers
-      // are only attached to our own origins so we don't leak
-      // sampling state into third-party services.
-      Sentry.browserTracingIntegration({
-        tracePropagationTargets: [
-          /^\//,
-          /^https:\/\/(?:www\.|api\.|auth\.|audio\.)?vocaband\.com/,
-          /^https:\/\/.*\.supabase\.co/,
-        ],
-      }),
-    ],
+    // browserTracingIntegration is added lazily after first paint
+    // (see addBrowserTracingLazy below) so its ~25 kB of perf-API
+    // instrumentation doesn't sit on the critical path.  Without it
+    // here Sentry still captures errors normally; tracing kicks in
+    // a few hundred ms later, which is fine since the spans we care
+    // about are page-load / nav transitions that the integration
+    // back-fills from the Performance Timeline.
+    integrations: [],
     // 5% performance sampling — enough to spot slow pageloads without
     // burning through the free-tier event quota.
     tracesSampleRate: 0.05,
+    // tracePropagationTargets is a top-level option (not a
+    // browserTracingIntegration option) — it controls which outbound
+    // requests get sentry-trace headers attached regardless of when
+    // the tracing integration is added.
+    tracePropagationTargets: [
+      /^\//,
+      /^https:\/\/(?:www\.|api\.|auth\.|audio\.)?vocaband\.com/,
+      /^https:\/\/.*\.supabase\.co/,
+    ],
     // Replay sample rates picked up by the lazily-added replay
     // integration (see addReplayIntegrationLazy).  Setting them here
     // means the integration starts honouring them the instant it
@@ -88,6 +91,36 @@ export function initSentry(): void {
     // Don't send default PII (cookies, IP). We attach the Supabase uid
     // explicitly via setSentryUser() when a teacher/student signs in.
     sendDefaultPii: false,
+  });
+}
+
+/** Add Sentry's browserTracing integration after first paint.
+ *
+ * Tracing instrumentation (Performance Observer wiring, fetch/xhr
+ * patching, web-vitals collection) is ~25 kB gzipped.  Holding it
+ * out of `Sentry.init`'s eager integration list and adding it from
+ * a requestIdleCallback keeps it off the critical path while still
+ * back-filling the page-load transaction via the Performance Timeline.
+ */
+export function addBrowserTracingLazy(): void {
+  if (!import.meta.env.PROD) return;
+  if (typeof window === "undefined") return;
+
+  const schedule = (cb: () => void): void => {
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    if (typeof ric === "function") {
+      ric(cb, { timeout: 5000 });
+    } else {
+      setTimeout(cb, 1500);
+    }
+  };
+
+  schedule(() => {
+    try {
+      Sentry.addIntegration(Sentry.browserTracingIntegration());
+    } catch {
+      // Best-effort.
+    }
   });
 }
 

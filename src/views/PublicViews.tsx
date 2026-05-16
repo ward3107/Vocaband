@@ -15,7 +15,7 @@
  * views.  App.tsx keeps its early-return pattern — the helper just
  * moves the JSX out of the main render body.
  */
-import type { ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import type { View } from "../core/views";
 import type { AppUser } from "../core/supabase";
 import {
@@ -28,10 +28,13 @@ import {
   DemoModeWrapper,
   AccessibilityStatementWrapper,
 } from "../components/LazyComponents";
-import TeacherLoginView from "./TeacherLoginView";
-import FloatingButtons from "../components/FloatingButtons";
-import InteractiveWorksheetView from "./InteractiveWorksheetView";
-import { useEffect } from "react";
+// TeacherLoginView, FloatingButtons, InteractiveWorksheetView are
+// only used on specific routes — lazy-loading keeps them out of the
+// App.tsx chunk so the landing page first-paint isn't paying for
+// teacher-login / worksheet code it doesn't need.
+const TeacherLoginView = lazy(() => import("./TeacherLoginView"));
+const FloatingButtons = lazy(() => import("../components/FloatingButtons"));
+const InteractiveWorksheetView = lazy(() => import("./InteractiveWorksheetView"));
 
 type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status";
 
@@ -143,7 +146,9 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     // up the resulting session and routes to the dashboard.
     return (
       <>
-        <TeacherLoginView onBack={goBack} />
+        <Suspense fallback={null}>
+          <TeacherLoginView onBack={goBack} />
+        </Suspense>
         {cookieBannerOverlay}
       </>
     );
@@ -194,7 +199,9 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     };
     return (
       <>
-        <InteractiveWorksheetView slug={slug} onBack={handleBack} />
+        <Suspense fallback={null}>
+          <InteractiveWorksheetView slug={slug} onBack={handleBack} />
+        </Suspense>
         {cookieBannerOverlay}
       </>
     );
@@ -269,7 +276,9 @@ function LandingPageWithScrollRestore({
         />
       )}
       {cookieBannerOverlay}
-      <FloatingButtons showBackToTop={true} />
+      <Suspense fallback={null}>
+        <FloatingButtons showBackToTop={true} />
+      </Suspense>
     </>
   );
 }
