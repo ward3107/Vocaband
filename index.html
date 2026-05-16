@@ -74,22 +74,29 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=3" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=3" />
     <link rel="apple-touch-icon" href="/icon-192.png?v=3" />
-    <!-- Pre-React boot styles (loader + noscript fallback). External file
-         so the page CSP can drop `unsafe-inline` from `style-src-elem`. -->
+    <!-- Pre-React boot styles (loader + noscript fallback).
+         vite.config.ts's vocabandHtmlPerf plugin inlines /public/boot.css
+         here at build time as a <style> block so the initial render
+         doesn't pay a network round-trip for ~900 bytes of loader CSS on
+         Slow 4G. CSP allows inline styles (`style-src-elem 'unsafe-inline'`).
+         In `vite dev` the placeholder below stays as-is and the dev server
+         serves /boot.css normally — the inline-CSS effect only matters
+         under production network latency. -->
+    <!-- VOCABAND_INLINE_BOOT_CSS -->
     <link rel="stylesheet" href="/boot.css" />
     <!-- Google Fonts — preconnect warms the TLS handshake to both the
          CSS host (fonts.googleapis.com) and the font-file host
          (fonts.gstatic.com, hence crossorigin) so the stylesheet +
          WOFF2s return faster, especially on slower school networks
-         where the initial Google handshake takes 200-500 ms.  We keep
-         a regular blocking <link rel="stylesheet"> because the page
-         CSP (_headers) is strict — no `unsafe-inline` on `script-src`
-         means we can't use the `onload="this.media='all'"` swap trick
-         without ALSO adding an external loader, which is more code +
-         a CSP exception for marginal extra gain.  `display=swap`
-         already lets text paint in fallback fonts while the WOFF2
-         downloads, so first paint isn't actually blocked on bytes —
-         only on the small CSS file. -->
+         where the initial Google handshake takes 200-500 ms.
+
+         The Latin font <link> below uses media="print" so the CSS
+         downloads in the background WITHOUT render-blocking the page.
+         boot-debug.js swaps the media attribute back to "all" once the
+         CSS arrives. CSP (`script-src 'self'`) blocks inline onload
+         handlers, so the external swap is the workaround. font-display
+         is :swap so fallback text renders immediately and web fonts
+         swap in when ready — first paint never waits on a font request. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Supabase auth + REST + storage origin.  Pre-warming the TLS
@@ -106,8 +113,21 @@
          injects them dynamically when the visitor's saved language or
          browser preference is HE/AR. English visitors (the majority of
          landing-page traffic) no longer pay for the Google Fonts CSS
-         round-trip for fonts they will never see characters of. -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@400;500;700;900&display=swap" rel="stylesheet"/>
+         round-trip for fonts they will never see characters of.
+
+         media="print" + data-vocaband-defer-style hook = boot-debug.js
+         promotes this to media="all" once the CSS lands, so it never
+         render-blocks. <noscript> fallback ensures users without JS
+         still get web fonts. -->
+    <link
+      data-vocaband-defer-style="latin-fonts"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+      media="print"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@400;500;700;900&display=swap" rel="stylesheet"/>
+    </noscript>
     <!-- Pre-computed RTL fonts URL so boot-debug.js can inject it as a
          single <link> without string-building. Kept as a meta tag so
          CSP `style-src` doesn't have to allow inline href construction. -->
