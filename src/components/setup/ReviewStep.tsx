@@ -45,6 +45,10 @@ export interface ReviewStepProps {
    *  is an assignment with a deadline set. */
   enableCompetition?: boolean;
   onCompetitionChange?: (enabled: boolean) => void;
+  /** Called when the teacher taps the competition toggle without
+   *  having set a deadline.  SetupWizard bounces them back to step 2
+   *  with the deadline picker highlighted. */
+  onRequestDeadline?: () => void;
 }
 
 export const ReviewStep: React.FC<ReviewStepProps> = ({
@@ -65,6 +69,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   aiGeneratedLesson,
   enableCompetition = false,
   onCompetitionChange,
+  onRequestDeadline,
 }) => {
   const { language } = useLanguage();
   const t = teacherWizardsT[language];
@@ -353,27 +358,51 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       )}
 
       {/* Competition toggle — only meaningful for assignments that have
-          a deadline (the deadline IS the competition end).  When no
-          deadline is set we render the toggle disabled with a hint
-          rather than hiding it, so teachers discover the feature. */}
+          a deadline (the deadline IS the competition end).  Without a
+          deadline the toggle becomes a button that bounces back to
+          step 2 with the deadline picker highlighted, instead of a
+          dead/disabled control. */}
       {isAssignment && onCompetitionChange && (() => {
         const hasDeadline = !!assignmentDeadline && !Number.isNaN(new Date(assignmentDeadline).getTime());
         const toggled = enableCompetition && hasDeadline;
+        const sharedClass = `w-full flex items-start gap-3 p-3 rounded-2xl border-2 transition-colors text-left ${
+          toggled
+            ? 'border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50'
+            : hasDeadline
+            ? 'border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-amber-300'
+            : 'border-amber-200 bg-amber-50/40 hover:border-amber-300 hover:bg-amber-50'
+        }`;
+        if (!hasDeadline) {
+          return (
+            <button
+              type="button"
+              onClick={onRequestDeadline}
+              className={`${sharedClass} cursor-pointer`}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+            >
+              <div className="w-5 h-5 mt-0.5 rounded border-2 border-amber-400 bg-white flex items-center justify-center shrink-0">
+                <Trophy size={11} className="text-amber-500" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5 text-sm font-bold text-[var(--vb-text-primary)]">
+                  <Trophy size={14} className="text-amber-500" />
+                  {tComp.enableLabel}
+                </div>
+                <p className="text-xs text-amber-700 font-semibold mt-0.5">
+                  {tComp.needsDeadline} →
+                </p>
+              </div>
+            </button>
+          );
+        }
         return (
           <label
-            className={`flex items-start gap-3 p-3 rounded-2xl border-2 transition-colors ${
-              !hasDeadline
-                ? 'border-stone-200 bg-stone-50 cursor-not-allowed opacity-70'
-                : toggled
-                ? 'border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 cursor-pointer'
-                : 'border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-[var(--vb-text-muted)] cursor-pointer'
-            }`}
+            className={`${sharedClass} cursor-pointer`}
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             <input
               type="checkbox"
               checked={toggled}
-              disabled={!hasDeadline}
               onChange={(e) => onCompetitionChange(e.target.checked)}
               className="w-5 h-5 mt-0.5 accent-amber-500 cursor-pointer"
             />
@@ -383,7 +412,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
                 {tComp.enableLabel}
               </div>
               <p className="text-xs text-[var(--vb-text-muted)] mt-0.5">
-                {hasDeadline ? tComp.enableHelp : tComp.needsDeadline}
+                {tComp.enableHelp}
               </p>
             </div>
           </label>

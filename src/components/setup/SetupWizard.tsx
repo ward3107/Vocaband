@@ -279,6 +279,16 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   // returns.  Only meaningful in assignment mode with a deadline set —
   // ReviewStep enforces the deadline gate visually.
   const [enableCompetition, setEnableCompetition] = useState(false);
+  // Pulse-highlight the Deadline picker in ConfigureStep when the
+  // teacher tapped the Competition toggle on Review without a deadline.
+  // Auto-clears after 4 seconds so it doesn't stay glowing forever if
+  // the teacher decides to do something else first.
+  const [highlightDeadline, setHighlightDeadline] = useState(false);
+  useEffect(() => {
+    if (!highlightDeadline) return;
+    const id = setTimeout(() => setHighlightDeadline(false), 4000);
+    return () => clearTimeout(id);
+  }, [highlightDeadline]);
 
   // Scroll the viewport to the top whenever the step changes. The old
   // AnimatePresence transition just swapped the content underneath,
@@ -534,6 +544,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
               onAiLessonChange={setAiGeneratedLesson}
               showToast={showToast}
               isProUser={isProUser}
+              highlightDeadline={highlightDeadline}
             />
           )}
 
@@ -557,6 +568,10 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
               aiGeneratedLesson={aiGeneratedLesson}
               enableCompetition={enableCompetition}
               onCompetitionChange={mode === 'assignment' ? setEnableCompetition : undefined}
+              onRequestDeadline={mode === 'assignment' ? () => {
+                setCurrentStep(2);
+                setHighlightDeadline(true);
+              } : undefined}
             />
           )}
         </AnimatePresence>
