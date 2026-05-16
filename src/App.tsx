@@ -3897,10 +3897,15 @@ export default function App() {
 
   if (view === "hot-seat") {
     // Pass-around classroom mode — one device, many players.  Owns its
-    // own setup screen + game loop + podium internally; nothing to thread
-    // beyond speakWord (for audio replay on the prompt) and a back
-    // handler (dashboard return).  Scores stay in-memory; no Supabase
-    // writes since the players aren't logged-in users.
+    // own setup screen + game loop + podium internally; we feed it the
+    // teacher's English assignments so they can pick one as the word
+    // pool (in addition to the curriculum Sets 1/2/3).  Scope to the
+    // selected class when one is set — usually the case since Hot Seat
+    // launches from the class wizard's tab strip.  Scores stay
+    // in-memory; no Supabase writes since the players aren't logged in.
+    const hotSeatAssignments = visibleAssignments
+      .filter(a => !selectedClass || a.classId === selectedClass.id)
+      .map(a => ({ id: a.id, title: a.title, wordIds: a.wordIds, words: a.words }));
     return (
       <LazyWrapper loadingMessage="Loading Hot Seat…">
         <HotSeatView
@@ -3915,6 +3920,7 @@ export default function App() {
             }
           }}
           speak={speakWord}
+          assignments={hotSeatAssignments}
         />
       </LazyWrapper>
     );
