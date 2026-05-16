@@ -225,6 +225,7 @@ import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { completeTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
+import { persistHebrewScore, type HebrewMode } from "./handlers/hebrewScore";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -2914,59 +2915,20 @@ export default function App() {
     }
   };
 
-  // Persist a Hebrew round's final score to the gradebook.  No-op
-  // when there's no active assignment (teacher solo-launch) or no
-  // logged-in user (shouldn't happen, but defensive).  Uses the
-  // same save_student_progress RPC the English flow uses, with
-  // empty mistakes + word_attempts arrays — Hebrew progress doesn't
-  // track per-question detail yet.
-  const saveHebrewScore = async (
-    mode: "niqqud" | "shoresh" | "synonym" | "listening",
-    score: number,
-    total: number,
-  ) => {
-    if (!user || !activeAssignment || !inHebrewAssignment) return;
-
-    // Hebrew Quick Play: push the round's raw score to the live podium
-    // so the teacher's QuickPlayMonitor leaderboard updates in real
-    // time.  Without this branch, only the gradebook recorded the
-    // round and every Hebrew student stayed at 0 pts on the projector.
-    // Mirrors what the English flow does via useGameFinish's
-    // quickPlaySocketUpdateScore callback — accumulate per-mode into
-    // the session-wide cumulative ref so consecutive modes don't
-    // regress and the server stops accepting updates.
-    if (QUICKPLAY_V2 && quickPlayActiveSession) {
-      qpCumulativeScoreRef.current += Math.max(0, score);
-      quickPlaySocket.updateScore(qpCumulativeScoreRef.current);
-    }
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const sessionUid = session?.user?.id;
-      const studentUid = sessionUid
-        ? (localStorage.getItem(`vocaband_student_${sessionUid}`) || sessionUid)
-        : user.uid;
-      // Normalise to a 0-100 percentage so the gradebook can compare
-      // Hebrew rounds against English (which already stores capped
-      // points).  Total is always > 0 here (we early-returned at
-      // round-build time when the pool was empty).
-      const pct = total > 0 ? Math.round((score / total) * 100) : 0;
-      await supabase.rpc("save_student_progress", {
-        p_student_name: user.displayName,
-        p_student_uid: studentUid,
-        p_assignment_id: activeAssignment.id,
-        p_class_code: user.classCode || "",
-        p_score: pct,
-        p_mode: mode,
-        p_mistakes: [],
-        p_avatar: user.avatar || "🦊",
-        p_word_attempts: [],
-      });
-    } catch (err) {
-      // Silent — same pattern as the English flow.  The student
-      // shouldn't see a network error after their score screen.
-      console.error("[VocaHebrew] save_student_progress failed:", err);
-    }
+  // Persist a Hebrew round's final score to the gradebook + (Quick
+  // Play V2) push cumulative score to the live podium.  Body lives in
+  // src/handlers/hebrewScore.ts; this wrapper supplies closure deps
+  // and the no-active-assignment guard.
+  const saveHebrewScore = (mode: HebrewMode, score: number, total: number) => {
+    if (!user || !activeAssignment || !inHebrewAssignment) return Promise.resolve();
+    return persistHebrewScore(mode, score, total, {
+      user,
+      activeAssignment,
+      quickPlayActiveSession,
+      qpCumulativeScoreRef,
+      quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
+      quickPlayV2Enabled: QUICKPLAY_V2,
+    });
   };
 
   if (view === "vocahebrew-niqqud") {
