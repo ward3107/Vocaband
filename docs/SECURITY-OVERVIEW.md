@@ -40,6 +40,7 @@ For deep technical detail, jump to the linked per-area docs.
 | Cross-origin headers (`COOP`, `X-Permitted-Cross-Domain-Policies`) | ✅ Added 2026-05-08 | Code |
 | CSP `script-src` cleanup (drop unused `cdn.jsdelivr.net`) | ✅ Done 2026-05-08 | Code |
 | CSP `unsafe-eval` + `unsafe-inline` removal (Phase 6) | ✅ Done 2026-05-08 | Code |
+| Supabase GoTrue auth rate limits + JWT expiry verified at defaults | ✅ Done 2026-05-16 (see `docs/auth-rate-limits.md`) | Operator |
 
 ---
 
