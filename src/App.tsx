@@ -222,6 +222,7 @@ import { generateAndStoreQuickPlayAiSentences } from "./utils/generateAndStoreQu
 import { createEnglishQuickPlaySession, createHebrewQuickPlaySession } from "./handlers/quickPlaySession";
 import { generateAiLesson, type AiLessonParams } from "./utils/aiLesson";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
+import { pickClassMinuteWords } from "./utils/classMinuteWords";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -2275,39 +2276,11 @@ export default function App() {
   // SET_2_WORDS as last resort.  See onStartClassMinute prop on
   // StudentDashboardView for the inline flow.
   const startClassMinute = useCallback(async () => {
-    const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
-    let seedWords: Word[] = [];
-    try {
-      const { data, error } = await supabase.rpc('get_due_reviews', {
-        p_today_local: today,
-        p_limit: 20,
-      });
-      if (!error && Array.isArray(data)) {
-        const dueIds = (data as Array<{ word_id: number }>).map(r => r.word_id);
-        seedWords = dueIds
-          .map(id => ALL_WORDS.find(w => w.id === id))
-          .filter((w): w is Word => Boolean(w));
-      }
-    } catch (err) {
-      console.error('[class-minute] get_due_reviews failed:', err);
-    }
-    if (seedWords.length < 15) {
-      const fallbackPool: Word[] = [];
-      const seen = new Set(seedWords.map(w => w.id));
-      for (const a of studentAssignments) {
-        const pool = a.words ?? a.wordIds.map(id => ALL_WORDS.find(w => w.id === id)).filter((w): w is Word => Boolean(w));
-        for (const w of pool) {
-          if (seen.has(w.id)) continue;
-          fallbackPool.push(w);
-          seen.add(w.id);
-        }
-        if (seedWords.length + fallbackPool.length >= 30) break;
-      }
-      seedWords = [...seedWords, ...fallbackPool];
-    }
-    if (seedWords.length < 4) {
-      seedWords = SET_2_WORDS.slice(0, 20);
-    }
+    const seedWords = await pickClassMinuteWords({
+      allWords: ALL_WORDS,
+      set2Words: SET_2_WORDS,
+      studentAssignments,
+    });
     setAssignmentWords(seedWords);
     setGameMode("class-minute");
     setIsFinished(false);
@@ -2722,20 +2695,14 @@ export default function App() {
   );
 
   // Shown when a logged-in user presses the hardware back button at the
-  // dashboard floor.  Tapping "Leave" exits the app by popping past the
-  // pad buffer; "Stay" dismisses the modal and keeps the user in place.
-  const handleExitConfirmLeave = () => {
-    // beginExitFlow closes the modal, suppresses popstate re-trap for
-    // ~500 ms, and resets history to public-landing.  Signing out is
-    // our concern — the hook stays agnostic of the auth client.
-    beginExitFlow();
-    supabase.auth.signOut().catch(() => {});
-  };
+  // dashboard floor.  "Leave" pops past the pad buffer + signs out;
+  // "Stay" dismisses.  beginExitFlow owns the history reset and
+  // popstate-suppression window — signOut is App's concern.
   const exitConfirmModal = (
     <ExitConfirmModal
       show={showExitConfirmModal}
       onStay={() => setShowExitConfirmModal(false)}
-      onLeave={handleExitConfirmLeave}
+      onLeave={() => { beginExitFlow(); supabase.auth.signOut().catch(() => {}); }}
       student={
         user?.role === 'student' && !user.isGuest
           ? { name: user.displayName || '', classCode: user.classCode ?? null }
