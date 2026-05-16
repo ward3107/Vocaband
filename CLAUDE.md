@@ -23,7 +23,7 @@ Don't read the full archive (`docs/session-history-*.md`) unless asked — too n
 
 Gameplay loop:
 - Teacher creates class → creates assignments (pick words or upload custom lists) → assigns modes
-- Students log in with class code (or Google OAuth) → play 10 game modes → earn XP, streaks, avatars, titles
+- Students log in with class code (or Google OAuth) → play 15 game modes → earn XP, streaks, avatars, titles
 - Teacher watches live-challenge leaderboards + analytics
 
 ---
