@@ -3877,6 +3877,7 @@ export default function App() {
         topicPacks={TOPIC_PACKS}
         user={user}
         onLogout={() => performUserLogout()}
+        isProUser={isPro(user)}
         // Sentence Builder config — without these props the Sentence
         // Difficulty buttons in ConfigureStep call an undefined handler
         // and silently no-op (user-reported "not clickable"), and the
