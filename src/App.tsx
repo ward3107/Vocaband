@@ -224,6 +224,7 @@ import { generateAiLesson, type AiLessonParams } from "./utils/aiLesson";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { completeTeacherOnboarding } from "./handlers/teacherOnboarding";
+import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -3166,58 +3167,21 @@ export default function App() {
           editingClass={editingClass}
           onEditClass={(c) => setEditingClass(c)}
           onCloseEditClass={() => setEditingClass(null)}
-          onSaveClassEdit={async (next) => {
-            if (!editingClass) return;
-            // Direct UPDATE — RLS already lets teachers modify their own
-            // classes (see migration 20260402_add_teacher_class_rls).
-            // class_id and class_code never change, so all foreign keys
-            // (assignments, progress, student_profiles) are preserved.
-            // School branding fields (added 20260512) are nullable so we
-            // either send a trimmed string or NULL — never an empty
-            // string, which would clutter the DB with meaningless rows.
-            const { error } = await supabase
-              .from('classes')
-              .update({
-                name: next.name,
-                avatar: next.avatar,
-                school_name: next.schoolName?.trim() || null,
-                school_logo_url: next.schoolLogoUrl?.trim() || null,
-              })
-              .eq('id', editingClass.id);
-            if (error) {
-              showToast('Could not save class changes. Please try again.', 'error');
-              return;
-            }
-            setClasses(prev => prev.map(c => c.id === editingClass.id
-              ? { ...c, name: next.name, avatar: next.avatar, schoolName: next.schoolName?.trim() || null, schoolLogoUrl: next.schoolLogoUrl?.trim() || null }
-              : c));
-            setEditingClass(null);
-            showToast('Class updated.', 'success');
-          }}
-          onNameChange={async (classId, newName) => {
-            const { error } = await supabase
-              .from('classes')
-              .update({ name: newName })
-              .eq('id', classId);
-            if (error) {
-              showToast('Could not update name. Please try again.', 'error');
-              return;
-            }
-            setClasses(prev => prev.map(c => c.id === classId ? { ...c, name: newName } : c));
-            showToast('Name updated.', 'success');
-          }}
-          onAvatarChange={async (classId, newAvatar) => {
-            const { error } = await supabase
-              .from('classes')
-              .update({ avatar: newAvatar })
-              .eq('id', classId);
-            if (error) {
-              showToast('Could not update avatar. Please try again.', 'error');
-              return;
-            }
-            setClasses(prev => prev.map(c => c.id === classId ? { ...c, avatar: newAvatar } : c));
-            showToast('Avatar updated.', 'success');
-          }}
+          onSaveClassEdit={(next) =>
+            editingClass
+              ? saveClassEdit(editingClass.id, next, {
+                  setClasses,
+                  showToast,
+                  onSuccess: () => setEditingClass(null),
+                })
+              : Promise.resolve()
+          }
+          onNameChange={(classId, newName) =>
+            renameClass(classId, newName, { setClasses, showToast })
+          }
+          onAvatarChange={(classId, newAvatar) =>
+            changeClassAvatar(classId, newAvatar, { setClasses, showToast })
+          }
           onEditAssignment={(assignment, c) => {
             setEditingAssignment(assignment);
             const knownIds = assignment.wordIds.filter(id => ALL_WORDS.some(w => w.id === id));
