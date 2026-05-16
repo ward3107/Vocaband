@@ -1,6 +1,28 @@
 // Audio hook for playing word pronunciation (motivational sounds removed)
-import { Howl } from 'howler'
+//
+// howler is imported dynamically — its 35 kB raw / 10 kB gz module was
+// previously pulled into the App.tsx eager preload chain because this
+// hook is statically imported from App.tsx. On landing-page first paint
+// no audio ever plays, so paying for howler upfront wasted bandwidth on
+// every visitor. The ensureHowl() singleton below loads the library on
+// the first speak/preload/playMotivational call — the open-network
+// latency of an MP3 fetch (~100–300 ms on school Wi-Fi) more than masks
+// howler's load time, so the user never perceives the deferred fetch.
+import type { Howl as HowlType } from 'howler'
 import { getWordAudioUrl } from '../utils/audioUrl'
+
+let HowlCtor: typeof HowlType | null = null
+let howlLoadPromise: Promise<typeof HowlType> | null = null
+const ensureHowl = (): Promise<typeof HowlType> => {
+  if (HowlCtor) return Promise.resolve(HowlCtor)
+  if (!howlLoadPromise) {
+    howlLoadPromise = import('howler').then(m => {
+      HowlCtor = m.Howl
+      return m.Howl
+    })
+  }
+  return howlLoadPromise
+}
 
 // Vocab subject — drives MP3 bucket choice (sound/ vs sound-hebrew/) and
 // browser TTS voice/lang. English is the historical default; Hebrew is
@@ -11,13 +33,13 @@ type AudioCacheKey = `${AudioLang}-${number}`
 const audioKey = (lang: AudioLang, id: number): AudioCacheKey => `${lang}-${id}`
 
 const MAX_WORD_CACHE_SIZE = 100
-const wordCache: Record<AudioCacheKey, Howl> = {}
+const wordCache: Record<AudioCacheKey, HowlType> = {}
 const wordCacheOrder: AudioCacheKey[] = [] // LRU tracking
-const motivationalCache: Record<string, Howl> = {}
+const motivationalCache: Record<string, HowlType> = {}
 const failedWordKeys = new Set<AudioCacheKey>() // Track words that failed to load
 
 // Motivational sounds removed - these are now no-ops
-let currentMotivational: Howl | null = null
+let currentMotivational: HowlType | null = null
 const onMotivationalEndListeners: Array<() => void> = []
 
 // ── Voice Selection for High-Quality TTS ──────────────────────────────────────
@@ -330,33 +352,49 @@ export const useAudio = (options: UseAudioOptions = {}) => {
         wordCache[evictKey]?.unload()
         delete wordCache[evictKey]
       }
-      wordCache[key] = new Howl({
-        src: [getAudioUrl(wordId, lang)],
-        // HTML5 <audio> playback instead of howler's default Web Audio path.
-        // Web Audio mode uses XHR to fetch the file, which triggers a CORS
-        // preflight — R2's *.r2.dev public bucket doesn't return
-        // Access-Control-Allow-Origin, so every word fetch was blocked in
-        // production. HTML5 mode bypasses the preflight; we don't need Web
-        // Audio features (sprites, gain, panning) for single-word playback.
-        html5: true,
-        format: ['mp3'],
-        preload: true,
-        onloaderror: () => {
-          console.warn(`Audio load failed for ${key}`)
-          failedWordKeys.add(key)
-          // Clean up the failed cache entry
-          delete wordCache[key]
-          const idx = wordCacheOrder.indexOf(key)
-          if (idx > -1) {
-            wordCacheOrder.splice(idx, 1)
-          }
-        },
-        onplayerror: () => {
-          console.warn(`Audio playback failed for ${key}`)
-          failedWordKeys.add(key)
-        }
-      })
+      // Reserve the slot synchronously so concurrent preload() calls for
+      // the same id collapse — without this, two calls in quick
+      // succession would both pass the cache miss and create two Howl
+      // instances when ensureHowl() resolves.
       wordCacheOrder.push(key)
+      void ensureHowl().then(Howl => {
+        // Another preload call for this key might have failed and
+        // removed it from the cache while we were awaiting; only
+        // populate if the slot is still vacant.
+        if (wordCache[key]) return
+        wordCache[key] = new Howl({
+          src: [getAudioUrl(wordId, lang)],
+          // HTML5 <audio> playback instead of howler's default Web Audio path.
+          // Web Audio mode uses XHR to fetch the file, which triggers a CORS
+          // preflight — R2's *.r2.dev public bucket doesn't return
+          // Access-Control-Allow-Origin, so every word fetch was blocked in
+          // production. HTML5 mode bypasses the preflight; we don't need Web
+          // Audio features (sprites, gain, panning) for single-word playback.
+          html5: true,
+          format: ['mp3'],
+          preload: true,
+          onloaderror: () => {
+            console.warn(`Audio load failed for ${key}`)
+            failedWordKeys.add(key)
+            // Clean up the failed cache entry
+            delete wordCache[key]
+            const idx = wordCacheOrder.indexOf(key)
+            if (idx > -1) {
+              wordCacheOrder.splice(idx, 1)
+            }
+          },
+          onplayerror: () => {
+            console.warn(`Audio playback failed for ${key}`)
+            failedWordKeys.add(key)
+          }
+        })
+      }).catch(() => {
+        // Howler chunk failed to load — drop the reservation and fall
+        // back to TTS on the next speak() call.
+        const idx = wordCacheOrder.indexOf(key)
+        if (idx > -1) wordCacheOrder.splice(idx, 1)
+        failedWordKeys.add(key)
+      })
     }
   }
 
@@ -401,16 +439,27 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     // this id to failedWordKeys and future calls use TTS fallback automatically.
     preload(wordId)
 
-    // Play immediately if already loaded, otherwise wait for load
-    const sound = wordCache[key]
-    if (!sound) {
-      // Should not happen, but fallback to TTS just in case
-      console.warn(`[Audio] No sound found for ${key}, using TTS fallback:`, fallbackText)
-      if (fallbackText) {
-        speakWithTTS(fallbackText, lang)
+    // Wait for howler to be loaded AND for preload() to have inserted
+    // the Howl instance. On the very first call this chains:
+    //   ensureHowl() (load chunk, ~50–200 ms cold) → preload populates
+    //   wordCache → we read the entry and play. Subsequent calls
+    //   short-circuit because HowlCtor is already resolved.
+    void ensureHowl().then(() => {
+      const sound = wordCache[key]
+      if (!sound) {
+        // The preload above raced and bailed (chunk failed or onloaderror
+        // fired synchronously) — fall back to TTS so the student isn't
+        // left in silence.
+        if (fallbackText) speakWithTTS(fallbackText, lang)
+        return
       }
-      return
-    }
+      attachAndPlay(sound, key, fallbackText)
+    }).catch(() => {
+      if (fallbackText) speakWithTTS(fallbackText, lang)
+    })
+  }
+
+  const attachAndPlay = (sound: HowlType, key: AudioCacheKey, fallbackText?: string) => {
 
     // Remove old event handlers before adding new ones (prevents duplicates)
     sound.off('playerror')
@@ -458,19 +507,21 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     // without spending bandwidth on the whole library.
     const sample = new Set<string>()
     while (sample.size < 5 && sample.size < PHRASES.length) sample.add(pick())
-    sample.forEach(key => {
-      if (!motivationalCache[key]) {
-        motivationalCache[key] = new Howl({
-          src: [getMotivationalUrl(key)],
-          // See word Howl above — html5 mode avoids the CORS preflight against
-          // R2's *.r2.dev public bucket.
-          html5: true,
-          format: ['mp3'],
-          preload: true,
-          onloaderror: () => { delete motivationalCache[key] },
-        })
-      }
-    })
+    void ensureHowl().then(Howl => {
+      sample.forEach(key => {
+        if (!motivationalCache[key]) {
+          motivationalCache[key] = new Howl({
+            src: [getMotivationalUrl(key)],
+            // See word Howl above — html5 mode avoids the CORS preflight against
+            // R2's *.r2.dev public bucket.
+            html5: true,
+            format: ['mp3'],
+            preload: true,
+            onloaderror: () => { delete motivationalCache[key] },
+          })
+        }
+      })
+    }).catch(() => { /* howler chunk failed — motivational audio silently no-ops */ })
   }
 
   // Play a random female-voice praise phrase from /motivational/*.mp3.
@@ -482,25 +533,30 @@ export const useAudio = (options: UseAudioOptions = {}) => {
   // a mode, but the app was set up with a female voice).
   const playMotivational = (): string => {
     const key = pick()
-    if (!motivationalCache[key]) {
-      motivationalCache[key] = new Howl({
-        src: [getMotivationalUrl(key)],
-        // See word Howl above — html5 mode avoids the CORS preflight against
-        // R2's *.r2.dev public bucket.
-        html5: true,
-        format: ['mp3'],
-        preload: true,
-        onloaderror: () => { delete motivationalCache[key] },
-      })
-    }
-    try {
-      // Stop any previously-playing phrase so they don't overlap on
-      // rapid-fire correct answers / streak milestones.
-      currentMotivational?.stop()
-      const h = motivationalCache[key]
-      currentMotivational = h
-      h.play()
-    } catch {/* Howl plays async; transient errors are non-fatal */}
+    // Pick the key synchronously so the caller can render the matching
+    // label immediately, but defer the actual Howl creation + play to
+    // when howler's module has finished loading.
+    void ensureHowl().then(Howl => {
+      if (!motivationalCache[key]) {
+        motivationalCache[key] = new Howl({
+          src: [getMotivationalUrl(key)],
+          // See word Howl above — html5 mode avoids the CORS preflight against
+          // R2's *.r2.dev public bucket.
+          html5: true,
+          format: ['mp3'],
+          preload: true,
+          onloaderror: () => { delete motivationalCache[key] },
+        })
+      }
+      try {
+        // Stop any previously-playing phrase so they don't overlap on
+        // rapid-fire correct answers / streak milestones.
+        currentMotivational?.stop()
+        const h = motivationalCache[key]
+        currentMotivational = h
+        h.play()
+      } catch {/* Howl plays async; transient errors are non-fatal */}
+    }).catch(() => { /* howler chunk failed — caller still gets the label */ })
     return key
   }
 
