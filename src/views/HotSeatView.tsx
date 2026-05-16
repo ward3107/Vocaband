@@ -37,18 +37,29 @@
  *     breaking other modes for a v1.  Worth factoring out in a v2 if
  *     a third pass-around mode shows up.
  */
-import { useMemo, useState, useRef } from "react";
+import { useCallback, useMemo, useState, useRef, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play, BookOpen } from "lucide-react";
+import {
+  Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play, BookOpen,
+  Camera, Sparkles, Eye, ClipboardPaste, Loader2, AlertTriangle, Image as ImageIcon,
+} from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import type { Word } from "../data/vocabulary";
+import InPageCamera from "../components/InPageCamera";
+import { postOcrImage, isPostOcrImageError } from "../utils/postOcrImage";
 
 export interface HotSeatAssignment {
   id: string;
   title: string;
   wordIds: number[];
   words?: Word[];
+}
+
+export interface HotSeatTopicPack {
+  name: string;
+  icon: string;
+  ids: number[];
 }
 
 interface HotSeatViewProps {
@@ -58,11 +69,16 @@ interface HotSeatViewProps {
    *  if empty/undefined, the picker only shows the three curriculum
    *  Sets.  Filter to the relevant class + language before passing. */
   assignments?: HotSeatAssignment[];
+  /** Curriculum-aligned topic packs (Animals, Family, Phrasal Verbs, …).
+   *  Same shape as `TOPIC_PACKS` in vocabulary.ts — passing the whole
+   *  array is fine, the picker UI scopes display itself. */
+  topicPacks?: HotSeatTopicPack[];
 }
 
 type Phase = 'setup' | 'interstitial' | 'question' | 'done';
 type TargetLang = 'hebrew' | 'arabic';
-type SourceKind = 'paste' | 'assignment';
+type SourceKind = 'paste' | 'assignment' | 'camera' | 'topic';
+type OcrStatus = 'idle' | 'reading' | 'done' | 'error';
 
 interface PlayerScore {
   name: string;
@@ -107,9 +123,18 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
   wordsLabel: string;
   sourcePaste: string;
   sourceAssignment: string;
+  sourceCamera: string;
+  sourceTopic: string;
   pickAssignment: string;
+  pickTopic: string;
   wordsPlaceholder: string;
   wordsHint: string;
+  cameraHint: string;
+  cameraBtn: string;
+  galleryBtn: string;
+  ocrReading: string;
+  ocrError: string;
+  ocrFoundCount: (n: number) => string;
   matchedHint: (matched: number, total: number) => string;
   poolHint: (count: number) => string;
   poolTooSmall: string;
@@ -117,6 +142,12 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
   hebrew: string;
   arabic: string;
   qpp: string;
+  reviewBtn: (n: number) => string;
+  reviewTitle: string;
+  reviewSubtitle: (n: number) => string;
+  reviewEmpty: string;
+  reviewStartBtn: string;
+  reviewCancelBtn: string;
   startBtn: string;
   exitBtn: string;
   needTwo: string;
@@ -144,11 +175,20 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersPlaceholder: 'Sarah\nDaniel\nMaya\n…',
     playersHint: 'Need at least 2 players.',
     wordsLabel: 'Words',
-    sourcePaste: 'Paste words',
+    sourcePaste: 'Paste',
     sourceAssignment: 'Assignment',
+    sourceCamera: 'Camera',
+    sourceTopic: 'Topic',
     pickAssignment: 'Pick an assignment',
+    pickTopic: 'Pick a topic pack',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
     wordsHint: 'One English word per line. We look up the translation in the curriculum.',
+    cameraHint: 'Snap a photo of your word list. We read it and pull translations from the curriculum.',
+    cameraBtn: 'Take photo',
+    galleryBtn: 'Choose from gallery',
+    ocrReading: 'Reading words from photo…',
+    ocrError: "Couldn't read words from that photo. Try a clearer shot.",
+    ocrFoundCount: (n) => `Found ${n} word${n === 1 ? '' : 's'} in the photo`,
     matchedHint: (matched, total) =>
       total === matched
         ? `${matched} words ready`
@@ -159,6 +199,12 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     hebrew: 'Hebrew',
     arabic: 'Arabic',
     qpp: 'Questions per player',
+    reviewBtn: (n) => `Review ${n} word${n === 1 ? '' : 's'} →`,
+    reviewTitle: 'Words to play',
+    reviewSubtitle: (n) => `${n} word${n === 1 ? '' : 's'} ready to play`,
+    reviewEmpty: 'Pick a source above first.',
+    reviewStartBtn: 'Start Hot Seat',
+    reviewCancelBtn: 'Cancel',
     startBtn: 'Start Hot Seat',
     exitBtn: 'Back',
     needTwo: 'Add at least 2 player names to start.',
@@ -186,11 +232,20 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersPlaceholder: 'שרה\nדניאל\nמאיה\n…',
     playersHint: 'צריך לפחות 2 שחקנים.',
     wordsLabel: 'מילים',
-    sourcePaste: 'הדבק מילים',
+    sourcePaste: 'הדבקה',
     sourceAssignment: 'מטלה',
+    sourceCamera: 'מצלמה',
+    sourceTopic: 'נושא',
     pickAssignment: 'בחר מטלה',
+    pickTopic: 'בחר חבילת נושא',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
     wordsHint: 'מילה אחת באנגלית בכל שורה. נחפש את התרגום באוצר המילים.',
+    cameraHint: 'צלם את רשימת המילים שלך. נקרא אותה ונשלוף תרגומים מתכנית הלימודים.',
+    cameraBtn: 'צלם תמונה',
+    galleryBtn: 'בחר מהגלריה',
+    ocrReading: 'קורא מילים מהתמונה…',
+    ocrError: 'לא הצלחנו לקרוא מילים מהתמונה. נסה תמונה ברורה יותר.',
+    ocrFoundCount: (n) => `נמצאו ${n} מילים בתמונה`,
     matchedHint: (matched, total) =>
       total === matched
         ? `${matched} מילים מוכנות`
@@ -201,6 +256,12 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     hebrew: 'עברית',
     arabic: 'ערבית',
     qpp: 'שאלות לכל שחקן',
+    reviewBtn: (n) => `סקור ${n} מילים ←`,
+    reviewTitle: 'מילים למשחק',
+    reviewSubtitle: (n) => `${n} מילים מוכנות למשחק`,
+    reviewEmpty: 'בחר מקור למעלה קודם.',
+    reviewStartBtn: 'התחל כיסא חם',
+    reviewCancelBtn: 'ביטול',
     startBtn: 'התחל כיסא חם',
     exitBtn: 'חזור',
     needTwo: 'הוסף לפחות 2 שמות שחקנים כדי להתחיל.',
@@ -228,11 +289,20 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersPlaceholder: 'سارة\nدانيال\nمايا\n…',
     playersHint: 'تحتاج إلى لاعبَين على الأقل.',
     wordsLabel: 'الكلمات',
-    sourcePaste: 'الصق الكلمات',
+    sourcePaste: 'لصق',
     sourceAssignment: 'مهمة',
+    sourceCamera: 'الكاميرا',
+    sourceTopic: 'موضوع',
     pickAssignment: 'اختر مهمة',
+    pickTopic: 'اختر حزمة موضوع',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
     wordsHint: 'كلمة إنجليزية واحدة في كل سطر. سنبحث عن الترجمة في المفردات.',
+    cameraHint: 'التقط صورة لقائمة كلماتك. سنقرأها ونجلب الترجمات من المنهج.',
+    cameraBtn: 'التقط صورة',
+    galleryBtn: 'اختر من المعرض',
+    ocrReading: 'جارٍ قراءة الكلمات من الصورة…',
+    ocrError: 'لم نتمكن من قراءة الكلمات من هذه الصورة. جرّب صورة أوضح.',
+    ocrFoundCount: (n) => `تم العثور على ${n} كلمة في الصورة`,
     matchedHint: (matched, total) =>
       total === matched
         ? `${matched} كلمات جاهزة`
@@ -243,6 +313,12 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     hebrew: 'العبرية',
     arabic: 'العربية',
     qpp: 'الأسئلة لكل لاعب',
+    reviewBtn: (n) => `راجع ${n} كلمة ←`,
+    reviewTitle: 'الكلمات للعب',
+    reviewSubtitle: (n) => `${n} كلمة جاهزة للعب`,
+    reviewEmpty: 'اختر مصدرًا أعلاه أولاً.',
+    reviewStartBtn: 'ابدأ الكرسي الساخن',
+    reviewCancelBtn: 'إلغاء',
     startBtn: 'ابدأ الكرسي الساخن',
     exitBtn: 'رجوع',
     needTwo: 'أضف اسمَي لاعبَين على الأقل للبدء.',
@@ -267,7 +343,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewProps) {
+export default function HotSeatView({ onExit, speak, assignments, topicPacks }: HotSeatViewProps) {
   const { language, dir } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
@@ -286,9 +362,26 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
   // re-render — `assignments ?? []` would otherwise produce a fresh
   // array each pass and bust the memo.
   const availableAssignments = useMemo(() => assignments ?? [], [assignments]);
+  const availableTopics = useMemo(() => topicPacks ?? [], [topicPacks]);
   const [assignmentId, setAssignmentId] = useState<string | null>(
     availableAssignments[0]?.id ?? null,
   );
+  const [topicIdx, setTopicIdx] = useState<number>(0);
+
+  // Camera + OCR state.  ocrWords holds the lowercased English tokens
+  // returned by /api/ocr; rawPool below looks each up in englishLookup
+  // (same path as the paste source) so unknown words are silently
+  // skipped instead of breaking the multi-choice.
+  const [showCamera, setShowCamera] = useState(false);
+  const [ocrWords, setOcrWords] = useState<string[]>([]);
+  const [ocrStatus, setOcrStatus] = useState<OcrStatus>('idle');
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  // Review-before-start modal.  After picking a source, teacher taps
+  // "Review N words →" to see the matched word list with its target-
+  // language translation before committing to a round.
+  const [showReview, setShowReview] = useState(false);
 
   // Build a lowercase-english → Word lookup once per vocab load so the
   // paste-source pool doesn't scan ALL_WORDS for every typed line.
@@ -315,7 +408,10 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
   // Resolve the raw pool from the picked source.  Paste-sourced pools
   // match each line against ALL_WORDS by english (case-insensitive);
   // assignment-sourced pools merge in any teacher-uploaded custom words
-  // (which carry their own hebrew/arabic from the OCR/Gemini pipeline).
+  // (which carry their own hebrew/arabic from the OCR/Gemini pipeline);
+  // camera-sourced pools resolve the OCR-extracted tokens against the
+  // same englishLookup as paste; topic-sourced pools take the whole
+  // pack's id list straight out of ALL_WORDS.
   const rawPool: Word[] = useMemo(() => {
     if (!vocab) return [];
     if (sourceKind === 'assignment') {
@@ -324,6 +420,25 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
       const known = vocab.ALL_WORDS.filter(w => a.wordIds.includes(w.id));
       const customs = a.words ?? [];
       return [...known, ...customs.filter(c => !known.some(k => k.id === c.id))];
+    }
+    if (sourceKind === 'topic') {
+      const pack = availableTopics[topicIdx];
+      if (!pack) return [];
+      const idSet = new Set(pack.ids);
+      return vocab.ALL_WORDS.filter(w => idSet.has(w.id));
+    }
+    if (sourceKind === 'camera') {
+      if (!englishLookup) return [];
+      const matched: Word[] = [];
+      const seenIds = new Set<number>();
+      for (const tok of ocrWords) {
+        const hit = englishLookup.get(tok.toLowerCase().trim());
+        if (hit && !seenIds.has(hit.id)) {
+          matched.push(hit);
+          seenIds.add(hit.id);
+        }
+      }
+      return matched;
     }
     // sourceKind === 'paste' — look each pasted line up in the vocabulary.
     // Unknown words are silently skipped; the matched-count hint tells
@@ -339,7 +454,7 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
       }
     }
     return matched;
-  }, [vocab, sourceKind, assignmentId, availableAssignments, pastedLines, englishLookup]);
+  }, [vocab, sourceKind, assignmentId, availableAssignments, pastedLines, englishLookup, topicIdx, availableTopics, ocrWords]);
 
   // Filter to words that actually have the chosen target translation.
   // A custom word missing its hebrew/arabic would otherwise show up as
@@ -357,6 +472,39 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
   const [picked, setPicked] = useState<Word | null>(null);
   const submittedRef = useRef(false);
 
+  // OCR a captured/uploaded image and stash the resulting English tokens
+  // in ocrWords.  rawPool above resolves them against englishLookup, so
+  // the same "matched/total" hint logic the paste source uses just
+  // works.  Errors land in ocrError; the UI surfaces them inline rather
+  // than via toast because Hot Seat is launched outside the teacher
+  // dashboard's toast portal.
+  const handleOcrFile = useCallback(async (file: File) => {
+    setOcrStatus('reading');
+    setOcrError(null);
+    try {
+      const result = await postOcrImage(file, 'en');
+      setOcrWords(result.words);
+      setOcrStatus('done');
+    } catch (err) {
+      if (isPostOcrImageError(err)) {
+        setOcrError(err.message);
+      } else {
+        setOcrError(t.ocrError);
+      }
+      setOcrStatus('error');
+      setOcrWords([]);
+    }
+  }, [t.ocrError]);
+
+  const handleGalleryChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void handleOcrFile(file);
+    // Reset so the same file can be re-picked if the teacher wants to
+    // re-run OCR on it (e.g. they bumped the camera and got a partial
+    // first read).
+    if (e.target) e.target.value = '';
+  }, [handleOcrFile]);
+
   const handleStart = () => {
     const names = playersText
       .split('\n')
@@ -364,6 +512,7 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
       .filter(n => n.length > 0);
     if (names.length < 2) return;
     if (wordPool.length < 4) return;
+    setShowReview(false);
     setPlayers(names.map(name => ({ name, correct: 0, total: 0 })));
     setCurrentPlayerIdx(0);
     setQuestionNumber(1);
@@ -470,30 +619,39 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
                   <BookOpen size={14} className="text-stone-600" />
                   <p className="text-sm font-bold text-stone-700">{t.wordsLabel}</p>
                 </div>
-                {/* Source toggle only appears when the teacher has saved
-                    assignments — otherwise paste is the only path. */}
-                {availableAssignments.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    {([
-                      { kind: 'paste' as SourceKind, label: t.sourcePaste },
-                      { kind: 'assignment' as SourceKind, label: t.sourceAssignment },
-                    ]).map(opt => (
-                      <button
-                        key={opt.kind}
-                        type="button"
-                        onClick={() => setSourceKind(opt.kind)}
-                        style={{ touchAction: 'manipulation' }}
-                        className={`py-2.5 rounded-xl font-bold text-sm border-2 transition-all ${
-                          sourceKind === opt.kind
-                            ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                            : 'bg-white text-stone-600 border-stone-200 hover:border-orange-200'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {/* Source picker — 4 cards in a 2×2 (or 2×1 when assignments
+                    is empty + no topics) grid.  Each card shows an icon + label
+                    so the teacher scans the choices visually instead of
+                    reading text-only chips. */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {([
+                    { kind: 'paste' as SourceKind, label: t.sourcePaste, Icon: ClipboardPaste, visible: true },
+                    { kind: 'camera' as SourceKind, label: t.sourceCamera, Icon: Camera, visible: true },
+                    { kind: 'topic' as SourceKind, label: t.sourceTopic, Icon: Sparkles, visible: availableTopics.length > 0 },
+                    { kind: 'assignment' as SourceKind, label: t.sourceAssignment, Icon: BookOpen, visible: availableAssignments.length > 0 },
+                  ])
+                    .filter(opt => opt.visible)
+                    .map(opt => {
+                      const Icon = opt.Icon;
+                      const active = sourceKind === opt.kind;
+                      return (
+                        <button
+                          key={opt.kind}
+                          type="button"
+                          onClick={() => setSourceKind(opt.kind)}
+                          style={{ touchAction: 'manipulation' }}
+                          className={`flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-xl font-black text-sm border-2 transition-all ${
+                            active
+                              ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                              : 'bg-white text-stone-700 border-stone-200 hover:border-orange-200'
+                          }`}
+                        >
+                          <Icon size={20} className={active ? 'text-white' : 'text-orange-500'} />
+                          <span>{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                </div>
                 {sourceKind === 'paste' && (
                   <>
                     <textarea
@@ -520,12 +678,78 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
                     ))}
                   </select>
                 )}
-                {vocab && (
+                {sourceKind === 'topic' && availableTopics.length > 0 && (
+                  <select
+                    value={String(topicIdx)}
+                    onChange={e => setTopicIdx(Number(e.target.value))}
+                    dir={dir}
+                    aria-label={t.pickTopic}
+                    className="w-full rounded-xl border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
+                  >
+                    {availableTopics.map((pack, i) => (
+                      <option key={`${pack.name}-${i}`} value={String(i)}>
+                        {pack.icon} {pack.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {sourceKind === 'camera' && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-stone-500">{t.cameraHint}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowCamera(true)}
+                        style={{ touchAction: 'manipulation' }}
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-900 text-white font-bold text-sm active:scale-[0.98] transition"
+                      >
+                        <Camera size={16} />
+                        {t.cameraBtn}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => galleryInputRef.current?.click()}
+                        style={{ touchAction: 'manipulation' }}
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white border-2 border-stone-200 text-stone-700 font-bold text-sm hover:border-orange-200 active:scale-[0.98] transition"
+                      >
+                        <ImageIcon size={16} />
+                        {t.galleryBtn}
+                      </button>
+                    </div>
+                    <input
+                      ref={galleryInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleGalleryChange}
+                    />
+                    {ocrStatus === 'reading' && (
+                      <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-600">
+                        <Loader2 size={14} className="animate-spin" />
+                        {t.ocrReading}
+                      </p>
+                    )}
+                    {ocrStatus === 'error' && ocrError && (
+                      <p className="flex items-start gap-1.5 text-xs font-semibold text-rose-600">
+                        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                        <span>{ocrError}</span>
+                      </p>
+                    )}
+                    {ocrStatus === 'done' && ocrWords.length > 0 && (
+                      <p className="text-xs font-semibold text-emerald-700">
+                        {t.ocrFoundCount(ocrWords.length)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {vocab && (sourceKind !== 'camera' || ocrStatus === 'done' || rawPool.length > 0) && (
                   <p className={`mt-1.5 text-xs font-semibold ${wordPool.length < 4 ? 'text-rose-600' : 'text-stone-500'}`}>
                     {wordPool.length < 4
                       ? t.poolTooSmall
                       : sourceKind === 'paste'
                       ? t.matchedHint(rawPool.length, pastedLines.length)
+                      : sourceKind === 'camera'
+                      ? t.matchedHint(rawPool.length, ocrWords.length)
                       : t.poolHint(wordPool.length)}
                   </p>
                 )}
@@ -577,13 +801,13 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
 
               <button
                 type="button"
-                onClick={handleStart}
+                onClick={() => setShowReview(true)}
                 disabled={!canStart}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
               >
-                <Play size={18} />
-                {!vocab ? t.loadingWords : t.startBtn}
+                <Eye size={18} />
+                {!vocab ? t.loadingWords : t.reviewBtn(wordPool.length)}
                 {vocab && <ChevronRight size={18} />}
               </button>
               {parsedNameCount < 2 && (
@@ -592,6 +816,114 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
             </div>
           </div>
         </div>
+
+        {/* In-page camera modal — only mounted when explicitly opened so the
+            getUserMedia request doesn't fire until the teacher taps. */}
+        {showCamera && (
+          <InPageCamera
+            onCapture={(file) => {
+              setShowCamera(false);
+              void handleOcrFile(file);
+            }}
+            onCancel={() => setShowCamera(false)}
+            onUseGallery={() => {
+              setShowCamera(false);
+              galleryInputRef.current?.click();
+            }}
+          />
+        )}
+
+        {/* Review-before-start modal.  Lists every word that will enter
+            the question pool with its target-language translation so the
+            teacher can sanity-check the OCR/paste/topic result before
+            committing to a 5-10 minute round. */}
+        <AnimatePresence>
+          {showReview && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[90] bg-stone-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+              onClick={() => setShowReview(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t.reviewTitle}
+            >
+              <motion.div
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 30, opacity: 0 }}
+                transition={{ type: 'spring', damping: 24, stiffness: 240 }}
+                onClick={(e) => e.stopPropagation()}
+                dir={dir}
+                className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              >
+                <div className="bg-gradient-to-br from-orange-500 via-amber-500 to-rose-500 px-5 py-4 text-white">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-black">{t.reviewTitle}</h2>
+                      <p className="text-white/85 text-xs font-semibold">{t.reviewSubtitle(wordPool.length)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowReview(false)}
+                      aria-label={t.reviewCancelBtn}
+                      className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-5 py-4">
+                  {wordPool.length === 0 ? (
+                    <p className="text-sm font-semibold text-stone-500 text-center py-6">
+                      {t.reviewEmpty}
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {wordPool.map(w => (
+                        <li
+                          key={w.id}
+                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-stone-50 border border-stone-100"
+                        >
+                          <span className="text-base font-bold text-stone-900" dir="ltr">{w.english}</span>
+                          <span
+                            className="text-base font-bold text-stone-600"
+                            dir={targetLang === 'arabic' || targetLang === 'hebrew' ? 'rtl' : 'ltr'}
+                          >
+                            {translationOf(w, targetLang)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="px-5 py-4 grid grid-cols-2 gap-2 border-t border-stone-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowReview(false)}
+                    style={{ touchAction: 'manipulation' }}
+                    className="py-3 rounded-xl bg-stone-100 text-stone-700 font-black text-sm hover:bg-stone-200 active:scale-[0.98] transition"
+                  >
+                    {t.reviewCancelBtn}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStart}
+                    disabled={!canStart}
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className="py-3 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-sm shadow-md disabled:opacity-50 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                  >
+                    <Play size={16} />
+                    {t.reviewStartBtn}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -629,55 +961,64 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
   }
 
   // ── QUESTION ─────────────────────────────────────────────────────
+  // Full-screen layout: status strip + prompt block at the top, options
+  // grid fills the rest of the viewport via flex-1.  Fonts scale up to
+  // text-8xl on desktop so a teacher's tablet/projector reads from the
+  // back of a 30-student classroom.
   if (phase === 'question' && question) {
     const player = players[currentPlayerIdx];
+    const optionDir = targetLang === 'hebrew' || targetLang === 'arabic' ? 'rtl' : 'ltr';
     return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50 px-4 py-6 sm:py-10 flex flex-col items-center" dir="ltr">
-        {/* Status row */}
-        <div className="w-full max-w-2xl flex items-center justify-between gap-3 mb-6" dir={dir}>
-          <div className="px-3 py-1.5 rounded-full bg-orange-100 text-orange-800 text-xs font-black uppercase tracking-wider">
+      <div className="h-screen bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50 px-4 py-4 sm:px-8 sm:py-6 flex flex-col" dir="ltr">
+        {/* Status strip — full width, slightly bigger pills */}
+        <div className="w-full flex items-center justify-between gap-3" dir={dir}>
+          <div className="px-4 py-2 rounded-full bg-orange-100 text-orange-800 text-sm sm:text-base font-black uppercase tracking-wider truncate max-w-[40%]">
             {player.name}
           </div>
-          <div className="px-3 py-1.5 rounded-full bg-stone-100 text-stone-700 text-xs font-black">
+          <div className="px-4 py-2 rounded-full bg-stone-100 text-stone-700 text-sm sm:text-base font-black">
             {t.questionOf(questionNumber, questionsPerPlayer)}
           </div>
-          <div className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-black">
+          <div className="px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm sm:text-base font-black">
             ✓ {player.correct}
           </div>
         </div>
 
-        {/* Prompt */}
-        <h2 className="text-4xl sm:text-6xl font-black tracking-tight text-stone-900 text-center mb-2">
-          {question.word.english}
-        </h2>
-        <button
-          type="button"
-          onClick={() => speak(question.word.id, question.word.english)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-semibold transition mb-5"
-          aria-label={t.replay}
-        >
-          <Volume2 size={14} />
-          {t.replay}
-        </button>
+        {/* Prompt block — bigger fonts, generous spacing.  Centered both
+            axes within the available vertical room above the options. */}
+        <div className="flex flex-col items-center justify-center py-4 sm:py-6">
+          <h2 className="text-6xl sm:text-8xl md:text-9xl font-black tracking-tight text-stone-900 text-center leading-tight">
+            {question.word.english}
+          </h2>
+          <button
+            type="button"
+            onClick={() => speak(question.word.id, question.word.english)}
+            className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-base font-bold transition"
+            aria-label={t.replay}
+          >
+            <Volume2 size={18} />
+            {t.replay}
+          </button>
+          <p className="mt-4 text-base sm:text-lg font-bold text-stone-600" dir={dir}>
+            {targetLang === 'hebrew' ? t.pickHebrew : t.pickArabic}
+          </p>
+        </div>
 
-        <p className="mb-4 text-sm font-bold text-stone-600" dir={dir}>
-          {targetLang === 'hebrew' ? t.pickHebrew : t.pickArabic}
-        </p>
-
-        {/* Options */}
-        <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Options — fill all remaining vertical space.  2-up on mobile
+            (so each card has real height), still 2-up on desktop because
+            4 stacked rows would push fonts smaller than the prompt. */}
+        <div className="flex-1 min-h-0 grid grid-cols-2 gap-3 sm:gap-4 pb-2">
           {question.options.map((opt, i) => {
             const isPicked = picked?.id === opt.id;
             const isCorrect = opt.id === question.word.id;
             const showResult = picked != null;
-            let cls = 'bg-white border-2 border-stone-200 hover:border-orange-300';
+            let cls = 'bg-white border-4 border-stone-200 hover:border-orange-300 text-stone-900';
             if (showResult) {
               if (isCorrect) {
-                cls = 'bg-emerald-50 border-2 border-emerald-500 text-emerald-900';
+                cls = 'bg-emerald-50 border-4 border-emerald-500 text-emerald-900';
               } else if (isPicked) {
-                cls = 'bg-rose-50 border-2 border-rose-500 text-rose-900';
+                cls = 'bg-rose-50 border-4 border-rose-500 text-rose-900';
               } else {
-                cls = 'bg-stone-50 border-2 border-stone-200 opacity-60';
+                cls = 'bg-stone-50 border-4 border-stone-200 opacity-60 text-stone-700';
               }
             }
             return (
@@ -687,24 +1028,24 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
                 onClick={() => handleAnswer(opt)}
                 disabled={showResult}
                 type="button"
-                dir={targetLang === 'hebrew' || targetLang === 'arabic' ? 'rtl' : 'ltr'}
+                dir={optionDir}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className={`px-4 py-4 sm:py-5 rounded-2xl text-center font-black text-lg sm:text-xl transition-all shadow-sm ${cls}`}
+                className={`h-full px-4 py-4 rounded-3xl text-center font-black text-3xl sm:text-5xl md:text-6xl leading-tight transition-all shadow-md break-words flex items-center justify-center ${cls}`}
               >
-                {translationOf(opt, targetLang) || opt.english}
+                <span>{translationOf(opt, targetLang) || opt.english}</span>
               </motion.button>
             );
           })}
         </div>
 
-        {/* Reveal flash */}
+        {/* Reveal flash — bigger so it reads from the back of the room */}
         <AnimatePresence>
           {picked && (
             <motion.p
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              className={`mt-5 text-sm font-bold ${
+              className={`mt-3 text-center text-lg sm:text-xl font-black ${
                 picked.id === question.word.id ? 'text-emerald-700' : 'text-rose-700'
               }`}
               dir={dir}
@@ -712,7 +1053,7 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
               {picked.id === question.word.id
                 ? t.correct
                 : `${t.wrong} ${t.correctAnswer} ${translationOf(question.word, targetLang)}`}
-              <ArrowRight size={14} className="inline ml-1" />
+              <ArrowRight size={16} className="inline ml-1" />
             </motion.p>
           )}
         </AnimatePresence>
