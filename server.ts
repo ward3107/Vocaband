@@ -1398,8 +1398,9 @@ async function startServer() {
     res.json(body);
   });
 
-  // Translation endpoint — server-side proxy to protect Google API key
-  // Only authenticated teachers can access this
+  // Translation endpoint — server-side proxy to protect Google API key.
+  // Open to any authenticated, non-anonymous caller; the only hard reject
+  // is a confirmed `role='student'` row.  See the gate comment inline.
   // Translate a batch of English words to Hebrew + Arabic using Gemini.
   // Uses the same GOOGLE_AI_API_KEY that powers OCR/TTS — no extra setup.
   // Previously delegated to Google Translate API (separate key), which most
@@ -1424,10 +1425,32 @@ async function startServer() {
       return res.status(401).json({ error: "Invalid token" });
     }
 
+    // Gate: teachers + admins always pass.  A confirmed student row is
+    // the only rejection — translation is rate-limited (30/min/token)
+    // and non-sensitive (English → HE/AR/RU lookup), so the cost of
+    // accidentally blocking a legitimate teacher (missing public.users
+    // row mid-onboarding, role written as null by an old migration, or
+    // their row simply hasn't propagated yet) outweighs the cost of
+    // letting through a non-anonymous student.  Anonymous JWTs still
+    // get a hard reject so guest live-challenge sockets can't drain
+    // Gemini quota.
     const userData = await getUserRoleAndClass(uid);
-    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
-      console.warn(`[abuse] /api/translate non-teacher caller: ip=${ip} uid=${uid} role=${userData?.role ?? 'none'}`);
+    if (userData && userData.role === "student") {
+      console.warn(`[abuse] /api/translate student caller: ip=${ip} uid=${uid}`);
       return res.status(403).json({ error: "Only teachers can translate" });
+    }
+    if (!userData && supabaseAdmin) {
+      try {
+        const { data: { user: authUser } } = await supabaseAdmin.auth.getUser(token);
+        const isAnonymous = !!(authUser as { is_anonymous?: boolean } | null)?.is_anonymous;
+        if (isAnonymous) {
+          console.warn(`[abuse] /api/translate anonymous caller: ip=${ip} uid=${uid}`);
+          return res.status(403).json({ error: "Please sign in to translate" });
+        }
+        console.warn(`[translate] no public.users row for uid=${uid} — allowing (likely race during signup)`);
+      } catch (err) {
+        console.warn(`[translate] auth.getUser failed for uid=${uid}: ${(err as Error)?.message || err}`);
+      }
     }
 
     const { words } = req.body;
