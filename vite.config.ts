@@ -347,6 +347,25 @@ export default defineConfig(() => {
           manualChunks(id) {
             if (id.includes('lucide-react')) return 'lucide';
             if (id.includes('src/data/vocabulary')) return 'vocabulary';
+            // Pin Sentry to its own chunk.  Bundled into `index` it
+            // bloated the entry by ~40 kB gz and any change to main.tsx
+            // busted the Sentry cache.  Splitting it means cold-load
+            // is one extra parallel request but warm-load reuses the
+            // long-cached Sentry chunk across deploys.
+            if (id.includes('node_modules/@sentry/')) return 'sentry';
+            // motion/framer-motion — used everywhere, but big enough
+            // (~40 kB gz) to deserve its own cache key.
+            if (id.includes('node_modules/motion/') || id.includes('node_modules/framer-motion/')) return 'motion';
+            // supabase-js was already a chunk via natural splitting
+            // but pin it so the chunk name is stable across builds.
+            if (id.includes('node_modules/@supabase/')) return 'supabase';
+            // React + react-dom — 130 kB raw, never changes; pin so
+            // upgrades to other deps don't invalidate React's cache.
+            if (
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/scheduler/')
+            ) return 'react-vendor';
             return undefined;
           },
         },

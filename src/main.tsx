@@ -2,7 +2,7 @@ import {lazy, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.tsx';
 import { runSafariDiagnostics } from './utils/safariDiagnostics';
-import { initSentry, addReplayIntegrationLazy } from './core/sentry';
+import { initSentry, addReplayIntegrationLazy, addBrowserTracingLazy } from './core/sentry';
 import './index.css';
 
 // Init Sentry as early as possible so any subsequent throw is captured.
@@ -70,9 +70,16 @@ async function manageServiceWorker() {
 }
 
 const App = lazy(() => import('./App.tsx'));
-// Don't lazy-load the a11y widget - it needs to mount immediately
-// to catch the vocaband-view-change event and show the trigger on landing
-import { AccessibilityWidget } from './components/AccessibilityWidget';
+// AccessibilityWidget is lazy too — it doesn't render anything on
+// public pages until the user interacts, so keeping it in the entry
+// chunk (with its motion/lucide deps) was pure dead weight on first
+// paint.  The widget's own initial state (`currentView === ''`)
+// already shows the trigger on landing, so missing the first
+// 'vocaband-view-change' event is harmless: the next view change
+// reaches it via the window event listener.
+const AccessibilityWidget = lazy(() =>
+  import('./components/AccessibilityWidget').then(m => ({ default: m.AccessibilityWidget })),
+);
 
 const Loading = () => (
   <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',color:'#666'}}>
@@ -154,7 +161,9 @@ async function bootstrap() {
     <ErrorBoundary>
       <Suspense fallback={<Loading />}>
         <App />
-        <AccessibilityWidget />
+        <Suspense fallback={null}>
+          <AccessibilityWidget />
+        </Suspense>
       </Suspense>
     </ErrorBoundary>,
   );
@@ -170,6 +179,10 @@ async function bootstrap() {
   // See addReplayIntegrationLazy in src/core/sentry.ts and R5 in
   // docs/SCHOOL-PERFORMANCE-PLAN.md.
   addReplayIntegrationLazy();
+  // Same idea for browserTracing — bundled it's ~25 kB gz of perf-API
+  // wiring on the critical path.  Adding it after idle still lets it
+  // back-fill the page-load transaction via the Performance Timeline.
+  addBrowserTracingLazy();
 }
 
 // If we're redirecting to the canonical host, let the navigation tear the
