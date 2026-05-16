@@ -115,6 +115,11 @@ interface ConfigureStepProps {
    *  sentences" button entirely (the same UX as `aiEnabled=false`,
    *  but driven by the teacher's plan rather than the server allowlist). */
   isProUser?: boolean;
+  /** When true, briefly highlights and scrolls to the Deadline picker.
+   *  Set by SetupWizard when the teacher tapped the competition toggle
+   *  on the Review step without a deadline — bounces them back here so
+   *  they can fill one in. */
+  highlightDeadline?: boolean;
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -142,10 +147,21 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   onAiLessonChange,
   showToast,
   isProUser = false,
+  highlightDeadline = false,
 }) => {
   void _editingAssignment;
   const { language } = useLanguage();
   const t = teacherWizardsT[language];
+  // Pulse the deadline section when SetupWizard navigates back here
+  // from the Review-step competition toggle.  Ref lets us scroll into
+  // view; local state mirrors the prop so the pulse animation runs
+  // once and stops.
+  const deadlineRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (highlightDeadline && deadlineRef.current) {
+      deadlineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightDeadline]);
 
   // AI Lesson Builder state
   const [showAiLessonBuilder, setShowAiLessonBuilder] = useState(false);
@@ -924,7 +940,14 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               {t.scheduleOptional}
             </label>
           </div>
-          <div>
+          <div
+            ref={deadlineRef}
+            className={`rounded-2xl transition-shadow ${
+              highlightDeadline
+                ? 'ring-4 ring-amber-400/70 shadow-lg shadow-amber-400/30 p-3 -m-3 animate-pulse'
+                : ''
+            }`}
+          >
             <label className="block text-xs text-[var(--vb-text-muted)] mb-1.5">Deadline</label>
             <DateTimePicker
               value={assignmentDeadline || ""}
