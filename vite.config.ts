@@ -32,15 +32,19 @@ function vocabandHtmlPerf(): Plugin {
   const BOOT_CSS_FALLBACK_LINK = '<link rel="stylesheet" href="/boot.css" />';
 
   // Chunk prefixes whose `.js` outputs deserve a modulepreload hint on
-  // the landing page. Order matches the dynamic-import chain so the
-  // browser issues parallel fetches in the right priority order.
-  const PRELOAD_CHUNK_PREFIXES = [
-    'App-',
-    'LandingPage-',
-    'landing-page-',
-    'PublicNav-',
-    'FloatingButtons-',
-  ];
+  // the landing page. Currently empty — a previous version preloaded
+  // App-, LandingPage-, landing-page-, PublicNav-, FloatingButtons-.
+  // On Slow 4G that adds ~75 kB gz of parallel high-priority fetches
+  // alongside the 4 entries Vite already preloads (motion, lucide,
+  // react-vendor, runtime), and a real test showed it starved the
+  // render-critical CSS + entry of bandwidth on a ~50 KB/s pipe — DCL
+  // and Load both regressed ~800 ms in the field. Leaving the list
+  // empty defers chunk discovery to Vite's runtime __vitePreload, which
+  // fetches them serially when the entry actually resolves the dynamic
+  // import. Slower in theory, faster in practice on bandwidth-bound
+  // networks. Keeping the array so a future test on faster networks
+  // can re-enable specific chunks if measurements show a win.
+  const PRELOAD_CHUNK_PREFIXES: string[] = [];
 
   return {
     name: 'vocaband-html-perf',
