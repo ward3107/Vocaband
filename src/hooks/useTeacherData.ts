@@ -76,22 +76,40 @@ export function useTeacherData(params: UseTeacherDataParams) {
     // read is almost always correct, and on school Wi-Fi the cached hit
     // shaves the entire Supabase round-trip off the dashboard's first
     // paint.  See docs/SCHOOL-PERFORMANCE-PLAN.md (task R1) for context.
-    const fresh = await cachedRead<ClassData[]>(
-      'classes',
-      async () => {
-        const { data, error } = await supabase
-          .from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid);
-        if (error || !data) return [];
-        return data.map(mapClass);
-      },
-      {
-        userScope: uid,
-        ttlMs: 5 * 60 * 1000,
-        onCacheHit: (cached) => setClasses(cached),
-      },
-    );
-    setClasses(fresh);
-    return fresh;
+    //
+    // The fetcher MUST throw on Supabase errors so cachedRead falls back
+    // to the cached entry rather than overwriting it with [].  Silently
+    // returning [] on error would defeat SWR — a flaky-network teacher
+    // would see their dashboard clear after every refresh as the empty
+    // response replaced their cached classes.  An empty `data` array
+    // (new teacher with no classes yet) is still a valid result and
+    // gets cached normally.
+    try {
+      const fresh = await cachedRead<ClassData[]>(
+        'classes',
+        async () => {
+          const { data, error } = await supabase
+            .from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid);
+          if (error) throw error;
+          if (!data) throw new Error('classes fetch returned no data');
+          return data.map(mapClass);
+        },
+        {
+          userScope: uid,
+          ttlMs: 5 * 60 * 1000,
+          onCacheHit: (cached) => setClasses(cached),
+        },
+      );
+      setClasses(fresh);
+      return fresh;
+    } catch {
+      // Total miss — fetcher threw AND no cache to fall back to.
+      // Preserve the pre-cache behavior of returning [] so chained
+      // callers (App.tsx awaits this then refreshes assignments) don't
+      // crash on an unexpected rejection.  If a cache existed,
+      // onCacheHit already populated `classes` state via setClasses.
+      return [];
+    }
   }, [setClasses]);
 
   const loadAssignmentsForClass = useCallback(async (
@@ -109,7 +127,16 @@ export function useTeacherData(params: UseTeacherDataParams) {
     // fetch revalidates in the background.  Progress is NOT cached
     // because it changes after every game finish — too dynamic for
     // SWR to be worth it.  See docs/SCHOOL-PERFORMANCE-PLAN.md (R1).
-    const [assignFresh, progressResp] = await Promise.all([
+    //
+    // The cached-read fetcher throws on Supabase failure so cachedRead
+    // returns the previously-cached list instead of clobbering it with
+    // []; we wrap the outer call so a total miss (failure with no
+    // cache) doesn't reject the Promise.all and stop progress from
+    // applying.  Sentinel pattern: 'ok' overwrites state with the
+    // fresh-or-cached payload; 'kept-cache' leaves state alone (the
+    // onCacheHit microtask already rendered the cached value, or the
+    // UI keeps whatever it had).
+    const [assignOutcome, progressResp] = await Promise.all([
       cachedRead<AssignmentData[]>(
         `assignments:${classData.id}`,
         async () => {
@@ -126,22 +153,30 @@ export function useTeacherData(params: UseTeacherDataParams) {
               hint: assignError.hint,
               classId: classData.id,
             });
-            const { data: fallbackData } = await supabase
+            const { data: fallbackData, error: fallbackError } = await supabase
               .from('assignments').select(ASSIGNMENT_COLUMNS).eq('class_id', classData.id);
-            return (fallbackData ?? []).map(mapAssignment);
+            if (fallbackError) throw fallbackError;
+            if (!fallbackData) throw new Error('get_assignments_for_class fallback returned no data');
+            return fallbackData.map(mapAssignment);
           }
-          return (assignResult ?? []).map(mapAssignment);
+          if (!assignResult) throw new Error('get_assignments_for_class returned no data');
+          return assignResult.map(mapAssignment);
         },
         {
           userScope: studentUid,
           ttlMs: 2 * 60 * 1000,
           onCacheHit: (cached) => setStudentAssignments(cached),
         },
+      ).then<{ kind: 'ok'; data: AssignmentData[] } | { kind: 'kept-cache' }>(
+        fresh => ({ kind: 'ok', data: fresh }),
+        () => ({ kind: 'kept-cache' }),
       ),
       supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid),
     ]);
 
-    setStudentAssignments(assignFresh);
+    if (assignOutcome.kind === 'ok') {
+      setStudentAssignments(assignOutcome.data);
+    }
     setStudentProgress((progressResp.data ?? []).map(mapProgress));
   }, [setStudentAssignments, setStudentProgress]);
 
