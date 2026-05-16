@@ -236,23 +236,37 @@ Frankfurt (~80 ms+).
 
 ### R5 — Real Slow-4G test + Sentry web-vitals + audit doc
 
-**Status:** 📋 not started · **Why:** None of this is real until measured
-on a throttled network. Also: we want classroom data after the demo.
+**Status:** 🟡 partially shipped 2026-05-16 (commit `2bf3831`). Code
+piece is live; browser-side measurement still needs an operator pass.
 
-- [ ] Sentry web-vitals + replay-on-error (Sentry React is already
-  installed, see `src/core/sentry.ts`). Sample rate: 10% sessions,
+- [x] Sentry web-vitals — `browserTracingIntegration()` added to the
+  init in `src/core/sentry.ts`. Captures LCP / CLS / INP / TTFB +
+  page-load + navigation transactions. Trace headers restricted to
+  our own origins.
+- [x] Sentry session replay — `Sentry.lazyLoadIntegration('replayIntegration')`
+  added via `addReplayIntegrationLazy()`, fired at `requestIdleCallback`
+  in `main.tsx` so the ~50 KB replay code stays OFF the entry chunk
+  (loads from `browser.sentry-cdn.com` at idle). `maskAllText: true`
+  + `blockAllMedia: true` for PII safety. Sample rates: 10% sessions,
   100% on error.
-- [ ] Run the school flow under Chrome DevTools "Slow 4G": landing →
-  login → dashboard → assignment → game → finish. Record numbers.
-- [ ] Write `docs/perf-audit-2026-05-XX.md` with before/after, methodology,
-  and what's still slow.
+- [x] **CSP unblock (silent-bug fix):** the ingest host and
+  `browser.sentry-cdn.com` were both missing from `public/_headers`,
+  meaning every Sentry event was being CSP-blocked in production with
+  no user-visible signal. Now allowlisted.
+- [x] Audit doc template committed at
+  `docs/perf-audit-2026-05-TEMPLATE.md` with placeholders for real
+  numbers and the measurement procedure baked in.
+- [ ] **Operator task:** run the procedure in the template doc
+  (Chrome Slow 4G + Lighthouse + 24 h of Web Vitals from Sentry),
+  fill in the numbers, rename to `perf-audit-2026-05-DD.md`, commit.
 
-**Verify:**
-1. Web-vitals events visible in Sentry dashboard.
+**Verify (operator):**
+1. Web-vitals events visible in Sentry dashboard 30 min after the
+   first post-deploy classroom open.
 2. Audit doc committed with concrete numbers.
 3. Acceptance criteria checklist (below) passes on Slow 4G.
 
-**Commit:** `perf(observability): web-vitals + post-demo audit` — SHA: `____`
+**Commit:** `feat(sentry): web-vitals + lazy replay + CSP unblock` — SHA: `2bf3831`
 
 ---
 
@@ -368,3 +382,9 @@ If anything in Tier 1 breaks production:
   + edge cache/preconnect all live on branch. R3 (entry trim) skipped as
   per-plan-prioritisation (optional, low ROI for school demo). R5 (Slow-4G
   audit) is the remaining work — needs a real browser, can't be done in CI.
+- 2026-05-16 (final) — **PR #698 merged to main.** Codex P1 (SWR-defeating
+  empty-result writes in useTeacherData) caught + fixed in `aa8ce10`.
+- 2026-05-16 (R5 code) — **Sentry web-vitals + lazy replay shipped** in
+  `2bf3831`. Discovered + fixed a pre-existing silent CSP bug that had
+  been suppressing all Sentry events in production. Audit doc template
+  at `docs/perf-audit-2026-05-TEMPLATE.md`; operator fills in numbers.
