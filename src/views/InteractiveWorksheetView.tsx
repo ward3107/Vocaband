@@ -29,6 +29,17 @@ interface WorksheetRow {
   format: string | null;
   word_ids: number[] | null;
   settings: WorksheetSettings & Record<string, unknown>;
+  // Set when this worksheet is a practice worksheet a teacher sent the
+  // student after they got some words wrong on another sheet. The
+  // student's results screen fetches the parent attempt (matched on
+  // browser fingerprint) so the kid sees their improvement.
+  parent_slug: string | null;
+}
+
+interface ParentAttempt {
+  topic_name: string;
+  score: number;
+  total: number;
 }
 
 type Stage = "name-entry" | "in-progress" | "submitting" | "done" | "submit-error";
@@ -108,6 +119,34 @@ const clearProgress = (slug: string) => {
   }
 };
 
+// Best-effort lookup of the student's earlier attempt on the parent
+// worksheet for the same browser. Backed by a SECURITY DEFINER RPC
+// because RLS on worksheet_attempts only opens reads to the worksheet
+// owner — the student needs a narrow path to their own row. Failures
+// resolve to null so the results card just hides the comparison
+// instead of breaking the submit-success screen.
+const fetchParentAttempt = async (
+  parentSlug: string,
+  fingerprint: string,
+): Promise<ParentAttempt | null> => {
+  try {
+    const { data, error } = await supabase.rpc("get_my_attempt_for_slug", {
+      p_slug: parentSlug,
+      p_fingerprint: fingerprint,
+    });
+    if (error || !data) return null;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return null;
+    return {
+      topic_name: String(row.topic_name ?? ""),
+      score: Number(row.score ?? 0),
+      total: Number(row.total ?? 0),
+    };
+  } catch {
+    return null;
+  }
+};
+
 interface Props {
   slug: string;
   onBack: () => void;
@@ -135,13 +174,19 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   // first mount (the runner reads it via initialIdx) — clearing it
   // afterwards has no effect on already-mounted runners.
   const [resumeIdx, setResumeIdx] = useState(0);
+  // Set after a practice worksheet is submitted and the parent's
+  // attempt for this same browser is found — drives the "first attempt
+  // → now" comparison on the results card. Null on parent worksheets
+  // and on practice worksheets where the student played the parent on
+  // a different device (no fingerprint match).
+  const [parentAttempt, setParentAttempt] = useState<ParentAttempt | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
         .from("interactive_worksheets")
-        .select("slug, topic_name, word_ids, format, exercises, settings")
+        .select("slug, topic_name, word_ids, format, exercises, settings, parent_slug")
         .eq("slug", slug)
         .maybeSingle();
       if (cancelled) return;
@@ -239,6 +284,18 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
       // refresh of the results screen doesn't offer to "resume"
       // a finished worksheet.
       clearProgress(slug);
+
+      // Practice worksheet? Try to surface the student's first-attempt
+      // score on the parent for the same browser so they see the
+      // improvement. Best-effort: anonymous reads can hit the parent
+      // row (RLS allows anyone with the slug) and the same RLS lets the
+      // student's own attempt row through via fingerprint match.
+      if (row?.parent_slug && fingerprint) {
+        void fetchParentAttempt(row.parent_slug, fingerprint).then((p) => {
+          if (p) setParentAttempt(p);
+        });
+      }
+
       setStage("done");
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Network error");
@@ -252,6 +309,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
     setResumeIdx(0);
     setSavedProgress(null);
     setSubmitError(null);
+    setParentAttempt(null);
     setStartedAt(Date.now());
     setStage("in-progress");
   };
@@ -332,6 +390,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
           slug={row.slug}
           studentName={studentName}
           submitError={stage === "submit-error" ? submitError : null}
+          parentAttempt={parentAttempt}
           onRestart={handleRestart}
         />
       </Shell>
@@ -490,8 +549,9 @@ const ResultsCard: React.FC<{
   slug: string;
   studentName: string;
   submitError: string | null;
+  parentAttempt: ParentAttempt | null;
   onRestart: () => void;
-}> = ({ exercises, results, topicName, slug, studentName, submitError, onRestart }) => {
+}> = ({ exercises, results, topicName, slug, studentName, submitError, parentAttempt, onRestart }) => {
   const score = computeWorksheetScore(exercises, results);
   const allAnswers = results.flatMap((r) => r.answers);
   const misses = extractMisses(allAnswers);
@@ -531,6 +591,14 @@ const ResultsCard: React.FC<{
       <div className="text-sm font-bold text-stone-500 mb-6">
         {score.totalCorrect} / {score.totalQuestions} correct
       </div>
+
+      {parentAttempt && parentAttempt.total > 0 && (
+        <ProgressFromParent
+          parent={parentAttempt}
+          nowScore={score.totalCorrect}
+          nowTotal={score.totalQuestions}
+        />
+      )}
 
       {score.perExercise.length > 1 && (
         <div className="text-start max-w-sm mx-auto rounded-2xl border border-stone-200 bg-stone-50 p-4 mb-6">
@@ -604,6 +672,57 @@ const ResultsCard: React.FC<{
         <RotateCcw size={16} />
         Try again
       </button>
+    </div>
+  );
+};
+
+// Side-by-side "first attempt → now" pill, shown only on practice
+// worksheets when we found a matching parent attempt for this browser.
+// Same fuchsia palette as the teacher dashboard's practice strip so the
+// student and teacher views are visually linked.
+const ProgressFromParent: React.FC<{
+  parent: ParentAttempt;
+  nowScore: number;
+  nowTotal: number;
+}> = ({ parent, nowScore, nowTotal }) => {
+  const parentPct = Math.round((parent.score / parent.total) * 100);
+  const nowPct = nowTotal > 0 ? Math.round((nowScore / nowTotal) * 100) : 0;
+  const delta = nowPct - parentPct;
+  return (
+    <div className="max-w-sm mx-auto rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-4 mb-6">
+      <p className="text-xs uppercase tracking-widest font-bold text-fuchsia-700 mb-3 text-center">
+        Your progress
+      </p>
+      <div className="flex items-center justify-center gap-2">
+        <div className="text-center min-w-[80px] rounded-xl bg-white border border-fuchsia-200 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400">
+            First time
+          </p>
+          <p className="text-xl font-black tabular-nums text-stone-700">{parentPct}%</p>
+          <p className="text-[10px] font-bold tabular-nums text-stone-500">
+            {parent.score}/{parent.total}
+          </p>
+        </div>
+        <span className="text-fuchsia-400 text-lg font-black">→</span>
+        <div className="text-center min-w-[80px] rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-700">
+            Now
+          </p>
+          <p className="text-xl font-black tabular-nums text-emerald-700">{nowPct}%</p>
+          <p className="text-[10px] font-bold tabular-nums text-emerald-600">
+            {nowScore}/{nowTotal}
+          </p>
+        </div>
+      </div>
+      {delta !== 0 && (
+        <p
+          className={`text-center text-xs font-black mt-3 ${
+            delta > 0 ? "text-emerald-700" : "text-rose-600"
+          }`}
+        >
+          {delta > 0 ? `+${delta} points stronger` : `${delta} points`}
+        </p>
+      )}
     </div>
   );
 };

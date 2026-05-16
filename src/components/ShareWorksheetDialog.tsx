@@ -44,6 +44,12 @@ interface Props {
   source: ShareSource;
   defaultLang: WorksheetLang;
   onClose: () => void;
+  // Set when the dialog is opened to mint a practice worksheet from an
+  // existing one (the retry-wrong-words flow). The new worksheet is
+  // stamped with this slug so the teacher dashboard can nest the
+  // resulting attempts under the original instead of showing a stray
+  // unrelated card.
+  parentSlug?: string;
 }
 
 // Order shown in the picker.  Matching + Quiz lead because they're the
@@ -85,7 +91,7 @@ const defaultConfig = (
   return { type, word_ids: wordIds } as Exercise;
 };
 
-export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onClose }) => {
+export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onClose, parentSlug }) => {
   const { language, dir } = useLanguage();
   const t = shareWorksheetT[language];
   const uniqueIds = useMemo(
@@ -284,6 +290,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
           p_topic_name: source.topicName,
           p_exercises: exercises,
           p_settings: settings,
+          p_parent_slug: parentSlug ?? null,
         },
       );
       if (rpcErr || !data) {
