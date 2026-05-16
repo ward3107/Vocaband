@@ -222,6 +222,7 @@ import { generateAndStoreQuickPlayAiSentences } from "./utils/generateAndStoreQu
 import { createEnglishQuickPlaySession, createHebrewQuickPlaySession } from "./handlers/quickPlaySession";
 import { generateAiLesson, type AiLessonParams } from "./utils/aiLesson";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
+import { stripUrlParam } from "./utils/url";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
@@ -2225,11 +2226,7 @@ export default function App() {
     setPendingAssignmentId(null);
     // Strip the consumed param so a refresh or back-nav doesn't
     // re-trigger the auto-open after the student left the assignment.
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("assignment");
-      window.history.replaceState({}, "", url.toString());
-    } catch { /* history API unavailable — non-fatal */ }
+    stripUrlParam("assignment");
   }, [pendingAssignmentId, user?.role, view, studentAssignments]);
 
   // Class Minute entry point — used by both the dashboard widget tap
@@ -2272,11 +2269,7 @@ export default function App() {
     if (ALL_WORDS.length === 0) return;
     if (pendingClassSwitch) return;
     setPendingPlayMode(null);
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("play");
-      window.history.replaceState({}, "", url.toString());
-    } catch { /* history API unavailable — non-fatal */ }
+    stripUrlParam("play");
     void startClassMinute();
   }, [pendingPlayMode, user?.role, view, ALL_WORDS.length, pendingClassSwitch, startClassMinute]);
 
