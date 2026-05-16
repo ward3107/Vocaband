@@ -25,6 +25,8 @@ import {
   Inbox,
   Loader2,
   QrCode,
+  Send,
+  Target,
   Users,
 } from "lucide-react";
 import { supabase } from "../core/supabase";
@@ -32,6 +34,11 @@ import type { AppUser } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { shareWorksheetT } from "../locales/teacher/share-worksheet";
 import { WorksheetShareCard } from "../components/WorksheetShareCard";
+import {
+  ShareWorksheetDialog,
+  type WorksheetLang,
+} from "../components/ShareWorksheetDialog";
+import { extractMisses, type Answer } from "../worksheet/types";
 
 type WorksheetFormat = "matching" | "quiz" | "fillblank" | "listening";
 
@@ -42,6 +49,7 @@ interface Worksheet {
   word_ids: number[];
   expires_at: string;
   created_at: string;
+  settings: { language?: WorksheetLang } | null;
 }
 
 // One row in worksheet_attempts.answers — discriminated union mirrors
@@ -116,7 +124,7 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
       setError(null);
       const { data: wData, error: wErr } = await supabase
         .from("interactive_worksheets")
-        .select("slug, topic_name, format, word_ids, expires_at, created_at")
+        .select("slug, topic_name, format, word_ids, expires_at, created_at, settings")
         .eq("teacher_uid", user.uid)
         .order("created_at", { ascending: false });
       if (cancelled) return;
@@ -314,6 +322,10 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
   const { language } = useLanguage();
   const shareT = shareWorksheetT[language];
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // When set, opens ShareWorksheetDialog pre-loaded with this student's
+  // missed word IDs so the teacher can mint a follow-up practice
+  // worksheet in one tap.
+  const [retryFor, setRetryFor] = useState<Attempt | null>(null);
   // Default the share panel open when there are no submissions yet —
   // that's exactly when a teacher needs the QR back. Once results come
   // in the panel is collapsed by default so the results are above the
@@ -321,6 +333,13 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
   const [shareOpen, setShareOpen] = useState<boolean>(() =>
     attempts.filter((a) => a.completed_at).length === 0,
   );
+
+  // The original worksheet's language drives the retry default so the
+  // teacher doesn't have to re-pick HE / AR every time. Falls back to
+  // the teacher's UI language minus English (a retry "worksheet in
+  // English" makes no sense for an EFL audience).
+  const retryLang: WorksheetLang =
+    worksheet.settings?.language ?? (language === "en" ? "he" : language);
   const completed = attempts.filter((a) => a.completed_at);
   const avgPct =
     completed.length > 0
@@ -466,6 +485,10 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
                       transition={{ duration: 0.18 }}
                       className="border-t border-[var(--vb-border)]"
                     >
+                      <AttemptSummary
+                        attempt={a}
+                        onSendRetry={() => setRetryFor(a)}
+                      />
                       <AnswerBreakdown answers={a.answers} />
                     </motion.div>
                   )}
@@ -475,8 +498,169 @@ const WorksheetDetail: React.FC<{ worksheet: Worksheet; attempts: Attempt[] }> =
           })}
         </div>
       )}
+
+      {retryFor && (
+        <ShareWorksheetDialog
+          source={{
+            topicName: buildRetryTitle(worksheet.topic_name, retryFor.student_name),
+            wordIds: extractMisses(retryFor.answers as unknown as Answer[]).map(
+              (m) => m.word_id,
+            ),
+          }}
+          defaultLang={retryLang}
+          onClose={() => setRetryFor(null)}
+        />
+      )}
     </>
   );
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// Attempt analytics — sits above the per-question list when a row is
+// expanded. Two pieces:
+//   1. Per-mode accuracy bars so the teacher can see *where* a student
+//      struggled (e.g. nailed Matching but bombed Fill-in-the-blank),
+//      not just the rolled-up percentage.
+//   2. A one-tap CTA that opens ShareWorksheetDialog seeded with this
+//      student's missed word IDs, so the teacher can send a focused
+//      practice worksheet instead of re-sending the whole pool.
+// ─────────────────────────────────────────────────────────────────────
+const AttemptSummary: React.FC<{
+  attempt: Attempt;
+  onSendRetry: () => void;
+}> = ({ attempt, onSendRetry }) => {
+  const summary = useMemo(
+    () => summarizeByMode(attempt.answers),
+    [attempt.answers],
+  );
+  const wrongWordCount = useMemo(
+    () => extractMisses(attempt.answers as unknown as Answer[]).length,
+    [attempt.answers],
+  );
+
+  return (
+    <div className="p-3 sm:p-4 space-y-3 bg-[var(--vb-surface-alt)]">
+      {summary.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--vb-text-muted)]">
+            By exercise
+          </p>
+          <div className="space-y-1.5">
+            {summary.map((row) => {
+              const pct = row.total > 0 ? Math.round((row.correct / row.total) * 100) : 0;
+              const barColor =
+                pct >= 80 ? "bg-emerald-500" : pct >= 60 ? "bg-amber-500" : "bg-rose-500";
+              return (
+                <div key={row.kind} className="flex items-center gap-3 text-xs">
+                  <span className="font-bold text-[var(--vb-text-primary)] w-32 sm:w-40 truncate">
+                    {MODE_LABEL[row.kind] ?? row.kind}
+                  </span>
+                  <div className="flex-1 h-2 bg-[var(--vb-border)] rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${barColor} transition-all`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="tabular-nums font-bold text-[var(--vb-text-secondary)] w-16 text-right shrink-0">
+                    {row.correct}/{row.total} · {pct}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 pt-2 border-t border-[var(--vb-border)]">
+        <div className="flex-1 min-w-0 flex items-center gap-2 text-sm">
+          <Target size={16} className="text-rose-500 shrink-0" />
+          <span className="font-bold text-[var(--vb-text-primary)]">
+            {wrongWordCount} {wrongWordCount === 1 ? "wrong word" : "wrong words"}
+          </span>
+        </div>
+        <motion.button
+          type="button"
+          onClick={onSendRetry}
+          disabled={wrongWordCount === 0}
+          whileHover={wrongWordCount > 0 ? { scale: 1.02 } : undefined}
+          whileTap={wrongWordCount > 0 ? { scale: 0.97 } : undefined}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm shadow-sm transition-colors ${
+            wrongWordCount === 0
+              ? "bg-stone-100 text-stone-400 cursor-not-allowed"
+              : "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-700 hover:to-fuchsia-700"
+          }`}
+        >
+          <Send size={14} />
+          Send retry worksheet
+        </motion.button>
+      </div>
+    </div>
+  );
+};
+
+// Friendly labels for the mode bars. Keys mirror Answer.kind values so
+// lookup is direct; an unknown kind falls back to its raw key, which
+// keeps the dashboard from going blank if a new exercise type ships
+// before this map is updated.
+const MODE_LABEL: Record<string, string> = {
+  quiz: "Multiple choice",
+  matching: "Matching",
+  letter_scramble: "Letter scramble",
+  listening_dictation: "Listening",
+  fill_blank: "Fill in the blank",
+  definition_match: "Definition match",
+  synonym_antonym: "Synonym / Antonym",
+  cloze: "Cloze",
+  sentence_building: "Sentence building",
+  translation_typing: "Translation typing",
+  word_in_context: "Word in context",
+  true_false: "True / False",
+};
+
+// Per-row correctness — quiz/typing/etc use is_correct; matching's
+// signal is mistakes_count===0 (every pair is eventually solved);
+// letter_scramble counts a first-try solve as correct so partial
+// brute-forcing isn't rewarded the same as a confident answer.
+const isAnswerCorrect = (a: AnswerRow): boolean => {
+  if (a.kind === "matching") {
+    return (a as MatchingAnswer).mistakes_count === 0;
+  }
+  if (a.kind === "letter_scramble") {
+    const g = a as GenericAnswer;
+    return g.solved === true && (g.attempts ?? 1) === 1;
+  }
+  return (a as GenericAnswer).is_correct === true;
+};
+
+const summarizeByMode = (
+  answers: AnswerRow[],
+): Array<{ kind: string; correct: number; total: number }> => {
+  const map = new Map<string, { correct: number; total: number }>();
+  for (const a of answers) {
+    const entry = map.get(a.kind) ?? { correct: 0, total: 0 };
+    entry.total += 1;
+    if (isAnswerCorrect(a)) entry.correct += 1;
+    map.set(a.kind, entry);
+  }
+  // Stable order: lowest accuracy first so the weakest mode lands at
+  // the top where the teacher's eye lands first. Ties broken by name.
+  return Array.from(map.entries())
+    .map(([kind, v]) => ({ kind, ...v }))
+    .sort((a, b) => {
+      const aPct = a.total > 0 ? a.correct / a.total : 0;
+      const bPct = b.total > 0 ? b.correct / b.total : 0;
+      if (aPct !== bPct) return aPct - bPct;
+      return a.kind.localeCompare(b.kind);
+    });
+};
+
+// Title for the retry worksheet. Trimmed so the topic chip and the
+// student tag still fit without wrapping in the share dialog header.
+const buildRetryTitle = (topic: string, student: string): string => {
+  const shortTopic = topic.length > 28 ? `${topic.slice(0, 27)}…` : topic;
+  const shortStudent = student.length > 18 ? `${student.slice(0, 17)}…` : student;
+  return `Retry: ${shortTopic} — ${shortStudent}`;
 };
 
 // ─────────────────────────────────────────────────────────────────────
