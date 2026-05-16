@@ -44,7 +44,6 @@ export interface TeacherDashboardT {
   approvalsTooltip: string;
   /** "{n} student waiting" / "{n} students waiting". */
   approvalsWaiting: (n: number) => string;
-  approvalsNoPending: string;
   approvalsButtonReview: string;
   approvalsButtonCheck: string;
 
@@ -154,7 +153,6 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsTitle: "Approvals",
     approvalsTooltip: "Approve students who signed up for your classes",
     approvalsWaiting: (n) => `${n} student${n === 1 ? '' : 's'} waiting`,
-    approvalsNoPending: "No pending approvals",
     approvalsButtonReview: "Review",
     approvalsButtonCheck: "Check",
 
@@ -254,7 +252,6 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsTitle: "אישורים",
     approvalsTooltip: "אשר תלמידים שנרשמו לכיתות שלך",
     approvalsWaiting: (n) => `${n} ${n === 1 ? "תלמיד ממתין" : "תלמידים ממתינים"}`,
-    approvalsNoPending: "אין אישורים ממתינים",
 
     worksheetResultsTitle: "תוצאות דף עבודה",
     worksheetResultsDescription: "ציונים מדפי עבודה ששותפו",
@@ -354,7 +351,6 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsTitle: "الموافقات",
     approvalsTooltip: "وافق على الطلاب الذين سجّلوا في فصولك",
     approvalsWaiting: (n) => `${n} ${n === 1 ? "طالب ينتظر" : "طلاب ينتظرون"}`,
-    approvalsNoPending: "لا توجد موافقات معلقة",
 
     worksheetResultsTitle: "نتائج ورقة العمل",
     worksheetResultsDescription: "نتائج أوراق العمل المشتركة",
