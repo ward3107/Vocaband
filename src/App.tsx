@@ -81,7 +81,7 @@ const SvgArrowLeftRight: React.FC<{ size?: number; className?: string; ariaHidde
 // on cold first-paint. AnimatePresence / motion.div weren't used in
 // this file anyway, so the original `import { motion, AnimatePresence }`
 // was a dead import.
-import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUser, mapUserToDb, mapClass, mapAssignment, mapProgress, hasTeacherAccess, performUserLogout, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, OperationType, handleDbError, mapUserToDb, mapClass, mapAssignment, mapProgress, hasTeacherAccess, performUserLogout, fetchUserProfile, USER_COLUMNS, CLASS_COLUMNS, ASSIGNMENT_COLUMNS, PROGRESS_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { freshTrialEndsAt, isPro } from "./core/plan";
 import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher, subscribeQueueDepth } from "./core/saveQueue";
 import { clearAllReadCache } from "./core/readCache";
@@ -1217,17 +1217,9 @@ export default function App() {
     // PKCE code exchange happens in main.tsx (outside React lifecycle)
     // to avoid StrictMode double-mount races.  By the time this effect
     // runs, the exchange is already in-flight or completed.
-
-    // Helper: fetch user profile with a single retry for transient errors.
-    const fetchUserProfile = async (uid: string, retries = 1): Promise<ReturnType<typeof mapUser> | null> => {
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        const { data: userRow, error } = await supabase.from('users').select(USER_COLUMNS).eq('uid', uid).maybeSingle();
-        if (userRow) return mapUser(userRow);
-        if (!error) return null; // No row exists — don't retry
-        if (attempt < retries) await new Promise(r => setTimeout(r, 500));
-      }
-      return null;
-    };
+    //
+    // fetchUserProfile (single-retry user-row lookup) lives in
+    // core/supabase.ts alongside USER_COLUMNS + mapUser.
 
     // Restore session from a Supabase user.  Called OUTSIDE the auth lock
     // (fire-and-forget from the non-async onAuthStateChange callback).
