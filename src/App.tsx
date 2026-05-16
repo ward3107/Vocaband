@@ -3921,6 +3921,7 @@ export default function App() {
           }}
           speak={speakWord}
           assignments={hotSeatAssignments}
+          topicPacks={TOPIC_PACKS}
         />
       </LazyWrapper>
     );
