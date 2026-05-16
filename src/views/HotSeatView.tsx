@@ -268,7 +268,7 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
 const MEDAL = ['🥇', '🥈', '🥉'];
 
 export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewProps) {
-  const { language, dir } = useLanguage();
+  const { language, dir, isRTL } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
   // Lazy-loads the vocabulary chunk on mount.  The setup phase shows a
@@ -404,6 +404,18 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
       setQuestionNumber(nextQ);
       setPhase('interstitial');
     }, 1200);
+  };
+
+  // Cancel an in-progress round.  Drops back to the setup screen so the
+  // teacher can tweak names/settings and restart, or use setup's own
+  // Back button to exit the mode entirely.  Without this, once "Start
+  // Hot Seat" was tapped there was no way out until the last player's
+  // last question.
+  const handleCancel = () => {
+    setPhase('setup');
+    setQuestion(null);
+    setPicked(null);
+    submittedRef.current = false;
   };
 
   const handlePlayAgain = () => {
@@ -600,7 +612,16 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
   if (phase === 'interstitial') {
     const player = players[currentPlayerIdx];
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-100 via-amber-100 to-rose-100 flex items-center justify-center p-4" dir={dir}>
+      <div className="min-h-screen bg-gradient-to-br from-orange-100 via-amber-100 to-rose-100 flex items-center justify-center p-4 relative" dir={dir}>
+        <button
+          type="button"
+          onClick={handleCancel}
+          style={{ touchAction: 'manipulation' }}
+          className={`absolute top-4 ${isRTL ? 'right-4' : 'left-4'} inline-flex items-center gap-1.5 text-sm font-bold text-stone-700 hover:text-stone-900 bg-white/70 backdrop-blur px-3 py-1.5 rounded-full shadow-sm`}
+        >
+          <X size={16} />
+          {t.exitBtn}
+        </button>
         <motion.div
           key={`${currentPlayerIdx}-${questionNumber}`}
           initial={{ opacity: 0, scale: 0.95 }}
@@ -633,6 +654,18 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
     const player = players[currentPlayerIdx];
     return (
       <div className="min-h-screen bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50 px-4 py-6 sm:py-10 flex flex-col items-center" dir="ltr">
+        {/* Top bar: cancel + status pills */}
+        <div className="w-full max-w-2xl flex items-center justify-between gap-2 mb-3" dir={dir}>
+          <button
+            type="button"
+            onClick={handleCancel}
+            style={{ touchAction: 'manipulation' }}
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-stone-600 hover:text-stone-900 px-2 py-1.5 -mx-2 rounded-full"
+          >
+            <X size={16} />
+            {t.exitBtn}
+          </button>
+        </div>
         {/* Status row */}
         <div className="w-full max-w-2xl flex items-center justify-between gap-3 mb-6" dir={dir}>
           <div className="px-3 py-1.5 rounded-full bg-orange-100 text-orange-800 text-xs font-black uppercase tracking-wider">

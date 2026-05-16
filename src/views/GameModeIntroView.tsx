@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { motion } from "motion/react";
 import type { GameMode } from "../constants/game";
+import { useLanguage } from "../hooks/useLanguage";
 import { modeIntroT } from "../locales/student/mode-intro";
 
 // Per-mode theme colors — each game feels distinctive instead of a uniform look
@@ -35,7 +36,6 @@ interface GameModeIntroViewProps {
   gameMode: GameMode;
   hasChosenLanguage: boolean;
   setHasChosenLanguage: (v: boolean) => void;
-  targetLanguage: "hebrew" | "arabic";
   setTargetLanguage: (lang: "hebrew" | "arabic") => void;
   setShowModeIntro: (v: boolean) => void;
   setShowModeSelection: (v: boolean) => void;
@@ -48,14 +48,31 @@ export default function GameModeIntroView({
   gameMode,
   hasChosenLanguage,
   setHasChosenLanguage,
-  targetLanguage,
   setTargetLanguage,
   setShowModeIntro,
   setShowModeSelection,
   onLetsGo,
 }: GameModeIntroViewProps) {
-  // Local picker state — only used here, so it stays in the view
-  const [introLang, setIntroLang] = useState<"en" | "ar" | "he">("en");
+  // Honour the language the student already picked at session start
+  // (QuickPlay join screen, browser auto-detect, or the global picker).
+  // The duplicate EN/AR/HE toggle that used to live on this screen
+  // forced students to answer the same question twice — every time
+  // they entered a new mode.
+  const { language: introLang } = useLanguage();
+
+  // If the student picked Hebrew or Arabic as their UI language but
+  // the game-side translation target hasn't been committed yet, mirror
+  // the choice so Word modes know which translation to show without
+  // re-prompting.  EN UI keeps the existing targetLanguage default.
+  useEffect(() => {
+    if (hasChosenLanguage) return;
+    if (introLang !== 'he' && introLang !== 'ar') return;
+    const target = introLang === 'ar' ? 'arabic' : 'hebrew';
+    setTargetLanguage(target);
+    try { localStorage.setItem('vocaband_target_lang', target); } catch { /* storage unavailable */ }
+    setHasChosenLanguage(true);
+  }, [introLang, hasChosenLanguage, setTargetLanguage, setHasChosenLanguage]);
+
   const t = modeIntroT[introLang];
   const info = t.modes[gameMode];
   const theme = modeThemes[gameMode];
@@ -69,33 +86,6 @@ export default function GameModeIntroView({
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-md sm:max-w-xl w-full"
       >
-        {/* Language toggle — drives BOTH the instruction language here AND
-            the student's game translation target language. Picking "عربي"
-            or "עברית" also commits the matching targetLanguage so the
-            duplicate "Choose your translation language" card below isn't
-            needed. "EN" doesn't set a target (Arabic/Hebrew are the only
-            valid translation targets for this app). */}
-        <div className="flex justify-center gap-1.5 mb-6 bg-stone-100 rounded-full p-1 w-fit mx-auto">
-          {([["en", "EN"], ["ar", "عربي"], ["he", "עברית"]] as const).map(([code, label]) => (
-            <button
-              key={code}
-              onClick={() => {
-                setIntroLang(code as "en" | "ar" | "he");
-                if (code === 'ar' || code === 'he') {
-                  const target = code === 'ar' ? 'arabic' : 'hebrew';
-                  setTargetLanguage(target);
-                  try { localStorage.setItem('vocaband_target_lang', target); } catch {}
-                  setHasChosenLanguage(true);
-                }
-              }}
-              style={{ touchAction: 'manipulation' }}
-              className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-all ${introLang === code ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
         {/* Hero icon with gradient circle */}
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
