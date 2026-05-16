@@ -111,7 +111,6 @@ export interface TeacherWizardsT {
 
   // ─── CreateAssignmentWizard success screen ─────────────────────
   classCodeCopied: string;
-  joinMessage: (code: string) => string;
   assignmentUpdatedTitle: string;
   assignmentCreatedTitle: string;
   assignmentUpdatedSubtitle: string;
@@ -224,7 +223,6 @@ export const teacherWizardsT: Record<Language, TeacherWizardsT> = {
     generateQrCode: "Generate QR Code",
 
     classCodeCopied: "Class code copied!",
-    joinMessage: (code) => `Join my class on VocabAnd! Class code: ${code}`,
     assignmentUpdatedTitle: "Assignment Updated!",
     assignmentCreatedTitle: "Assignment Created!",
     assignmentUpdatedSubtitle: "Your changes have been saved successfully",
@@ -330,7 +328,6 @@ export const teacherWizardsT: Record<Language, TeacherWizardsT> = {
     generateQrCode: "צור קוד QR",
 
     classCodeCopied: "קוד הכיתה הועתק!",
-    joinMessage: (code) => `הצטרף לכיתה שלי ב-Vocaband! קוד כיתה: ${code}`,
     assignmentUpdatedTitle: "המשימה עודכנה!",
     assignmentCreatedTitle: "המשימה נוצרה!",
     assignmentUpdatedSubtitle: "השינויים נשמרו בהצלחה",
@@ -436,7 +433,6 @@ export const teacherWizardsT: Record<Language, TeacherWizardsT> = {
     generateQrCode: "أنشئ رمز QR",
 
     classCodeCopied: "تم نسخ رمز الفصل!",
-    joinMessage: (code) => `انضم إلى صفي على Vocaband! رمز الصف: ${code}`,
     assignmentUpdatedTitle: "تم تحديث الواجب!",
     assignmentCreatedTitle: "تم إنشاء الواجب!",
     assignmentUpdatedSubtitle: "تم حفظ تغييراتك بنجاح",
