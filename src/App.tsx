@@ -227,6 +227,7 @@ import { completeTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
 import { persistHebrewScore, type HebrewMode } from "./handlers/hebrewScore";
 import { grantRetentionXp, applyServerRewards, grantNonXpReward } from "./handlers/retentionGrants";
+import { deleteAssignmentWithUndo } from "./handlers/deleteAssignmentWithUndo";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -3013,41 +3014,16 @@ export default function App() {
           setCreatedClassCode={setCreatedClassCode}
           deleteConfirmModal={deleteConfirmModal}
           setDeleteConfirmModal={setDeleteConfirmModal}
-          onConfirmDeleteAssignment={(deletedId, deletedTitle) => {
-            setTeacherAssignments(prev => {
-              const removed = prev.find(x => x.id === deletedId);
-              if (removed) (window as any).__undoAssignment = removed;
-              return prev.filter(x => x.id !== deletedId);
-            });
-            setDeleteConfirmModal(null);
-            const undoTimeout = setTimeout(async () => {
-              const { error } = await supabase.from('assignments').delete().eq('id', deletedId);
-              if (error) showToast(appToasts.failedDeleteFromDb(error.message), "error");
-              delete (window as any).__undoAssignment;
-              delete (window as any).__undoDeleteTimeout;
-            }, 8000);
-            (window as any).__undoDeleteTimeout = undoTimeout;
-            const undoToastId = Date.now().toString();
-            setToasts(prev => [...prev, {
-              id: undoToastId,
-              message: `"${deletedTitle}" deleted`,
-              type: 'info' as const,
-              action: {
-                label: 'Undo',
-                onClick: () => {
-                  clearTimeout((window as any).__undoDeleteTimeout);
-                  const restored = (window as any).__undoAssignment;
-                  if (restored) {
-                    setTeacherAssignments(prev => [...prev, restored]);
-                    delete (window as any).__undoAssignment;
-                  }
-                  setToasts(prev => prev.filter(t => t.id !== undoToastId));
-                  showToast(appToasts.assignmentRestored, "success");
-                }
-              }
-            }]);
-            setTimeout(() => setToasts(prev => prev.filter(t => t.id !== undoToastId)), 8000);
-          }}
+          onConfirmDeleteAssignment={(deletedId, deletedTitle) =>
+            deleteAssignmentWithUndo(deletedId, deletedTitle, {
+              setTeacherAssignments,
+              setDeleteConfirmModal,
+              setToasts,
+              showToast,
+              failedDeleteMsg: appToasts.failedDeleteFromDb,
+              restoredMsg: appToasts.assignmentRestored,
+            })
+          }
           rejectStudentModal={rejectStudentModal}
           setRejectStudentModal={setRejectStudentModal}
           confirmRejectStudent={confirmRejectStudent}
