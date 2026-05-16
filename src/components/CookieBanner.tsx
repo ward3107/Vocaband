@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+// motion/react removed — was ~43 kB gz. CookieBanner is the first
+// thing first-time visitors see, so its dependency on motion put the
+// chunk on the cold-paint path even after LandingPage was de-animated.
+// Slide-up entry replaced with a CSS @keyframes animation defined in
+// index.css; the expansion panel uses a conditional render rather
+// than AnimatePresence's exit animation.
 import { Cookie, ChevronUp, ChevronDown, Shield, BarChart3, Settings, Check, Lock } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { cookieBannerT, type CookieBannerStrings } from "../locales/cookie-banner";
@@ -57,10 +62,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
 
   return (
     <div className="fixed bottom-0 left-0 w-full z-[100] px-3 pb-4 md:px-8 md:pb-12 pointer-events-none">
-      <motion.div
-        initial={{ opacity: 0, y: 60 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1], delay: 0.3 }}
+      <div
         className="max-w-4xl mx-auto bg-slate-900/95 backdrop-blur-2xl p-4 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-[0_25px_70px_-15px_rgba(139,92,246,0.4)] pointer-events-auto border border-white/15 max-h-[85vh] md:max-h-none flex flex-col"
         dir={dir}
       >
@@ -68,14 +70,10 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
         <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 mb-3 md:mb-4 flex-shrink-0">
           {/* Cookie icon — gradient pill matching the brand signature
               gradient (indigo → violet → fuchsia). */}
-          <motion.div
-            animate={{ rotate: [0, 8, -8, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br from-violet-500/30 via-fuchsia-500/25 to-pink-500/30 border border-white/15 flex items-center justify-center text-violet-200 shadow-lg shadow-violet-500/20"
-          >
+          <div className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br from-violet-500/30 via-fuchsia-500/25 to-pink-500/30 border border-white/15 flex items-center justify-center text-violet-200 shadow-lg shadow-violet-500/20">
             <Cookie size={24} className="md:hidden" aria-hidden="true" />
             <Cookie size={28} className="hidden md:block" aria-hidden="true" />
-          </motion.div>
+          </div>
 
           <div className="flex-1 text-center md:text-left">
             <p className="text-white/90 font-bold text-xs md:text-base leading-relaxed">
@@ -88,15 +86,8 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
         </div>
 
         {/* Expandable Customization Panel - scrollable on mobile */}
-        <AnimatePresence>
-          {isExpanded && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="overflow-hidden flex-shrink-0"
-            >
+        {isExpanded && (
+            <div className="overflow-hidden flex-shrink-0">
               <div className="mb-4 md:mb-6 p-3 md:p-6 bg-white/5 rounded-xl md:rounded-2xl border border-white/10 overflow-y-auto max-h-[40vh] md:max-h-none">
                 <h3 className="text-base md:text-lg font-black font-headline mb-3 md:mb-4 text-white">
                   {t.preferencesTitle}
@@ -174,9 +165,8 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
                   })}
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full flex-shrink-0">
@@ -200,28 +190,26 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
           </button>
 
           {isExpanded ? (
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+            <button
+              type="button"
               onClick={() => handleSavePreferences()}
               className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
             >
               <Check size={16} aria-hidden="true" />
               {t.savePreferences}
-            </motion.button>
+            </button>
           ) : (
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+            <button
+              type="button"
               onClick={() => onAccept()}
               className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
             >
               <Check size={16} aria-hidden="true" />
               {t.acceptAll}
-            </motion.button>
+            </button>
           )}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

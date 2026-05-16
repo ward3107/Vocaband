@@ -388,28 +388,15 @@ export default defineConfig(() => {
       },
     },
     build: {
-      // Drop the motion chunk from index.html's <link rel="modulepreload">
-      // list. Vite's default behaviour is to preload every static dep of
-      // every lazy() chunk reachable from the entry, which puts motion
-      // (43 kB gz, used only by LandingPage's hero animations) on the
-      // cold-load critical path even though it's not needed until the
-      // first paint scrolls into a motion.div. Filtering it out here
-      // means it still loads — but on-demand when LandingPage
-      // executes, after entry + App + react-vendor have already
-      // arrived. The trade-off: motion arrives a few hundred ms later
-      // on cold first-paint, but the parallel entry/lucide/react-vendor
-      // fetch saturates the connection sooner.
-      //
-      // hostType is filtered to 'html' so JS-emitted preload comments
-      // (vite/preload-helper) still preload motion when LandingPage's
-      // dynamic import fires — only the static <link> in the HTML head
-      // is trimmed.
-      modulePreload: {
-        resolveDependencies: (_url, deps, { hostType }) => {
-          if (hostType !== 'html') return deps;
-          return deps.filter(d => !d.includes('motion-'));
-        },
-      },
+      // Motion was previously filtered out of the HTML modulepreload
+      // list while we were removing motion.div usage from LandingPage.
+      // The filter is now removed: rolldown wraps react/jsx-runtime
+      // inside the motion chunk (CJS interop in framer-motion's
+      // require('react/jsx-runtime')), so LandingPage's bundle still
+      // statically imports motion-*.js to grab the JSX runtime. With
+      // motion unavoidable, preloading it in parallel with App +
+      // react-vendor + lucide is strictly faster than fetching it
+      // serially after LandingPage requests it.
       rollupOptions: {
         output: {
           manualChunks(id) {
@@ -421,19 +408,30 @@ export default defineConfig(() => {
             // is one extra parallel request but warm-load reuses the
             // long-cached Sentry chunk across deploys.
             if (id.includes('node_modules/@sentry/')) return 'sentry';
+            // React + react-dom — 130 kB raw, never changes; pin so
+            // upgrades to other deps don't invalidate React's cache.
+            //
+            // ORDER MATTERS: this rule MUST come BEFORE the motion
+            // rule below. motion's source files transitively import
+            // react/jsx-runtime; if we let the motion matcher catch
+            // first, it pulls jsx-runtime into the motion chunk and
+            // every JSX-using component (including LandingPage,
+            // which no longer animates anything) ends up with a
+            // static `import` from motion-*.js to grab the JSX
+            // runtime. Putting react first keeps the runtime in the
+            // react-vendor chunk where it belongs, so non-animated
+            // components don't need to load motion at all.
+            if (
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/scheduler/')
+            ) return 'react-vendor';
             // motion/framer-motion — used everywhere, but big enough
             // (~40 kB gz) to deserve its own cache key.
             if (id.includes('node_modules/motion/') || id.includes('node_modules/framer-motion/')) return 'motion';
             // supabase-js was already a chunk via natural splitting
             // but pin it so the chunk name is stable across builds.
             if (id.includes('node_modules/@supabase/')) return 'supabase';
-            // React + react-dom — 130 kB raw, never changes; pin so
-            // upgrades to other deps don't invalidate React's cache.
-            if (
-              id.includes('node_modules/react/') ||
-              id.includes('node_modules/react-dom/') ||
-              id.includes('node_modules/scheduler/')
-            ) return 'react-vendor';
             return undefined;
           },
         },

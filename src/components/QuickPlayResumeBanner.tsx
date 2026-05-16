@@ -32,7 +32,9 @@
  *   - Self-dismissing: tapping "Start over" wipes the hint.
  */
 import { useCallback, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+// motion/react removed — banner uses a static drop-in instead of the
+// previous spring slide. The library was its only motion consumer in
+// the eagerly-rendered App.tsx path.
 import { Play, X } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 
@@ -124,17 +126,11 @@ export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBanne
   const ago = hint.joinedAt ? relativeMinutes(hint.joinedAt) : "recently";
 
   return (
-    <AnimatePresence>
-      <motion.div
-        key="qp-resume-banner"
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: -20, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 280, damping: 24 }}
-        className="fixed top-3 inset-x-3 sm:top-4 sm:left-auto sm:right-4 sm:max-w-md z-[9985]"
-        role="alert"
-        aria-live="polite"
-      >
+    <div
+      className="fixed top-3 inset-x-3 sm:top-4 sm:left-auto sm:right-4 sm:max-w-md z-[9985]"
+      role="alert"
+      aria-live="polite"
+    >
         <div className="bg-white rounded-2xl shadow-2xl border-2 border-emerald-300 overflow-hidden">
           <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 px-4 py-2 text-white text-xs font-black uppercase tracking-widest">
             {tQp.welcome}
@@ -172,7 +168,6 @@ export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBanne
             </div>
           </div>
         </div>
-      </motion.div>
-    </AnimatePresence>
+      </div>
   );
 }
