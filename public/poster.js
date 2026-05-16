@@ -12,6 +12,16 @@
   if (urlEl) urlEl.textContent = url.replace(/^https?:\/\//, '');
   if (classCode) document.title = 'Vocaband poster — class ' + classCode;
 
+  // Class-code banner is `hidden` by default — only reveal when a
+  // class code is present so the generic /poster page doesn't show a
+  // confusing empty banner.
+  var codeBanner = document.getElementById('code-banner');
+  var codeValueEl = document.getElementById('code-value');
+  if (codeBanner && codeValueEl && classCode) {
+    codeValueEl.textContent = classCode.toUpperCase();
+    codeBanner.hidden = false;
+  }
+
   var printBtn = document.getElementById('print-btn');
   if (printBtn) printBtn.addEventListener('click', function () { window.print(); });
 
@@ -40,7 +50,7 @@
     }
   } catch (e) {
     target.textContent = 'Type the link →';
-    target.style.cssText = 'width:62mm;height:62mm;border:1px dashed #9ca3af;border-radius:3mm;display:flex;align-items:center;justify-content:center;color:#374151;font-weight:700;font-size:12pt;text-align:center;padding:4mm;flex-shrink:0;';
+    target.style.cssText = 'width:100mm;height:100mm;border:1px dashed #9ca3af;border-radius:3mm;display:flex;align-items:center;justify-content:center;color:#374151;font-weight:700;font-size:14pt;text-align:center;padding:6mm;flex-shrink:0;';
     console.warn('[poster] QR generation failed:', e);
   }
 })();
