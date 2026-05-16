@@ -64,9 +64,11 @@ const OAuthButton: React.FC<OAuthButtonProps> = ({
 
   return (
     <button
+      type="button"
       onClick={handleSignIn}
       disabled={isLoading || loading}
       className="w-full bg-white text-stone-800 py-4 rounded-xl text-lg font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 mb-4 border-2 border-stone-200 hover:border-stone-300 disabled:opacity-50 disabled:cursor-not-allowed"
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
     >
       {isLoading || loading ? (
         <>
