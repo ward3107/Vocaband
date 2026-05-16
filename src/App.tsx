@@ -201,6 +201,7 @@ import { useQuickPlayRealtime, type QpRealtimeStatus } from "./hooks/useQuickPla
 import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
 import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
 import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
+import { useQuickPlayEvents } from "./hooks/useQuickPlayEvents";
 import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useGameModeSetup } from "./hooks/useGameModeSetup";
 import { useDashboardPolling } from "./hooks/useDashboardPolling";
@@ -1103,37 +1104,24 @@ export default function App() {
   });
 
   // Translate v2-native KICKED / SESSION_ENDED events into the existing
-  // quickPlayKicked / quickPlaySessionEnded UI state. Keeps the screens
-  // that render those states (QuickPlayKickedScreen, QuickPlaySessionEndScreen)
-  // untouched. Dependencies are the hook's on-* methods specifically
-  // (they're useCallback-stable) — depending on the whole socket
-  // object would churn the effect every render.
-  const qpOnKicked = quickPlaySocket.onKicked;
-  const qpOnSessionEnded = quickPlaySocket.onSessionEnded;
-  const userIsGuestRef = useRef(user?.isGuest ?? false);
-  useEffect(() => { userIsGuestRef.current = user?.isGuest ?? false; }, [user?.isGuest]);
-  useEffect(() => {
-    if (!QUICKPLAY_V2) return;
-    // KICKED + SESSION_ENDED are broadcast to EVERY socket in the room
-    // — including the teacher who triggered them.  Only flip the
-    // student-facing screens when the local viewer is actually a guest
-    // (Quick Play student); ignore otherwise so the teacher who pressed
-    // "End session" lands cleanly back on their own dashboard via the
-    // monitor view's onEndSession handler instead of the student
-    // QuickPlaySessionEndScreen, whose "Go home" button does
-    // setUser(null) + setView('public-landing') — wrong for a teacher.
-    const offKicked = qpOnKicked(() => {
-      if (!userIsGuestRef.current) return;
+  // quickPlayKicked / quickPlaySessionEnded UI state. Hook guards on
+  // isGuest so the teacher who pressed "End session" lands cleanly
+  // back on their own dashboard via the monitor view, instead of the
+  // student QuickPlaySessionEndScreen (whose "Go home" wipes the user).
+  useQuickPlayEvents({
+    enabled: QUICKPLAY_V2,
+    isGuest: user?.isGuest ?? false,
+    onKicked: quickPlaySocket.onKicked,
+    onSessionEnded: quickPlaySocket.onSessionEnded,
+    handleGuestKicked: () => {
       setQuickPlayKicked(true);
       setActiveAssignment(null);
-    });
-    const offEnded = qpOnSessionEnded(() => {
-      if (!userIsGuestRef.current) return;
+    },
+    handleGuestSessionEnded: () => {
       setQuickPlaySessionEnded(true);
       setActiveAssignment(null);
-    });
-    return () => { offKicked(); offEnded(); };
-  }, [qpOnKicked, qpOnSessionEnded]);
+    },
+  });
 
   // Throttled Socket.IO score emit. Routes to the right transport
   // depending on context:
