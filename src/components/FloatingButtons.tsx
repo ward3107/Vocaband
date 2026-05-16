@@ -151,6 +151,19 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   useEffect(() => {
     let ticking = false;
     let lastScrollY = 0;
+    let scheduledRaf: number | null = null;
+
+    // Defer detection off the synchronous mount/resize path. The function
+    // does 4 × elementsFromPoint + a getComputedStyle per element returned,
+    // which forces layout — 39ms+ on a complex landing page. rAF runs it
+    // after the browser has painted, so the user sees first paint sooner.
+    const scheduleDetect = () => {
+      if (scheduledRaf !== null) return;
+      scheduledRaf = requestAnimationFrame(() => {
+        scheduledRaf = null;
+        detectBackgroundColor();
+      });
+    };
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -168,13 +181,14 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
       }
     };
 
-    detectBackgroundColor();
+    scheduleDetect();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", detectBackgroundColor);
+    window.addEventListener("resize", scheduleDetect);
 
     return () => {
+      if (scheduledRaf !== null) cancelAnimationFrame(scheduledRaf);
       window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", detectBackgroundColor);
+      window.removeEventListener("resize", scheduleDetect);
     };
   }, [detectBackgroundColor]);
 
