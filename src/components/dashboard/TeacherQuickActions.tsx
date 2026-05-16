@@ -108,21 +108,26 @@ export default function TeacherQuickActions({
             </div>
           </HelpTooltip>
 
-          {/* Approvals */}
-          <HelpTooltip className="h-full" content={t.approvalsTooltip}>
-            <div className="h-full" data-tour="approvals">
-              <CompactActionCard
-                icon={<UserCircle size={20} />}
-                iconBg={pendingStudentsCount > 0 ? "bg-rose-100" : "bg-[var(--vb-surface-alt)]"}
-                iconColor={pendingStudentsCount > 0 ? "text-rose-600" : "text-[var(--vb-text-muted)]"}
-                title={t.approvalsTitle}
-                description={pendingStudentsCount > 0 ? t.approvalsWaiting(pendingStudentsCount) : t.approvalsNoPending}
-                onClick={onApprovalsClick}
-                badge={pendingStudentsCount > 0 ? pendingStudentsCount : undefined}
-                isHebrew={isHebrew}
-              />
-            </div>
-          </HelpTooltip>
+          {/* Approvals — only surfaced when at least one student is
+              waiting. Keeps the dashboard focused on the common case
+              (nothing to approve) and lets the tile appear as a clear
+              call-to-action the moment a kid joins. */}
+          {pendingStudentsCount > 0 && (
+            <HelpTooltip className="h-full" content={t.approvalsTooltip}>
+              <div className="h-full" data-tour="approvals">
+                <CompactActionCard
+                  icon={<UserCircle size={20} />}
+                  iconBg="bg-rose-100"
+                  iconColor="text-rose-600"
+                  title={t.approvalsTitle}
+                  description={t.approvalsWaiting(pendingStudentsCount)}
+                  onClick={onApprovalsClick}
+                  badge={pendingStudentsCount}
+                  isHebrew={isHebrew}
+                />
+              </div>
+            </HelpTooltip>
+          )}
 
           {/* Worksheet Results — only surfaced on the English dashboard
               because the interactive-worksheet share feature is
