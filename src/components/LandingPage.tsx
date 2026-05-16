@@ -18,7 +18,6 @@ import {
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
 import TeacherResourcesSection from "./TeacherResourcesSection";
-import LazyBgVideo from "./LazyBgVideo";
 
 // The three "request" modals are only opened on click — defer their JS
 // to user action so the landing page's first paint doesn't pay for
@@ -134,19 +133,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
       <main id="main-content">
         {/* Hero Section - Floating 3D Cards + Gradient Mesh */}
         <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative isolate flex items-center justify-center overflow-hidden">
-          {/* Hero background video — silent, looping ambience.  Lazy-
-              loaded via IntersectionObserver: even though the hero is
-              above the fold, deferring the 2 MB fetch by one frame
-              gets the HTML/CSS/text-LCP on screen first, then the
-              video paints in.  Tint overlay below pushes the footage
-              toward Vocaband's brand palette so a generic clip still
-              feels on-brand. */}
-          <LazyBgVideo
-            src="/hero.mp4"
-            className="absolute inset-0 w-full h-full object-cover -z-30"
-          />
+          {/* Brand-tint backdrop — fully GPU-rendered gradient, no video
+              fetch.  The animated mesh below paints the motion that used
+              to come from a 2 MB MP4. */}
           <div
-            className="absolute inset-0 -z-20 bg-gradient-to-br from-indigo-950/75 via-violet-900/65 to-fuchsia-900/75"
+            className="absolute inset-0 -z-20 bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900"
             aria-hidden="true"
           />
 
@@ -260,6 +251,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <span>{t.navStartFree}</span>
                     <span className="text-white/60 text-xs">·</span>
                     <span className="text-white/70 text-xs font-semibold">{t.pricingFreeFeature1}</span>
+                  </motion.button>
+
+                  {/* Student entry — routes to /student (class-code +
+                      name picker).  Tinted amber so it's visually
+                      distinct from the violet teacher CTAs above; kids
+                      typing the URL their teacher wrote on the board
+                      now have an on-page path to the login screen. */}
+                  <motion.button
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.6 }}
+                    whileHover={{ scale: 1.02 }}
+                    onClick={onGetStarted}
+                    style={{ touchAction: 'manipulation' }}
+                    type="button"
+                    aria-label={t.heroCtaStudent}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-amber-100 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-300/30 hover:border-amber-300/50 backdrop-blur-sm transition-colors"
+                  >
+                    <BookOpen size={14} aria-hidden="true" />
+                    <span>{t.heroCtaStudent}</span>
                   </motion.button>
                 </div>
 

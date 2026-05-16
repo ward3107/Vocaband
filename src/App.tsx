@@ -37,7 +37,6 @@ import { isAnswerCorrect } from './utils/answerMatch';
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
 // CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
 import CookieBanner, { CookiePreferences } from "./components/CookieBanner";
-import PwaInstallBanner from "./components/PwaInstallBanner";
 import QuickPlayResumeBanner from "./components/QuickPlayResumeBanner";
 import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
@@ -104,7 +103,7 @@ import {
 } from "./constants/game";
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
-import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
+import { useQuickPlaySocket, disconnectQuickPlaySocket } from "./hooks/useQuickPlaySocket";
 import { useTeacherActions } from "./hooks/useTeacherActions";
 import { useGameModeActions } from "./hooks/useGameModeActions";
 import { useGameFinish } from "./hooks/useGameFinish";
@@ -1057,26 +1056,8 @@ export default function App() {
   const emitScoreUpdate = (newScore: number) => {
     const now = Date.now();
     const shouldEmit = now - lastScoreEmitRef.current > 2000 || isFinished;
-    if (!shouldEmit) {
-      console.log('[emitScoreUpdate] throttled', { newScore, msSinceLast: now - lastScoreEmitRef.current, isFinished });
-      return;
-    }
+    if (!shouldEmit) return;
     lastScoreEmitRef.current = now;
-
-    // Diagnostic — surfaces WHY a Quick Play student's score doesn't
-    // reach the server.  When teachers reported "students show 0 pts
-    // on my podium even after they played", the fly logs showed zero
-    // SCORE_UPDATE events.  These three conditions are the gate; if
-    // any is false the QP branch silently bails into the Live Challenge
-    // branch which itself bails because guests have no classCode.
-    console.log('[emitScoreUpdate] gate check', {
-      newScore,
-      QUICKPLAY_V2,
-      isGuest: user?.isGuest,
-      hasQpSession: !!quickPlayActiveSession,
-      qpSessionCode: quickPlayActiveSession?.sessionCode,
-      hasClassCode: !!user?.classCode,
-    });
 
     if (QUICKPLAY_V2 && quickPlayActiveSession) {
       // Add the per-mode score on top of the cumulative running total
@@ -1091,7 +1072,6 @@ export default function App() {
       // them too; dropping the isGuest guard removes the failsafe that
       // had no business being there.
       const cumulative = qpCumulativeScoreRef.current + newScore;
-      console.log('[emitScoreUpdate] QP path → updateScore', { mode: newScore, cumulative });
       setTimeout(() => quickPlaySocket.updateScore(cumulative), 0);
       // Also refresh the localStorage resume hint with the latest score
       // and a fresh joinedAt timestamp.  This (a) lets the
@@ -1112,10 +1092,7 @@ export default function App() {
       return;
     }
 
-    if (!socket || !user?.classCode) {
-      console.log('[emitScoreUpdate] both paths bailed — no emit');
-      return;
-    }
+    if (!socket || !user?.classCode) return;
     setTimeout(() => {
       socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
     }, 0);
@@ -1920,6 +1897,12 @@ export default function App() {
         // doesn't get serenaded by leftovers from the previous session.
         try { stopAllAudio(); } catch {}
         try { window.speechSynthesis?.cancel(); } catch {}
+        // Tear down the cached Quick Play socket explicitly.  It's a
+        // module-level singleton with reconnectionAttempts: Infinity, so
+        // without this call it would keep retrying WS connections in the
+        // background after the user logs out — visible as endless
+        // reconnect traffic in the Network tab and a slow memory leak.
+        try { disconnectQuickPlaySocket(); } catch {}
         setUser(null);
         // Reset all game-playing state so the back button can't resurrect
         // a ghost of the previous session.  Symptom before this clear:
@@ -1965,36 +1948,32 @@ export default function App() {
         const wasStudent = lastUserRoleRef.current === 'student';
         const postLogoutView: View = wasStudent ? 'student-account-login' : 'public-landing';
         lastUserRoleRef.current = null;
-        // Reset history state so the back-button trap doesn't persist
-        // into the logged-out experience (otherwise pad entries from
-        // the previous session would still block navigation).
-        try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
-        // Clear loading + swap the SPA view BEFORE the hard reload so React
-        // flushes the post-logout tree to the screen first. Without this
-        // ordering, window.location.replace() pre-empts the pending state
-        // updates and the teacher sees a stuck spinner from the previous
-        // page until the new document finishes loading (the "endless
-        // loading after logout" report).
+        // Swap the URL + reset history state in one shot.  The third arg
+        // to replaceState rewrites the path so a stale ?assignment=… or
+        // similar query param can't be picked up by bootstrap effects,
+        // and the state payload anchors the back-button trap on the
+        // public landing entry so pad/dashboard entries from the
+        // previous session no longer match.  Previous in-memory state
+        // (audio, speech, sockets) is already cleared above — see
+        // stopAllAudio / speechSynthesis.cancel / disconnectQuickPlaySocket
+        // and the React resets below — so we don't need a hard reload
+        // to get a clean slate any more.  Skipping the reload makes
+        // logout feel instant (<100 ms vs. the 1–3 s the full page
+        // navigation used to take).
+        const target = wasStudent ? '/student' : '/';
+        if (!quickPlaySessionParam) {
+          try { window.history.replaceState({ view: postLogoutView }, '', target); } catch {
+            try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
+          }
+        } else {
+          try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
+        }
+        // Clear loading + swap the SPA view so React paints the public
+        // landing immediately.  Order matters: setLoading(false) first
+        // so any global "Loading…" overlay tears down before the view
+        // swap renders the landing tree.
         setLoading(false);
         setView(postLogoutView);
-        // Don't redirect Quick Play students — they don't need auth
-        if (!quickPlaySessionParam) {
-          // Hard reload after the SPA route swap to drop every piece of
-          // in-memory state (audio handles, demo speech utterances, mode
-          // intros, popstate back-button trap entries).  Without this the
-          // teacher reported "after logout I still hear the demo voices
-          // and the back button takes me through every screen I just
-          // visited" — that's React state + history surviving the
-          // session change.  Replacing the URL clears the query
-          // (?assignment=... etc) so a stale assignment can't be picked
-          // up by the bootstrap effects on first paint.
-          // Defer to next tick so the state updates above commit before
-          // the page unloads — same reason as setLoading(false) ordering.
-          const target = wasStudent ? '/student' : '/';
-          setTimeout(() => {
-            try { window.location.replace(target); } catch {}
-          }, 0);
-        }
       } else if (event === 'INITIAL_SESSION') {
         // No session exists — user needs to log in.
         // Exception: if the URL has an OAuth code (?code=) or implicit token
@@ -2422,7 +2401,6 @@ export default function App() {
     // the server would reject as a regress.
     quickPlaySocketUpdateScore: (finalScore: number) => {
       qpCumulativeScoreRef.current += Math.max(0, finalScore);
-      console.log('[QP cumulative] mode finished', { mode: finalScore, totalNow: qpCumulativeScoreRef.current });
       quickPlaySocket.updateScore(qpCumulativeScoreRef.current);
     },
     xp, setXp, streak, setStreak, badges, studentProgress, setStudentProgress,
@@ -2478,9 +2456,6 @@ export default function App() {
 
   // Global cookie banner — renders on top of ANY view until accepted
   // Only show to non-authenticated users (logged-in users have already accepted via privacy consent)
-  // Also bundles the mobile PWA install banner — fully self-gated (mobile-only,
-  // not-installed-only, not-recently-dismissed) so it costs nothing on
-  // teacher desktops or already-installed PWAs.
   // Suppress the QP resume banner when:
   //   - the student is already on a QP URL (resume-in-progress)
   //   - the student is actively in a game / mode-selection / dashboard
@@ -2496,7 +2471,6 @@ export default function App() {
       {showCookieBanner && !user && (
         <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
       )}
-      <PwaInstallBanner />
       <QuickPlayResumeBanner suppress={qpResumeSuppress} />
     </>
   );
@@ -3923,10 +3897,15 @@ export default function App() {
 
   if (view === "hot-seat") {
     // Pass-around classroom mode — one device, many players.  Owns its
-    // own setup screen + game loop + podium internally; nothing to thread
-    // beyond speakWord (for audio replay on the prompt) and a back
-    // handler (dashboard return).  Scores stay in-memory; no Supabase
-    // writes since the players aren't logged-in users.
+    // own setup screen + game loop + podium internally; we feed it the
+    // teacher's English assignments so they can pick one as the word
+    // pool (in addition to the curriculum Sets 1/2/3).  Scope to the
+    // selected class when one is set — usually the case since Hot Seat
+    // launches from the class wizard's tab strip.  Scores stay
+    // in-memory; no Supabase writes since the players aren't logged in.
+    const hotSeatAssignments = visibleAssignments
+      .filter(a => !selectedClass || a.classId === selectedClass.id)
+      .map(a => ({ id: a.id, title: a.title, wordIds: a.wordIds, words: a.words }));
     return (
       <LazyWrapper loadingMessage="Loading Hot Seat…">
         <HotSeatView
@@ -3941,6 +3920,7 @@ export default function App() {
             }
           }}
           speak={speakWord}
+          assignments={hotSeatAssignments}
         />
       </LazyWrapper>
     );

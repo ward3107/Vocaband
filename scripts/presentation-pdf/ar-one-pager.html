@@ -154,8 +154,8 @@
   /* AUDIENCE COLUMNS */
   .audience {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
     margin-bottom: 7px;
   }
   .col {
@@ -374,6 +374,30 @@
     font-weight: 700;
     line-height: 1.35;
   }
+  .cta .qr {
+    background: #fff;
+    border-radius: 10px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,.18);
+  }
+  .cta .qr svg {
+    width: 78px;
+    height: 78px;
+    display: block;
+  }
+  .cta .qr .qr-cap {
+    font-size: 7pt;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: .04em;
+    text-align: center;
+    line-height: 1.1;
+  }
 
   .foot-line {
     text-align: center;
@@ -397,11 +421,11 @@
     </div>
     <h1>Vocaband</h1>
     <div class="strap">نسدّ فجوة المفردات. صفّاً تلو الآخر.</div>
-    <div class="sub">منصّة تعلّم رقميّة لمدارس البلاد — مبنيّة لمعلّمي اللغة الإنجليزية، متوافقة مع منهاج وزارة المعارف (Set 1 / 2 / 3)، تدعم العربية والعبرية والروسية، وتعمل في المتصفّح دون أيّ تثبيت.</div>
+    <div class="sub">منصّة تعلّم رقميّة لمدارس البلاد — مبنيّة لمعلّمي اللغة الإنجليزية، متوافقة مع منهاج وزارة المعارف، مع واجهة وترجمة بالإنجليزية والعربية والعبرية، وتعمل في المتصفّح دون أيّ تثبيت.</div>
     <div class="pills">
       <div class="pill">6,482 مفردة</div>
       <div class="pill">15 نمط لعب</div>
-      <div class="pill">4 لغات</div>
+      <div class="pill">EN • AR • HE</div>
       <div class="pill">WCAG 2.0 AA</div>
       <div class="pill">GDPR + التعديل 13</div>
       <div class="pill">EU-Hosted 🇪🇺</div>
@@ -456,20 +480,8 @@
           <li>وحدات وزارة المعارف جاهزة، أو ارفعوا قائمتكم.</li>
           <li><strong>كاميرا OCR</strong>: صوّروا الورقة → واجب جاهز.</li>
           <li>Quick Play — رمز QR وتبدأ الحصّة في 30 ثانية.</li>
-          <li>تقارير لكل طالب: من يتقدّم، من يحتاج مساعدة.</li>
-        </ul>
-      </div>
-      <div class="col principals">
-        <div class="head">
-          <span class="ico">🏫</span>
-          <span class="ttl">للإدارة</span>
-        </div>
-        <ul>
-          <li>نظرة شاملة على كلّ صفوف المدرسة في شاشة واحدة.</li>
-          <li><strong>بيانات موضوعيّة</strong> — لا انطباعات شخصيّة.</li>
-          <li>اكتشاف مبكر للطلّاب المعرّضين للتأخّر.</li>
-          <li>تقارير قابلة للعرض على المفتّشين وأولياء الأمور.</li>
-          <li>دون إعلانات، دون بيع بيانات، دون طرف ثالث.</li>
+          <li>تقارير لكل طالب: من يتقدّم ومن يحتاج مساعدة.</li>
+          <li><strong>بدون إعلانات</strong>، بدون بيع بيانات، بدون طرف ثالث.</li>
         </ul>
       </div>
     </div>
@@ -557,11 +569,15 @@
     <div class="cta">
       <div class="left">
         <div class="url">www.vocaband.com</div>
-        <div class="desc">صفّ واحد. شهر تجريبيّ. بدون أيّ التزام. نُنشئ الصفّ معكم في 10 دقائق.</div>
+        <div class="desc">نُنشئ الصفّ معكم خلال 10 دقائق — وتبدأ الحصّة الأولى في اليوم نفسه.</div>
       </div>
       <div class="right">
         <div class="when">3 خطوات للبدء</div>
-        <div class="step">1. لقاء 15 دقيقة<br>2. إعداد الصفّ معاً<br>3. تجربة داخل الحصّة</div>
+        <div class="step">1. لقاء 15 دقيقة<br>2. إعداد الصفّ معاً<br>3. الانطلاق في الحصّة</div>
+      </div>
+      <div class="qr">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 31 31" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h31v31H0z"/><path stroke="#0d1f3d" d="M1 1.5h7m3 0h2m1 0h3m2 0h3m1 0h7M1 2.5h1m5 0h1m2 0h1m1 0h2m1 0h1m1 0h1m1 0h1m3 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m2 0h2m2 0h4m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m3 0h1m1 0h2m1 0h6m1 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h2m3 0h1m2 0h1m2 0h1m2 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m2 0h2m3 0h1m3 0h3m1 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h1m2 0h1m1 0h2m1 0h4M3 9.5h2m2 0h4m1 0h2m1 0h3m2 0h1m1 0h2m1 0h1M2 10.5h3m3 0h5m1 0h2m1 0h1m1 0h9m1 0h1M1 11.5h2m1 0h4m1 0h1m1 0h2m2 0h5m3 0h1m2 0h1m1 0h1M3 12.5h3m2 0h2m2 0h1m1 0h2m3 0h1m9 0h1M4 13.5h5m1 0h5m1 0h2m1 0h1m1 0h2m1 0h1m2 0h3M1 14.5h1m2 0h3m1 0h1m3 0h5m2 0h2m2 0h2m1 0h2m1 0h1M1 15.5h2m1 0h4m1 0h2m1 0h1m1 0h1m1 0h1m2 0h4m1 0h3m1 0h2M1 16.5h2m1 0h1m3 0h1m1 0h2m1 0h2m3 0h1m1 0h4m1 0h2m1 0h2M2 17.5h4m1 0h2m4 0h2m1 0h4m1 0h2m1 0h3m1 0h1M3 18.5h1m1 0h1m5 0h1m1 0h1m3 0h1m1 0h1m1 0h1m2 0h1m1 0h1M1 19.5h1m1 0h1m1 0h4m6 0h1m3 0h1m3 0h1m2 0h2M3 20.5h3m6 0h3m1 0h3m1 0h1m1 0h3m1 0h2M2 21.5h2m3 0h1m1 0h1m1 0h4m2 0h1m3 0h7M9 22.5h2m1 0h2m1 0h2m1 0h4m3 0h2m2 0h1M1 23.5h7m1 0h2m7 0h1m1 0h2m1 0h1m1 0h1m1 0h2M1 24.5h1m5 0h1m2 0h6m1 0h3m1 0h1m3 0h1M1 25.5h1m1 0h3m1 0h1m2 0h2m1 0h1m3 0h1m1 0h1m1 0h7m1 0h1M1 26.5h1m1 0h3m1 0h1m1 0h1m1 0h3m2 0h1m1 0h1m1 0h1m4 0h1m1 0h2M1 27.5h1m1 0h3m1 0h1m1 0h3m5 0h3m1 0h1m2 0h1m4 0h1M1 28.5h1m5 0h1m3 0h1m1 0h2m1 0h1m1 0h2m1 0h1m3 0h2m1 0h1M1 29.5h7m3 0h1m2 0h1m1 0h1m1 0h2m1 0h1m2 0h1m3 0h1"/></svg>
+        <div class="qr-cap">📱 امسحوا للموقع</div>
       </div>
     </div>
 

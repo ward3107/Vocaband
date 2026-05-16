@@ -272,6 +272,8 @@ export interface LandingPageT {
   footerSchoolDeck: string;
   footerSchoolPdfHe: string;
   footerSchoolPdfAr: string;
+  footerSchoolOnePagerAr: string;
+  footerSchoolPptxAr: string;
   footerStatus: string;
   footerCopyright: (year: number) => string;
 }
@@ -302,7 +304,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSubtitle:
       "The vocabulary game students worldwide actually want to play — and the easiest classroom tool teachers will use all year.",
     heroCtaStart: "Get Started Free",
-    heroCtaStudent: "I'm a student → Log in",
+    heroCtaStudent: "I'm a student → enter class code",
     heroPlayItWord: "Play it",
     heroLearnItWord: "Learn it",
     heroTrustCurriculum: "MoE-Aligned Curriculum",
@@ -498,6 +500,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerSchoolDeck: "School Pitch Deck",
     footerSchoolPdfHe: "PDF Hebrew for School",
     footerSchoolPdfAr: "PDF Arabic for School",
+    footerSchoolOnePagerAr: "Arabic 1-Page Summary",
+    footerSchoolPptxAr: "Arabic Editable PowerPoint",
     footerStatus: "System Status",
     footerCopyright: (year) =>
       `© ${year} Vocaband. Made with 💙 for learners everywhere.`,
@@ -528,7 +532,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSubtitle:
       "משחק אוצר מילים שתלמידים בכל העולם באמת רוצים לשחק — וכלי הכיתה הקל ביותר שמורים ישתמשו בו לאורך כל השנה.",
     heroCtaStart: "התחילו בחינם",
-    heroCtaStudent: "אני תלמיד ← כניסה",
+    heroCtaStudent: "אני תלמיד ← הזינו קוד כיתה",
     heroPlayItWord: "שחקו אותה",
     heroLearnItWord: "למדו אותה",
     heroTrustCurriculum: "מותאם לתוכנית משרד החינוך",
@@ -724,6 +728,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerSchoolDeck: "מצגת מכירות לבתי ספר",
     footerSchoolPdfHe: "PDF עברית לבית הספר",
     footerSchoolPdfAr: "PDF ערבית לבית הספר",
+    footerSchoolOnePagerAr: "סיכום עמוד אחד בערבית",
+    footerSchoolPptxAr: "PowerPoint ערבית (לעריכה)",
     footerStatus: "סטטוס מערכת",
     footerCopyright: (year) =>
       `© ${year} Vocaband. נוצר עם 💙 ללומדים בכל העולם.`,
@@ -754,7 +760,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     heroSubtitle:
       "لعبة المفردات التي يريد الطلاب حول العالم أن يلعبوها فعلاً — وأسهل أداة صفية سيستخدمها المعلمون طوال العام.",
     heroCtaStart: "ابدأ مجانًا",
-    heroCtaStudent: "أنا طالب ← تسجيل الدخول",
+    heroCtaStudent: "أنا طالب ← أدخل رمز الفصل",
     heroPlayItWord: "العبها",
     heroLearnItWord: "تعلمها",
     heroTrustCurriculum: "متوافق مع منهج وزارة التربية",
@@ -950,6 +956,8 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerSchoolDeck: "عرض المبيعات للمدارس",
     footerSchoolPdfHe: "PDF بالعبرية للمدرسة",
     footerSchoolPdfAr: "PDF بالعربية للمدرسة",
+    footerSchoolOnePagerAr: "ملخّص صفحة واحدة بالعربية",
+    footerSchoolPptxAr: "PowerPoint بالعربية (للتعديل)",
     footerStatus: "حالة النظام",
     footerCopyright: (year) =>
       `© ${year} Vocaband. صُنع بحب 💙 للمتعلمين في كل مكان.`,

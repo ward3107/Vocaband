@@ -16,7 +16,6 @@ import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Share2, X, Loader2, Check, CheckCircle2, Plus, Sparkles, TriangleAlert } from "lucide-react";
 import { supabase } from "../core/supabase";
-import { ALL_WORDS } from "../data/vocabulary";
 import { FILLBLANK_SENTENCES } from "../data/sentence-bank-fillblank";
 import { useLanguage } from "../hooks/useLanguage";
 import { shareWorksheetT } from "../locales/teacher/share-worksheet";
@@ -179,6 +178,10 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       return;
     }
     setAiPhase("generating");
+    // Dynamic import keeps the 6482-word vocabulary chunk out of the
+    // teacher-flow bundle — only fetched when the teacher actually opts
+    // into AI sentence generation for a sentence-dependent exercise.
+    const { ALL_WORDS } = await import("../data/vocabulary");
     const wordById = new Map(ALL_WORDS.map((w) => [w.id, w]));
     const CHUNK = 40;
     const out: Record<string, string> = {};
