@@ -239,6 +239,29 @@ export interface AssignmentData {
   subject?: 'english' | 'hebrew';
 }
 
+/** A classroom competition — async tournament wrapping one assignment.
+ *  Created by the teacher at assignment-create time; opens immediately
+ *  and closes at the assignment's deadline.  See migration
+ *  20260516120000_classroom_competitions.sql for the underlying table.
+ *  Per-student ranking comes from the `competition_leaderboard` RPC. */
+export interface CompetitionData {
+  id: string;
+  assignmentId: string;
+  classId: string;
+  opensAt: string;
+  closesAt: string;
+  status: 'live' | 'ended';
+  createdAt: string;
+}
+
+export interface CompetitionLeaderboardEntry {
+  studentUid: string;
+  studentName: string;
+  avatar: string | null;
+  totalScore: number;
+  lastPlayed: string;
+}
+
 export interface FeatureFlag {
   /** Snake-case identifier — permanent once set.  Matches the DB primary key. */
   name: string;
@@ -371,6 +394,30 @@ export function mapProgress(row: any): ProgressData {
     mistakes: row.mistakes,
     avatar: row.avatar,
     playCount: row.play_count ?? undefined,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapCompetition(row: any): CompetitionData {
+  return {
+    id: row.id,
+    assignmentId: row.assignment_id,
+    classId: row.class_id,
+    opensAt: row.opens_at,
+    closesAt: row.closes_at,
+    status: row.status === 'ended' ? 'ended' : 'live',
+    createdAt: row.created_at,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapCompetitionLeaderboardEntry(row: any): CompetitionLeaderboardEntry {
+  return {
+    studentUid: row.student_uid,
+    studentName: row.student_name,
+    avatar: row.avatar ?? null,
+    totalScore: Number(row.total_score ?? 0),
+    lastPlayed: row.last_played,
   };
 }
 

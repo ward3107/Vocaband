@@ -9,12 +9,13 @@
 
 import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, BookOpen, Bookmark, Target, QrCode, Users, Sparkles, Share2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Bookmark, Target, QrCode, Users, Sparkles, Share2, Trophy } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { WizardMode, AssignmentData, getGameModeConfig } from './types';
 import type { GeneratedLesson } from '../ai-lesson-builder/AiLessonBuilder';
 import { useLanguage } from '../../hooks/useLanguage';
 import { teacherWizardsT } from '../../locales/teacher/wizards';
+import { competitionsT } from '../../locales/competitions';
 import { ShareWorksheetDialog, type ShareSource, type WorksheetLang } from '../ShareWorksheetDialog';
 
 export interface ReviewStepProps {
@@ -38,6 +39,12 @@ export interface ReviewStepProps {
   editingAssignment?: AssignmentData | null;
   /** AI-generated lesson data (if any) — generated in ConfigureStep */
   aiGeneratedLesson?: GeneratedLesson | null;
+  /** Competition toggle — when checked, the parent should create a
+   *  `competitions` row referencing the new assignment so the class
+   *  sees a live leaderboard until the deadline.  Hidden unless this
+   *  is an assignment with a deadline set. */
+  enableCompetition?: boolean;
+  onCompetitionChange?: (enabled: boolean) => void;
 }
 
 export const ReviewStep: React.FC<ReviewStepProps> = ({
@@ -56,9 +63,12 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   selectedClassName = '',
   editingAssignment = null,
   aiGeneratedLesson,
+  enableCompetition = false,
+  onCompetitionChange,
 }) => {
   const { language } = useLanguage();
   const t = teacherWizardsT[language];
+  const tComp = competitionsT[language];
   // Ref for launch button (auto-scroll)
   const launchButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -341,6 +351,44 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           </div>
         </label>
       )}
+
+      {/* Competition toggle — only meaningful for assignments that have
+          a deadline (the deadline IS the competition end).  When no
+          deadline is set we render the toggle disabled with a hint
+          rather than hiding it, so teachers discover the feature. */}
+      {isAssignment && onCompetitionChange && (() => {
+        const hasDeadline = !!assignmentDeadline && !Number.isNaN(new Date(assignmentDeadline).getTime());
+        const toggled = enableCompetition && hasDeadline;
+        return (
+          <label
+            className={`flex items-start gap-3 p-3 rounded-2xl border-2 transition-colors ${
+              !hasDeadline
+                ? 'border-stone-200 bg-stone-50 cursor-not-allowed opacity-70'
+                : toggled
+                ? 'border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 cursor-pointer'
+                : 'border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-[var(--vb-text-muted)] cursor-pointer'
+            }`}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+          >
+            <input
+              type="checkbox"
+              checked={toggled}
+              disabled={!hasDeadline}
+              onChange={(e) => onCompetitionChange(e.target.checked)}
+              className="w-5 h-5 mt-0.5 accent-amber-500 cursor-pointer"
+            />
+            <div className="flex-1">
+              <div className="flex items-center gap-1.5 text-sm font-bold text-[var(--vb-text-primary)]">
+                <Trophy size={14} className="text-amber-500" />
+                {tComp.enableLabel}
+              </div>
+              <p className="text-xs text-[var(--vb-text-muted)] mt-0.5">
+                {hasDeadline ? tComp.enableHelp : tComp.needsDeadline}
+              </p>
+            </div>
+          </label>
+        );
+      })()}
 
       {/* Mobile spacer so the summary doesn't hide behind the sticky
           action bar below.  Desktop keeps the inline layout because the

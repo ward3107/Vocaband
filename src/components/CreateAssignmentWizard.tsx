@@ -65,7 +65,7 @@ export interface CreateAssignmentWizardProps {
   // avoid the async-state timing issue noted there.  The prop type
   // was declared as `() => void` and silently accepted any args at
   // the JS level, but TypeScript caught the discrepancy.
-  handleSaveAssignment: (wordsOverride?: number[], modesOverride?: string[]) => void | Promise<void>;
+  handleSaveAssignment: (wordsOverride?: number[], modesOverride?: string[], enableCompetition?: boolean) => void | Promise<void>;
   assignmentSentences: string[];
   setAssignmentSentences: (sentences: string[]) => void;
   sentenceDifficulty: SentenceDifficulty;
@@ -215,14 +215,14 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   }, [allWords, customWords, selectedWordsIds]);
 
   // ── Handle SetupWizard completion ───────────────────────────────────────────
-  const handleWizardComplete = async (result: { words: Word[]; modes: string[] }) => {
+  const handleWizardComplete = async (result: { words: Word[]; modes: string[]; enableCompetition?: boolean }) => {
     // Update parent state with the final selections
     const wordIds = result.words.map(w => w.id);
     setSelectedWords(wordIds);
     setAssignmentModes(result.modes);
 
     // Pass words and modes directly to avoid timing issues with async state updates
-    await handleSaveAssignment(wordIds, result.modes);
+    await handleSaveAssignment(wordIds, result.modes, result.enableCompetition);
 
     // Show success screen
     setShowSuccess(true);

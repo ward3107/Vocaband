@@ -14,6 +14,7 @@ import PowerUpsStrip from "../components/dashboard/PowerUpsStrip";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
+import { useCompetitionsForClass } from "../hooks/useCompetitions";
 import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
 import { useDailyMissions } from "../hooks/useDailyMissions";
 import PetEvolutionCard from "../components/dashboard/PetEvolutionCard";
@@ -146,6 +147,15 @@ export default function StudentDashboardView({
   // order stays stable regardless of whether the flag is on or the
   // structure prop is provided.
   const [showStructureDetail, setShowStructureDetail] = useState(false);
+
+  // Classroom competitions wrapping any of this student's assignments.
+  // Cheap query (one row per assignment that has competition mode on);
+  // realtime-pushed via `useCompetitionsForClass`.  Keyed by
+  // assignmentId so the cards can do an O(1) lookup.
+  const { competitions } = useCompetitionsForClass(user.classCode);
+  const competitionsByAssignment = new Map(
+    competitions.map((c) => [c.assignmentId, c] as const),
+  );
 
   // Daily missions — three rotating tasks per user-local calendar day.
   // Hook only fires for authenticated students; guests + Quick-Play
@@ -363,6 +373,7 @@ export default function StudentDashboardView({
             studentProgress={studentProgress}
             studentDataLoading={studentDataLoading}
             userUid={user.uid}
+            competitionsByAssignment={competitionsByAssignment}
             setActiveAssignment={setActiveAssignment}
             setAssignmentWords={setAssignmentWords}
             setView={setView}
