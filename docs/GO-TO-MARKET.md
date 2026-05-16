@@ -51,7 +51,7 @@ Post ONE content piece per group, spread over 5 days:
 > *"Hey everyone — I built a vocabulary game for my grade-7 ESL
 > class because I couldn't find anything that worked with the
 > Israeli MoE Set 1 / Set 2 / Set 3 lists.  Wanted to share it free
-> in case it's useful to anyone here.  10 game modes, Hebrew +
+> in case it's useful to anyone here.  15 game modes, Hebrew +
 > Arabic translations, students play on their phones.  No signups
 > for students — they join with a class code.  Link below if you
 > want to try.  Happy to answer any questions."*
