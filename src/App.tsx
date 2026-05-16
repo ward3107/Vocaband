@@ -5,11 +5,75 @@ import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import type { Word } from "./data/vocabulary";
 import { useVocabularyLazy, getCachedVocabulary } from "./hooks/useVocabularyLazy";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
-import {
-  RefreshCw,
-  AlertTriangle,
-  ArrowLeftRight,
-} from "lucide-react";
+// The three icons App.tsx renders eagerly (RefreshCw, AlertTriangle,
+// ArrowLeftRight) used to be imported from lucide-react, which pulled
+// the ~17 kB gz lucide chunk into the App.tsx modulepreload chain.
+// Every visitor on cold first-paint paid for the whole icon bundle
+// just so this file could render four small SVGs. Inlined below as
+// plain <svg> elements using lucide's exact path data (v0.546.0, ISC
+// licensed). Every other file in the codebase continues to import
+// from lucide-react normally — the chunk still ships, just no longer
+// on App.tsx's preload graph. Net cold-load win: one fewer module
+// preload + ~17 kB gz saved on the critical path.
+const SvgSpinner: React.FC<{ size?: number; className?: string }> = ({ size = 24, className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+    <path d="M21 3v5h-5" />
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+    <path d="M8 16H3v5" />
+  </svg>
+);
+const SvgAlertTriangle: React.FC<{ size?: number; className?: string }> = ({ size = 24, className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+    <path d="M12 9v4" />
+    <path d="M12 17h.01" />
+  </svg>
+);
+const SvgArrowLeftRight: React.FC<{ size?: number; className?: string; ariaHidden?: boolean }> = ({ size = 24, className, ariaHidden = true }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden={ariaHidden}
+  >
+    <path d="M8 3 4 7l4 4" />
+    <path d="M4 7h16" />
+    <path d="m16 21 4-4-4-4" />
+    <path d="M20 17H4" />
+  </svg>
+);
 // motion is no longer imported eagerly here. Its three eager consumers
 // (CookieBanner, QuickPlayResumeBanner, ImageCropModal — all defined
 // further down as React.lazy) carry it in their own chunks now, so the
@@ -33,7 +97,15 @@ import { useSavedTasks, type SavedTask } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
 import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
-import QuickPlaySessionEndScreen from "./components/QuickPlaySessionEndScreen";
+// QuickPlaySessionEndScreen is the post-Quick-Play podium shown to
+// students when their session ends — it uses lucide-react icons
+// (Trophy/Medal/Award) for the 1st/2nd/3rd-place medals, which used
+// to drag the ~17 kB gz lucide chunk into the App.tsx eager
+// preload chain. Lazy-loading defers that cost to the moment the
+// session actually ends, and the screen always renders inside a
+// full-page conditional so a null Suspense fallback during the
+// chunk fetch is invisible.
+const QuickPlaySessionEndScreen = lazy(() => import("./components/QuickPlaySessionEndScreen"));
 import PendingApprovalScreen from "./components/PendingApprovalScreen";
 import { ConsentModal, ExitConfirmModal, ClassSwitchModal } from "./components/AppModals";
 import { ClassNotFoundBanner } from "./components/ClassNotFoundBanner";
@@ -2545,7 +2617,7 @@ export default function App() {
 
   if (loading && !quickPlaySessionParam) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
-      <RefreshCw className="animate-spin text-blue-700" size={48} />
+      <SvgSpinner className="animate-spin text-blue-700" size={48} />
     </div>;
   }
 
@@ -2553,7 +2625,7 @@ export default function App() {
   // Configuration error banner — shown when Supabase env vars are missing
   const configErrorBanner = !isSupabaseConfigured ? (
     <div className="fixed top-0 left-0 w-full bg-red-600 text-white px-4 py-3 text-center text-sm font-bold z-[9999]">
-      <AlertTriangle size={16} className="inline mr-2" />
+      <SvgAlertTriangle size={16} className="inline mr-2" />
       Supabase is not configured. Copy <code className="bg-red-700 px-1 rounded">.env.example</code> to <code className="bg-red-700 px-1 rounded">.env</code> and add your credentials, then restart the server.
     </div>
   ) : null;
@@ -2669,21 +2741,23 @@ export default function App() {
   // Quick Play: Session ended by teacher
   if (quickPlaySessionEnded) {
     return (
-      <QuickPlaySessionEndScreen
-        studentName={user?.displayName || quickPlayStudentName || "Player"}
-        finalScore={score || 0}
-        sessionId={quickPlayActiveSession?.id}
-        studentUid={user?.uid}
-        onGoHome={() => {
-          cleanupSessionData(); // Clear save queue and timers
-          setQuickPlaySessionEnded(false);
-          setQuickPlayActiveSession(null);
-          setActiveAssignment(null);
-          setUser(null);
-          setView("public-landing");
-          try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
-        }}
-      />
+      <Suspense fallback={null}>
+        <QuickPlaySessionEndScreen
+          studentName={user?.displayName || quickPlayStudentName || "Player"}
+          finalScore={score || 0}
+          sessionId={quickPlayActiveSession?.id}
+          studentUid={user?.uid}
+          onGoHome={() => {
+            cleanupSessionData(); // Clear save queue and timers
+            setQuickPlaySessionEnded(false);
+            setQuickPlayActiveSession(null);
+            setActiveAssignment(null);
+            setUser(null);
+            setView("public-landing");
+            try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -3108,7 +3182,7 @@ export default function App() {
         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-indigo-600 text-white text-[10px] sm:text-xs font-black tracking-wider shadow-sm hover:bg-indigo-500 active:scale-95 transition"
         title={activeVoca === "hebrew" ? "החלף ל-Voca אחר" : "Switch to another Voca"}
       >
-        <ArrowLeftRight size={12} aria-hidden />
+        <SvgArrowLeftRight size={12} />
         <span className="hidden sm:inline">
           {activeVoca === "hebrew" ? "החלף Voca" : "Switch Voca"}
         </span>
@@ -3724,7 +3798,7 @@ export default function App() {
   // (wrapped in useEffect-safe pattern to avoid setState during render)
   if (view === "students") {
     // Return a loading state while the effect below redirects
-    return <div className="min-h-screen flex items-center justify-center bg-stone-100"><RefreshCw className="animate-spin text-blue-700" size={48} /></div>;
+    return <div className="min-h-screen flex items-center justify-center bg-stone-100"><SvgSpinner className="animate-spin text-blue-700" size={48} /></div>;
   }
 
   if (view === "teacher-approvals") {

@@ -3,8 +3,32 @@
  */
 
 import React, { Suspense } from 'react';
-import { Loader2 } from 'lucide-react';
+// Loader2 was the only lucide icon this file needed and it was
+// statically imported, which pulled the ~17 kB gz lucide chunk into
+// the App.tsx modulepreload chain (SuspenseWrapper is eagerly
+// imported by App.tsx). Inlined as a plain <svg> using lucide's
+// exact path (v0.546.0, ISC) so the loading spinner still renders
+// identically without dragging the icon library onto the critical
+// path.
 import { isChunkLoadError, attemptChunkReload, forceFullRecovery } from '../utils/chunkReload';
+
+const InlineLoaderIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="48"
+    height="48"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </svg>
+);
 
 interface SuspenseWrapperProps {
   children: React.ReactNode;
@@ -16,7 +40,7 @@ interface SuspenseWrapperProps {
 const defaultFallback = (message: string = 'Loading...') => (
   <div className="min-h-[400px] flex items-center justify-center bg-surface">
     <div className="text-center">
-      <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+      <InlineLoaderIcon className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
       <p className="text-on-surface-variant font-medium">{message}</p>
     </div>
   </div>
