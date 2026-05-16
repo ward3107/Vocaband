@@ -47,7 +47,7 @@ primary_region = 'fra'
 # WebSocket upgrades transparently.  socket.io connections survive
 # unchanged through Fly's edge proxy.
 [http_service]
-  internal_port = 3000
+  internal_port = 3002
   force_https = true
   # Auto-suspend when nobody's connected.  Wakes in <1 s on the next
   # request.  This is the entire reason for picking Fly over Render
