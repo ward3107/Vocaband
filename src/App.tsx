@@ -219,6 +219,7 @@ import { useCookieConsent } from "./hooks/useCookieConsent";
 import { useAwardBadge } from "./hooks/useAwardBadge";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 import { generateAndStoreQuickPlayAiSentences } from "./utils/generateAndStoreQuickPlayAiSentences";
+import { createEnglishQuickPlaySession, createHebrewQuickPlaySession } from "./handlers/quickPlaySession";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -3835,66 +3836,14 @@ export default function App() {
           <HebrewQuickPlaySetupView
             onBack={() => setView("teacher-dashboard")}
             onOpenMonitor={() => setView("quick-play-teacher-monitor")}
-            onCreateSession={async (lemmaIds, modes, hebrewTitle) => {
-              const { data, error } = await supabase.rpc('create_quick_play_session', {
-                p_word_ids: lemmaIds.length > 0 ? lemmaIds : null,
-                p_custom_words: null,
-                p_allowed_modes: modes,
-                p_subject: 'hebrew',
-              });
-              if (error) {
-                showToast(appToasts.failedCreateSession(error.message), "error");
-                throw error;
-              }
-              const session = data as { id: string; session_code: string; allowed_modes?: string[] };
-              const effectiveAllowedModes = session.allowed_modes && session.allowed_modes.length > 0
-                ? session.allowed_modes
-                : modes;
-              // Project Hebrew lemmas into the Word shape the Quick
-              // Play monitor / resume state expects.  Same projection
-              // useQuickPlayUrlBootstrap uses on the student side, so
-              // both ends agree on what the session "words" look like.
-              // Dynamic import keeps the Hebrew corpus out of the
-              // English bundle — by the time we get here the
-              // HebrewQuickPlaySetupView chunk has already loaded it,
-              // so this resolves from cache.
-              const { HEBREW_LEMMAS } = await import("./data/vocabulary-hebrew");
-              const projectedWords = HEBREW_LEMMAS
-                .filter((l) => lemmaIds.includes(l.id))
-                .map((l) => ({
-                  id: l.id,
-                  english: l.translationEn,
-                  hebrew: l.lemmaNiqqud,
-                  arabic: l.translationAr,
-                  level: "Custom" as const,
-                }));
-              setQuickPlaySessionCode(session.session_code);
-              setQuickPlayActiveSession({
-                id: session.id,
-                sessionCode: session.session_code,
-                wordIds: lemmaIds,
-                words: projectedWords,
-                allowedModes: effectiveAllowedModes,
-              });
-              try {
-                sessionStorage.removeItem('vocaband_skip_restore');
-                localStorage.setItem('vocaband_quick_play_session', JSON.stringify({
-                  id: session.id,
-                  words: projectedWords,
-                  allowedModes: effectiveAllowedModes,
-                }));
-              } catch { /* quota exceeded — safe to ignore */ }
-              // Hebrew QP doesn't yet generate AI sentences — the 4
-              // wired Hebrew modes (niqqud, shoresh, synonym, listening)
-              // don't read sentences. Sentence Builder isn't in the
-              // Hebrew mode set, so skipping the AI generation step is
-              // correct, not a gap.
-              // Suppress the unused-param warning — `hebrewTitle` is
-              // accepted by the wizard for future use (when we add a
-              // sessions.title column) but not persisted today.
-              void hebrewTitle;
-              return session.session_code;
-            }}
+            onCreateSession={(lemmaIds, modes, hebrewTitle) =>
+              createHebrewQuickPlaySession(lemmaIds, modes, hebrewTitle, {
+                showToast,
+                failedCreateSessionMsg: appToasts.failedCreateSession,
+                setSessionCode: setQuickPlaySessionCode,
+                setActiveSession: setQuickPlayActiveSession,
+              })
+            }
           />
         </LazyWrapper>
       );
@@ -3912,78 +3861,19 @@ export default function App() {
         onDocxUpload={handleDocxUpload}
         customWords={customWords}
         onCustomWordsChange={setCustomWords}
-        onCreateSession={async (words, modes) => {
-          // Creates the Quick Play session in the DB and returns the 6-char
-          // session code so QuickPlaySetupView can render its success
-          // screen. The title/notes parameters are accepted by the
-          // prop signature but not yet persisted — we can add columns to
-          // quick_play_sessions in a follow-up if teachers want to see
-          // labelled sessions in their history.
-          const dbWords = words.filter(w => w.id >= 0);
-          const customWords = words.filter(w => w.id < 0);
-          const wordIds = dbWords.map(w => w.id);
-
-          const customWordsJson = customWords.length > 0 ? JSON.stringify(
-            customWords.map(w => ({
-              english: w.english,
-              hebrew: w.hebrew,
-              arabic: w.arabic,
-            }))
-          ) : null;
-
-          const { data, error } = await supabase.rpc('create_quick_play_session', {
-            p_word_ids: wordIds.length > 0 ? wordIds : null,
-            p_custom_words: customWordsJson,
-            p_allowed_modes: modes
-          });
-
-          if (error) {
-            showToast(appToasts.failedCreateSession(error.message), "error");
-            throw error;
-          }
-
-          const session = data as { id: string; session_code: string; allowed_modes?: string[] };
-          // Prefer the server's echoed allowed_modes over the local `modes`
-          // array so we're always in agreement with what the DB actually
-          // persisted — if the RPC future-normalises or validates modes,
-          // we inherit that.
-          const effectiveAllowedModes = session.allowed_modes && session.allowed_modes.length > 0
-            ? session.allowed_modes
-            : modes;
-          setQuickPlaySessionCode(session.session_code);
-          setQuickPlayActiveSession({
-            id: session.id,
-            sessionCode: session.session_code,
-            wordIds: wordIds,
+        onCreateSession={(words, modes) =>
+          createEnglishQuickPlaySession(
             words,
-            allowedModes: effectiveAllowedModes,
-          });
-
-          // Fire-and-forget: generate AI sentences for this Quick Play
-          // session and store them on the row so every student who joins
-          // reads the same high-quality sentences (especially Fill in
-          // the Blank).  If this fails, the student-side falls back to
-          // template sentences, exactly like before this feature shipped.
-          void generateAndStoreQuickPlayAiSentences(session.id, words, 2);
-
-          try {
-            // Session just successfully launched — clear the skip-restore
-            // flag that was set when the teacher clicked "Quick Play" from
-            // the dashboard. If we leave it set, the next auth state change
-            // (tab refocus, token refresh) will hit the restore branch at
-            // the top of fetchUserProfile, see the flag, and silently wipe
-            // this brand-new session + kick the teacher back to the
-            // dashboard. That's the "monitor keeps disappearing" bug.
-            sessionStorage.removeItem('vocaband_skip_restore');
-            localStorage.setItem('vocaband_quick_play_session', JSON.stringify({
-              id: session.id,
-              words,
-              allowedModes: effectiveAllowedModes,
-            }));
-          } catch { /* quota exceeded — safe to ignore, UI still works */ }
-
-          return session.session_code;
-        }}
+            modes,
+            {
+              showToast,
+              failedCreateSessionMsg: appToasts.failedCreateSession,
+              setSessionCode: setQuickPlaySessionCode,
+              setActiveSession: setQuickPlayActiveSession,
+            },
+            (id, w, n) => { void generateAndStoreQuickPlayAiSentences(id, w, n); },
+          )
+        }
         onOpenMonitor={() => setView("quick-play-teacher-monitor")}
         onBack={() => setView("teacher-dashboard")}
         autoMatchPartial={true}
