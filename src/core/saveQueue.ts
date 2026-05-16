@@ -25,6 +25,38 @@ import { supabase } from './supabase';
 const QUEUE_KEY = 'vocaband_qp_save_queue';
 const ASSIGNMENT_QUEUE_KEY = 'vocaband_assignment_save_queue';
 
+// ──────────────────────────────────────────────────────────────────────────
+// Depth-change subscription
+// ──────────────────────────────────────────────────────────────────────────
+// Lets App.tsx render "Saved locally — will sync" / "All progress synced"
+// toasts at the right moments without polling the queue.  Listeners receive
+// the total depth (both queues summed) every time a write hits localStorage.
+// Kept dep-free per this module's contract.
+
+type DepthListener = (depth: number) => void;
+const depthListeners: Set<DepthListener> = new Set();
+
+function notifyDepth(): void {
+  // Compute lazily once per notify so listeners that re-enter don't
+  // pay multiple localStorage reads.
+  let depth = -1;
+  for (const l of depthListeners) {
+    try {
+      if (depth < 0) depth = quickPlayQueueLength() + assignmentQueueLength();
+      l(depth);
+    } catch { /* never let a listener take down a write */ }
+  }
+}
+
+/** Subscribe to queue depth changes.  Returns an unsubscribe function.
+ *  Fires once on subscribe with the current depth so consumers can sync
+ *  initial state without an extra read. */
+export function subscribeQueueDepth(listener: DepthListener): () => void {
+  depthListeners.add(listener);
+  try { listener(quickPlayQueueLength() + assignmentQueueLength()); } catch {}
+  return () => { depthListeners.delete(listener); };
+}
+
 // Generate a unique local id for a queue row.  Not security-sensitive
 // — it's just a label so callers can correlate "the row I enqueued"
 // with "the row that finished flushing" — but CodeQL's
@@ -96,6 +128,7 @@ function writeQueue(q: QueuedQuickPlaySave[]) {
     // in-memory copy of the row still gets retried for the rest of
     // this session; we just can't persist across reloads.
   }
+  notifyDepth();
 }
 
 // Append a row to the queue and trigger a flush.  Returns the localId
@@ -195,6 +228,7 @@ function writeAssignmentQueue(q: QueuedAssignmentSave[]) {
   try {
     localStorage.setItem(ASSIGNMENT_QUEUE_KEY, JSON.stringify(q));
   } catch { /* see readQueue comment */ }
+  notifyDepth();
 }
 
 export function enqueueAssignmentSave(args: QueuedAssignmentSave['args']): string {

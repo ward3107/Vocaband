@@ -35,6 +35,7 @@ import {
   type ProgressData,
 } from "../core/supabase";
 import { isPro, FREE_TIER_LIMITS } from "../core/plan";
+import { cachedRead } from "../core/readCache";
 import { trackAutoError } from "../errorTracking";
 
 interface PendingStudent {
@@ -70,14 +71,45 @@ export function useTeacherData(params: UseTeacherDataParams) {
   } = params;
 
   const fetchTeacherData = useCallback(async (uid: string): Promise<ClassData[]> => {
-    const { data, error } = await supabase
-      .from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid);
-    if (!error && data) {
-      const mappedClasses = data.map(mapClass);
-      setClasses(mappedClasses);
-      return mappedClasses;
+    // Cache the teacher's class list — it changes rarely (only when the
+    // teacher adds/edits/removes a class) so a stale-while-revalidate
+    // read is almost always correct, and on school Wi-Fi the cached hit
+    // shaves the entire Supabase round-trip off the dashboard's first
+    // paint.  See docs/SCHOOL-PERFORMANCE-PLAN.md (task R1) for context.
+    //
+    // The fetcher MUST throw on Supabase errors so cachedRead falls back
+    // to the cached entry rather than overwriting it with [].  Silently
+    // returning [] on error would defeat SWR — a flaky-network teacher
+    // would see their dashboard clear after every refresh as the empty
+    // response replaced their cached classes.  An empty `data` array
+    // (new teacher with no classes yet) is still a valid result and
+    // gets cached normally.
+    try {
+      const fresh = await cachedRead<ClassData[]>(
+        'classes',
+        async () => {
+          const { data, error } = await supabase
+            .from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid);
+          if (error) throw error;
+          if (!data) throw new Error('classes fetch returned no data');
+          return data.map(mapClass);
+        },
+        {
+          userScope: uid,
+          ttlMs: 5 * 60 * 1000,
+          onCacheHit: (cached) => setClasses(cached),
+        },
+      );
+      setClasses(fresh);
+      return fresh;
+    } catch {
+      // Total miss — fetcher threw AND no cache to fall back to.
+      // Preserve the pre-cache behavior of returning [] so chained
+      // callers (App.tsx awaits this then refreshes assignments) don't
+      // crash on an unexpected rejection.  If a cache existed,
+      // onCacheHit already populated `classes` state via setClasses.
+      return [];
     }
-    return [];
   }, [setClasses]);
 
   const loadAssignmentsForClass = useCallback(async (
@@ -89,33 +121,63 @@ export function useTeacherData(params: UseTeacherDataParams) {
     // are independent queries — fire them in parallel so the student's
     // first-load saves a full round-trip.  Previously these awaited
     // sequentially, costing ~150–300 ms on every login.
-    const [assignResp, progressResp] = await Promise.all([
-      supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
+    //
+    // Assignment list goes through cachedRead so a returning student
+    // sees their tasks instantly on weak Wi-Fi while the freshness
+    // fetch revalidates in the background.  Progress is NOT cached
+    // because it changes after every game finish — too dynamic for
+    // SWR to be worth it.  See docs/SCHOOL-PERFORMANCE-PLAN.md (R1).
+    //
+    // The cached-read fetcher throws on Supabase failure so cachedRead
+    // returns the previously-cached list instead of clobbering it with
+    // []; we wrap the outer call so a total miss (failure with no
+    // cache) doesn't reject the Promise.all and stop progress from
+    // applying.  Sentinel pattern: 'ok' overwrites state with the
+    // fresh-or-cached payload; 'kept-cache' leaves state alone (the
+    // onCacheHit microtask already rendered the cached value, or the
+    // UI keeps whatever it had).
+    const [assignOutcome, progressResp] = await Promise.all([
+      cachedRead<AssignmentData[]>(
+        `assignments:${classData.id}`,
+        async () => {
+          const { data: assignResult, error: assignError } =
+            await supabase.rpc('get_assignments_for_class', { p_class_id: classData.id });
+          if (assignError) {
+            // Surface the real PostgREST error body — the plain 400 line in
+            // the network tab says nothing; the body has the actual cause
+            // (function overload missing, column renamed, auth gate, etc.).
+            console.error('[get_assignments_for_class] RPC failed:', {
+              code: assignError.code,
+              message: assignError.message,
+              details: assignError.details,
+              hint: assignError.hint,
+              classId: classData.id,
+            });
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('assignments').select(ASSIGNMENT_COLUMNS).eq('class_id', classData.id);
+            if (fallbackError) throw fallbackError;
+            if (!fallbackData) throw new Error('get_assignments_for_class fallback returned no data');
+            return fallbackData.map(mapAssignment);
+          }
+          if (!assignResult) throw new Error('get_assignments_for_class returned no data');
+          return assignResult.map(mapAssignment);
+        },
+        {
+          userScope: studentUid,
+          ttlMs: 2 * 60 * 1000,
+          onCacheHit: (cached) => setStudentAssignments(cached),
+        },
+      ).then<{ kind: 'ok'; data: AssignmentData[] } | { kind: 'kept-cache' }>(
+        fresh => ({ kind: 'ok', data: fresh }),
+        () => ({ kind: 'kept-cache' }),
+      ),
       supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid),
     ]);
-    const { data: assignResult, error: assignError } = assignResp;
-    const { data: progressResult } = progressResp;
 
-    if (assignError) {
-      // Surface the real PostgREST error body — the plain 400 line in
-      // the network tab says nothing; the body has the actual cause
-      // (function overload missing, column renamed, auth gate, etc.).
-      console.error('[get_assignments_for_class] RPC failed:', {
-        code: assignError.code,
-        message: assignError.message,
-        details: assignError.details,
-        hint: assignError.hint,
-        classId: classData.id,
-      });
-      // Fallback to direct query when the RPC fails.
-      const { data: fallbackData } = await supabase
-        .from('assignments').select(ASSIGNMENT_COLUMNS).eq('class_id', classData.id);
-      setStudentAssignments((fallbackData ?? []).map(mapAssignment));
-    } else {
-      setStudentAssignments((assignResult ?? []).map(mapAssignment));
+    if (assignOutcome.kind === 'ok') {
+      setStudentAssignments(assignOutcome.data);
     }
-
-    setStudentProgress((progressResult ?? []).map(mapProgress));
+    setStudentProgress((progressResp.data ?? []).map(mapProgress));
   }, [setStudentAssignments, setStudentProgress]);
 
   const loadPendingStudents = useCallback(async () => {

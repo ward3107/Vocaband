@@ -101,6 +101,81 @@ async function handleAudioPack(request: Request, env: Env): Promise<Response> {
   });
 }
 
+// Endpoints we feel safe edge-caching: GET-only, fully public payloads
+// (no PII, no per-user variance).  Cached at the edge for 60 s with a
+// stale-while-revalidate window so a brief Fly cold-start can still
+// serve from the edge.  Authenticated endpoints (anything that could
+// vary by user) MUST NOT appear here — they fall through to the
+// passthrough proxy which sets Vary: Authorization as a defence in
+// depth against any future caching mistakes.
+const EDGE_CACHEABLE_GET_PATHS: ReadonlySet<string> = new Set([
+  "/api/features",
+  "/api/version",
+]);
+
+async function passthroughProxy(request: Request, url: URL): Promise<Response> {
+  const backendUrl = new URL(url.pathname + url.search, API_BACKEND);
+  const upstream = await fetch(new Request(backendUrl.toString(), request));
+  // Defence in depth: even though Cloudflare won't cache non-cacheable
+  // responses by default, mark every proxied /api/* response as varying
+  // by Authorization so an accidentally-added cache rule downstream
+  // can't cross-contaminate users on shared classroom devices.
+  const headers = new Headers(upstream.headers);
+  const existingVary = headers.get("Vary");
+  if (!existingVary || !/authorization/i.test(existingVary)) {
+    headers.set("Vary", existingVary ? `${existingVary}, Authorization` : "Authorization");
+  }
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers,
+  });
+}
+
+async function edgeCachedGet(request: Request, url: URL): Promise<Response> {
+  const backendUrl = new URL(url.pathname + url.search, API_BACKEND);
+  // The cache key purposely strips the Authorization header — these
+  // endpoints have no per-user variance, so one cache entry is
+  // appropriate.  If we ever cache an auth-bearing endpoint, switch
+  // the key strategy (e.g. hash the bearer) before adding the path.
+  const cacheKey = new Request(backendUrl.toString(), { method: "GET" });
+  // `caches.default` is the Cloudflare Workers per-colony cache —
+  // it's a runtime global, not in the standard DOM `CacheStorage`
+  // typing, so we cast to `any` to access it.  Wrangler types this
+  // correctly at deploy time; the cast just keeps the main `tsc`
+  // (which uses the DOM lib) happy if this file ever gets included.
+  const cache = (caches as unknown as { default: Cache }).default;
+
+  const hit = await cache.match(cacheKey);
+  if (hit) {
+    const headers = new Headers(hit.headers);
+    headers.set("X-Edge-Cache", "HIT");
+    return new Response(hit.body, { status: hit.status, headers });
+  }
+
+  const upstream = await fetch(new Request(backendUrl.toString(), request));
+  // Only cache 2xx — never cache an error response or a 304.  Errors
+  // should re-hit the origin so the next request gets a chance to
+  // see a recovery.
+  if (upstream.ok) {
+    const headers = new Headers(upstream.headers);
+    headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    headers.set("X-Edge-Cache", "MISS");
+    const cacheable = new Response(upstream.clone().body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers,
+    });
+    // Workers' `caches.default.put` returns a Promise; we await it
+    // so the response we return below isn't competing with the put
+    // for the body stream.  ctx.waitUntil would be cleaner but the
+    // current handler signature doesn't expose ctx.
+    await cache.put(cacheKey, cacheable.clone());
+    return cacheable;
+  }
+  return upstream;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -112,12 +187,18 @@ export default {
       return handleAudioPack(request, env);
     }
 
+    // Public, GET-only, no-PII endpoints get the Cloudflare edge cache.
+    // Everything else falls through to the passthrough proxy below.
+    if (request.method === "GET" && EDGE_CACHEABLE_GET_PATHS.has(url.pathname)) {
+      return edgeCachedGet(request, url);
+    }
+
     // Proxy everything else under /api/* and /socket.io/* to the Fly.io
     // backend. Same-origin from the browser's view (no CORS preflight).
-    if (
-      url.pathname.startsWith("/api/") ||
-      url.pathname.startsWith("/socket.io/")
-    ) {
+    if (url.pathname.startsWith("/api/")) {
+      return passthroughProxy(request, url);
+    }
+    if (url.pathname.startsWith("/socket.io/")) {
       const backendUrl = new URL(url.pathname + url.search, API_BACKEND);
       return fetch(new Request(backendUrl.toString(), request));
     }
