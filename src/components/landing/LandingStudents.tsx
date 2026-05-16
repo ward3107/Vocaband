@@ -39,7 +39,7 @@ const LandingStudents: React.FC = () => {
   };
 
   return (
-    <section ref={sectionRef} id="students" className="py-8 md:py-20 px-4 md:px-6 relative scroll-mt-20">
+    <section ref={sectionRef} className="py-8 md:py-20 px-4 md:px-6 relative">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}

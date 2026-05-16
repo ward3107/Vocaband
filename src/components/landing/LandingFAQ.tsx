@@ -52,7 +52,7 @@ const LandingFAQ: React.FC = () => {
   ];
 
   return (
-    <section id="faq" className="py-12 md:py-24 px-4 md:px-6 relative scroll-mt-20 bg-gradient-to-b from-transparent via-slate-950/60 to-slate-950">
+    <section className="py-12 md:py-24 px-4 md:px-6 relative bg-gradient-to-b from-transparent via-slate-950/60 to-slate-950">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

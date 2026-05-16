@@ -55,7 +55,14 @@ const DeferredSection: React.FC<{
   children: ReactNode;
   rootMargin?: string;
   minHeight?: number;
-}> = ({ children, rootMargin = "600px", minHeight = 400 }) => {
+  // `id` lives on the wrapper (not the lazy child) so nav anchors can
+  // resolve before the section mounts. `getElementById("faq")` returns
+  // the placeholder, scrollIntoView starts the scroll, the wrapper
+  // enters the viewport, the IntersectionObserver fires, and the real
+  // section hydrates underneath the same scroll target.
+  id?: string;
+  className?: string;
+}> = ({ children, rootMargin = "600px", minHeight = 400, id, className }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(false);
 
@@ -81,7 +88,12 @@ const DeferredSection: React.FC<{
   }, [show, rootMargin]);
 
   return (
-    <div ref={ref} style={{ minHeight: show ? undefined : minHeight }}>
+    <div
+      id={id}
+      ref={ref}
+      className={className}
+      style={{ minHeight: show ? undefined : minHeight }}
+    >
       {show ? children : null}
     </div>
   );
@@ -480,31 +492,31 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           </div>
         </section>
 
-        <DeferredSection minHeight={800}>
+        <DeferredSection id="students" className="scroll-mt-20" minHeight={800}>
           <Suspense fallback={null}>
             <LandingStudents />
           </Suspense>
         </DeferredSection>
 
-        <DeferredSection minHeight={600}>
+        <DeferredSection id="ai" className="scroll-mt-20" minHeight={600}>
           <Suspense fallback={null}>
             <LandingAI />
           </Suspense>
         </DeferredSection>
 
-        <DeferredSection minHeight={700}>
+        <DeferredSection id="teachers" className="scroll-mt-20" minHeight={700}>
           <Suspense fallback={null}>
             <LandingTeachers />
           </Suspense>
         </DeferredSection>
 
-        <DeferredSection minHeight={600}>
+        <DeferredSection id="curriculum" className="scroll-mt-20" minHeight={600}>
           <Suspense fallback={null}>
             <LandingJourney />
           </Suspense>
         </DeferredSection>
 
-        <DeferredSection minHeight={500}>
+        <DeferredSection id="vocas" className="scroll-mt-20" minHeight={500}>
           <Suspense fallback={null}>
             <LandingVocas onOpenSubjectRequest={() => setIsSubjectModalOpen(true)} />
           </Suspense>
@@ -521,7 +533,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </DeferredSection>
 
 
-        <DeferredSection minHeight={500}>
+        <DeferredSection id="faq" className="scroll-mt-20" minHeight={500}>
           <Suspense fallback={null}>
             <LandingFAQ />
           </Suspense>
@@ -533,7 +545,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             Parent Letter / Privacy summary without leaving the landing
             page.  The same section is rendered on /teacher-login under
             the auth card so it is discoverable from both entry points. */}
-        <DeferredSection minHeight={400}>
+        <DeferredSection id="guides" className="scroll-mt-20" minHeight={400}>
           <TeacherResourcesSection variant="hero" />
         </DeferredSection>
 
