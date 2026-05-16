@@ -12,14 +12,16 @@ hCaptcha is NOT safe to enable right now — see §3.
 
 | Setting | Dashboard tab | Current value | Action |
 |---|---|---|---|
-| Emails sent / hour (project) | Auth → Rate Limits | 30 | ✅ verify, keep |
-| Token refreshes / 5 min / IP | Auth → Rate Limits | 150 | ✅ verify, keep |
-| Sign-ins + sign-ups / hour / IP | Auth → Rate Limits | 30 | ✅ verify, keep |
-| Token (OTP) verifications / 5 min / IP | Auth → Rate Limits | 30 | ✅ verify, keep |
+| Emails sent / hour (project) | Auth → Rate Limits | 30 emails/h | ✅ verify, keep |
+| SMS sent / hour (project) | Auth → Rate Limits | 30 sms/h | ✅ verify, keep (we don't use SMS) |
+| Token refreshes / 5 min / IP | Auth → Rate Limits | 150 (= 1800/h) | ✅ verify, keep |
+| Token (OTP) verifications / 5 min / IP | Auth → Rate Limits | 30 (= 360/h) | ✅ verify, keep |
 | Anonymous sign-ins / hour / IP | Auth → Rate Limits | 30 | ✅ verify, keep |
+| Sign-ins + sign-ups / 5 min / IP | Auth → Rate Limits | 30 (= 360/h) | ✅ verify, keep |
+| Web3 sign-ups + sign-ins / 5 min / IP | Auth → Rate Limits | 30 | ✅ verify, keep (we don't use Web3) |
 | Access-token (JWT) expiry | Auth → Sessions | 3600 s (1 h) | ✅ verify, keep |
 | Refresh-token expiry | Auth → Sessions | 1 week | ✅ verify, keep |
-| hCaptcha on signup/signin | Auth → Settings | OFF | ⛔ DO NOT enable yet — see §3 |
+| hCaptcha on signup/signin | Auth → Attack Protection | OFF | ⛔ DO NOT enable yet — see §3 |
 
 ---
 
@@ -30,7 +32,7 @@ Open: <https://supabase.com/dashboard/project/ilbeskwldyrleltnxyrp/auth/rate-lim
 Confirm each row matches the **"Current value"** column in the TL;DR. If anything has drifted higher, set it back to the default — the defaults are already at the conservative end for a public app.
 
 Why we don't go lower:
-- **Sign-ins / hour / IP = 30** — a class of 30 students all using PIN login (`signInWithPassword`) at 09:00 from the same school NAT is already close to this ceiling. Drop it and you DoS yourself on Monday morning. The share-invite PR analysis (`docs/teacher-share-invites-plan.md` §6) deliberately rejected stricter lockouts for the same reason.
+- **Sign-ins / 5 min / IP = 30 (= 360/h)** — a class of 30 students all using PIN login (`signInWithPassword`) at 09:00 from the same school NAT sits exactly at the 5-min ceiling. One retry per student = limit tripped. The share-invite PR analysis (`docs/teacher-share-invites-plan.md` §6) deliberately rejected stricter lockouts for the same reason. **If a school reports "we can't all log in at once", come back here BEFORE blaming the app — and raise this to 60/5min rather than tightening.**
 - **OTP verifications / 5 min / IP = 30** — students with email-OTP login on the same school NAT have the same issue.
 - **Emails / hour = 30** — only relevant if a project switches off Resend / SES and falls back to Supabase's built-in SMTP. We use Resend, so this never bites.
 
@@ -50,7 +52,7 @@ Confirm:
 
 The dashboard makes hCaptcha sound like a one-click toggle. It is not, for this codebase.
 
-When you enable hCaptcha (Auth → Settings → "Enable Captcha protection"), Supabase requires every `signInWithPassword`, `signInWithOtp`, `verifyOtp`, and `signUp` call to include a `captchaToken` in the options. **None of our auth call sites pass that token today** (verified — `grep -r captchaToken src/` returns zero hits as of 2026-05-16).
+When you enable hCaptcha (Auth → **Attack Protection** → "Enable Captcha protection"), Supabase requires every `signInWithPassword`, `signInWithOtp`, `verifyOtp`, and `signUp` call to include a `captchaToken` in the options. **None of our auth call sites pass that token today** (verified — `grep -r captchaToken src/` returns zero hits as of 2026-05-16).
 
 Flipping it on will immediately break:
 
