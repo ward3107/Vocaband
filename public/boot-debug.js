@@ -21,18 +21,20 @@
     'link[data-vocaband-defer-style="latin-fonts"]'
   );
   if (latinFontLink) {
-    // If the link already finished downloading, apply immediately.
-    // Otherwise wait for load. Either way browser will apply CSS without
-    // blocking the parser since it was loaded with media="print".
+    // If the link already finished downloading, apply immediately
+    // (link.sheet is the CSSStyleSheet object, populated on load).
+    // Otherwise wait for the load event. Crucially we do NOT bump the
+    // media swap onto an early setTimeout — that would re-promote the
+    // link to a high-priority fetch right after parse, defeating the
+    // whole point of using media="print" to keep the font CSS off the
+    // critical-bandwidth path during the initial render. font-display:
+    // swap already handles the visual hand-off when the bytes land.
     if (latinFontLink.sheet) {
       applyDeferredStylesheet(latinFontLink);
     } else {
       latinFontLink.addEventListener('load', function () {
         applyDeferredStylesheet(latinFontLink);
       }, { once: true });
-      // Belt-and-braces — if the load event was missed (e.g. cached
-      // response landed before this script ran), poll briefly. Cheap.
-      setTimeout(function () { applyDeferredStylesheet(latinFontLink); }, 0);
     }
   }
 
