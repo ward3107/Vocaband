@@ -49,6 +49,20 @@ const detectBrowserLanguage = (): Language => {
 
 const getInitialLanguage = (): Language => {
   if (typeof window === 'undefined') return 'en';
+  // ?lang=en|he|ar wins over everything else. Google's hreflang
+  // alternates send searchers to /?lang=he and /?lang=ar so a Hebrew
+  // Google result must land directly in Hebrew (even when the visitor
+  // has an English browser, English OS, or a stale saved preference).
+  // Persist to localStorage too so subsequent navigation inside the SPA
+  // keeps the chosen language without the parameter on every link.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const langParam = params.get('lang');
+    if (langParam === 'en' || langParam === 'he' || langParam === 'ar') {
+      try { localStorage.setItem(LANGUAGE_KEY, langParam); } catch { /* localStorage may be blocked */ }
+      return langParam;
+    }
+  } catch { /* URLSearchParams unavailable — fall through */ }
   const saved = localStorage.getItem(LANGUAGE_KEY);
   if (saved && ['en', 'he', 'ar'].includes(saved)) {
     return saved as Language;
