@@ -19,8 +19,12 @@ hCaptcha is NOT safe to enable right now — see §3.
 | Anonymous sign-ins / hour / IP | Auth → Rate Limits | 30 | ✅ verify, keep |
 | Sign-ins + sign-ups / 5 min / IP | Auth → Rate Limits | 30 (= 360/h) | ✅ verify, keep |
 | Web3 sign-ups + sign-ins / 5 min / IP | Auth → Rate Limits | 30 | ✅ verify, keep (we don't use Web3) |
-| Access-token (JWT) expiry | Auth → Sessions | 3600 s (1 h) | ✅ verify, keep |
-| Refresh-token expiry | Auth → Sessions | 1 week | ✅ verify, keep |
+| Refresh token reuse interval | Auth → Sessions | 10 s | ✅ verify, keep (matches Supabase recommendation) |
+| Detect/revoke compromised refresh tokens | Auth → Sessions | ON | ✅ verify, keep |
+| Enforce single session per user | Auth → Sessions | OFF | ✅ verify, keep (students use phone + classroom PC) |
+| Time-box user sessions | Auth → Sessions | 0 (never) | ✅ verify, keep |
+| Inactivity timeout | Auth → Sessions | 0 (never) | ✅ verify, keep |
+| Access-token (JWT) expiry | Project Settings → JWT Keys → Legacy JWT Secret | 3600 s (1 h) | ✅ verify, keep |
 | hCaptcha on signup/signin | Auth → Attack Protection | OFF | ⛔ DO NOT enable yet — see §3 |
 
 ---
@@ -38,15 +42,27 @@ Why we don't go lower:
 
 If a school reports "we can't all log in at once", come back here BEFORE blaming the app.
 
-## 2. Walkthrough — verify JWT + refresh expiry (1 min)
+## 2. Walkthrough — verify sessions + JWT expiry (2 min)
+
+### Auth → Sessions
 
 Open: <https://supabase.com/dashboard/project/ilbeskwldyrleltnxyrp/auth/sessions>
 
 Confirm:
-- **JWT expiry (access token)**: `3600` seconds (1 hour). Don't extend — a leaked JWT is valid until it expires; longer = bigger blast radius.
-- **Refresh token reuse interval**: `10` seconds (default; tolerates network double-fires).
-- **Inactivity timeout**: empty / off (we don't force daily re-login).
-- **Time-box**: empty / off.
+- **Detect / revoke compromised refresh tokens**: ON.
+- **Refresh token reuse interval**: `10` seconds (default; tolerates network double-fires from flaky school Wi-Fi).
+- **Enforce single session per user**: OFF. Students legitimately use a classroom PC + their own phone; do not force one to log out the other.
+- **Time-box user sessions**: `0` (never). We don't force daily re-login.
+- **Inactivity timeout**: `0` (never).
+
+### Project Settings → JWT Keys → Legacy JWT Secret
+
+Open: <https://supabase.com/dashboard/project/ilbeskwldyrleltnxyrp/settings/jwt/legacy>
+
+Confirm:
+- **JWT expiry limit (access token)**: `3600` seconds (1 hour). Don't extend — a leaked JWT is valid until it expires; longer = bigger blast radius.
+
+The refresh-token total lifetime (≈1 week) is not a user-configurable field — Supabase rotates refresh tokens on every refresh, so "lifetime" is effectively `reuse_interval × ∞` as long as the app stays online weekly.
 
 ## 3. hCaptcha — ⛔ do NOT enable yet
 
