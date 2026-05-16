@@ -220,6 +220,7 @@ import { useAwardBadge } from "./hooks/useAwardBadge";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 import { generateAndStoreQuickPlayAiSentences } from "./utils/generateAndStoreQuickPlayAiSentences";
 import { createEnglishQuickPlaySession, createHebrewQuickPlaySession } from "./handlers/quickPlaySession";
+import { generateAiLesson, type AiLessonParams } from "./utils/aiLesson";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -771,52 +772,8 @@ export default function App() {
   const { translateWord, translateWordsBatch } = useTranslate();
 
   // AI Lesson Generator — calls /api/ai-generate-lesson endpoint
-  const handleGenerateLesson = async (params: {
-    words: Array<{ english: string; hebrew: string; arabic: string }>;
-    config: {
-      textDifficulty: string;
-      textType: string;
-      wordCount: number;
-      questionTypes: {
-        yesNo: number;
-        wh: number;
-        literal: number;
-        inferential: number;
-        fillBlank: number;
-        trueFalse: number;
-        matching: number;
-        multipleChoice: number;
-        sentenceComplete: number;
-      };
-      includeAnswers: boolean;
-    };
-  }) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) {
-      showToast?.('Authentication required', 'error');
-      throw new Error('No auth token');
-    }
-
-    const response = await fetch('/api/ai-generate-lesson', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      const isPaywall = response.status === 403 && error.error === 'ai_requires_pro';
-      const msg = error.message || error.error || 'AI lesson generation failed';
-      if (isPaywall) showPaywallToast(msg);
-      throw new Error(msg);
-    }
-
-    return await response.json();
-  };
+  const handleGenerateLesson = (params: AiLessonParams) =>
+    generateAiLesson(params, { showToast, showPaywallToast });
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
