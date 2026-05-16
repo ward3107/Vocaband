@@ -19,11 +19,14 @@
  *   4. done         — podium with medals + Play Again / Exit
  *
  * Scope decisions:
- *   - Word source: teacher picks from curriculum Sets 1/2/3 or one of
- *     their saved assignments (when launched from the New Activity
- *     wizard, the parent passes the class's assignments).  Default is
- *     Set 2 — that's what v1 hard-coded, so unchanged for teachers
- *     who don't touch the picker.
+ *   - Word source: teacher pastes their own word list (one English word
+ *     per line) and the app looks each one up against the curriculum
+ *     vocabulary for Hebrew/Arabic translations.  If they have saved
+ *     assignments (passed from the New Activity wizard), an Assignment
+ *     toggle lets them use one of those instead.  Curriculum Sets 1/2/3
+ *     are intentionally NOT offered — teachers told us they always have
+ *     their own list in mind for Hot Seat and the set picker added
+ *     friction.
  *   - Scores live in component state only.  Nothing is saved to
  *     Supabase — the players aren't logged in (they're sharing the
  *     teacher's device), so there's no user.uid to attribute to.  The
@@ -59,7 +62,7 @@ interface HotSeatViewProps {
 
 type Phase = 'setup' | 'interstitial' | 'question' | 'done';
 type TargetLang = 'hebrew' | 'arabic';
-type SourceKind = 'set-1' | 'set-2' | 'set-3' | 'assignment';
+type SourceKind = 'paste' | 'assignment';
 
 interface PlayerScore {
   name: string;
@@ -102,11 +105,12 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
   playersPlaceholder: string;
   playersHint: string;
   wordsLabel: string;
-  sourceSet1: string;
-  sourceSet2: string;
-  sourceSet3: string;
+  sourcePaste: string;
   sourceAssignment: string;
   pickAssignment: string;
+  wordsPlaceholder: string;
+  wordsHint: string;
+  matchedHint: (matched: number, total: number) => string;
   poolHint: (count: number) => string;
   poolTooSmall: string;
   translateTo: string;
@@ -139,12 +143,16 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersLabel: 'Players (one name per line)',
     playersPlaceholder: 'Sarah\nDaniel\nMaya\n…',
     playersHint: 'Need at least 2 players.',
-    wordsLabel: 'Word source',
-    sourceSet1: 'Set 1',
-    sourceSet2: 'Set 2',
-    sourceSet3: 'Set 3',
+    wordsLabel: 'Words',
+    sourcePaste: 'Paste words',
     sourceAssignment: 'Assignment',
     pickAssignment: 'Pick an assignment',
+    wordsPlaceholder: 'apple\nbook\ncat\n…',
+    wordsHint: 'One English word per line. We look up the translation in the curriculum.',
+    matchedHint: (matched, total) =>
+      total === matched
+        ? `${matched} words ready`
+        : `${matched} of ${total} words found — others skipped`,
     poolHint: (count) => `${count} words available`,
     poolTooSmall: 'Need at least 4 words with the chosen translation.',
     translateTo: 'Translate to:',
@@ -177,12 +185,16 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersLabel: 'שחקנים (שם אחד בכל שורה)',
     playersPlaceholder: 'שרה\nדניאל\nמאיה\n…',
     playersHint: 'צריך לפחות 2 שחקנים.',
-    wordsLabel: 'מאגר המילים',
-    sourceSet1: 'סט 1',
-    sourceSet2: 'סט 2',
-    sourceSet3: 'סט 3',
+    wordsLabel: 'מילים',
+    sourcePaste: 'הדבק מילים',
     sourceAssignment: 'מטלה',
     pickAssignment: 'בחר מטלה',
+    wordsPlaceholder: 'apple\nbook\ncat\n…',
+    wordsHint: 'מילה אחת באנגלית בכל שורה. נחפש את התרגום באוצר המילים.',
+    matchedHint: (matched, total) =>
+      total === matched
+        ? `${matched} מילים מוכנות`
+        : `${matched} מתוך ${total} מילים נמצאו — האחרות דולגו`,
     poolHint: (count) => `${count} מילים זמינות`,
     poolTooSmall: 'צריך לפחות 4 מילים עם התרגום שנבחר.',
     translateTo: 'תרגום ל:',
@@ -215,12 +227,16 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     playersLabel: 'اللاعبون (اسم واحد في كل سطر)',
     playersPlaceholder: 'سارة\nدانيال\nمايا\n…',
     playersHint: 'تحتاج إلى لاعبَين على الأقل.',
-    wordsLabel: 'مصدر الكلمات',
-    sourceSet1: 'المجموعة 1',
-    sourceSet2: 'المجموعة 2',
-    sourceSet3: 'المجموعة 3',
+    wordsLabel: 'الكلمات',
+    sourcePaste: 'الصق الكلمات',
     sourceAssignment: 'مهمة',
     pickAssignment: 'اختر مهمة',
+    wordsPlaceholder: 'apple\nbook\ncat\n…',
+    wordsHint: 'كلمة إنجليزية واحدة في كل سطر. سنبحث عن الترجمة في المفردات.',
+    matchedHint: (matched, total) =>
+      total === matched
+        ? `${matched} كلمات جاهزة`
+        : `تم العثور على ${matched} من ${total} كلمات — تم تخطي الباقي`,
     poolHint: (count) => `${count} كلمة متاحة`,
     poolTooSmall: 'يلزم 4 كلمات على الأقل لها الترجمة المختارة.',
     translateTo: 'الترجمة إلى:',
@@ -264,7 +280,8 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
   const [playersText, setPlayersText] = useState('');
   const [questionsPerPlayer, setQuestionsPerPlayer] = useState(5);
   const [targetLang, setTargetLang] = useState<TargetLang>('hebrew');
-  const [sourceKind, setSourceKind] = useState<SourceKind>('set-2');
+  const [sourceKind, setSourceKind] = useState<SourceKind>('paste');
+  const [wordsText, setWordsText] = useState('');
   // Stable reference so the useMemo below doesn't re-run on every parent
   // re-render — `assignments ?? []` would otherwise produce a fresh
   // array each pass and bust the memo.
@@ -273,13 +290,34 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
     availableAssignments[0]?.id ?? null,
   );
 
-  // Resolve the raw pool from the picked source.  Assignment-sourced
-  // pools merge in any teacher-uploaded custom words (which carry their
-  // own hebrew/arabic from the OCR/Gemini pipeline).
+  // Build a lowercase-english → Word lookup once per vocab load so the
+  // paste-source pool doesn't scan ALL_WORDS for every typed line.
+  const englishLookup = useMemo(() => {
+    if (!vocab) return null;
+    const map = new Map<string, Word>();
+    for (const w of vocab.ALL_WORDS) {
+      map.set(w.english.toLowerCase().trim(), w);
+    }
+    return map;
+  }, [vocab]);
+
+  // Parse the textarea once — both the rawPool and the matched-count
+  // hint need it, and re-splitting inline would re-run on every render.
+  const pastedLines = useMemo(
+    () =>
+      wordsText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0),
+    [wordsText],
+  );
+
+  // Resolve the raw pool from the picked source.  Paste-sourced pools
+  // match each line against ALL_WORDS by english (case-insensitive);
+  // assignment-sourced pools merge in any teacher-uploaded custom words
+  // (which carry their own hebrew/arabic from the OCR/Gemini pipeline).
   const rawPool: Word[] = useMemo(() => {
     if (!vocab) return [];
-    if (sourceKind === 'set-1') return vocab.SET_1_WORDS;
-    if (sourceKind === 'set-3') return vocab.SET_3_WORDS;
     if (sourceKind === 'assignment') {
       const a = availableAssignments.find(x => x.id === assignmentId);
       if (!a) return [];
@@ -287,8 +325,21 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
       const customs = a.words ?? [];
       return [...known, ...customs.filter(c => !known.some(k => k.id === c.id))];
     }
-    return vocab.SET_2_WORDS;
-  }, [vocab, sourceKind, assignmentId, availableAssignments]);
+    // sourceKind === 'paste' — look each pasted line up in the vocabulary.
+    // Unknown words are silently skipped; the matched-count hint tells
+    // the teacher how many made it through.
+    if (!englishLookup) return [];
+    const matched: Word[] = [];
+    const seenIds = new Set<number>();
+    for (const line of pastedLines) {
+      const hit = englishLookup.get(line.toLowerCase());
+      if (hit && !seenIds.has(hit.id)) {
+        matched.push(hit);
+        seenIds.add(hit.id);
+      }
+    }
+    return matched;
+  }, [vocab, sourceKind, assignmentId, availableAssignments, pastedLines, englishLookup]);
 
   // Filter to words that actually have the chosen target translation.
   // A custom word missing its hebrew/arabic would otherwise show up as
@@ -419,37 +470,50 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
                   <BookOpen size={14} className="text-stone-600" />
                   <p className="text-sm font-bold text-stone-700">{t.wordsLabel}</p>
                 </div>
-                <div className={`grid gap-2 ${availableAssignments.length > 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
-                  {([
-                    { kind: 'set-1' as SourceKind, label: t.sourceSet1 },
-                    { kind: 'set-2' as SourceKind, label: t.sourceSet2 },
-                    { kind: 'set-3' as SourceKind, label: t.sourceSet3 },
-                    ...(availableAssignments.length > 0
-                      ? [{ kind: 'assignment' as SourceKind, label: t.sourceAssignment }]
-                      : []),
-                  ]).map(opt => (
-                    <button
-                      key={opt.kind}
-                      type="button"
-                      onClick={() => setSourceKind(opt.kind)}
-                      style={{ touchAction: 'manipulation' }}
-                      className={`py-2.5 rounded-xl font-bold text-sm border-2 transition-all ${
-                        sourceKind === opt.kind
-                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                          : 'bg-white text-stone-600 border-stone-200 hover:border-orange-200'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+                {/* Source toggle only appears when the teacher has saved
+                    assignments — otherwise paste is the only path. */}
+                {availableAssignments.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    {([
+                      { kind: 'paste' as SourceKind, label: t.sourcePaste },
+                      { kind: 'assignment' as SourceKind, label: t.sourceAssignment },
+                    ]).map(opt => (
+                      <button
+                        key={opt.kind}
+                        type="button"
+                        onClick={() => setSourceKind(opt.kind)}
+                        style={{ touchAction: 'manipulation' }}
+                        className={`py-2.5 rounded-xl font-bold text-sm border-2 transition-all ${
+                          sourceKind === opt.kind
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                            : 'bg-white text-stone-600 border-stone-200 hover:border-orange-200'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {sourceKind === 'paste' && (
+                  <>
+                    <textarea
+                      value={wordsText}
+                      onChange={e => setWordsText(e.target.value)}
+                      placeholder={t.wordsPlaceholder}
+                      rows={5}
+                      dir="ltr"
+                      className="w-full rounded-xl border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
+                    />
+                    <p className="mt-1 text-xs text-stone-500">{t.wordsHint}</p>
+                  </>
+                )}
                 {sourceKind === 'assignment' && availableAssignments.length > 0 && (
                   <select
                     value={assignmentId ?? ''}
                     onChange={e => setAssignmentId(e.target.value || null)}
                     dir={dir}
                     aria-label={t.pickAssignment}
-                    className="mt-2 w-full rounded-xl border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
+                    className="w-full rounded-xl border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
                   >
                     {availableAssignments.map(a => (
                       <option key={a.id} value={a.id}>{a.title}</option>
@@ -458,7 +522,11 @@ export default function HotSeatView({ onExit, speak, assignments }: HotSeatViewP
                 )}
                 {vocab && (
                   <p className={`mt-1.5 text-xs font-semibold ${wordPool.length < 4 ? 'text-rose-600' : 'text-stone-500'}`}>
-                    {wordPool.length < 4 ? t.poolTooSmall : t.poolHint(wordPool.length)}
+                    {wordPool.length < 4
+                      ? t.poolTooSmall
+                      : sourceKind === 'paste'
+                      ? t.matchedHint(rawPool.length, pastedLines.length)
+                      : t.poolHint(wordPool.length)}
                   </p>
                 )}
               </div>
