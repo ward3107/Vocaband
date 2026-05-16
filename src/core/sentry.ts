@@ -11,6 +11,12 @@
 // inlines theirs); they're rate-limited at the org level, not secret.
 // VITE_SENTRY_DSN takes precedence so we can swap projects without
 // a code change.
+//
+// CSP note: the ingest host below MUST be on `connect-src` in
+// public/_headers, and `https://browser.sentry-cdn.com` MUST be on
+// `script-src-elem` for the lazy replay integration to load.  If you
+// change the DSN project, update both at the same time or events
+// silently disappear.
 
 import * as Sentry from "@sentry/react";
 
@@ -35,9 +41,29 @@ export function initSentry(): void {
     // we don't want localhost stack traces clogging the project.
     enabled: import.meta.env.PROD,
     environment: import.meta.env.MODE,
+    integrations: [
+      // Browser tracing — captures Web Vitals (LCP, CLS, INP, TTFB)
+      // and page-load / navigation transactions, the data we need
+      // for R5's post-school-demo performance audit.  Trace headers
+      // are only attached to our own origins so we don't leak
+      // sampling state into third-party services.
+      Sentry.browserTracingIntegration({
+        tracePropagationTargets: [
+          /^\//,
+          /^https:\/\/(?:www\.|api\.|auth\.|audio\.)?vocaband\.com/,
+          /^https:\/\/.*\.supabase\.co/,
+        ],
+      }),
+    ],
     // 5% performance sampling — enough to spot slow pageloads without
     // burning through the free-tier event quota.
     tracesSampleRate: 0.05,
+    // Replay sample rates picked up by the lazily-added replay
+    // integration (see addReplayIntegrationLazy).  Setting them here
+    // means the integration starts honouring them the instant it
+    // loads from the CDN, without re-passing them.
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
     // Auto-capture console errors and unhandled rejections (defaults).
     // Browser extensions inject scripts that throw in our context; we
     // silence the most common false positives so the issue list stays
@@ -62,6 +88,51 @@ export function initSentry(): void {
     // Don't send default PII (cookies, IP). We attach the Supabase uid
     // explicitly via setSentryUser() when a teacher/student signs in.
     sendDefaultPii: false,
+  });
+}
+
+/** Lazily add Sentry's session-replay integration AFTER first paint.
+ *
+ * Replay is ~50 KB gzipped — bundling it eagerly would blow up the
+ * entry chunk and undo the school-Wi-Fi gains from R1-R4.  Instead
+ * we let Sentry pull it from `browser.sentry-cdn.com` when the page
+ * is idle, so it never competes with the user's first interaction.
+ *
+ * Privacy: `maskAllText` + `blockAllMedia` means recordings never
+ * contain student names, chat, or media — defensible under the
+ * Israeli MoE student-data rules and any future GDPR scrutiny.
+ *
+ * On any failure (school firewall blocks sentry-cdn, CSP mismatch,
+ * offline at boot), this swallows silently.  Replay is opportunistic;
+ * normal error capture continues regardless.
+ */
+export function addReplayIntegrationLazy(): void {
+  if (!import.meta.env.PROD) return;
+  if (typeof window === "undefined") return;
+
+  const schedule = (cb: () => void): void => {
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    if (typeof ric === "function") {
+      ric(cb, { timeout: 5000 });
+    } else {
+      // Safari < 16.4 doesn't ship requestIdleCallback yet.  A small
+      // setTimeout still keeps us out of the user's critical path.
+      setTimeout(cb, 2000);
+    }
+  };
+
+  schedule(async () => {
+    try {
+      const replayIntegration = await Sentry.lazyLoadIntegration("replayIntegration");
+      Sentry.addIntegration(
+        replayIntegration({
+          maskAllText: true,
+          blockAllMedia: true,
+        }),
+      );
+    } catch {
+      // Best-effort — see comment above.
+    }
   });
 }
 

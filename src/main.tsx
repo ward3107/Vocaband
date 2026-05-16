@@ -2,7 +2,7 @@ import {lazy, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.tsx';
 import { runSafariDiagnostics } from './utils/safariDiagnostics';
-import { initSentry } from './core/sentry';
+import { initSentry, addReplayIntegrationLazy } from './core/sentry';
 import './index.css';
 
 // Init Sentry as early as possible so any subsequent throw is captured.
@@ -163,6 +163,13 @@ async function bootstrap() {
   // install work can't compete with the first paint.  Fire-and-forget —
   // SW failures must never block the app.
   void manageServiceWorker();
+
+  // Lazy-load Sentry's session replay integration AFTER first paint.
+  // Replay is ~50 KB gz; it's pulled from browser.sentry-cdn.com when
+  // the page goes idle so it never blocks the user's first interaction.
+  // See addReplayIntegrationLazy in src/core/sentry.ts and R5 in
+  // docs/SCHOOL-PERFORMANCE-PLAN.md.
+  addReplayIntegrationLazy();
 }
 
 // If we're redirecting to the canonical host, let the navigation tear the
