@@ -223,11 +223,11 @@ import { createEnglishQuickPlaySession, createHebrewQuickPlaySession } from "./h
 import { generateAiLesson, type AiLessonParams } from "./utils/aiLesson";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
-import { completeTeacherOnboarding } from "./handlers/teacherOnboarding";
+import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
 import { persistHebrewScore, type HebrewMode } from "./handlers/hebrewScore";
 import { grantRetentionXp, applyServerRewards, grantNonXpReward } from "./handlers/retentionGrants";
-import { deleteAssignmentWithUndo } from "./handlers/deleteAssignmentWithUndo";
+import { deleteAssignmentWithUndo, deleteAssignmentImmediate } from "./handlers/deleteAssignmentWithUndo";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -3100,15 +3100,14 @@ export default function App() {
           }
           onEditAssignment={(assignment, c) => loadAssignmentIntoCreateForm(assignment, c, false)}
           onDuplicateAssignment={(assignment, c) => loadAssignmentIntoCreateForm(assignment, c, true)}
-          onDeleteAssignment={async (assignment) => {
-            const { error } = await supabase.from('assignments').delete().eq('id', assignment.id);
-            if (error) {
-              showToast(appToasts.failedDeleteAssignment(error.message), "error");
-              return;
-            }
-            setTeacherAssignments(prev => prev.filter(a => a.id !== assignment.id));
-            showToast(appToasts.assignmentDeleted, "success");
-          }}
+          onDeleteAssignment={(assignment) =>
+            deleteAssignmentImmediate(assignment.id, {
+              setTeacherAssignments,
+              showToast,
+              failedDeleteMsg: appToasts.failedDeleteAssignment,
+              deletedMsg: appToasts.assignmentDeleted,
+            })
+          }
           onOpenRoster={(c) => setRosterModalClass(c)}
           savedTasks={savedTasks.tasks}
           onTogglePinSavedTask={savedTasks.togglePin}
@@ -3166,17 +3165,7 @@ export default function App() {
                 })
               : Promise.resolve(null)
           }
-          onWizardSkip={async () => {
-            // Mark onboarded so the wizard doesn't reappear.  Don't
-            // create anything — the teacher will use the regular
-            // class/assignment flows instead.
-            try {
-              await supabase.rpc('mark_teacher_onboarded');
-            } catch (err) {
-              console.error('[onboarding] skip mark failed:', err);
-            }
-            setUser(prev => prev ? { ...prev, onboardedAt: new Date().toISOString() } : prev);
-          }}
+          onWizardSkip={() => skipTeacherOnboarding({ setUser })}
         />
         {rosterModalClass && (
           <ClassRosterModal

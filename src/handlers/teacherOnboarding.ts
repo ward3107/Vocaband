@@ -116,3 +116,30 @@ export async function completeTeacherOnboarding(
     return null;
   }
 }
+
+export interface SkipOnboardingDeps {
+  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
+}
+
+/**
+ * Wizard-skip path — mark the teacher as onboarded so the wizard
+ * doesn't reappear, but don't create a class or assignment.  The
+ * teacher uses the regular class/assignment flows instead.
+ *
+ * Failures on mark_teacher_onboarded are logged but not surfaced —
+ * the wizard will just re-show on next login (the local setUser
+ * branch ALSO updates the in-memory onboardedAt so the current
+ * session stays clean).
+ */
+export async function skipTeacherOnboarding(
+  deps: SkipOnboardingDeps,
+): Promise<void> {
+  try {
+    await supabase.rpc('mark_teacher_onboarded');
+  } catch (err) {
+    console.error('[onboarding] skip mark failed:', err);
+  }
+  deps.setUser((prev) =>
+    prev ? { ...prev, onboardedAt: new Date().toISOString() } : prev,
+  );
+}

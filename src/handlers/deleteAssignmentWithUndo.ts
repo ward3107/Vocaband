@@ -92,3 +92,28 @@ export function deleteAssignmentWithUndo(
     8000,
   );
 }
+
+export interface DeleteImmediateDeps {
+  setTeacherAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
+  showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  failedDeleteMsg: (err: string) => string;
+  deletedMsg: string;
+}
+
+/**
+ * No-undo delete used by the per-class action menu (vs. the bulk
+ * "delete assignment" flow that goes through deleteAssignmentWithUndo).
+ * Simple round-trip: DELETE → optimistic local removal → toast.
+ */
+export async function deleteAssignmentImmediate(
+  assignmentId: string,
+  deps: DeleteImmediateDeps,
+): Promise<void> {
+  const { error } = await supabase.from('assignments').delete().eq('id', assignmentId);
+  if (error) {
+    deps.showToast(deps.failedDeleteMsg(error.message), 'error');
+    return;
+  }
+  deps.setTeacherAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
+  deps.showToast(deps.deletedMsg, 'success');
+}
