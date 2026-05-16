@@ -27,6 +27,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings, type ClassShowStrings } from '../../locales/student/class-show';
 import type { Word } from '../../data/vocabulary';
 import WordPicker from '../setup/WordPicker';
+import type { TranslationLang } from '../setup/WordInputStep2026';
 import { useFirstTimeGuide } from '../../hooks/useFirstTimeGuide';
 import FirstTimeGuide from '../onboarding/FirstTimeGuide';
 import GuideTriggerButton from '../onboarding/GuideTriggerButton';
@@ -86,6 +87,11 @@ interface ClassShowSetupProps {
   onCustomWordsChange: (words: Word[]) => void;
   customWordsCustomTier: Word[];
   onCustomWordsCustomTierChange: (words: Word[]) => void;
+  /** Lifted translation-language preference — same reason as above.
+   *  Without this the teacher's HE/AR pick is reset every time the
+   *  setup phase re-mounts at the end of a round. */
+  translationLang: TranslationLang;
+  onTranslationLangChange: (lang: TranslationLang) => void;
 }
 
 const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: React.ReactNode; gradient: string }> = [
@@ -116,6 +122,8 @@ export default function ClassShowSetup({
   onCustomWordsChange,
   customWordsCustomTier,
   onCustomWordsCustomTierChange,
+  translationLang,
+  onTranslationLangChange,
 }: ClassShowSetupProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
@@ -253,6 +261,8 @@ export default function ClassShowSetup({
                 onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
                 customWords={customWordsCustomTier}
                 onCustomWordsChange={handleCustomWordsCustomTierChange}
+                translationLang={translationLang}
+                onTranslationLangChange={onTranslationLangChange}
               />
             </div>
           )}
