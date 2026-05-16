@@ -455,24 +455,35 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           out of view so the primary conversion path is always one tap
           away.  Hidden when the hero button is on-screen to avoid
           competing with itself.  Same gradient + iconography as the
-          hero so it reads as the same action, just compact. */}
-      <motion.button
+          hero so it reads as the same action, just compact.
+
+          PR #708 (perf: strip motion/react from public-landing path)
+          removed motion/react from this file's imports. PR #709 then
+          added this sticky CTA with <motion.button> + animate={{...}}
+          without re-adding the import — production crashed with
+          "ReferenceError: motion is not defined", and the page froze
+          on "Loading Vocaband..." because LandingPage couldn't
+          render. Reimplemented as a plain <button> with a CSS
+          transform + opacity transition so the slide effect is
+          preserved without re-pulling motion onto the landing chunk. */}
+      <button
         type="button"
         onClick={onTeacherLogin}
         aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
-        initial={false}
-        animate={{
-          y: heroSignInVisible ? 120 : 0,
-          opacity: heroSignInVisible ? 0 : 1,
-        }}
-        transition={{ type: "spring", stiffness: 260, damping: 26 }}
+        aria-hidden={heroSignInVisible}
+        tabIndex={heroSignInVisible ? -1 : 0}
         style={{
           touchAction: "manipulation",
           WebkitTapHighlightColor: "transparent",
           bottom: "max(1rem, env(safe-area-inset-bottom))",
           pointerEvents: heroSignInVisible ? "none" : "auto",
+          opacity: heroSignInVisible ? 0 : 1,
+          transform: heroSignInVisible
+            ? "translate(-50%, 120px)"
+            : "translate(-50%, 0)",
+          transition: "transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 250ms ease-out",
         }}
-        className="fixed left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-3.5 rounded-2xl text-base sm:text-lg font-black text-white shadow-[0_10px_0_0_#581c87,0_18px_36px_rgba(168,85,247,0.55)] hover:shadow-[0_12px_0_0_#4c1d95,0_22px_44px_rgba(168,85,247,0.7)] active:translate-y-0.5 active:shadow-[0_4px_0_0_#581c87] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60 transition-shadow"
+        className="fixed left-1/2 z-40 inline-flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-3.5 rounded-2xl text-base sm:text-lg font-black text-white shadow-[0_10px_0_0_#581c87,0_18px_36px_rgba(168,85,247,0.55)] hover:shadow-[0_12px_0_0_#4c1d95,0_22px_44px_rgba(168,85,247,0.7)] active:translate-y-0.5 active:shadow-[0_4px_0_0_#581c87] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60"
       >
         <GraduationCap size={20} strokeWidth={2.5} />
         <span className={`flex flex-col leading-tight ${isRTL ? "items-end" : "items-start"}`}>
@@ -482,7 +493,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           </span>
         </span>
         <LogIn size={18} strokeWidth={2.5} className="opacity-90" />
-      </motion.button>
+      </button>
 
       {isSubjectModalOpen && (
         <Suspense fallback={null}>
