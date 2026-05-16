@@ -388,6 +388,28 @@ export default defineConfig(() => {
       },
     },
     build: {
+      // Drop the motion chunk from index.html's <link rel="modulepreload">
+      // list. Vite's default behaviour is to preload every static dep of
+      // every lazy() chunk reachable from the entry, which puts motion
+      // (43 kB gz, used only by LandingPage's hero animations) on the
+      // cold-load critical path even though it's not needed until the
+      // first paint scrolls into a motion.div. Filtering it out here
+      // means it still loads — but on-demand when LandingPage
+      // executes, after entry + App + react-vendor have already
+      // arrived. The trade-off: motion arrives a few hundred ms later
+      // on cold first-paint, but the parallel entry/lucide/react-vendor
+      // fetch saturates the connection sooner.
+      //
+      // hostType is filtered to 'html' so JS-emitted preload comments
+      // (vite/preload-helper) still preload motion when LandingPage's
+      // dynamic import fires — only the static <link> in the HTML head
+      // is trimmed.
+      modulePreload: {
+        resolveDependencies: (_url, deps, { hostType }) => {
+          if (hostType !== 'html') return deps;
+          return deps.filter(d => !d.includes('motion-'));
+        },
+      },
       rollupOptions: {
         output: {
           manualChunks(id) {
