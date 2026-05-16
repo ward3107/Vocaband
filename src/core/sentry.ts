@@ -14,9 +14,11 @@
 //
 // CSP note: the ingest host below MUST be on `connect-src` in
 // public/_headers, and `https://browser.sentry-cdn.com` MUST be on
-// `script-src-elem` for the lazy replay integration to load.  If you
-// change the DSN project, update both at the same time or events
-// silently disappear.
+// BOTH `script-src-elem` (so the browser is allowed to load the
+// lazy replay script tag) AND `connect-src` (so Workbox's SW fetch
+// interception, which re-fetches the script to populate the runtime
+// cache, isn't blocked).  If you change the DSN project, update all
+// three hosts at the same time or events silently disappear.
 
 import * as Sentry from "@sentry/react";
 
