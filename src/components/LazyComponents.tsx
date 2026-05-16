@@ -4,9 +4,30 @@
  */
 
 import { lazy, Suspense, type ComponentType } from 'react';
-import { Loader2 } from 'lucide-react';
+// Loader2 was the only lucide icon used here; inlined as <svg> so
+// this module (eagerly imported by PublicViews → App.tsx) no longer
+// drags the ~17 kB gz lucide chunk into the cold-load modulepreload
+// chain. Same path data as lucide-react v0.546.0 (ISC).
 import { LazyErrorBoundary } from './LazyErrorBoundary';
 import { useLanguage } from '../hooks/useLanguage';
+
+const InlineLoaderIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="48"
+    height="48"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </svg>
+);
 
 type LoadingKey =
   | 'default'
@@ -33,7 +54,7 @@ const LoadingFallback = ({ messageKey = 'default' }: { messageKey?: LoadingKey }
   return (
     <div className="min-h-[400px] flex items-center justify-center bg-surface">
       <div className="text-center">
-        <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+        <InlineLoaderIcon className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
         <p className="text-on-surface-variant font-medium">{message}</p>
       </div>
     </div>
