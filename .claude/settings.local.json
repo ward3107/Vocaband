@@ -276,7 +276,9 @@
       "Bash(grep -n \"return \\(\\\\s*$\\\\|^  return \\(\\\\|<>$\" src/App.tsx)",
       "Bash(awk '/^  return/ {n++; print NR\": \"$0} END {print \"Total returns from App: \"n}' src/App.tsx)",
       "Bash(grep *)",
-      "mcp__2b97ba60-f590-4f65-b1ad-ec7ed00f0638__find_organizations"
+      "mcp__2b97ba60-f590-4f65-b1ad-ec7ed00f0638__find_organizations",
+      "mcp__2b97ba60-f590-4f65-b1ad-ec7ed00f0638__search_issues",
+      "mcp__2b97ba60-f590-4f65-b1ad-ec7ed00f0638__search_events"
     ]
   }
 }
