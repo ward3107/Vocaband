@@ -382,6 +382,26 @@ export default function QuickPlayStudentView({
             <div className="text-center py-12 sm:py-20">
               <Loader2 className="mx-auto animate-spin text-primary mb-4 w-9 h-9 sm:w-12 sm:h-12" />
               <p className="text-on-surface-variant font-bold text-sm sm:text-base">Loading Quick Play session...</p>
+              {/* Manual escape — the bootstrap has a 15s timeout that
+                  auto-bounces to landing, but on a phone holding the
+                  loader for 15s feels broken.  A visible escape link
+                  reassures the student they can recover even before
+                  the timeout fires. */}
+              <button
+                type="button"
+                onClick={() => {
+                  cleanupSessionData();
+                  try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* storage unavailable */ }
+                  setQuickPlayActiveSession(null);
+                  setQuickPlayStudentName('');
+                  setUser(null);
+                  window.history.replaceState({}, '', window.location.pathname);
+                  setView('public-landing');
+                }}
+                className="mt-6 text-sm font-bold text-on-surface-variant underline hover:text-on-surface"
+              >
+                Cancel and go back
+              </button>
             </div>
           ) : userIsActiveGuest && quickPlayStudentName ? (
             // Resume card: reached when the mobile back button pops the
