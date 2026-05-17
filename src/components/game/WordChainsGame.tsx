@@ -213,9 +213,24 @@ export default function WordChainsGame({
     <div className="flex flex-col items-center px-4 py-6 sm:py-10 w-full" dir="ltr">
       {/* Score chip */}
       <div
-        className={`mb-4 px-4 py-2 rounded-full font-black text-sm ${theme.pillBg} ${theme.pillText} shadow-md`}
+        className={`mb-2 px-4 py-2 rounded-full font-black text-sm ${theme.pillBg} ${theme.pillText} shadow-md`}
       >
         🔗 {language === "he" ? "שרשרת" : language === "ar" ? "السلسلة" : "Chain"}: {score}
+      </div>
+
+      {/* Pool size chip — telegraphs that the chain is built from the
+          teacher's word list, not free English.  Without this students
+          guess random words and bounce off the "not in your word list"
+          error before they understand the rule. */}
+      <div
+        className="mb-4 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-bold"
+        dir={dir}
+      >
+        {language === "he"
+          ? `מתוך רשימת הכיתה שלך · ${gameWords.length} מילים`
+          : language === "ar"
+          ? `من قائمة كلمات صفّك · ${gameWords.length} كلمة`
+          : `From your class word list · ${gameWords.length} words`}
       </div>
 
       {/* "Previous word" — small contextual label so students don't mistake
