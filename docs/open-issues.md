@@ -180,12 +180,20 @@ These items are DONE. Don't rebuild them — surface and market them.
 ### Tier 3 — Network / UX moats
 
 **7. Offline-first PWA + LAN mode**
-- Service worker pre-caches SPA shell + active assignment's words + their MP3s
-- IndexedDB queue for `progress` writes when offline → flushes via Background Sync
-- LAN-mode for Live Challenge: WebRTC datachannels with teacher device as host, no internet required for live podium
-- Connection-aware: `navigator.connection.effectiveType === '2g'` → skip MP3s, fall back to `speechSynthesis`
-- ETA: 3–4 weeks (real architectural lift)
-- Why: structural moat; market as "works when Wi-Fi doesn't"
+
+*Phase 1 + 2 shipped on `claude/finish-offline-pwa-30XWz` (2026-05-17):*
+- Force-install gate — full-screen first-visit modal + per-session banner. Installed PWAs on iOS sidestep the 7-day storage eviction. See `src/components/PwaInstallGate.tsx`.
+- 2G / data-saver fallback — `useAudio` skips MP3 fetch on slow connections and routes to `speechSynthesis`. See `src/hooks/useEffectiveConnection.ts`.
+- Assignment audio precache — idle-time `fetch()` of MP3s for the active assignment's words; SW's CacheFirst rule writes them to `vocaband-word-audio`. Skipped on 2G. See `src/hooks/useAssignmentPrecache.ts`.
+- In-app browser warning — UA-based detection of Instagram/FB/WhatsApp/TikTok WebViews where SWs silently break. Android intent:// jump to Chrome; iOS shows Share-menu instructions + copy-link. See `src/components/InAppBrowserWarning.tsx`.
+- SWR-cache the student-dashboard assignment refresh — `useDashboardPolling` now wraps the `get_assignments_for_class` RPC in `cachedRead` so offline students see their assignments. See `src/hooks/useDashboardPolling.ts`.
+- `navigator.storage.persist()` requested on boot — Chrome auto-grants for installed PWAs. See `src/utils/persistStorage.ts`.
+
+*Deferred (Phase 3 + Capacitor — need real-device testing):*
+- IndexedDB queue + Workbox Background Sync — skipped because both saveQueue and BackgroundSync would replay the same writes when reconnecting; `progress` table has no idempotency key → duplicate score rows. Requires either a `local_id` unique constraint or picking one mechanism. See `docs/open-issues.md` discussion.
+- LAN-mode Live Challenge (WebRTC datachannels with simple-peer) — ~500 LOC + needs two real devices to validate the NAT-traversal/ICE handshake; can't be verified in a sandbox.
+- Capacitor wrapper for App Store / Play Store — only triggers when schools start asking for an "official app."
+- Per-word in-game checkpointing — defensive, modifies the hot save path; defer until the existing saveQueue's loss-on-tab-crash window proves to be a real problem.
 
 **8. QR-join speed claim**
 - Already exists — task is marketing, not engineering
