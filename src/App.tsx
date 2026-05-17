@@ -85,6 +85,7 @@ import { useActiveVocaState } from "./hooks/useActiveVocaState";
 import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
 import { useQuickPlayGuestState } from "./hooks/useQuickPlayGuestState";
 import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
+import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
@@ -463,12 +464,10 @@ export default function App() {
   // Reset on game start so each session is independent.
   const [wordAttemptBatch, setWordAttemptBatch] = useState<Array<{ word_id: number; is_correct: boolean }>>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
-  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">(() => {
-    try { return (localStorage.getItem('vocaband_target_lang') as "hebrew" | "arabic") || "hebrew"; } catch { return "hebrew"; }
-  });
-  const [hasChosenLanguage, setHasChosenLanguage] = useState(() => {
-    try { return !!localStorage.getItem('vocaband_target_lang'); } catch { return false; }
-  });
+  const {
+    targetLanguage, setTargetLanguage,
+    hasChosenLanguage, setHasChosenLanguage,
+  } = useTargetLanguageState();
   const [isFinished, setIsFinished] = useState(false);
   const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
 
