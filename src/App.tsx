@@ -106,6 +106,7 @@ import { useAwardBadge } from "./hooks/useAwardBadge";
 import { useToasts } from "./hooks/useToasts";
 import { useOAuthState } from "./hooks/useOAuthState";
 import { useActiveVocaState } from "./hooks/useActiveVocaState";
+import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -408,16 +409,12 @@ export default function App() {
     onConfirm: () => void
   }>({ show: false, message: '', onConfirm: () => {} });
 
-  // --- ASSIGNMENT WELCOME POPUP STATE ---
-  const [showAssignmentWelcome, setShowAssignmentWelcome] = useState(() => {
-    try { return !localStorage.getItem('vocaband_welcome_seen'); } catch { return true; }
-  });
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    try { return !localStorage.getItem('vocaband_onboarding_done'); } catch { return true; }
-  });
-  const [showStudentOnboarding, setShowStudentOnboarding] = useState(() => {
-    try { return !localStorage.getItem('vocaband_student_onboarding_done'); } catch { return true; }
-  });
+  // Three "first-time" flags driving the onboarding overlays.
+  const {
+    showAssignmentWelcome, setShowAssignmentWelcome,
+    showOnboarding, setShowOnboarding,
+    showStudentOnboarding, setShowStudentOnboarding,
+  } = useOnboardingFlags();
   // --- PERFORMANCE OPTIMIZATIONS ---
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
   const selectedWordsSet = useMemo(() => new Set(selectedWords), [selectedWords]);
