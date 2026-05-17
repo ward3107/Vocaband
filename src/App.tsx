@@ -113,6 +113,7 @@ import { isPublicView, shouldPreserveView } from "./utils/authViews";
 import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
 import { deleteAssignmentWithUndo, deleteAssignmentImmediate } from "./handlers/deleteAssignmentWithUndo";
+import { buildEmitScoreUpdate } from "./handlers/emitScoreUpdate";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -761,54 +762,16 @@ export default function App() {
     },
   });
 
-  // Throttled Socket.IO score emit. Routes to the right transport
-  // depending on context:
-  //   * classroom live challenge — existing `/` namespace, needs classCode
-  //   * Quick Play v2 guest game — new `/quick-play` namespace, no auth
-  const emitScoreUpdate = (newScore: number) => {
-    const now = Date.now();
-    const shouldEmit = now - lastScoreEmitRef.current > 2000 || isFinished;
-    if (!shouldEmit) return;
-    lastScoreEmitRef.current = now;
-
-    if (QUICKPLAY_V2 && quickPlayActiveSession) {
-      // Add the per-mode score on top of the cumulative running total
-      // for previously-completed modes in this session.  Without this,
-      // each new mode would emit a small per-mode value and the server
-      // would reject it as a regress (new < previous max).
-      // The previous gate also required `user.isGuest`, which silently
-      // dropped scores for any OAuth student who somehow ended up in a
-      // QP session — they appeared on the teacher's podium but their
-      // score never moved.  Today's QR-scan flow turns OAuth students
-      // into guests at join time, so this branch effectively covers
-      // them too; dropping the isGuest guard removes the failsafe that
-      // had no business being there.
-      const cumulative = qpCumulativeScoreRef.current + newScore;
-      setTimeout(() => quickPlaySocket.updateScore(cumulative), 0);
-      // Also refresh the localStorage resume hint with the latest score
-      // and a fresh joinedAt timestamp.  This (a) lets the
-      // QuickPlayResumeBanner show the actual score the student has
-      // earned if they accidentally close the tab, and (b) extends the
-      // 90-minute TTL window for as long as the student is actively
-      // scoring — kids who walk away for 90 min see no banner; kids
-      // who scored 30 sec ago see "850 points".
-      try {
-        const raw = localStorage.getItem('vocaband_qp_guest');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          parsed.lastScore = cumulative;
-          parsed.joinedAt = Date.now();
-          localStorage.setItem('vocaband_qp_guest', JSON.stringify(parsed));
-        }
-      } catch { /* localStorage blocked / private mode — silent */ }
-      return;
-    }
-
-    if (!socket || !user?.classCode) return;
-    setTimeout(() => {
-      socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
-    }, 0);
-  };
+  // Throttled Socket.IO score emit — routes to the live-challenge `/`
+  // namespace or the Quick Play v2 `/quick-play` namespace depending
+  // on context. See handlers/emitScoreUpdate.
+  const emitScoreUpdate = buildEmitScoreUpdate({
+    user, socket, isFinished,
+    quickPlayV2: QUICKPLAY_V2,
+    quickPlayActiveSession,
+    qpCumulativeScoreRef, lastScoreEmitRef,
+    quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
+  });
 
 
   // Emits JOIN_CHALLENGE / OBSERVE_CHALLENGE and listens for
