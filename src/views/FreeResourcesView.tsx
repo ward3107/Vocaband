@@ -22,12 +22,22 @@ import {
   ListChecks,
   Layers,
   Sparkles,
+  Trash2,
+  Link as LinkIcon,
+  Check,
 } from "lucide-react";
 import PublicNav from "../components/PublicNav";
 import html2pdf from "html2pdf.js";
 import qrcode from "qrcode-generator";
 import { Share2 } from "lucide-react";
 import { ShareWorksheetDialog, type ShareSource, type WorksheetLang } from "../components/ShareWorksheetDialog";
+import { supabase } from "../core/supabase";
+import {
+  listMyWorksheets,
+  forgetMyWorksheet,
+  getOrCreateMinterFingerprint,
+  type MyWorksheetEntry,
+} from "../utils/myWorksheets";
 
 type Word = (typeof ALL_WORDS)[number];
 type TopicPack = (typeof TOPIC_PACKS)[number];
@@ -3411,6 +3421,8 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             )}
           </motion.div>
 
+          <MySharedWorksheetsSection t={t} dir={dir} isRTL={isRTL} />
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3522,5 +3534,140 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     </div>
   );
 };
+
+// "My Shared Worksheets" — per-device list of interactive worksheets
+// this browser minted. Hidden entirely when the list is empty so the
+// section doesn't clutter the page for first-time visitors. Delete
+// calls revoke_my_worksheet() which checks the stored
+// minter_fingerprint server-side; on success the entry is dropped
+// from localStorage.
+const MySharedWorksheetsSection: React.FC<{
+  t: ReturnType<typeof getResourcesTranslator>;
+  dir: "ltr" | "rtl";
+  isRTL: boolean;
+}> = ({ t, dir, isRTL }) => {
+  const [items, setItems] = useState<MyWorksheetEntry[]>(() => listMyWorksheets());
+  const [revoking, setRevoking] = useState<string | null>(null);
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [errorSlug, setErrorSlug] = useState<string | null>(null);
+
+  // Re-read from localStorage when the tab regains focus so a teacher
+  // who minted a new worksheet in another tab sees it appear here
+  // without a hard refresh.
+  useEffect(() => {
+    const refresh = () => setItems(listMyWorksheets());
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  if (items.length === 0) return null;
+
+  const handleCopy = async (slug: string) => {
+    const url = `${window.location.origin}/w/${slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedSlug(slug);
+      setTimeout(() => setCopiedSlug((s) => (s === slug ? null : s)), 1800);
+    } catch {
+      /* clipboard blocked — silent */
+    }
+  };
+
+  const handleRevoke = async (slug: string) => {
+    if (!window.confirm(t.myWorksheetsConfirmRevoke)) return;
+    setRevoking(slug);
+    setErrorSlug(null);
+    const fp = getOrCreateMinterFingerprint();
+    const { data, error } = await supabase.rpc("revoke_my_worksheet", {
+      p_slug: slug,
+      p_fingerprint: fp,
+    });
+    setRevoking(null);
+    if (error || data === false) {
+      setErrorSlug(slug);
+      return;
+    }
+    forgetMyWorksheet(slug);
+    setItems(listMyWorksheets());
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.25 }}
+      className="mb-12 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-6 md:p-8"
+    >
+      <div className="flex items-center gap-3 mb-1" dir={dir}>
+        <Share2 size={22} className="text-violet-300" />
+        <h2 className="text-2xl font-bold text-white">{t.myWorksheetsTitle}</h2>
+      </div>
+      <p
+        className="text-white/60 text-sm mb-5"
+        dir={dir}
+        style={{ textAlign: isRTL ? "right" : "left" }}
+      >
+        {t.myWorksheetsSubtitle}
+      </p>
+      <ul className="space-y-2">
+        {items.map((entry) => {
+          const isRevoking = revoking === entry.slug;
+          const isCopied = copiedSlug === entry.slug;
+          const hasError = errorSlug === entry.slug;
+          return (
+            <li
+              key={entry.slug}
+              className="rounded-xl bg-white/5 border border-white/10 px-4 py-3 flex flex-wrap items-center gap-3"
+              dir={dir}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-bold truncate">{entry.topicName}</p>
+                <p className="text-white/50 text-xs font-mono truncate">
+                  /w/{entry.slug}
+                </p>
+                {hasError && (
+                  <p className="text-rose-300 text-xs mt-1 font-bold">
+                    {t.myWorksheetsRevokeError}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopy(entry.slug)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-bold transition-all"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              >
+                {isCopied ? <Check size={14} /> : <LinkIcon size={14} />}
+                {isCopied ? t.myWorksheetsCopied : t.myWorksheetsCopyLink}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRevoke(entry.slug)}
+                disabled={isRevoking}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 text-sm font-bold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              >
+                {isRevoking ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Trash2 size={14} />
+                )}
+                {isRevoking ? t.myWorksheetsRevoking : t.myWorksheetsRevoke}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </motion.div>
+  );
+};
+
+// Tiny helper so the section component can type its `t` prop without
+// pulling in the whole FreeResourcesT interface from the locale file.
+const getResourcesTranslator = (): typeof freeResourcesT["en"] => freeResourcesT.en;
 
 export default FreeResourcesView;

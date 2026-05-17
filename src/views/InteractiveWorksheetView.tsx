@@ -49,6 +49,27 @@ type Stage = "name-entry" | "in-progress" | "submitting" | "done" | "submit-erro
 // the teacher (when they type the same name).
 const FINGERPRINT_KEY = "vocaband:worksheet:fingerprint";
 
+// Mirrors the server-side check in submit_worksheet_attempt() so the
+// student sees an inline error before round-tripping. Trimmed length
+// 1..40, must contain at least one letter (any script), no C0 control
+// chars. Keep the regex in sync with the migration.
+const MAX_NAME_LEN = 40;
+const HAS_LETTER = /\p{L}/u;
+const CONTROL_CHARS = /[\x00-\x1f\x7f]/g;
+
+const sanitiseStudentName = (raw: string): string =>
+  raw.replace(CONTROL_CHARS, "").replace(/\s+/g, " ").trim();
+
+const validateStudentName = (
+  raw: string,
+): { ok: true; clean: string } | { ok: false; reason: "empty" | "long" | "no-letter" } => {
+  const clean = sanitiseStudentName(raw);
+  if (clean.length === 0) return { ok: false, reason: "empty" };
+  if (clean.length > MAX_NAME_LEN) return { ok: false, reason: "long" };
+  if (!HAS_LETTER.test(clean)) return { ok: false, reason: "no-letter" };
+  return { ok: true, clean };
+};
+
 const getOrCreateFingerprint = (): string | null => {
   try {
     let fp = localStorage.getItem(FINGERPRINT_KEY);
@@ -216,11 +237,11 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   const targetLang: Language = (row?.settings?.language as Language) ?? "he";
 
   const handleStart = (name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setStudentName(trimmed);
+    const v = validateStudentName(name);
+    if (!v.ok) return;
+    setStudentName(v.clean);
     try {
-      localStorage.setItem(nameKey(slug), trimmed);
+      localStorage.setItem(nameKey(slug), v.clean);
     } catch {
       /* storage blocked — non-fatal */
     }
@@ -453,7 +474,28 @@ const NameEntryCard: React.FC<{
 }> = ({ topicName, exerciseCount, firstType, initialName, onStart, resume }) => {
   const { language: iwvLang } = useLanguage();
   const [name, setName] = useState(initialName);
-  const trimmed = name.trim();
+  const [touched, setTouched] = useState(false);
+  const validation = validateStudentName(name);
+  const showError = touched && !validation.ok;
+  const errorMessage = !validation.ok
+    ? validation.reason === "long"
+      ? iwvLang === "he"
+        ? `שם ארוך מדי (עד ${MAX_NAME_LEN} תווים)`
+        : iwvLang === "ar"
+          ? `الاسم طويل جداً (حتى ${MAX_NAME_LEN} حرفاً)`
+          : `Name too long (max ${MAX_NAME_LEN} characters)`
+      : validation.reason === "no-letter"
+        ? iwvLang === "he"
+          ? "השם חייב לכלול לפחות אות אחת"
+          : iwvLang === "ar"
+            ? "يجب أن يحتوي الاسم على حرف واحد على الأقل"
+            : "Please use a real name (at least one letter)"
+        : iwvLang === "he"
+          ? "אנא הקלידו את שמכם"
+          : iwvLang === "ar"
+            ? "الرجاء كتابة اسمك"
+            : "Please type your name"
+    : "";
   const subtitle =
     exerciseCount === 1
       ? formatLabel(firstType)
@@ -488,7 +530,8 @@ const NameEntryCard: React.FC<{
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (trimmed) onStart(trimmed);
+            setTouched(true);
+            if (validation.ok) onStart(validation.clean);
           }}
         >
           <label htmlFor="student-name" className="block text-sm font-bold text-stone-700 mb-2">
@@ -500,16 +543,26 @@ const NameEntryCard: React.FC<{
             autoFocus={!resume}
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => setTouched(true)}
             placeholder={iwvLang === 'he' ? 'הקלידו את שמכם' : iwvLang === 'ar' ? 'اكتب اسمك' : 'Type your name'}
-            maxLength={60}
-            className="w-full px-4 py-3 rounded-lg border-2 border-stone-200 focus:border-violet-500 focus:outline-none font-bold text-stone-900 text-lg"
+            maxLength={MAX_NAME_LEN}
+            aria-invalid={showError}
+            className={`w-full px-4 py-3 rounded-lg border-2 focus:outline-none font-bold text-stone-900 text-lg ${
+              showError
+                ? "border-rose-400 focus:border-rose-500"
+                : "border-stone-200 focus:border-violet-500"
+            }`}
           />
-          <p className="text-xs text-stone-500 mt-2">
-            Your teacher will see your name and your score.
-          </p>
+          {showError ? (
+            <p className="text-xs text-rose-600 mt-2 font-bold">{errorMessage}</p>
+          ) : (
+            <p className="text-xs text-stone-500 mt-2">
+              Your teacher will see your name and your score.
+            </p>
+          )}
           <button
             type="submit"
-            disabled={!trimmed}
+            disabled={!validation.ok}
             className="mt-6 w-full py-3 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition-all flex items-center justify-center gap-2"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >

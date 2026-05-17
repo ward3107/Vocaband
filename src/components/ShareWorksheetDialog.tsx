@@ -22,6 +22,7 @@ import { shareWorksheetT } from "../locales/teacher/share-worksheet";
 import type { Exercise, ExerciseType, TranslationDirection } from "../worksheet/types";
 import { WorksheetShareCard } from "./WorksheetShareCard";
 import type { Language } from "../hooks/useLanguage";
+import { getOrCreateMinterFingerprint, recordMyWorksheet } from "../utils/myWorksheets";
 
 // Exercise types that need a context sentence for each word. When the
 // teacher picks any of these, the dialog also calls /api/generate-sentences
@@ -285,6 +286,12 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       if (Object.keys(aiSentences).length > 0) {
         settings.sentences = aiSentences;
       }
+      // Per-device fingerprint lets an anonymous mint be revoked later
+      // from the same browser via revoke_my_worksheet(). The server
+      // stamps it onto interactive_worksheets.minter_fingerprint and
+      // also uses it as the rate-limit actor key when there's no
+      // auth.uid().
+      const minterFp = getOrCreateMinterFingerprint();
       const { data, error: rpcErr } = await supabase.rpc(
         "create_interactive_worksheet_v2",
         {
@@ -292,13 +299,20 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
           p_exercises: exercises,
           p_settings: settings,
           p_parent_slug: parentSlug ?? null,
+          p_minter_fingerprint: minterFp,
         },
       );
       if (rpcErr || !data) {
         setError(rpcErr?.message ?? t.generateError);
         return;
       }
-      setSlug(String(data));
+      const newSlug = String(data);
+      recordMyWorksheet({
+        slug: newSlug,
+        topicName: source.topicName,
+        createdAt: Date.now(),
+      });
+      setSlug(newSlug);
     } finally {
       setCreating(false);
     }
