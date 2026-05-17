@@ -1,20 +1,15 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
+import React, { useState, useMemo, useRef, useCallback } from "react";
 import type { View } from "./core/views";
-import { type VocaId, ACTIVE_VOCA_KEY, getEntitledVocas } from "./core/subject";
-import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
+import { getEntitledVocas } from "./core/subject";
 import type { Word } from "./data/vocabulary";
-import { useVocabularyLazy } from "./hooks/useVocabularyLazy";
-import { generateSentencesForAssignment } from "./data/sentence-bank";
+import { useVocabularyLazyWithDefaults } from "./hooks/useVocabularyLazy";
 import SvgSpinner from "./components/svg/SvgSpinner";
 // motion is no longer imported eagerly here. Its three eager consumers
 // (CookieBanner, QuickPlayResumeBanner, ImageCropModal — all defined
 // further down as React.lazy) carry it in their own chunks now, so the
 // ~43 kB gz motion bundle drops out of the App.tsx modulepreload chain
-// on cold first-paint. AnimatePresence / motion.div weren't used in
-// this file anyway, so the original `import { motion, AnimatePresence }`
-// was a dead import.
-import { supabase, OperationType, handleDbError, hasTeacherAccess, ASSIGNMENT_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
-import { isPro } from "./core/plan";
+// on cold first-paint.
+import { hasTeacherAccess, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
 import { useLanguage } from "./hooks/useLanguage";
 import { appToastsT } from "./locales/app-toasts";
@@ -22,24 +17,14 @@ import { useRetention } from "./hooks/useRetention";
 import { useSavedTasks } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
-import { shuffle, chunkArray, addUnique, removeKey, secureRandomInt } from './utils';
-import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
-import { isAnswerCorrect } from './utils/answerMatch';
+import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
-import { LazyWrapper} from "./components/SuspenseWrapper";
-
-// Lazy-loaded views (code-split into separate chunks)
-const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
-import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
 import { readQpResumeScore } from "./utils/qpResumeHint";
 import {
   readIntendedClassCode,
   clearIntendedClassCode,
 } from "./utils/oauthIntent";
-import { celebrate } from "./utils/celebrate";
-import { compressImageForUpload } from "./utils/compressImage";
-// ImageCropModal moved to a React.lazy at the top of this file.
 import { useTeacherGuidesSync } from "./hooks/useTeacherGuidesSync";
 import { useVocaRouting } from "./hooks/useVocaRouting";
 import { useApplyTeacherTheme } from "./hooks/useApplyTeacherTheme";
@@ -59,20 +44,9 @@ import { StudentDashboardSection } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
 import { renderGameRoute } from "./views/GameRoutes";
 import { renderStudentAuthRoute } from "./views/StudentAuthRoutes";
-import {
-  startQuickPlayFromDashboard,
-  startAssignClassFlow,
-  loadAssignmentIntoCreateForm,
-  applySavedTask,
-} from "./handlers/teacherDashboardActions";
+import { renderPrivacySettingsSection } from "./views/PrivacySettingsSection";
 import { getGameDebugger } from "./utils/gameDebug";
-import {
-  MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
-  MAX_ASSIGNMENT_ROUNDS,
-  STREAK_CELEBRATION_MILESTONES,
-  ALL_GAME_MODES,
-  type GameMode,
-} from "./constants/game";
+import { type GameMode } from "./constants/game";
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
 import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
@@ -93,6 +67,7 @@ import { useGameModeSetup } from "./hooks/useGameModeSetup";
 import { useDashboardPolling } from "./hooks/useDashboardPolling";
 import { useAssignmentAutoPopulate } from "./hooks/useAssignmentAutoPopulate";
 import { useSaveQueueResilience } from "./hooks/useSaveQueueResilience";
+import { useAssignmentPrecache } from "./hooks/useAssignmentPrecache";
 import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
 import { useViewGuards } from "./hooks/useViewGuards";
 import { useGameRoundOptions } from "./hooks/useGameRoundOptions";
@@ -103,50 +78,33 @@ import { useConsent } from "./hooks/useConsent";
 import { useOcrUpload } from "./hooks/useOcrUpload";
 import { useCookieConsent } from "./hooks/useCookieConsent";
 import { useAwardBadge } from "./hooks/useAwardBadge";
-import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
-import { parseSearchTerms } from "./utils/parseSearchTerms";
+import { useToasts } from "./hooks/useToasts";
+import { useOAuthState } from "./hooks/useOAuthState";
+import { useActiveVocaState } from "./hooks/useActiveVocaState";
+import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
+import { useQuickPlayGuestState } from "./hooks/useQuickPlayGuestState";
+import { useQuickPlaySessionState } from "./hooks/useQuickPlaySessionState";
+import { useTeacherUiModalsState } from "./hooks/useTeacherUiModalsState";
+import { useAuthFlowRefs } from "./hooks/useAuthFlowRefs";
+import { useNavigationRefs } from "./hooks/useNavigationRefs";
+import { useRenderLoopRefs } from "./hooks/useRenderLoopRefs";
+import { useGameModeMechanicsState } from "./hooks/useGameModeMechanicsState";
+import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
+import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
 import { resolveInitialView } from "./utils/resolveInitialView";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
-import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/teacherOnboarding";
-import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
-import { deleteAssignmentWithUndo, deleteAssignmentImmediate } from "./handlers/deleteAssignmentWithUndo";
+import { isPublicView, shouldPreserveView } from "./utils/authViews";
+import { buildEmitScoreUpdate } from "./handlers/emitScoreUpdate";
+import { navigateToTeacherLogin, navigateToStudentLogin } from "./handlers/landingNav";
+import { buildCleanupSessionData, buildCleanupQuickPlayGuest } from "./handlers/sessionCleanups";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
 // no Supabase anon auth, no progress-table writes during a session.
 const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 
-// ─── View constants for shouldPreserveView (O(1) lookup with Sets) ────────
-// Defined at module level to avoid re-creating arrays on every auth restore.
-const PUBLIC_VIEWS = new Set<View>([
-  "public-landing", "public-terms", "public-privacy", "public-security", "public-free-resources", "public-interactive-worksheet", "public-status", "accessibility-statement"
-]);
-const TEACHER_VIEWS = new Set<View>([
-  "worksheet", "classroom", "class-show", "teacher-approvals",
-  "quick-play-teacher-monitor", "quick-play-setup", "create-assignment",
-  "hot-seat",
-  "voca-picker", "vocahebrew-dashboard",
-  "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-synonyms", "vocahebrew-listening",
-]);
-
-const STUDENT_VIEWS = new Set<View>([
-  "student-dashboard", "game", "live-challenge",
-  "shop", "global-leaderboard", "privacy-settings",
-]);
-
-/** Check if current view should be preserved during auth restore. */
-const shouldPreserveView = (role: string, currentView: View): boolean => {
-  if (PUBLIC_VIEWS.has(currentView)) return false;
-  return (role === "teacher" || role === "admin")
-    ? TEACHER_VIEWS.has(currentView)
-    : STUDENT_VIEWS.has(currentView);
-};
-
-// --- TYPES ---
-// AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
-
-// secureRandomInt moved to `src/utils.ts` for reuse.
+type ConfirmDialog = { show: boolean; message: string; onConfirm: () => void };
 
 export default function App() {
   // Initialize game debugger
@@ -161,30 +119,12 @@ export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [studentDataLoading] = useState(false);
-  // Detect Quick Play session from URL synchronously so it takes priority over auth redirects
+  // Detect Quick Play session from URL synchronously so it takes
+  // priority over auth redirects.
   const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
-  // Detect "share" param — set by the social-share buttons in
-  // FloatingButtons so shared links always render the landing page even
-  // for logged-in visitors (whose auth would otherwise redirect them to
-  // their dashboard and make the preview useless).
-  const fromShareLinkRef = useRef(new URLSearchParams(window.location.search).get('share') === '1');
 
   const [view, setView] = useState<View>(resolveInitialView);
-  // Which Voca the teacher is currently working in.  null until they
-  // pick (or are auto-picked into) one.  Persisted across same-tab
-  // refreshes via sessionStorage so we don't pop the picker again.
-  const [activeVoca, setActiveVoca] = useState<VocaId | null>(() => {
-    try {
-      const raw = sessionStorage.getItem(ACTIVE_VOCA_KEY);
-      return raw === "english" || raw === "hebrew" ? raw : null;
-    } catch { return null; }
-  });
-  useEffect(() => {
-    try {
-      if (activeVoca) sessionStorage.setItem(ACTIVE_VOCA_KEY, activeVoca);
-      else sessionStorage.removeItem(ACTIVE_VOCA_KEY);
-    } catch { /* sessionStorage may be blocked; non-fatal */ }
-  }, [activeVoca]);
+  const [activeVoca, setActiveVoca] = useActiveVocaState();
 
   // First-time-guide persistence (teacher-only) wired through a hook
   // so the optimistic-update + rollback dance lives next to the store.
@@ -195,19 +135,11 @@ export default function App() {
   // having chosen one this session.  See useVocaRouting for details.
   useVocaRouting(user, activeVoca, view, setActiveVoca, setView);
 
-  const previousViewRef = useRef<string>("public-landing");
-  // Track current view for auth state changes — using a ref so restoreSession
-  // can read the latest view even when called asynchronously from auth events.
-  const currentViewRef = useRef<View>(view);
-  // Captures the most recent user role so the SIGNED_OUT handler can route
-  // students back to the student-login screen instead of the teacher-focused
-  // public landing.  The auth listener effect runs once with empty deps, so
-  // it can't read `user` state directly — needs a ref kept in sync below.
-  const lastUserRoleRef = useRef<AppUser["role"] | null>(null);
+  // Navigation refs — previousViewRef / currentViewRef / lastUserRoleRef.
+  // See useNavigationRefs.
+  const { previousViewRef, currentViewRef, lastUserRoleRef } = useNavigationRefs(view);
 
-  const goBack = () => {
-    setView(previousViewRef.current as any);
-  };
+  const goBack = () => setView(previousViewRef.current as View);
 
   // Cookie consent banner — state + accept/customize handlers live
   // in a dedicated hook so the banner's persistence + quirky React-
@@ -222,58 +154,31 @@ export default function App() {
   const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
 
-  // ─── Lazy-load vocabulary out of the initial bundle ────────────────
-  // The vocabulary tuple file is ~376 kB raw / 139 kB gzipped — by far
-  // the largest single asset.  Public visitors (landing, terms,
-  // privacy, security, accessibility) never need it.  Gate the load
-  // on the view: any non-public view triggers the dynamic import.
-  // (DemoMode lazy-loads vocabulary itself via its own static import,
-  // so we don't need a special demo gate here.)
-  // See docs/perf-2026-04-28.md for rationale + measurements.
-  const isPublicView =
-    view === "public-landing" ||
-    view === "public-terms" ||
-    view === "public-privacy" ||
-    view === "public-security" ||
-    view === "public-free-resources" ||
-    view === "public-interactive-worksheet" ||
-    view === "public-status" ||
-    view === "accessibility-statement";
-  const vocab = useVocabularyLazy(!isPublicView);
-  // Falsy-safe constants so existing code paths that reference these
-  // names compile unchanged.  When vocab is null (still loading or
-  // never triggered), these are empty arrays — every consumer is
-  // either gated behind an authenticated view (which won't render
-  // until vocab resolves) OR it's a fallback path that's safe to skip.
-  const ALL_WORDS = vocab?.ALL_WORDS ?? [];
-  const SET_1_WORDS = vocab?.SET_1_WORDS ?? [];
-  const SET_2_WORDS = vocab?.SET_2_WORDS ?? [];
-  const TOPIC_PACKS = vocab?.TOPIC_PACKS ?? [];
-  // Track whether handleStudentLogin is in progress so onAuthStateChange
-  // doesn't clobber loading/view mid-login (signInAnonymously fires the
-  // listener before handleStudentLogin finishes its DB queries).
-  const manualLoginInProgress = useRef(false);
-  const restoreInProgress = useRef(false);
-  const restoreRetried = useRef(false);
+  // Lazy-load vocabulary out of the initial bundle (gated off public
+  // views).  Returns the four populated arrays with `[]` defaults so
+  // consumers don't need a null-gate.  See useVocabularyLazy.
+  const { ALL_WORDS, SET_1_WORDS, SET_2_WORDS, TOPIC_PACKS } =
+    useVocabularyLazyWithDefaults(!isPublicView(view));
+  // Auth-restore + manual-login control flow refs.  See useAuthFlowRefs.
+  const { manualLoginInProgress, restoreInProgress, restoreRetried, fromShareLinkRef } = useAuthFlowRefs();
   const [, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string, displayName: string, classCode: string, className: string, joinedAt: string }>>([]);
   const [pendingApprovalInfo, setPendingApprovalInfo] = useState<{ name: string; classCode: string; profileId?: string } | null>(null);
-  const [showCreateClassModal, setShowCreateClassModal] = useState(false);
-  const [newClassName, setNewClassName] = useState("");
-  const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
-  // Edit-class modal state — null when closed, the class data when open.
-  const [editingClass, setEditingClass] = useState<ClassData | null>(null);
-  // Roster modal — opened from a ClassCard's "Manage roster" action.
-  // When non-null, ClassRosterModal renders for this class so the teacher
-  // can pre-create PIN-login students (Path C).
-  const [rosterModalClass, setRosterModalClass] = useState<ClassData | null>(null);
-  const [createdClassName, setCreatedClassName] = useState<string>("");
-  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ id: string; title: string } | null>(null);
-  const [rejectStudentModal, setRejectStudentModal] = useState<{ id: string; displayName: string } | null>(null);
-  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [openDropdownClassId, setOpenDropdownClassId] = useState<string | null>(null);
+  // Teacher dashboard modal/UI state. See useTeacherUiModalsState.
+  const {
+    showCreateClassModal, setShowCreateClassModal,
+    newClassName, setNewClassName,
+    createdClassCode, setCreatedClassCode,
+    createdClassName, setCreatedClassName,
+    editingClass, setEditingClass,
+    rosterModalClass, setRosterModalClass,
+    deleteConfirmModal, setDeleteConfirmModal,
+    rejectStudentModal, setRejectStudentModal,
+    showExitConfirmModal, setShowExitConfirmModal,
+    copiedCode, setCopiedCode,
+    openDropdownClassId, setOpenDropdownClassId,
+  } = useTeacherUiModalsState();
   const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(0);
   const [badges, setBadges] = useState<string[]>([]);
@@ -294,9 +199,11 @@ export default function App() {
   // this hook runs either way so the localStorage state is always
   // consistent if the flag flips mid-session.
   const structure = useStructure(user?.uid);
-  // Keys of parts that were just unlocked — used to bounce-animate
-  // them on the next render, then cleared after a short delay.
-  const [celebrateStructureKeys, setCelebrateStructureKeys] = useState<string[]>([]);
+  // Keys of parts that were just unlocked — used to bounce-animate them
+  // on the next render.  Currently never populated (the bounce trigger
+  // was never wired up); kept here as a stable [] reference so the
+  // dashboard section's prop contract stays unchanged.
+  const celebrateStructureKeys: string[] = [];
 
   // Active boosters (xp_booster, weekend_warrior, streak_freeze,
   // lucky_charm, focus_mode).  Scoped per-user via uid; persists in
@@ -307,30 +214,16 @@ export default function App() {
   const [consentChecked, setConsentChecked] = useState(false);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
-  // --- OAUTH STATE ---
-  const [isOAuthCallback, setIsOAuthCallback] = useState(false);
-  const [oauthEmail, setOauthEmail] = useState<string | null>(null);
-  const [oauthAuthUid, setOauthAuthUid] = useState<string | null>(null);
-  const [showOAuthClassCode, setShowOAuthClassCode] = useState(false);
-  // Sticky banner: when a student typed a class code that doesn't exist,
-  // surface a persistent banner on the dashboard so they can't miss it
-  // (toasts get dismissed/ignored). Funnel point for both the OAuth
-  // path and the session-restore path.
-  const [classNotFoundIntent, setClassNotFoundIntent] = useState<string | null>(null);
-
-  // --- CLASS SWITCH STATE ---
-  // Set when an already-approved student logs in with a class code that
-  // differs from their current class_code. Shows a confirmation modal;
-  // on confirm, student_profiles.class_code + users.class_code are updated
-  // and the student lands on the new class's dashboard. See "Approach 1,
-  // skip approval on switch" in the design discussion.
-  const [pendingClassSwitch, setPendingClassSwitch] = useState<{
-    fromCode: string;
-    fromClassName: string | null;
-    toCode: string;
-    toClassName: string | null;
-    supabaseUser: { id: string; email?: string | null };
-  } | null>(null);
+  // OAuth callback state + class-switch confirmation state. See
+  // useOAuthState for the (classNotFoundIntent / pendingClassSwitch) docs.
+  const {
+    isOAuthCallback, setIsOAuthCallback,
+    oauthEmail, setOauthEmail,
+    oauthAuthUid, setOauthAuthUid,
+    showOAuthClassCode, setShowOAuthClassCode,
+    classNotFoundIntent, setClassNotFoundIntent,
+    pendingClassSwitch, setPendingClassSwitch,
+  } = useOAuthState();
 
   // AVATAR_CATEGORIES + selectedAvatarCategory moved into StudentAccountLoginView
   // (see src/views/StudentAccountLoginView.tsx; constants live in src/constants/avatars.ts)
@@ -344,76 +237,39 @@ export default function App() {
     isLiveChallenge,
   });
 
-  // --- QUICK PLAY STATE ---
-  // Only the setters are used — the values themselves are never read in
-  // this component or any child that gets them passed down. The state
-  // still exists so the teacher-monitor cleanup path can reset it to
-  // null/[] on session end.
-  const [, setQuickPlaySessionCode] = useState<string | null>(null);
-  const [quickPlayInitialWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
-  // Saved-task templates also restore mode selection when reused.
-  const [quickPlayInitialModes, setQuickPlayInitialModes] = useState<string[] | undefined>(undefined);
-  const [quickPlaySearchQuery] = useState("");
-  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[], aiSentences?: string[]} | null>(null);
-  // Class Show — teacher-led projector mode.  When the teacher
-  // launches from an assignment card, this stores the assignment's
-  // word list so the setup panel pre-selects "From assignment".
-  const [classShowAssignment, setClassShowAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[] } | null>(null);
-  // Worksheet — optional pre-fill from an assignment.
-  const [worksheetAssignment, setWorksheetAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[]; className?: string | null } | null>(null);
-  // Tracks the entry point for activity-type tab views (class-show,
-  // worksheet, hot-seat, vocabagrut).  When set to 'create-assignment',
-  // these views' back/exit handlers return to the New Activity wizard
-  // (so the teacher lands back on the tab strip) instead of jumping
-  // straight to the teacher dashboard.  Cleared when the wizard itself
-  // is exited.
-  const [activityNavOrigin, setActivityNavOrigin] = useState<"create-assignment" | null>(null);
-  // Cumulative score across all modes a guest has played in the
-  // current Quick Play session.  The per-mode `score` state (in
-  // useGameState) resets to 0 on every new mode, so emitting it
-  // directly to the QP socket caused the leaderboard to regress
-  // (server rejected with [QP SCORE regress] prev=15 new=10).
-  // This ref accumulates each mode's finalScore so the QP socket
-  // sees a monotonically-increasing total.
-  // Cumulative QP score across all modes in a session.  Initialised
-  // from the resume hint so a kid who closed the tab and rescanned
-  // doesn't reset their server-side score (the server's monotonic
-  // score gate would otherwise reject every later updateScore as a
-  // regression — silent points loss for the kid).  Hint is 90-min
-  // TTL'd; falls through to 0 for fresh joins.
-  const qpCumulativeScoreRef = useRef(readQpResumeScore());
-  const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
-  const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
-  // QP avatar — random by default, but if the student is resuming a
-  // recent session via QuickPlayResumeBanner we honour their previous
-  // avatar so identity stays stable across the close→reopen.
-  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => {
-    try {
-      const raw = localStorage.getItem('vocaband_qp_guest');
-      if (raw) {
-        const parsed = JSON.parse(raw) as { avatar?: string; joinedAt?: number };
-        if (parsed?.avatar && typeof parsed.joinedAt === 'number'
-            && Date.now() - parsed.joinedAt < 90 * 60 * 1000) {
-          return parsed.avatar;
-        }
-      }
-    } catch { /* fall through to random */ }
-    return QUICK_PLAY_AVATARS[secureRandomInt(QUICK_PLAY_AVATARS.length)];
-  });
+  // Teacher-side QP session + activity-launch state.  See
+  // useQuickPlaySessionState for per-field semantics.
+  const {
+    setQuickPlaySessionCode,
+    quickPlayInitialWords, setQuickPlaySelectedWords,
+    quickPlayInitialModes, setQuickPlayInitialModes,
+    quickPlayActiveSession, setQuickPlayActiveSession,
+    classShowAssignment, setClassShowAssignment,
+    worksheetAssignment, setWorksheetAssignment,
+    activityNavOrigin, setActivityNavOrigin,
+  } = useQuickPlaySessionState();
+  // Guest-side QP state (identity, kicked/ended flags, completed
+  // modes, cumulative score ref).  See useQuickPlayGuestState.
+  const {
+    qpCumulativeScoreRef,
+    quickPlayStudentName, setQuickPlayStudentName,
+    quickPlayAvatar, setQuickPlayAvatar,
+    quickPlayKicked, setQuickPlayKicked,
+    quickPlaySessionEnded, setQuickPlaySessionEnded,
+    quickPlayCompletedModes, setQuickPlayCompletedModes,
+  } = useQuickPlayGuestState();
+  // Teacher-monitor QP state — joinedStudents is the live podium feed;
+  // the three "only-setter" entries below are leftovers consumed by the
+  // teacher-monitor reset path so it can null/empty them on session end.
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
   const [, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
   const [, setQuickPlayTranslating] = useState<Set<string>>(new Set());
-  const [quickPlayKicked, setQuickPlayKicked] = useState(false);
-  const [quickPlaySessionEnded, setQuickPlaySessionEnded] = useState(false);
   // Tracks whether the teacher monitor's Realtime channel is actually
-  // receiving events.  'live' = subscribed, 'connecting' = transient,
-  // 'polling' = subscription failed or was closed (polling-only mode).
-  // Shown as a discrete status dot on the monitor header so the teacher
-  // can tell instant updates from polling-delayed ones.
+  // receiving events ('live' / 'connecting' / 'polling').  Shown as a
+  // discrete status dot on the monitor header.
   const [quickPlayRealtimeStatus, setQuickPlayRealtimeStatus] =
     useState<QpRealtimeStatus>('connecting');
-  const [quickPlayCompletedModes, setQuickPlayCompletedModes] = useState<Set<string>>(new Set());
 
   // Game music player state (previously defined here) was dead code —
   // the track/volume setters were never called from anywhere, so the
@@ -458,72 +314,28 @@ export default function App() {
   const [, setSelectedPos] = useState<string>("");
   const [, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
 
-  // --- TOAST NOTIFICATIONS STATE ---
-  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info', action?: { label: string, onClick: () => void }}[]>([]);
-  // Stable across renders so consumers can put `showToast` in
-  // useEffect / useCallback dep arrays without causing churn.  A
-  // 2026-05-04 audit found GradebookView, RewardInboxCard, and
-  // PendingApprovalScreen all used `showToast` as a dep and got
-  // re-fired on every App render — that was a major contributor
-  // to the request-storm incident.  setToasts (from useState) is
-  // already stable, so [] is the correct dep list here.
-  const showToast = useCallback((
-    message: string,
-    type: 'success' | 'error' | 'info' = 'info',
-    options?: { action?: { label: string; onClick: () => void } },
-  ) => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type, action: options?.action }]);
-    // Errors and toasts with an action stay longer so the user has time
-    // to read + click before auto-dismissal.
-    const duration = (type === 'error' || options?.action) ? 8000 : 3000;
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, duration);
-  }, []);
+  // Toast notifications — state + showToast (stable identity for dep
+  // arrays) + paywall-toast helper. See useToasts.
+  const { toasts, setToasts, showToast, showPaywallToast } = useToasts();
 
-  // Paywall toast — used when an AI / OCR endpoint returns 403
-  // ai_requires_pro.  Adds an "Upgrade" button that opens the same
-  // mailto the dashboard's trial-expired banner uses.  Until Stripe
-  // payment links are wired (see docs/PRICING-MODEL.md Status), email
-  // is the upgrade channel.
-  const showPaywallToast = useCallback((message: string) => {
-    showToast(message, 'error', {
-      action: {
-        label: 'Upgrade',
-        onClick: () => {
-          window.location.href = 'mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro';
-        },
-      },
-    });
-  }, [showToast]);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
+    show: false, message: '', onConfirm: () => {},
+  });
 
-  // --- CONFIRMATION DIALOG STATE ---
-  const [confirmDialog, setConfirmDialog] = useState<{
-    show: boolean,
-    message: string,
-    onConfirm: () => void
-  }>({ show: false, message: '', onConfirm: () => {} });
-
-  // --- ASSIGNMENT WELCOME POPUP STATE ---
-  const [showAssignmentWelcome, setShowAssignmentWelcome] = useState(() => {
-    try { return !localStorage.getItem('vocaband_welcome_seen'); } catch { return true; }
-  });
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    try { return !localStorage.getItem('vocaband_onboarding_done'); } catch { return true; }
-  });
-  const [showStudentOnboarding, setShowStudentOnboarding] = useState(() => {
-    try { return !localStorage.getItem('vocaband_student_onboarding_done'); } catch { return true; }
-  });
+  // Three "first-time" flags driving the onboarding overlays.
+  const {
+    showAssignmentWelcome, setShowAssignmentWelcome,
+    showOnboarding, setShowOnboarding,
+    showStudentOnboarding, setShowStudentOnboarding,
+  } = useOnboardingFlags();
   // --- PERFORMANCE OPTIMIZATIONS ---
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
   const selectedWordsSet = useMemo(() => new Set(selectedWords), [selectedWords]);
 
-  // --- QUICK PLAY SEARCH PARSING ---
-  // Memoize expensive parsing and search operations for Quick Play word search
-  const searchTerms = useMemo(() => {
-    return parseSearchTerms(quickPlaySearchQuery);
-  }, [quickPlaySearchQuery]);
+  // QuickPlay word-search was never wired to UI — the consumer hook
+  // expects a terms array; pass empty so the auto-populate logic
+  // simply skips the search-driven branch.
+  const searchTerms: string[] = [];
 
   // Assignment / Quick Play authoring auto-populate:
   //   1. Sentence Builder sentences regenerate on word/mode/
@@ -551,30 +363,16 @@ export default function App() {
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
-  // Captures the `?assignment=<id>` URL param at boot.  When the
-  // student lands on their dashboard with this set, we look up the
-  // matching assignment in `studentAssignments` and drop them straight
-  // into the mode picker for it — teachers share links from the
-  // assignment row so the student should bypass the dashboard step.
-  const [pendingAssignmentId, setPendingAssignmentId] = useState<string | null>(() => {
-    try {
-      return new URLSearchParams(window.location.search).get("assignment");
-    } catch {
-      return null;
-    }
-  });
-  // Captures `?play=<mode>` at boot.  Set by teacher-shared share
-  // links (Class Minute today; extendable later if we surface more
-  // dashboard-launched entry points).  Consumed once the student is
-  // on their dashboard then stripped from the URL so a back-nav
-  // doesn't re-trigger the auto-launch.
-  const [pendingPlayMode, setPendingPlayMode] = useState<string | null>(() => {
-    try {
-      return new URLSearchParams(window.location.search).get("play");
-    } catch {
-      return null;
-    }
-  });
+  // Warm the audio cache for the active assignment so a student who loses
+  // Wi-Fi mid-lesson can still hear the words. Idle-scheduled, skipped on
+  // 2G / data-saver. See useAssignmentPrecache for the why.
+  useAssignmentPrecache(assignmentWords);
+  // ?assignment=<id> and ?play=<mode> deep-link URL params captured at
+  // boot.  See useDeepLinkUrlParams.
+  const {
+    pendingAssignmentId, setPendingAssignmentId,
+    pendingPlayMode, setPendingPlayMode,
+  } = useDeepLinkUrlParams();
 
   const { speak: speakWordRaw, preloadMany, playWrong, playMotivational, stopAll: stopAllAudio } = useAudio();
   const speakWord = speakWordRaw;
@@ -628,12 +426,10 @@ export default function App() {
   // Reset on game start so each session is independent.
   const [wordAttemptBatch, setWordAttemptBatch] = useState<Array<{ word_id: number; is_correct: boolean }>>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
-  const [targetLanguage, setTargetLanguage] = useState<"hebrew" | "arabic">(() => {
-    try { return (localStorage.getItem('vocaband_target_lang') as "hebrew" | "arabic") || "hebrew"; } catch { return "hebrew"; }
-  });
-  const [hasChosenLanguage, setHasChosenLanguage] = useState(() => {
-    try { return !!localStorage.getItem('vocaband_target_lang'); } catch { return false; }
-  });
+  const {
+    targetLanguage, setTargetLanguage,
+    hasChosenLanguage, setHasChosenLanguage,
+  } = useTargetLanguageState();
   const [isFinished, setIsFinished] = useState(false);
   const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
 
@@ -645,19 +441,19 @@ export default function App() {
   // the buttons felt dead until the student backed out and re-entered.
   const [isFlipped, setIsFlipped] = useState(false);
 
-  // --- MATCHING MODE STATE ---
-  const [matchingPairs, setMatchingPairs] = useState<{id: number, text: string, type: 'english' | 'arabic'}[]>([]);
-  const [selectedMatch, setSelectedMatch] = useState<{id: number, type: 'english' | 'arabic'} | null>(null);
-  const [matchedIds, setMatchedIds] = useState<number[]>([]);
-  const [isMatchingProcessing, setIsMatchingProcessing] = useState(false);
-
-  // --- LETTER SOUNDS MODE STATE ---
-  const [revealedLetters, setRevealedLetters] = useState(0);
-  // --- SENTENCE BUILDER MODE STATE ---
-  const [sentenceIndex, setSentenceIndex] = useState(0);
-  const [availableWords, setAvailableWords] = useState<string[]>([]);
-  const [builtSentence, setBuiltSentence] = useState<string[]>([]);
-  const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "wrong" | null>(null);
+  // Per-mode mechanics state (matching / letter sounds / sentence
+  // builder). See useGameModeMechanicsState.
+  const {
+    matchingPairs, setMatchingPairs,
+    selectedMatch, setSelectedMatch,
+    matchedIds, setMatchedIds,
+    isMatchingProcessing, setIsMatchingProcessing,
+    revealedLetters, setRevealedLetters,
+    sentenceIndex, setSentenceIndex,
+    availableWords, setAvailableWords,
+    builtSentence, setBuiltSentence,
+    sentenceFeedback, setSentenceFeedback,
+  } = useGameModeMechanicsState();
   const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
   const [, setTeacherAssignmentsLoading] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentData | null>(null);
@@ -692,13 +488,9 @@ export default function App() {
   // Track when data was last fetched to avoid redundant Supabase calls
   const lastFetchRef = useRef<Record<string, number>>({});
 
-  // Teacher-side handlers extracted into a single hook so the file
-  // doesn't have to maintain duplicate copies of class / assignment /
-  // word-import logic. The hook owns the implementations; this file
-  // just plumbs the state in and destructures the methods out.
-  // handleOcrUpload stays inline below — its hook version is a much
-  // simpler implementation and we'd lose the OCR status UI, custom-
-  // word audio generation, and vocabulary cross-check by swapping it.
+  // Teacher-side action handlers — class/assignment/word-import logic.
+  // handleOcrUpload stays inline below to preserve its richer status
+  // UI + Neural2 audio generation + vocabulary cross-check.
   const {
     handleCreateClass,
     handlePasteSubmit,
@@ -769,10 +561,7 @@ export default function App() {
     setRejectStudentModal,
   });
 
-  // --- SAVE QUEUE (BATCH DB WRITES FOR BETTER PERFORMANCE) ---
-  // queueSaveOperation pushes a closure; the hook batches up to 10 of
-  // them per flush after a 300ms debounce. clearQueue is called from
-  // cleanupSessionData on logout to drop in-flight writes.
+  // Save queue — batched DB writes (10 ops / 300ms debounce).  See useSaveQueue.
   const {
     queueSaveOperation,
     clearQueue: clearSaveQueue,
@@ -780,108 +569,43 @@ export default function App() {
     hasPending: saveQueueHasPending,
   } = useSaveQueue();
 
-  // Cleanup function to clear all pending operations and prevent DB calls after logout/session end
-  const cleanupSessionData = () => {
-    clearSaveQueue();
-    // Clear feedback timeout (lives outside the save queue's domain).
-    if (feedbackTimeoutRef.current) {
-      clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = undefined;
-    }
-  };
+  // Render-loop refs (user/feedback/processing/scoreEmit).
+  // See useRenderLoopRefs.
+  const { userRef, feedbackTimeoutRef, isProcessingRef, lastScoreEmitRef } = useRenderLoopRefs(user);
 
+  // Clear pending save-queue work + feedback timeout. Called from
+  // logout / session-end paths.  See handlers/sessionCleanups.
+  const cleanupSessionData = buildCleanupSessionData(clearSaveQueue, feedbackTimeoutRef);
 
-  // Refs for effects that need the "current" user without re-registering.
-  // (isLiveChallengeRef moved into useLiveChallengeSocket.)
-  const userRef = useRef(user);
-
-  // Timeout ref for cleanup (prevents memory leaks on unmount)
-  const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const isProcessingRef = useRef<boolean>(false); // Guard against rapid clicks during feedback
-  const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
-
-  // Misc side-effects bundled into one hook — see useAppMiscEffects
-  // for the list (userRef sync, Sentry user pipe, feedback timeout
-  // cleanup, legacy view redirect, round-finish audio, welcome popup
-  // gate, view-change dispatch, lastUserRoleRef sync, queue-depth
-  // toasts, QP audio preload, isFlipped reset).
-
-  // Quick Play v2 socket — only active when the flag is on AND a
-  // session is live. When a student's score changes during gameplay
-  // we forward it here so the teacher's monitor sees live movement.
+  // Quick Play v2 socket — only active when the flag is on + a session
+  // is live. Forwards in-game score changes to the teacher's monitor.
   const quickPlaySocket = useQuickPlaySocket({
     sessionCode: quickPlayActiveSession?.sessionCode ?? null,
     enabled: QUICKPLAY_V2,
   });
 
-  // Translate v2-native KICKED / SESSION_ENDED events into the existing
-  // quickPlayKicked / quickPlaySessionEnded UI state. Hook guards on
-  // isGuest so the teacher who pressed "End session" lands cleanly
-  // back on their own dashboard via the monitor view, instead of the
-  // student QuickPlaySessionEndScreen (whose "Go home" wipes the user).
+  // Translate v2 KICKED / SESSION_ENDED events into the existing UI
+  // state.  Hook guards on isGuest so the teacher ending the session
+  // doesn't land on the student exit screen.
   useQuickPlayEvents({
     enabled: QUICKPLAY_V2,
     isGuest: user?.isGuest ?? false,
     onKicked: quickPlaySocket.onKicked,
     onSessionEnded: quickPlaySocket.onSessionEnded,
-    handleGuestKicked: () => {
-      setQuickPlayKicked(true);
-      setActiveAssignment(null);
-    },
-    handleGuestSessionEnded: () => {
-      setQuickPlaySessionEnded(true);
-      setActiveAssignment(null);
-    },
+    handleGuestKicked: () => { setQuickPlayKicked(true); setActiveAssignment(null); },
+    handleGuestSessionEnded: () => { setQuickPlaySessionEnded(true); setActiveAssignment(null); },
   });
 
-  // Throttled Socket.IO score emit. Routes to the right transport
-  // depending on context:
-  //   * classroom live challenge — existing `/` namespace, needs classCode
-  //   * Quick Play v2 guest game — new `/quick-play` namespace, no auth
-  const emitScoreUpdate = (newScore: number) => {
-    const now = Date.now();
-    const shouldEmit = now - lastScoreEmitRef.current > 2000 || isFinished;
-    if (!shouldEmit) return;
-    lastScoreEmitRef.current = now;
-
-    if (QUICKPLAY_V2 && quickPlayActiveSession) {
-      // Add the per-mode score on top of the cumulative running total
-      // for previously-completed modes in this session.  Without this,
-      // each new mode would emit a small per-mode value and the server
-      // would reject it as a regress (new < previous max).
-      // The previous gate also required `user.isGuest`, which silently
-      // dropped scores for any OAuth student who somehow ended up in a
-      // QP session — they appeared on the teacher's podium but their
-      // score never moved.  Today's QR-scan flow turns OAuth students
-      // into guests at join time, so this branch effectively covers
-      // them too; dropping the isGuest guard removes the failsafe that
-      // had no business being there.
-      const cumulative = qpCumulativeScoreRef.current + newScore;
-      setTimeout(() => quickPlaySocket.updateScore(cumulative), 0);
-      // Also refresh the localStorage resume hint with the latest score
-      // and a fresh joinedAt timestamp.  This (a) lets the
-      // QuickPlayResumeBanner show the actual score the student has
-      // earned if they accidentally close the tab, and (b) extends the
-      // 90-minute TTL window for as long as the student is actively
-      // scoring — kids who walk away for 90 min see no banner; kids
-      // who scored 30 sec ago see "850 points".
-      try {
-        const raw = localStorage.getItem('vocaband_qp_guest');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          parsed.lastScore = cumulative;
-          parsed.joinedAt = Date.now();
-          localStorage.setItem('vocaband_qp_guest', JSON.stringify(parsed));
-        }
-      } catch { /* localStorage blocked / private mode — silent */ }
-      return;
-    }
-
-    if (!socket || !user?.classCode) return;
-    setTimeout(() => {
-      socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score: newScore });
-    }, 0);
-  };
+  // Throttled Socket.IO score emit — routes to the live-challenge `/`
+  // namespace or the Quick Play v2 `/quick-play` namespace depending
+  // on context. See handlers/emitScoreUpdate.
+  const emitScoreUpdate = buildEmitScoreUpdate({
+    user, socket, isFinished,
+    quickPlayV2: QUICKPLAY_V2,
+    quickPlayActiveSession,
+    qpCumulativeScoreRef, lastScoreEmitRef,
+    quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
+  });
 
 
   // Emits JOIN_CHALLENGE / OBSERVE_CHALLENGE and listens for
@@ -901,15 +625,8 @@ export default function App() {
     setView("student-pending-approval");
     try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
   };
-  // Student-account login flow — the approved-student finishing path
-  // (processStudentProfile with its SECURITY check against impersonation)
-  // and the profile-id login wrapper used by PendingApprovalScreen and
-  // the OAuth approved-student branch.
-  const {
-    handleLoginAsStudent,
-    processStudentProfile,
-    renameStudentDisplayName,
-  } = useStudentLogin({
+  // Student-account login flow (PendingApprovalScreen + OAuth approved branch).
+  const { handleLoginAsStudent, renameStudentDisplayName } = useStudentLogin({
     user, setUser, setError, setLoading, setView,
     setBadges, setXp, setStreak,
     setStudentAssignments, setStudentProgress,
@@ -917,9 +634,8 @@ export default function App() {
     loadAssignmentsForClass,
   });
 
-  // Google-OAuth post-callback handlers — extracted to a hook so the
-  // class-switch detection logic and the upsert-then-hydrate sequence
-  // aren't crowding App.tsx. Same behaviour as before.
+  // Google-OAuth post-callback handlers — class-switch detection +
+  // upsert-then-hydrate sequence.  See useOAuthFlow.
   const {
     handleOAuthTeacherDetected,
     handleOAuthStudentDetected,
@@ -933,8 +649,7 @@ export default function App() {
     showPendingApproval, readIntendedClassCode, clearIntendedClassCode,
   });
 
-  // Class-switch modal confirm/cancel handlers — extracted to a hook
-  // since both branches hydrate the dashboard after the choice.
+  // Class-switch modal confirm/cancel — both branches hydrate after.
   const { handleConfirmClassSwitch, handleCancelClassSwitch } = useClassSwitch({
     pendingClassSwitch, setPendingClassSwitch,
     setUser, setView, setLoading,
@@ -942,43 +657,30 @@ export default function App() {
     showToast,
   });
 
-  // Privacy-policy consent flow — checkConsent gates the banner,
-  // recordConsent persists the acceptance to both localStorage (fast
-  // path) and consent_log (audit trail).
+  // Privacy-policy consent — banner gate + audit-log persistence.
   const { checkConsent, recordConsent } = useConsent({
     user, setNeedsConsent, setConsentChecked,
   });
 
-  // OCR pipeline — photo → /api/ocr → translate → custom-word tab
-  // with dictionary cross-check. Preserves App.tsx's progress UI,
-  // Neural2 audio generation, and hallucination-guard behaviour.
+  // OCR pipeline — photo → /api/ocr → translate → custom-word tab.
   const { handleOcrUpload, processOcrFile } = useOcrUpload({
     classes, setSelectedClass,
     setCustomWords, setSelectedWords,
-    // App narrows these with union types; hook takes the wider string.
-    // Same bivariance cast we used for useTeacherActions.
     setSelectedLevel: setSelectedLevel as (v: string) => void,
     setView: setView as (v: string) => void,
     setIsOcrProcessing, setOcrProgress, setOcrStatus, setOcrPendingFile,
     showToast, showPaywallToast, translateWordsBatch,
   });
 
-  // Adapter for the picker-wiring `onOcrUpload` contract.  The picker
-  // expects `(file: File) => Promise<{ words, success? }>` but the
-  // existing OCR pipeline is preview-modal based — extracted words
-  // flow through the modal into setCustomWords + setSelectedWords,
-  // not through this function's return value.  We honour the
-  // contract by returning an empty result; the picker doesn't read
-  // the words back from here in any path I could find.
+  // Adapter for the picker's `onOcrUpload` contract — the OCR pipeline
+  // routes extracted words through its preview modal, not the return
+  // value, so we honour the contract with an empty result.
   const onPickerOcrUpload = useCallback(async (file: File) => {
     await processOcrFile(file);
     return { words: [], success: true };
   }, [processOcrFile]);
 
-  // --- AUTH LOGIC ---
-  // restoreSession + onAuthStateChange wiring + safety timeout live in
-  // useAuthRestore.  Closure deps that came from App's render scope
-  // (setters, refs, sibling-hook helpers) are passed in explicitly.
+  // restoreSession + onAuthStateChange wiring + safety timeout.  See useAuthRestore.
   useAuthRestore({
     restoreInProgress, restoreRetried, manualLoginInProgress,
     fromShareLinkRef, currentViewRef, lastUserRoleRef, qpCumulativeScoreRef,
@@ -1001,91 +703,43 @@ export default function App() {
     setWordAttemptBatch, setShowModeSelection,
   });
 
-  // Mobile back-button + History API trap.  Keeps logged-in users
-  // pinned at their dashboard (never escapes to login / external
-  // URL), routes back presses between real in-app views, and
-  // surfaces the exit-confirm modal at the dashboard floor.
-  // Returns a helper to start the actual exit flow from the modal.
+  // Mobile back-button + History API trap.  Pins logged-in users to
+  // the dashboard floor and routes Back between real in-app views.
   const { beginExitFlow } = useBackButtonTrap({
-    view,
-    setView,
-    user,
-    showExitConfirmModal,
-    setShowExitConfirmModal,
+    view, setView, user,
+    showExitConfirmModal, setShowExitConfirmModal,
     restoreInProgressRef: restoreInProgress,
   });
 
-
-
-
-  // ─── GLOBAL TEACHER DASHBOARD THEME ────────────────────────────────────
-  // Apply teacher's selected theme globally across all pages. This runs
-  // at the App level (not per-view) so the theme persists when navigating
-  // between teacher pages without flashing or clearing.
-  // - For teachers: applies their dashboard theme CSS variables
-  // - For students/public: clears any teacher theme variables
-  // Apply the teacher's dashboard theme to the document root.  Extract
-  // theme ID separately to avoid re-running the effect on unrelated
-  // user updates.  See useApplyTeacherTheme for the palette + dark-mode
-  // dataset writes.
+  // Apply teacher dashboard theme to document root.  Extract theme ID
+  // separately so the effect doesn't re-run on unrelated user updates.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const teacherThemeId = hasTeacherAccess(user) ? (user as any).teacherDashboardTheme : null;
   useApplyTeacherTheme(teacherThemeId);
 
-
-  // View-state guards: redirect the user out of orphaned / broken
-  // views (landing with auth resolved, game without assignment,
-  // quick-play-student without an active session).
+  // View-state guards — redirect out of orphaned/broken views.
   useViewGuards({
     view, setView, user, loading,
     activeAssignment, quickPlayActiveSession,
   });
 
-
-
-  // Warn before leaving while a score save is in flight.  Extracted
-  // into a hook so the "don't let the user leave while unsaved state
-  // is pending" pattern is reusable.  Previously there was also a
-  // no-op beforeunload handler whose only purpose was documenting
-  // "we intentionally don't clear localStorage here" — removed since
-  // the comment was the handler.
+  // Warn before leaving while a score save is in flight.
   useBeforeUnloadWhileSaving(isSaving);
 
-
-
-  // Teacher-side toasts: diff `pendingStudents` and `allScores` (both
-  // refreshed by the polling effects) and fire a single toast when
-  // something new lands.  Seeded-ref pattern inside the hook prevents
-  // "everyone who existed before you logged in just joined" spam.
+  // Teacher-side toasts on new approvals + new scores.
   useTeacherNotifications({ user, view, pendingStudents, allScores, showToast });
 
-  // Save-queue resilience: periodic flush, retry of progress
-  // writes left over from prior offline sessions, and the Quick
-  // Play queue flusher install (online/visibility/30s poll).
+  // Save-queue resilience: periodic flush + offline retry + QP queue flusher.
   useSaveQueueResilience({
     user, isSaving, saveQueueHasPending, processSaveQueue,
   });
 
-  // Surface save-queue transitions as toasts so the offline write
-  // flow (saveQueue.ts) feels visible to teachers/students:
-  //   * "Saved locally — will sync when online" when a write was
-  //     enqueued AND the browser believes we're offline. We don't
-  //     fire on every queue growth because a transient depth bump
-  //     while online usually resolves within a few hundred ms
-  //     and would just be noise.
-  //   * "All progress synced" when the queue drains from non-empty
-  //     to empty — confirmation that the backlog cleared.
-  //
-  // Companion to the silent retry logic the queue already runs and
-  // the OfflineIndicator pill mounted below.  See R2 in
-  // docs/SCHOOL-PERFORMANCE-PLAN.md for context.
+  // Save-queue depth ref — drives the "Saved locally" / "All synced"
+  // toast transitions fired by useAppMiscEffects.
   const queueDepthRef = useRef<number>(0);
 
-  // Background auto-refresh on dashboards: student assignments (30 s),
-  // teacher pending-student approvals (10 s), teacher class scores
-  // (20 s on Classroom / Analytics / Gradebook).  All three cheap
-  // indexed polls + visibility refetches — Supabase Realtime has
-  // proven unreliable for these lists in practice.
+  // Background dashboard auto-refresh (student assignments 30s /
+  // pending approvals 10s / class scores 20s).
   useDashboardPolling({
     user, view, classes, allScores,
     pendingStudentsCount: pendingStudents.length,
@@ -1094,10 +748,8 @@ export default function App() {
     fetchScores,
   });
 
-  // Class Minute entry point — used by both the dashboard widget tap
-  // and the teacher-shared ?play=class-minute deep-link.  Pulls SRS-
-  // due words first, falls back to current assignments, then
-  // SET_2_WORDS as last resort.
+  // Class Minute entry point — dashboard widget + ?play=class-minute
+  // deep link.  Pulls SRS-due words → assignments → SET_2_WORDS.
   const startClassMinute = useCallback(async () => {
     const seedWords = await pickClassMinuteWords({
       allWords: ALL_WORDS,
@@ -1112,7 +764,6 @@ export default function App() {
   }, [ALL_WORDS, SET_2_WORDS, studentAssignments]);
 
   // Deep-link consumers: ?assignment=<id> + ?play=class-minute.
-  // See useDeepLinkConsumers for gating + URL-strip semantics.
   useDeepLinkConsumers({
     user, view,
     pendingAssignmentId, pendingPlayMode,
@@ -1123,15 +774,7 @@ export default function App() {
   });
 
 
-  // --- SMART PASTE FUNCTIONS ---
-
-  // Quick-play preview handlers (handleQuickPlayPreviewConfirm +
-  // handleQuickPlayPreviewCancel) previously lived here but were never
-  // wired to any UI. Removed along with their backing state
-  // (showQuickPlayPreview, quickPlayPreviewAnalysis) — ~65 lines of
-  // dead code TypeScript had been flagging with TS6133.
-  // Idempotent badge grant — used by the save-score milestone checks.
-  // Hook encapsulates the includes-guard + celebrate + DB upsert.
+  // Idempotent badge grant — includes-guard + celebrate + DB upsert.
   const awardBadge = useAwardBadge({ user, badges, setBadges, setSaveError });
 
 
@@ -1192,24 +835,13 @@ export default function App() {
   });
 
 
-  // Full guest exit cleanup. Called whenever a Quick Play student
-  // explicitly leaves the game (Exit button on mode picker, header
-  // Back button, finish-screen "Exit Quick Play", session-end overlay).
-  //
-  // Progress rows are intentionally left in place so the student stays
-  // visible on the teacher's podium after leaving — teachers need to see
-  // who actually played. Row removal happens in two places instead:
-  //   (a) teacher kick — QuickPlayMonitor.removeStudent
-  //   (b) re-join with same name — QuickPlayStudentView join-time delete
-  // This function only signs out the anon auth session + clears the
-  // guest localStorage entry so a fresh re-entry from the same device
-  // starts cleanly.
-  const cleanupQuickPlayGuest = async () => {
-    if (!user?.isGuest || !quickPlayActiveSession) return;
-    try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
-    setQuickPlayCompletedModes(new Set());
-    try { await supabase.auth.signOut(); } catch {}
-  };
+  // Guest exit cleanup — sign out anon auth, drop the resume hint,
+  // reset completedModes.  See handlers/sessionCleanups.
+  const cleanupQuickPlayGuest = buildCleanupQuickPlayGuest(
+    () => user,
+    () => quickPlayActiveSession,
+    setQuickPlayCompletedModes,
+  );
 
   // Game-finish handlers (saveScore + handleExitGame), extracted into a
   // dedicated hook. saveScore in particular is large — anti-farm cap,
@@ -1221,10 +853,9 @@ export default function App() {
     quickPlayActiveSession,
     quickPlayV2: QUICKPLAY_V2,
     // On mode-finish: accumulate this mode's finalScore into the
-    // session-wide cumulative ref BEFORE emitting, so the QP socket
-    // sees a monotonically-increasing total across modes.  Without
-    // this, mode 2 would emit its own (smaller) per-mode value and
-    // the server would reject as a regress.
+    // Accumulate mode score into the session-wide cumulative BEFORE
+    // emitting, so the QP socket sees a monotonically-increasing
+    // total across modes (server rejects regresses).
     quickPlaySocketUpdateScore: (finalScore: number) => {
       qpCumulativeScoreRef.current += Math.max(0, finalScore);
       quickPlaySocket.updateScore(qpCumulativeScoreRef.current);
@@ -1317,26 +948,8 @@ export default function App() {
     setShowDemo,
     goBack,
     onPublicNavigate: handlePublicNavigate,
-    onTeacherOAuth: () => {
-      // Was: inline writeIntendedRole + signInWithOAuth.
-      // Now: navigate to the new self-contained TeacherLoginView,
-      // which renders BOTH options (Google + email-OTP code).  The
-      // intended-role stamp + OAuth call moved into
-      // TeacherLoginCard so all teacher-auth concerns live in one
-      // place outside App.tsx.  See src/components/TeacherLoginCard.tsx.
-      setView('teacher-login');
-    },
-    onStudentLogin: () => {
-      // Push `/student` so the URL is bookmarkable / shareable —
-      // matches the initial-view detection that maps `/student` →
-      // student-account-login.
-      try {
-        if (window.location.pathname !== '/student') {
-          window.history.pushState({}, '', '/student');
-        }
-      } catch { /* ignore — fall back to view-only nav */ }
-      setView('student-account-login');
-    },
+    onTeacherOAuth: () => navigateToTeacherLogin(setView),
+    onStudentLogin: () => navigateToStudentLogin(setView),
     configErrorBanner,
     cookieBannerOverlay,
   });
@@ -1402,22 +1015,12 @@ export default function App() {
     });
   }
 
-  // --- PRIVACY SETTINGS VIEW (lazy-loaded from ./views/PrivacySettingsView) ---
-  if (user && view === "privacy-settings") {
-    return (
-      <LazyWrapper loadingMessage="Loading privacy settings...">
-        <PrivacySettingsView
-          user={user}
-          consentModal={consentModal}
-          exitConfirmModal={exitConfirmModal}
-          setView={setView}
-          setUser={setUser}
-          setConfirmDialog={setConfirmDialog}
-          showToast={showToast}
-        />
-      </LazyWrapper>
-    );
-  }
+  // Privacy-settings view (lazy-loaded). See PrivacySettingsSection.
+  const privacySettings = renderPrivacySettingsSection({
+    view, user, consentModal, exitConfirmModal,
+    setView, setUser, setConfirmDialog, showToast,
+  });
+  if (privacySettings) return privacySettings;
 
   // --- SHOP VIEW (single-screen marketplace, lazy-loaded) ---
   // All Hebrew-side routing (vocahebrew-dashboard + the four mode
@@ -1483,7 +1086,7 @@ export default function App() {
       showTopicPacks, setShowTopicPacks,
       showAssignmentWelcome, setShowAssignmentWelcome,
       editingAssignment, setEditingAssignment,
-      setActivityNavOrigin, setClassShowAssignment, setWorksheetAssignment,
+      setActivityNavOrigin, setClassShowAssignment,
       setView, onSaveTemplate: savedTasks.save, showToast, showPaywallToast, speakWord,
     });
   }

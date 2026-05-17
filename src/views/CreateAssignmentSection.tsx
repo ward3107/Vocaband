@@ -83,9 +83,6 @@ export interface CreateAssignmentSectionDeps {
   setClassShowAssignment: React.Dispatch<
     React.SetStateAction<{ title: string; wordIds: number[]; customWords?: Word[] } | null>
   >;
-  setWorksheetAssignment: React.Dispatch<
-    React.SetStateAction<{ title: string; wordIds: number[]; customWords?: Word[]; className?: string | null } | null>
-  >;
   setView: React.Dispatch<React.SetStateAction<View>>;
 
   onSaveTemplate: (input: SavedTaskInput) => void;
@@ -115,7 +112,7 @@ export function CreateAssignmentSection(deps: CreateAssignmentSectionDeps): Reac
     showTopicPacks, setShowTopicPacks,
     showAssignmentWelcome, setShowAssignmentWelcome,
     editingAssignment, setEditingAssignment,
-    setActivityNavOrigin, setClassShowAssignment, setWorksheetAssignment,
+    setActivityNavOrigin, setClassShowAssignment,
     setView, onSaveTemplate, showToast, showPaywallToast, speakWord,
   } = deps;
 
@@ -199,9 +196,6 @@ export function CreateAssignmentSection(deps: CreateAssignmentSectionDeps): Reac
           if (type === 'class-show') {
             setClassShowAssignment(null);
             setView('class-show');
-          } else if (type === 'worksheet') {
-            setWorksheetAssignment(null);
-            setView('worksheet');
           } else if (type === 'hot-seat') {
             setView('hot-seat');
           } else if (type === 'vocabagrut') {

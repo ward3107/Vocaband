@@ -21,6 +21,7 @@ import PetEvolutionCard from "../components/dashboard/PetEvolutionCard";
 import { usePetEvolution } from "../hooks/usePetEvolution";
 import ReviewQueueCard from "../components/dashboard/ReviewQueueCard";
 import ClassMinuteCard from "../components/dashboard/ClassMinuteCard";
+import IdiomsBonusCard from "../components/dashboard/IdiomsBonusCard";
 import { useDueReviews } from "../hooks/useDueReviews";
 import { StructureKindPicker } from "../components/structure/StructureKindPicker";
 import { TodayStrip } from "../components/structure/TodayStrip";
@@ -67,6 +68,12 @@ interface StudentDashboardViewProps {
    *  Loads SRS-due words first then fills from assignment, sets
    *  gameMode='class-minute', and routes to the game view. */
   onStartClassMinute?: () => void;
+  /** Optional handler for the Idioms bonus tile.  Idioms run on a
+   *  curated dataset (not the teacher's assignment words), so the
+   *  mode lives on the dashboard rather than in the assignment mode
+   *  picker.  Same routing pattern as onStartReview — bypasses mode
+   *  selection + intro and routes straight into the game. */
+  onStartIdioms?: () => void;
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
   onGrantReward: (kind: PetRewardKind, value: number | string) => void;
@@ -138,6 +145,7 @@ export default function StudentDashboardView({
   celebrateStructureKeys = [],
   onStartReview,
   onStartClassMinute,
+  onStartIdioms,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -337,6 +345,18 @@ export default function StudentDashboardView({
             </div>
           )}
 
+          {/* ── Idioms bonus tile ──────────────────────────────────
+              Standalone game — runs on a curated idiom dataset, not
+              the teacher's assignment words.  Lives on the dashboard
+              (instead of the assignment mode picker) because it has
+              no connection to per-assignment progress.  Bypasses mode
+              selection + intro, same pattern as the cards above. */}
+          {onStartIdioms && (
+            <div className="mb-4">
+              <IdiomsBonusCard onStart={onStartIdioms} />
+            </div>
+          )}
+
           <TodayStrip
             user={user}
             xp={xp}
@@ -533,6 +553,13 @@ export default function StudentDashboardView({
             isLoading={studentDataLoading}
             onStart={onStartClassMinute}
           />
+        )}
+        {/* ── Idioms bonus tile ──────────────────────────────────
+            Mirrors the STRUCTURE_UX branch above; legacy is the
+            production-default render path. Drop one of the two
+            when STRUCTURE_UX flips on for everyone. */}
+        {onStartIdioms && (
+          <IdiomsBonusCard onStart={onStartIdioms} />
         )}
         <DailyGoalBanner studentProgress={studentProgress} />
         <LeaderboardTeaser

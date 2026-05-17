@@ -108,6 +108,15 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
           setView('game');
         }}
         onStartClassMinute={startClassMinute}
+        onStartIdioms={() => {
+          // Idiom entry — bypasses the mode picker.  IdiomGame self-
+          // fetches its question pool from src/data/idioms.ts, so we
+          // don't need to seed gameWords or activeAssignment.
+          setGameMode('idiom');
+          setIsFinished(false);
+          setShowModeSelection(false);
+          setView('game');
+        }}
         retention={retention}
         boosters={{
           isXpBoosterActive: boosters.isXpBoosterActive,

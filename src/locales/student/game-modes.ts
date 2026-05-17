@@ -33,7 +33,6 @@ export type GameModeId =
   | "letter-sounds"
   | "sentence-builder"
   | "word-chains"
-  | "idiom"
   | "speed-round";
 
 export interface GameModeStrings {
@@ -121,13 +120,8 @@ export const gameModesT: Record<Language, GameModesT> = {
       },
       "word-chains": {
         name: "Word Chains",
-        desc: "Type a word that starts with the last letter of the previous word.",
-        tooltip: ["Look at the highlighted last letter", "Type a word starting with that letter", "Keep the chain going as long as you can!"],
-      },
-      idiom: {
-        name: "Idioms",
-        desc: "Match English idioms with their real meaning. Learn how to use them!",
-        tooltip: ["See an English idiom", "Pick the meaning that matches", "Read the example to learn how to use it"],
+        desc: "Build a chain from your class words — each one starts with the last letter of the previous.",
+        tooltip: ["Only words from your class list count", "Each word must start with the last letter shown", "Keep the chain going as long as you can!"],
       },
       "speed-round": {
         name: "Speed Round",
@@ -206,13 +200,8 @@ export const gameModesT: Record<Language, GameModesT> = {
       },
       "word-chains": {
         name: "שרשרת מילים",
-        desc: "הקלד מילה שמתחילה באות האחרונה של המילה הקודמת.",
-        tooltip: ["הסתכל על האות האחרונה המודגשת", "הקלד מילה שמתחילה באות הזו", "המשך את השרשרת כמה שיותר!"],
-      },
-      idiom: {
-        name: "ביטויים",
-        desc: "התאם ביטויים באנגלית למשמעות האמיתית שלהם. למד איך להשתמש בהם!",
-        tooltip: ["ראה ביטוי באנגלית", "בחר את המשמעות הנכונה", "קרא את הדוגמה ולמד איך להשתמש בו"],
+        desc: "בנה שרשרת מהמילים של הכיתה שלך — כל מילה מתחילה באות האחרונה של הקודמת.",
+        tooltip: ["רק מילים מהרשימה של הכיתה נחשבות", "כל מילה חייבת להתחיל באות האחרונה המוצגת", "המשך את השרשרת כמה שיותר!"],
       },
       "speed-round": {
         name: "סבב מהיר",
@@ -291,13 +280,8 @@ export const gameModesT: Record<Language, GameModesT> = {
       },
       "word-chains": {
         name: "سلسلة الكلمات",
-        desc: "اكتب كلمة تبدأ بآخر حرف من الكلمة السابقة.",
-        tooltip: ["انظر إلى الحرف الأخير المميز", "اكتب كلمة تبدأ بهذا الحرف", "أكمل السلسلة لأطول وقت ممكن!"],
-      },
-      idiom: {
-        name: "التعابير",
-        desc: "طابق التعابير الإنجليزية مع معناها الحقيقي. تعلّم كيفية استخدامها!",
-        tooltip: ["شاهد تعبيرًا إنجليزيًا", "اختر المعنى المطابق", "اقرأ المثال لتتعلم كيفية استخدامه"],
+        desc: "ابنِ سلسلة من كلمات صفّك — كل كلمة تبدأ بآخر حرف من الكلمة السابقة.",
+        tooltip: ["تُحتسب فقط الكلمات من قائمة صفّك", "يجب أن تبدأ كل كلمة بالحرف الأخير المعروض", "أكمل السلسلة لأطول وقت ممكن!"],
       },
       "speed-round": {
         name: "جولة سريعة",
@@ -376,13 +360,8 @@ export const gameModesT: Record<Language, GameModesT> = {
       },
       "word-chains": {
         name: "Word Chains",
-        desc: "Type a word that starts with the last letter of the previous word.",
-        tooltip: ["Look at the highlighted last letter", "Type a word starting with that letter", "Keep the chain going as long as you can!"],
-      },
-      idiom: {
-        name: "Idioms",
-        desc: "Match English idioms with their real meaning. Learn how to use them!",
-        tooltip: ["See an English idiom", "Pick the meaning that matches", "Read the example to learn how to use it"],
+        desc: "Build a chain from your class words — each one starts with the last letter of the previous.",
+        tooltip: ["Only words from your class list count", "Each word must start with the last letter shown", "Keep the chain going as long as you can!"],
       },
       "speed-round": {
         name: "Speed Round",
