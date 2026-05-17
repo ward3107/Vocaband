@@ -86,7 +86,6 @@ import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
 import { useQuickPlayGuestState } from "./hooks/useQuickPlayGuestState";
 import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
 import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
-import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
@@ -271,7 +270,6 @@ export default function App() {
   const [quickPlayInitialWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
   // Saved-task templates also restore mode selection when reused.
   const [quickPlayInitialModes, setQuickPlayInitialModes] = useState<string[] | undefined>(undefined);
-  const [quickPlaySearchQuery] = useState("");
   const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[], aiSentences?: string[]} | null>(null);
   // Class Show — teacher-led projector mode.  When the teacher
   // launches from an assignment card, this stores the assignment's
@@ -373,11 +371,10 @@ export default function App() {
   // Use Set for O(1) lookup instead of array.includes() which is O(n)
   const selectedWordsSet = useMemo(() => new Set(selectedWords), [selectedWords]);
 
-  // --- QUICK PLAY SEARCH PARSING ---
-  // Memoize expensive parsing and search operations for Quick Play word search
-  const searchTerms = useMemo(() => {
-    return parseSearchTerms(quickPlaySearchQuery);
-  }, [quickPlaySearchQuery]);
+  // QuickPlay word-search was never wired to UI — the consumer hook
+  // expects a terms array; pass empty so the auto-populate logic
+  // simply skips the search-driven branch.
+  const searchTerms: string[] = [];
 
   // Assignment / Quick Play authoring auto-populate:
   //   1. Sentence Builder sentences regenerate on word/mode/
