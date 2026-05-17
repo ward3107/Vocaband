@@ -154,11 +154,6 @@ const GameActiveView = lazy(() => import("./views/GameActiveView"));
 const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 const VocaPickerView = lazy(() => import("./views/VocaPickerView"));
-const VocaHebrewDashboardView = lazy(() => import("./views/VocaHebrewDashboardView"));
-const NiqqudModeView = lazy(() => import("./views/NiqqudModeView"));
-const ShoreshHuntView = lazy(() => import("./views/ShoreshHuntView"));
-const SynonymMatchView = lazy(() => import("./views/SynonymMatchView"));
-const ListeningModeView = lazy(() => import("./views/ListeningModeView"));
 const HebrewModeSelectionView = lazy(() => import("./views/HebrewModeSelectionView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
@@ -176,6 +171,7 @@ import { useApplyTeacherTheme } from "./hooks/useApplyTeacherTheme";
 import { useAuthRestore } from "./hooks/useAuthRestore";
 import { useDeepLinkConsumers } from "./hooks/useDeepLinkConsumers";
 import { useAppMiscEffects } from "./hooks/useAppMiscEffects";
+import { renderHebrewRoute } from "./views/HebrewRoutes";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -230,7 +226,6 @@ import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
-import { persistHebrewScore, type HebrewMode } from "./handlers/hebrewScore";
 import { grantRetentionXp, applyServerRewards, grantNonXpReward } from "./handlers/retentionGrants";
 import { deleteAssignmentWithUndo, deleteAssignmentImmediate } from "./handlers/deleteAssignmentWithUndo";
 
@@ -1791,95 +1786,16 @@ export default function App() {
       </LazyWrapper>
     );
   }
-  // VocaHebrew dashboard — entry point into the four native-track
-  // games (Niqqud, Shoresh Hunt, Synonym Match, Listening).
-  // Switch-Voca returns the teacher to the picker so they can flip
-  // back to English without logging out.
-  if (hasTeacherAccess(user) && view === "vocahebrew-dashboard") {
-    const showSwitcher = getEntitledVocas(user).length >= 2;
-    return (
-      <LazyWrapper loadingMessage="Loading VocaHebrew...">
-        <VocaHebrewDashboardView
-          user={user}
-          showSwitcher={showSwitcher}
-          onSwitchVoca={() => {
-            setActiveVoca(null);
-            setView("voca-picker");
-          }}
-          onLaunchNiqqudMode={() => setView("vocahebrew-niqqud")}
-          onLaunchShoreshHunt={() => setView("vocahebrew-shoresh")}
-          onLaunchSynonymMatch={() => setView("vocahebrew-synonyms")}
-          onLaunchListeningMode={() => setView("vocahebrew-listening")}
-        />
-      </LazyWrapper>
-    );
-  }
-  // Hebrew game views — used by both teachers (solo-launch from the
-  // VocaHebrew dashboard) and students (assignment playback).  When
-  // there's an active assignment with subject==='hebrew', its
-  // wordIds scope the round pool; otherwise the views shuffle the
-  // full corpus.  Exit goes back to whatever route makes sense for
-  // the role: students back to the mode picker, teachers back to
-  // the VocaHebrew dashboard.
-  const inHebrewAssignment = activeAssignment?.subject === "hebrew";
-  const hebrewLemmaIds = inHebrewAssignment ? activeAssignment?.wordIds : undefined;
-  const hebrewExit = () => {
-    if (user?.role === "student" && inHebrewAssignment) {
-      // Re-show the mode picker so the student can pick another
-      // Hebrew game on the same assignment without a full reset.
-      setShowModeSelection(true);
-      setView("game");
-    } else {
-      // Solo-launch by a Hebrew teacher returns to the unified
-      // dashboard.  The legacy "vocahebrew-dashboard" route is now
-      // unreachable from here; its render block is retained as dead
-      // code until the Phase 4 cleanup step removes it.
-      setView("teacher-dashboard");
-    }
-  };
-
-  // Persist a Hebrew round's final score to the gradebook + (Quick
-  // Play V2) push cumulative score to the live podium.  Body lives in
-  // src/handlers/hebrewScore.ts; this wrapper supplies closure deps
-  // and the no-active-assignment guard.
-  const saveHebrewScore = (mode: HebrewMode, score: number, total: number) => {
-    if (!user || !activeAssignment || !inHebrewAssignment) return Promise.resolve();
-    return persistHebrewScore(mode, score, total, {
-      user,
-      activeAssignment,
-      quickPlayActiveSession,
-      qpCumulativeScoreRef,
-      quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
-      quickPlayV2Enabled: QUICKPLAY_V2,
-    });
-  };
-
-  // Table-driven Hebrew mode views — all four share the same prop shape
-  // (onExit / lemmaIds / onComplete).  Distinguishing fields: which view
-  // id, which mode key (for saveHebrewScore), which lazy component,
-  // which loading label.
-  const HEBREW_VIEW_MAP: Record<string, { Component: React.ComponentType<{
-    onExit: () => void; lemmaIds: number[] | undefined;
-    onComplete: (s: number, t: number) => Promise<void> | void;
-  }>; label: string; mode: HebrewMode }> = {
-    "vocahebrew-niqqud":     { Component: NiqqudModeView,     label: "Loading Niqqud Mode...",   mode: "niqqud" },
-    "vocahebrew-shoresh":    { Component: ShoreshHuntView,    label: "Loading Shoresh Hunt...",  mode: "shoresh" },
-    "vocahebrew-synonyms":   { Component: SynonymMatchView,   label: "Loading Synonym Match...", mode: "synonym" },
-    "vocahebrew-listening":  { Component: ListeningModeView,  label: "Loading Listening Mode...", mode: "listening" },
-  };
-  const hebrewView = HEBREW_VIEW_MAP[view];
-  if (hebrewView) {
-    const { Component, label, mode } = hebrewView;
-    return (
-      <LazyWrapper loadingMessage={label}>
-        <Component
-          onExit={hebrewExit}
-          lemmaIds={hebrewLemmaIds}
-          onComplete={(s, t) => saveHebrewScore(mode, s, t)}
-        />
-      </LazyWrapper>
-    );
-  }
+  // All Hebrew-side routing (vocahebrew-dashboard + the four mode
+  // views) lives in renderHebrewRoute.  Returns JSX or null.
+  const hebrewRoute = renderHebrewRoute({
+    view, user, activeAssignment,
+    quickPlayActiveSession, qpCumulativeScoreRef,
+    quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
+    quickPlayV2Enabled: QUICKPLAY_V2,
+    setActiveVoca, setShowModeSelection, setView,
+  });
+  if (hebrewRoute) return hebrewRoute;
   if (hasTeacherAccess(user) && view === "teacher-dashboard") {
     const showVocaSwitcher = getEntitledVocas(user).length >= 2;
     // Inline Voca switcher rendered inside TopAppBar's controls
