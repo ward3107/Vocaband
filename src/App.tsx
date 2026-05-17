@@ -85,6 +85,7 @@ import { useQuickPlayGuestState } from "./hooks/useQuickPlayGuestState";
 import { useQuickPlaySessionState } from "./hooks/useQuickPlaySessionState";
 import { useTeacherUiModalsState } from "./hooks/useTeacherUiModalsState";
 import { useAuthFlowRefs } from "./hooks/useAuthFlowRefs";
+import { useNavigationRefs } from "./hooks/useNavigationRefs";
 import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
 import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -134,15 +135,9 @@ export default function App() {
   // having chosen one this session.  See useVocaRouting for details.
   useVocaRouting(user, activeVoca, view, setActiveVoca, setView);
 
-  const previousViewRef = useRef<string>("public-landing");
-  // Track current view for auth state changes — using a ref so restoreSession
-  // can read the latest view even when called asynchronously from auth events.
-  const currentViewRef = useRef<View>(view);
-  // Captures the most recent user role so the SIGNED_OUT handler can route
-  // students back to the student-login screen instead of the teacher-focused
-  // public landing.  The auth listener effect runs once with empty deps, so
-  // it can't read `user` state directly — needs a ref kept in sync below.
-  const lastUserRoleRef = useRef<AppUser["role"] | null>(null);
+  // Navigation refs — previousViewRef / currentViewRef / lastUserRoleRef.
+  // See useNavigationRefs.
+  const { previousViewRef, currentViewRef, lastUserRoleRef } = useNavigationRefs(view);
 
   const goBack = () => {
     setView(previousViewRef.current as any);
