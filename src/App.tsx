@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback, lazy } from "react";
+import React, { useState, useMemo, useRef, useCallback } from "react";
 import type { View } from "./core/views";
 import { getEntitledVocas } from "./core/subject";
 import type { Word } from "./data/vocabulary";
@@ -19,9 +19,6 @@ import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
 import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
-import { LazyWrapper} from "./components/SuspenseWrapper";
-
-const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
 import { createGuestUser } from "./utils/createGuestUser";
 import { readQpResumeScore } from "./utils/qpResumeHint";
 import {
@@ -47,6 +44,7 @@ import { StudentDashboardSection } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
 import { renderGameRoute } from "./views/GameRoutes";
 import { renderStudentAuthRoute } from "./views/StudentAuthRoutes";
+import { renderPrivacySettingsSection } from "./views/PrivacySettingsSection";
 import { getGameDebugger } from "./utils/gameDebug";
 import { type GameMode } from "./constants/game";
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
@@ -1157,22 +1155,12 @@ export default function App() {
     });
   }
 
-  // --- PRIVACY SETTINGS VIEW (lazy-loaded from ./views/PrivacySettingsView) ---
-  if (user && view === "privacy-settings") {
-    return (
-      <LazyWrapper loadingMessage="Loading privacy settings...">
-        <PrivacySettingsView
-          user={user}
-          consentModal={consentModal}
-          exitConfirmModal={exitConfirmModal}
-          setView={setView}
-          setUser={setUser}
-          setConfirmDialog={setConfirmDialog}
-          showToast={showToast}
-        />
-      </LazyWrapper>
-    );
-  }
+  // Privacy-settings view (lazy-loaded). See PrivacySettingsSection.
+  const privacySettings = renderPrivacySettingsSection({
+    view, user, consentModal, exitConfirmModal,
+    setView, setUser, setConfirmDialog, showToast,
+  });
+  if (privacySettings) return privacySettings;
 
   // --- SHOP VIEW (single-screen marketplace, lazy-loaded) ---
   // All Hebrew-side routing (vocahebrew-dashboard + the four mode
