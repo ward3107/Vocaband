@@ -274,7 +274,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     style={{ touchAction: 'manipulation' }}
                     type="button"
                     aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
-                    className="group relative w-full sm:w-auto px-10 md:px-14 py-6 md:py-7 rounded-3xl text-2xl md:text-3xl font-black text-white shadow-[0_14px_0_0_#581c87,0_28px_60px_rgba(168,85,247,0.55)] hover:shadow-[0_18px_0_0_#4c1d95,0_32px_70px_rgba(168,85,247,0.7)] active:shadow-[0_4px_0_0_#581c87,0_12px_28px_rgba(168,85,247,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60"
+                    className="group relative w-full sm:w-auto px-10 md:px-14 py-6 md:py-7 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_14px_0_0_#581c87,0_28px_60px_rgba(168,85,247,0.55)] hover:shadow-[0_18px_0_0_#4c1d95,0_32px_70px_rgba(168,85,247,0.7)] active:shadow-[0_4px_0_0_#581c87,0_12px_28px_rgba(168,85,247,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60"
                   >
                     <GraduationCap size={32} strokeWidth={2.5} className="relative z-10" />
                     <div className={`relative z-10 flex flex-col ${isRTL ? "items-end" : "items-start"} leading-tight`}>
@@ -296,7 +296,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     style={{ touchAction: 'manipulation' }}
                     type="button"
                     aria-label={t.heroCtaStudent}
-                    className="group relative w-full sm:w-auto px-10 md:px-14 py-6 md:py-7 rounded-3xl text-2xl md:text-3xl font-black text-white shadow-[0_14px_0_0_#9a3412,0_28px_60px_rgba(251,146,60,0.55)] hover:shadow-[0_18px_0_0_#7c2d12,0_32px_70px_rgba(251,146,60,0.7)] active:shadow-[0_4px_0_0_#9a3412,0_12px_28px_rgba(251,146,60,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/50 hover:ring-amber-300/70"
+                    className="group relative w-full sm:w-auto px-10 md:px-14 py-6 md:py-7 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_14px_0_0_#9a3412,0_28px_60px_rgba(251,146,60,0.55)] hover:shadow-[0_18px_0_0_#7c2d12,0_32px_70px_rgba(251,146,60,0.7)] active:shadow-[0_4px_0_0_#9a3412,0_12px_28px_rgba(251,146,60,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/50 hover:ring-amber-300/70"
                   >
                     <BookOpen size={32} strokeWidth={2.5} className="relative z-10" />
                     <span className="relative z-10">{t.heroCtaStudent}</span>
@@ -359,11 +359,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       style={{ touchAction: 'manipulation' }}
                     >
                       {/* 3D shadow layer */}
-                      <div className="absolute inset-2 bg-gradient-to-br from-primary/50 to-fuchsia-600/50 rounded-3xl blur-xl" />
+                      <div className="absolute inset-2 bg-gradient-to-br from-primary/50 to-fuchsia-600/50 rounded-2xl blur-xl" />
                       {/* Main icon container */}
-                      <div className="relative w-full h-full bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600 rounded-3xl shadow-2xl shadow-primary/40 flex items-center justify-center overflow-hidden">
+                      <div className="relative w-full h-full bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600 rounded-2xl shadow-2xl shadow-primary/40 flex items-center justify-center overflow-hidden">
                         <Gamepad2 size={42} strokeWidth={2.5} className="relative z-10 text-white" />
-                        <div className="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-lg">
+                        <div className="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg">
                           <BookOpen size={14} strokeWidth={2.5} className="text-primary" />
                         </div>
                       </div>
@@ -398,7 +398,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         Tablet+: original 4:3 / p-8 / smaller icon. */}
                     <div className={`p-10 sm:p-6 md:p-8 rounded-[2rem] bg-gradient-to-br ${card.color} shadow-2xl backdrop-blur-sm border border-white/20 aspect-[5/4] sm:aspect-[4/3]`}>
                       <div className="h-full flex flex-col items-center justify-center gap-5 sm:gap-4">
-                        <div className="w-28 h-28 sm:w-24 sm:h-24 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+                        <div className="w-28 h-28 sm:w-24 sm:h-24 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
                           {card.icon}
                         </div>
                         <p className="text-white font-black text-3xl sm:text-2xl text-center leading-tight drop-shadow-lg">{card.name}</p>
@@ -521,7 +521,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             : "translate(-50%, 0)",
           transition: "transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 250ms ease-out",
         }}
-        className="fixed left-1/2 z-40 inline-flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-3.5 rounded-2xl text-base sm:text-lg font-black text-white shadow-[0_10px_0_0_#581c87,0_18px_36px_rgba(168,85,247,0.55)] hover:shadow-[0_12px_0_0_#4c1d95,0_22px_44px_rgba(168,85,247,0.7)] active:translate-y-0.5 active:shadow-[0_4px_0_0_#581c87] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60"
+        className="fixed left-1/2 z-40 inline-flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-3.5 rounded-xl text-base sm:text-lg font-black text-white shadow-[0_10px_0_0_#581c87,0_18px_36px_rgba(168,85,247,0.55)] hover:shadow-[0_12px_0_0_#4c1d95,0_22px_44px_rgba(168,85,247,0.7)] active:translate-y-0.5 active:shadow-[0_4px_0_0_#581c87] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60"
       >
         <GraduationCap size={20} strokeWidth={2.5} />
         <span className={`flex flex-col leading-tight ${isRTL ? "items-end" : "items-start"}`}>

@@ -314,7 +314,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+        className="bg-white w-full sm:max-w-lg sm:rounded-xl rounded-t-xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
         dir={dir}
       >
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-4 flex items-center gap-3">
@@ -394,7 +394,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
                   aiPhase === "generating" ||
                   pendingConfirm !== null
                 }
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 {creating || aiPhase === "generating" ? (
@@ -477,7 +477,7 @@ const ExercisePicker: React.FC<{
           return (
             <div
               key={type}
-              className={`rounded-xl border-2 transition-all ${
+              className={`rounded-lg border-2 transition-all ${
                 active ? "bg-emerald-50 border-emerald-500" : "bg-white border-stone-200"
               }`}
             >

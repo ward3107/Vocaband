@@ -70,7 +70,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
         <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 mb-3 md:mb-4 flex-shrink-0">
           {/* Cookie icon — gradient pill matching the brand signature
               gradient (indigo → violet → fuchsia). */}
-          <div className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br from-violet-500/30 via-fuchsia-500/25 to-pink-500/30 border border-white/15 flex items-center justify-center text-violet-200 shadow-lg shadow-violet-500/20">
+          <div className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-lg md:rounded-xl bg-gradient-to-br from-violet-500/30 via-fuchsia-500/25 to-pink-500/30 border border-white/15 flex items-center justify-center text-violet-200 shadow-lg shadow-violet-500/20">
             <Cookie size={24} className="md:hidden" aria-hidden="true" />
             <Cookie size={28} className="hidden md:block" aria-hidden="true" />
           </div>
@@ -88,7 +88,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
         {/* Expandable Customization Panel - scrollable on mobile */}
         {isExpanded && (
             <div className="overflow-hidden flex-shrink-0">
-              <div className="mb-4 md:mb-6 p-3 md:p-6 bg-white/5 rounded-xl md:rounded-2xl border border-white/10 overflow-y-auto max-h-[40vh] md:max-h-none">
+              <div className="mb-4 md:mb-6 p-3 md:p-6 bg-white/5 rounded-lg md:rounded-xl border border-white/10 overflow-y-auto max-h-[40vh] md:max-h-none">
                 <h3 className="text-base md:text-lg font-black font-headline mb-3 md:mb-4 text-white">
                   {t.preferencesTitle}
                 </h3>
@@ -105,7 +105,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
                         onClick={() => !isDisabled && togglePreference(category.id)}
                         disabled={isDisabled}
                         aria-pressed={isEnabled}
-                        className={`group relative w-full text-start flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all focus:outline-none focus:ring-2 focus:ring-violet-400/60 ${
+                        className={`group relative w-full text-start flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-lg md:rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-violet-400/60 ${
                           isDisabled
                             ? "bg-white/5 border-white/10 cursor-not-allowed"
                             : isEnabled
@@ -114,7 +114,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
                         }`}
                       >
                         {/* Icon pill — violet container with the category icon, parallel to the cookie banner's hero icon style */}
-                        <div className={`flex-shrink-0 w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center transition-all ${
+                        <div className={`flex-shrink-0 w-10 h-10 md:w-11 md:h-11 rounded-lg flex items-center justify-center transition-all ${
                           isEnabled
                             ? "bg-gradient-to-br from-violet-500/30 via-fuchsia-500/25 to-pink-500/30 border border-white/20 shadow-lg shadow-violet-500/20"
                             : "bg-white/10 border border-white/15"
@@ -172,7 +172,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
         <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full flex-shrink-0">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-sm text-white/85 bg-white/5 hover:bg-white/10 border-2 border-white/15 hover:border-white/25 transition-all flex items-center justify-center gap-1.5 md:gap-2"
+            className="px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-lg font-black text-xs md:text-sm text-white/85 bg-white/5 hover:bg-white/10 border-2 border-white/15 hover:border-white/25 transition-all flex items-center justify-center gap-1.5 md:gap-2"
           >
             {isExpanded ? (
               <>
@@ -193,7 +193,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
             <button
               type="button"
               onClick={() => handleSavePreferences()}
-              className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
+              className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-lg font-black text-xs md:text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
             >
               <Check size={16} aria-hidden="true" />
               {t.savePreferences}
@@ -202,7 +202,7 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
             <button
               type="button"
               onClick={() => onAccept()}
-              className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
+              className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-lg font-black text-xs md:text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
             >
               <Check size={16} aria-hidden="true" />
               {t.acceptAll}

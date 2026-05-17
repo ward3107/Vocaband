@@ -74,7 +74,7 @@ export const StructureDetailModal: React.FC<StructureDetailModalProps> = ({
             exit={{ opacity: 0, y: 30, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 220, damping: 24 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full sm:max-w-3xl bg-white rounded-none sm:rounded-3xl shadow-2xl overflow-hidden my-auto"
+            className="w-full sm:max-w-3xl bg-white rounded-none sm:rounded-2xl shadow-2xl overflow-hidden my-auto"
             dir={dir}
           >
             {/* Sticky header with title + close button.  The title here
@@ -107,7 +107,7 @@ export const StructureDetailModal: React.FC<StructureDetailModalProps> = ({
                   pieces are earned without crowding the scene itself.
                   Complements the "Next piece" card which only shows
                   the next unlock. */}
-              <div className="mt-4 bg-stone-50 border border-stone-200 rounded-2xl p-4 text-xs sm:text-sm text-stone-700 leading-relaxed">
+              <div className="mt-4 bg-stone-50 border border-stone-200 rounded-xl p-4 text-xs sm:text-sm text-stone-700 leading-relaxed">
                 <p className="font-black text-stone-900 mb-1.5">{t.howPiecesUnlockTitle}</p>
                 <ul className="space-y-1 list-disc list-inside marker:text-indigo-500">
                   <li>{t.unlockBullet1}</li>

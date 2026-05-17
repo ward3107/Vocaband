@@ -122,7 +122,7 @@ const LandingStudents: React.FC = () => {
                           key={mode.nameKey}
                           whileHover={{ scale: 1.15, rotate: [0, -5, 5, 0] }}
                           transition={{ duration: 0.3 }}
-                          className="aspect-square rounded-xl bg-white/10 backdrop-blur-sm flex flex-col items-center justify-center gap-1 cursor-help"
+                          className="aspect-square rounded-lg bg-white/10 backdrop-blur-sm flex flex-col items-center justify-center gap-1 cursor-help"
                           title={t.modeNames[mode.nameKey as keyof typeof t.modeNames]}
                         >
                           <span className="text-2xl md:text-3xl">{mode.emoji}</span>
@@ -172,7 +172,7 @@ const LandingStudents: React.FC = () => {
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Trophy size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.liveChallengesTitle}</h3>
@@ -247,7 +247,7 @@ const LandingStudents: React.FC = () => {
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Coins size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.xpShopTitle}</h3>
@@ -323,7 +323,7 @@ const LandingStudents: React.FC = () => {
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Gift size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.mysteryEggsTitle}</h3>
@@ -401,7 +401,7 @@ const LandingStudents: React.FC = () => {
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Zap size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.powerBoostersTitle}</h3>
@@ -478,7 +478,7 @@ const LandingStudents: React.FC = () => {
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Crown size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.petFriendsTitle}</h3>
@@ -551,7 +551,7 @@ const LandingStudents: React.FC = () => {
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Flame size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.dailyStreaksTitle}</h3>

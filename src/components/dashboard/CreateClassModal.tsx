@@ -49,7 +49,7 @@ export default function CreateClassModal({
                 color: 'var(--vb-text-primary)',
                 backgroundColor: 'var(--vb-surface)',
               }}
-              className="w-full px-6 py-4 rounded-2xl border-2 outline-none mb-6 font-bold focus:border-[var(--vb-accent)]"
+              className="w-full px-6 py-4 rounded-xl border-2 outline-none mb-6 font-bold focus:border-[var(--vb-accent)]"
             />
             <div className="flex gap-3">
               <button
@@ -59,7 +59,7 @@ export default function CreateClassModal({
                   color: 'var(--vb-text-secondary)',
                   backgroundColor: 'var(--vb-surface)',
                 }}
-                className="flex-1 py-4 rounded-2xl font-bold transition-colors border-2 hover:opacity-90"
+                className="flex-1 py-4 rounded-xl font-bold transition-colors border-2 hover:opacity-90"
               >
                 {t.cancel}
               </button>
@@ -69,7 +69,7 @@ export default function CreateClassModal({
                   backgroundColor: 'var(--vb-accent)',
                   color: 'var(--vb-accent-text)',
                 }}
-                className="flex-1 py-4 rounded-2xl font-bold hover:opacity-90 transition-colors shadow-lg"
+                className="flex-1 py-4 rounded-xl font-bold hover:opacity-90 transition-colors shadow-lg"
               >
                 {t.createBtn}
               </button>

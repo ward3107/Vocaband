@@ -39,7 +39,7 @@ export default function StudentAssignmentsList({
 
       {/* Background loading indicator */}
       {studentDataLoading && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-xl flex items-center gap-2 animate-pulse">
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center gap-2 animate-pulse">
           <RefreshCw className="text-blue-700 animate-spin" size={16} />
           <span className="text-blue-800 font-bold text-sm">{t.loadingAssignments}</span>
         </div>

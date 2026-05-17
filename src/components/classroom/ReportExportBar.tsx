@@ -351,7 +351,7 @@ export default function ReportExportBar({
   return (
     <>
       <div
-        className="rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+        className="rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
         style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
       >
         <div className="min-w-0">
@@ -374,7 +374,7 @@ export default function ReportExportBar({
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent' as never,
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xs font-bold hover:shadow-md active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xs font-bold hover:shadow-md active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {busy === 'excel' ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />}
             {t.excelButton}
@@ -384,7 +384,7 @@ export default function ReportExportBar({
             onClick={handleReport}
             disabled={disabled}
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-bold hover:shadow-md active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-bold hover:shadow-md active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <BarChart3 size={14} />
             {t.reportButton}

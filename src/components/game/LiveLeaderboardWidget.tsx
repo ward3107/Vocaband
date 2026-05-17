@@ -14,7 +14,7 @@ export default function LiveLeaderboardWidget({ user, leaderboard }: LiveLeaderb
 
   return (
     <div className="lg:col-span-1">
-      <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-xl p-6 sticky top-6 border border-white/20">
+      <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-xl p-6 sticky top-6 border border-white/20">
         <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-white">🏆 Live Rank</h3>
         <div className="space-y-2">
           {(Object.entries(leaderboard) as [string, LeaderboardEntry][])
@@ -31,7 +31,7 @@ export default function LiveLeaderboardWidget({ user, leaderboard }: LiveLeaderb
               return (
                 <div
                   key={`${entry.uid}-${idx}`}
-                  className={`flex justify-between items-center p-2 sm:p-3 rounded-xl transition-all ${isUser ? "bg-white/30 border-2 border-white/50 scale-105 shadow-lg" : "bg-white/10"}`}
+                  className={`flex justify-between items-center p-2 sm:p-3 rounded-lg transition-all ${isUser ? "bg-white/30 border-2 border-white/50 scale-105 shadow-lg" : "bg-white/10"}`}
                 >
                   <div className="flex items-center gap-2">
                     <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-bold ${rankClass}`}>

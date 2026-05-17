@@ -183,7 +183,7 @@ const EXERCISE_LABEL: Record<ExerciseType, string> = {
 };
 
 const SkipNotice: React.FC<{ type: ExerciseType }> = ({ type }) => (
-  <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-2xl text-center max-w-md mx-auto">
+  <div className="bg-white rounded-2xl p-8 sm:p-10 shadow-2xl text-center max-w-md mx-auto">
     <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-amber-100 text-amber-600 mb-4">
       <SkipForward size={26} />
     </div>

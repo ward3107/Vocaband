@@ -100,18 +100,18 @@ export default function GameView(props: GameViewProps) {
       )}
       <div className="w-full max-w-4xl flex flex-wrap justify-between items-center gap-1 mb-1.5 sm:mb-6">
         <div className="flex items-center gap-1.5 sm:gap-4 flex-wrap">
-          <div className="bg-white px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm flex items-center gap-1.5">
+          <div className="bg-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl shadow-sm flex items-center gap-1.5">
             <Trophy className="text-amber-500" size={16} />
             <span className="font-black text-stone-800 text-sm sm:text-base">{score}</span>
           </div>
-          <div className="bg-blue-50 px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl flex items-center gap-1.5">
+          <div className="bg-blue-50 px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5">
             <span className="text-blue-700 font-bold text-[10px] sm:text-xs uppercase tracking-widest">XP: {xp}</span>
           </div>
           {streak > 0 && (
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="bg-orange-100 px-3 sm:px-4 py-2 rounded-2xl flex items-center gap-2"
+              className="bg-orange-100 px-3 sm:px-4 py-2 rounded-xl flex items-center gap-2"
             >
               <span className="text-orange-600 font-bold text-xs uppercase tracking-widest">🔥 {streak}</span>
             </motion.div>
@@ -148,7 +148,7 @@ export default function GameView(props: GameViewProps) {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleMatchClick(item)}
                   dir="auto"
-                  className={`p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
+                  className={`p-3 sm:p-6 rounded-lg sm:rounded-xl shadow-sm font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 ${
                     selectedMatch?.id === item.id && selectedMatch?.type === item.type
                       ? "bg-blue-600 text-white shadow-lg ring-4 ring-blue-200"
                       : "bg-white text-stone-800 hover:shadow-md"
@@ -166,7 +166,7 @@ export default function GameView(props: GameViewProps) {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-2 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-3 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-3 border-red-500" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-transparent"}`}
+              className={`bg-white rounded-xl sm:rounded-[32px] shadow-2xl p-2 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-3 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-3 border-red-500" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-transparent"}`}
             >
               {/* Progress Bar */}
               <progress
@@ -195,7 +195,7 @@ export default function GameView(props: GameViewProps) {
                       src={currentWord.imageUrl}
                       alt={currentWord.english}
                       referrerPolicy="no-referrer"
-                      className="w-20 h-20 sm:w-48 sm:h-48 object-cover rounded-2xl sm:rounded-[32px] shadow-lg border-4 border-white"
+                      className="w-20 h-20 sm:w-48 sm:h-48 object-cover rounded-xl sm:rounded-[32px] shadow-lg border-4 border-white"
                     />
                   )}
                   <h2 className={`text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full text-center ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}
@@ -235,7 +235,7 @@ export default function GameView(props: GameViewProps) {
                       setHiddenOptions(toHide);
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
                       setTimeout(() => { supabase.rpc('consume_power_up', { p_kind: 'fifty_fifty' }); }, 0);
-                    }} className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-200 transition-all flex items-center gap-1 border border-amber-200">
+                    }} className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold hover:bg-amber-200 transition-all flex items-center gap-1 border border-amber-200">
                       ✂️ 50/50 <span className="bg-amber-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['fifty_fifty']}</span>
                     </button>
                   )}
@@ -246,7 +246,7 @@ export default function GameView(props: GameViewProps) {
                       setHiddenOptions([]);
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
                       setTimeout(() => { supabase.rpc('consume_power_up', { p_kind: 'skip' }); }, 0);
-                    }} className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-200 transition-all flex items-center gap-1 border border-blue-200">
+                    }} className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200 transition-all flex items-center gap-1 border border-blue-200">
                       ⏭️ Skip <span className="bg-blue-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['skip']}</span>
                     </button>
                   )}
@@ -256,7 +256,7 @@ export default function GameView(props: GameViewProps) {
                       if (currentWord) setSpellingInput(currentWord.english[0]);
                       setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
                       setTimeout(() => { supabase.rpc('consume_power_up', { p_kind: 'reveal_letter' }); }, 0);
-                    }} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-xl text-xs font-bold hover:bg-green-200 transition-all flex items-center gap-1 border border-green-200">
+                    }} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 transition-all flex items-center gap-1 border border-green-200">
                       💡 Hint <span className="bg-green-200 px-1.5 py-0.5 rounded-md text-[10px]">×{(user.powerUps ?? {})['reveal_letter']}</span>
                     </button>
                   )}
@@ -271,22 +271,22 @@ export default function GameView(props: GameViewProps) {
                 </div>
               ) : gameMode === "true-false" ? (
                 <div className="max-w-lg mx-auto">
-                  <div className="bg-stone-100 p-3 sm:p-8 rounded-2xl sm:rounded-3xl mb-2 sm:mb-6">
+                  <div className="bg-stone-100 p-3 sm:p-8 rounded-xl sm:rounded-2xl mb-2 sm:mb-6">
                     <p className="text-2xl sm:text-4xl font-black text-stone-800" dir="auto">{tfOption?.[targetLanguage] || tfOption?.arabic || tfOption?.hebrew}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:gap-4">
-                    <button onClick={() => handleTFAnswer(true)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-colors">{t.trueWithMark}</button>
-                    <button onClick={() => handleTFAnswer(false)} className="py-5 sm:py-8 rounded-2xl sm:rounded-3xl text-xl sm:text-3xl font-black bg-rose-100 text-rose-700 hover:bg-rose-200 active:bg-rose-300 transition-colors">{t.falseWithMark}</button>
+                    <button onClick={() => handleTFAnswer(true)} className="py-5 sm:py-8 rounded-xl sm:rounded-2xl text-xl sm:text-3xl font-black bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-colors">{t.trueWithMark}</button>
+                    <button onClick={() => handleTFAnswer(false)} className="py-5 sm:py-8 rounded-xl sm:rounded-2xl text-xl sm:text-3xl font-black bg-rose-100 text-rose-700 hover:bg-rose-200 active:bg-rose-300 transition-colors">{t.falseWithMark}</button>
                   </div>
                 </div>
               ) : gameMode === "flashcards" ? (
                 <div className="max-w-md mx-auto space-y-3 sm:space-y-4">
-                  <button onClick={() => setIsFlipped(!isFlipped)} className="w-full py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-lg sm:text-xl font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors">
+                  <button onClick={() => setIsFlipped(!isFlipped)} className="w-full py-4 sm:py-6 rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors">
                     {isFlipped ? t.showEnglish : t.showTranslation}
                   </button>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <button onClick={() => handleFlashcardAnswer(false)} className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">{t.stillLearning}</button>
-                    <button onClick={() => handleFlashcardAnswer(true)} className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-50 transition-colors">{t.gotIt}</button>
+                    <button onClick={() => handleFlashcardAnswer(false)} className="py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">{t.stillLearning}</button>
+                    <button onClick={() => handleFlashcardAnswer(true)} className="py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold bg-blue-50 text-blue-700 hover:bg-blue-50 transition-colors">{t.gotIt}</button>
                   </div>
                 </div>
               ) : (
@@ -306,7 +306,7 @@ export default function GameView(props: GameViewProps) {
                             return (
                               <div
                                 key={globalIdx}
-                                className="w-9 h-11 sm:w-12 sm:h-14 rounded-xl font-black text-base sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0 transition-all duration-300"
+                                className="w-9 h-11 sm:w-12 sm:h-14 rounded-lg font-black text-base sm:text-2xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0 transition-all duration-300"
                                 style={{ color: revealed ? color : color + "40", borderColor: revealed ? color : color + "40", background: color + "18", opacity: revealed ? 1 : 0.15, transform: revealed ? "scale(1)" : "scale(0.5)" }}
                               >
                                 {revealed ? (letter ?? "").toUpperCase() : "?"}
@@ -326,7 +326,7 @@ export default function GameView(props: GameViewProps) {
                         onChange={(e) => setSpellingInput(e.target.value)}
                         disabled={feedback === "show-answer" || feedback === "correct"}
                         placeholder={t.typeTheWord}
-                        className={`w-full p-3 text-xl font-black text-center border-4 rounded-2xl mb-3 transition-all ${
+                        className={`w-full p-3 text-xl font-black text-center border-4 rounded-xl mb-3 transition-all ${
                           feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                           feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
                           feedback === "show-answer" ? "border-amber-500 bg-amber-50 text-amber-700 cursor-not-allowed" :
@@ -336,7 +336,7 @@ export default function GameView(props: GameViewProps) {
                       {feedback === "show-answer" && (
                         <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-3" />
                       )}
-                      <button type="submit" className="w-full py-3 bg-stone-900 text-white rounded-2xl font-black text-lg hover:bg-black transition-colors">{t.checkAnswer}</button>
+                      <button type="submit" className="w-full py-3 bg-stone-900 text-white rounded-xl font-black text-lg hover:bg-black transition-colors">{t.checkAnswer}</button>
                     </form>
                   )}
                 </div>
@@ -356,7 +356,7 @@ export default function GameView(props: GameViewProps) {
                         <button onClick={() => speak(sentences[sentenceIndex])} className="text-blue-500 hover:text-blue-700 active:scale-90 transition-all" title={t.listenToSentence}>🔊</button>
                       </div>
                       {/* Built sentence area */}
-                      <div className={`min-h-[60px] border-4 rounded-2xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
+                      <div className={`min-h-[60px] border-4 rounded-xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
                         sentenceFeedback === "correct" ? "border-blue-500 bg-blue-50" :
                         sentenceFeedback === "wrong" ? "border-rose-500 bg-rose-50" :
                         "border-stone-200 bg-stone-50"
@@ -366,7 +366,7 @@ export default function GameView(props: GameViewProps) {
                           <button
                             key={i}
                             onClick={() => sentenceFeedback === null && handleSentenceWordTap(word, false)}
-                            className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm sm:text-base hover:bg-blue-700 active:scale-95 transition-all"
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold text-sm sm:text-base hover:bg-blue-700 active:scale-95 transition-all"
                           >{word}</button>
                         ))}
                       </div>
@@ -376,13 +376,13 @@ export default function GameView(props: GameViewProps) {
                           <button
                             key={i}
                             onClick={() => sentenceFeedback === null && handleSentenceWordTap(word, true)}
-                            className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-xl font-bold text-sm sm:text-base hover:border-blue-400 hover:text-blue-700 active:scale-95 transition-all"
+                            className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-lg font-bold text-sm sm:text-base hover:border-blue-400 hover:text-blue-700 active:scale-95 transition-all"
                           >{word}</button>
                         ))}
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => { setBuiltSentence([]); setAvailableWords(shuffle(sentences[sentenceIndex].split(" ").filter(Boolean))); }} className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors">{t.clear}</button>
-                        <button onClick={handleSentenceCheck} disabled={builtSentence.length === 0 || sentenceFeedback !== null} className="flex-2 py-2 px-6 bg-stone-900 text-white rounded-xl font-bold hover:bg-black transition-colors disabled:opacity-50">{t.checkSentence}</button>
+                        <button onClick={() => { setBuiltSentence([]); setAvailableWords(shuffle(sentences[sentenceIndex].split(" ").filter(Boolean))); }} className="flex-1 py-2 bg-stone-100 text-stone-600 rounded-lg font-bold hover:bg-stone-200 transition-colors">{t.clear}</button>
+                        <button onClick={handleSentenceCheck} disabled={builtSentence.length === 0 || sentenceFeedback !== null} className="flex-2 py-2 px-6 bg-stone-900 text-white rounded-lg font-bold hover:bg-black transition-colors disabled:opacity-50">{t.checkSentence}</button>
                       </div>
                     </div>
                   );
@@ -396,7 +396,7 @@ export default function GameView(props: GameViewProps) {
                     onChange={(e) => setSpellingInput(e.target.value)}
                     disabled={feedback === "show-answer" || feedback === "correct"}
                     placeholder={t.typeInEnglish}
-                    className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-6 transition-all ${
+                    className={`w-full p-3 sm:p-6 text-base sm:text-3xl font-black text-center border-4 rounded-xl sm:rounded-2xl mb-3 sm:mb-6 transition-all ${
                       feedback === "correct" ? "border-blue-600 bg-blue-50 text-blue-700" :
                       feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
                       feedback === "show-answer" ? "border-amber-500 bg-amber-50 text-amber-700 cursor-not-allowed" :
@@ -409,7 +409,7 @@ export default function GameView(props: GameViewProps) {
                   {feedback === "show-answer" && (
                     <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-4" />
                   )}
-                  <button type="submit" className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-lg sm:text-xl hover:bg-black transition-colors">Check Answer</button>
+                  <button type="submit" className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-xl font-black text-lg sm:text-xl hover:bg-black transition-colors">Check Answer</button>
                 </form>
               )
               )}
@@ -423,7 +423,7 @@ export default function GameView(props: GameViewProps) {
           Hidden for solo assignments and Quick Play guests. */}
       {!user?.isGuest && Object.keys(leaderboard).length > 0 && (
       <div className="lg:col-span-1">
-        <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-xl p-6 sticky top-6 border border-white/20">
+        <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-xl p-6 sticky top-6 border border-white/20">
           <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-white">🏆 Live Rank</h3>
           <div className="space-y-2">
             {(Object.entries(leaderboard) as [string, LeaderboardEntry][])
@@ -441,7 +441,7 @@ export default function GameView(props: GameViewProps) {
                 return (
                   <div
                     key={`${entry.uid}-${idx}`}
-                    className={`flex justify-between items-center p-2 sm:p-3 rounded-xl transition-all ${isUser ? "bg-white/30 border-2 border-white/50 scale-105 shadow-lg" : "bg-white/10"}`}
+                    className={`flex justify-between items-center p-2 sm:p-3 rounded-lg transition-all ${isUser ? "bg-white/30 border-2 border-white/50 scale-105 shadow-lg" : "bg-white/10"}`}
                   >
                     <div className="flex items-center gap-2">
                       <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-bold ${rankClass}`}>

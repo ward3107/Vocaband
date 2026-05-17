@@ -115,7 +115,7 @@ export default function VocaHebrewDashboardView({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-6 rounded-3xl bg-gradient-to-br from-blue-500 via-sky-500 to-indigo-600 p-6 sm:p-8 text-white shadow-lg shadow-indigo-500/20"
+          className="mb-6 rounded-2xl bg-gradient-to-br from-blue-500 via-sky-500 to-indigo-600 p-6 sm:p-8 text-white shadow-lg shadow-indigo-500/20"
         >
           <p className="text-blue-100 font-black text-[10px] tracking-[0.25em] uppercase mb-2">
             ברוך הבא
@@ -142,7 +142,7 @@ export default function VocaHebrewDashboardView({
               whileHover={{ y: -4, scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`relative overflow-hidden rounded-3xl p-6 sm:p-7 text-start bg-gradient-to-br ${tile.gradient} text-white shadow-lg ${tile.shadow}`}
+              className={`relative overflow-hidden rounded-2xl p-6 sm:p-7 text-start bg-gradient-to-br ${tile.gradient} text-white shadow-lg ${tile.shadow}`}
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
               <div className="relative z-10">

@@ -84,7 +84,7 @@ export default function AttendanceTable({
 
   return (
     <section
-      className="rounded-2xl border-2 shadow-sm p-4 sm:p-5"
+      className="rounded-xl border-2 shadow-sm p-4 sm:p-5"
       style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
     >
       <header className="flex items-start gap-2 mb-3">

@@ -42,7 +42,7 @@ export const StructurePreviewTile: React.FC<StructurePreviewTileProps> = ({ kind
       onClick={onOpen}
       style={{ touchAction: 'manipulation' }}
       aria-label={t.previewTileAria(kind, earned, total)}
-      className="group relative overflow-hidden rounded-3xl shadow-xl ring-1 ring-stone-900/10 bg-stone-900 text-white hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.99] transition-all text-left w-full"
+      className="group relative overflow-hidden rounded-2xl shadow-xl ring-1 ring-stone-900/10 bg-stone-900 text-white hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.99] transition-all text-left w-full"
     >
       {/* Embed the real scene at small size so the student sees a
           genuine peek of their progress — not a stock illustration.

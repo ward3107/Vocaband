@@ -186,10 +186,10 @@ export default function BagrutStudentView({ user, onBack, showToast }: Props) {
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
             onClick={() => setActiveTestId(r.id)}
-            className="w-full text-left rounded-2xl p-4 border flex items-center gap-3"
+            className="w-full text-left rounded-xl p-4 border flex items-center gap-3"
             style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
           >
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0">
               <FileText size={22} className="text-violet-600" />
             </div>
             <div className="flex-1 min-w-0">
@@ -321,7 +321,7 @@ function BagrutStudentTakeView({ user, testRow, onBack, showToast }: { user: App
       </div>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <div className="rounded-2xl p-5 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
+        <div className="rounded-xl p-5 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
           <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--vb-text-muted)' }}>
             {spec.label} · {t.pointProgram(spec.pointTrack)}
           </div>
@@ -332,7 +332,7 @@ function BagrutStudentTakeView({ user, testRow, onBack, showToast }: { user: App
         </div>
 
         {test.sections.map((section, secIdx) => (
-          <div key={secIdx} className="rounded-2xl p-5 border space-y-4" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
+          <div key={secIdx} className="rounded-xl p-5 border space-y-4" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-primary)' }}>{section.title}</h2>
               <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>{t.ptsShort(section.total_points)}</span>
@@ -429,7 +429,7 @@ function BagrutStudentTakeView({ user, testRow, onBack, showToast }: { user: App
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 shadow-lg disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 shadow-lg disabled:opacity-50"
           >
             {submitting ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />} {t.submit}
           </button>

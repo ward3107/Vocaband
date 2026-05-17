@@ -117,7 +117,7 @@ export const SynonymAntonymExercise: ExerciseComponent<ExerciseOf<"synonym_anton
   const prompt = mode === "synonym" ? "Pick the synonym" : "Pick the antonym";
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
         <span className="text-xs font-bold text-stone-500">
           {idx + 1} / {items.length}
@@ -159,7 +159,7 @@ export const SynonymAntonymExercise: ExerciseComponent<ExerciseOf<"synonym_anton
               whileTap={{ scale: pickedOption !== null ? 1 : 0.96 }}
               disabled={pickedOption !== null}
               onClick={() => handlePick(opt)}
-              className={`p-4 rounded-2xl border-2 font-bold text-lg sm:text-xl transition-colors ${style}`}
+              className={`p-4 rounded-xl border-2 font-bold text-lg sm:text-xl transition-colors ${style}`}
               dir="ltr"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >

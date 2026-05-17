@@ -133,10 +133,10 @@ function InstallModal({ platform, t, dir, isRTL, hasNativePrompt, onInstall, onD
       dir={dir}
       className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/70 px-3 pb-3 pt-10 backdrop-blur-sm sm:items-center sm:p-6 animate-in"
     >
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl animate-in">
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl animate-in">
         <div className="bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 px-6 pb-5 pt-7 text-white">
-          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
-            <img src="/icon-192.png" alt="" className="h-12 w-12 rounded-xl" />
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
+            <img src="/icon-192.png" alt="" className="h-12 w-12 rounded-lg" />
           </div>
           <h2 id="pwa-install-title" className="text-center text-xl font-bold leading-tight">
             {t.modalTitle}
@@ -166,7 +166,7 @@ function InstallModal({ platform, t, dir, isRTL, hasNativePrompt, onInstall, onD
               type="button"
               onClick={onInstall}
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-              className="mb-2 w-full rounded-2xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition active:scale-[0.98]"
+              className="mb-2 w-full rounded-xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition active:scale-[0.98]"
             >
               {t.androidInstallCta}
             </button>
@@ -181,7 +181,7 @@ function InstallModal({ platform, t, dir, isRTL, hasNativePrompt, onInstall, onD
             type="button"
             onClick={onDismiss}
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            className="block w-full rounded-xl px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700"
+            className="block w-full rounded-lg px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700"
           >
             {t.dismiss}
           </button>
@@ -213,7 +213,7 @@ function IosSteps({ t, isRTL }: { t: PwaInstallStrings; isRTL: boolean }) {
         {steps.map((step, i) => (
           <li
             key={i}
-            className={`flex items-start gap-3 rounded-xl bg-slate-50 px-3 py-2.5 ${isRTL ? 'flex-row-reverse text-right' : ''}`}
+            className={`flex items-start gap-3 rounded-lg bg-slate-50 px-3 py-2.5 ${isRTL ? 'flex-row-reverse text-right' : ''}`}
           >
             <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-xs font-bold text-white">
               {i + 1}
@@ -252,9 +252,9 @@ function InstallBanner({ t, dir, isRTL, onCta, onDismiss }: BannerProps) {
       dir={dir}
       className="fixed bottom-3 left-1/2 z-[70] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2"
     >
-      <div className="rounded-2xl border border-violet-200 bg-white/95 p-3 shadow-lg shadow-violet-500/20 backdrop-blur animate-in">
+      <div className="rounded-xl border border-violet-200 bg-white/95 p-3 shadow-lg shadow-violet-500/20 backdrop-blur animate-in">
         <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-        <img src="/icon-192.png" alt="" className="h-10 w-10 flex-none rounded-xl" />
+        <img src="/icon-192.png" alt="" className="h-10 w-10 flex-none rounded-lg" />
         <p className={`flex-1 text-sm font-medium leading-snug text-slate-800 ${isRTL ? 'text-right' : ''}`}>
           {t.bannerTitle}
         </p>
@@ -262,7 +262,7 @@ function InstallBanner({ t, dir, isRTL, onCta, onDismiss }: BannerProps) {
           type="button"
           onClick={onCta}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className="flex-none rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3.5 py-2 text-sm font-semibold text-white shadow-sm shadow-violet-500/20 transition active:scale-[0.97]"
+          className="flex-none rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3.5 py-2 text-sm font-semibold text-white shadow-sm shadow-violet-500/20 transition active:scale-[0.97]"
         >
           {t.bannerCta}
         </button>

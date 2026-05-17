@@ -263,11 +263,11 @@ ${formData.description}`;
               className="pointer-events-auto relative w-full max-w-lg"
               dir={dir}
             >
-              <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
                       <Lightbulb size={22} className="text-white" />
                     </div>
                     <div>
@@ -308,7 +308,7 @@ ${formData.description}`;
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           placeholder={t.namePlaceholder}
-                          className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors text-sm"
                         />
                       </div>
 
@@ -322,7 +322,7 @@ ${formData.description}`;
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           placeholder={t.emailPlaceholder}
-                          className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors text-sm"
                           dir="ltr"
                         />
                       </div>
@@ -335,7 +335,7 @@ ${formData.description}`;
                         <select
                           value={formData.category}
                           onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors bg-white text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors bg-white text-sm"
                         >
                           <option value="">{t.categoryPlaceholder}</option>
                           <option value="game">{t.categoryGame}</option>
@@ -357,7 +357,7 @@ ${formData.description}`;
                           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                           placeholder={t.descriptionPlaceholder}
                           rows={4}
-                          className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors text-sm resize-none"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors text-sm resize-none"
                         />
                         <p className="text-xs text-slate-500 mt-1">{t.descriptionHint}</p>
                       </div>
@@ -378,7 +378,7 @@ ${formData.description}`;
                               key={p.value}
                               type="button"
                               onClick={() => setFormData({ ...formData, priority: p.value })}
-                              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+                              className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all ${
                                 formData.priority === p.value
                                   ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
                                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -396,7 +396,7 @@ ${formData.description}`;
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         type="submit"
-                        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
                       >
                         <Sparkles size={18} />
                         {t.submitButton}

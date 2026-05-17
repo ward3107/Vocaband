@@ -249,7 +249,7 @@ export default function GameModeSelectionView({
                 )}
               </div>
               <div className="flex items-center gap-4 sm:gap-6 mt-10 sm:mt-6">
-                <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
+                <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
                   <GraduationCap size={32} />
                 </div>
                 <div className="flex-1 min-w-0">

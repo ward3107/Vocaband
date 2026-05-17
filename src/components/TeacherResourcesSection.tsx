@@ -238,13 +238,13 @@ const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRT
           return (
             <div
               key={card.key}
-              className={`relative overflow-hidden rounded-2xl p-4 md:p-4 h-full bg-gradient-to-br ${card.gradient} text-white shadow-md shadow-violet-500/10 ring-1 ${card.ring} flex flex-col gap-3`}
+              className={`relative overflow-hidden rounded-xl p-4 md:p-4 h-full bg-gradient-to-br ${card.gradient} text-white shadow-md shadow-violet-500/10 ring-1 ${card.ring} flex flex-col gap-3`}
             >
               {/* Header row — compact: smaller emoji + title side-by-side.
                   Preview eye opens user's language in a new tab for
                   users who want to look before downloading. */}
               <div className={`flex items-start gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.iconBg} flex items-center justify-center text-lg shadow shadow-black/10 ring-1 ring-white/30 shrink-0`}>
+                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${card.iconBg} flex items-center justify-center text-lg shadow shadow-black/10 ring-1 ring-white/30 shrink-0`}>
                   <span aria-hidden="true">{card.emoji}</span>
                 </div>
                 <div className="flex-1 min-w-0">

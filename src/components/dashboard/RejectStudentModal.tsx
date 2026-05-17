@@ -33,7 +33,7 @@ export default function RejectStudentModal({ modal, onCancel, onConfirm }: Rejec
             <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
               {t.rejectBody(modal.displayName)}
             </p>
-            <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
+            <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-xl mb-6 font-medium border-2 border-amber-200">
               {t.rejectWarn}
             </p>
             <div className="flex gap-3">
@@ -44,13 +44,13 @@ export default function RejectStudentModal({ modal, onCancel, onConfirm }: Rejec
                   color: 'var(--vb-text-secondary)',
                   borderColor: 'var(--vb-border)',
                 }}
-                className="flex-1 py-4 rounded-2xl font-bold hover:opacity-90 transition-all border-2"
+                className="flex-1 py-4 rounded-xl font-bold hover:opacity-90 transition-all border-2"
               >
                 {t.rejectKeep}
               </button>
               <button
                 onClick={() => onConfirm(modal.id)}
-                className="flex-1 py-4 bg-amber-500 text-white rounded-2xl font-bold hover:bg-amber-600 transition-colors shadow-lg shadow-amber-200"
+                className="flex-1 py-4 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-colors shadow-lg shadow-amber-200"
               >
                 {t.rejectConfirm}
               </button>

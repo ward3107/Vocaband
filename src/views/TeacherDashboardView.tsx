@@ -313,8 +313,8 @@ export default function TeacherDashboardView({
             // never trialing in the first place.
             if (trialing && daysLeft !== null) {
               return (
-                <div className="mb-6 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-amber-500/20 p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap">
-                  <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                <div className="mb-6 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-amber-500/20 p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap">
+                  <div className="w-11 h-11 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
                     <Sparkles size={20} className="text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -324,7 +324,7 @@ export default function TeacherDashboardView({
                   </div>
                   <a
                     href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
-                    className="px-4 py-2 rounded-xl bg-white text-orange-600 font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
+                    className="px-4 py-2 rounded-lg bg-white text-orange-600 font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
                   >
                     <Crown size={16} />
                     {t.trialBannerActiveCta}
@@ -333,8 +333,8 @@ export default function TeacherDashboardView({
               );
             }
             return (
-              <div className="mb-6 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 shadow-lg p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap border border-white/10">
-                <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+              <div className="mb-6 rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 shadow-lg p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap border border-white/10">
+                <div className="w-11 h-11 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
                   <Crown size={20} className="text-amber-400" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -344,7 +344,7 @@ export default function TeacherDashboardView({
                 </div>
                 <a
                   href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
                 >
                   <Crown size={16} />
                   {t.trialBannerExpiredCta}

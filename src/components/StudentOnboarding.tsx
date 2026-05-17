@@ -74,7 +74,7 @@ export default function StudentOnboarding({ userName, onComplete }: StudentOnboa
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: -20 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center relative"
+        className="bg-white rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center relative"
       >
         {/* Skip button */}
         <button
@@ -113,7 +113,7 @@ export default function StudentOnboarding({ userName, onComplete }: StudentOnboa
         {/* Action button */}
         <button
           onClick={handleNext}
-          className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           {step === STEPS.length - 1 ? letsGoLabel : nextLabel}
           {step < STEPS.length - 1 && <ChevronRight size={20} />}

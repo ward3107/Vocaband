@@ -82,7 +82,7 @@ const LandingFAQ: React.FC = () => {
             className="mb-10 md:mb-12"
           >
             <div className={`flex items-center gap-3 mb-6 ${isRTL ? "flex-row-reverse" : ""}`}>
-              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${group.iconBg} flex items-center justify-center shadow-lg ${group.iconShadow}`}>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${group.iconBg} flex items-center justify-center shadow-lg ${group.iconShadow}`}>
                 {group.icon}
               </div>
               <h3 className="text-2xl font-bold text-white">{group.section}</h3>
@@ -93,7 +93,7 @@ const LandingFAQ: React.FC = () => {
                 return (
                   <div
                     key={item.id}
-                    className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden"
+                    className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden"
                   >
                     <button
                       type="button"
@@ -139,13 +139,13 @@ const LandingFAQ: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center p-6 md:p-8 rounded-3xl bg-white/5 backdrop-blur-md border border-white/10"
+          className="text-center p-6 md:p-8 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10"
         >
           <Mail size={32} className="text-violet-400 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-white mb-4">{fq.cta}</h3>
           <a
             href="mailto:contact@vocaband.com"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold hover:shadow-lg hover:shadow-violet-500/30 transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold hover:shadow-lg hover:shadow-violet-500/30 transition-all"
           >
             {fq.ctaButton}
           </a>

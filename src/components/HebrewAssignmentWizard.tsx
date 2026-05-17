@@ -261,7 +261,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             {wordSource === "library" && (
               <div className="mb-5" lang="he">
                 {hebrewSavedTasks.length === 0 ? (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-white/70 text-sm font-bold">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-white/70 text-sm font-bold">
                     {t.noSavedTasksYet}
                   </div>
                 ) : (
@@ -274,7 +274,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                           type="button"
                           onClick={() => loadSavedTask(task)}
                           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                          className="w-full text-start rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 p-3 transition"
+                          className="w-full text-start rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 p-3 transition"
                           lang="he"
                           dir="rtl"
                         >
@@ -300,12 +300,12 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
 
             {/* OCR feedback — error toast or "review unmatched" panel. */}
             {ocrError && (
-              <div className="mb-5 rounded-2xl border border-rose-400/30 bg-rose-500/10 p-3 text-rose-100 text-sm font-bold" lang="he">
+              <div className="mb-5 rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-rose-100 text-sm font-bold" lang="he">
                 {ocrError}
               </div>
             )}
             {ocrUnmatched.length > 0 && !ocrError && (
-              <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3" lang="he">
+              <div className="mb-5 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3" lang="he">
                 <div className="text-amber-100 text-xs font-black mb-2">
                   {t.ocrUnmatched(ocrUnmatched.length)}
                 </div>
@@ -381,7 +381,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                             type="button"
                             onClick={() => toggleLemma(l.id)}
                             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                            className={`relative rounded-2xl p-3 sm:p-4 text-right transition-all ${
+                            className={`relative rounded-xl p-3 sm:p-4 text-right transition-all ${
                               picked
                                 ? "bg-gradient-to-br from-emerald-500 to-teal-600 ring-2 ring-emerald-300"
                                 : "bg-white/5 hover:bg-white/10 border border-white/10"
@@ -449,7 +449,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
               value={assignmentTitle}
               onChange={(e) => setAssignmentTitle(e.target.value)}
               placeholder={t.titlePlaceholder}
-              className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 font-bold text-base focus:outline-none focus:border-blue-400 mb-5"
+              className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/30 font-bold text-base focus:outline-none focus:border-blue-400 mb-5"
               dir="auto"
             />
 
@@ -460,7 +460,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
               type="date"
               value={assignmentDeadline}
               onChange={(e) => setAssignmentDeadline(e.target.value)}
-              className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white font-bold text-base focus:outline-none focus:border-blue-400"
+              className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white font-bold text-base focus:outline-none focus:border-blue-400"
             />
 
             <FooterBar
@@ -498,7 +498,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                     onClick={() => toggleMode(mode.id)}
                     disabled={locked}
                     style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                    className={`relative overflow-hidden rounded-2xl p-5 text-start transition-all ${
+                    className={`relative overflow-hidden rounded-xl p-5 text-start transition-all ${
                       locked
                         ? "bg-white/5 border border-white/10 opacity-60 cursor-not-allowed"
                         : picked
@@ -565,7 +565,7 @@ function SourceTab({
       onClick={onClick}
       disabled={disabled}
       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-      className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl px-3 py-3 text-xs font-black transition ${
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-xs font-black transition ${
         disabled
           ? "bg-white/5 text-white/30 cursor-not-allowed"
           : active
@@ -609,7 +609,7 @@ function FooterBar({
             type="button"
             onClick={onSecondary}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-sm hover:bg-white/15"
+            className="px-5 py-3 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-sm hover:bg-white/15"
             lang="he"
           >
             {secondaryLabel}
@@ -620,7 +620,7 @@ function FooterBar({
           onClick={onPrimary}
           disabled={primaryDisabled}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm shadow-lg transition ${
+          className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-black text-sm shadow-lg transition ${
             primaryDisabled
               ? "bg-white/10 text-white/40 cursor-not-allowed"
               : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-indigo-500/30"

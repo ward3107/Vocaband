@@ -90,7 +90,7 @@ const LandingJourney: React.FC = () => {
             className="relative flex flex-col md:flex-row items-center gap-6"
           >
             <div className="md:w-1/2 md:text-right md:pr-12">
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg hover:shadow-xl transition-shadow">
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg hover:shadow-xl transition-shadow">
                 <Target size={24} />
                 <div>
                   <p className="font-black text-lg">{t.set1Title}</p>
@@ -114,7 +114,7 @@ const LandingJourney: React.FC = () => {
               <span className="relative z-10 text-white text-3xl font-black drop-shadow-lg">1</span>
             </motion.div>
             <div className="md:w-1/2 md:pl-12">
-              <div className="p-4 rounded-2xl bg-surface-container-high">
+              <div className="p-4 rounded-xl bg-surface-container-high">
                 <div className="flex justify-between mb-2">
                   <span className="font-bold">{t.curriculumProgress}</span>
                   <span className="text-emerald-600 font-black">{t.set1Words}</span>
@@ -140,7 +140,7 @@ const LandingJourney: React.FC = () => {
             className="relative flex flex-col md:flex-row-reverse items-center gap-6"
           >
             <div className="md:w-1/2 md:text-left md:pl-12">
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg hover:shadow-xl transition-shadow">
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg hover:shadow-xl transition-shadow">
                 <Target size={24} />
                 <div>
                   <p className="font-black text-lg">{t.set2Title}</p>
@@ -164,7 +164,7 @@ const LandingJourney: React.FC = () => {
               <span className="relative z-10 text-white text-3xl font-black drop-shadow-lg">2</span>
             </motion.div>
             <div className="md:w-1/2 md:pr-12 md:text-right">
-              <div className="p-4 rounded-2xl bg-surface-container-high">
+              <div className="p-4 rounded-xl bg-surface-container-high">
                 <div className="flex justify-between mb-2">
                   <span className="text-blue-600 font-black">{t.set2Words}</span>
                   <span className="font-bold">{t.curriculumProgress}</span>
@@ -190,7 +190,7 @@ const LandingJourney: React.FC = () => {
             className="relative flex flex-col md:flex-row items-center gap-6"
           >
             <div className="md:w-1/2 md:text-right md:pr-12">
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg hover:shadow-xl transition-shadow">
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg hover:shadow-xl transition-shadow">
                 <Star size={24} />
                 <div>
                   <p className="font-black text-lg">{t.set3Title}</p>
@@ -214,7 +214,7 @@ const LandingJourney: React.FC = () => {
               <span className="relative z-10 text-white text-3xl font-black drop-shadow-lg">3</span>
             </motion.div>
             <div className="md:w-1/2 md:pl-12">
-              <div className="p-4 rounded-2xl bg-surface-container-high">
+              <div className="p-4 rounded-xl bg-surface-container-high">
                 <div className="flex justify-between mb-2">
                   <span className="font-bold">{t.curriculumProgress}</span>
                   <span className="text-violet-600 font-black">{t.set3Words}</span>

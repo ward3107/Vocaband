@@ -118,7 +118,7 @@ class ErrorBoundary extends React.Component<Props, State> {
             <p className="text-stone-500 mb-6">{details || "Please refresh the page and try again."}</p>
             <button
               onClick={() => forceFullRecovery()}
-              className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all"
+              className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
             >
               Refresh Page
             </button>
@@ -136,13 +136,13 @@ class ErrorBoundary extends React.Component<Props, State> {
             </button>
             {this.state.showDetails && (
               <div className="mt-3 text-left">
-                <pre className="text-[11px] text-stone-700 bg-stone-50 border border-stone-200 rounded-xl p-3 overflow-auto max-h-48 whitespace-pre-wrap break-words">
+                <pre className="text-[11px] text-stone-700 bg-stone-50 border border-stone-200 rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap break-words">
                   {this.buildReport()}
                 </pre>
                 <button
                   type="button"
                   onClick={this.copyReport}
-                  className="mt-2 w-full py-2 bg-stone-900 text-white text-sm font-bold rounded-xl hover:bg-stone-800 transition-all"
+                  className="mt-2 w-full py-2 bg-stone-900 text-white text-sm font-bold rounded-lg hover:bg-stone-800 transition-all"
                 >
                   {this.state.copied ? 'Copied ✓' : 'Copy error report'}
                 </button>

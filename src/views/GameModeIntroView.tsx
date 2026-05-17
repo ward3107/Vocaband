@@ -112,7 +112,7 @@ export default function GameModeIntroView({
               initial={{ opacity: 0, x: isRtl ? 20 : -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 + i * 0.1 }}
-              className={`flex items-center gap-3 sm:gap-4 ${theme.stepBg} border p-3 sm:p-4 rounded-2xl`}
+              className={`flex items-center gap-3 sm:gap-4 ${theme.stepBg} border p-3 sm:p-4 rounded-xl`}
               dir={isRtl ? "rtl" : "ltr"}
             >
               <span className={`w-8 h-8 sm:w-10 sm:h-10 ${theme.stepNum} text-white rounded-full flex items-center justify-center text-sm sm:text-base font-black flex-shrink-0 shadow-sm`}>
@@ -132,7 +132,7 @@ export default function GameModeIntroView({
           transition={{ delay: 0.4 + info.steps.length * 0.1 }}
           onClick={onLetsGo ?? (() => setShowModeIntro(false))}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className={`w-full py-4 sm:py-5 bg-gradient-to-br ${theme.cta} text-white rounded-2xl font-black text-lg sm:text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-transform`}
+          className={`w-full py-4 sm:py-5 bg-gradient-to-br ${theme.cta} text-white rounded-xl font-black text-lg sm:text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-transform`}
         >
           {t.letsGo}
         </motion.button>

@@ -63,7 +63,7 @@ const LandingVocas: React.FC<LandingVocasProps> = ({ onOpenSubjectRequest }) => 
             whileHover={{ y: -8, scale: 1.04 }}
             className="relative group"
           >
-            <div className={`h-full p-7 sm:p-5 rounded-3xl bg-gradient-to-br ${subject.color} text-white shadow-lg overflow-hidden`}>
+            <div className={`h-full p-7 sm:p-5 rounded-2xl bg-gradient-to-br ${subject.color} text-white shadow-lg overflow-hidden`}>
               <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
               <div className="relative z-10 text-center">
                 <div className="flex justify-center mb-3 sm:mb-2">
@@ -104,7 +104,7 @@ const LandingVocas: React.FC<LandingVocasProps> = ({ onOpenSubjectRequest }) => 
           onClick={onOpenSubjectRequest}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/30 text-white font-black transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/30 text-white font-black transition-colors"
           type="button"
         >
           <FileText size={18} />

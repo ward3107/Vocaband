@@ -648,7 +648,7 @@ export default function QuickPlayMonitor({
           </div>
         </div>
         {/* Bottom row: music player (own line on mobile) */}
-        <div className={`flex items-center mt-2 gap-2 w-full rounded-2xl px-3 py-2 ${
+        <div className={`flex items-center mt-2 gap-2 w-full rounded-xl px-3 py-2 ${
           theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-[var(--vb-surface-alt)]'
         }`}>
           {/* Now playing info */}
@@ -732,7 +732,7 @@ export default function QuickPlayMonitor({
               type="button"
               onClick={toggleQrCollapsed}
               aria-label={tT.qpShowQrAria}
-              className={`absolute top-0 right-0 z-10 bg-gradient-to-br ${t.qrCard} rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all text-white flex flex-col items-center justify-center p-3 sm:p-4 ring-4 ring-white/30`}
+              className={`absolute top-0 right-0 z-10 bg-gradient-to-br ${t.qrCard} rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all text-white flex flex-col items-center justify-center p-3 sm:p-4 ring-4 ring-white/30`}
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any, minWidth: '80px', minHeight: '80px' }}
             >
               <QrCode size={36} className="sm:hidden" />
@@ -745,7 +745,7 @@ export default function QuickPlayMonitor({
               )}
             </button>
           ) : (
-          <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-xl p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
+          <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
             {/* QR code container — sized so students at the back of
                 the classroom can scan from their seats, but small
@@ -797,7 +797,7 @@ export default function QuickPlayMonitor({
                   handleCopyLink();
                 }}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="w-full mt-3 inline-flex items-center justify-center gap-2 bg-white/95 text-[var(--vb-text-primary)] font-bold text-sm sm:text-base px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg active:scale-[0.97] transition-all"
+                className="w-full mt-3 inline-flex items-center justify-center gap-2 bg-white/95 text-[var(--vb-text-primary)] font-bold text-sm sm:text-base px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg active:scale-[0.97] transition-all"
               >
                 <Share2 size={16} />
                 Share join link
@@ -807,7 +807,7 @@ export default function QuickPlayMonitor({
                 type="button"
                 onClick={handleCopyLink}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="w-full mt-3 inline-flex items-center justify-center gap-2 bg-white/95 text-[var(--vb-text-primary)] font-bold text-sm sm:text-base px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg active:scale-[0.97] transition-all"
+                className="w-full mt-3 inline-flex items-center justify-center gap-2 bg-white/95 text-[var(--vb-text-primary)] font-bold text-sm sm:text-base px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg active:scale-[0.97] transition-all"
               >
                 {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
                 {copiedLink ? 'Copied!' : 'Copy link'}
@@ -817,7 +817,7 @@ export default function QuickPlayMonitor({
                 <button
                   type="button"
                   onClick={() => setShowWordsModal(true)}
-                  className="inline-flex items-center justify-center gap-1.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm px-3 py-2.5 rounded-xl transition-colors"
+                  className="inline-flex items-center justify-center gap-1.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm px-3 py-2.5 rounded-lg transition-colors"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <BookOpen size={14} />
@@ -826,7 +826,7 @@ export default function QuickPlayMonitor({
                 <button
                   type="button"
                   onClick={() => setEndModal(true)}
-                  className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm px-3 py-2.5 rounded-xl shadow-lg shadow-red-500/30 hover:shadow-red-500/50 border-2 border-red-400 transition-all active:scale-95"
+                  className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm px-3 py-2.5 rounded-lg shadow-lg shadow-red-500/30 hover:shadow-red-500/50 border-2 border-red-400 transition-all active:scale-95"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                   title="⚠️ Ends the Quick Play session for all students"
                 >
@@ -839,7 +839,7 @@ export default function QuickPlayMonitor({
                 type="button"
                 onClick={toggleQrCollapsed}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-                className="w-full mt-2 inline-flex items-center justify-center gap-2 text-sm font-bold px-4 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-xl transition-all shadow-md hover:shadow-lg"
+                className="w-full mt-2 inline-flex items-center justify-center gap-2 text-sm font-bold px-4 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg"
               >
                 Hide QR
               </button>
@@ -855,7 +855,7 @@ export default function QuickPlayMonitor({
                                 Bigger podium so first 3 places are
                                 clearly readable from across the room.
                                 Per teacher request 2026-04-30. */}
-          <div className={`${qrCollapsed ? '' : 'lg:col-span-8'} ${t.podiumCard} rounded-xl p-4 sm:p-6 min-[1700px]:p-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
+          <div className={`${qrCollapsed ? '' : 'lg:col-span-8'} ${t.podiumCard} rounded-lg p-4 sm:p-6 min-[1700px]:p-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
             <div className={`absolute top-3 left-4 font-label text-[10px] min-[1700px]:text-base uppercase tracking-widest opacity-30 font-black ${t.text}`}>{tT.qpCurrentLeaders}</div>
 
             {top3.length > 0 ? (
@@ -883,7 +883,7 @@ export default function QuickPlayMonitor({
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[1].name}</p>
                       <p className={`font-label text-[10px] 2xl:text-sm min-[1700px]:text-xl ${t.accent} font-bold`}>{top3[1].score} pts</p>
-                      <motion.div initial={{ height: 0 }} animate={{ height: 80 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-32 bg-gradient-to-b ${t.podium2} rounded-t-xl flex items-center justify-center shadow-xl overflow-hidden`}>
+                      <motion.div initial={{ height: 0 }} animate={{ height: 80 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-32 bg-gradient-to-b ${t.podium2} rounded-t-lg flex items-center justify-center shadow-xl overflow-hidden`}>
                         <span className="text-white/20 text-4xl 2xl:text-5xl min-[1700px]:text-7xl font-black">2</span>
                       </motion.div>
                     </>
@@ -908,7 +908,7 @@ export default function QuickPlayMonitor({
                       </motion.div>
                       <p className={`font-headline text-sm sm:text-lg 2xl:text-xl min-[1700px]:text-3xl font-black truncate max-w-[100px] 2xl:max-w-[140px] min-[1700px]:max-w-[220px] text-center ${t.text}`}>{top3[0].name}</p>
                       <p className={`font-label text-xs 2xl:text-base min-[1700px]:text-2xl ${t.accent} font-black`}>{top3[0].score} pts</p>
-                      <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 2xl:w-32 min-[1700px]:w-48 min-[1700px]:!h-52 bg-gradient-to-b ${t.podium1} rounded-t-xl flex items-center justify-center shadow-2xl overflow-hidden relative`}>
+                      <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 2xl:w-32 min-[1700px]:w-48 min-[1700px]:!h-52 bg-gradient-to-b ${t.podium1} rounded-t-lg flex items-center justify-center shadow-2xl overflow-hidden relative`}>
                         <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                         <span className="text-white/20 text-6xl 2xl:text-7xl min-[1700px]:text-9xl font-black relative z-10">1</span>
                       </motion.div>
@@ -934,7 +934,7 @@ export default function QuickPlayMonitor({
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[2].name}</p>
                       <p className={`font-label text-[10px] 2xl:text-sm min-[1700px]:text-xl ${t.accent} font-bold`}>{top3[2].score} pts</p>
-                      <motion.div initial={{ height: 0 }} animate={{ height: 64 }} transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-24 bg-gradient-to-b ${t.podium3} rounded-t-xl flex items-center justify-center shadow-xl overflow-hidden`}>
+                      <motion.div initial={{ height: 0 }} animate={{ height: 64 }} transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-24 bg-gradient-to-b ${t.podium3} rounded-t-lg flex items-center justify-center shadow-xl overflow-hidden`}>
                         <span className="text-white/20 text-4xl 2xl:text-5xl min-[1700px]:text-7xl font-black">3</span>
                       </motion.div>
                     </>
@@ -995,7 +995,7 @@ export default function QuickPlayMonitor({
                       animate={{ scale: 1, opacity: 1, x: 0, y: 0 }}
                       exit={{ scale: 0.9, opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 280, damping: 24 }}
-                      className={`${t.card} rounded-xl px-3 sm:px-4 py-3 2xl:py-4 flex items-center gap-3 2xl:gap-4 shadow-sm hover:shadow-md transition-all border group relative ${
+                      className={`${t.card} rounded-lg px-3 sm:px-4 py-3 2xl:py-4 flex items-center gap-3 2xl:gap-4 shadow-sm hover:shadow-md transition-all border group relative ${
                         justJoined ? 'ring-4 ring-emerald-400/60 ring-offset-2 ring-offset-transparent' : ''
                       }`}
                     >
@@ -1059,7 +1059,7 @@ export default function QuickPlayMonitor({
               dragMomentum={false}
               dragElastic={0}
               whileDrag={{ scale: 1.02 }}
-              className="bg-[var(--vb-surface)] rounded-3xl max-w-lg w-full shadow-2xl cursor-default relative overflow-hidden"
+              className="bg-[var(--vb-surface)] rounded-2xl max-w-lg w-full shadow-2xl cursor-default relative overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               {/* Draggable header area - grab anywhere here to move */}
@@ -1109,7 +1109,7 @@ export default function QuickPlayMonitor({
                     }
                     handleCopyLink();
                   }}
-                  className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-dim text-white font-bold py-3 rounded-2xl shadow-md active:scale-[0.97] transition-all"
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-dim text-white font-bold py-3 rounded-xl shadow-md active:scale-[0.97] transition-all"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <Share2 size={16} /> Share
@@ -1117,7 +1117,7 @@ export default function QuickPlayMonitor({
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="px-4 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold transition-colors inline-flex items-center gap-2"
+                  className="px-4 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold transition-colors inline-flex items-center gap-2"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
@@ -1135,7 +1135,7 @@ export default function QuickPlayMonitor({
                   <button
                     type="button"
                     onClick={() => { setQrCollapsed(false); try { localStorage.setItem('vocaband-qp-qr-collapsed', '0'); } catch {} setQrEnlarged(false); }}
-                    className="flex-1 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold transition-colors text-sm"
+                    className="flex-1 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold transition-colors text-sm"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                   >
                     Pin to page
@@ -1143,7 +1143,7 @@ export default function QuickPlayMonitor({
                 )}
                 <button
                   onClick={() => setQrEnlarged(false)}
-                  className="flex-1 py-3 bg-stone-900 hover:bg-black text-white rounded-2xl font-bold transition-colors"
+                  className="flex-1 py-3 bg-stone-900 hover:bg-black text-white rounded-xl font-bold transition-colors"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   Close
@@ -1168,7 +1168,7 @@ export default function QuickPlayMonitor({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-[var(--vb-surface)] rounded-3xl p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center"
+              className="bg-[var(--vb-surface)] rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center"
             >
               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <X size={32} />
@@ -1180,13 +1180,13 @@ export default function QuickPlayMonitor({
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmKick(null)}
-                  className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold hover:bg-[var(--vb-surface-alt)] transition-colors border-2 border-[var(--vb-border)]"
+                  className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-surface-alt)] transition-colors border-2 border-[var(--vb-border)]"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => removeStudent(confirmKick)}
-                  className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-colors shadow-lg"
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors shadow-lg"
                 >
                   Remove
                 </button>
@@ -1218,13 +1218,13 @@ export default function QuickPlayMonitor({
               <p className="text-gray-500 mb-6">
                 Students will no longer be able to join using code <strong>{session.sessionCode}</strong>. The session will be permanently ended.
               </p>
-              <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-2xl mb-6 font-medium border-2 border-amber-200">
+              <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-xl mb-6 font-medium border-2 border-amber-200">
                 {"\u26A0\uFE0F"} Make sure all students have finished their games before ending.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setEndModal(false)}
-                  className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all border-2 border-[var(--vb-border)]"
+                  className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all border-2 border-[var(--vb-border)]"
                 >
                   Keep Session
                 </button>
@@ -1235,7 +1235,7 @@ export default function QuickPlayMonitor({
                     setEndModal(false);
                     handleEndSession();
                   }}
-                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                  className="flex-1 py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
                 >
                   End Session
                 </button>
@@ -1283,7 +1283,7 @@ export default function QuickPlayMonitor({
                   {session.words.map((word, index) => (
                     <div
                       key={word.id}
-                      className="bg-[var(--vb-surface)] border-2 border-[var(--vb-border)] rounded-2xl p-3 text-center hover:border-blue-300 transition-colors"
+                      className="bg-[var(--vb-surface)] border-2 border-[var(--vb-border)] rounded-xl p-3 text-center hover:border-blue-300 transition-colors"
                     >
                       <div className="text-xs text-[var(--vb-text-muted)] font-bold mb-1">#{index + 1}</div>
                       <div className="text-base font-black text-[var(--vb-text-primary)]">{word.english}</div>
@@ -1295,7 +1295,7 @@ export default function QuickPlayMonitor({
 
               <button
                 onClick={() => setShowWordsModal(false)}
-                className="mt-6 w-full py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+                className="mt-6 w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
               >
                 Close
               </button>

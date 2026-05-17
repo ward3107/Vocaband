@@ -223,7 +223,7 @@ export default function HebrewClassShowView({
             />
           </div>
 
-          <section className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4">
+          <section className="rounded-xl bg-white/5 border border-white/10 p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
               <div className="text-white/70 font-black text-xs">מקור המילים</div>
               <div className="text-white/50 text-xs font-bold">
@@ -404,7 +404,7 @@ export default function HebrewClassShowView({
 
             {phase.mode === "flashcards" && (
               <>
-                <div className="rounded-3xl bg-white/95 px-10 sm:px-16 py-10 sm:py-14 shadow-2xl text-slate-900 max-w-xl">
+                <div className="rounded-2xl bg-white/95 px-10 sm:px-16 py-10 sm:py-14 shadow-2xl text-slate-900 max-w-xl">
                   <div className="text-7xl sm:text-9xl font-black mb-6 leading-none">
                     {lemma.lemmaNiqqud}
                   </div>
@@ -438,7 +438,7 @@ export default function HebrewClassShowView({
               type="button"
               onClick={reveal}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-400 to-rose-500 text-white font-black text-base shadow-lg shadow-rose-500/30 hover:scale-[1.02] active:scale-[0.98] transition"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-400 to-rose-500 text-white font-black text-base shadow-lg shadow-rose-500/30 hover:scale-[1.02] active:scale-[0.98] transition"
             >
               <Eye size={18} /> חשיפה
             </button>
@@ -447,7 +447,7 @@ export default function HebrewClassShowView({
               type="button"
               onClick={next}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black text-base shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black text-base shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition"
             >
               הבא <ArrowRight size={18} />
             </button>
@@ -456,7 +456,7 @@ export default function HebrewClassShowView({
             type="button"
             onClick={skip}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="inline-flex items-center gap-2 px-5 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-sm hover:bg-white/15"
+            className="inline-flex items-center gap-2 px-5 py-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-sm hover:bg-white/15"
           >
             <SkipForward size={16} /> דלג
           </button>
@@ -479,7 +479,7 @@ export default function HebrewClassShowView({
             type="button"
             onClick={replay}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black text-sm shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black text-sm shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition"
           >
             <RotateCcw size={16} /> הקרנה נוספת
           </button>
@@ -487,7 +487,7 @@ export default function HebrewClassShowView({
             type="button"
             onClick={onExit}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-sm hover:bg-white/15"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-sm hover:bg-white/15"
           >
             חזרה ללוח הבקרה
           </button>
@@ -517,7 +517,7 @@ function ModeCard({
       onClick={onClick}
       disabled={disabled}
       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-      className={`relative overflow-hidden rounded-2xl p-5 text-start transition-all ${
+      className={`relative overflow-hidden rounded-xl p-5 text-start transition-all ${
         disabled
           ? "bg-white/5 border border-white/10 opacity-60 cursor-not-allowed"
           : `bg-gradient-to-br ${gradient} text-white shadow-lg hover:scale-[1.02] active:scale-[0.98]`

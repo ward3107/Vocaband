@@ -109,7 +109,7 @@ export default function PetCompanion({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', stiffness: 240, damping: 20 }}
-            className="fixed bottom-40 right-4 sm:bottom-28 sm:right-6 z-40 w-[calc(100vw-2rem)] sm:w-80 bg-white rounded-2xl border border-stone-200 shadow-xl p-4"
+            className="fixed bottom-40 right-4 sm:bottom-28 sm:right-6 z-40 w-[calc(100vw-2rem)] sm:w-80 bg-white rounded-xl border border-stone-200 shadow-xl p-4"
             dir={dir}
           >
             <button
@@ -122,7 +122,7 @@ export default function PetCompanion({
             </button>
 
             <div className="flex items-center gap-3 mb-3">
-              <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${glow} flex items-center justify-center text-3xl shadow-sm`}>
+              <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${glow} flex items-center justify-center text-3xl shadow-sm`}>
                 {currentStage.emoji}
               </div>
               <div className="min-w-0 flex-1">
@@ -142,11 +142,11 @@ export default function PetCompanion({
                 animate={{ scale: 1 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
-                className="w-full mb-3 relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-4 text-left text-white shadow-md"
+                className="w-full mb-3 relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-4 text-left text-white shadow-md"
               >
                 <div aria-hidden className="pointer-events-none absolute -top-4 -right-4 w-20 h-20 bg-yellow-200/40 rounded-full blur-2xl" />
                 <div className="relative flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/25 backdrop-blur-sm flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-white/25 backdrop-blur-sm flex items-center justify-center">
                     <Gift size={18} className="text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -179,7 +179,7 @@ export default function PetCompanion({
                 </p>
               </>
             ) : (
-              <div className="bg-gradient-to-r from-fuchsia-50 to-purple-50 border border-fuchsia-200 rounded-xl p-3 flex items-center gap-2">
+              <div className="bg-gradient-to-r from-fuchsia-50 to-purple-50 border border-fuchsia-200 rounded-lg p-3 flex items-center gap-2">
                 <Heart size={16} className="text-fuchsia-600 fill-fuchsia-300" />
                 <p className="text-xs font-semibold text-fuchsia-800">
                   {t.petMaxedOut(currentStage.stage)}

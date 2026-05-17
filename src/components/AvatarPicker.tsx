@@ -92,7 +92,7 @@ export function AvatarPicker({ value, onChange, xp, label, className = "" }: Ava
                     initial={{ opacity: 0, y: -10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    className="absolute top-full left-0 mt-1 z-20 bg-white rounded-xl shadow-2xl border-2 border-surface-container-highest overflow-hidden min-w-[140px]"
+                    className="absolute top-full left-0 mt-1 z-20 bg-white rounded-lg shadow-2xl border-2 border-surface-container-highest overflow-hidden min-w-[140px]"
                   >
                     {lockedCategories.map((category) => {
                       const unlock = AVATAR_CATEGORY_UNLOCKS[category];
@@ -122,7 +122,7 @@ export function AvatarPicker({ value, onChange, xp, label, className = "" }: Ava
           scroll container. Without this users couldn't find an
           outside-the-grid gutter on their phone to swipe down past
           the picker toward the Continue button. */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:max-h-64 sm:overflow-y-auto p-3 bg-white rounded-2xl border-2 border-surface-container-highest">
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:max-h-64 sm:overflow-y-auto p-3 bg-white rounded-xl border-2 border-surface-container-highest">
         {AVATAR_CATEGORIES[selectedCategory].map((avatar) => (
           <motion.button
             key={avatar}
@@ -130,7 +130,7 @@ export function AvatarPicker({ value, onChange, xp, label, className = "" }: Ava
             onClick={() => onChange(avatar)}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className={`aspect-square rounded-2xl border-2 transition-all flex items-center justify-center text-5xl sm:text-6xl shadow-md ${
+            className={`aspect-square rounded-xl border-2 transition-all flex items-center justify-center text-5xl sm:text-6xl shadow-md ${
               value === avatar
                 ? "bg-gradient-to-br from-primary/30 to-violet-30 border-primary ring-2 ring-primary shadow-lg shadow-primary/30"
                 : "bg-gradient-to-br from-surface-container-low to-surface-container border-surface-container-highest hover:border-primary/50 hover:shadow-lg"

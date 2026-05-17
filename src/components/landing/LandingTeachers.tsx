@@ -80,7 +80,7 @@ const LandingTeachers: React.FC = () => {
           <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(14,165,233,0.3)] hover:shadow-[0_30px_80px_rgba(14,165,233,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10 flex flex-col md:flex-row items-center gap-5 md:gap-8">
-              <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
+              <div className="w-20 h-20 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
                 <CheckCircle2 size={40} />
               </div>
               <div className="flex-1 text-center md:text-left">
@@ -108,7 +108,7 @@ const LandingTeachers: React.FC = () => {
           <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-emerald-500/35 via-teal-500/35 to-cyan-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+              <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                 <Layers size={28} />
               </div>
               <h3 className="text-2xl font-black mb-2">{t.useYourOwnWordsTitle}</h3>
@@ -153,7 +153,7 @@ const LandingTeachers: React.FC = () => {
           <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+              <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                 <BarChart3 size={28} />
               </div>
               <h3 className="text-2xl font-black mb-2">{t.spotStrugglingTitle}</h3>
@@ -192,7 +192,7 @@ const LandingTeachers: React.FC = () => {
           <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+              <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                 <Clock size={28} />
               </div>
               <h3 className="text-2xl font-black mb-2">{t.quickSetupTitle}</h3>
@@ -229,7 +229,7 @@ const LandingTeachers: React.FC = () => {
           <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(244,114,182,0.3)] hover:shadow-[0_30px_80px_rgba(244,114,182,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+              <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                 <Sparkles size={28} />
               </div>
               <h3 className="text-2xl font-black mb-2">{t.studentEngagementTitle}</h3>
@@ -284,14 +284,14 @@ const LandingTeachers: React.FC = () => {
           <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-purple-500 via-violet-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+              <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                 <Wand2 size={28} />
               </div>
               <h3 className="text-2xl font-black mb-2">{t.aiSentenceBuilderTitle}</h3>
               <p className="text-white/80 font-bold text-sm" dir={dir}>
                 {t.aiSentenceBuilderDesc}
               </p>
-              <div className="mt-4 px-3 py-2 rounded-xl bg-white/10 text-xs font-bold leading-relaxed">
+              <div className="mt-4 px-3 py-2 rounded-lg bg-white/10 text-xs font-bold leading-relaxed">
                 "She <span className="bg-white/30 px-1 rounded">sprinted</span> across the field to catch the ball."
               </div>
             </div>
@@ -310,7 +310,7 @@ const LandingTeachers: React.FC = () => {
           <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
+              <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
                 <Camera size={28} />
               </div>
               <h3 className="text-2xl font-black mb-2">{t.snapWordlistTitle}</h3>
@@ -341,7 +341,7 @@ const LandingTeachers: React.FC = () => {
           <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10 flex flex-col md:flex-row items-center gap-5 md:gap-8">
-              <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
+              <div className="w-20 h-20 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
                 <Radio size={40} />
               </div>
               <div className="flex-1 text-center md:text-left">
@@ -351,7 +351,7 @@ const LandingTeachers: React.FC = () => {
                 </p>
               </div>
               <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                <div className="px-4 py-2 rounded-xl bg-white/15 backdrop-blur-sm font-mono font-black text-2xl tracking-widest">
+                <div className="px-4 py-2 rounded-lg bg-white/15 backdrop-blur-sm font-mono font-black text-2xl tracking-widest">
                   ABC123
                 </div>
                 <div className="text-xs uppercase tracking-widest opacity-80">{t.quickPlayScanPlay}</div>
@@ -378,7 +378,7 @@ const LandingTeachers: React.FC = () => {
           <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10 flex flex-col md:flex-row items-center gap-5 md:gap-8">
-              <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
+              <div className="w-20 h-20 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
                 <Globe size={40} />
               </div>
               <div className="flex-1 text-center md:text-left">

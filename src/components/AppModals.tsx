@@ -41,12 +41,12 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
   if (!show) return null;
   return (
     <div className="fixed inset-0 bg-inverse-surface/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-surface-container-lowest rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border-t sm:border border-surface-variant/20" dir={dir}>
+      <div className="bg-surface-container-lowest rounded-t-xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border-t sm:border border-surface-variant/20" dir={dir}>
         <h2 className="text-base sm:text-lg font-black text-on-surface mb-2 font-headline">{t.consentTitle}</h2>
         <p className="text-on-surface-variant text-xs sm:text-sm mb-3">
           {t.consentIntro(policyVersion)}
         </p>
-        <div className="bg-surface-container-low rounded-xl p-3 mb-3 text-xs sm:text-sm text-on-surface-variant space-y-1.5">
+        <div className="bg-surface-container-low rounded-lg p-3 mb-3 text-xs sm:text-sm text-on-surface-variant space-y-1.5">
           <p><strong>{t.consentCollectLabel}</strong>{t.consentCollectBody}</p>
           <p><strong>{t.consentTeachersLabel}</strong>{t.consentTeachersBody}</p>
           <p><strong>{t.consentUseLabel}</strong>{t.consentUseBody}</p>
@@ -74,7 +74,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
         <button
           onClick={onAccept}
           disabled={!consentChecked}
-          className={`w-full py-2.5 rounded-xl font-bold transition-all text-sm font-headline ${consentChecked ? 'signature-gradient text-white hover:shadow-lg' : 'bg-surface-container text-on-surface-variant/50 cursor-not-allowed'}`}
+          className={`w-full py-2.5 rounded-lg font-bold transition-all text-sm font-headline ${consentChecked ? 'signature-gradient text-white hover:shadow-lg' : 'bg-surface-container text-on-surface-variant/50 cursor-not-allowed'}`}
         >
           {t.consentAccept}
         </button>
@@ -179,7 +179,7 @@ export const ExitConfirmModal: React.FC<ExitConfirmModalProps> = ({
             onClick={onStay}
             type="button"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            className="w-full py-4 rounded-2xl font-black text-white bg-gradient-to-r from-orange-500 to-rose-500 shadow-lg active:scale-[0.98] transition-all text-base mb-3"
+            className="w-full py-4 rounded-xl font-black text-white bg-gradient-to-r from-orange-500 to-rose-500 shadow-lg active:scale-[0.98] transition-all text-base mb-3"
           >
             {t.keepPlaying}
           </button>
@@ -208,13 +208,13 @@ export const ExitConfirmModal: React.FC<ExitConfirmModalProps> = ({
         <div className="flex gap-3">
           <button
             onClick={onStay}
-            className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 border-2 border-stone-200 transition-colors"
+            className="flex-1 py-4 rounded-xl font-bold text-stone-500 hover:bg-stone-50 border-2 border-stone-200 transition-colors"
           >
             {t.exitStay}
           </button>
           <button
             onClick={onLeave}
-            className="flex-1 py-4 rounded-2xl font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-lg shadow-rose-100"
+            className="flex-1 py-4 rounded-xl font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-lg shadow-rose-100"
           >
             {t.exitLeave}
           </button>
@@ -266,14 +266,14 @@ export const ClassSwitchModal: React.FC<ClassSwitchModalProps> = ({
           <button
             onClick={onCancel}
             style={{ touchAction: 'manipulation' }}
-            className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 border-2 border-stone-200 transition-colors"
+            className="flex-1 py-4 rounded-xl font-bold text-stone-500 hover:bg-stone-50 border-2 border-stone-200 transition-colors"
           >
             {t.switchStayBtn(pendingClassSwitch.fromCode)}
           </button>
           <button
             onClick={onConfirm}
             style={{ touchAction: 'manipulation' }}
-            className="flex-1 py-4 rounded-2xl font-black text-white bg-gradient-to-br from-blue-500 to-indigo-600 hover:shadow-lg active:scale-95 transition-all"
+            className="flex-1 py-4 rounded-xl font-black text-white bg-gradient-to-br from-blue-500 to-indigo-600 hover:shadow-lg active:scale-95 transition-all"
           >
             {t.switchConfirmBtn(pendingClassSwitch.toCode)}
           </button>

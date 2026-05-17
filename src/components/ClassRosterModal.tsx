@@ -352,7 +352,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
           onClick={onClose}
         >
           <motion.div
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col"
             initial={{ scale: 0.95, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.95, y: 20 }}
@@ -362,7 +362,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
             {/* Header */}
             <div className="flex items-start justify-between p-6 border-b border-stone-200">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
                   <Users size={24} className="text-white" />
                 </div>
                 <div className="min-w-0">
@@ -399,13 +399,13 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   placeholder={t.addStudentPlaceholder}
                   maxLength={60}
                   disabled={adding}
-                  className="flex-1 px-4 py-2.5 rounded-xl border-2 border-stone-200 focus:border-indigo-500 outline-none text-sm font-medium disabled:opacity-60"
+                  className="flex-1 px-4 py-2.5 rounded-lg border-2 border-stone-200 focus:border-indigo-500 outline-none text-sm font-medium disabled:opacity-60"
                 />
                 <button
                   onClick={handleAdd}
                   type="button"
                   disabled={adding || !newName.trim()}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-bold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                  className="px-4 py-2.5 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-bold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 inline-flex items-center gap-2"
                   style={{ touchAction: "manipulation" }}
                 >
                   <Plus size={16} />
@@ -422,7 +422,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mx-6 mt-1 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm font-bold flex items-start gap-2"
+                className="mx-6 mt-1 px-4 py-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-sm font-bold flex items-start gap-2"
               >
                 <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
@@ -460,7 +460,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                       return (
                         <div
                           key={s.id}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 hover:border-stone-300 transition-colors"
+                          className="flex items-center gap-3 p-3 rounded-lg border border-stone-200 hover:border-stone-300 transition-colors"
                         >
                           <span className="text-2xl shrink-0">{s.avatar}</span>
                           <div className="flex-1 min-w-0">
@@ -567,7 +567,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
             </AnimatePresence>
 
             {/* Footer */}
-            <div className="p-4 border-t border-stone-200 bg-stone-50 rounded-b-3xl flex items-center justify-between gap-3 flex-wrap">
+            <div className="p-4 border-t border-stone-200 bg-stone-50 rounded-b-2xl flex items-center justify-between gap-3 flex-wrap">
               <p className="text-xs text-stone-500">
                 {t.studentCount(students.length)}
               </p>

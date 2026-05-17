@@ -143,7 +143,7 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-center bg-white rounded-xl border border-stone-200 p-4">
+      <div className="flex items-center justify-center bg-white rounded-lg border border-stone-200 p-4">
         <div
           className="w-44 h-44"
           aria-label={t.qrAria}
@@ -151,7 +151,7 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
         />
       </div>
 
-      <div className="rounded-xl bg-stone-50 border border-stone-200 px-3 py-3">
+      <div className="rounded-lg bg-stone-50 border border-stone-200 px-3 py-3">
         <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-1">
           {t.linkLabel}
         </p>
@@ -163,7 +163,7 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
         <button
           type="button"
           onClick={handleCopy}
-          className="py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center gap-2 transition-all"
+          className="py-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center gap-2 transition-all"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           {copied ? <Check size={16} /> : <Copy size={16} />}
@@ -172,7 +172,7 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
         <button
           type="button"
           onClick={handleWhatsApp}
-          className="py-2.5 rounded-xl bg-[#25D366] hover:opacity-90 text-white font-bold flex items-center justify-center gap-2 transition-all"
+          className="py-2.5 rounded-lg bg-[#25D366] hover:opacity-90 text-white font-bold flex items-center justify-center gap-2 transition-all"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           <MessageCircle size={16} />
@@ -184,7 +184,7 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
         <button
           type="button"
           onClick={handleDownloadPng}
-          className="py-2.5 rounded-xl bg-violet-100 hover:bg-violet-200 text-violet-700 font-bold flex items-center justify-center gap-2 transition-all"
+          className="py-2.5 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700 font-bold flex items-center justify-center gap-2 transition-all"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           <Download size={16} />
@@ -193,7 +193,7 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
         <button
           type="button"
           onClick={handleDownloadPdf}
-          className="py-2.5 rounded-xl bg-violet-100 hover:bg-violet-200 text-violet-700 font-bold flex items-center justify-center gap-2 transition-all"
+          className="py-2.5 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700 font-bold flex items-center justify-center gap-2 transition-all"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           <FileText size={16} />
@@ -205,7 +205,7 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
         <button
           type="button"
           onClick={handleNativeShare}
-          className="w-full py-2.5 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 font-bold flex items-center justify-center gap-2 transition-all border border-stone-200"
+          className="w-full py-2.5 rounded-lg bg-stone-50 hover:bg-stone-100 text-stone-700 font-bold flex items-center justify-center gap-2 transition-all border border-stone-200"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           <Share2 size={16} />

@@ -171,7 +171,7 @@ const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onTea
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden mb-8"
+            className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden mb-8"
           >
             <div className="p-6 space-y-4">
               {systems.map((system, index) => (
@@ -180,10 +180,10 @@ const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onTea
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 + index * 0.05 }}
-                  className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       system.status === "operational"
                         ? "bg-emerald-500/20 text-emerald-400"
                         : system.status === "degraded"
@@ -223,7 +223,7 @@ const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onTea
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.35 + index * 0.05 }}
-                  className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-4 text-center"
+                  className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-4 text-center"
                 >
                   <p className="text-white/60 text-xs mb-1">{period.label}</p>
                   <p className="text-2xl font-black text-emerald-400 mb-1">{period.value}</p>
@@ -238,7 +238,7 @@ const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onTea
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 p-6 mb-8"
+            className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 mb-8"
           >
             <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
               <Calendar size={20} className="text-violet-400" />
@@ -274,7 +274,7 @@ const StatusView: React.FC<StatusViewProps> = ({ onNavigate, onGetStarted, onTea
             <button
               onClick={onBack}
               type="button"
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-violet-200 font-bold transition-all border border-white/20 hover:border-white/30"
+              className="flex items-center gap-2 px-6 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-violet-200 font-bold transition-all border border-white/20 hover:border-white/30"
             >
               <ArrowLeft size={20} className={`transition-transform ${isRTL ? "rotate-180" : ""}`} />
               <span>{t.backButton}</span>

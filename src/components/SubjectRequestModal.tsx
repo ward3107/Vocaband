@@ -167,7 +167,7 @@ Grade Level: ${getGradeLabel()}`;
               className="pointer-events-auto relative w-full max-w-lg"
               dir={dir}
             >
-              <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-5 flex items-center justify-between">
                   <h2 className="text-2xl font-black text-white">
@@ -219,7 +219,7 @@ Grade Level: ${getGradeLabel()}`;
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           placeholder={language === "he" ? "השם שלך" : language === "ar" ? "اسمك" : "Your name"}
-                          className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
                         />
                       </div>
 
@@ -234,7 +234,7 @@ Grade Level: ${getGradeLabel()}`;
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           placeholder="your@email.com"
-                          className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
                           dir="ltr"
                         />
                       </div>
@@ -251,7 +251,7 @@ Grade Level: ${getGradeLabel()}`;
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           placeholder={language === "he" ? "050-000-0000" : language === "ar" ? "05xxxxxxxx" : "+972 50 000 0000"}
-                          className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
                           dir="ltr"
                         />
                       </div>
@@ -266,7 +266,7 @@ Grade Level: ${getGradeLabel()}`;
                           required
                           value={formData.schoolType}
                           onChange={(e) => setFormData({ ...formData, schoolType: e.target.value, schoolName: e.target.value === "private" ? "" : formData.schoolName })}
-                          className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors bg-white text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors bg-white text-sm"
                         >
                           <option value="">
                             {language === "he" ? "בחר סוג..." : language === "ar" ? "اختر النوع..." : "Select type..."}
@@ -295,7 +295,7 @@ Grade Level: ${getGradeLabel()}`;
                             value={formData.schoolName}
                             onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
                             placeholder={language === "he" ? "שם בית הספר" : language === "ar" ? "اسم المدرسة" : "School name"}
-                            className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
+                            className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
                           />
                         </motion.div>
                       )}
@@ -305,7 +305,7 @@ Grade Level: ${getGradeLabel()}`;
                         <label className="block text-sm font-bold text-slate-700 mb-2">
                           📚 {language === "he" ? "נושאים מבוקשים *" : language === "ar" ? "المواد المطلوبة *" : "Subjects *"}
                         </label>
-                        <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto border-2 border-slate-200 rounded-xl p-3">
+                        <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto border-2 border-slate-200 rounded-lg p-3">
                           {subjects.map((subject) => (
                             <label
                               key={subject.value}
@@ -340,7 +340,7 @@ Grade Level: ${getGradeLabel()}`;
                         <select
                           value={formData.grade}
                           onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors bg-white text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors bg-white text-sm"
                         >
                           <option value="">
                             {language === "he" ? "בחר רמה..." : language === "ar" ? "اختر المستوى..." : "Select grade..."}
@@ -358,7 +358,7 @@ Grade Level: ${getGradeLabel()}`;
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         type="submit"
-                        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
                       >
                         <Send size={18} />
                         {language === "he" ? "שלח בקשה" : language === "ar" ? "إرسال الطلب" : "Send Request"}

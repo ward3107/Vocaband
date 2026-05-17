@@ -539,8 +539,8 @@ export default function GradebookView({
             it gets a branded gradient treatment that catches the eye
             rather than reading as a neutral utility pill. */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
-          <label className="group relative inline-flex items-center gap-2.5 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white rounded-2xl pl-3 pr-2 py-2.5 shadow-lg shadow-indigo-500/20 ring-1 ring-white/10 hover:shadow-xl hover:-translate-y-0.5 transition-all">
-            <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+          <label className="group relative inline-flex items-center gap-2.5 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white rounded-xl pl-3 pr-2 py-2.5 shadow-lg shadow-indigo-500/20 ring-1 ring-white/10 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+            <div className="w-8 h-8 rounded-lg bg-white/15 backdrop-blur-sm flex items-center justify-center">
               <GraduationCap size={16} className="text-white" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
@@ -562,7 +562,7 @@ export default function GradebookView({
               </select>
             </div>
           </label>
-          <div className="flex items-center gap-1 bg-[var(--vb-surface)] rounded-xl px-1 py-1 shadow-sm border border-[var(--vb-border)]">
+          <div className="flex items-center gap-1 bg-[var(--vb-surface)] rounded-lg px-1 py-1 shadow-sm border border-[var(--vb-border)]">
             {[7, 14, 30].map(n => (
               <button
                 key={n}
@@ -584,7 +584,7 @@ export default function GradebookView({
                 onClick={handleExportCsv}
                 type="button"
                 style={{ backgroundColor: 'var(--vb-accent)', color: 'var(--vb-accent-text)' }}
-                className="px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-colors shadow-sm"
+                className="px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-colors shadow-sm"
               >
                 <Download size={14} />
                 {t.exportCsv}
@@ -625,7 +625,7 @@ export default function GradebookView({
 
         {/* ── 2. ACTIVITY CHART ──────────────────────────────────────────── */}
         {showActivity && (
-        <div className="bg-[var(--vb-surface)] rounded-2xl p-5 shadow-sm border border-[var(--vb-border)] mb-6">
+        <div className="bg-[var(--vb-surface)] rounded-xl p-5 shadow-sm border border-[var(--vb-border)] mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-base font-black text-[var(--vb-text-primary)] flex items-center gap-2">
@@ -669,7 +669,7 @@ export default function GradebookView({
 
         {/* ── 3. STUDENT LIST ────────────────────────────────────────────── */}
         {showStudents && (
-        <div className="bg-[var(--vb-surface)] rounded-2xl p-4 sm:p-5 shadow-sm border border-[var(--vb-border)] mb-6">
+        <div className="bg-[var(--vb-surface)] rounded-xl p-4 sm:p-5 shadow-sm border border-[var(--vb-border)] mb-6">
           <h3 className="text-base font-black text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
             <Users size={16} className="text-violet-500" />
             {t.studentsHeading}
@@ -694,7 +694,7 @@ export default function GradebookView({
                 return (
                   <div
                     key={r.key}
-                    className="rounded-xl border border-[var(--vb-border)] bg-white/40 hover:bg-[var(--vb-surface)] transition-colors overflow-hidden"
+                    className="rounded-lg border border-[var(--vb-border)] bg-white/40 hover:bg-[var(--vb-surface)] transition-colors overflow-hidden"
                   >
                     <div className="flex items-center gap-3 p-3 sm:p-4">
                       <button
@@ -717,7 +717,7 @@ export default function GradebookView({
                           </p>
                         </div>
                       </button>
-                      <div className={`hidden sm:flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br text-white font-black ${scoreColor(r.avgScore)}`}>
+                      <div className={`hidden sm:flex items-center justify-center w-14 h-14 rounded-lg bg-gradient-to-br text-white font-black ${scoreColor(r.avgScore)}`}>
                         {r.avgScore}
                       </div>
                       <button
@@ -816,7 +816,7 @@ export default function GradebookView({
 
         {/* ── 4. PER-ASSIGNMENT rollup ───────────────────────────────────── */}
         {showAssignments && assignmentRollups.length > 0 && (
-          <div className="bg-[var(--vb-surface)] rounded-2xl p-5 shadow-sm border border-[var(--vb-border)]">
+          <div className="bg-[var(--vb-surface)] rounded-xl p-5 shadow-sm border border-[var(--vb-border)]">
             <h3 className="text-base font-black text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
               <Trophy size={16} className="text-amber-500" />
               {t.assignmentsHeading}
@@ -842,7 +842,7 @@ export default function GradebookView({
                     key={a.assignmentId}
                     type="button"
                     onClick={() => setDrillAssignmentId(a.assignmentId)}
-                    className="w-full flex items-center gap-3 p-3 bg-white/40 hover:bg-[var(--vb-surface-alt)]/60 rounded-xl transition-colors"
+                    className="w-full flex items-center gap-3 p-3 bg-white/40 hover:bg-[var(--vb-surface-alt)]/60 rounded-lg transition-colors"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
                   >
                     {RowInner}
@@ -851,7 +851,7 @@ export default function GradebookView({
                 ) : (
                   <div
                     key={a.assignmentId}
-                    className="flex items-center gap-3 p-3 bg-white/40 rounded-xl"
+                    className="flex items-center gap-3 p-3 bg-white/40 rounded-lg"
                   >
                     {RowInner}
                   </div>
@@ -974,10 +974,10 @@ function PulseCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
-      className={`relative rounded-2xl p-4 sm:p-5 bg-gradient-to-br ${s.bg} text-white shadow-xl ${s.glow} ring-1 ${s.ring}/40`}
+      className={`relative rounded-xl p-4 sm:p-5 bg-gradient-to-br ${s.bg} text-white shadow-xl ${s.glow} ring-1 ${s.ring}/40`}
     >
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
           {icon}
         </div>
         <div className="flex-1 min-w-0">

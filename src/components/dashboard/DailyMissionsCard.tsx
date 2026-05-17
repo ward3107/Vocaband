@@ -117,15 +117,15 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
   if (isLoading && missions.length === 0) {
     return (
       <div
-        className="rounded-3xl border border-white/80 shadow-sm bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 sm:p-5 animate-pulse"
+        className="rounded-2xl border border-white/80 shadow-sm bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 sm:p-5 animate-pulse"
         style={{ minHeight: 180 }}
         dir={dir}
       >
         <div className="h-4 w-32 bg-white/60 rounded mb-3" />
         <div className="space-y-3">
-          <div className="h-12 bg-white/40 rounded-xl" />
-          <div className="h-12 bg-white/40 rounded-xl" />
-          <div className="h-12 bg-white/40 rounded-xl" />
+          <div className="h-12 bg-white/40 rounded-lg" />
+          <div className="h-12 bg-white/40 rounded-lg" />
+          <div className="h-12 bg-white/40 rounded-lg" />
         </div>
       </div>
     );
@@ -148,7 +148,7 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="rounded-3xl border border-white/80 shadow-sm bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 sm:p-5"
+      className="rounded-2xl border border-white/80 shadow-sm bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 sm:p-5"
       dir={dir}
     >
       <header className="flex items-center justify-between mb-3 sm:mb-4">
@@ -173,13 +173,13 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
           return (
             <div
               key={m.mission_type}
-              className={`bg-white rounded-2xl p-3 flex items-center gap-3 transition-all ${
+              className={`bg-white rounded-xl p-3 flex items-center gap-3 transition-all ${
                 m.completed ? 'opacity-90' : ''
               }`}
             >
               {/* Icon tile — checkmark replaces the icon when complete. */}
               <div
-                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${meta.iconBg} flex items-center justify-center shrink-0 shadow-sm`}
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-lg ${meta.iconBg} flex items-center justify-center shrink-0 shadow-sm`}
               >
                 {m.completed ? <CheckCircle2 size={20} className="text-white" /> : meta.icon}
               </div>

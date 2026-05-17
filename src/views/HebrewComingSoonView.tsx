@@ -71,7 +71,7 @@ export default function HebrewComingSoonView({
             type="button"
             onClick={onBack}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm shadow-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-indigo-500/30"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-black text-sm shadow-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-indigo-500/30"
           >
             חזרה ללוח הבקרה
             <ArrowRight size={16} />

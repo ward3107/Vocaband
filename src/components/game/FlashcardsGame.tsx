@@ -83,7 +83,7 @@ export default function FlashcardsGame({
         >
           {/* FRONT — English */}
           <div
-            className={`absolute inset-0 rounded-3xl shadow-2xl border-2 flex flex-col items-center justify-center p-6 sm:p-8 ${
+            className={`absolute inset-0 rounded-2xl shadow-2xl border-2 flex flex-col items-center justify-center p-6 sm:p-8 ${
               themed
                 ? `${themed.cardBg} ${themed.border}`
                 : "bg-stone-50 border-stone-200"
@@ -137,7 +137,7 @@ export default function FlashcardsGame({
 
           {/* BACK — target-language translation */}
           <div
-            className="absolute inset-0 rounded-3xl shadow-2xl border-2 bg-gradient-to-br from-teal-50 to-cyan-100 border-teal-200 flex flex-col items-center justify-center p-6 sm:p-8"
+            className="absolute inset-0 rounded-2xl shadow-2xl border-2 bg-gradient-to-br from-teal-50 to-cyan-100 border-teal-200 flex flex-col items-center justify-center p-6 sm:p-8"
             style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
           >
             <h2
@@ -164,7 +164,7 @@ export default function FlashcardsGame({
           disabled={isProcessingRef.current}
           type="button"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", minHeight: "88px" }}
-          className="rounded-3xl bg-gradient-to-br from-rose-400 to-rose-600 text-white font-black py-5 sm:py-6 shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
+          className="rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 text-white font-black py-5 sm:py-6 shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
         >
           <span className="text-2xl sm:text-3xl">🤔</span>
           <span className="text-base sm:text-lg">{t.stillLearning}</span>
@@ -175,7 +175,7 @@ export default function FlashcardsGame({
           disabled={isProcessingRef.current}
           type="button"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", minHeight: "88px" }}
-          className="rounded-3xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-black py-5 sm:py-6 shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
+          className="rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-black py-5 sm:py-6 shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
         >
           <span className="text-2xl sm:text-3xl">✓</span>
           <span className="text-base sm:text-lg">{t.gotIt}</span>

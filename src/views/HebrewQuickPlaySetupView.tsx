@@ -163,7 +163,7 @@ export default function HebrewQuickPlaySetupView({
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", duration: 0.6 }}
-            className="rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/10 bg-white/5 backdrop-blur-md text-center space-y-6"
+            className="rounded-2xl p-6 sm:p-8 shadow-2xl border border-white/10 bg-white/5 backdrop-blur-md text-center space-y-6"
           >
             <div className="w-20 h-20 mx-auto bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30">
               <Check size={40} className="text-white" strokeWidth={3} />
@@ -172,7 +172,7 @@ export default function HebrewQuickPlaySetupView({
               <h2 className="text-2xl font-black text-white mb-1">המשחק נוצר!</h2>
               <p className="text-white/60 font-bold text-sm">שתפו את הקוד עם הכיתה</p>
             </div>
-            <div className="rounded-2xl bg-white/10 border-2 border-blue-400/40 p-5">
+            <div className="rounded-xl bg-white/10 border-2 border-blue-400/40 p-5">
               <div className="text-white/50 text-xs font-black tracking-[0.2em] mb-2" dir="ltr">SESSION CODE</div>
               <div className="text-5xl sm:text-6xl font-black tracking-widest text-white" dir="ltr">
                 {sessionCode}
@@ -183,7 +183,7 @@ export default function HebrewQuickPlaySetupView({
                 type="button"
                 onClick={handleCopy}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-sm bg-white/10 hover:bg-white/15 border border-white/20 text-white"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-black text-sm bg-white/10 hover:bg-white/15 border border-white/20 text-white"
               >
                 {copied ? <Check size={16} /> : <Copy size={16} />}
                 <span>{copied ? "הועתק" : "העתק קישור"}</span>
@@ -192,7 +192,7 @@ export default function HebrewQuickPlaySetupView({
                 type="button"
                 onClick={handleWhatsApp}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-sm bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/30"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-black text-sm bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/30"
               >
                 <Share2 size={16} />
                 <span>שיתוף בוואטסאפ</span>
@@ -201,7 +201,7 @@ export default function HebrewQuickPlaySetupView({
                 type="button"
                 onClick={onOpenMonitor}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-sm bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white shadow-lg shadow-indigo-500/30"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-black text-sm bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white shadow-lg shadow-indigo-500/30"
               >
                 <ExternalLink size={16} />
                 <span>פתח מסך מנחה</span>
@@ -210,7 +210,7 @@ export default function HebrewQuickPlaySetupView({
                 type="button"
                 onClick={handlePlayAnother}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-sm bg-transparent hover:bg-white/5 text-white/70 hover:text-white"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-black text-sm bg-transparent hover:bg-white/5 text-white/70 hover:text-white"
               >
                 <QrCode size={16} />
                 <span>צרו משחק נוסף</span>
@@ -318,7 +318,7 @@ export default function HebrewQuickPlaySetupView({
                             type="button"
                             onClick={() => toggleLemma(l.id)}
                             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                            className={`relative rounded-2xl p-3 sm:p-4 text-right transition-all ${
+                            className={`relative rounded-xl p-3 sm:p-4 text-right transition-all ${
                               picked
                                 ? "bg-gradient-to-br from-emerald-500 to-teal-600 ring-2 ring-emerald-300"
                                 : "bg-white/5 hover:bg-white/10 border border-white/10"
@@ -377,7 +377,7 @@ export default function HebrewQuickPlaySetupView({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="לדוגמה: שורש פעלים — שיעור 3"
-              className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 font-bold text-base focus:outline-none focus:border-blue-400 mb-6"
+              className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/30 font-bold text-base focus:outline-none focus:border-blue-400 mb-6"
               dir="auto"
             />
 
@@ -390,7 +390,7 @@ export default function HebrewQuickPlaySetupView({
                     type="button"
                     onClick={() => toggleMode(mode.id)}
                     style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                    className={`relative overflow-hidden rounded-2xl p-5 text-start transition-all ${
+                    className={`relative overflow-hidden rounded-xl p-5 text-start transition-all ${
                       picked
                         ? `bg-gradient-to-br ${mode.gradient} ring-2 ring-white/40 shadow-lg`
                         : "bg-white/5 hover:bg-white/10 border border-white/10"
@@ -457,7 +457,7 @@ function FooterBar({
             type="button"
             onClick={onSecondary}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-sm hover:bg-white/15"
+            className="px-5 py-3 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-sm hover:bg-white/15"
           >
             {secondaryLabel}
           </button>
@@ -467,7 +467,7 @@ function FooterBar({
           onClick={onPrimary}
           disabled={primaryDisabled}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm shadow-lg transition ${
+          className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-black text-sm shadow-lg transition ${
             primaryDisabled
               ? "bg-white/10 text-white/40 cursor-not-allowed"
               : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-indigo-500/30"

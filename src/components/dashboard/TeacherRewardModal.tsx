@@ -94,7 +94,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
                   <Gift size={24} className="text-white" />
                 </div>
                 <div>
@@ -126,7 +126,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
                     key={xp}
                     onClick={() => setSelectedXp(xp)}
                     type="button"
-                    className={`py-4 px-2 rounded-2xl font-black text-lg transition-all border-2 ${
+                    className={`py-4 px-2 rounded-xl font-black text-lg transition-all border-2 ${
                       selectedXp === xp
                         ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/30'
                         : 'bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] border-[var(--vb-border)] hover:border-amber-300 hover:bg-amber-50'
@@ -153,7 +153,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
                 onChange={(e) => setReason(e.target.value)}
                 placeholder={t.shortMsgPlaceholder}
                 maxLength={120}
-                className="w-full px-4 py-3 rounded-xl border-2 border-[var(--vb-border)] focus:border-amber-400 focus:outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border-2 border-[var(--vb-border)] focus:border-amber-400 focus:outline-none transition-colors text-sm"
               />
               <p className="text-xs text-[var(--vb-text-muted)] mt-1">
                 Shows up in the student's dashboard next to the XP boost.
@@ -166,7 +166,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
                 onClick={onClose}
                 type="button"
                 disabled={giving}
-                className="flex-1 py-3.5 px-6 rounded-2xl font-bold text-[var(--vb-text-secondary)] bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] transition-colors disabled:opacity-50"
+                className="flex-1 py-3.5 px-6 rounded-xl font-bold text-[var(--vb-text-secondary)] bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] transition-colors disabled:opacity-50"
               >
                 {t.cancel}
               </button>
@@ -174,7 +174,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
                 onClick={handleGiveReward}
                 disabled={!hasSelection || giving}
                 type="button"
-                className={`flex-1 py-3.5 px-6 rounded-2xl font-bold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`flex-1 py-3.5 px-6 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                   giving ? 'bg-[var(--vb-text-muted)]' : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/30'
                 }`}
               >
