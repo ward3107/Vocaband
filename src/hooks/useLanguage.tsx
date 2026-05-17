@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, createContext, ReactNode } from 'react';
 
+// 'ru' is kept in the type so legacy translation maps + the
+// `word.russian` translation field continue to type-check, but it
+// is no longer offered as a UI language anywhere (removed from the
+// supported set, ALL_LANGUAGES, and the browser-detect path below).
 export type Language = 'en' | 'he' | 'ar' | 'ru';
 
 export const LANGUAGE_KEY = 'vocaband_legal_language';
@@ -42,13 +46,12 @@ const detectBrowserLanguage = (): Language => {
     const lc = raw.toLowerCase();
     if (lc === 'he' || lc.startsWith('he-') || lc === 'iw' || lc.startsWith('iw-')) return 'he';
     if (lc === 'ar' || lc.startsWith('ar-')) return 'ar';
-    if (lc === 'ru' || lc.startsWith('ru-')) return 'ru';
     if (lc === 'en' || lc.startsWith('en-')) return 'en';
   }
   return 'en';
 };
 
-const SUPPORTED_LANGS: readonly Language[] = ['en', 'he', 'ar', 'ru'] as const;
+const SUPPORTED_LANGS: readonly Language[] = ['en', 'he', 'ar'] as const;
 const isSupported = (v: unknown): v is Language =>
   typeof v === 'string' && (SUPPORTED_LANGS as readonly string[]).includes(v);
 
@@ -191,8 +194,11 @@ export const languageShortLabels: Record<Language, string> = {
   ru: 'РУ',
 };
 
-/** All supported languages - use this instead of hardcoding ['en', 'he', 'ar']. */
-export const ALL_LANGUAGES: Language[] = ['en', 'he', 'ar', 'ru'];
+/** All user-selectable UI languages — drives every language toggle in
+ *  the app.  Russian is intentionally excluded: pre-translated `ru`
+ *  strings remain in i18n maps and on the Word type for the
+ *  Russian-PDF feature, but the UI toggle no longer offers it. */
+export const ALL_LANGUAGES: Language[] = ['en', 'he', 'ar'];
 
 /** Language options for dropdowns/toggles with code, label, and flag. */
 export const languageOptions: { code: Language; label: string; flag: string }[] = ALL_LANGUAGES.map(

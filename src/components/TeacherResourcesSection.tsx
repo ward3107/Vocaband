@@ -23,10 +23,11 @@ import { Download, Eye } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherResourcesT } from "../locales/student/teacher-resources";
 
-// PDF download languages. Independent of the UI Language type so we can
-// offer Russian PDFs (for Russian-speaking parents in mixed classrooms)
-// without dragging Russian through the rest of the app's i18n surface.
-type PdfLanguage = "en" | "he" | "ar" | "ru";
+// PDF download languages.  Independent of the UI Language type so the
+// picker can evolve separately.  Russian PDFs still exist in
+// public/docs/ but are no longer advertised in the picker — Russian
+// has been removed sitewide alongside the UI toggle.
+type PdfLanguage = "en" | "he" | "ar";
 
 interface PdfLangSpec {
   code: PdfLanguage;
@@ -45,11 +46,10 @@ const PDF_LANGUAGES: PdfLangSpec[] = [
   { code: "en", name: "English", flag: "",   dir: "ltr" },
   { code: "he", name: "עברית",   flag: "🇮🇱", dir: "rtl" },
   { code: "ar", name: "العربية", flag: "🇸🇦", dir: "rtl" },
-  { code: "ru", name: "Русский", flag: "🇷🇺", dir: "ltr" },
 ];
 
 // Languages that actually have a generated PDF in public/docs/.
-const AVAILABLE_PDF_LANGUAGES: ReadonlySet<PdfLanguage> = new Set(["en", "he", "ar", "ru"]);
+const AVAILABLE_PDF_LANGUAGES: ReadonlySet<PdfLanguage> = new Set(["en", "he", "ar"]);
 
 interface TeacherResourcesSectionProps {
   /** "hero" — big section with eyebrow + heading + subtitle (landing page).
