@@ -103,6 +103,7 @@ import { useConsent } from "./hooks/useConsent";
 import { useOcrUpload } from "./hooks/useOcrUpload";
 import { useCookieConsent } from "./hooks/useCookieConsent";
 import { useAwardBadge } from "./hooks/useAwardBadge";
+import { useToasts } from "./hooks/useToasts";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -420,45 +421,9 @@ export default function App() {
   const [, setSelectedPos] = useState<string>("");
   const [, setSelectedRecProd] = useState<"Rec" | "Prod" | "">("");
 
-  // --- TOAST NOTIFICATIONS STATE ---
-  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error' | 'info', action?: { label: string, onClick: () => void }}[]>([]);
-  // Stable across renders so consumers can put `showToast` in
-  // useEffect / useCallback dep arrays without causing churn.  A
-  // 2026-05-04 audit found GradebookView, RewardInboxCard, and
-  // PendingApprovalScreen all used `showToast` as a dep and got
-  // re-fired on every App render — that was a major contributor
-  // to the request-storm incident.  setToasts (from useState) is
-  // already stable, so [] is the correct dep list here.
-  const showToast = useCallback((
-    message: string,
-    type: 'success' | 'error' | 'info' = 'info',
-    options?: { action?: { label: string; onClick: () => void } },
-  ) => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type, action: options?.action }]);
-    // Errors and toasts with an action stay longer so the user has time
-    // to read + click before auto-dismissal.
-    const duration = (type === 'error' || options?.action) ? 8000 : 3000;
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, duration);
-  }, []);
-
-  // Paywall toast — used when an AI / OCR endpoint returns 403
-  // ai_requires_pro.  Adds an "Upgrade" button that opens the same
-  // mailto the dashboard's trial-expired banner uses.  Until Stripe
-  // payment links are wired (see docs/PRICING-MODEL.md Status), email
-  // is the upgrade channel.
-  const showPaywallToast = useCallback((message: string) => {
-    showToast(message, 'error', {
-      action: {
-        label: 'Upgrade',
-        onClick: () => {
-          window.location.href = 'mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro';
-        },
-      },
-    });
-  }, [showToast]);
+  // Toast notifications — state + showToast (stable identity for dep
+  // arrays) + paywall-toast helper. See useToasts.
+  const { toasts, setToasts, showToast, showPaywallToast } = useToasts();
 
   // --- CONFIRMATION DIALOG STATE ---
   const [confirmDialog, setConfirmDialog] = useState<{
