@@ -84,6 +84,7 @@ import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
 import { useQuickPlayGuestState } from "./hooks/useQuickPlayGuestState";
 import { useQuickPlaySessionState } from "./hooks/useQuickPlaySessionState";
 import { useTeacherUiModalsState } from "./hooks/useTeacherUiModalsState";
+import { useAuthFlowRefs } from "./hooks/useAuthFlowRefs";
 import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
 import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -117,13 +118,9 @@ export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [studentDataLoading] = useState(false);
-  // Detect Quick Play session from URL synchronously so it takes priority over auth redirects
+  // Detect Quick Play session from URL synchronously so it takes
+  // priority over auth redirects.
   const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
-  // Detect "share" param — set by the social-share buttons in
-  // FloatingButtons so shared links always render the landing page even
-  // for logged-in visitors (whose auth would otherwise redirect them to
-  // their dashboard and make the preview useless).
-  const fromShareLinkRef = useRef(new URLSearchParams(window.location.search).get('share') === '1');
 
   const [view, setView] = useState<View>(resolveInitialView);
   const [activeVoca, setActiveVoca] = useActiveVocaState();
@@ -169,12 +166,8 @@ export default function App() {
   // consumers don't need a null-gate.  See useVocabularyLazy.
   const { ALL_WORDS, SET_1_WORDS, SET_2_WORDS, TOPIC_PACKS } =
     useVocabularyLazyWithDefaults(!isPublicView(view));
-  // Track whether handleStudentLogin is in progress so onAuthStateChange
-  // doesn't clobber loading/view mid-login (signInAnonymously fires the
-  // listener before handleStudentLogin finishes its DB queries).
-  const manualLoginInProgress = useRef(false);
-  const restoreInProgress = useRef(false);
-  const restoreRetried = useRef(false);
+  // Auth-restore + manual-login control flow refs.  See useAuthFlowRefs.
+  const { manualLoginInProgress, restoreInProgress, restoreRetried, fromShareLinkRef } = useAuthFlowRefs();
   const [, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string, displayName: string, classCode: string, className: string, joinedAt: string }>>([]);
