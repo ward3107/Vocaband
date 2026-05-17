@@ -71,7 +71,6 @@ import { useRetention } from "./hooks/useRetention";
 import { useSavedTasks } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
-import PendingApprovalScreen from "./components/PendingApprovalScreen";
 import { shuffle, chunkArray, addUnique, removeKey, secureRandomInt } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import { isAnswerCorrect } from './utils/answerMatch';
@@ -90,8 +89,6 @@ import { LazyWrapper} from "./components/SuspenseWrapper";
 
 // Lazy-loaded views (code-split into separate chunks)
 const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
-const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
-const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
 import { readQpResumeScore } from "./utils/qpResumeHint";
@@ -119,6 +116,7 @@ import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
 import { StudentDashboardSection } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
 import { renderGameRoute } from "./views/GameRoutes";
+import { renderStudentAuthRoute } from "./views/StudentAuthRoutes";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -1435,44 +1433,27 @@ export default function App() {
   });
   if (publicView) return publicView;
 
-  // ── Student Pending Approval Screen ────────────────────────────────────────
-  if (view === "student-pending-approval" && pendingApprovalInfo) {
-    return (
-      <PendingApprovalScreen
-        pendingApprovalInfo={pendingApprovalInfo}
-        setPendingApprovalInfo={setPendingApprovalInfo}
-        handleLoginAsStudent={handleLoginAsStudent}
-        setView={setView}
-        showToast={showToast}
-      />
-    );
-  }
+  // Student auth / Quick Play join screens (pending-approval, account
+  // login, quick-play-student) bundled into renderStudentAuthRoute.
+  const studentAuthRoute = renderStudentAuthRoute({
+    view, user, setView, setUser, showToast, cookieBannerOverlay,
+    pendingApprovalInfo, setPendingApprovalInfo, handleLoginAsStudent,
+    error, setError,
+    studentLoginClassCode, setStudentLoginClassCode,
+    isOAuthCallback, setIsOAuthCallback,
+    showOAuthClassCode, setShowOAuthClassCode,
+    oauthEmail, setOauthEmail, oauthAuthUid, setOauthAuthUid,
+    handleOAuthTeacherDetected, handleOAuthStudentDetected, handleOAuthNewUser,
+    quickPlayActiveSession, setQuickPlayActiveSession,
+    quickPlayStudentName, setQuickPlayStudentName,
+    quickPlayAvatar, setQuickPlayAvatar,
+    setAssignmentWords, setActiveAssignment, setCurrentIndex,
+    setScore, setFeedback, setIsFinished, setMistakes, setShowModeSelection,
+    cleanupSessionData,
+  });
+  if (studentAuthRoute) return studentAuthRoute;
 
-  if (view === "student-account-login") {
-    return (
-      <LazyWrapper loadingMessage="Loading login...">
-        <StudentAccountLoginView
-          setView={setView}
-          error={error}
-          setError={setError}
-          studentLoginClassCode={studentLoginClassCode}
-          setStudentLoginClassCode={setStudentLoginClassCode}
-          isOAuthCallback={isOAuthCallback}
-          setIsOAuthCallback={setIsOAuthCallback}
-          showOAuthClassCode={showOAuthClassCode}
-          setShowOAuthClassCode={setShowOAuthClassCode}
-          oauthEmail={oauthEmail}
-          setOauthEmail={setOauthEmail}
-          oauthAuthUid={oauthAuthUid}
-          setOauthAuthUid={setOauthAuthUid}
-          handleOAuthTeacherDetected={handleOAuthTeacherDetected}
-          handleOAuthStudentDetected={handleOAuthStudentDetected}
-          handleOAuthNewUser={handleOAuthNewUser}
-          cookieBannerOverlay={cookieBannerOverlay}
-        />
-      </LazyWrapper>
-    );
-  }
+  // ── Student Pending Approval Screen ────────────────────────────────────────
 
   // Shared "exit to public landing" path used by both the Kicked and
   // Quick Play exit screens (Kicked + SessionEnded) + shared
@@ -1486,34 +1467,6 @@ export default function App() {
   });
   if (qpExit) return qpExit;
 
-  if (view === "quick-play-student") {
-    return (
-      <LazyWrapper loadingMessage="Loading quick play...">
-        <QuickPlayStudentView
-          quickPlayActiveSession={quickPlayActiveSession}
-          setQuickPlayActiveSession={setQuickPlayActiveSession}
-          quickPlayStudentName={quickPlayStudentName}
-          setQuickPlayStudentName={setQuickPlayStudentName}
-          quickPlayAvatar={quickPlayAvatar}
-          setQuickPlayAvatar={setQuickPlayAvatar}
-          setView={setView}
-          setUser={setUser}
-          setAssignmentWords={setAssignmentWords}
-          setActiveAssignment={setActiveAssignment}
-          setCurrentIndex={setCurrentIndex}
-          setScore={setScore}
-          setFeedback={setFeedback}
-          setIsFinished={setIsFinished}
-          setMistakes={setMistakes}
-          setShowModeSelection={setShowModeSelection}
-          createGuestUser={createGuestUser}
-          cleanupSessionData={cleanupSessionData}
-          showToast={showToast}
-          userIsActiveGuest={!!user?.isGuest}
-        />
-      </LazyWrapper>
-    );
-  }
 
 
   // Re-consent, exit-confirm, class-not-found, class-switch overlays —
