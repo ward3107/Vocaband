@@ -83,9 +83,7 @@ const SvgArrowLeftRight: React.FC<{ size?: number; className?: string; ariaHidde
 // was a dead import.
 import { supabase, isSupabaseConfigured, OperationType, handleDbError, hasTeacherAccess, performUserLogout, ASSIGNMENT_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { isPro } from "./core/plan";
-import { enqueueQuickPlaySave, enqueueAssignmentSave, installQuickPlayQueueFlusher, subscribeQueueDepth } from "./core/saveQueue";
 import { OfflineIndicator } from "./components/OfflineIndicator";
-import { setSentryUser, clearSentryUser } from "./core/sentry";
 import { useAudio } from "./hooks/useAudio";
 import { useLanguage } from "./hooks/useLanguage";
 import { appToastsT } from "./locales/app-toasts";
@@ -177,6 +175,7 @@ import { useVocaRouting } from "./hooks/useVocaRouting";
 import { useApplyTeacherTheme } from "./hooks/useApplyTeacherTheme";
 import { useAuthRestore } from "./hooks/useAuthRestore";
 import { useDeepLinkConsumers } from "./hooks/useDeepLinkConsumers";
+import { useAppMiscEffects } from "./hooks/useAppMiscEffects";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
@@ -920,29 +919,11 @@ export default function App() {
   const isProcessingRef = useRef<boolean>(false); // Guard against rapid clicks during feedback
   const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
 
-  useEffect(() => { userRef.current = user; }, [user]);
-
-  // Pipe the signed-in user to Sentry so any error after this point is
-  // tagged with who hit it ("this crash affected 14 students in class X").
-  // Cleared on logout so a subsequent anonymous error isn't attributed
-  // to the previous session.
-  useEffect(() => {
-    if (user?.uid) {
-      setSentryUser({ uid: user.uid, role: user.role ?? undefined, email: user.email ?? undefined });
-    } else {
-      clearSentryUser();
-    }
-  }, [user?.uid, user?.role, user?.email]);
-
-  // Cleanup feedback timeout on unmount. Save-queue unmount-flush is
-  // owned by useSaveQueue itself.
-  useEffect(() => {
-    return () => {
-      if (feedbackTimeoutRef.current) {
-        clearTimeout(feedbackTimeoutRef.current);
-      }
-    };
-  }, []);
+  // Misc side-effects bundled into one hook — see useAppMiscEffects
+  // for the list (userRef sync, Sentry user pipe, feedback timeout
+  // cleanup, legacy view redirect, round-finish audio, welcome popup
+  // gate, view-change dispatch, lastUserRoleRef sync, queue-depth
+  // toasts, QP audio preload, isFlipped reset).
 
   // Quick Play v2 socket — only active when the flag is on AND a
   // session is live. When a student's score changes during gameplay
@@ -1021,46 +1002,6 @@ export default function App() {
     }, 0);
   };
 
-  // Redirect legacy "students" view to gradebook
-  useEffect(() => {
-    if (view === "students") {
-      setView("gradebook");
-      fetchScores();
-    }
-  }, [view]);
-
-  // Play a random pre-recorded female-voice praise phrase when a mode
-  // finishes. Previous behaviour passed a template string to speak(),
-  // which routed through window.speechSynthesis — and the browser's
-  // default voice on desktop is usually male, which didn't match the
-  // female voice used for the curated /motivational/*.mp3 library.
-  // playMotivational picks one of ~74 phrases from that library.
-  useEffect(() => {
-    if (isFinished && user?.displayName && view === "game") {
-      setTimeout(() => playMotivational(), 500);
-
-      // Force emit final score to server (bypass throttle)
-      if (socket && user?.classCode) {
-        setTimeout(() => {
-          socket.emit(SOCKET_EVENTS.UPDATE_SCORE, { classCode: user.classCode, uid: user.uid, score });
-        }, 100);
-      }
-    }
-  }, [isFinished]);
-
-  // Reset welcome popup when entering assignment creation view
-  // Only show if user hasn't seen it before (checked via localStorage)
-  useEffect(() => {
-    if (view === "create-assignment") {
-      try {
-        if (!localStorage.getItem('vocaband_welcome_seen')) {
-          setShowAssignmentWelcome(true);
-        }
-      } catch {
-        setShowAssignmentWelcome(true);
-      }
-    }
-  }, [view]);
 
   // Emits JOIN_CHALLENGE / OBSERVE_CHALLENGE and listens for
   // challenge_error on the Live Challenge socket.  Pairs with
@@ -1194,21 +1135,6 @@ export default function App() {
   });
 
 
-  // Broadcast the current view so the global AccessibilityWidget knows
-  // whether to render its floating trigger. Per the product owner the
-  // trigger should only appear on public/landing pages, not while a
-  // student is mid-game or a teacher is in their dashboard.
-  useEffect(() => {
-    currentViewRef.current = view;
-    window.dispatchEvent(new CustomEvent('vocaband-view-change', { detail: view }));
-  }, [view]);
-
-  // Keep lastUserRoleRef in sync with the live user state so the auth
-  // listener (which closes over a stale `user`) can still tell whether the
-  // signed-out user was a student vs. a teacher.
-  useEffect(() => {
-    if (user?.role) lastUserRoleRef.current = user.role;
-  }, [user]);
 
 
   // ─── GLOBAL TEACHER DASHBOARD THEME ────────────────────────────────────
@@ -1233,6 +1159,7 @@ export default function App() {
     view, setView, user, loading,
     activeAssignment, quickPlayActiveSession,
   });
+
 
 
   // Warn before leaving while a score save is in flight.  Extracted
@@ -1272,36 +1199,6 @@ export default function App() {
   // the OfflineIndicator pill mounted below.  See R2 in
   // docs/SCHOOL-PERFORMANCE-PLAN.md for context.
   const queueDepthRef = useRef<number>(0);
-  useEffect(() => {
-    const unsubscribe = subscribeQueueDepth((depth) => {
-      const prev = queueDepthRef.current;
-      queueDepthRef.current = depth;
-      if (depth > prev && typeof navigator !== 'undefined' && navigator.onLine === false) {
-        showToast(appToasts.savedLocally, 'info');
-      } else if (depth === 0 && prev > 0) {
-        showToast(appToasts.allSynced, 'success');
-      }
-    });
-    return unsubscribe;
-  }, [showToast, appToasts]);
-
-
-  // Pre-fetch all word audio at Quick Play join time.  The TTS MP3s
-  // are stored on Supabase Storage; downloading them up-front means
-  // gameplay never has to wait on the network mid-question — even on
-  // 3G or a weak classroom Wi-Fi the audio clip is already local.
-  // This is what lets the student experience feel 'Kahoot-smooth'
-  // regardless of connectivity: gameplay is a local-only loop and
-  // only the score save has to talk to the server (and that's
-  // queued — see above).  Fire-and-forget; preload failures don't
-  // block the game, the live TTS fallback handles those.
-  useEffect(() => {
-    if (!user?.isGuest) return;
-    if (!quickPlayActiveSession?.words?.length) return;
-    const ids = quickPlayActiveSession.words.map(w => w.id).filter(id => id > 0);
-    if (ids.length === 0) return;
-    preloadMany(ids);
-  }, [user?.isGuest, quickPlayActiveSession?.id, preloadMany]);
 
   // Background auto-refresh on dashboards: student assignments (30 s),
   // teacher pending-student approvals (10 s), teacher class scores
@@ -1361,6 +1258,21 @@ export default function App() {
   const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : SET_2_WORDS;
   const currentWord = gameWords[currentIndex];
 
+  // Bundle of small side-effects (userRef sync, Sentry pipe, feedback
+  // cleanup, legacy view redirect, round-finish audio, welcome popup
+  // gate, view-change dispatch, lastUserRoleRef sync, queue-depth
+  // toasts, QP audio preload, isFlipped reset).
+  useAppMiscEffects({
+    user, view, userRef, currentViewRef, lastUserRoleRef,
+    feedbackTimeoutRef,
+    isFinished, score, socket, playMotivational,
+    setShowAssignmentWelcome,
+    setView, fetchScores,
+    showToast, appToasts, queueDepthRef,
+    quickPlayActiveSession, preloadMany,
+    currentWord, currentIndex, setIsFlipped,
+  });
+
   // Per-round derived data: 4-way options, T/F option, scrambled letters.
   const { options, tfOption, scrambledWord } = useGameRoundOptions({
     currentWord, gameWords, currentIndex,
@@ -1375,9 +1287,6 @@ export default function App() {
     gameWords, isProcessingRef,
   });
 
-  useEffect(() => {
-    if (currentWord) setIsFlipped(false);
-  }, [currentIndex, currentWord]);
 
 
   // Voice selection + caching + voiceschanged listener are bundled in
