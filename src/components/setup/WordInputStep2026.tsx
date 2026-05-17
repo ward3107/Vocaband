@@ -711,8 +711,8 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
           {/* Hebrew translation */}
           {(translationLang === 'both' || translationLang === 'hebrew') && (
             <div>
-              <label htmlFor="custom-word-hebrew" className="block text-sm font-semibold text-[var(--vb-text-secondary)] mb-1 flex items-center gap-2">
-                <span>🇮🇱</span> Hebrew {translationLang === 'hebrew' && <span className="text-xs text-emerald-600">(Required)</span>}
+              <label htmlFor="custom-word-hebrew" className="block text-sm font-semibold text-[var(--vb-text-secondary)] mb-1">
+                Hebrew {translationLang === 'hebrew' && <span className="text-xs text-emerald-600">(Required)</span>}
               </label>
               <input
                 type="text"
@@ -731,8 +731,8 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
           {/* Arabic translation */}
           {(translationLang === 'both' || translationLang === 'arabic') && (
             <div>
-              <label htmlFor="custom-word-arabic" className="block text-sm font-semibold text-[var(--vb-text-secondary)] mb-1 flex items-center gap-2">
-                <span>🇸🇦</span> Arabic {translationLang === 'arabic' && <span className="text-xs text-emerald-600">(Required)</span>}
+              <label htmlFor="custom-word-arabic" className="block text-sm font-semibold text-[var(--vb-text-secondary)] mb-1">
+                Arabic {translationLang === 'arabic' && <span className="text-xs text-emerald-600">(Required)</span>}
               </label>
               <input
                 type="text"
@@ -2216,7 +2216,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
                 }`}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
               >
-                🇮🇱+🇸🇦 {TEXT.bothLang}
+                {TEXT.bothLang}
               </button>
               <button
                 onClick={() => setTranslationLang('hebrew')}
@@ -2228,7 +2228,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
                 }`}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
               >
-                🇮🇱 {TEXT.hebrewOnly}
+                {TEXT.hebrewOnly}
               </button>
               <button
                 onClick={() => setTranslationLang('arabic')}
@@ -2240,7 +2240,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
                 }`}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
               >
-                🇸🇦 {TEXT.arabicOnly}
+                {TEXT.arabicOnly}
               </button>
             </div>
           </motion.div>
