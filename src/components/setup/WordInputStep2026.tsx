@@ -48,6 +48,28 @@ function useStepTexts() {
   return wordInputStepT[language];
 }
 
+/**
+ * `(hover: hover) and (pointer: fine)` is true when the device has a
+ * precise pointer (mouse/trackpad) — i.e. a real desktop or a tablet
+ * with a stylus/mouse attached. We use it to skip the as-you-type
+ * autocomplete strip on phones/tablets, where the OS keyboard's
+ * native predictive bar already covers the same UX and our chip row
+ * would just steal space above the keyboard.
+ */
+function useIsDesktopPointer() {
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isDesktop;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface WordWithStatus {
@@ -124,6 +146,7 @@ interface HeroPasteAreaProps {
 
 const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, allWords }) => {
   const TEXT = useStepTexts();
+  const isDesktop = useIsDesktopPointer();
   const [text, setText] = useState('');
   const [suggestions, setSuggestions] = useState<SpellSuggestion[]>([]);
   const [ignored, setIgnored] = useState<Set<string>>(new Set());
@@ -185,12 +208,12 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
   // curriculum index is bucketed by first-char + length, so each
   // suggestion call scans only ~250–500 words instead of all 6.5k.
   const currentToken = useMemo(
-    () => (isFocused ? getCurrentToken(text, caretPos) : { token: '', start: 0, end: 0 }),
-    [text, caretPos, isFocused]
+    () => (isFocused && isDesktop ? getCurrentToken(text, caretPos) : { token: '', start: 0, end: 0 }),
+    [text, caretPos, isFocused, isDesktop]
   );
   const autocompleteMatches: AutocompleteMatch[] = useMemo(
-    () => getAutocompleteMatches(currentToken.token, allWords, { max: 5 }),
-    [currentToken.token, allWords]
+    () => (isDesktop ? getAutocompleteMatches(currentToken.token, allWords, { max: 5 }) : []),
+    [currentToken.token, allWords, isDesktop]
   );
 
   const acceptAutocomplete = useCallback(
@@ -266,8 +289,14 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
             }}
             placeholder={TEXT.pastePlaceholder}
             dir="ltr"
-            spellCheck={false}
-            autoCorrect="off"
+            // On desktop our custom strip handles suggestions, so silence
+            // the browser's spell-check/autocorrect to avoid double-noise.
+            // On mobile/tablet we step out of the OS keyboard's way —
+            // its native predictive bar (QuickType / Gboard) is already
+            // sitting right above the textarea and works better than any
+            // popover we could float there.
+            spellCheck={!isDesktop}
+            autoCorrect={isDesktop ? 'off' : 'on'}
             autoCapitalize="off"
             className="w-full min-h-32 p-4 border border-[var(--vb-border)] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 text-[var(--vb-text-secondary)] placeholder:text-[var(--vb-text-muted)] leading-relaxed"
             style={{ textAlign: 'left' }}
