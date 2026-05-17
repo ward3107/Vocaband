@@ -103,10 +103,7 @@ import { buildCleanupSessionData, buildCleanupQuickPlayGuest } from "./handlers/
 // no Supabase anon auth, no progress-table writes during a session.
 const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
 
-// --- TYPES ---
-// AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
-
-// secureRandomInt moved to `src/utils.ts` for reuse.
+type ConfirmDialog = { show: boolean; message: string; onConfirm: () => void };
 
 export default function App() {
   // Initialize game debugger
@@ -322,12 +319,9 @@ export default function App() {
   // arrays) + paywall-toast helper. See useToasts.
   const { toasts, setToasts, showToast, showPaywallToast } = useToasts();
 
-  // --- CONFIRMATION DIALOG STATE ---
-  const [confirmDialog, setConfirmDialog] = useState<{
-    show: boolean,
-    message: string,
-    onConfirm: () => void
-  }>({ show: false, message: '', onConfirm: () => {} });
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
+    show: false, message: '', onConfirm: () => {},
+  });
 
   // Three "first-time" flags driving the onboarding overlays.
   const {
