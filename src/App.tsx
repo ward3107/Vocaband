@@ -94,7 +94,6 @@ const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
 const GlobalLeaderboardView = lazy(() => import("./views/GlobalLeaderboardView"));
 const TeacherApprovalsView = lazy(() => import("./views/TeacherApprovalsView"));
 const WorksheetAttemptsView = lazy(() => import("./views/WorksheetAttemptsView"));
-const CreateAssignmentView = lazy(() => import("./views/CreateAssignmentView"));
 // AnalyticsView + GradebookView are no longer routed directly here —
 // they're now lazy-loaded inside ClassroomView and rendered as tabs.
 const ClassroomView = lazy(() => import("./views/ClassroomView"));
@@ -139,6 +138,7 @@ import { renderHebrewRoute } from "./views/HebrewRoutes";
 import { renderQuickPlayExitScreens } from "./views/QuickPlayExitScreens";
 import { useAppOverlays } from "./hooks/useAppOverlays";
 import { TeacherDashboardSection } from "./views/TeacherDashboardSection";
+import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -1706,99 +1706,30 @@ export default function App() {
   }
 
   if (view === "create-assignment" && selectedClass) {
-    return (
-      <LazyWrapper loadingMessage="Loading assignment wizard...">
-      <CreateAssignmentView
-        selectedClass={selectedClass}
-        allWords={ALL_WORDS}
-        set1Words={SET_1_WORDS}
-        set2Words={SET_2_WORDS}
-        customWords={customWords}
-        onSaveTemplate={savedTasks.save}
-        assignmentTitle={assignmentTitle}
-        setCustomWords={setCustomWords}
-        setAssignmentTitle={setAssignmentTitle}
-        assignmentDeadline={assignmentDeadline}
-        setAssignmentDeadline={setAssignmentDeadline}
-        assignmentModes={assignmentModes}
-        setAssignmentModes={setAssignmentModes}
-        selectedWords={selectedWords}
-        setSelectedWords={setSelectedWords}
-        selectedLevel={selectedLevel}
-        setSelectedLevel={setSelectedLevel}
-        tagInput={tagInput}
-        setTagInput={setTagInput}
-        pastedText={pastedText}
-        setPastedText={setPastedText}
-        showPasteDialog={showPasteDialog}
-        setShowPasteDialog={setShowPasteDialog}
-        pasteMatchedCount={pasteMatchedCount}
-        pasteUnmatched={pasteUnmatched}
-        handlePasteSubmit={handlePasteSubmit}
-        handleAddUnmatchedAsCustom={handleAddUnmatchedAsCustom}
-        handleSkipUnmatched={handleSkipUnmatched}
-        handleTagInputKeyDown={handleTagInputKeyDown}
-        handleDocxUpload={handleDocxUpload}
-        handleOcrUpload={handleOcrUpload}
-        handleSaveAssignment={handleSaveAssignment}
-        assignmentSentences={assignmentSentences}
-        setAssignmentSentences={setAssignmentSentences}
-        sentenceDifficulty={sentenceDifficulty}
-        setSentenceDifficulty={setSentenceDifficulty}
-        isOcrProcessing={isOcrProcessing}
-        ocrProgress={ocrProgress}
-        ocrStatus={ocrStatus}
-        showTopicPacks={showTopicPacks}
-        setShowTopicPacks={setShowTopicPacks}
-        showAssignmentWelcome={showAssignmentWelcome}
-        setShowAssignmentWelcome={setShowAssignmentWelcome}
-        TOPIC_PACKS={TOPIC_PACKS}
-        onBack={() => {
-          setEditingAssignment(null);
-          setActivityNavOrigin(null);
-          setView("teacher-dashboard");
-        }}
-        // The setup wizard's AssignmentData type narrows
-        // sentenceDifficulty to `1|2|3|4`; the supabase mapper returns
-        // it as `number` (DB is INT, no DB-level CHECK constraint).
-        // The runtime value is always 1-4 by row-spec, so the cast is
-        // correct at the value level — TS just can't prove it from a
-        // `number` parameter type.  Cast both the value and the
-        // setter to keep the wizard's tighter typing intact.
-        editingAssignment={editingAssignment as unknown as import('./components/setup/types').AssignmentData | null}
-        setEditingAssignment={setEditingAssignment as unknown as React.Dispatch<React.SetStateAction<import('./components/setup/types').AssignmentData | null>>}
-        showToast={showToast}
-        onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
-        isProUser={isPro(user)}
-        onGenerateLesson={handleGenerateLesson}
-        // Activity-type tabs at the top of the wizard.  When the
-        // teacher picks a non-Assignment tab, close the wizard and
-        // open the chosen tool's view with this class preselected.
-        // The existing class-aware entry points
-        // (setClassShowAssignment / setWorksheetAssignment) take an
-        // assignment-shaped object — for the empty-state launch we
-        // pass null so the tool opens to its own picker UI but with
-        // the class name pre-filled via selectedClass.
-        onSwitchActivity={(type) => {
-          // Remember that this tab view was opened from the wizard so
-          // its back/exit handler returns here instead of jumping past
-          // to the teacher dashboard.
-          setActivityNavOrigin('create-assignment');
-          if (type === 'class-show') {
-            setClassShowAssignment(null);
-            setView('class-show');
-          } else if (type === 'worksheet') {
-            setWorksheetAssignment(null);
-            setView('worksheet');
-          } else if (type === 'hot-seat') {
-            setView('hot-seat');
-          } else if (type === 'vocabagrut') {
-            setView('vocabagrut');
-          }
-        }}
-      />
-      </LazyWrapper>
-    );
+    return CreateAssignmentSection({
+      user, selectedClass,
+      allWords: ALL_WORDS, set1Words: SET_1_WORDS, set2Words: SET_2_WORDS, topicPacks: TOPIC_PACKS,
+      customWords, setCustomWords,
+      assignmentTitle, setAssignmentTitle,
+      assignmentDeadline, setAssignmentDeadline,
+      assignmentModes, setAssignmentModes,
+      selectedWords, setSelectedWords,
+      selectedLevel, setSelectedLevel,
+      tagInput, setTagInput,
+      pastedText, setPastedText,
+      showPasteDialog, setShowPasteDialog,
+      pasteMatchedCount, pasteUnmatched,
+      handlePasteSubmit, handleAddUnmatchedAsCustom, handleSkipUnmatched,
+      handleTagInputKeyDown, handleDocxUpload, handleOcrUpload, handleSaveAssignment,
+      assignmentSentences, setAssignmentSentences,
+      sentenceDifficulty, setSentenceDifficulty,
+      isOcrProcessing, ocrProgress, ocrStatus,
+      showTopicPacks, setShowTopicPacks,
+      showAssignmentWelcome, setShowAssignmentWelcome,
+      editingAssignment, setEditingAssignment,
+      setActivityNavOrigin, setClassShowAssignment, setWorksheetAssignment,
+      setView, onSaveTemplate: savedTasks.save, showToast, showPaywallToast, speakWord,
+    });
   }
 
 
