@@ -108,6 +108,7 @@ import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
+import { isPublicView, shouldPreserveView } from "./utils/authViews";
 import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
 import { deleteAssignmentWithUndo, deleteAssignmentImmediate } from "./handlers/deleteAssignmentWithUndo";
@@ -116,32 +117,6 @@ import { deleteAssignmentWithUndo, deleteAssignmentImmediate } from "./handlers/
 // on, Quick Play runs entirely over the /quick-play socket namespace —
 // no Supabase anon auth, no progress-table writes during a session.
 const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
-
-// ─── View constants for shouldPreserveView (O(1) lookup with Sets) ────────
-// Defined at module level to avoid re-creating arrays on every auth restore.
-const PUBLIC_VIEWS = new Set<View>([
-  "public-landing", "public-terms", "public-privacy", "public-security", "public-free-resources", "public-interactive-worksheet", "public-status", "accessibility-statement"
-]);
-const TEACHER_VIEWS = new Set<View>([
-  "worksheet", "classroom", "class-show", "teacher-approvals",
-  "quick-play-teacher-monitor", "quick-play-setup", "create-assignment",
-  "hot-seat",
-  "voca-picker", "vocahebrew-dashboard",
-  "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-synonyms", "vocahebrew-listening",
-]);
-
-const STUDENT_VIEWS = new Set<View>([
-  "student-dashboard", "game", "live-challenge",
-  "shop", "global-leaderboard", "privacy-settings",
-]);
-
-/** Check if current view should be preserved during auth restore. */
-const shouldPreserveView = (role: string, currentView: View): boolean => {
-  if (PUBLIC_VIEWS.has(currentView)) return false;
-  return (role === "teacher" || role === "admin")
-    ? TEACHER_VIEWS.has(currentView)
-    : STUDENT_VIEWS.has(currentView);
-};
 
 // --- TYPES ---
 // AppUser, ClassData, AssignmentData, ProgressData are imported from ./supabase
@@ -222,24 +197,11 @@ export default function App() {
   const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
 
-  // ─── Lazy-load vocabulary out of the initial bundle ────────────────
-  // The vocabulary tuple file is ~376 kB raw / 139 kB gzipped — by far
-  // the largest single asset.  Public visitors (landing, terms,
-  // privacy, security, accessibility) never need it.  Gate the load
-  // on the view: any non-public view triggers the dynamic import.
-  // (DemoMode lazy-loads vocabulary itself via its own static import,
-  // so we don't need a special demo gate here.)
+  // Lazy-load vocabulary out of the initial bundle — public visitors
+  // (landing, terms, privacy, security, accessibility) never need it.
+  // DemoMode lazy-loads vocabulary itself via its own static import.
   // See docs/perf-2026-04-28.md for rationale + measurements.
-  const isPublicView =
-    view === "public-landing" ||
-    view === "public-terms" ||
-    view === "public-privacy" ||
-    view === "public-security" ||
-    view === "public-free-resources" ||
-    view === "public-interactive-worksheet" ||
-    view === "public-status" ||
-    view === "accessibility-statement";
-  const vocab = useVocabularyLazy(!isPublicView);
+  const vocab = useVocabularyLazy(!isPublicView(view));
   // Falsy-safe constants so existing code paths that reference these
   // names compile unchanged.  When vocab is null (still loading or
   // never triggered), these are empty arrays — every consumer is
