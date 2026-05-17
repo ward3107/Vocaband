@@ -1,0 +1,24 @@
+-- =============================================================================
+-- Grant EXECUTE on auto_end_due_competitions back to authenticated
+-- =============================================================================
+--
+-- Background: 20260517115649_revoke_anon_grants_on_definer_rpcs grouped this
+-- function under "service_role-only: trigger / cron / RLS-helper / admin"
+-- and revoked PUBLIC + anon without granting back to authenticated. That
+-- was a misclassification — the function is intentionally called from the
+-- client (useCompetitions.ts:54 and :141) as a "best-effort closer" so
+-- overdue competitions flip to 'ended' without needing a cron extension.
+-- See the function's own comment in 20260516120000_classroom_competitions.sql.
+--
+-- Result of the misclassification: every dashboard load fires the RPC and
+-- gets "permission denied for function auto_end_due_competitions". The
+-- client swallows the error silently, but auto-close is broken and the
+-- Postgres error log is noisy.
+--
+-- Safety: the function takes no inputs, runs a single UPDATE scoped to
+-- rows where status = 'live' AND closes_at <= now(), and is idempotent.
+-- An authenticated caller cannot use it to close any competition that is
+-- not already overdue.
+-- =============================================================================
+
+GRANT EXECUTE ON FUNCTION public.auto_end_due_competitions() TO authenticated;
