@@ -141,8 +141,19 @@ export function useBackButtonTrap(
       isPopStateNavRef.current = false;
       return;
     }
-    const isDashboard = view === 'teacher-dashboard' || view === 'student-dashboard';
     const currentStateView = (window.history.state as { view?: string } | null)?.view ?? '';
+
+    // Skip the push when a navigateTo* helper (e.g. navigateToStudentLogin)
+    // already pushed a coordinated state+URL entry carrying this view.
+    // Without this guard we stack two identical entries — the user has
+    // to press back twice to leave the page, and the intermediate
+    // back-tap lands on a duplicate that the trap interprets as
+    // "nowhere to go" and forwards the user out of the app entirely.
+    if (currentStateView === view) {
+      return;
+    }
+
+    const isDashboard = view === 'teacher-dashboard' || view === 'student-dashboard';
     const comingFromAuth = AUTH_VIEWS.has(currentStateView);
 
     // Login transition: replace the landing/auth entry with a pad
