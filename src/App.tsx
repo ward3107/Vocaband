@@ -92,9 +92,6 @@ import { useSavedTasks, type SavedTask } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
 import PendingApprovalScreen from "./components/PendingApprovalScreen";
-import { ConsentModal, ExitConfirmModal, ClassSwitchModal } from "./components/AppModals";
-import { ClassNotFoundBanner } from "./components/ClassNotFoundBanner";
-import { PRIVACY_POLICY_VERSION} from "./config/privacy-config";
 import { shuffle, chunkArray, addUnique, removeKey, secureRandomInt } from './utils';
 import { logAudit } from './utils/audit';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
@@ -163,6 +160,7 @@ import { useDeepLinkConsumers } from "./hooks/useDeepLinkConsumers";
 import { useAppMiscEffects } from "./hooks/useAppMiscEffects";
 import { renderHebrewRoute } from "./views/HebrewRoutes";
 import { renderQuickPlayExitScreens } from "./views/QuickPlayExitScreens";
+import { useAppOverlays } from "./hooks/useAppOverlays";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -1567,64 +1565,15 @@ export default function App() {
   }
 
 
-  // --- CONSENT MODAL (overlays any view when policy update requires re-consent) ---
-  const consentModal = (
-    <ConsentModal
-      show={needsConsent && !!user && !showOnboarding}
-      policyVersion={PRIVACY_POLICY_VERSION}
-      consentChecked={consentChecked}
-      onToggleChecked={setConsentChecked}
-      onAccept={() => recordConsent()}
-    />
-  );
-
-  // Shown when a logged-in user presses the hardware back button at the
-  // dashboard floor.  "Leave" pops past the pad buffer + signs out;
-  // "Stay" dismisses.  beginExitFlow owns the history reset and
-  // popstate-suppression window — signOut is App's concern.
-  const exitConfirmModal = (
-    <ExitConfirmModal
-      show={showExitConfirmModal}
-      onStay={() => setShowExitConfirmModal(false)}
-      onLeave={() => { beginExitFlow(); supabase.auth.signOut().catch(() => {}); }}
-      student={
-        user?.role === 'student' && !user.isGuest
-          ? { name: user.displayName || '', classCode: user.classCode ?? null }
-          : null
-      }
-    />
-  );
-
-  // --- CLASS SWITCH MODAL -------------------------------------------------
-  // Shown when an already-approved student logs in with a class code that
-  // differs from their current class_code.  Approve = update profile +
-  // users row to the new class and land on the new dashboard (no teacher
-  // re-approval per Approach 1).  Cancel = keep the current class.
-  // Sticky banner the student sees on the dashboard when they typed a
-  // class code that doesn't exist.  Rendered-variable pattern mirrors
-  // the other modals (consentModal / exitConfirmModal / classSwitchModal)
-  // so it can be passed as a prop to whichever view hosts it.
-  const classNotFoundBanner = (
-    <ClassNotFoundBanner
-      classCode={classNotFoundIntent}
-      onDismiss={() => setClassNotFoundIntent(null)}
-      onSignOutAndLogin={async () => {
-        // Clear the dismiss-state first so the banner doesn't linger
-        // past the redirect, then sign out and route to the login.
-        setClassNotFoundIntent(null);
-        try { await supabase.auth.signOut(); } catch { /* noop */ }
-        setView('student-account-login');
-      }}
-    />
-  );
-
-  const classSwitchModal = (
-    <ClassSwitchModal
-      pendingClassSwitch={pendingClassSwitch}
-      onConfirm={handleConfirmClassSwitch}
-      onCancel={handleCancelClassSwitch}
-    />
-  );
+  // Re-consent, exit-confirm, class-not-found, class-switch overlays —
+  // markup lives in useAppOverlays.
+  const { consentModal, exitConfirmModal, classNotFoundBanner, classSwitchModal } = useAppOverlays({
+    user, needsConsent, showOnboarding,
+    consentChecked, setConsentChecked, recordConsent,
+    showExitConfirmModal, setShowExitConfirmModal, beginExitFlow,
+    classNotFoundIntent, setClassNotFoundIntent, setView,
+    pendingClassSwitch, handleConfirmClassSwitch, handleCancelClassSwitch,
+  });
 
   if (user?.role === "student" && view === "student-dashboard") {
     return (
