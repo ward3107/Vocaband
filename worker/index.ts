@@ -27,6 +27,110 @@ interface Env {
   SUPABASE_URL?: string;
 }
 
+// Minimal HTMLRewriter typing — the Workers runtime exposes this as a
+// global, but the project's tsconfig only pulls in the DOM lib (not
+// @cloudflare/workers-types), so tsc doesn't otherwise know about it.
+// Wrangler types the real class at deploy time; this shim just keeps
+// the main tsc check (which compiles the worker alongside the SPA)
+// from erroring on the unknown identifier.
+interface RewriterElement {
+  setAttribute(name: string, value: string): void;
+  setInnerContent(content: string): void;
+}
+interface RewriterHandlers {
+  element?: (element: RewriterElement) => void;
+}
+declare class HTMLRewriter {
+  on(selector: string, handlers: RewriterHandlers): HTMLRewriter;
+  transform(response: Response): Response;
+}
+
+// Per-language metadata for the SPA-served landing routes. The Worker
+// rewrites <title>, <meta name="description">, OG tags, and the <html
+// lang/dir> attributes at the edge when a request carries ?lang=he or
+// ?lang=ar (the hreflang alternates set in index.html). Doing this at
+// the edge — not client-side — means the HTML literally contains the
+// localized strings when Googlebot scrapes it, so the Hebrew result
+// in Google gets a Hebrew snippet (the client-side swap-after-render
+// alternative is unreliable: Googlebot indexes the initial HTML in
+// the first pass and only renders JS in a later, slower pass).
+//
+// Title ≤ ~60 chars and description ≤ ~155 chars to fit Google's
+// snippet width without truncation.
+const LOCALIZED_META: Record<'he' | 'ar', {
+  title: string;
+  description: string;
+  ogLocale: string;
+}> = {
+  he: {
+    title: 'ווקאבנד — לימוד אנגלית בכיף לכל הגיל | משחקים ואוצר מילים',
+    description: 'ווקאבנד היא אפליקציית אנגלית מהנה לכל הגילאים — ילדים, נוער ומבוגרים. 9,000+ מילים, 15 משחקים, אתגרי כיתה חיים, נקודות וסטריקים. חינם למורים.',
+    ogLocale: 'he_IL',
+  },
+  ar: {
+    title: 'فوكاباند — تعلم الإنجليزية بمتعة لجميع الأعمار | مفردات وألعاب',
+    description: 'فوكاباند تطبيق لتعلم اللغة الإنجليزية بطريقة ممتعة لجميع الأعمار — الأطفال والمراهقين والكبار. 9,000+ كلمة، 15 لعبة، تحديات صفية مباشرة، نقاط وسلاسل.',
+    ogLocale: 'ar_AE',
+  },
+};
+
+// Only the SPA's public landing routes get localized — internal app
+// views (dashboard, classroom, etc.) aren't SEO-relevant. The static
+// /answers/*.html pages have their own hand-crafted metadata and must
+// NOT be rewritten.
+const LOCALIZABLE_SPA_PATHS: ReadonlySet<string> = new Set([
+  '/',
+  '/student',
+  '/accessibility-statement',
+]);
+
+function localizeHtmlResponse(response: Response, lang: 'he' | 'ar'): Response {
+  const meta = LOCALIZED_META[lang];
+  return new HTMLRewriter()
+    .on('html', {
+      element(el) {
+        el.setAttribute('lang', lang);
+        el.setAttribute('dir', 'rtl');
+      },
+    })
+    .on('title', {
+      element(el) {
+        el.setInnerContent(meta.title);
+      },
+    })
+    .on('meta[name="description"]', {
+      element(el) {
+        el.setAttribute('content', meta.description);
+      },
+    })
+    .on('meta[property="og:title"]', {
+      element(el) {
+        el.setAttribute('content', meta.title);
+      },
+    })
+    .on('meta[property="og:description"]', {
+      element(el) {
+        el.setAttribute('content', meta.description);
+      },
+    })
+    .on('meta[property="og:locale"]', {
+      element(el) {
+        el.setAttribute('content', meta.ogLocale);
+      },
+    })
+    .on('meta[name="twitter:title"]', {
+      element(el) {
+        el.setAttribute('content', meta.title);
+      },
+    })
+    .on('meta[name="twitter:description"]', {
+      element(el) {
+        el.setAttribute('content', meta.description);
+      },
+    })
+    .transform(response);
+}
+
 // 2026-04-25: migrated from Render (api.vocaband.com) to Fly.io.
 // Render hit its pipeline-minutes spend cap; Fly's auto_stop_machines
 // suspends the VM during off-hours so school-hours-only traffic costs
@@ -223,6 +327,27 @@ export default {
         });
       }
       return response;
+    }
+
+    // SPA landing routes with a ?lang=he|ar hint get their metadata
+    // rewritten at the edge so Googlebot indexes a Hebrew/Arabic page
+    // (not the English default) when it crawls the hreflang alternates
+    // declared in index.html + sitemap.xml. English (or no lang param)
+    // falls through to the bare asset, which already carries the
+    // English metadata. We only run the rewriter when the asset
+    // actually came back as HTML — protects /answers/*.html and any
+    // future static file from accidental rewrite.
+    const langParam = url.searchParams.get('lang');
+    if (
+      (langParam === 'he' || langParam === 'ar') &&
+      LOCALIZABLE_SPA_PATHS.has(url.pathname)
+    ) {
+      const assetResponse = await env.ASSETS.fetch(request);
+      const contentType = assetResponse.headers.get('content-type') ?? '';
+      if (contentType.toLowerCase().includes('text/html')) {
+        return localizeHtmlResponse(assetResponse, langParam);
+      }
+      return assetResponse;
     }
 
     // Everything else: serve static assets. env.ASSETS handles the SPA

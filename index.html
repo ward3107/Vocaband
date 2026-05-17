@@ -18,12 +18,33 @@
          list as a bonus signal for the existing Israeli audience. -->
     <title>Vocaband — Gamified English Vocabulary for Students & Schools | CEFR A1–B2</title>
     <meta name="description" content="Vocaband makes learning English vocabulary fun for ESL students across school — Grades 1 to 12, CEFR A1 to B2. 9,000+ words, 15 game modes, live class challenges, XP, streaks, and avatars. Free for teachers to create a class, no per-student fees. Works on any phone — no download needed." />
-    <meta name="keywords" content="English vocabulary app, ESL vocabulary, CEFR A1 A2 B1 B2, gamified English, English games for kids, learn English, vocabulary games for students, English practice for teachers, ESL classroom tool, English flashcards, CEFR-aligned English, English for teenagers, vocabulary builder, English homework help, classroom leaderboard, free English app, אנגלית לילדים, משחקי אנגלית, מורה לאנגלית, تعلم الانجليزية للأطفال, مفردات انجليزية" />
+    <!-- Keywords mix three buckets so people land on the site no matter
+         how they search:
+         1. English/category terms — what learners type when they don't know
+            the brand yet (ESL vocabulary, learn English, etc.).
+         2. Brand variants + likely typos — "voca band", "vokaband", etc.
+         3. Keyboard-layout transliterations — when a user types "vocaband"
+            with HE/AR/RU/UK/FA/EL keyboard active, the physical keys
+            produce a different string ("הםבשנשמג" on Hebrew layout, etc.)
+            and Google needs to know those strings map back to us.
+         Plus brand name transliterated into each script + category
+         keywords across HE/AR/RU/ES/FR/DE/PT/IT/TR for all-ages reach. -->
+    <meta name="keywords" content="English vocabulary app, ESL vocabulary, CEFR A1 A2 B1 B2, gamified English, English games for kids, learn English, vocabulary games for students, English practice for teachers, ESL classroom tool, English flashcards, CEFR-aligned English, English for teenagers, vocabulary builder, English homework help, classroom leaderboard, free English app, vocabulary game, english learning app, learn english free, english practice app, english words game, vocaband, voca, voca band, voca-band, vocabandapp, vocaband.com, vokaband, vocabend, vocband, vocaaband, vocabnd, הםבשנשמג, הםבש, رخؤشلاشىي, رخؤش, مщсفифتв, мщсفифтв, мщсф, رخزشذشدی, رخزش, ωοψαβανδ, ωοψα, ווקאבנד, וקאבנד, ווקה בנד, ווקאבאנד, فوكاباند, ڤوكاباند, فوكا باند, вокабанд, вока банд, وکابند, βοκαμπαντ, ቮካባንድ, אנגלית לילדים, משחקי אנגלית, מורה לאנגלית, לימוד אנגלית, אוצר מילים אנגלית, אנגלית למבוגרים, שיפור אנגלית, אפליקציית אנגלית, תרגול אנגלית, אנגלית אונליין, אנגלית חינם, אנגלית מהבית, מילון אנגלית, אנגלית מדוברת, تعلم الانجليزية للأطفال, مفردات انجليزية, تعلم الإنجليزية, إنجليزي للكبار, إنجليزي للأطفال, تطبيق إنجليزي, ألعاب إنجليزية, تحسين الإنجليزية, قاموس انجليزي, محادثة انجليزي, учить английский, английский для взрослых, английский для детей, словарный запас английский, приложение английский, английский с нуля, английский онлайн, бесплатный английский, aprender inglés, vocabulario inglés, inglés gratis, apprendre l'anglais, vocabulaire anglais, englisch lernen, englisch vokabeln, aprender inglês, imparare inglese, ingilizce öğren" />
     <meta name="robots" content="index, follow" />
     <meta name="author" content="Vocaband" />
     <!-- Removed geo.region / geo.placename — were hard-targeting Israel only -->
     <meta name="language" content="English, Hebrew, Arabic" />
     <link rel="canonical" href="https://www.vocaband.com" />
+    <!-- hreflang alternates — tells Google the same page exists in EN,
+         HE, and AR, served from the same SPA via /?lang=<code>.
+         useLanguage.tsx reads the query param on initial load and pins
+         the UI to that language so a Hebrew Google result lands in
+         Hebrew directly, even for a visitor with an English browser.
+         x-default points to the bare URL (auto-detect / saved choice). -->
+    <link rel="alternate" hreflang="en" href="https://www.vocaband.com/?lang=en" />
+    <link rel="alternate" hreflang="he" href="https://www.vocaband.com/?lang=he" />
+    <link rel="alternate" hreflang="ar" href="https://www.vocaband.com/?lang=ar" />
+    <link rel="alternate" hreflang="x-default" href="https://www.vocaband.com/" />
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://www.vocaband.com" />
@@ -43,6 +64,27 @@
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "Vocaband",
+      "alternateName": [
+        "Voca",
+        "Voca Band",
+        "VocaBand",
+        "ווקאבנד",
+        "וקאבנד",
+        "ווקה בנד",
+        "ווקאבאנד",
+        "فوكاباند",
+        "ڤوكاباند",
+        "فوكا باند",
+        "вокабанд",
+        "вока банд",
+        "وکابند",
+        "βοκαμπαντ",
+        "ቮካባንድ",
+        "הםבשנשמג",
+        "رخؤشلاشىي",
+        "мщсфифтв",
+        "ωοψαβανδ"
+      ],
       "applicationCategory": "EducationApplication",
       "operatingSystem": "Web, iOS, Android",
       "url": "https://www.vocaband.com",

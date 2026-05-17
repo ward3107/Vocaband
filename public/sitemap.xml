@@ -1,9 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<!--
+  Sitemap with hreflang alternates per Google's spec
+  (https://developers.google.com/search/docs/specialty/international/localized-versions#sitemap).
+  Every <url> entry that has language variants declares all alternates
+  AND lists itself among them — Google ignores the group otherwise.
+  ?lang= is read by useLanguage.tsx on initial load and pins the UI
+  to that language. x-default points at the bare URL so visitors with
+  no language hint get auto-detection (browser locale / saved choice).
+-->
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://www.vocaband.com/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.vocaband.com/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://www.vocaband.com/?lang=he"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://www.vocaband.com/?lang=ar"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.vocaband.com/"/>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.vocaband.com/student</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.vocaband.com/student?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://www.vocaband.com/student?lang=he"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://www.vocaband.com/student?lang=ar"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.vocaband.com/student"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.vocaband.com/accessibility-statement</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.vocaband.com/accessibility-statement?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://www.vocaband.com/accessibility-statement?lang=he"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://www.vocaband.com/accessibility-statement?lang=ar"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.vocaband.com/accessibility-statement"/>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
   </url>
   <url>
     <loc>https://www.vocaband.com/answers/</loc>
