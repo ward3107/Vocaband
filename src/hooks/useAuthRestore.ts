@@ -34,6 +34,7 @@ import {
   type AssignmentData,
   type ProgressData,
 } from '../core/supabase';
+import { bootstrapStudentSession } from '../core/bootstrap';
 import { freshTrialEndsAt } from '../core/plan';
 import { clearAllReadCache } from '../core/readCache';
 import { getCachedVocabulary } from './useVocabularyLazy';
@@ -364,16 +365,27 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               clearIntendedClassCode();
             }
 
-            const { data: classRows } = await supabase
-              .from('classes').select(CLASS_COLUMNS).eq('code', code);
-            if (classRows && classRows.length > 0) {
-              const classData = mapClass(classRows[0]);
-              const [assignResult, progressResult] = await Promise.all([
-                supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-                supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', supabaseUser.id),
-              ]);
-              setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-              setStudentProgress((progressResult.data ?? []).map(mapProgress));
+            // Try the bootstrap RPC first — one round trip for class +
+            // assignments + progress instead of three. Falls back to the
+            // legacy parallel-queries block on any RPC failure so a server
+            // regression can't lock students out of the dashboard.
+            // See supabase/migrations/20260517105307_bootstrap_student_session.sql
+            const boot = await bootstrapStudentSession({ classCode: code }).catch(() => null);
+            if (boot?.status === 'ok') {
+              setStudentAssignments(boot.assignments);
+              setStudentProgress(boot.progress);
+            } else {
+              const { data: classRows } = await supabase
+                .from('classes').select(CLASS_COLUMNS).eq('code', code);
+              if (classRows && classRows.length > 0) {
+                const classData = mapClass(classRows[0]);
+                const [assignResult, progressResult] = await Promise.all([
+                  supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
+                  supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', supabaseUser.id),
+                ]);
+                setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
+                setStudentProgress((progressResult.data ?? []).map(mapProgress));
+              }
             }
             setBadges(userData.badges || []);
             setXp(userData.xp ?? 0);
