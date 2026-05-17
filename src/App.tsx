@@ -13,7 +13,7 @@ import SvgSpinner from "./components/svg/SvgSpinner";
 // on cold first-paint. AnimatePresence / motion.div weren't used in
 // this file anyway, so the original `import { motion, AnimatePresence }`
 // was a dead import.
-import { supabase, OperationType, handleDbError, hasTeacherAccess, ASSIGNMENT_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { OperationType, handleDbError, hasTeacherAccess, ASSIGNMENT_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { isPro } from "./core/plan";
 import { useAudio } from "./hooks/useAudio";
 import { useLanguage } from "./hooks/useLanguage";
@@ -119,6 +119,7 @@ import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classE
 import { deleteAssignmentWithUndo, deleteAssignmentImmediate } from "./handlers/deleteAssignmentWithUndo";
 import { buildEmitScoreUpdate } from "./handlers/emitScoreUpdate";
 import { navigateToTeacherLogin, navigateToStudentLogin } from "./handlers/landingNav";
+import { buildCleanupSessionData, buildCleanupQuickPlayGuest } from "./handlers/sessionCleanups";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -657,25 +658,19 @@ export default function App() {
     hasPending: saveQueueHasPending,
   } = useSaveQueue();
 
-  // Cleanup function to clear all pending operations and prevent DB calls after logout/session end
-  const cleanupSessionData = () => {
-    clearSaveQueue();
-    // Clear feedback timeout (lives outside the save queue's domain).
-    if (feedbackTimeoutRef.current) {
-      clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = undefined;
-    }
-  };
-
-
-  // Refs for effects that need the "current" user without re-registering.
-  // (isLiveChallengeRef moved into useLiveChallengeSocket.)
+  // Refs grouped together so the cleanup builder below can pick them up.
+  // userRef — "current" user for effects that don't re-register.
+  // feedbackTimeoutRef — feedback overlay cleanup on unmount.
+  // isProcessingRef — guard against rapid clicks during feedback.
+  // lastScoreEmitRef — last Socket.IO score emit time, throttle gate.
   const userRef = useRef(user);
-
-  // Timeout ref for cleanup (prevents memory leaks on unmount)
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const isProcessingRef = useRef<boolean>(false); // Guard against rapid clicks during feedback
-  const lastScoreEmitRef = useRef<number>(0); // Track last Socket.IO score emit time to prevent spam
+  const isProcessingRef = useRef<boolean>(false);
+  const lastScoreEmitRef = useRef<number>(0);
+
+  // Clear pending save-queue work + feedback timeout. Called from
+  // logout / session-end paths.  See handlers/sessionCleanups.
+  const cleanupSessionData = buildCleanupSessionData(clearSaveQueue, feedbackTimeoutRef);
 
   // Misc side-effects bundled into one hook — see useAppMiscEffects
   // for the list (userRef sync, Sentry user pipe, feedback timeout
@@ -1031,24 +1026,13 @@ export default function App() {
   });
 
 
-  // Full guest exit cleanup. Called whenever a Quick Play student
-  // explicitly leaves the game (Exit button on mode picker, header
-  // Back button, finish-screen "Exit Quick Play", session-end overlay).
-  //
-  // Progress rows are intentionally left in place so the student stays
-  // visible on the teacher's podium after leaving — teachers need to see
-  // who actually played. Row removal happens in two places instead:
-  //   (a) teacher kick — QuickPlayMonitor.removeStudent
-  //   (b) re-join with same name — QuickPlayStudentView join-time delete
-  // This function only signs out the anon auth session + clears the
-  // guest localStorage entry so a fresh re-entry from the same device
-  // starts cleanly.
-  const cleanupQuickPlayGuest = async () => {
-    if (!user?.isGuest || !quickPlayActiveSession) return;
-    try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
-    setQuickPlayCompletedModes(new Set());
-    try { await supabase.auth.signOut(); } catch {}
-  };
+  // Guest exit cleanup — sign out anon auth, drop the resume hint,
+  // reset completedModes.  See handlers/sessionCleanups.
+  const cleanupQuickPlayGuest = buildCleanupQuickPlayGuest(
+    () => user,
+    () => quickPlayActiveSession,
+    setQuickPlayCompletedModes,
+  );
 
   // Game-finish handlers (saveScore + handleExitGame), extracted into a
   // dedicated hook. saveScore in particular is large — anti-farm cap,
