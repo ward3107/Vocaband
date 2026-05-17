@@ -179,6 +179,7 @@ import { celebrate } from "./utils/celebrate";
 import { compressImageForUpload } from "./utils/compressImage";
 // ImageCropModal moved to a React.lazy at the top of this file.
 import { useTeacherGuidesSync } from "./hooks/useTeacherGuidesSync";
+import { useVocaRouting } from "./hooks/useVocaRouting";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
@@ -310,26 +311,10 @@ export default function App() {
   // so the optimistic-update + rollback dance lives next to the store.
   useTeacherGuidesSync(user, setUser);
 
-  // Voca routing — teachers belong to exactly one Voca (users.subject)
-  // so getEntitledVocas returns a single id and their activeVoca is
-  // auto-set without showing the picker.  Admins are entitled to every
-  // Voca and land on the picker until they pick one for this session.
-  useEffect(() => {
-    if (!user || !hasTeacherAccess(user)) return;
-    const entitled = getEntitledVocas(user);
-    if (entitled.length === 0) return; // shouldn't happen for teacher/admin
-    if (entitled.length === 1) {
-      if (activeVoca !== entitled[0]) setActiveVoca(entitled[0]);
-      return;
-    }
-    // 2+ Vocas (admin only): must pick.  If we're sitting on
-    // teacher-dashboard without a pick, send to picker.  Don't redirect
-    // mid-flow (create-assignment, classroom, etc.) — only the
-    // dashboard entry-point triggers this.
-    if (!activeVoca && view === "teacher-dashboard") {
-      setView("voca-picker");
-    }
-  }, [user, activeVoca, view]);
+  // Voca routing — auto-pick the teacher's only Voca, or send admins
+  // with 2+ Vocas to the picker if they hit the dashboard without
+  // having chosen one this session.  See useVocaRouting for details.
+  useVocaRouting(user, activeVoca, view, setActiveVoca, setView);
 
   const previousViewRef = useRef<string>("public-landing");
   // Track current view for auth state changes — using a ref so restoreSession
