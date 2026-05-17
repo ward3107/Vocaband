@@ -84,6 +84,7 @@ import { useOAuthState } from "./hooks/useOAuthState";
 import { useActiveVocaState } from "./hooks/useActiveVocaState";
 import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
 import { useQuickPlayGuestState } from "./hooks/useQuickPlayGuestState";
+import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
@@ -403,30 +404,12 @@ export default function App() {
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
-  // Captures the `?assignment=<id>` URL param at boot.  When the
-  // student lands on their dashboard with this set, we look up the
-  // matching assignment in `studentAssignments` and drop them straight
-  // into the mode picker for it — teachers share links from the
-  // assignment row so the student should bypass the dashboard step.
-  const [pendingAssignmentId, setPendingAssignmentId] = useState<string | null>(() => {
-    try {
-      return new URLSearchParams(window.location.search).get("assignment");
-    } catch {
-      return null;
-    }
-  });
-  // Captures `?play=<mode>` at boot.  Set by teacher-shared share
-  // links (Class Minute today; extendable later if we surface more
-  // dashboard-launched entry points).  Consumed once the student is
-  // on their dashboard then stripped from the URL so a back-nav
-  // doesn't re-trigger the auto-launch.
-  const [pendingPlayMode, setPendingPlayMode] = useState<string | null>(() => {
-    try {
-      return new URLSearchParams(window.location.search).get("play");
-    } catch {
-      return null;
-    }
-  });
+  // ?assignment=<id> and ?play=<mode> deep-link URL params captured at
+  // boot.  See useDeepLinkUrlParams.
+  const {
+    pendingAssignmentId, setPendingAssignmentId,
+    pendingPlayMode, setPendingPlayMode,
+  } = useDeepLinkUrlParams();
 
   const { speak: speakWordRaw, preloadMany, playWrong, playMotivational, stopAll: stopAllAudio } = useAudio();
   const speakWord = speakWordRaw;
