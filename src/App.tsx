@@ -67,6 +67,7 @@ import { useGameModeSetup } from "./hooks/useGameModeSetup";
 import { useDashboardPolling } from "./hooks/useDashboardPolling";
 import { useAssignmentAutoPopulate } from "./hooks/useAssignmentAutoPopulate";
 import { useSaveQueueResilience } from "./hooks/useSaveQueueResilience";
+import { useAssignmentPrecache } from "./hooks/useAssignmentPrecache";
 import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
 import { useViewGuards } from "./hooks/useViewGuards";
 import { useGameRoundOptions } from "./hooks/useGameRoundOptions";
@@ -362,6 +363,10 @@ export default function App() {
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
+  // Warm the audio cache for the active assignment so a student who loses
+  // Wi-Fi mid-lesson can still hear the words. Idle-scheduled, skipped on
+  // 2G / data-saver. See useAssignmentPrecache for the why.
+  useAssignmentPrecache(assignmentWords);
   // ?assignment=<id> and ?play=<mode> deep-link URL params captured at
   // boot.  See useDeepLinkUrlParams.
   const {

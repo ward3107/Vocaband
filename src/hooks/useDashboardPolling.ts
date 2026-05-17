@@ -49,6 +49,7 @@ import {
   type ProgressData,
 } from '../core/supabase';
 import type { View } from '../core/views';
+import { cachedRead } from '../core/readCache';
 
 export interface UseDashboardPollingParams {
   user: AppUser | null;
@@ -112,6 +113,7 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
   // tick) and rebuilt the channel each time.
   const userRole = user?.role;
   const userClassCode = user?.classCode;
+  const userUid = user?.uid;
   useEffect(() => {
     if (userRole !== 'student' || view !== 'student-dashboard' || !userClassCode) return;
     const code = userClassCode;
@@ -119,16 +121,45 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
     let fallbackPollId: ReturnType<typeof setInterval> | null = null;
 
     const refresh = async () => {
-      if (!cachedClassId) {
-        const { data: classRows } = await supabase
-          .from('classes').select('id').eq('code', code).limit(1);
-        if (!classRows || classRows.length === 0) return;
-        cachedClassId = classRows[0].id;
+      const scope = userUid;
+      if (!scope) return;
+      try {
+        // SWR through readCache: a cache hit renders the dashboard
+        // instantly from localStorage so a student opening the app on
+        // weak/no Wi-Fi sees their existing assignments. The fetcher
+        // still runs in the background; fresh data overwrites the
+        // cached render the moment it lands. If the fetcher throws
+        // (network down, RLS hiccup), cachedRead returns the cached
+        // value silently — see core/readCache.ts.
+        const fresh = await cachedRead<AssignmentData[]>(
+          `student-assignments:${code}`,
+          async () => {
+            if (!cachedClassId) {
+              const { data: classRows, error: classErr } = await supabase
+                .from('classes').select('id').eq('code', code).limit(1);
+              if (classErr) throw classErr;
+              if (!classRows || classRows.length === 0) throw new Error('class-not-found');
+              cachedClassId = classRows[0].id;
+            }
+            const { data, error } = await supabase.rpc('get_assignments_for_class', {
+              p_class_id: cachedClassId,
+            });
+            if (error) throw error;
+            return (data ?? []).map(mapAssignment);
+          },
+          {
+            userScope: scope,
+            ttlMs: 5 * 60_000,
+            onCacheHit: (cached) => setStudentAssignmentsRef.current(cached),
+          },
+        );
+        setStudentAssignmentsRef.current(fresh);
+      } catch {
+        // No cached fallback AND the fetcher threw — keep whatever state
+        // was already there. Either first visit with no network OR the
+        // student's class membership changed; either way, surfacing an
+        // error toast here would just confuse them.
       }
-      const { data } = await supabase.rpc('get_assignments_for_class', {
-        p_class_id: cachedClassId,
-      });
-      setStudentAssignmentsRef.current((data ?? []).map(mapAssignment));
     };
     // Initial fetch so the list isn't empty before the first Realtime push.
     refresh();
@@ -167,7 +198,7 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
       if (fallbackPollId) clearInterval(fallbackPollId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userRole, userClassCode, view]);
+  }, [userRole, userClassCode, view, userUid]);
 
   // ─── 2. Teacher pending-student approvals — Realtime + fallback ───
   useEffect(() => {

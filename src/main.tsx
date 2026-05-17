@@ -2,6 +2,7 @@ import {lazy, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.tsx';
 import { runSafariDiagnostics } from './utils/safariDiagnostics';
+import { requestPersistentStorage } from './utils/persistStorage';
 import './index.css';
 
 // Tiny pre-Sentry error buffer.
@@ -292,6 +293,13 @@ async function bootstrap() {
   // path. The window listeners installed above buffer anything that
   // throws in the gap so nothing is lost. See loadSentryDeferred above.
   loadSentryDeferred();
+
+  // Ask the browser to mark our storage as persistent so an Android
+  // device running low on disk doesn't wipe the SW cache + IDB queue
+  // while a student is mid-lesson. Chrome auto-grants this for
+  // installed PWAs; Safari ignores it harmlessly. Best-effort — see
+  // utils/persistStorage.ts for the why.
+  void requestPersistentStorage();
 }
 
 // If we're redirecting to the canonical host, let the navigation tear the
