@@ -92,11 +92,6 @@ import { LazyWrapper} from "./components/SuspenseWrapper";
 const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
-const GameModeIntroView = lazy(() => import("./views/GameModeIntroView"));
-const GameModeSelectionView = lazy(() => import("./views/GameModeSelectionView"));
-const GameFinishedView = lazy(() => import("./views/GameFinishedView"));
-const GameActiveView = lazy(() => import("./views/GameActiveView"));
-const HebrewModeSelectionView = lazy(() => import("./views/HebrewModeSelectionView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
 import { readQpResumeScore } from "./utils/qpResumeHint";
@@ -123,6 +118,7 @@ import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
 import { StudentDashboardSection } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
+import { renderGameRoute } from "./views/GameRoutes";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -1631,42 +1627,6 @@ export default function App() {
   }
 
 
-  if (view === "game" && showModeSelection) {
-    // Hebrew assignments get the 4-mode native picker; English ones
-    // get the full GameModeSelectionView.  The branch is on the
-    // assignment's subject column, set when the teacher created it.
-    if (activeAssignment?.subject === "hebrew") {
-      return (
-        <LazyWrapper loadingMessage="Loading Hebrew modes...">
-          <HebrewModeSelectionView
-            activeAssignment={activeAssignment}
-            onPickMode={(mode) => {
-              setShowModeSelection(false);
-              if (mode === "niqqud")    setView("vocahebrew-niqqud");
-              else if (mode === "shoresh")   setView("vocahebrew-shoresh");
-              else if (mode === "synonym")   setView("vocahebrew-synonyms");
-              else if (mode === "listening") setView("vocahebrew-listening");
-            }}
-            onExit={handleExitGame}
-          />
-        </LazyWrapper>
-      );
-    }
-    return (
-      <LazyWrapper loadingMessage="Loading game modes...">
-        <GameModeSelectionView
-          activeAssignment={activeAssignment}
-          studentProgress={studentProgress}
-          isQuickPlayGuest={!!user?.isGuest}
-          quickPlayCompletedModes={quickPlayCompletedModes}
-          setGameMode={setGameMode}
-          setShowModeSelection={setShowModeSelection}
-          setShowModeIntro={setShowModeIntro}
-          handleExitGame={handleExitGame}
-        />
-      </LazyWrapper>
-    );
-  }
 
   // Fallback: view === "live-challenge" but selectedClass was cleared (can
   // happen after a hardware-back + state reset, or if a student lands on
@@ -1736,133 +1696,28 @@ export default function App() {
   // buttons + history-stack entries keep working — they just land on
   // the matching tab inside the merged view.
 
-  if (isFinished) {
-    return (
-      <LazyWrapper loadingMessage="Loading results...">
-        <GameFinishedView
-          user={user}
-          score={score}
-          xp={xp}
-          streak={streak}
-          badges={badges}
-          mistakes={mistakes}
-          gameWords={gameWords}
-          quickPlaySessionCode={quickPlayActiveSession?.sessionCode}
-          isSaving={isSaving}
-          saveError={saveError}
-          toasts={toasts}
-          confirmDialog={confirmDialog}
-          setConfirmDialog={setConfirmDialog}
-          setIsFinished={setIsFinished}
-          setScore={setScore}
-          setCurrentIndex={setCurrentIndex}
-          setMistakes={setMistakes}
-          setFeedback={setFeedback}
-          setWordAttempts={setWordAttempts}
-          setHiddenOptions={setHiddenOptions}
-          setSpellingInput={setSpellingInput}
-          setAssignmentWords={setAssignmentWords}
-          setShowModeSelection={setShowModeSelection}
-          setView={setView}
-          onQuickPlayExit={() => {
-            cleanupSessionData();
-            cleanupQuickPlayGuest().catch(() => { /* fire-and-forget */ });
-            setQuickPlayActiveSession(null);
-            setQuickPlayStudentName("");
-            setUser(null);
-            setView("public-landing");
-          }}
-        />
-      </LazyWrapper>
-    );
-  }
-
-  // Mode intro instructions with translations
-  if (showModeIntro) {
-    return (
-      <LazyWrapper loadingMessage="Loading...">
-        <GameModeIntroView
-          gameMode={gameMode}
-          hasChosenLanguage={hasChosenLanguage}
-          setHasChosenLanguage={setHasChosenLanguage}
-          setTargetLanguage={setTargetLanguage}
-          setShowModeIntro={setShowModeIntro}
-          setShowModeSelection={setShowModeSelection}
-          onLetsGo={() => {
-            gameDebug.logModeIntroComplete({ mode: gameMode });
-            gameDebug.logState({
-              view,
-              gameMode,
-              showModeSelection,
-              showModeIntro: false,
-              currentIndex,
-              isFinished,
-              feedback,
-              isProcessing: isProcessingRef.current,
-              currentWord: currentWord ? { id: currentWord.id, english: currentWord.english } : undefined,
-            }, 'lets_go_clicked');
-            setShowModeIntro(false);
-          }}
-        />
-      </LazyWrapper>
-    );
-  }
-
-  return (
-    <LazyWrapper loadingMessage="Loading game...">
-      <GameActiveView
-        user={user}
-        setUser={setUser}
-        saveError={saveError}
-        setSaveError={setSaveError}
-        score={score}
-        xp={xp}
-        streak={streak}
-        targetLanguage={targetLanguage}
-        setTargetLanguage={setTargetLanguage}
-        gameMode={gameMode}
-        gameWords={gameWords}
-        currentIndex={currentIndex}
-        setCurrentIndex={setCurrentIndex}
-        currentWord={currentWord}
-        feedback={feedback}
-        options={options}
-        hiddenOptions={hiddenOptions}
-        setHiddenOptions={setHiddenOptions}
-        isMatchingProcessing={isMatchingProcessing}
-        matchingPairs={matchingPairs}
-        matchedIds={matchedIds}
-        selectedMatch={selectedMatch}
-        tfOption={tfOption}
-        isFlipped={isFlipped}
-        setIsFlipped={setIsFlipped}
-        isProcessingRef={isProcessingRef}
-        scrambledWord={scrambledWord}
-        revealedLetters={revealedLetters}
-        spellingInput={spellingInput}
-        setSpellingInput={setSpellingInput}
-        activeAssignment={activeAssignment}
-        sentenceIndex={sentenceIndex}
-        sentenceFeedback={sentenceFeedback}
-        builtSentence={builtSentence}
-        setBuiltSentence={setBuiltSentence}
-        availableWords={availableWords}
-        setAvailableWords={setAvailableWords}
-        leaderboard={leaderboard}
-        isFinished={isFinished}
-        handleExitGame={handleExitGame}
-        saveScore={saveScore}
-        handleAnswer={handleAnswer}
-        handleMatchClick={handleMatchClick}
-        handleTFAnswer={handleTFAnswer}
-        handleFlashcardAnswer={handleFlashcardAnswer}
-        handleSpellingSubmit={handleSpellingSubmit}
-        handleSentenceWordTap={handleSentenceWordTap}
-        handleSentenceCheck={handleSentenceCheck}
-        speakWord={speakWord}
-        speak={speak}
-        shuffle={shuffle}
-      />
-    </LazyWrapper>
-  );
+  // Game-flow views (mode selection, intro, finished, active) — see
+  // views/GameRoutes for the four branches.  The active view is the
+  // default if no other game-flow gate matches.
+  return renderGameRoute({
+    view, user, setUser,
+    showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
+    setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
+    showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
+    gameDebug, gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
+    score, xp, streak, badges, mistakes, gameWords, quickPlayActiveSession,
+    isSaving, saveError, toasts, confirmDialog, setConfirmDialog,
+    setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
+    setWordAttempts, setHiddenOptions, setSpellingInput, setAssignmentWords,
+    cleanupSessionData, cleanupQuickPlayGuest,
+    setQuickPlayActiveSession, setQuickPlayStudentName,
+    setSaveError, targetLanguage, options, hiddenOptions,
+    isMatchingProcessing, matchingPairs, matchedIds, selectedMatch, tfOption,
+    isFlipped, setIsFlipped, scrambledWord, revealedLetters, spellingInput,
+    sentenceIndex, sentenceFeedback, builtSentence, setBuiltSentence,
+    availableWords, setAvailableWords, leaderboard,
+    saveScore, handleAnswer, handleMatchClick, handleTFAnswer,
+    handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap, handleSentenceCheck,
+    speakWord, speak, shuffle,
+  });
 };
