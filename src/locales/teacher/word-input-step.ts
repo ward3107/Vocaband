@@ -412,5 +412,8 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     suggestionsTitle: "Did you mean…?",
     suggestionAcceptTitle: (typo, suggestion) => `Replace "${typo}" with "${suggestion}"`,
     suggestionDismissAria: (typo) => `Ignore suggestion for ${typo}`,
+    autocompletePrefixTitle: (word) => `Insert "${word}"`,
+    autocompleteFuzzyTitle: (typo, suggestion) => `Replace "${typo}" with "${suggestion}"`,
+    autocompleteTabHint: "Tab",
   },
 };

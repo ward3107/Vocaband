@@ -6730,13 +6730,19 @@ const _ALL_TUPLES: readonly WordTuple[] = [
   [9448,"write up","לכתוב בפירוט","يكتب بالتفصيل",3]
 ] as const;
 
-export const ALL_WORDS: Word[] = _ALL_TUPLES.map(([id, english, hebrew, arabic, lvl]) => ({
-  id,
-  english,
-  hebrew,
-  arabic,
-  level: _LEVEL_CODE_TO_STRING[lvl],
-}))
+import { RUSSIAN_TRANSLATIONS } from "./vocabulary-ru";
+
+export const ALL_WORDS: Word[] = _ALL_TUPLES.map(([id, english, hebrew, arabic, lvl]) => {
+  const russian = RUSSIAN_TRANSLATIONS[id];
+  return {
+    id,
+    english,
+    hebrew,
+    arabic,
+    ...(russian ? { russian } : {}),
+    level: _LEVEL_CODE_TO_STRING[lvl],
+  };
+});
 
 export const SET_1_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 1");
 export const SET_2_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 2");
