@@ -92,6 +92,11 @@ export interface WordInputStepStrings {
   suggestionsTitle: string;
   suggestionAcceptTitle: (typo: string, suggestion: string) => string;
   suggestionDismissAria: (typo: string) => string;
+
+  // As-you-type autocomplete strip
+  autocompletePrefixTitle: (word: string) => string;
+  autocompleteFuzzyTitle: (typo: string, suggestion: string) => string;
+  autocompleteTabHint: string;
 }
 
 export const wordInputStepT: Record<Language, WordInputStepStrings> = {
@@ -170,6 +175,9 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     suggestionsTitle: "Did you mean…?",
     suggestionAcceptTitle: (typo, suggestion) => `Replace "${typo}" with "${suggestion}"`,
     suggestionDismissAria: (typo) => `Ignore suggestion for ${typo}`,
+    autocompletePrefixTitle: (word) => `Insert "${word}"`,
+    autocompleteFuzzyTitle: (typo, suggestion) => `Replace "${typo}" with "${suggestion}"`,
+    autocompleteTabHint: "Tab",
   },
   he: {
     pasteTitle: "הדביקו כאן את רשימת המילים שלכם",
@@ -246,6 +254,9 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     suggestionsTitle: "אולי התכוונתם ל…?",
     suggestionAcceptTitle: (typo, suggestion) => `החלף "${typo}" ב-"${suggestion}"`,
     suggestionDismissAria: (typo) => `התעלם מההצעה עבור ${typo}`,
+    autocompletePrefixTitle: (word) => `הוסף "${word}"`,
+    autocompleteFuzzyTitle: (typo, suggestion) => `החלף "${typo}" ב-"${suggestion}"`,
+    autocompleteTabHint: "Tab",
   },
   ar: {
     pasteTitle: "الصق قائمة المفردات هنا",
@@ -322,5 +333,8 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     suggestionsTitle: "هل قصدت…؟",
     suggestionAcceptTitle: (typo, suggestion) => `استبدل "${typo}" بـ "${suggestion}"`,
     suggestionDismissAria: (typo) => `تجاهل اقتراح ${typo}`,
+    autocompletePrefixTitle: (word) => `أدرج "${word}"`,
+    autocompleteFuzzyTitle: (typo, suggestion) => `استبدل "${typo}" بـ "${suggestion}"`,
+    autocompleteTabHint: "Tab",
   },
 };

@@ -3,6 +3,9 @@ import {
   extractEnglishTokens,
   suggestCorrections,
   applySuggestion,
+  getCurrentToken,
+  getAutocompleteMatches,
+  insertAutocomplete,
 } from '../utils/spellSuggest';
 import type { Word } from '../data/vocabulary';
 
@@ -77,6 +80,11 @@ describe('suggestCorrections', () => {
     expect(suggestCorrections('appel, banan', CURRICULUM, { ignored })).toHaveLength(1);
   });
 
+  it('skips suggestions whose candidate is already in the taken set', () => {
+    const taken = new Set(['apple']);
+    expect(suggestCorrections('appel', CURRICULUM, { taken })).toEqual([]);
+  });
+
   it('caps results to maxSuggestions', () => {
     const text = 'appel banan oranje grappe houze mouze horze wateer';
     const out = suggestCorrections(text, CURRICULUM, { maxSuggestions: 3 });
@@ -85,6 +93,85 @@ describe('suggestCorrections', () => {
 
   it('returns nothing for empty input', () => {
     expect(suggestCorrections('', CURRICULUM)).toEqual([]);
+  });
+});
+
+describe('getCurrentToken', () => {
+  it('returns the word at the caret', () => {
+    expect(getCurrentToken('apple banana orange', 9).token).toBe('banana');
+  });
+
+  it('handles caret at end of text', () => {
+    expect(getCurrentToken('apple ban', 9)).toMatchObject({ token: 'ban', start: 6, end: 9 });
+  });
+
+  it('returns empty token when caret sits on a separator', () => {
+    expect(getCurrentToken('apple, banana', 5).token).toBe('apple');
+    expect(getCurrentToken('apple, banana', 6).token).toBe('');
+  });
+
+  it('clamps out-of-range caret', () => {
+    expect(getCurrentToken('apple', 999).token).toBe('apple');
+  });
+
+  it('strips punctuation from the returned token', () => {
+    expect(getCurrentToken('hello!', 6).token).toBe('hello');
+  });
+});
+
+describe('getAutocompleteMatches', () => {
+  it('returns prefix matches first', () => {
+    const out = getAutocompleteMatches('app', CURRICULUM);
+    expect(out[0]).toMatchObject({ word: 'apple', kind: 'prefix' });
+  });
+
+  it('falls back to fuzzy matches when prefix is sparse', () => {
+    // "appl" has only "apple" as a prefix match → fills with fuzzy
+    const out = getAutocompleteMatches('appl', CURRICULUM, { max: 3 });
+    const kinds = out.map(o => o.kind);
+    expect(kinds[0]).toBe('prefix');
+  });
+
+  it('returns nothing when partial is an exact curriculum word', () => {
+    expect(getAutocompleteMatches('apple', CURRICULUM)).toEqual([]);
+  });
+
+  it('returns nothing for partials below minLength', () => {
+    expect(getAutocompleteMatches('a', CURRICULUM)).toEqual([]);
+  });
+
+  it('returns nothing for Hebrew/Arabic input', () => {
+    expect(getAutocompleteMatches('תפ', CURRICULUM)).toEqual([]);
+  });
+
+  it('caps results at max', () => {
+    expect(getAutocompleteMatches('a', CURRICULUM, { max: 2, minLength: 1 }).length).toBeLessThanOrEqual(2);
+  });
+
+  it('hides words already in the taken set', () => {
+    const taken = new Set(['apple']);
+    const out = getAutocompleteMatches('app', CURRICULUM, { taken });
+    expect(out.map(o => o.word)).not.toContain('apple');
+  });
+});
+
+describe('insertAutocomplete', () => {
+  it('replaces the token and appends ", " at end of text', () => {
+    const out = insertAutocomplete('apple, ban', 7, 10, 'banana');
+    expect(out.text).toBe('apple, banana, ');
+    expect(out.caret).toBe(15);
+  });
+
+  it('does not double up the separator when one follows the token', () => {
+    const out = insertAutocomplete('apple, ban, orange', 7, 10, 'banana');
+    expect(out.text).toBe('apple, banana, orange');
+    expect(out.caret).toBe(13);
+  });
+
+  it('handles insertion at start of text', () => {
+    const out = insertAutocomplete('app banana', 0, 3, 'apple');
+    expect(out.text).toBe('apple banana');
+    expect(out.caret).toBe(5);
   });
 });
 

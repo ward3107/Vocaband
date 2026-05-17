@@ -17,7 +17,15 @@ import {
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
-import { suggestCorrections, applySuggestion, type SpellSuggestion } from '../../utils/spellSuggest';
+import {
+  suggestCorrections,
+  applySuggestion,
+  getCurrentToken,
+  getAutocompleteMatches,
+  insertAutocomplete,
+  type SpellSuggestion,
+  type AutocompleteMatch,
+} from '../../utils/spellSuggest';
 import InPageCamera from '../InPageCamera';
 import { useLanguage } from '../../hooks/useLanguage';
 import { wordInputStepT } from '../../locales/teacher/word-input-step';
@@ -38,6 +46,28 @@ const APP_VERSION = 'ocr-debug-2026-04-29-e';
 function useStepTexts() {
   const { language } = useLanguage();
   return wordInputStepT[language];
+}
+
+/**
+ * `(hover: hover) and (pointer: fine)` is true when the device has a
+ * precise pointer (mouse/trackpad) — i.e. a real desktop or a tablet
+ * with a stylus/mouse attached. We use it to skip the as-you-type
+ * autocomplete strip on phones/tablets, where the OS keyboard's
+ * native predictive bar already covers the same UX and our chip row
+ * would just steal space above the keyboard.
+ */
+function useIsDesktopPointer() {
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isDesktop;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -112,13 +142,27 @@ interface HeroPasteAreaProps {
   onAnalyze: (text: string) => void;
   isAnalyzing: boolean;
   allWords: Word[];
+  /** English words already in the teacher's selected list — we hide
+   *  these from autocomplete + fuzzy suggestions so we never propose
+   *  a word they've already added. */
+  takenEnglish: Set<string>;
 }
 
-const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, allWords }) => {
+const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, allWords, takenEnglish }) => {
   const TEXT = useStepTexts();
+  const isDesktop = useIsDesktopPointer();
   const [text, setText] = useState('');
   const [suggestions, setSuggestions] = useState<SpellSuggestion[]>([]);
   const [ignored, setIgnored] = useState<Set<string>>(new Set());
+  // Caret position drives the as-you-type autocomplete strip. We track
+  // it on every selection change because the textarea state doesn't
+  // expose it reactively.
+  const [caretPos, setCaretPos] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
+  // After we programmatically rewrite the text via insertAutocomplete,
+  // we need to restore the caret on the next paint — useEffect fires
+  // after the DOM commit, so this is the right hook for it.
+  const [pendingCaret, setPendingCaret] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-grow the textarea so a long paste (10, 50, 200 words) doesn't
@@ -146,10 +190,10 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
       return;
     }
     const id = window.setTimeout(() => {
-      setSuggestions(suggestCorrections(text, allWords, { ignored }));
+      setSuggestions(suggestCorrections(text, allWords, { ignored, taken: takenEnglish }));
     }, 400);
     return () => window.clearTimeout(id);
-  }, [text, allWords, ignored]);
+  }, [text, allWords, ignored, takenEnglish]);
 
   const acceptSuggestion = (s: SpellSuggestion) => {
     setText(prev => applySuggestion(prev, s.typo, s.suggestion));
@@ -162,6 +206,59 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
       return next;
     });
   };
+
+  // As-you-type autocomplete for the partial word at the caret.
+  // Recomputed synchronously per keystroke — cheap because the
+  // curriculum index is bucketed by first-char + length, so each
+  // suggestion call scans only ~250–500 words instead of all 6.5k.
+  const currentToken = useMemo(
+    () => (isFocused && isDesktop ? getCurrentToken(text, caretPos) : { token: '', start: 0, end: 0 }),
+    [text, caretPos, isFocused, isDesktop]
+  );
+  const autocompleteMatches: AutocompleteMatch[] = useMemo(
+    () => (isDesktop ? getAutocompleteMatches(currentToken.token, allWords, { max: 5, taken: takenEnglish }) : []),
+    [currentToken.token, allWords, isDesktop, takenEnglish]
+  );
+
+  const acceptAutocomplete = useCallback(
+    (match: AutocompleteMatch) => {
+      const { text: newText, caret } = insertAutocomplete(
+        text,
+        currentToken.start,
+        currentToken.end,
+        match.word
+      );
+      setText(newText);
+      setPendingCaret(caret);
+    },
+    [text, currentToken.start, currentToken.end]
+  );
+
+  // Restore caret + keep focus after a programmatic insertion.
+  useEffect(() => {
+    if (pendingCaret == null) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(pendingCaret, pendingCaret);
+    setCaretPos(pendingCaret);
+    setPendingCaret(null);
+  }, [pendingCaret, text]);
+
+  const handleCaretSync = useCallback(() => {
+    const el = textareaRef.current;
+    if (el) setCaretPos(el.selectionStart ?? 0);
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Tab' && autocompleteMatches.length > 0 && !e.shiftKey) {
+        e.preventDefault();
+        acceptAutocomplete(autocompleteMatches[0]);
+      }
+    },
+    [autocompleteMatches, acceptAutocomplete]
+  );
 
   return (
     <motion.div
@@ -183,12 +280,76 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
           <textarea
             ref={textareaRef}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); setCaretPos(e.target.selectionStart ?? 0); }}
+            onSelect={handleCaretSync}
+            onClick={handleCaretSync}
+            onKeyUp={handleCaretSync}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => {
+              // Delay so a tap on a suggestion chip can run its
+              // onClick before the strip unmounts via isFocused=false.
+              window.setTimeout(() => setIsFocused(false), 150);
+            }}
             placeholder={TEXT.pastePlaceholder}
             dir="ltr"
+            // On desktop our custom strip handles suggestions, so silence
+            // the browser's spell-check/autocorrect to avoid double-noise.
+            // On mobile/tablet we step out of the OS keyboard's way —
+            // its native predictive bar (QuickType / Gboard) is already
+            // sitting right above the textarea and works better than any
+            // popover we could float there.
+            spellCheck={!isDesktop}
+            autoCorrect={isDesktop ? 'off' : 'on'}
+            autoCapitalize="off"
             className="w-full min-h-32 p-4 border border-[var(--vb-border)] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 text-[var(--vb-text-secondary)] placeholder:text-[var(--vb-text-muted)] leading-relaxed"
             style={{ textAlign: 'left' }}
           />
+
+          {/* As-you-type autocomplete strip (English curriculum). Sits
+              directly under the textarea so on mobile it lands right
+              above the keyboard naturally. */}
+          <AnimatePresence>
+            {autocompleteMatches.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="mt-2"
+                dir="ltr"
+              >
+                <div className="flex gap-2 overflow-x-auto py-1" style={{ scrollbarWidth: 'thin' }}>
+                  {autocompleteMatches.map((m, i) => (
+                    <button
+                      key={m.word}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => acceptAutocomplete(m)}
+                      className={`shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium border transition-shadow shadow-sm hover:shadow ${
+                        m.kind === 'fuzzy'
+                          ? 'bg-amber-50 border-amber-200 text-amber-800'
+                          : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+                      }`}
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                      title={
+                        m.kind === 'fuzzy'
+                          ? TEXT.autocompleteFuzzyTitle(currentToken.token, m.word)
+                          : TEXT.autocompletePrefixTitle(m.word)
+                      }
+                    >
+                      <span>{m.word}</span>
+                      {i === 0 && (
+                        <span className="hidden sm:inline text-[10px] uppercase tracking-wide text-gray-400 ml-1">
+                          {TEXT.autocompleteTabHint}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Tip */}
           <p className="mt-3 text-sm text-[var(--vb-text-muted)] flex items-center gap-2">
@@ -2112,10 +2273,18 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     showToast?.('Translations updated', 'success');
   }, [selectedWords, onSelectedWordsChange, showToast]);
 
+  // English-only lower-cased set of already-selected words. Passed to
+  // the paste textarea so live + post-paste suggestions never propose
+  // a word the teacher has already added.
+  const takenEnglish = useMemo(
+    () => new Set(selectedWords.map(w => (w.english || '').toLowerCase().trim()).filter(Boolean)),
+    [selectedWords]
+  );
+
   return (
     <div>
       {/* Hero Paste Area */}
-      <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} allWords={allWords} />
+      <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} allWords={allWords} takenEnglish={takenEnglish} />
 
       {/* OR Separator */}
       <div className="flex items-center gap-4 my-8">
