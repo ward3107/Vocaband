@@ -91,8 +91,6 @@ import { useAudio } from "./hooks/useAudio";
 import { useLanguage } from "./hooks/useLanguage";
 import { appToastsT } from "./locales/app-toasts";
 import { useRetention } from "./hooks/useRetention";
-import { getTeacherDashboardTheme } from "./constants/teacherDashboardThemes";
-import { applyThemePalette, clearThemePalette } from "./utils/applyThemePalette";
 import { useSavedTasks, type SavedTask } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
@@ -180,6 +178,7 @@ import { compressImageForUpload } from "./utils/compressImage";
 // ImageCropModal moved to a React.lazy at the top of this file.
 import { useTeacherGuidesSync } from "./hooks/useTeacherGuidesSync";
 import { useVocaRouting } from "./hooks/useVocaRouting";
+import { useApplyTeacherTheme } from "./hooks/useApplyTeacherTheme";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
@@ -2043,25 +2042,13 @@ export default function App() {
   // between teacher pages without flashing or clearing.
   // - For teachers: applies their dashboard theme CSS variables
   // - For students/public: clears any teacher theme variables
-  // Extract theme ID separately to avoid re-running effect on unrelated user updates.
+  // Apply the teacher's dashboard theme to the document root.  Extract
+  // theme ID separately to avoid re-running the effect on unrelated
+  // user updates.  See useApplyTeacherTheme for the palette + dark-mode
+  // dataset writes.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const teacherThemeId = hasTeacherAccess(user) ? (user as any).teacherDashboardTheme : null;
-  const lastThemeRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    // Only apply if theme actually changed (avoid unnecessary DOM writes)
-    if (lastThemeRef.current === teacherThemeId) return;
-    lastThemeRef.current = teacherThemeId;
-
-    if (teacherThemeId) {
-      const theme = getTeacherDashboardTheme(teacherThemeId);
-      applyThemePalette(theme.palette);
-      // Update data attribute for dark mode scrollbar styles
-      document.documentElement.dataset.themeDark = theme.dark.toString();
-    } else {
-      clearThemePalette();
-      delete document.documentElement.dataset.themeDark;
-    }
-  }, [teacherThemeId]);
+  useApplyTeacherTheme(teacherThemeId);
 
 
   // View-state guards: redirect the user out of orphaned / broken
