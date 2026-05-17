@@ -86,6 +86,7 @@ import { useQuickPlaySessionState } from "./hooks/useQuickPlaySessionState";
 import { useTeacherUiModalsState } from "./hooks/useTeacherUiModalsState";
 import { useAuthFlowRefs } from "./hooks/useAuthFlowRefs";
 import { useNavigationRefs } from "./hooks/useNavigationRefs";
+import { useRenderLoopRefs } from "./hooks/useRenderLoopRefs";
 import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
 import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -577,15 +578,9 @@ export default function App() {
     hasPending: saveQueueHasPending,
   } = useSaveQueue();
 
-  // Refs grouped together so the cleanup builder below can pick them up.
-  // userRef — "current" user for effects that don't re-register.
-  // feedbackTimeoutRef — feedback overlay cleanup on unmount.
-  // isProcessingRef — guard against rapid clicks during feedback.
-  // lastScoreEmitRef — last Socket.IO score emit time, throttle gate.
-  const userRef = useRef(user);
-  const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const isProcessingRef = useRef<boolean>(false);
-  const lastScoreEmitRef = useRef<number>(0);
+  // Render-loop refs (user/feedback/processing/scoreEmit).
+  // See useRenderLoopRefs.
+  const { userRef, feedbackTimeoutRef, isProcessingRef, lastScoreEmitRef } = useRenderLoopRefs(user);
 
   // Clear pending save-queue work + feedback timeout. Called from
   // logout / session-end paths.  See handlers/sessionCleanups.
