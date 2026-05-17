@@ -176,6 +176,7 @@ import { useTeacherGuidesSync } from "./hooks/useTeacherGuidesSync";
 import { useVocaRouting } from "./hooks/useVocaRouting";
 import { useApplyTeacherTheme } from "./hooks/useApplyTeacherTheme";
 import { useAuthRestore } from "./hooks/useAuthRestore";
+import { useDeepLinkConsumers } from "./hooks/useDeepLinkConsumers";
 import { getGameDebugger } from "./utils/gameDebug";
 import {
   MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
@@ -219,7 +220,6 @@ import { generateAndStoreQuickPlayAiSentences } from "./utils/generateAndStoreQu
 import { createEnglishQuickPlaySession, createHebrewQuickPlaySession } from "./handlers/quickPlaySession";
 import { generateAiLesson, type AiLessonParams } from "./utils/aiLesson";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
-import { stripUrlParam } from "./utils/url";
 import { resolveInitialView } from "./utils/resolveInitialView";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
@@ -1316,36 +1316,10 @@ export default function App() {
     fetchScores,
   });
 
-  // Deep-link to a specific assignment.  When a teacher shares an
-  // assignment via the Share button on its row in ClassCard, the URL
-  // carries `&assignment=<id>`.  After the student logs in and lands
-  // on their dashboard with assignments loaded, drop them straight
-  // into the mode picker for that assignment — skipping the manual
-  // dashboard tap a teacher just shortcut for them.  We only consume
-  // the pending id once; missing matches silently fall back to the
-  // normal dashboard so an outdated link doesn't strand the student.
-  useEffect(() => {
-    if (!pendingAssignmentId) return;
-    if (user?.role !== "student") return;
-    if (view !== "student-dashboard") return;
-    if (studentAssignments.length === 0) return;
-    const match = studentAssignments.find(a => a.id === pendingAssignmentId);
-    if (!match) return;
-    setActiveAssignment(match);
-    setAssignmentWords(match.words ?? []);
-    setShowModeSelection(true);
-    setView("game");
-    setPendingAssignmentId(null);
-    // Strip the consumed param so a refresh or back-nav doesn't
-    // re-trigger the auto-open after the student left the assignment.
-    stripUrlParam("assignment");
-  }, [pendingAssignmentId, user?.role, view, studentAssignments]);
-
   // Class Minute entry point — used by both the dashboard widget tap
   // and the teacher-shared ?play=class-minute deep-link.  Pulls SRS-
   // due words first, falls back to current assignments, then
-  // SET_2_WORDS as last resort.  See onStartClassMinute prop on
-  // StudentDashboardView for the inline flow.
+  // SET_2_WORDS as last resort.
   const startClassMinute = useCallback(async () => {
     const seedWords = await pickClassMinuteWords({
       allWords: ALL_WORDS,
@@ -1359,31 +1333,16 @@ export default function App() {
     setView("game");
   }, [ALL_WORDS, SET_2_WORDS, studentAssignments]);
 
-  // Deep-link to Class Minute.  When a teacher shares the daily-drill
-  // link via the Send Class Minute action on ClassCard, the URL carries
-  // `?play=class-minute`.  Same gating as the assignment deep-link:
-  // student role, dashboard view, and ALL_WORDS loaded (the SRS row
-  // hydration needs the vocabulary chunk).  We also wait until
-  // studentAssignments has populated at least once so the fallback
-  // word pool isn't empty when SRS returns thin — the polling effect
-  // above tops it up shortly after login, but the very first render
-  // can race.
-  //
-  // pendingClassSwitch gate: if the student lands on the deep-link
-  // mid-class-switch flow (ClassSwitchModal asking "stay or switch?"),
-  // wait for that decision before consuming the deep-link.  Otherwise
-  // the round launches under whichever class context happens to be
-  // active at mount time, which may not be what the student picks.
-  useEffect(() => {
-    if (pendingPlayMode !== 'class-minute') return;
-    if (user?.role !== "student") return;
-    if (view !== "student-dashboard") return;
-    if (ALL_WORDS.length === 0) return;
-    if (pendingClassSwitch) return;
-    setPendingPlayMode(null);
-    stripUrlParam("play");
-    void startClassMinute();
-  }, [pendingPlayMode, user?.role, view, ALL_WORDS.length, pendingClassSwitch, startClassMinute]);
+  // Deep-link consumers: ?assignment=<id> + ?play=class-minute.
+  // See useDeepLinkConsumers for gating + URL-strip semantics.
+  useDeepLinkConsumers({
+    user, view,
+    pendingAssignmentId, pendingPlayMode,
+    studentAssignments, allWordsCount: ALL_WORDS.length, pendingClassSwitch,
+    startClassMinute,
+    setActiveAssignment, setAssignmentWords, setShowModeSelection, setView,
+    setPendingAssignmentId, setPendingPlayMode,
+  });
 
 
   // --- SMART PASTE FUNCTIONS ---
