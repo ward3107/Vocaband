@@ -17,7 +17,15 @@ import {
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
-import { suggestCorrections, applySuggestion, type SpellSuggestion } from '../../utils/spellSuggest';
+import {
+  suggestCorrections,
+  applySuggestion,
+  getCurrentToken,
+  getAutocompleteMatches,
+  insertAutocomplete,
+  type SpellSuggestion,
+  type AutocompleteMatch,
+} from '../../utils/spellSuggest';
 import InPageCamera from '../InPageCamera';
 import { useLanguage } from '../../hooks/useLanguage';
 import { wordInputStepT } from '../../locales/teacher/word-input-step';
@@ -119,6 +127,15 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
   const [text, setText] = useState('');
   const [suggestions, setSuggestions] = useState<SpellSuggestion[]>([]);
   const [ignored, setIgnored] = useState<Set<string>>(new Set());
+  // Caret position drives the as-you-type autocomplete strip. We track
+  // it on every selection change because the textarea state doesn't
+  // expose it reactively.
+  const [caretPos, setCaretPos] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
+  // After we programmatically rewrite the text via insertAutocomplete,
+  // we need to restore the caret on the next paint — useEffect fires
+  // after the DOM commit, so this is the right hook for it.
+  const [pendingCaret, setPendingCaret] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-grow the textarea so a long paste (10, 50, 200 words) doesn't
@@ -163,6 +180,59 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
     });
   };
 
+  // As-you-type autocomplete for the partial word at the caret.
+  // Recomputed synchronously per keystroke — cheap because the
+  // curriculum index is bucketed by first-char + length, so each
+  // suggestion call scans only ~250–500 words instead of all 6.5k.
+  const currentToken = useMemo(
+    () => (isFocused ? getCurrentToken(text, caretPos) : { token: '', start: 0, end: 0 }),
+    [text, caretPos, isFocused]
+  );
+  const autocompleteMatches: AutocompleteMatch[] = useMemo(
+    () => getAutocompleteMatches(currentToken.token, allWords, { max: 5 }),
+    [currentToken.token, allWords]
+  );
+
+  const acceptAutocomplete = useCallback(
+    (match: AutocompleteMatch) => {
+      const { text: newText, caret } = insertAutocomplete(
+        text,
+        currentToken.start,
+        currentToken.end,
+        match.word
+      );
+      setText(newText);
+      setPendingCaret(caret);
+    },
+    [text, currentToken.start, currentToken.end]
+  );
+
+  // Restore caret + keep focus after a programmatic insertion.
+  useEffect(() => {
+    if (pendingCaret == null) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(pendingCaret, pendingCaret);
+    setCaretPos(pendingCaret);
+    setPendingCaret(null);
+  }, [pendingCaret, text]);
+
+  const handleCaretSync = useCallback(() => {
+    const el = textareaRef.current;
+    if (el) setCaretPos(el.selectionStart ?? 0);
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Tab' && autocompleteMatches.length > 0 && !e.shiftKey) {
+        e.preventDefault();
+        acceptAutocomplete(autocompleteMatches[0]);
+      }
+    },
+    [autocompleteMatches, acceptAutocomplete]
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -183,12 +253,70 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
           <textarea
             ref={textareaRef}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); setCaretPos(e.target.selectionStart ?? 0); }}
+            onSelect={handleCaretSync}
+            onClick={handleCaretSync}
+            onKeyUp={handleCaretSync}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => {
+              // Delay so a tap on a suggestion chip can run its
+              // onClick before the strip unmounts via isFocused=false.
+              window.setTimeout(() => setIsFocused(false), 150);
+            }}
             placeholder={TEXT.pastePlaceholder}
             dir="ltr"
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
             className="w-full min-h-32 p-4 border border-[var(--vb-border)] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 text-[var(--vb-text-secondary)] placeholder:text-[var(--vb-text-muted)] leading-relaxed"
             style={{ textAlign: 'left' }}
           />
+
+          {/* As-you-type autocomplete strip (English curriculum). Sits
+              directly under the textarea so on mobile it lands right
+              above the keyboard naturally. */}
+          <AnimatePresence>
+            {autocompleteMatches.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="mt-2"
+                dir="ltr"
+              >
+                <div className="flex gap-2 overflow-x-auto py-1" style={{ scrollbarWidth: 'thin' }}>
+                  {autocompleteMatches.map((m, i) => (
+                    <button
+                      key={m.word}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => acceptAutocomplete(m)}
+                      className={`shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium border transition-shadow shadow-sm hover:shadow ${
+                        m.kind === 'fuzzy'
+                          ? 'bg-amber-50 border-amber-200 text-amber-800'
+                          : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+                      }`}
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                      title={
+                        m.kind === 'fuzzy'
+                          ? TEXT.autocompleteFuzzyTitle(currentToken.token, m.word)
+                          : TEXT.autocompletePrefixTitle(m.word)
+                      }
+                    >
+                      <span>{m.word}</span>
+                      {i === 0 && (
+                        <span className="hidden sm:inline text-[10px] uppercase tracking-wide text-gray-400 ml-1">
+                          {TEXT.autocompleteTabHint}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Tip */}
           <p className="mt-3 text-sm text-[var(--vb-text-muted)] flex items-center gap-2">

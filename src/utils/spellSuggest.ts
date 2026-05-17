@@ -40,6 +40,7 @@ export function extractEnglishTokens(text: string): string[] {
 interface CurriculumIndex {
   exact: Set<string>;
   byLength: Map<number, string[]>;
+  byFirstChar: Map<string, string[]>;
 }
 
 const indexCache = new WeakMap<Word[], CurriculumIndex>();
@@ -49,16 +50,20 @@ function getIndex(allWords: Word[]): CurriculumIndex {
   if (cached) return cached;
   const exact = new Set<string>();
   const byLength = new Map<number, string[]>();
+  const byFirstChar = new Map<string, string[]>();
   for (const w of allWords) {
     const e = (w.english || '').toLowerCase().trim();
     if (!e || e.includes(' ')) continue;
     if (NON_ENGLISH_RE.test(e)) continue;
     exact.add(e);
-    const list = byLength.get(e.length) ?? [];
-    list.push(e);
-    byLength.set(e.length, list);
+    const lenList = byLength.get(e.length) ?? [];
+    lenList.push(e);
+    byLength.set(e.length, lenList);
+    const firstList = byFirstChar.get(e[0]) ?? [];
+    firstList.push(e);
+    byFirstChar.set(e[0], firstList);
   }
-  const idx = { exact, byLength };
+  const idx = { exact, byLength, byFirstChar };
   indexCache.set(allWords, idx);
   return idx;
 }
@@ -114,4 +119,113 @@ export function applySuggestion(text: string, typo: string, replacement: string)
   const escaped = typo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(`(^|[^A-Za-z])(${escaped})(?=$|[^A-Za-z])`, 'gi');
   return text.replace(re, (_match, pre) => `${pre}${replacement}`);
+}
+
+// ─── As-you-type autocomplete ─────────────────────────────────────────────────
+
+const SEPARATOR_RE = /[\s,;\n\r\t.|/]/;
+
+export interface TokenAtCaret {
+  /** The token straddling the caret, lower-cased + punctuation-stripped. */
+  token: string;
+  /** Inclusive start index in the original text. */
+  start: number;
+  /** Exclusive end index in the original text. */
+  end: number;
+}
+
+/**
+ * Find the contiguous non-separator span around `caret` in `text`.
+ * Returns empty token when the caret sits on a separator.
+ */
+export function getCurrentToken(text: string, caret: number): TokenAtCaret {
+  const pos = Math.max(0, Math.min(caret, text.length));
+  let start = pos;
+  let end = pos;
+  while (start > 0 && !SEPARATOR_RE.test(text[start - 1])) start--;
+  while (end < text.length && !SEPARATOR_RE.test(text[end])) end++;
+  const raw = text.slice(start, end).toLowerCase().replace(STRIP_PUNCT_RE, '');
+  return { token: raw, start, end };
+}
+
+export interface AutocompleteMatch {
+  word: string;
+  kind: 'prefix' | 'fuzzy';
+}
+
+/**
+ * Suggest curriculum words for the partial token the teacher is typing.
+ * Prefix matches come first (most predictive), then short-distance
+ * fuzzy matches to catch typos. Returns [] if `partial` is already an
+ * exact curriculum hit or too short.
+ */
+export function getAutocompleteMatches(
+  partial: string,
+  allWords: Word[],
+  options: { max?: number; minLength?: number } = {}
+): AutocompleteMatch[] {
+  const { max = 5, minLength = 2 } = options;
+  if (!partial || partial.length < minLength) return [];
+  if (NON_ENGLISH_RE.test(partial)) return [];
+  if (!allWords?.length) return [];
+
+  const index = getIndex(allWords);
+  if (index.exact.has(partial)) return [];
+
+  const bucket = index.byFirstChar.get(partial[0]) ?? [];
+  const prefixHits: string[] = [];
+  for (const w of bucket) {
+    if (w.startsWith(partial) && w !== partial) prefixHits.push(w);
+  }
+  prefixHits.sort((a, b) => a.length - b.length || a.localeCompare(b));
+
+  if (prefixHits.length >= max) {
+    return prefixHits.slice(0, max).map(word => ({ word, kind: 'prefix' as const }));
+  }
+
+  // Fill remaining slots with fuzzy matches (length window, distance ≤ 2).
+  const prefixSet = new Set(prefixHits);
+  const fuzzy: { word: string; distance: number }[] = [];
+  for (let len = partial.length - 2; len <= partial.length + 2; len++) {
+    if (len < 2) continue;
+    const lenBucket = index.byLength.get(len);
+    if (!lenBucket) continue;
+    for (const candidate of lenBucket) {
+      if (prefixSet.has(candidate)) continue;
+      const d = levenshteinDistance(partial, candidate);
+      if (d === 0 || d > 2) continue;
+      if (d > 1 && partial[0] !== candidate[0]) continue;
+      fuzzy.push({ word: candidate, distance: d });
+    }
+  }
+  fuzzy.sort((a, b) => a.distance - b.distance || a.word.localeCompare(b.word));
+
+  const out: AutocompleteMatch[] = prefixHits.map(word => ({ word, kind: 'prefix' as const }));
+  for (const f of fuzzy) {
+    if (out.length >= max) break;
+    out.push({ word: f.word, kind: 'fuzzy' });
+  }
+  return out;
+}
+
+/**
+ * Replace the token at [start, end) with `replacement`, appending a
+ * comma-space separator if the inserted word would otherwise butt up
+ * against the next character (or the end of the text). Returns the new
+ * text plus the caret position that the textarea should restore.
+ */
+export function insertAutocomplete(
+  text: string,
+  start: number,
+  end: number,
+  replacement: string
+): { text: string; caret: number } {
+  const before = text.slice(0, start);
+  const after = text.slice(end);
+  const nextChar = after[0];
+  const needsSeparator = !nextChar || !SEPARATOR_RE.test(nextChar);
+  const suffix = needsSeparator ? ', ' : '';
+  const newText = before + replacement + suffix + after;
+  const caret = start + replacement.length + suffix.length;
+  return { text: newText, caret };
 }
