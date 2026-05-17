@@ -82,6 +82,7 @@ import { useOAuthState } from "./hooks/useOAuthState";
 import { useActiveVocaState } from "./hooks/useActiveVocaState";
 import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
 import { useQuickPlayGuestState } from "./hooks/useQuickPlayGuestState";
+import { useQuickPlaySessionState } from "./hooks/useQuickPlaySessionState";
 import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
 import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -259,29 +260,17 @@ export default function App() {
     isLiveChallenge,
   });
 
-  // --- QUICK PLAY STATE ---
-  // Only the setters are used — the values themselves are never read in
-  // this component or any child that gets them passed down. The state
-  // still exists so the teacher-monitor cleanup path can reset it to
-  // null/[] on session end.
-  const [, setQuickPlaySessionCode] = useState<string | null>(null);
-  const [quickPlayInitialWords, setQuickPlaySelectedWords] = useState<Word[]>([]);
-  // Saved-task templates also restore mode selection when reused.
-  const [quickPlayInitialModes, setQuickPlayInitialModes] = useState<string[] | undefined>(undefined);
-  const [quickPlayActiveSession, setQuickPlayActiveSession] = useState<{id: string, sessionCode: string, wordIds: number[], words: Word[], allowedModes?: string[], aiSentences?: string[]} | null>(null);
-  // Class Show — teacher-led projector mode.  When the teacher
-  // launches from an assignment card, this stores the assignment's
-  // word list so the setup panel pre-selects "From assignment".
-  const [classShowAssignment, setClassShowAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[] } | null>(null);
-  // Worksheet — optional pre-fill from an assignment.
-  const [worksheetAssignment, setWorksheetAssignment] = useState<{ title: string; wordIds: number[]; customWords?: Word[]; className?: string | null } | null>(null);
-  // Tracks the entry point for activity-type tab views (class-show,
-  // worksheet, hot-seat, vocabagrut).  When set to 'create-assignment',
-  // these views' back/exit handlers return to the New Activity wizard
-  // (so the teacher lands back on the tab strip) instead of jumping
-  // straight to the teacher dashboard.  Cleared when the wizard itself
-  // is exited.
-  const [activityNavOrigin, setActivityNavOrigin] = useState<"create-assignment" | null>(null);
+  // Teacher-side QP session + activity-launch state.  See
+  // useQuickPlaySessionState for per-field semantics.
+  const {
+    setQuickPlaySessionCode,
+    quickPlayInitialWords, setQuickPlaySelectedWords,
+    quickPlayInitialModes, setQuickPlayInitialModes,
+    quickPlayActiveSession, setQuickPlayActiveSession,
+    classShowAssignment, setClassShowAssignment,
+    worksheetAssignment, setWorksheetAssignment,
+    activityNavOrigin, setActivityNavOrigin,
+  } = useQuickPlaySessionState();
   // Guest-side QP state (identity, kicked/ended flags, completed
   // modes, cumulative score ref).  See useQuickPlayGuestState.
   const {
