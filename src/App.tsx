@@ -98,13 +98,11 @@ const WorksheetAttemptsView = lazy(() => import("./views/WorksheetAttemptsView")
 // they're now lazy-loaded inside ClassroomView and rendered as tabs.
 const ClassroomView = lazy(() => import("./views/ClassroomView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
-const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const HotSeatView = lazy(() => import("./views/HotSeatView"));
 const HebrewComingSoonView = lazy(() => import("./views/HebrewComingSoonView"));
 const VocabagrutShell = lazy(() => import("./features/vocabagrut/VocabagrutShell"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
 const LiveChallengeClassSelectView = lazy(() => import("./views/LiveChallengeClassSelectView"));
-const LiveChallengeView = lazy(() => import("./views/LiveChallengeView"));
 const GameModeIntroView = lazy(() => import("./views/GameModeIntroView"));
 const GameModeSelectionView = lazy(() => import("./views/GameModeSelectionView"));
 const GameFinishedView = lazy(() => import("./views/GameFinishedView"));
@@ -135,6 +133,7 @@ import { TeacherDashboardSection } from "./views/TeacherDashboardSection";
 import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
 import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
+import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -1760,68 +1759,6 @@ export default function App() {
     );
   }
 
-  if (view === "live-challenge" && selectedClass) {
-    // VocaHebrew has no Hebrew-native Live Challenge yet — the English
-    // socket session would surface English-only assignment data to the
-    // Hebrew teacher's podium. Real Hebrew Live Challenge needs Hebrew
-    // assignment data + Hebrew student-side play surface; until that
-    // ships, show the same coming-soon screen used by Quick Play.
-    if (selectedClass.subject === "hebrew") {
-      return (
-        <LazyWrapper loadingMessage="טוען…">
-          <HebrewComingSoonView
-            titleHe="אתגר חי"
-            descriptionHe="מצב כיתה חי עם לוח שיא בזמן אמת — בקרוב באוצר המילים העברי."
-            onBack={() => {
-              setIsLiveChallenge(false);
-              setView("teacher-dashboard");
-            }}
-          />
-        </LazyWrapper>
-      );
-    }
-    // Demo-friendly error fallback: a Live Challenge crash mid-pitch is
-    // the worst possible moment.  Default "Failed to load component"
-    // text reads as a hard failure to a watching principal.  This
-    // fallback frames it as a quick reconnect, gives the teacher an
-    // obvious one-tap path back to the dashboard, and keeps the page
-    // colourful + on-brand rather than red-alert.
-    const liveChallengeErrorFallback = (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900 px-6">
-        <div className="max-w-md w-full text-center bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
-          <div className="text-5xl mb-4">⚡</div>
-          <h2 className="text-2xl font-black text-white mb-3">Reconnecting…</h2>
-          <p className="text-white/80 mb-6">
-            The challenge hit a hiccup. Students stay connected — pick the class again to resume.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setIsLiveChallenge(false);
-              setView("teacher-dashboard");
-            }}
-            className="w-full px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-shadow"
-          >
-            Return to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-    return (
-      <LazyWrapper
-        loadingMessage="Loading live challenge..."
-        fallback={liveChallengeErrorFallback}
-      >
-        <LiveChallengeView
-          selectedClass={selectedClass}
-          leaderboard={leaderboard}
-          socketConnected={socketConnected}
-          setView={setView}
-          setIsLiveChallenge={setIsLiveChallenge}
-        />
-      </LazyWrapper>
-    );
-  }
   // Fallback: view === "live-challenge" but selectedClass was cleared (can
   // happen after a hardware-back + state reset, or if a student lands on
   // this teacher-only view directly).  Previously this rendered NOTHING
@@ -2001,55 +1938,15 @@ export default function App() {
     );
   }
 
-  if (view === "quick-play-teacher-monitor") {
-    if (!quickPlayActiveSession) {
-      setView("quick-play-setup");
-      return null;
-    }
-    // Same demo-friendly fallback rationale as Live Challenge — Quick
-    // Play is the other live-classroom screen a teacher might be
-    // showing during a sales demo when the worst-case crash hits.
-    const monitorErrorFallback = (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900 px-6">
-        <div className="max-w-md w-full text-center bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
-          <div className="text-5xl mb-4">⚡</div>
-          <h2 className="text-2xl font-black text-white mb-3">Reconnecting…</h2>
-          <p className="text-white/80 mb-6">
-            The session monitor hit a hiccup. Your active session is safe — return to the dashboard and reopen it.
-          </p>
-          <button
-            type="button"
-            onClick={() => setView(user?.role === 'student' ? 'student-dashboard' : 'teacher-dashboard')}
-            className="w-full px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-shadow"
-          >
-            Return to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-    return (
-      <LazyWrapper
-        loadingMessage="Loading session monitor..."
-        fallback={monitorErrorFallback}
-      >
-        <QuickPlayTeacherMonitorView
-          quickPlayActiveSession={quickPlayActiveSession}
-          quickPlayJoinedStudents={quickPlayJoinedStudents}
-          setQuickPlayJoinedStudents={setQuickPlayJoinedStudents}
-          setView={setView}
-          setQuickPlayActiveSession={setQuickPlayActiveSession}
-          setQuickPlaySelectedWords={setQuickPlaySelectedWords}
-          setQuickPlaySessionCode={setQuickPlaySessionCode}
-          setQuickPlayCustomWords={setQuickPlayCustomWords}
-          setQuickPlayAddingCustom={setQuickPlayAddingCustom}
-          setQuickPlayTranslating={setQuickPlayTranslating}
-          cleanupSessionData={cleanupSessionData}
-          showToast={showToast}
-          realtimeStatus={quickPlayRealtimeStatus}
-        />
-      </LazyWrapper>
-    );
-  }
+  const teacherLiveScreen = renderTeacherLiveScreens({
+    view, user, selectedClass, setView, setIsLiveChallenge,
+    leaderboard, socketConnected,
+    quickPlayActiveSession, quickPlayJoinedStudents, setQuickPlayJoinedStudents,
+    setQuickPlayActiveSession, setQuickPlaySelectedWords, setQuickPlaySessionCode,
+    setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
+    cleanupSessionData, showToast, quickPlayRealtimeStatus,
+  });
+  if (teacherLiveScreen) return teacherLiveScreen;
 
   // Single "Classroom" entry point now wraps Analytics + Gradebook under
   // a tabbed UI (Pulse / Mastery / Records). Legacy /analytics and
