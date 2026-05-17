@@ -18,16 +18,16 @@
  *
  * UI language:
  *   - Idiom phrase always renders in English (the thing being learned).
- *   - The correct meaning shows in the student's UI language so HE/AR
- *     readers see the figurative meaning in their language.
- *   - Distractors render in English (translation of all distractors
- *     is a future enhancement — see docs/SELECTED-FEATURES-PLAN.md).
+ *   - ALL 4 options (correct meaning + 3 distractors) render in the
+ *     student's UI language so HE/AR readers can actually read what
+ *     they're picking between.  Without this, non-English readers
+ *     would see four English phrases and have to guess at random.
  */
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Volume2, X, ArrowRight } from "lucide-react";
 import { IDIOMS, pickRandomIdioms, type Idiom } from "../../data/idioms";
-import { useLanguage } from "../../hooks/useLanguage";
+import { useLanguage, type Language } from "../../hooks/useLanguage";
 import { gameAriasT } from "../../locales/student/game-arias";
 import { type GameThemeColor, getThemeColors } from "./GameShell";
 
@@ -57,13 +57,47 @@ function shuffle<T>(arr: readonly T[]): T[] {
   return out;
 }
 
+/** Pick the correct meaning + 3 distractors in the student's language.
+ *  Falls back to English per-field if a translation is missing so a
+ *  partial translation never collapses the round to fewer options. */
+function localizedOptionTexts(idiom: Idiom, language: Language): {
+  correct: string;
+  distractors: readonly [string, string, string];
+} {
+  if (language === "he") {
+    return {
+      correct: idiom.meaningHe || idiom.meaningEn,
+      distractors: [
+        idiom.distractorsHe[0] || idiom.distractorsEn[0],
+        idiom.distractorsHe[1] || idiom.distractorsEn[1],
+        idiom.distractorsHe[2] || idiom.distractorsEn[2],
+      ],
+    };
+  }
+  if (language === "ar") {
+    return {
+      correct: idiom.meaningAr || idiom.meaningEn,
+      distractors: [
+        idiom.distractorsAr[0] || idiom.distractorsEn[0],
+        idiom.distractorsAr[1] || idiom.distractorsEn[1],
+        idiom.distractorsAr[2] || idiom.distractorsEn[2],
+      ],
+    };
+  }
+  return {
+    correct: idiom.meaningEn,
+    distractors: idiom.distractorsEn,
+  };
+}
+
 /** Build the 4 options for a single idiom, shuffled. */
-function buildOptions(idiom: Idiom): Option[] {
+function buildOptions(idiom: Idiom, language: Language): Option[] {
+  const { correct, distractors } = localizedOptionTexts(idiom, language);
   const opts: Option[] = [
-    { text: idiom.meaningEn, isCorrect: true },
-    { text: idiom.distractorsEn[0], isCorrect: false },
-    { text: idiom.distractorsEn[1], isCorrect: false },
-    { text: idiom.distractorsEn[2], isCorrect: false },
+    { text: correct, isCorrect: true },
+    { text: distractors[0], isCorrect: false },
+    { text: distractors[1], isCorrect: false },
+    { text: distractors[2], isCorrect: false },
   ];
   return shuffle(opts);
 }
@@ -91,7 +125,11 @@ export default function IdiomGame({
   const [picked, setPicked] = useState<Option | null>(null);
 
   const current = round[questionIdx];
-  const options = useMemo(() => (current ? buildOptions(current) : []), [current]);
+  const options = useMemo(
+    () => (current ? buildOptions(current, language) : []),
+    [current, language],
+  );
+  const isRtl = language === "he" || language === "ar";
 
   // When the question changes, speak the idiom out loud so audio
   // learners can hear the phrase before committing to a meaning.
@@ -206,10 +244,11 @@ export default function IdiomGame({
               onClick={() => handlePick(opt)}
               disabled={showResult}
               type="button"
+              dir={dir}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`px-4 py-4 rounded-2xl text-left font-bold text-sm sm:text-base transition-all shadow-sm ${stateClasses}`}
+              className={`px-4 py-4 rounded-2xl font-bold text-sm sm:text-base transition-all shadow-sm ${isRtl ? "text-right" : "text-left"} ${stateClasses}`}
             >
-              <span className="inline-block w-7 h-7 mr-2 rounded-full bg-stone-100 text-stone-700 text-xs font-black leading-7 text-center">
+              <span className={`inline-block w-7 h-7 ${isRtl ? "ml-2" : "mr-2"} rounded-full bg-stone-100 text-stone-700 text-xs font-black leading-7 text-center`}>
                 {String.fromCharCode(65 + i)}
               </span>
               {opt.text}
