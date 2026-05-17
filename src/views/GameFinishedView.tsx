@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut, RefreshCw } from "lucide-react";
+import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut, RefreshCw, Printer } from "lucide-react";
 import type { AppUser } from "../core/supabase";
+import { supabase } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import { THEMES } from "../constants/game";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
@@ -9,6 +10,10 @@ import RatingPrompt from "../components/RatingPrompt";
 import { useLanguage } from "../hooks/useLanguage";
 import { gameFinishedT } from "../locales/student/game-finished";
 import type { View } from "../core/views";
+
+// Lazy — html2pdf + the certificate render chain is heavy (200+ kB)
+// and only loads when a student actually taps "Get my certificate".
+const CertificateModal = lazy(() => import("../components/CertificateModal"));
 
 // Unbiased secure random integer in [0, max).
 function secureRandomInt(max: number): number {
@@ -139,6 +144,41 @@ export default function GameFinishedView({
   const tt = gameFinishedT[language];
   const displayName = user?.displayName || "";
   const fillName = (template: string) => template.replace("{name}", displayName);
+
+  // ─── Certificate modal — student-facing print/share ──────────────
+  // Only authenticated real students get the option; QP guests have no
+  // users row + no lifetime stats to summarise.  Fetches aggregates on
+  // tap (one progress query) rather than at mount so cold celebration
+  // doesn't pay the Supabase round-trip.  Modal itself is lazy-loaded
+  // so the html2pdf chain stays out of GameActiveView's bundle.
+  const [certificateOpen, setCertificateOpen] = useState(false);
+  const [certStats, setCertStats] = useState<{ attempts: number; avgScore: number } | null>(null);
+  const [certLoading, setCertLoading] = useState(false);
+  const [certError, setCertError] = useState(false);
+  const canShowCertificate = !isGuest && user?.role === "student" && Boolean(user?.classCode) && score > 0;
+  const openCertificate = async () => {
+    if (!user?.uid) return;
+    setCertError(false);
+    setCertLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("progress")
+        .select("score")
+        .eq("student_uid", user.uid);
+      if (error) throw error;
+      const rows = data ?? [];
+      const attempts = rows.length;
+      const avgScore = attempts > 0
+        ? Math.round(rows.reduce((sum, r) => sum + (r.score ?? 0), 0) / attempts)
+        : 0;
+      setCertStats({ attempts, avgScore });
+      setCertificateOpen(true);
+    } catch {
+      setCertError(true);
+    } finally {
+      setCertLoading(false);
+    }
+  };
 
   return (
     <div dir={dir} className={`min-h-screen ${t.bg} flex flex-col items-center justify-center p-4 sm:p-6 text-center`}>
@@ -307,6 +347,28 @@ export default function GameFinishedView({
                 </button>
               )}
 
+              {/* SECONDARY — Get my certificate.  Lifetime stats card
+                  for the student to print or WhatsApp to parents.  Hidden
+                  for guests + zero-score rounds so we never offer a
+                  certificate for a game the kid clearly didn't finish. */}
+              {canShowCertificate && (
+                <button
+                  onClick={openCertificate}
+                  disabled={certLoading || isSaving}
+                  type="button"
+                  style={{ touchAction: 'manipulation' }}
+                  className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-amber-900/40 text-amber-200 hover:bg-amber-900/60' : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'}`}
+                >
+                  {certLoading ? <RefreshCw size={16} className="animate-spin" /> : <Printer size={16} />}
+                  {certLoading ? tt.preparingCertificate : tt.getCertificate}
+                </button>
+              )}
+              {certError && (
+                <p className={`text-xs text-center ${isDark ? 'text-rose-300' : 'text-rose-600'}`}>
+                  {tt.certificateUnavailable}
+                </p>
+              )}
+
               {/* TINY SECONDARY — Exit to dashboard.  Discoverable but
                   visually de-emphasised so kids gravitate to the big
                   primary button instead. */}
@@ -421,6 +483,25 @@ export default function GameFinishedView({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Certificate of Achievement — only mounts after the student
+          taps "Get my certificate" (modal is React.lazy at the top of
+          this file, so the html2pdf chain stays out of the cold game
+          bundle).  className falls back to the class code when we
+          don't have the name in user state (the modal itself accepts
+          either). */}
+      {certificateOpen && certStats && (
+        <Suspense fallback={null}>
+          <CertificateModal
+            open={certificateOpen}
+            onClose={() => setCertificateOpen(false)}
+            studentName={displayName}
+            className={user?.classCode ?? ''}
+            attempts={certStats.attempts}
+            avgScore={certStats.avgScore}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

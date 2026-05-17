@@ -38,6 +38,12 @@ export interface GameFinishedT {
    *  backToModes is the primary; exitToDashboard is the link. */
   backToModes: string;
   exitToDashboard: string;
+  /** Secondary CTA on the celebration screen — opens CertificateModal
+   *  with the student's lifetime stats so they can print or share with
+   *  parents.  Only rendered for authenticated real students. */
+  getCertificate: string;
+  preparingCertificate: string;
+  certificateUnavailable: string;
 }
 
 export const gameFinishedT: Record<Language, GameFinishedT> = {
@@ -75,6 +81,9 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     backToDashboard: "Back to Dashboard",
     backToModes: "Back to Modes →",
     exitToDashboard: "Exit to dashboard",
+    getCertificate: "Get my certificate",
+    preparingCertificate: "Preparing your certificate…",
+    certificateUnavailable: "Couldn't load your stats. Try again in a moment.",
   },
 
   he: {
@@ -111,6 +120,9 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     backToDashboard: "חזור ללוח הבקרה",
     backToModes: "חזרה למצבים →",
     exitToDashboard: "יציאה ללוח הבקרה",
+    getCertificate: "קבל את התעודה שלי",
+    preparingCertificate: "מכין את התעודה שלך…",
+    certificateUnavailable: "לא הצלחנו לטעון את הנתונים שלך. נסה שוב בעוד רגע.",
   },
 
   ar: {
@@ -147,5 +159,8 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     backToDashboard: "العودة إلى لوحة التحكم",
     backToModes: "العودة إلى الأوضاع →",
     exitToDashboard: "الخروج إلى لوحة التحكم",
+    getCertificate: "احصل على شهادتي",
+    preparingCertificate: "جاري تحضير شهادتك…",
+    certificateUnavailable: "تعذر تحميل إحصاءاتك. حاول مرة أخرى بعد لحظة.",
   },
 };

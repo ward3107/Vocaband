@@ -244,10 +244,21 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   };
 
   // ── Share via WhatsApp ─────────────────────────────────────────────────────
+  // Mirrors TeacherClassesSection.buildWhatsAppShareText — include the
+  // /student?class= deep link so parents tap the URL and land on the join
+  // screen with the code prefilled, instead of having to copy a bare code
+  // from the message into the app manually.
   const shareViaWhatsApp = () => {
-    const message = t.joinMessage(selectedClass?.code ?? '');
-    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    const code = selectedClass?.code ?? '';
+    const origin = typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'https://www.vocaband.com';
+    const joinUrl = `${origin}/student?class=${encodeURIComponent(code)}`;
+    const message =
+      language === 'he' ? `הצטרפו לכיתה שלי בווקבנד 🎓\n${joinUrl}\n(קוד כיתה: ${code})` :
+      language === 'ar' ? `انضموا إلى صفي في فوكاباند 🎓\n${joinUrl}\n(رمز الصف: ${code})` :
+      `Join my class on Vocaband 🎓\n${joinUrl}\n(class code: ${code})`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   // ── Handle success screen "Create another" ──────────────────────────────────
