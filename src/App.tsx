@@ -54,26 +54,6 @@ const SvgAlertTriangle: React.FC<{ size?: number; className?: string }> = ({ siz
     <path d="M12 17h.01" />
   </svg>
 );
-const SvgArrowLeftRight: React.FC<{ size?: number; className?: string; ariaHidden?: boolean }> = ({ size = 24, className, ariaHidden = true }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    aria-hidden={ariaHidden}
-  >
-    <path d="M8 3 4 7l4 4" />
-    <path d="M4 7h16" />
-    <path d="m16 21 4-4-4-4" />
-    <path d="M20 17H4" />
-  </svg>
-);
 // motion is no longer imported eagerly here. Its three eager consumers
 // (CookieBanner, QuickPlayResumeBanner, ImageCropModal — all defined
 // further down as React.lazy) carry it in their own chunks now, so the
@@ -88,12 +68,11 @@ import { useAudio } from "./hooks/useAudio";
 import { useLanguage } from "./hooks/useLanguage";
 import { appToastsT } from "./locales/app-toasts";
 import { useRetention } from "./hooks/useRetention";
-import { useSavedTasks, type SavedTask } from "./hooks/useSavedTasks";
+import { useSavedTasks } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
 import PendingApprovalScreen from "./components/PendingApprovalScreen";
 import { shuffle, chunkArray, addUnique, removeKey, secureRandomInt } from './utils';
-import { logAudit } from './utils/audit';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import { isAnswerCorrect } from './utils/answerMatch';
 // SetupWizard is now lazy-loaded via QuickPlaySetupView
@@ -120,7 +99,6 @@ const CreateAssignmentView = lazy(() => import("./views/CreateAssignmentView"));
 // they're now lazy-loaded inside ClassroomView and rendered as tabs.
 const ClassroomView = lazy(() => import("./views/ClassroomView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
-const ClassRosterModal = lazy(() => import("./components/ClassRosterModal"));
 const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const ClassShowView = lazy(() => import("./views/ClassShowView"));
@@ -139,7 +117,6 @@ const GameModeSelectionView = lazy(() => import("./views/GameModeSelectionView")
 const GameFinishedView = lazy(() => import("./views/GameFinishedView"));
 const GameActiveView = lazy(() => import("./views/GameActiveView"));
 const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
-const TeacherDashboardView = lazy(() => import("./views/TeacherDashboardView"));
 const VocaPickerView = lazy(() => import("./views/VocaPickerView"));
 const HebrewModeSelectionView = lazy(() => import("./views/HebrewModeSelectionView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
@@ -161,6 +138,7 @@ import { useAppMiscEffects } from "./hooks/useAppMiscEffects";
 import { renderHebrewRoute } from "./views/HebrewRoutes";
 import { renderQuickPlayExitScreens } from "./views/QuickPlayExitScreens";
 import { useAppOverlays } from "./hooks/useAppOverlays";
+import { TeacherDashboardSection } from "./views/TeacherDashboardSection";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -1697,190 +1675,34 @@ export default function App() {
   });
   if (hebrewRoute) return hebrewRoute;
   if (hasTeacherAccess(user) && view === "teacher-dashboard") {
-    const showVocaSwitcher = getEntitledVocas(user).length >= 2;
-    // Inline Voca switcher rendered inside TopAppBar's controls
-    // (passed via TeacherDashboardView's `headerExtra` prop).  Previously
-    // floated over the header with `position: fixed`, which covered the
-    // logo in Hebrew RTL and the user chip / logout in English LTR no
-    // matter how high we pushed the z-index.  Lives in the flex flow
-    // now so it just sits beside the language switcher.
-    const vocaSwitcherButton = showVocaSwitcher ? (
-      <button
-        type="button"
-        onClick={() => {
-          setActiveVoca(null);
-          setView("voca-picker");
-        }}
-        style={{
-          touchAction: "manipulation",
-          WebkitTapHighlightColor: "transparent",
-        }}
-        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-indigo-600 text-white text-[10px] sm:text-xs font-black tracking-wider shadow-sm hover:bg-indigo-500 active:scale-95 transition"
-        title={activeVoca === "hebrew" ? "החלף ל-Voca אחר" : "Switch to another Voca"}
-      >
-        <SvgArrowLeftRight size={12} />
-        <span className="hidden sm:inline">
-          {activeVoca === "hebrew" ? "החלף Voca" : "Switch Voca"}
-        </span>
-        <span className="sm:hidden">
-          {activeVoca === "hebrew" ? "החלף" : "Switch"}
-        </span>
-      </button>
-    ) : null;
-    // Deps bag shared by the dashboard's medium-sized inline handlers.
-    // See src/handlers/teacherDashboardActions.ts.
-    const tdActionDeps = {
-      allWords: ALL_WORDS, set1Words: SET_1_WORDS,
-      setEditingAssignment, setSelectedWords, setCustomWords,
-      setAssignmentTitle, setAssignmentDeadline, setAssignmentModes,
-      setAssignmentSentences, setSentenceDifficulty, setSentencesAutoGenerated,
-      setSelectedLevel, setSelectedClass, setView,
-    };
-    return (
-      <LazyWrapper loadingMessage="Loading dashboard...">
-        <TeacherDashboardView
-          user={user}
-          setUser={setUser}
-          subject={activeVoca ?? "english"}
-          headerExtra={vocaSwitcherButton}
-          consentModal={consentModal}
-          exitConfirmModal={exitConfirmModal}
-          ocrCropModal={ocrCropModal}
-          showOnboarding={showOnboarding}
-          setShowOnboarding={setShowOnboarding}
-          classes={visibleClasses}
-          teacherAssignments={visibleAssignments}
-          pendingStudentsCount={pendingStudents.length}
-          copiedCode={copiedCode}
-          setCopiedCode={setCopiedCode}
-          openDropdownClassId={openDropdownClassId}
-          setOpenDropdownClassId={setOpenDropdownClassId}
-          showCreateClassModal={showCreateClassModal}
-          setShowCreateClassModal={setShowCreateClassModal}
-          newClassName={newClassName}
-          setNewClassName={setNewClassName}
-          handleCreateClass={handleCreateClass}
-          createdClassCode={createdClassCode}
-          createdClassName={createdClassName}
-          setCreatedClassCode={setCreatedClassCode}
-          deleteConfirmModal={deleteConfirmModal}
-          setDeleteConfirmModal={setDeleteConfirmModal}
-          onConfirmDeleteAssignment={(deletedId, deletedTitle) =>
-            deleteAssignmentWithUndo(deletedId, deletedTitle, {
-              setTeacherAssignments,
-              setDeleteConfirmModal,
-              setToasts,
-              showToast,
-              failedDeleteMsg: appToasts.failedDeleteFromDb,
-              restoredMsg: appToasts.assignmentRestored,
-            })
-          }
-          rejectStudentModal={rejectStudentModal}
-          setRejectStudentModal={setRejectStudentModal}
-          confirmRejectStudent={confirmRejectStudent}
-          toasts={toasts}
-          confirmDialog={confirmDialog}
-          setConfirmDialog={setConfirmDialog}
-          onQuickPlayClick={() => startQuickPlayFromDashboard({
-            cleanupSessionData, setQuickPlayActiveSession,
-            setQuickPlaySessionCode, setView,
-          })}
-          onClassroomClick={() => {
-            fetchScores();
-            fetchTeacherAssignments();
-            setView("classroom");
-            // Audit-log the access ONCE per click, not per realtime push.
-            // fetchScores re-fires on every progress INSERT, so logging
-            // there caused a request storm — see 2026-05-04 audit fix.
-            void logAudit('view_gradebook', 'progress');
-          }}
-          onApprovalsClick={() => { loadPendingStudents(); setView("teacher-approvals"); }}
-          onWorksheetResultsClick={activeVoca === "hebrew" ? undefined : () => setView("worksheet-attempts")}
-          onProjectAssignmentToClass={(a) => {
-            // Direct dashboard entry — back should go to dashboard, not
-            // to a possibly-stale create-assignment session.
-            setActivityNavOrigin(null);
-            setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
-            setView("class-show");
-          }}
-          onPrintAssignmentWorksheet={(a) => {
-            setActivityNavOrigin(null);
-            setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
-            setView("worksheet");
-          }}
-          onNewClass={() => setShowCreateClassModal(true)}
-          onAssignClass={(c) => startAssignClassFlow(c, {
-            setSelectedClass, setView, setAssignmentStep, setSelectedWords,
-            setAssignmentTitle, setAssignmentDeadline, setAssignmentModes,
-            setAssignmentSentences, setEditingAssignment,
-          })}
-          onDeleteClass={(classId) => handleDeleteClass(classId)}
-          editingClass={editingClass}
-          onEditClass={(c) => setEditingClass(c)}
-          onCloseEditClass={() => setEditingClass(null)}
-          onSaveClassEdit={(next) =>
-            editingClass
-              ? saveClassEdit(editingClass.id, next, {
-                  setClasses,
-                  showToast,
-                  onSuccess: () => setEditingClass(null),
-                })
-              : Promise.resolve()
-          }
-          onNameChange={(classId, newName) =>
-            renameClass(classId, newName, { setClasses, showToast })
-          }
-          onAvatarChange={(classId, newAvatar) =>
-            changeClassAvatar(classId, newAvatar, { setClasses, showToast })
-          }
-          onEditAssignment={(assignment, c) => loadAssignmentIntoCreateForm(assignment, c, false, tdActionDeps)}
-          onDuplicateAssignment={(assignment, c) => loadAssignmentIntoCreateForm(assignment, c, true, tdActionDeps)}
-          onDeleteAssignment={(assignment) =>
-            deleteAssignmentImmediate(assignment.id, {
-              setTeacherAssignments,
-              showToast,
-              failedDeleteMsg: appToasts.failedDeleteAssignment,
-              deletedMsg: appToasts.assignmentDeleted,
-            })
-          }
-          onOpenRoster={(c) => setRosterModalClass(c)}
-          savedTasks={savedTasks.tasks}
-          onTogglePinSavedTask={savedTasks.togglePin}
-          onRemoveSavedTask={savedTasks.remove}
-          onUseSavedTask={(task: SavedTask) => applySavedTask(task, {
-            allWords: ALL_WORDS, classes, selectedClass,
-            savedTasksBumpUse: savedTasks.bumpUse,
-            setQuickPlaySelectedWords, setQuickPlayInitialModes,
-            setSelectedClass, setSelectedWords,
-            setAssignmentTitle, setAssignmentDeadline, setAssignmentModes,
-            setAssignmentSentences, setSentenceDifficulty,
-            setEditingAssignment, setView, setAssignmentStep,
-            showToast,
-          })}
-          onWizardComplete={(result) =>
-            user
-              ? completeTeacherOnboarding(result, {
-                  user,
-                  activeVoca,
-                  setClasses,
-                  setUser,
-                  showToast,
-                  couldNotSetupClassMsg: appToasts.couldNotSetupClass,
-                })
-              : Promise.resolve(null)
-          }
-          onWizardSkip={() => skipTeacherOnboarding({ setUser })}
-        />
-        {rosterModalClass && (
-          <ClassRosterModal
-            open={!!rosterModalClass}
-            onClose={() => setRosterModalClass(null)}
-            classCode={rosterModalClass.code}
-            className={rosterModalClass.name}
-          />
-        )}
-      </LazyWrapper>
-    );
+    return TeacherDashboardSection({
+      user, activeVoca, showVocaSwitcher: getEntitledVocas(user).length >= 2,
+      setActiveVoca, setView, setUser,
+      consentModal, exitConfirmModal, ocrCropModal,
+      showOnboarding, setShowOnboarding,
+      visibleClasses, visibleAssignments,
+      pendingStudentsCount: pendingStudents.length,
+      copiedCode, setCopiedCode, openDropdownClassId, setOpenDropdownClassId,
+      showCreateClassModal, setShowCreateClassModal,
+      newClassName, setNewClassName, handleCreateClass,
+      createdClassCode, createdClassName, setCreatedClassCode,
+      deleteConfirmModal, setDeleteConfirmModal,
+      setTeacherAssignments, setToasts, showToast, appToasts,
+      rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
+      toasts, confirmDialog, setConfirmDialog,
+      cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode,
+      fetchScores, fetchTeacherAssignments, loadPendingStudents,
+      setActivityNavOrigin, setClassShowAssignment, setWorksheetAssignment,
+      setSelectedClass, selectedClass, classes,
+      setAssignmentStep, setSelectedWords, setAssignmentTitle,
+      setAssignmentDeadline, setAssignmentModes, setAssignmentSentences,
+      setEditingAssignment, handleDeleteClass,
+      editingClass, setEditingClass, setClasses,
+      allWords: ALL_WORDS, set1Words: SET_1_WORDS, setCustomWords,
+      setSentenceDifficulty, setSentencesAutoGenerated, setSelectedLevel,
+      setRosterModalClass, rosterModalClass,
+      savedTasks, setQuickPlaySelectedWords, setQuickPlayInitialModes,
+    });
   }
 
   if (view === "create-assignment" && selectedClass) {
