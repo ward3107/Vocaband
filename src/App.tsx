@@ -83,6 +83,7 @@ import { useActiveVocaState } from "./hooks/useActiveVocaState";
 import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
 import { useQuickPlayGuestState } from "./hooks/useQuickPlayGuestState";
 import { useQuickPlaySessionState } from "./hooks/useQuickPlaySessionState";
+import { useTeacherUiModalsState } from "./hooks/useTeacherUiModalsState";
 import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
 import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -187,21 +188,20 @@ export default function App() {
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string, displayName: string, classCode: string, className: string, joinedAt: string }>>([]);
   const [pendingApprovalInfo, setPendingApprovalInfo] = useState<{ name: string; classCode: string; profileId?: string } | null>(null);
-  const [showCreateClassModal, setShowCreateClassModal] = useState(false);
-  const [newClassName, setNewClassName] = useState("");
-  const [createdClassCode, setCreatedClassCode] = useState<string | null>(null);
-  // Edit-class modal state — null when closed, the class data when open.
-  const [editingClass, setEditingClass] = useState<ClassData | null>(null);
-  // Roster modal — opened from a ClassCard's "Manage roster" action.
-  // When non-null, ClassRosterModal renders for this class so the teacher
-  // can pre-create PIN-login students (Path C).
-  const [rosterModalClass, setRosterModalClass] = useState<ClassData | null>(null);
-  const [createdClassName, setCreatedClassName] = useState<string>("");
-  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ id: string; title: string } | null>(null);
-  const [rejectStudentModal, setRejectStudentModal] = useState<{ id: string; displayName: string } | null>(null);
-  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [openDropdownClassId, setOpenDropdownClassId] = useState<string | null>(null);
+  // Teacher dashboard modal/UI state. See useTeacherUiModalsState.
+  const {
+    showCreateClassModal, setShowCreateClassModal,
+    newClassName, setNewClassName,
+    createdClassCode, setCreatedClassCode,
+    createdClassName, setCreatedClassName,
+    editingClass, setEditingClass,
+    rosterModalClass, setRosterModalClass,
+    deleteConfirmModal, setDeleteConfirmModal,
+    rejectStudentModal, setRejectStudentModal,
+    showExitConfirmModal, setShowExitConfirmModal,
+    copiedCode, setCopiedCode,
+    openDropdownClassId, setOpenDropdownClassId,
+  } = useTeacherUiModalsState();
   const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(0);
   const [badges, setBadges] = useState<string[]>([]);
