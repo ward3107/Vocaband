@@ -114,6 +114,7 @@ import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/tea
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
 import { deleteAssignmentWithUndo, deleteAssignmentImmediate } from "./handlers/deleteAssignmentWithUndo";
 import { buildEmitScoreUpdate } from "./handlers/emitScoreUpdate";
+import { navigateToTeacherLogin, navigateToStudentLogin } from "./handlers/landingNav";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
 // on, Quick Play runs entirely over the /quick-play socket namespace —
@@ -1207,26 +1208,8 @@ export default function App() {
     setShowDemo,
     goBack,
     onPublicNavigate: handlePublicNavigate,
-    onTeacherOAuth: () => {
-      // Was: inline writeIntendedRole + signInWithOAuth.
-      // Now: navigate to the new self-contained TeacherLoginView,
-      // which renders BOTH options (Google + email-OTP code).  The
-      // intended-role stamp + OAuth call moved into
-      // TeacherLoginCard so all teacher-auth concerns live in one
-      // place outside App.tsx.  See src/components/TeacherLoginCard.tsx.
-      setView('teacher-login');
-    },
-    onStudentLogin: () => {
-      // Push `/student` so the URL is bookmarkable / shareable —
-      // matches the initial-view detection that maps `/student` →
-      // student-account-login.
-      try {
-        if (window.location.pathname !== '/student') {
-          window.history.pushState({}, '', '/student');
-        }
-      } catch { /* ignore — fall back to view-only nav */ }
-      setView('student-account-login');
-    },
+    onTeacherOAuth: () => navigateToTeacherLogin(setView),
+    onStudentLogin: () => navigateToStudentLogin(setView),
     configErrorBanner,
     cookieBannerOverlay,
   });
