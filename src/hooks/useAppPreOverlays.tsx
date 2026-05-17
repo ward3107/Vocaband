@@ -21,6 +21,7 @@ import type { AppUser } from '../core/supabase';
 const CookieBanner = lazy(() => import('../components/CookieBanner'));
 const QuickPlayResumeBanner = lazy(() => import('../components/QuickPlayResumeBanner'));
 const ImageCropModal = lazy(() => import('../components/ImageCropModal'));
+const PwaInstallGate = lazy(() => import('../components/PwaInstallGate'));
 
 export interface UseAppPreOverlaysDeps {
   user: AppUser | null;
@@ -58,6 +59,16 @@ export function useAppPreOverlays(deps: UseAppPreOverlaysDeps): AppPreOverlays {
       {/* Global amber pill when the browser reports the network is down.
           See OfflineIndicator + useOnlineStatus for the implementation. */}
       <OfflineIndicator />
+      {/* Force-install gate — first-visit full-screen modal + persistent
+          per-session banner on iOS/Android. Gated on `user` so prospective
+          teachers landing on the marketing pages don't get nagged before
+          they've engaged. Once installed (display-mode standalone), the
+          gate self-suppresses. */}
+      {deps.user && (
+        <Suspense fallback={null}>
+          <PwaInstallGate />
+        </Suspense>
+      )}
     </>
   );
 
