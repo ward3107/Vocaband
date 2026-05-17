@@ -163,4 +163,43 @@ export const statusT: Record<Language, StatusT> = {
     incidentTypeMonitoring: "تحت المراقبة",
     incidentTypeScheduled: "صيانة مجدولة",
   },
+
+  ru: {
+    backButton: "Back",
+    title: "System Status",
+    subtitle: "Real-time status of Vocaband services",
+    lastUpdated: "Last updated",
+
+    operational: "Operational",
+    degraded: "Degraded Performance",
+    outage: "Service Outage",
+    maintenance: "Under Maintenance",
+
+    systemWebApp: "Web Application",
+    systemApi: "API Services",
+    systemDatabase: "Database",
+    systemAuth: "Authentication",
+    systemLiveGames: "Live Games",
+
+    incidentsTitle: "Recent Incidents",
+    incidentsSubtitle: "Past 90 days",
+    noIncidents: "No incidents reported in the past 90 days. Everything is running smoothly!",
+
+    uptimeTitle: "Uptime Metrics",
+    uptimeDay: "24 hours",
+    uptimeWeek: "7 days",
+    uptimeMonth: "30 days",
+    uptimeYear: "90 days",
+
+    uptimePercent: "Uptime",
+    avgResponse: "Avg Response",
+    incidentsCount: "Incidents",
+
+    note: "This page is updated every minute. Follow us on Twitter @vocabandstatus for real-time updates.",
+
+    incidentTypeResolved: "Resolved",
+    incidentTypeInvestigating: "Investigating",
+    incidentTypeMonitoring: "Monitoring",
+    incidentTypeScheduled: "Scheduled Maintenance",
+  },
 };

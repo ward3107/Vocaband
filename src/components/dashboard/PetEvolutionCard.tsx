@@ -21,6 +21,7 @@ import {
   type PetEvolutionState,
 } from '../../hooks/usePetEvolution';
 import { useLanguage } from '../../hooks/useLanguage';
+import type { Language } from "../../hooks/useLanguage";
 
 interface PetEvolutionCardProps {
   state: PetEvolutionState | null;
@@ -34,7 +35,7 @@ const MOOD_OVERLAY: Record<ReturnType<typeof petMoodFor>, { emoji: string; ring:
   'very-sad': { emoji: '😢', ring: 'ring-rose-300',    bg: 'bg-gradient-to-br from-rose-100 via-rose-50 to-stone-50' },
 };
 
-const STRINGS: Record<'en' | 'he' | 'ar', {
+const STRINGS: Record<Language, {
   title: string;
   stages: Record<string, string>;
   daysActive: (n: number) => string;
@@ -69,6 +70,15 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     fullyGrown: 'بالغ تمامًا! 🎉',
     daysSince: n => n === 1 ? 'لعبت بالأمس' : `${n} أيام منذ آخر لعب`,
     comeBack: 'عد قريبًا — رفيقك ينتظرك!',
+  },
+  ru: {
+    title: 'Your companion',
+    stages: { egg: 'Egg', baby: 'Baby', child: 'Child', teen: 'Teen', adult: 'Adult' },
+    daysActive: n => `${n} active day${n === 1 ? '' : 's'}`,
+    nextStageIn: (n, stage) => `${n} more day${n === 1 ? '' : 's'} → ${stage}`,
+    fullyGrown: 'Fully grown! 🎉',
+    daysSince: n => n === 1 ? 'Played yesterday' : `${n} days since last play`,
+    comeBack: 'Come back soon — your companion is waiting!',
   },
 };
 

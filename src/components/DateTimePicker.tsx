@@ -20,6 +20,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Calendar as CalendarIcon, X, ChevronLeft, ChevronRight, Clock, Check } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
+import type { Language } from "../hooks/useLanguage";
 
 interface DateTimePickerProps {
   /** ISO string — accepts "YYYY-MM-DD" (legacy, date-only) or "YYYY-MM-DDTHH:mm" */
@@ -38,15 +39,17 @@ const MONTH_LABELS_DEFAULT = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-const WEEKDAY_LABELS_BY_LANG: Record<"en" | "he" | "ar", string[]> = {
+const WEEKDAY_LABELS_BY_LANG: Record<Language, string[]> = {
   en: WEEKDAY_LABELS_DEFAULT,
   he: ["א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ש'"],
   ar: ["أحد", "اثن", "ثلا", "أرب", "خمي", "جمع", "سبت"],
+  ru: WEEKDAY_LABELS_DEFAULT,
 };
-const MONTH_LABELS_BY_LANG: Record<"en" | "he" | "ar", string[]> = {
+const MONTH_LABELS_BY_LANG: Record<Language, string[]> = {
   en: MONTH_LABELS_DEFAULT,
   he: ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"],
   ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
+  ru: MONTH_LABELS_DEFAULT,
 };
 
 const MINUTES_OPTIONS = [0, 15, 30, 45];

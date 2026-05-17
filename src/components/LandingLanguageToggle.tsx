@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Globe } from "lucide-react";
-import { useLanguage, Language } from "../hooks/useLanguage";
+import { useLanguage, Language, ALL_LANGUAGES } from "../hooks/useLanguage";
 
 interface LandingLanguageToggleProps {
   className?: string;
@@ -10,7 +10,7 @@ interface LandingLanguageToggleProps {
 const LandingLanguageToggle: React.FC<LandingLanguageToggleProps> = ({ className = "" }) => {
   const { language, setLanguage } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
-  const languages: Language[] = ["en", "he", "ar"];
+  const languages: Language[] = ALL_LANGUAGES;
 
   return (
     <div

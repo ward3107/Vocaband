@@ -521,7 +521,7 @@ const NameEntryCard: React.FC<{
   );
 };
 
-const Shell: React.FC<{ children: React.ReactNode; onBack: () => void; isRTL: boolean; language: "en" | "he" | "ar" }> = ({
+const Shell: React.FC<{ children: React.ReactNode; onBack: () => void; isRTL: boolean; language: Language }> = ({
   children,
   onBack,
   isRTL,

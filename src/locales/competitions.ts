@@ -111,4 +111,29 @@ export const competitionsT: Record<Language, CompetitionStrings> = {
     finishedFirstNote: 'في حالة التعادل يفوز من وصل إلى النتيجة أولًا.',
     youLabel: 'أنت',
   },
+  ru: {
+    enableLabel: 'Make this a competition',
+    enableHelp:
+      'Students will see a live leaderboard. The competition ends at the assignment deadline.',
+    needsDeadline: 'Set a deadline above to enable competition mode.',
+
+    badgeLive: '🏆 Competition',
+    badgeEnded: '🏁 Competition ended',
+    endsAt: (when) => `Ends ${when}`,
+    endedAt: (when) => `Ended ${when}`,
+
+    modalTitleLive: 'Live standings',
+    modalTitleEnded: 'Final standings',
+    modalEmpty: 'No scores yet — be the first to play!',
+    modalCloseButton: 'Close',
+    viewStandings: 'View standings',
+    endNow: 'End competition now',
+    endNowConfirm: 'End this competition now? The leaderboard will freeze.',
+
+    rankColumn: '#',
+    studentColumn: 'Student',
+    scoreColumn: 'Score',
+    finishedFirstNote: 'Ties go to whoever reached that score first.',
+    youLabel: 'You',
+  },
 };

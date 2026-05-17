@@ -38,6 +38,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Download, Printer, X, Award, Share2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
+import type { Language } from "../hooks/useLanguage";
 
 interface CertificateModalProps {
   open: boolean;
@@ -60,7 +61,7 @@ interface CertificateModalProps {
   teacherName?: string;
 }
 
-const STRINGS: Record<'en' | 'he' | 'ar', {
+const STRINGS: Record<Language, {
   modalTitle: string;
   modalSubtitle: string;
   download: string;
@@ -155,6 +156,30 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     brandTagline: 'مفردات الإنجليزية للمدارس الإسرائيلية',
     closeAria: 'إغلاق',
     signatureSeal: 'موثّق',
+  },
+  ru: {
+    modalTitle: 'Certificate of Achievement',
+    modalSubtitle: 'Print or share with parents.',
+    download: 'Download PDF',
+    print: 'Print',
+    share: 'Share',
+    exporting: 'Preparing PDF…',
+    sharing: 'Preparing…',
+    certTitle: 'Certificate',
+    certSubtitle: 'of Achievement',
+    awardedTo: 'is proudly presented to',
+    ofClass: n => `of ${n}`,
+    body: 'in recognition of outstanding progress and dedication to learning English vocabulary.',
+    gamesPlayed: 'games played',
+    avgScore: 'average score',
+    wordsMastered: 'words mastered',
+    issuedBy: 'Teacher',
+    yourTeacher: 'Your Teacher',
+    date: 'Date',
+    brand: 'Vocaband',
+    brandTagline: 'English vocabulary for Israeli schools',
+    closeAria: 'Close',
+    signatureSeal: 'Verified',
   },
 };
 

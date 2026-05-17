@@ -12,7 +12,7 @@
  */
 import type { Word } from "../data/vocabulary";
 
-export type Language = "en" | "he" | "ar";
+export type Language = "en" | "he" | "ar" | "ru";
 
 export type ExerciseType =
   | "matching"

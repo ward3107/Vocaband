@@ -141,6 +141,47 @@ const t = {
       terms: "شروط الخدمة",
     },
   },
+  ru: {
+    title: "Security",
+    titleHighlight: "& Trust",
+    badge: "Independently verified",
+    intro: "How we protect your students' data, written in plain English. For the full technical detail, see our open-source security docs in the codebase.",
+    sslLabsBadge: "SSL Labs A+",
+    sslLabsLink: "View live report",
+    encrypted: "Encrypted with TLS 1.3",
+    eu: "Data hosted in the EU (Frankfurt)",
+    sections: {
+      transit: {
+        title: "Encrypted in transit",
+        body: "Every connection between your device and Vocaband uses TLS 1.2 or TLS 1.3 — the same encryption banks use. Older insecure versions (TLS 1.0, TLS 1.1) are blocked. Verified A+ by SSL Labs (a public industry standard).",
+      },
+      rest: {
+        title: "Encrypted at rest",
+        body: "Your data lives on Supabase's PostgreSQL servers in the EU (Frankfurt region). Disks are encrypted at the storage layer; backups are encrypted automatically.",
+      },
+      access: {
+        title: "Strict access rules",
+        body: "Every database table has Row-Level Security policies — students can only read their own progress, teachers can only read their own classes, no cross-account access is possible. Verified by automated tests + manual penetration tests.",
+      },
+      auth: {
+        title: "Secure sign-in",
+        body: "Teachers sign in with Google OAuth — Vocaband never sees or stores teacher passwords. Students join classes via a 6-character code; their accounts are scoped to that class only.",
+      },
+      audit: {
+        title: "Regular audits",
+        body: "We run a full security review every quarter: dependency vulnerabilities, RLS policy drift, TLS configuration, and penetration tests. Our most recent audit (April 2026) closed 3 HIGH + 3 MED findings, plus a CodeQL alert; SSL Labs grade improved from B to A+.",
+      },
+    },
+    contact: {
+      title: "Found a vulnerability?",
+      body: "We welcome responsible disclosure. Email",
+      cta: "View security.txt",
+    },
+    bottomLinks: {
+      privacy: "Privacy Policy",
+      terms: "Terms of Service",
+    },
+  },
 } as const;
 
 const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({

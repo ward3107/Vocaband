@@ -4,6 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Check, Copy, X, Link2, MessageCircle } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
+import type { Language } from "../hooks/useLanguage";
 
 interface ShareClassLinkModalProps {
   open: boolean;
@@ -80,7 +81,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
   // are already used for the class-only flow; adding a third pair to
   // that file would force every locale entry to grow.  Inline maps
   // keep the diff tight.
-  const headerCopy: Record<'en' | 'he' | 'ar', { eyebrow: string; subtitle: string }> = {
+  const headerCopy: Record<Language, { eyebrow: string; subtitle: string }> = {
     en: {
       eyebrow: 'Send Class Minute',
       subtitle: `Students who open this link join ${className} and go straight into today's 60-second drill.`,
@@ -93,10 +94,14 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
       eyebrow: 'أرسل دقيقة الصف',
       subtitle: `سينضم الطلاب الذين يفتحون هذا الرابط إلى ${className} وينتقلون مباشرة إلى تمرين 60 ثانية لليوم.`,
     },
+    ru: {
+      eyebrow: 'Send Class Minute',
+      subtitle: `Students who open this link join ${className} and go straight into today's 60-second drill.`,
+    },
   };
   const cmHeader = headerCopy[language] ?? headerCopy.en;
 
-  const assignmentHeaderCopy: Record<'en' | 'he' | 'ar', { eyebrow: string; subtitle: string }> = {
+  const assignmentHeaderCopy: Record<Language, { eyebrow: string; subtitle: string }> = {
     en: {
       eyebrow: 'Share assignment',
       subtitle: `Students who open this link join ${className} and go straight to this assignment.`,
@@ -108,6 +113,10 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
     ar: {
       eyebrow: 'مشاركة الواجب',
       subtitle: `سينضم الطلاب الذين يفتحون هذا الرابط إلى ${className} وينتقلون مباشرة إلى هذا الواجب.`,
+    },
+    ru: {
+      eyebrow: 'Share assignment',
+      subtitle: `Students who open this link join ${className} and go straight to this assignment.`,
     },
   };
   const assignHeader = assignmentHeaderCopy[language] ?? assignmentHeaderCopy.en;

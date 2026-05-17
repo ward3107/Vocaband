@@ -93,4 +93,23 @@ export const studentLoginT: Record<Language, StudentLoginStrings> = {
       { emoji: "⚡", text: "تحديات مباشرة" },
     ],
   },
+  ru: {
+    back: "Back",
+    student: "Student",
+    heroLine1: "Join your",
+    heroLine2: "class.",
+    heroSubtitle: "Play to learn English.",
+    classCodeLabel: "Class code from your teacher",
+    classCodeAria: "Class code",
+    classCodeHint: "Got a link from your teacher? Paste it — we'll pull out the code.",
+    signInWithMicrosoft: "Sign in with Microsoft",
+    signedInBefore: "Sign in with the same Google account every time to keep your XP and streak.",
+    firstTime: "First time? Type your class code above, then sign in with Google. Your teacher approves new students from the dashboard.",
+    features: [
+      { emoji: "🏆", text: "Earn XP" },
+      { emoji: "🎯", text: "Beat your friends" },
+      { emoji: "🎨", text: "Unlock avatars" },
+      { emoji: "⚡", text: "Live challenges" },
+    ],
+  },
 };

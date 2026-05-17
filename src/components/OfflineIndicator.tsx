@@ -1,5 +1,6 @@
 import { useLanguage } from '../hooks/useLanguage';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import type { Language } from "../hooks/useLanguage";
 
 // Subtle pill at the top of the viewport when the browser reports
 // the network is down.  Communicates that work is being preserved
@@ -8,10 +9,11 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 //
 // Companion to the saveQueue (writes) + readCache (reads) layers.
 
-const STRINGS: Record<'en' | 'he' | 'ar', string> = {
+const STRINGS: Record<Language, string> = {
   en: 'Offline — your work is being saved locally',
   he: 'אופליין — העבודה שלך נשמרת מקומית',
   ar: 'غير متصل — يتم حفظ عملك محلياً',
+  ru: 'Offline — your work is being saved locally',
 };
 
 export function OfflineIndicator() {

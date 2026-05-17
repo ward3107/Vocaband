@@ -8,7 +8,7 @@ import StudentEmailOtpCard from "../components/StudentEmailOtpCard";
 import StudentPinLoginCard from "../components/StudentPinLoginCard";
 import type { View } from "../core/views";
 import { writeIntendedClassCode } from "../utils/oauthIntent";
-import { useLanguage, languageNames, type Language } from "../hooks/useLanguage";
+import { useLanguage, languageNames, ALL_LANGUAGES, type Language } from "../hooks/useLanguage";
 import { studentLoginT } from "../locales/student/student-login";
 import { Globe } from "lucide-react";
 
@@ -213,7 +213,7 @@ export default function StudentAccountLoginView({
   const { language, setLanguage } = useLanguage();
   const t = studentLoginT[language];
   const [langOpen, setLangOpen] = useState(false);
-  const langs: Language[] = ["en", "he", "ar"];
+  const langs: Language[] = ALL_LANGUAGES;
   // Three login paths, in order of preference for the Israeli market:
   //   - "pin"   : teacher pre-creates a roster row + PIN; the student
   //               picks their name and types the PIN.  Default — no

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createContext, ReactNode } from 'react';
 
-export type Language = 'en' | 'he' | 'ar';
+export type Language = 'en' | 'he' | 'ar' | 'ru';
 
 export const LANGUAGE_KEY = 'vocaband_legal_language';
 
@@ -42,10 +42,15 @@ const detectBrowserLanguage = (): Language => {
     const lc = raw.toLowerCase();
     if (lc === 'he' || lc.startsWith('he-') || lc === 'iw' || lc.startsWith('iw-')) return 'he';
     if (lc === 'ar' || lc.startsWith('ar-')) return 'ar';
+    if (lc === 'ru' || lc.startsWith('ru-')) return 'ru';
     if (lc === 'en' || lc.startsWith('en-')) return 'en';
   }
   return 'en';
 };
+
+const SUPPORTED_LANGS: readonly Language[] = ['en', 'he', 'ar', 'ru'] as const;
+const isSupported = (v: unknown): v is Language =>
+  typeof v === 'string' && (SUPPORTED_LANGS as readonly string[]).includes(v);
 
 const getInitialLanguage = (): Language => {
   if (typeof window === 'undefined') return 'en';
@@ -58,14 +63,14 @@ const getInitialLanguage = (): Language => {
   try {
     const params = new URLSearchParams(window.location.search);
     const langParam = params.get('lang');
-    if (langParam === 'en' || langParam === 'he' || langParam === 'ar') {
+    if (isSupported(langParam)) {
       try { localStorage.setItem(LANGUAGE_KEY, langParam); } catch { /* localStorage may be blocked */ }
       return langParam;
     }
   } catch { /* URLSearchParams unavailable — fall through */ }
   const saved = localStorage.getItem(LANGUAGE_KEY);
-  if (saved && ['en', 'he', 'ar'].includes(saved)) {
-    return saved as Language;
+  if (isSupported(saved)) {
+    return saved;
   }
   // First visit (or saved key missing / invalid): auto-detect from
   // browser preferences so an Israeli teacher's phone (Hebrew OS)
@@ -168,12 +173,14 @@ export const languageNames: Record<Language, string> = {
   en: 'English',
   he: 'עברית',
   ar: 'العربية',
+  ru: 'Русский',
 };
 
 export const languageFlags: Record<Language, string> = {
   en: '🇬🇧',
   he: '🇮🇱',
   ar: '🇸🇦',
+  ru: '🇷🇺',
 };
 
 /** Short labels for UI toggles (2-3 chars). */
@@ -181,10 +188,11 @@ export const languageShortLabels: Record<Language, string> = {
   en: 'EN',
   he: 'עב',
   ar: 'ع',
+  ru: 'РУ',
 };
 
 /** All supported languages - use this instead of hardcoding ['en', 'he', 'ar']. */
-export const ALL_LANGUAGES: Language[] = ['en', 'he', 'ar'];
+export const ALL_LANGUAGES: Language[] = ['en', 'he', 'ar', 'ru'];
 
 /** Language options for dropdowns/toggles with code, label, and flag. */
 export const languageOptions: { code: Language; label: string; flag: string }[] = ALL_LANGUAGES.map(

@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 // Dropdown uses a plain conditional render; the chevron arrow uses
 // CSS rotation for the open/closed state.
 import { Globe } from "lucide-react";
-import { useLanguage, Language } from "../hooks/useLanguage";
+import { useLanguage, Language, ALL_LANGUAGES, languageNames } from "../hooks/useLanguage";
 
 interface NavLanguageToggleProps {
   className?: string;
@@ -24,11 +24,10 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
   const [canHover, setCanHover] = useState(false);
   const closeTimerRef = useRef<number | null>(null);
 
-  const languages: { code: Language; label: string }[] = [
-    { code: "en", label: "English" },
-    { code: "he", label: "עברית" },
-    { code: "ar", label: "العربية" },
-  ];
+  const languages: { code: Language; label: string }[] = ALL_LANGUAGES.map((code) => ({
+    code,
+    label: languageNames[code],
+  }));
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;

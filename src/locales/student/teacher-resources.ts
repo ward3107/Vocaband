@@ -147,4 +147,5 @@ const ar: TeacherResourcesStrings = {
     "رسالة قصيرة قابلة للطباعة ترسلها إلى البيت — تشرح للأهل بلغة بسيطة.",
 };
 
-export const teacherResourcesT: Record<Language, TeacherResourcesStrings> = { en, he, ar };
+// Russian falls back to English until a dedicated ru block is translated.
+export const teacherResourcesT: Record<Language, TeacherResourcesStrings> = { en, he, ar, ru: en };

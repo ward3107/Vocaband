@@ -452,4 +452,140 @@ export const teacherGuidesT: Record<Language, GuideStrings> = {
       ],
     },
   },
+
+  ru: {
+    common: {
+      next: "Next",
+      gotIt: "Got it",
+      skip: "Skip",
+      triggerAria: "Show page guide",
+      progress: (current, total) => `Step ${current} of ${total}`,
+    },
+    createAssignment: {
+      heading: "Create Assignment",
+      subheading: "Build a vocabulary task in three steps",
+      steps: [
+        {
+          icon: "📚",
+          title: "Pick words",
+          body: "Choose vocabulary from Set 1, Set 2, or paste your own list. The OCR camera button reads words off a page photo.",
+        },
+        {
+          icon: "⚙️",
+          title: "Configure",
+          body: "Pick the game modes your students will play. We'll auto-fill a title and instructions you can edit.",
+        },
+        {
+          icon: "✅",
+          title: "Review and assign",
+          body: "Confirm the words + modes, set an optional deadline, and tap Assign. The class code at the top is what students type to join.",
+        },
+      ],
+    },
+    classroom: {
+      heading: "Classroom",
+      subheading: "Everything about your class in one place",
+      steps: [
+        {
+          icon: "🌡️",
+          title: "Today",
+          body: "Who needs your attention right now — active students this week, average score, recent plays.",
+        },
+        {
+          icon: "👥",
+          title: "Students",
+          body: "Tap any student to see their per-mode strengths, struggling words, and recent attempts.",
+        },
+        {
+          icon: "📊",
+          title: "Reports",
+          body: "Per-week trend, top struggling words, and CSV / PDF export of every play in this class.",
+        },
+      ],
+    },
+    approvals: {
+      heading: "Student Approvals",
+      subheading: "Approve students who signed up for your classes",
+      steps: [
+        {
+          icon: "✅",
+          title: "Approve to unlock",
+          body: "After you approve, the student can log in and start earning XP. Their progress is saved automatically.",
+        },
+        {
+          icon: "⚡",
+          title: "Approve all at once",
+          body: "If you trust everyone in the list, the bulk button at the top processes them in one tap.",
+        },
+        {
+          icon: "❌",
+          title: "Reject if you don't recognize them",
+          body: "Rejecting forces the student to sign up again with a new class code — useful for typos or wrong-class joins.",
+        },
+      ],
+    },
+    worksheet: {
+      heading: "Worksheet",
+      subheading: "Print or save vocabulary practice as PDF",
+      steps: [
+        {
+          icon: "📋",
+          title: "Pick sheet types",
+          body: "Combine word lists, scrambles, fill-in-the-blank, matching, and more on a single printable.",
+        },
+        {
+          icon: "🌐",
+          title: "Pick translation language",
+          body: "The translation column reads in Hebrew or Arabic depending on the language you pick here.",
+        },
+        {
+          icon: "🖨️",
+          title: "Print or save as PDF",
+          body: "The Print button opens your browser's print dialog — choose Save as PDF to download instead of printing.",
+        },
+      ],
+    },
+    classShow: {
+      heading: "Class Show",
+      subheading: "Project a vocabulary game on the classroom screen",
+      steps: [
+        {
+          icon: "📺",
+          title: "One screen for the whole class",
+          body: "Pick a mode, hit Start, and the class watches together. Students answer by raising hands or shouting.",
+        },
+        {
+          icon: "🎮",
+          title: "12 game modes",
+          body: "From Spelling to Memory Flip — pick what fits the lesson.",
+        },
+        {
+          icon: "🛠️",
+          title: "Build your word list",
+          body: "Use a class assignment, paste your own list, or generate words by topic with AI.",
+        },
+      ],
+    },
+    quickPlayMonitor: {
+      heading: "Quick Play",
+      subheading: "Live leaderboard for your classroom",
+      steps: [
+        {
+          icon: "📱",
+          title: "Students scan the QR",
+          body: "No login. They open their phone camera, scan the code, type a nickname, and they're in.",
+        },
+        {
+          icon: "🏆",
+          title: "Watch the podium update live",
+          body: "Top 3 students animate to the top as they finish rounds. Tap a student name to remove them.",
+        },
+        {
+          icon: "🎵",
+          title: "Background music + themes",
+          body: "Optional looped music + 7 colour themes for the projector. All saved to your dashboard for next time.",
+        },
+      ],
+    },
+  },
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import type { Language } from "../hooks/useLanguage";
 import {
   Type,
   Eye,
@@ -114,7 +115,7 @@ function saveSettings(s: A11ySettings) {
 // Language detection via the existing useLanguage hook's localStorage key.
 // We can't import the hook here (would re-subscribe) but we can read the
 // same key to keep the widget's labels in sync with the rest of the UI.
-type Lang = 'en' | 'he' | 'ar';
+type Lang = 'en' | 'he' | 'ar' | 'ru';
 function detectLang(): Lang {
   try {
     const saved = localStorage.getItem('vocaband_language');
@@ -171,6 +172,22 @@ const LABELS: Record<Lang, Record<string, string>> = {
     profileAdhd: 'فرط الحركة', profileMotor: 'حركي',
     readSelection: 'قراءة بصوت عالٍ', stopReading: 'إيقاف القراءة',
     shortcutHint: 'تلميح: Alt+0 للفتح',
+  },
+  ru: {
+    title: 'Accessibility', close: 'Close accessibility panel',
+    trigger: 'Open accessibility menu (Alt+0)',
+    fontSize: 'Font Size', lineHeight: 'Line Height', textSpacing: 'Text Spacing',
+    highContrast: 'High Contrast', grayscale: 'Grayscale', invertColors: 'Invert Colors',
+    readableFont: 'Readable Font', dyslexiaFont: 'Dyslexia Font',
+    reduceMotion: 'Reduce Motion', highlightLinks: 'Highlight Links', largeCursor: 'Large Cursor',
+    readingGuide: 'Reading Guide',
+    reset: 'Reset All', statement: 'Accessibility Statement',
+    decrease: 'Decrease', increase: 'Increase',
+    profilesTitle: 'One-Click Profiles',
+    profileDyslexia: 'Dyslexia', profileLowVision: 'Low Vision',
+    profileAdhd: 'ADHD', profileMotor: 'Motor',
+    readSelection: 'Read Aloud', stopReading: 'Stop Reading',
+    shortcutHint: 'Tip: press Alt+0 to open',
   },
 };
 

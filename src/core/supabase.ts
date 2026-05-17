@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { Language } from '../hooks/useLanguage';
 
 // Public fallback values — these are the production Supabase URL + anon
 // ("publishable") key. They're already visible inside every shipped JS
@@ -192,7 +193,7 @@ export interface AppUser {
   /** Locale code (en|he|ar) captured at parent-email opt-in time so
    *  the digest renders in the same language even if the student
    *  later toggles their UI language. */
-  parentEmailLocale?: 'en' | 'he' | 'ar' | null;
+  parentEmailLocale?: Language | null;
   /** Timestamp the student set parentEmail.  Surfaced if a parent
    *  ever asks when their kid signed them up. */
   parentEmailOptInAt?: string | null;

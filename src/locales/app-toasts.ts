@@ -74,4 +74,17 @@ export const appToastsT: Record<Language, AppToastStrings> = {
     savedLocally: "تم الحفظ محلياً — ستتم المزامنة عند عودة الاتصال",
     allSynced: "تمت مزامنة كل التقدم",
   },
+  ru: {
+    couldNotRestoreSession: "Could not restore session. Please sign in again.",
+    signInFailed: "Sign-in failed. Please try again.",
+    signInTakingTooLong: "Sign-in is taking too long. Please try again.",
+    failedDeleteFromDb: (m) => `Failed to delete from database: ${m}`,
+    assignmentRestored: "Assignment restored!",
+    failedDeleteAssignment: (m) => `Failed to delete assignment: ${m}`,
+    assignmentDeleted: "Assignment deleted successfully",
+    couldNotSetupClass: "Couldn't set up your class — please try again.",
+    failedCreateSession: (m) => `Failed to create session: ${m}`,
+    savedLocally: "Saved locally — will sync when online",
+    allSynced: "All progress synced",
+  },
 };

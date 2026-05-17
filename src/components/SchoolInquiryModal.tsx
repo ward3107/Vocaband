@@ -87,6 +87,27 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
       close: "إغلاق",
       required: "مطلوب",
     },
+    ru: {
+      title: "School Inquiry",
+      subtitle: "Tell us about your school and we'll get back to you within 24 hours",
+      schoolName: "School Name",
+      schoolNamePlaceholder: "Enter your school name",
+      contactName: "Contact Person",
+      contactNamePlaceholder: "Your name",
+      email: "Email Address",
+      emailPlaceholder: "your@school.com",
+      whatsapp: "WhatsApp Number",
+      whatsappPlaceholder: "+1234567890",
+      studentsCount: "Number of Students",
+      studentsCountPlaceholder: "e.g., 500",
+      teachersCount: "Number of Teachers",
+      teachersCountPlaceholder: "e.g., 25",
+      submit: "Send Inquiry",
+      submitting: "Sending...",
+      success: "Thank you! We'll contact you soon.",
+      close: "Close",
+      required: "Required",
+    },
   }[language];
 
   const handleSubmit = async (e: React.FormEvent) => {

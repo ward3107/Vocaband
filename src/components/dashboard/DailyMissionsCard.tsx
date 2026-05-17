@@ -22,6 +22,7 @@ import { motion } from 'motion/react';
 import { Target, Gamepad2, Trophy, CheckCircle2 } from 'lucide-react';
 import type { DailyMission, DailyMissionType } from '../../hooks/useDailyMissions';
 import { useLanguage } from '../../hooks/useLanguage';
+import type { Language } from "../../hooks/useLanguage";
 
 interface DailyMissionsCardProps {
   missions: DailyMission[];
@@ -54,7 +55,7 @@ const META: Record<DailyMissionType, MissionMeta> = {
   },
 };
 
-const STRINGS: Record<'en' | 'he' | 'ar', {
+const STRINGS: Record<Language, {
   title: string;
   doneChip: (n: number, total: number) => string;
   loading: string;
@@ -92,6 +93,17 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
       master_words: { name: 'تعلّم 5 كلمات جديدة', subtitle: 'أجب بشكل صحيح على 5 كلمات مختلفة' },
       play_modes:   { name: 'العب 3 أوضاع',          subtitle: 'جرّب 3 أوضاع مختلفة اليوم' },
       beat_record:  { name: 'حطّم رقمك القياسي',    subtitle: 'تخطى أفضل علامة لك في أي وضع' },
+    },
+  },
+  ru: {
+    title: "Today's missions",
+    doneChip: (n, total) => `${n}/${total} done`,
+    loading: 'Loading…',
+    allDone: 'Awesome! All missions complete today 🎉',
+    missions: {
+      master_words: { name: 'Master 5 new words', subtitle: 'Answer 5 different words correctly' },
+      play_modes:   { name: 'Play 3 game modes',  subtitle: 'Try 3 different modes today' },
+      beat_record:  { name: 'Beat your record',   subtitle: 'Top your all-time best on any mode' },
     },
   },
 };
