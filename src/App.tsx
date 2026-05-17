@@ -61,7 +61,7 @@ const SvgAlertTriangle: React.FC<{ size?: number; className?: string }> = ({ siz
 // on cold first-paint. AnimatePresence / motion.div weren't used in
 // this file anyway, so the original `import { motion, AnimatePresence }`
 // was a dead import.
-import { supabase, isSupabaseConfigured, OperationType, handleDbError, hasTeacherAccess, performUserLogout, ASSIGNMENT_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, isSupabaseConfigured, OperationType, handleDbError, hasTeacherAccess, ASSIGNMENT_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { isPro } from "./core/plan";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { useAudio } from "./hooks/useAudio";
@@ -98,7 +98,6 @@ const WorksheetAttemptsView = lazy(() => import("./views/WorksheetAttemptsView")
 // they're now lazy-loaded inside ClassroomView and rendered as tabs.
 const ClassroomView = lazy(() => import("./views/ClassroomView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
-const QuickPlaySetupView = lazy(() => import("./views/QuickPlaySetupView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
 const ClassShowView = lazy(() => import("./views/ClassShowView"));
 const HotSeatView = lazy(() => import("./views/HotSeatView"));
@@ -106,7 +105,6 @@ const HebrewClassShowView = lazy(() => import("./views/HebrewClassShowView"));
 const WorksheetView = lazy(() => import("./views/WorksheetView"));
 const HebrewWorksheetView = lazy(() => import("./views/HebrewWorksheetView"));
 const HebrewComingSoonView = lazy(() => import("./views/HebrewComingSoonView"));
-const HebrewQuickPlaySetupView = lazy(() => import("./views/HebrewQuickPlaySetupView"));
 const VocabagrutShell = lazy(() => import("./features/vocabagrut/VocabagrutShell"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
 const LiveChallengeClassSelectView = lazy(() => import("./views/LiveChallengeClassSelectView"));
@@ -139,6 +137,7 @@ import { renderQuickPlayExitScreens } from "./views/QuickPlayExitScreens";
 import { useAppOverlays } from "./hooks/useAppOverlays";
 import { TeacherDashboardSection } from "./views/TeacherDashboardSection";
 import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
+import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -184,9 +183,6 @@ import { useOcrUpload } from "./hooks/useOcrUpload";
 import { useCookieConsent } from "./hooks/useCookieConsent";
 import { useAwardBadge } from "./hooks/useAwardBadge";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
-import { generateAndStoreQuickPlayAiSentences } from "./utils/generateAndStoreQuickPlayAiSentences";
-import { createEnglishQuickPlaySession, createHebrewQuickPlaySession } from "./handlers/quickPlaySession";
-import { generateAiLesson, type AiLessonParams } from "./utils/aiLesson";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
@@ -629,9 +625,6 @@ export default function App() {
   // word (Auto-translate button). Hook owns the cache + fetch plumbing.
   const { translateWord, translateWordsBatch } = useTranslate();
 
-  // AI Lesson Generator — calls /api/ai-generate-lesson endpoint
-  const handleGenerateLesson = (params: AiLessonParams) =>
-    generateAiLesson(params, { showToast, showPaywallToast });
 
   // --- STUDENT DATA STATE ---
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
@@ -1906,89 +1899,18 @@ export default function App() {
   }
 
   if (view === "quick-play-setup") {
-    // VocaHebrew gets a focused Hebrew-only Quick Play setup that
-    // surfaces HEBREW_LEMMAS via HEBREW_PACKS — never ALL_WORDS or
-    // TOPIC_PACKS. Gate on activeVoca (the dashboard's current
-    // subject) rather than selectedClass?.subject because Quick Play
-    // is launched without a class context.
-    //
-    // REQUIRES the 20260510_quick_play_subject migration:
-    //   - quick_play_sessions.subject column
-    //   - create_quick_play_session(p_subject text DEFAULT 'english')
-    // Without it, the RPC call below fails (unknown parameter) and the
-    // teacher sees a "Failed to create session" toast — Hebrew QP
-    // can't function until the migration is applied.
-    if (activeVoca === "hebrew") {
-      return (
-        <LazyWrapper loadingMessage="טוען…">
-          <HebrewQuickPlaySetupView
-            onBack={() => setView("teacher-dashboard")}
-            onOpenMonitor={() => setView("quick-play-teacher-monitor")}
-            onCreateSession={(lemmaIds, modes, hebrewTitle) =>
-              createHebrewQuickPlaySession(lemmaIds, modes, hebrewTitle, {
-                showToast,
-                failedCreateSessionMsg: appToasts.failedCreateSession,
-                setSessionCode: setQuickPlaySessionCode,
-                setActiveSession: setQuickPlayActiveSession,
-              })
-            }
-          />
-        </LazyWrapper>
-      );
-    }
-    return (
-      <LazyWrapper loadingMessage="Loading quick play setup...">
-      <QuickPlaySetupView
-        allWords={ALL_WORDS}
-        onSaveTemplate={savedTasks.save}
-        initialSelectedWords={quickPlayInitialWords}
-        initialSelectedModes={quickPlayInitialModes}
-        onOcrUpload={handleOcrUpload}
-        isOcrProcessing={isOcrProcessing}
-        ocrProgress={ocrProgress}
-        onDocxUpload={handleDocxUpload}
-        customWords={customWords}
-        onCustomWordsChange={setCustomWords}
-        onCreateSession={(words, modes) =>
-          createEnglishQuickPlaySession(
-            words,
-            modes,
-            {
-              showToast,
-              failedCreateSessionMsg: appToasts.failedCreateSession,
-              setSessionCode: setQuickPlaySessionCode,
-              setActiveSession: setQuickPlayActiveSession,
-            },
-            (id, w, n) => { void generateAndStoreQuickPlayAiSentences(id, w, n); },
-          )
-        }
-        onOpenMonitor={() => setView("quick-play-teacher-monitor")}
-        onBack={() => setView("teacher-dashboard")}
-        autoMatchPartial={true}
-        showLevelFilter={false}
-        showToast={showToast}
-        onPlayWord={(wordId, fallbackText) => speakWord(wordId, fallbackText)}
-        onTranslateWord={translateWord}
-        onGenerateLesson={handleGenerateLesson}
-        topicPacks={TOPIC_PACKS}
-        user={user}
-        onLogout={() => performUserLogout()}
-        isProUser={isPro(user)}
-        // Sentence Builder config — without these props the Sentence
-        // Difficulty buttons in ConfigureStep call an undefined handler
-        // and silently no-op (user-reported "not clickable"), and the
-        // AI-sentences button generates fine but has nowhere to store
-        // the output because onSentencesChange is undefined.
-        // QuickPlaySetupView spreads {...rest} into SetupWizard, so
-        // forwarding them here reaches ConfigureStep without further
-        // plumbing.
-        assignmentSentences={assignmentSentences}
-        onSentencesChange={setAssignmentSentences}
-        sentenceDifficulty={sentenceDifficulty}
-        onSentenceDifficultyChange={setSentenceDifficulty}
-      />
-      </LazyWrapper>
-    );
+    return QuickPlaySetupSection({
+      activeVoca, user, setView,
+      allWords: ALL_WORDS, topicPacks: TOPIC_PACKS,
+      customWords, setCustomWords,
+      quickPlayInitialWords, quickPlayInitialModes,
+      isOcrProcessing, ocrProgress, handleOcrUpload, handleDocxUpload,
+      showToast, showPaywallToast, speakWord, translateWord,
+      setQuickPlayActiveSession, setQuickPlaySessionCode,
+      onSaveTemplate: savedTasks.save, appToasts,
+      assignmentSentences, setAssignmentSentences,
+      sentenceDifficulty, setSentenceDifficulty,
+    });
   }
 
 
