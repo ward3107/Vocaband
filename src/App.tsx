@@ -107,7 +107,6 @@ const GameModeIntroView = lazy(() => import("./views/GameModeIntroView"));
 const GameModeSelectionView = lazy(() => import("./views/GameModeSelectionView"));
 const GameFinishedView = lazy(() => import("./views/GameFinishedView"));
 const GameActiveView = lazy(() => import("./views/GameActiveView"));
-const StudentDashboardView = lazy(() => import("./views/StudentDashboardView"));
 const VocaPickerView = lazy(() => import("./views/VocaPickerView"));
 const HebrewModeSelectionView = lazy(() => import("./views/HebrewModeSelectionView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
@@ -134,6 +133,7 @@ import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
 import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
+import { StudentDashboardSection } from "./views/StudentDashboardSection";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -185,7 +185,6 @@ import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
-import { grantRetentionXp, applyServerRewards, grantNonXpReward } from "./handlers/retentionGrants";
 import { deleteAssignmentWithUndo, deleteAssignmentImmediate } from "./handlers/deleteAssignmentWithUndo";
 
 // Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
@@ -1543,64 +1542,17 @@ export default function App() {
   });
 
   if (user?.role === "student" && view === "student-dashboard") {
-    return (
-      <LazyWrapper loadingMessage="Loading dashboard...">
-        <StudentDashboardView
-          user={user}
-          xp={xp}
-          streak={streak}
-          badges={badges}
-          copiedCode={copiedCode}
-          setCopiedCode={setCopiedCode}
-          studentAssignments={studentAssignments}
-          studentProgress={studentProgress}
-          studentDataLoading={studentDataLoading}
-          showStudentOnboarding={showStudentOnboarding}
-          setShowStudentOnboarding={setShowStudentOnboarding}
-          consentModal={consentModal}
-          exitConfirmModal={exitConfirmModal}
-          classSwitchModal={classSwitchModal}
-          classNotFoundBanner={classNotFoundBanner}
-          setView={setView}
-          setActiveAssignment={setActiveAssignment}
-          setAssignmentWords={setAssignmentWords}
-          setShowModeSelection={setShowModeSelection}
-          onStartReview={() => {
-            // Spaced repetition entry point — bypasses the mode
-            // picker.  ReviewGame self-fetches its queue + the
-            // ALL_WORDS distractor pool, so we don't need to seed
-            // gameWords or activeAssignment.  Set isFinished off so
-            // the finish-screen overlay doesn't show stale state
-            // from a previous round.
-            setGameMode("review");
-            setIsFinished(false);
-            setShowModeSelection(false);
-            setView("game");
-          }}
-          onStartClassMinute={startClassMinute}
-          retention={retention}
-          boosters={{
-            isXpBoosterActive: boosters.isXpBoosterActive,
-            isFocusModeActive: boosters.isFocusModeActive,
-            isWeekendWarriorActive: boosters.isWeekendWarriorActive,
-            streakFreezes: boosters.streakFreezes,
-            luckyCharms: boosters.luckyCharms,
-          }}
-          onGrantXp={(amount, reason) =>
-            grantRetentionXp(amount, reason, { user, setXp, showToast })
-          }
-          onApplyServerRewards={({ xpToAdd, badgesToAppend }) =>
-            applyServerRewards(xpToAdd, badgesToAppend, { setXp, setBadges })
-          }
-          onGrantReward={(kind, value) =>
-            grantNonXpReward(kind, value, { user, setUser })
-          }
-          onRenameDisplayName={renameStudentDisplayName}
-          structure={structure}
-          celebrateStructureKeys={celebrateStructureKeys}
-        />
-      </LazyWrapper>
-    );
+    return StudentDashboardSection({
+      user, xp, streak, badges, setXp, setBadges, setUser,
+      copiedCode, setCopiedCode,
+      studentAssignments, studentProgress, studentDataLoading,
+      showStudentOnboarding, setShowStudentOnboarding,
+      consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
+      setView, setActiveAssignment, setAssignmentWords, setShowModeSelection,
+      setGameMode, setIsFinished,
+      startClassMinute, retention, boosters,
+      showToast, renameStudentDisplayName, structure, celebrateStructureKeys,
+    });
   }
 
   // --- PRIVACY SETTINGS VIEW (lazy-loaded from ./views/PrivacySettingsView) ---
