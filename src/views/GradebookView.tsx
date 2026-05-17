@@ -90,6 +90,12 @@ interface GradebookViewProps {
    *  (standalone /gradebook route, legacy Pulse tab). */
   selectedClassCode?: string;
   onSelectedClassChange?: (code: string) => void;
+  /** Wires the per-student "Reteach these words" CTA in StudentProfile.
+   *  Receives the student's class code + their top-missed word IDs;
+   *  parent navigates to Create-Assignment with those pre-filled
+   *  (mirrors the class-level TopStrugglingWords callback). When
+   *  omitted, the CTA is hidden inside the drawer. */
+  onReteach?: (classCode: string, wordIds: number[]) => void;
 }
 
 interface MasteryApiRow {
@@ -172,6 +178,7 @@ export default function GradebookView({
   useDrawerDrill = false,
   selectedClassCode: controlledClassCode,
   onSelectedClassChange,
+  onReteach,
 }: GradebookViewProps) {
   void focus; // reserved for future scroll-anchor wiring; kept in
               // the prop signature so callers can plumb intent now
@@ -908,6 +915,11 @@ export default function GradebookView({
             onReward={
               drillStudent
                 ? () => openRewardFor(drillStudent)
+                : undefined
+            }
+            onReteach={
+              drillStudent && onReteach
+                ? (wordIds) => onReteach(drillStudent.classCode, wordIds)
                 : undefined
             }
           />

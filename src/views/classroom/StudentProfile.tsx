@@ -2,27 +2,25 @@
  * StudentProfile — the deep-dive drill for the v2 Classroom Students tab.
  *
  * Shown as an AdaptiveDrawer (right-side drawer on desktop, fullscreen
- * page on mobile) when the teacher taps a student row. Contents:
+ * page on mobile) when the teacher taps a student row.
  *
- *   1. Headline stats — avg score, plays, last active, total XP. Each
- *      is a big coloured number with a plain-English caption underneath
- *      so the teacher isn't left to infer meaning.
- *   2. Per-mode breakdown — one bar per mode the student has played,
- *      coloured by avg score. Answers "where is this kid strong / weak?".
- *   3. Word mastery — the existing MasteryHeatmap component, scoped to
- *      this student's word attempts. Green / amber / rose per word.
- *   4. Recent attempts — chronological list of the last 8 plays with
- *      mode, assignment, score, date.
- *
- * Actions in the header: 🎁 Reward (opens TeacherRewardModal via a
- * parent callback — this component doesn't own the modal state).
+ * 2026-05 redesign ("Player Card"):
+ *   - Hero strip at the top: a horizontal 4-metric row (avg · plays ·
+ *     XP · last active) with hairline dividers, no card chrome. Drops
+ *     the previous 2×2 grid of bordered tiles so the eye lands on one
+ *     row of big numbers instead of four boxes.
+ *   - Two-column body (lg+): left = Performance (Per mode + Word
+ *     mastery), right = Activity (Struggled with + Recent plays). On
+ *     mobile / tablet the two columns stack.
+ *   - Sticky bottom action bar with "Reteach these words" — closes the
+ *     loop teachers couldn't close before (see top misses → one-tap
+ *     reteach, mirrors the class-level CTA on TopStrugglingWords).
  *
  * Data is fed in as props. The component does no fetching — keeps it
- * pure and easy to render from multiple entry points (Students tab
- * today, deep-link in Phase 3).
+ * pure and easy to render from multiple entry points.
  */
-import { useCallback, useMemo } from "react";
-import { Gift, Flame, Calendar, Trophy, ChartBar, AlertTriangle } from "lucide-react";
+import { useCallback, useMemo, type ReactNode } from "react";
+import { Gift, ChartBar, AlertTriangle, Trophy, History, Sparkles } from "lucide-react";
 import AdaptiveDrawer from "../../components/classroom/AdaptiveDrawer";
 import MasteryHeatmap, { type MasteryRow } from "../gradebook/MasteryHeatmap";
 import {
@@ -52,6 +50,11 @@ interface StudentProfileProps {
   /** Called when the teacher taps the 🎁 Reward button in the header.
    *  Parent opens its existing TeacherRewardModal with the right student. */
   onReward?: () => void;
+  /** Called when the teacher taps "Reteach these words" in the sticky
+   *  bottom bar.  Receives the IDs of the student's most-missed words.
+   *  Parent is expected to navigate to the Create-Assignment wizard
+   *  with those word IDs pre-filled (mirrors TopStrugglingWords). */
+  onReteach?: (wordIds: number[]) => void;
 }
 
 const MODE_EMOJI: Record<string, string> = {
@@ -74,7 +77,7 @@ const textColor = (s: number): string => {
 };
 
 export default function StudentProfile({
-  open, onClose, student, scores, masteryRows, teacherAssignments, onReward,
+  open, onClose, student, scores, masteryRows, teacherAssignments, onReward, onReteach,
 }: StudentProfileProps) {
   const { language } = useLanguage();
   const t = teacherDrilldownsT[language];
@@ -114,17 +117,10 @@ export default function StudentProfile({
       .slice(0, 8);
   }, [scores]);
 
-  // Aggregate wrong-attempts across every play of this student.
-  // `progress.mistakes[]` is the array of word IDs the student missed
-  // (game modes give the student unlimited retries until correct, so the
-  // teacher otherwise never sees what they STRUGGLED with — only the
-  // final mastery state).  This gives the teacher visibility into the
-  // top words this student gets wrong on first try, regardless of
-  // whether they eventually got there.
-  // Map of wordId → assignment subject so we look up labels in the
-  // right corpus per-word. Hebrew lemma ids and English word ids are
-  // disjoint by convention; a mixed-Voca student gets the right
-  // primary/secondary text either way.
+  // Aggregate wrong-attempts across every play of this student.  Game
+  // modes give unlimited retries until correct, so without this list the
+  // teacher only ever sees the final mastery state and never the words
+  // the student struggled with on first try.
   const wordIdSubjectMap = useMemo(
     () => buildWordIdSubjectMap(teacherAssignments),
     [teacherAssignments],
@@ -166,6 +162,25 @@ export default function StudentProfile({
     ? t.studentHeaderSubtitle(stats.plays, lastActiveLabel)
     : "";
 
+  // Reteach CTA copy — short, action-first.  Falls back to a generic
+  // label in non-English locales since the locale file doesn't yet have
+  // a per-student reteach string.  Safe default; reads cleanly in HE/AR
+  // beside the rose accent button.
+  const reteachLabel =
+    language === "he"
+      ? `למד שוב את ${topMisses.length} המילים`
+      : language === "ar"
+        ? `أعد تدريس ${topMisses.length} كلمات`
+        : `Reteach ${topMisses.length} ${topMisses.length === 1 ? "word" : "words"}`;
+  const reteachHint =
+    language === "he"
+      ? "המילים שהוא הכי טועה בהן"
+      : language === "ar"
+        ? "الكلمات التي يخطئ فيها أكثر"
+        : "Words this student keeps missing";
+
+  const showReteachBar = !!onReteach && topMisses.length > 0;
+
   return (
     <AdaptiveDrawer
       open={open && !!student}
@@ -191,187 +206,239 @@ export default function StudentProfile({
       {!student ? null : scores.length === 0 ? (
         <div className="p-8 text-center">
           <div className="text-5xl mb-3" aria-hidden>🌱</div>
-          <p className="text-[var(--vb-text-secondary)] font-bold">No plays yet</p>
-          <p className="text-[var(--vb-text-muted)] text-sm mt-1">
-            {student.name} hasn't played any assignments yet. Their stats
-            will appear here as soon as they start.
+          <p className="font-bold" style={{ color: 'var(--vb-text-secondary)' }}>{t.noPlaysTitle}</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--vb-text-muted)' }}>
+            {t.noPlaysBody(student.name)}
           </p>
         </div>
       ) : (
-        <div className="p-4 sm:p-5 space-y-5">
-          {/* ── Headline stats ─────────────────────────────────────────
-              Each tile has a `title` attribute giving the teacher a
-              plain-English explanation on hover — useful since the
-              numbers (e.g. "XP earned" being a sum of scores) aren't
-              self-evident.  Drawer is wider on desktop now (max-w-3xl)
-              so the four tiles can breathe in a 2-col grid. */}
-          <div className="grid grid-cols-2 gap-3">
-            <StatTile
-              value={`${stats.avg}%`}
-              label={t.statAvgScoreLabel}
-              caption={t.statAvgScoreCaption}
-              tone={stats.avg >= 80 ? "emerald" : stats.avg >= 70 ? "amber" : "rose"}
-              tooltip={t.statAvgScoreTooltip}
-            />
-            <StatTile
-              value={String(stats.plays)}
-              label={stats.plays === 1 ? t.statPlayCountSingular : t.statPlayCountPlural}
-              caption={t.statPlaysCaption}
-              tone="indigo"
-              tooltip={t.statPlaysTooltip}
-            />
-            <StatTile
-              value={String(stats.totalXp)}
-              label={t.statXpLabel}
-              caption={t.statXpCaption}
-              tone="violet"
-              icon={<Flame size={14} />}
-              tooltip={t.statXpTooltip}
-            />
-            <StatTile
-              value={lastActiveLabel}
-              label={t.statLastActiveLabel}
-              caption={t.statLastActiveCaption}
-              tone="stone"
-              icon={<Calendar size={14} />}
-              tooltip={t.statLastActiveTooltip}
-            />
+        <>
+          {/* ─── Hero stat strip ───────────────────────────────────────
+              Horizontal row of four big numbers, hairline dividers
+              between them, no card chrome.  Replaces the previous 2×2
+              grid of bordered tiles — gives the teacher a single line
+              to read across instead of four boxes to scan. */}
+          <div
+            className="px-5 sm:px-7 pt-5 pb-5 border-b"
+            style={{ borderColor: 'var(--vb-border)' }}
+          >
+            <div className="flex items-stretch gap-4 sm:gap-6">
+              <HeroStat
+                value={`${stats.avg}%`}
+                label={t.statAvgScoreLabel}
+                tone={stats.avg >= 80 ? "emerald" : stats.avg >= 70 ? "amber" : "rose"}
+                tooltip={t.statAvgScoreTooltip}
+              />
+              <HeroDivider />
+              <HeroStat
+                value={String(stats.plays)}
+                label={stats.plays === 1 ? t.statPlayCountSingular : t.statPlayCountPlural}
+                tone="indigo"
+                tooltip={t.statPlaysTooltip}
+              />
+              <HeroDivider />
+              <HeroStat
+                value={String(stats.totalXp)}
+                label={t.statXpLabel}
+                tone="violet"
+                tooltip={t.statXpTooltip}
+              />
+              <HeroDivider />
+              <HeroStat
+                value={lastActiveLabel}
+                label={t.statLastActiveLabel}
+                tone="stone"
+                tooltip={t.statLastActiveTooltip}
+              />
+            </div>
           </div>
 
-          {/* ── Per-mode breakdown ─────────────────────────────────── */}
-          <section className="bg-[var(--vb-surface)] rounded-2xl p-4 border border-[var(--vb-border)]">
-            <h3 className="text-sm font-black text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
-              <ChartBar size={16} className="text-violet-500" />
-              Per mode
-              <span className="text-xs font-bold text-[var(--vb-text-muted)]">
-                · where they're strong vs. weak
-              </span>
-            </h3>
-            <div className="space-y-2">
-              {modeBreakdown.map(m => (
-                <div key={m.mode} className="flex items-center gap-2 text-xs">
-                  <span className="w-6 text-base shrink-0" aria-hidden>
-                    {MODE_EMOJI[m.mode] ?? "🎯"}
-                  </span>
-                  <span className="w-24 font-bold text-[var(--vb-text-secondary)] capitalize truncate">
-                    {m.mode.replace(/-/g, " ")}
-                  </span>
-                  <div className="flex-1 h-3 bg-[var(--vb-surface-alt)] rounded-full overflow-hidden">
+          {/* ─── Two-column body ───────────────────────────────────────
+              Left = Performance (per-mode + word mastery).
+              Right = Activity (struggled-with chips + recent plays).
+              Drops the rounded-2xl border chrome on each section so the
+              eye doesn't have to re-anchor four times — section titles
+              with a small coloured icon do the job instead.  Bottom
+              padding leaves room for the sticky action bar. */}
+          <div
+            className={`px-5 sm:px-7 pt-6 pb-8 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-7 ${
+              showReteachBar ? "pb-24" : ""
+            }`}
+          >
+            {/* ── Left column: Performance ─────────────────────────── */}
+            <div className="space-y-7 min-w-0">
+              <section>
+                <SectionHeader
+                  icon={<ChartBar size={16} className="text-violet-500" />}
+                  title={t.perModeTitle}
+                  subtitle={t.perModeSubtitle}
+                />
+                <div className="space-y-2">
+                  {modeBreakdown.map(m => (
+                    <div key={m.mode} className="flex items-center gap-2 text-xs">
+                      <span className="w-6 text-base shrink-0" aria-hidden>
+                        {MODE_EMOJI[m.mode] ?? "🎯"}
+                      </span>
+                      <span
+                        className="w-24 font-bold capitalize truncate"
+                        style={{ color: 'var(--vb-text-secondary)' }}
+                      >
+                        {m.mode.replace(/-/g, " ")}
+                      </span>
+                      <div
+                        className="flex-1 h-3 rounded-full overflow-hidden"
+                        style={{ backgroundColor: 'var(--vb-surface-alt)' }}
+                      >
+                        <div
+                          className={`h-full bg-gradient-to-r ${scoreColor(m.avg)}`}
+                          style={{ width: `${Math.min(100, m.avg)}%` }}
+                        />
+                      </div>
+                      <span className={`w-10 text-right font-black ${textColor(m.avg)}`}>
+                        {m.avg}
+                      </span>
+                      <span
+                        className="w-10 text-right tabular-nums"
+                        style={{ color: 'var(--vb-text-muted)' }}
+                      >
+                        ×{m.attempts}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <SectionHeader
+                  icon={<Trophy size={16} className="text-emerald-500" />}
+                  title={t.wordMasteryTitle}
+                  subtitle={t.wordMasterySubtitle}
+                />
+                <MasteryHeatmap rows={masteryRows} getLabel={getMasteryLabel} />
+              </section>
+            </div>
+
+            {/* ── Right column: Activity ───────────────────────────── */}
+            <div className="space-y-7 min-w-0">
+              {topMisses.length > 0 && (
+                <section>
+                  <SectionHeader
+                    icon={<AlertTriangle size={16} className="text-rose-500" />}
+                    title={t.struggledWithTitle}
+                    subtitle={t.struggledWithSubtitle}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {topMisses.map(({ display, count }) => (
+                      <span
+                        key={display.id}
+                        title={t.struggledChipTitle(display.primary, count, display.secondary)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs"
+                      >
+                        {display.primary}
+                        <span className="px-1.5 py-0.5 rounded-md bg-rose-200 text-rose-800 tabular-nums text-[10px]">
+                          ×{count}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section>
+                <SectionHeader
+                  icon={<History size={16} className="text-sky-500" />}
+                  title={t.recentPlaysTitle}
+                  subtitle={t.lastNSuffix(recentAttempts.length).replace(/^·\s*/, "")}
+                />
+                <div className="space-y-1.5">
+                  {recentAttempts.map(s => (
                     <div
-                      className={`h-full bg-gradient-to-r ${scoreColor(m.avg)}`}
-                      style={{ width: `${Math.min(100, m.avg)}%` }}
-                    />
-                  </div>
-                  <span className={`w-10 text-right font-black ${textColor(m.avg)}`}>
-                    {m.avg}
-                  </span>
-                  <span className="w-10 text-right text-[var(--vb-text-muted)] tabular-nums">
-                    ×{m.attempts}
-                  </span>
+                      key={s.id}
+                      className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                      style={{ backgroundColor: 'var(--vb-surface-alt)' }}
+                    >
+                      <span className="text-lg shrink-0" aria-hidden>
+                        {MODE_EMOJI[s.mode] ?? "🎯"}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-sm font-bold truncate"
+                          style={{ color: 'var(--vb-text-primary)' }}
+                        >
+                          {assignmentTitle(s.assignmentId)}
+                        </p>
+                        <p
+                          className="text-[11px] capitalize"
+                          style={{ color: 'var(--vb-text-muted)' }}
+                        >
+                          {s.mode.replace(/-/g, " ")} ·{" "}
+                          {new Date(s.completedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className={`px-2.5 py-1 rounded-lg bg-gradient-to-br text-white font-black text-sm shrink-0 ${scoreColor(s.score)}`}>
+                        {s.score}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </section>
             </div>
-          </section>
+          </div>
 
-          {/* ── Word mastery heatmap ───────────────────────────────── */}
-          <section className="bg-[var(--vb-surface)] rounded-2xl p-4 border border-[var(--vb-border)]">
-            <h3 className="text-sm font-black text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
-              <Trophy size={16} className="text-emerald-500" />
-              Word mastery
-              <span className="text-xs font-bold text-[var(--vb-text-muted)]">
-                · green = solid, amber = shaky, rose = struggling
-              </span>
-            </h3>
-            <MasteryHeatmap rows={masteryRows} getLabel={getMasteryLabel} />
-          </section>
-
-          {/* ── Struggled with ──────────────────────────────────────────
-              The 10 words this student got wrong most often (across all
-              their plays).  Surfaces the per-student equivalent of the
-              Reports tab's class-wide "Top Struggling Words" section —
-              gives the teacher a focused reteach list per kid.
-
-              IMPORTANT: game modes don't end on a wrong answer; the
-              student keeps trying until correct.  So mastery looks
-              fine for these words, but their FIRST-attempt accuracy
-              is what this list reflects. */}
-          {topMisses.length > 0 && (
-            <section className="bg-[var(--vb-surface)] rounded-2xl p-4 border border-[var(--vb-border)]">
-              <h3 className="text-sm font-black text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
-                <AlertTriangle size={16} className="text-rose-500" />
-                Struggled with
-                <span className="text-xs font-bold text-[var(--vb-text-muted)]">
-                  · words missed on first try (any game)
-                </span>
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {topMisses.map(({ display, count }) => (
-                  <span
-                    key={display.id}
-                    title={t.struggledChipTitle(display.primary, count, display.secondary)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs"
-                  >
-                    {display.primary}
-                    <span className="px-1.5 py-0.5 rounded-md bg-rose-200 text-rose-800 tabular-nums text-[10px]">
-                      ×{count}
-                    </span>
-                  </span>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* ── Recent attempts ────────────────────────────────────── */}
-          <section className="bg-[var(--vb-surface)] rounded-2xl p-4 border border-[var(--vb-border)]">
-            <h3 className="text-sm font-black text-[var(--vb-text-primary)] mb-3">
-              Recent plays
-              <span className="text-xs font-bold text-[var(--vb-text-muted)] ml-2">
-                · last {recentAttempts.length}
-              </span>
-            </h3>
-            <div className="space-y-1.5">
-              {recentAttempts.map(s => (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/60"
+          {/* ─── Sticky action bar ─────────────────────────────────────
+              Primary next-step for the teacher: take this student's
+              top-missed word IDs and kick off a fresh assignment.
+              Only renders when there's something to reteach AND the
+              parent has wired the callback. */}
+          {showReteachBar && (
+            <div
+              className="sticky bottom-0 left-0 right-0 px-5 sm:px-7 py-3 border-t flex items-center justify-between gap-3 backdrop-blur"
+              style={{
+                borderColor: 'var(--vb-border)',
+                backgroundColor: 'color-mix(in srgb, var(--vb-surface) 92%, transparent)',
+              }}
+            >
+              <div className="min-w-0">
+                <p
+                  className="text-xs font-black uppercase tracking-wider"
+                  style={{ color: 'var(--vb-text-muted)' }}
                 >
-                  <span className="text-lg shrink-0" aria-hidden>
-                    {MODE_EMOJI[s.mode] ?? "🎯"}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-[var(--vb-text-primary)] truncate">
-                      {assignmentTitle(s.assignmentId)}
-                    </p>
-                    <p className="text-[11px] text-[var(--vb-text-muted)] capitalize">
-                      {s.mode.replace(/-/g, " ")} ·{" "}
-                      {new Date(s.completedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className={`px-2.5 py-1 rounded-lg bg-gradient-to-br text-white font-black text-sm shrink-0 ${scoreColor(s.score)}`}>
-                    {s.score}
-                  </div>
-                </div>
-              ))}
+                  {reteachHint}
+                </p>
+                <p
+                  className="text-sm font-bold truncate"
+                  style={{ color: 'var(--vb-text-primary)' }}
+                >
+                  {topMisses.slice(0, 3).map(m => m.display.primary).join(" · ")}
+                  {topMisses.length > 3 && "…"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onReteach!(topMisses.map(m => m.display.id))}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-sm shrink-0"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+              >
+                <Sparkles size={14} />
+                {reteachLabel}
+              </button>
             </div>
-          </section>
-        </div>
+          )}
+        </>
       )}
     </AdaptiveDrawer>
   );
 }
 
-// ── Stat tile (compact "big number + label" card) ──────────────────────
-function StatTile({
-  value, label, caption, tone, icon, tooltip,
+// ── Hero stat (horizontal, no chrome) ────────────────────────────────────
+function HeroStat({
+  value, label, tone, tooltip,
 }: {
   value: string;
   label: string;
-  caption: string;
   tone: "emerald" | "amber" | "rose" | "indigo" | "violet" | "stone";
-  icon?: React.ReactNode;
   /** Plain-English explanation shown on hover so the teacher knows
-   *  what the number actually means.  Native browser tooltip — no
-   *  extra component, works on every device. */
+   *  what the number actually means. */
   tooltip?: string;
 }) {
   const toneClass: Record<string, string> = {
@@ -383,18 +450,53 @@ function StatTile({
     stone:   "text-[var(--vb-text-secondary)]",
   };
   return (
-    <div
-      className="bg-[var(--vb-surface)] rounded-2xl p-3 border border-[var(--vb-border)]"
-      title={tooltip}
-    >
-      <div className={`text-2xl font-black leading-none ${toneClass[tone]} flex items-center gap-1`}>
-        {icon}
+    <div className="flex-1 min-w-0" title={tooltip}>
+      <div className={`text-2xl sm:text-3xl font-black leading-none ${toneClass[tone]} truncate`}>
         {value}
       </div>
-      <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--vb-text-muted)] mt-1.5">
+      <div
+        className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest mt-1.5 truncate"
+        style={{ color: 'var(--vb-text-muted)' }}
+      >
         {label}
       </div>
-      <div className="text-[10px] text-[var(--vb-text-muted)] mt-0.5">{caption}</div>
     </div>
+  );
+}
+
+function HeroDivider() {
+  return (
+    <div
+      className="w-px self-stretch"
+      style={{ backgroundColor: 'var(--vb-border)' }}
+      aria-hidden
+    />
+  );
+}
+
+// ── Section header (icon + title + muted subtitle, no card chrome) ───────
+function SectionHeader({
+  icon, title, subtitle,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <h3
+      className="text-sm font-black mb-3 flex items-baseline gap-2 flex-wrap"
+      style={{ color: 'var(--vb-text-primary)' }}
+    >
+      <span className="inline-flex items-center gap-2">
+        {icon}
+        {title}
+      </span>
+      <span
+        className="text-xs font-bold"
+        style={{ color: 'var(--vb-text-muted)' }}
+      >
+        · {subtitle}
+      </span>
+    </h3>
   );
 }
