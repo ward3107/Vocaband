@@ -22,7 +22,7 @@ import { useRetention } from "./hooks/useRetention";
 import { useSavedTasks } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
-import { shuffle, chunkArray, addUnique, removeKey, secureRandomInt } from './utils';
+import { shuffle, chunkArray, addUnique, removeKey } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import { isAnswerCorrect } from './utils/answerMatch';
 import { renderPublicView } from "./views/PublicViews";
@@ -107,6 +107,7 @@ import { useToasts } from "./hooks/useToasts";
 import { useOAuthState } from "./hooks/useOAuthState";
 import { useActiveVocaState } from "./hooks/useActiveVocaState";
 import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
+import { useQuickPlayGuestState } from "./hooks/useQuickPlayGuestState";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -308,52 +309,28 @@ export default function App() {
   // straight to the teacher dashboard.  Cleared when the wizard itself
   // is exited.
   const [activityNavOrigin, setActivityNavOrigin] = useState<"create-assignment" | null>(null);
-  // Cumulative score across all modes a guest has played in the
-  // current Quick Play session.  The per-mode `score` state (in
-  // useGameState) resets to 0 on every new mode, so emitting it
-  // directly to the QP socket caused the leaderboard to regress
-  // (server rejected with [QP SCORE regress] prev=15 new=10).
-  // This ref accumulates each mode's finalScore so the QP socket
-  // sees a monotonically-increasing total.
-  // Cumulative QP score across all modes in a session.  Initialised
-  // from the resume hint so a kid who closed the tab and rescanned
-  // doesn't reset their server-side score (the server's monotonic
-  // score gate would otherwise reject every later updateScore as a
-  // regression — silent points loss for the kid).  Hint is 90-min
-  // TTL'd; falls through to 0 for fresh joins.
-  const qpCumulativeScoreRef = useRef(readQpResumeScore());
-  const [quickPlayStudentName, setQuickPlayStudentName] = useState("");
-  const QUICK_PLAY_AVATARS = ['🦊', '🐸', '🦁', '🐼', '🐨', '🦋', '🐙', '🦄', '🐳', '🐰', '🦈', '🐯', '🦉', '🐺', '🦜', '🐹'];
-  // QP avatar — random by default, but if the student is resuming a
-  // recent session via QuickPlayResumeBanner we honour their previous
-  // avatar so identity stays stable across the close→reopen.
-  const [quickPlayAvatar, setQuickPlayAvatar] = useState(() => {
-    try {
-      const raw = localStorage.getItem('vocaband_qp_guest');
-      if (raw) {
-        const parsed = JSON.parse(raw) as { avatar?: string; joinedAt?: number };
-        if (parsed?.avatar && typeof parsed.joinedAt === 'number'
-            && Date.now() - parsed.joinedAt < 90 * 60 * 1000) {
-          return parsed.avatar;
-        }
-      }
-    } catch { /* fall through to random */ }
-    return QUICK_PLAY_AVATARS[secureRandomInt(QUICK_PLAY_AVATARS.length)];
-  });
+  // Guest-side QP state (identity, kicked/ended flags, completed
+  // modes, cumulative score ref).  See useQuickPlayGuestState.
+  const {
+    qpCumulativeScoreRef,
+    quickPlayStudentName, setQuickPlayStudentName,
+    quickPlayAvatar, setQuickPlayAvatar,
+    quickPlayKicked, setQuickPlayKicked,
+    quickPlaySessionEnded, setQuickPlaySessionEnded,
+    quickPlayCompletedModes, setQuickPlayCompletedModes,
+  } = useQuickPlayGuestState();
+  // Teacher-monitor QP state — joinedStudents is the live podium feed;
+  // the three "only-setter" entries below are leftovers consumed by the
+  // teacher-monitor reset path so it can null/empty them on session end.
   const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
   const [, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
   const [, setQuickPlayTranslating] = useState<Set<string>>(new Set());
-  const [quickPlayKicked, setQuickPlayKicked] = useState(false);
-  const [quickPlaySessionEnded, setQuickPlaySessionEnded] = useState(false);
   // Tracks whether the teacher monitor's Realtime channel is actually
-  // receiving events.  'live' = subscribed, 'connecting' = transient,
-  // 'polling' = subscription failed or was closed (polling-only mode).
-  // Shown as a discrete status dot on the monitor header so the teacher
-  // can tell instant updates from polling-delayed ones.
+  // receiving events ('live' / 'connecting' / 'polling').  Shown as a
+  // discrete status dot on the monitor header.
   const [quickPlayRealtimeStatus, setQuickPlayRealtimeStatus] =
     useState<QpRealtimeStatus>('connecting');
-  const [quickPlayCompletedModes, setQuickPlayCompletedModes] = useState<Set<string>>(new Set());
 
   // Game music player state (previously defined here) was dead code —
   // the track/volume setters were never called from anywhere, so the
