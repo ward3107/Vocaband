@@ -87,6 +87,7 @@ import { useTeacherUiModalsState } from "./hooks/useTeacherUiModalsState";
 import { useAuthFlowRefs } from "./hooks/useAuthFlowRefs";
 import { useNavigationRefs } from "./hooks/useNavigationRefs";
 import { useRenderLoopRefs } from "./hooks/useRenderLoopRefs";
+import { useGameModeMechanicsState } from "./hooks/useGameModeMechanicsState";
 import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
 import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -443,19 +444,19 @@ export default function App() {
   // the buttons felt dead until the student backed out and re-entered.
   const [isFlipped, setIsFlipped] = useState(false);
 
-  // --- MATCHING MODE STATE ---
-  const [matchingPairs, setMatchingPairs] = useState<{id: number, text: string, type: 'english' | 'arabic'}[]>([]);
-  const [selectedMatch, setSelectedMatch] = useState<{id: number, type: 'english' | 'arabic'} | null>(null);
-  const [matchedIds, setMatchedIds] = useState<number[]>([]);
-  const [isMatchingProcessing, setIsMatchingProcessing] = useState(false);
-
-  // --- LETTER SOUNDS MODE STATE ---
-  const [revealedLetters, setRevealedLetters] = useState(0);
-  // --- SENTENCE BUILDER MODE STATE ---
-  const [sentenceIndex, setSentenceIndex] = useState(0);
-  const [availableWords, setAvailableWords] = useState<string[]>([]);
-  const [builtSentence, setBuiltSentence] = useState<string[]>([]);
-  const [sentenceFeedback, setSentenceFeedback] = useState<"correct" | "wrong" | null>(null);
+  // Per-mode mechanics state (matching / letter sounds / sentence
+  // builder). See useGameModeMechanicsState.
+  const {
+    matchingPairs, setMatchingPairs,
+    selectedMatch, setSelectedMatch,
+    matchedIds, setMatchedIds,
+    isMatchingProcessing, setIsMatchingProcessing,
+    revealedLetters, setRevealedLetters,
+    sentenceIndex, setSentenceIndex,
+    availableWords, setAvailableWords,
+    builtSentence, setBuiltSentence,
+    sentenceFeedback, setSentenceFeedback,
+  } = useGameModeMechanicsState();
   const [teacherAssignments, setTeacherAssignments] = useState<AssignmentData[]>([]);
   const [, setTeacherAssignmentsLoading] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentData | null>(null);
