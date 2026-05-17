@@ -47,30 +47,41 @@ declare class HTMLRewriter {
 
 // Per-language metadata for the SPA-served landing routes. The Worker
 // rewrites <title>, <meta name="description">, OG tags, and the <html
-// lang/dir> attributes at the edge when a request carries ?lang=he or
-// ?lang=ar (the hreflang alternates set in index.html). Doing this at
-// the edge — not client-side — means the HTML literally contains the
-// localized strings when Googlebot scrapes it, so the Hebrew result
-// in Google gets a Hebrew snippet (the client-side swap-after-render
-// alternative is unreliable: Googlebot indexes the initial HTML in
-// the first pass and only renders JS in a later, slower pass).
+// lang/dir> attributes at the edge when a request carries ?lang=he,
+// ?lang=ar, or ?lang=ru (the hreflang alternates set in index.html).
+// Doing this at the edge — not client-side — means the HTML literally
+// contains the localized strings when Googlebot scrapes it, so the
+// Hebrew result in Google gets a Hebrew snippet (the client-side
+// swap-after-render alternative is unreliable: Googlebot indexes the
+// initial HTML in the first pass and only renders JS in a later,
+// slower pass).
 //
 // Title ≤ ~60 chars and description ≤ ~155 chars to fit Google's
 // snippet width without truncation.
-const LOCALIZED_META: Record<'he' | 'ar', {
+type LocalizableLang = 'he' | 'ar' | 'ru';
+const LOCALIZED_META: Record<LocalizableLang, {
   title: string;
   description: string;
   ogLocale: string;
+  dir: 'ltr' | 'rtl';
 }> = {
   he: {
     title: 'ווקאבנד — לימוד אנגלית בכיף לכל הגיל | משחקים ואוצר מילים',
     description: 'ווקאבנד היא אפליקציית אנגלית מהנה לכל הגילאים — ילדים, נוער ומבוגרים. 9,000+ מילים, 15 משחקים, אתגרי כיתה חיים, נקודות וסטריקים. חינם למורים.',
     ogLocale: 'he_IL',
+    dir: 'rtl',
   },
   ar: {
     title: 'فوكاباند — تعلم الإنجليزية بمتعة لجميع الأعمار | مفردات وألعاب',
     description: 'فوكاباند تطبيق لتعلم اللغة الإنجليزية بطريقة ممتعة لجميع الأعمار — الأطفال والمراهقين والكبار. 9,000+ كلمة، 15 لعبة، تحديات صفية مباشرة، نقاط وسلاسل.',
     ogLocale: 'ar_AE',
+    dir: 'rtl',
+  },
+  ru: {
+    title: 'Вокабанд — учить английский с удовольствием для всех возрастов',
+    description: 'Вокабанд — приложение для изучения английского для всех возрастов: дети, подростки, взрослые. 9000+ слов, 15 игр, живые соревнования в классе, очки и серии. Бесплатно для учителей.',
+    ogLocale: 'ru_RU',
+    dir: 'ltr',
   },
 };
 
@@ -84,13 +95,13 @@ const LOCALIZABLE_SPA_PATHS: ReadonlySet<string> = new Set([
   '/accessibility-statement',
 ]);
 
-function localizeHtmlResponse(response: Response, lang: 'he' | 'ar'): Response {
+function localizeHtmlResponse(response: Response, lang: LocalizableLang): Response {
   const meta = LOCALIZED_META[lang];
   return new HTMLRewriter()
     .on('html', {
       element(el) {
         el.setAttribute('lang', lang);
-        el.setAttribute('dir', 'rtl');
+        el.setAttribute('dir', meta.dir);
       },
     })
     .on('title', {
@@ -329,19 +340,18 @@ export default {
       return response;
     }
 
-    // SPA landing routes with a ?lang=he|ar hint get their metadata
-    // rewritten at the edge so Googlebot indexes a Hebrew/Arabic page
-    // (not the English default) when it crawls the hreflang alternates
+    // SPA landing routes with a ?lang=he|ar|ru hint get their metadata
+    // rewritten at the edge so Googlebot indexes a localized page (not
+    // the English default) when it crawls the hreflang alternates
     // declared in index.html + sitemap.xml. English (or no lang param)
     // falls through to the bare asset, which already carries the
     // English metadata. We only run the rewriter when the asset
     // actually came back as HTML — protects /answers/*.html and any
     // future static file from accidental rewrite.
     const langParam = url.searchParams.get('lang');
-    if (
-      (langParam === 'he' || langParam === 'ar') &&
-      LOCALIZABLE_SPA_PATHS.has(url.pathname)
-    ) {
+    const isLocalizable = (v: string | null): v is LocalizableLang =>
+      v === 'he' || v === 'ar' || v === 'ru';
+    if (isLocalizable(langParam) && LOCALIZABLE_SPA_PATHS.has(url.pathname)) {
       const assetResponse = await env.ASSETS.fetch(request);
       const contentType = assetResponse.headers.get('content-type') ?? '';
       if (contentType.toLowerCase().includes('text/html')) {

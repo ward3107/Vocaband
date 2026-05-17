@@ -9,7 +9,21 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // Cloudflare Workers Assets serves matching static files BEFORE
+    // invoking the Worker by default. That meant our edge-side
+    // metadata rewrite for ?lang=he|ar never ran — / matched
+    // /index.html and was served straight from the asset cache.
+    // run_worker_first tells the runtime to invoke worker/index.ts
+    // first for these three SPA HTML routes; the worker then either
+    // rewrites the response (when ?lang=he|ar) or falls through to
+    // env.ASSETS.fetch() unchanged. Static assets (JS/CSS/fonts/img)
+    // aren't listed, so they skip the worker pass and stay cheap.
+    "run_worker_first": [
+      "/",
+      "/student",
+      "/accessibility-statement"
+    ]
   },
   "compatibility_flags": [
     "nodejs_compat"
