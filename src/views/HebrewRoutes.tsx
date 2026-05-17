@@ -14,7 +14,6 @@ import { LazyWrapper } from '../components/SuspenseWrapper';
 import { getEntitledVocas, type VocaId } from '../core/subject';
 import { hasTeacherAccess, type AppUser, type AssignmentData } from '../core/supabase';
 import { persistHebrewScore, type HebrewMode } from '../handlers/hebrewScore';
-import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 
 const VocaHebrewDashboardView = lazy(() => import('./VocaHebrewDashboardView'));
