@@ -10,6 +10,7 @@ import { lazy, Suspense, type ComponentType } from 'react';
 // chain. Same path data as lucide-react v0.546.0 (ISC).
 import { LazyErrorBoundary } from './LazyErrorBoundary';
 import { useLanguage } from '../hooks/useLanguage';
+import type { Language } from "../hooks/useLanguage";
 
 const InlineLoaderIcon = ({ className }: { className?: string }) => (
   <svg
@@ -34,16 +35,16 @@ type LoadingKey =
   | 'landing' | 'terms' | 'privacy' | 'security'
   | 'a11y' | 'resources' | 'status' | 'demo';
 
-const LOADING_COPY: Record<LoadingKey, { en: string; he: string; ar: string }> = {
-  default:   { en: 'Loading...',                       he: 'טוען...',                     ar: 'جارٍ التحميل...' },
-  landing:   { en: 'Loading landing page...',          he: 'טוען את עמוד הבית...',          ar: 'جارٍ تحميل الصفحة الرئيسية...' },
-  terms:     { en: 'Loading terms...',                 he: 'טוען את התנאים...',             ar: 'جارٍ تحميل الشروط...' },
-  privacy:   { en: 'Loading privacy policy...',        he: 'טוען את מדיניות הפרטיות...',    ar: 'جارٍ تحميل سياسة الخصوصية...' },
-  security:  { en: 'Loading security...',              he: 'טוען את עמוד האבטחה...',        ar: 'جارٍ تحميل الأمان...' },
-  a11y:      { en: 'Loading accessibility statement...', he: 'טוען את הצהרת הנגישות...',    ar: 'جارٍ تحميل بيان الوصول...' },
-  resources: { en: 'Loading resources...',             he: 'טוען משאבים...',                ar: 'جارٍ تحميل الموارد...' },
-  status:    { en: 'Loading status...',                he: 'טוען סטטוס...',                  ar: 'جارٍ تحميل الحالة...' },
-  demo:      { en: 'Loading demo...',                  he: 'טוען הדגמה...',                  ar: 'جارٍ تحميل العرض...' },
+const LOADING_COPY: Record<LoadingKey, { en: string; he: string; ar: string; ru: string }> = {
+  default:   { en: 'Loading...',                       he: 'טוען...',                     ar: 'جارٍ التحميل...',                     ru: 'Loading...', },
+  landing:   { en: 'Loading landing page...',          he: 'טוען את עמוד הבית...',          ar: 'جارٍ تحميل الصفحة الرئيسية...',          ru: 'Loading landing page...', },
+  terms:     { en: 'Loading terms...',                 he: 'טוען את התנאים...',             ar: 'جارٍ تحميل الشروط...',             ru: 'Loading terms...', },
+  privacy:   { en: 'Loading privacy policy...',        he: 'טוען את מדיניות הפרטיות...',    ar: 'جارٍ تحميل سياسة الخصوصية...',    ru: 'Loading privacy policy...', },
+  security:  { en: 'Loading security...',              he: 'טוען את עמוד האבטחה...',        ar: 'جارٍ تحميل الأمان...',        ru: 'Loading security...', },
+  a11y:      { en: 'Loading accessibility statement...', he: 'טוען את הצהרת הנגישות...',    ar: 'جارٍ تحميل بيان الوصول...',    ru: 'Loading accessibility statement...', },
+  resources: { en: 'Loading resources...',             he: 'טוען משאבים...',                ar: 'جارٍ تحميل الموارد...',                ru: 'Loading resources...', },
+  status:    { en: 'Loading status...',                he: 'טוען סטטוס...',                  ar: 'جارٍ تحميل الحالة...',                  ru: 'Loading status...', },
+  demo:      { en: 'Loading demo...',                  he: 'טוען הדגמה...',                  ar: 'جارٍ تحميل العرض...',                  ru: 'Loading demo...', },
 };
 
 // Loading fallback component

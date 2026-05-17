@@ -306,4 +306,89 @@ export const gameModesT: Record<Language, GameModesT> = {
       },
     },
   },
+
+  ru: {
+    chooseYourMode: "Choose Your Mode",
+    tagline: "Start with Flashcards to learn — then practise with the other modes.",
+    startHereBadge: "Start here · Learn first",
+    thenPractiseWith: "Then practise with",
+    closeAria: "Close mode selection",
+    modes: {
+      flashcards: {
+        name: "Flashcards",
+        desc: "Learn the words first — flip, listen, and earn XP at your own pace.",
+        tooltip: ["Learn before you practice", "Flip cards to see answers", "No pressure — still earns XP"],
+      },
+      classic: {
+        name: "Classic Mode",
+        desc: "See the word, hear the word, pick translation.",
+        tooltip: ["See the word in your language", "Hear the pronunciation", "Choose the correct English translation"],
+      },
+      "fill-blank": {
+        name: "Fill in the Blank",
+        desc: "Pick the word that completes the sentence.",
+        tooltip: ["Read the sentence with a missing word", "Tap the word that fits", "No audio — read carefully!"],
+      },
+      listening: {
+        name: "Listening Mode",
+        desc: "Only hear the word. No English text!",
+        tooltip: ["Listen to the word pronunciation", "No text shown — audio only!", "Great for training your ear"],
+      },
+      spelling: {
+        name: "Spelling Mode",
+        desc: "Type the English word. Hardest mode!",
+        tooltip: ["Hear the word", "Type it correctly in English", "Best for mastering spelling"],
+      },
+      matching: {
+        name: "Matching Mode",
+        desc: "Match translations. Fun & fast!",
+        tooltip: ["Match pairs together", "Connect your language to English", "Fast-paced and fun!"],
+      },
+      "memory-flip": {
+        name: "Memory Flip",
+        desc: "Flip cards face-down. Find the pairs!",
+        tooltip: ["Cards start face-down", "Flip two — same pair stays revealed", "Tests memory + meaning"],
+      },
+      "true-false": {
+        name: "True / False",
+        desc: "Is the translation correct? Quick thinking!",
+        tooltip: ["See a word and translation", "Decide if it's correct", "Quick reflexes game"],
+      },
+      scramble: {
+        name: "Word Scramble",
+        desc: "Unscramble the letters to find the word.",
+        tooltip: ["Letters are mixed up", "Rearrange to form the word", "Tests your spelling skills"],
+      },
+      reverse: {
+        name: "Reverse Mode",
+        desc: "See your language, pick the English word.",
+        tooltip: ["See the word in your language", "Choose matching English word", "Reverse of classic mode"],
+      },
+      "letter-sounds": {
+        name: "Letter Sounds",
+        desc: "Watch each letter light up and hear its sound.",
+        tooltip: ["Each letter lights up in colour", "Listen to each letter sound", "Type the full word you heard"],
+      },
+      "sentence-builder": {
+        name: "Sentence Builder",
+        desc: "Tap words in the right order to build the sentence.",
+        tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"],
+      },
+      "word-chains": {
+        name: "Word Chains",
+        desc: "Type a word that starts with the last letter of the previous word.",
+        tooltip: ["Look at the highlighted last letter", "Type a word starting with that letter", "Keep the chain going as long as you can!"],
+      },
+      idiom: {
+        name: "Idioms",
+        desc: "Match English idioms with their real meaning. Learn how to use them!",
+        tooltip: ["See an English idiom", "Pick the meaning that matches", "Read the example to learn how to use it"],
+      },
+      "speed-round": {
+        name: "Speed Round",
+        desc: "60 seconds, as many words as you can. Wrong answers cost 1 second!",
+        tooltip: ["60-second timer", "Wrong answers cost 1 second", "3 in a row earns combo bonus points"],
+      },
+    },
+  },
 };

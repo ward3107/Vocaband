@@ -16,6 +16,7 @@
 import { motion } from 'motion/react';
 import { Timer, ArrowRight, CheckCircle2, Flame } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
+import type { Language } from "../../hooks/useLanguage";
 
 interface ClassMinuteCardProps {
   /** True once today's class-minute progress row has been detected. */
@@ -27,7 +28,7 @@ interface ClassMinuteCardProps {
   onStart: () => void;
 }
 
-const STRINGS: Record<'en' | 'he' | 'ar', {
+const STRINGS: Record<Language, {
   title: string;
   subtitle: string;
   loading: string;
@@ -62,6 +63,15 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     doneSubtitle: 'عُد غدًا للحفاظ على السلسلة.',
     startCta: 'ابدأ دقيقتك',
     streakChip: n => `سلسلة ${n} أيام`,
+  },
+  ru: {
+    title: 'Class Minute',
+    subtitle: '60 seconds. Today\'s words. Beat your streak.',
+    loading: 'Loading…',
+    doneHeadline: 'Done for today!',
+    doneSubtitle: 'Come back tomorrow to keep the streak alive.',
+    startCta: 'Start your minute',
+    streakChip: n => `${n}-day streak`,
   },
 };
 

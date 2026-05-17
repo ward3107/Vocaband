@@ -49,6 +49,7 @@ import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import type { Word } from "../data/vocabulary";
 import InPageCamera from "../components/InPageCamera";
 import { postOcrImage, isPostOcrImageError } from "../utils/postOcrImage";
+import type { Language } from "../hooks/useLanguage";
 
 export interface HotSeatAssignment {
   id: string;
@@ -115,7 +116,7 @@ function buildQuestion(pool: Word[]): Question | null {
   return { word: correct, options };
 }
 
-const STRINGS: Record<'en' | 'he' | 'ar', {
+const STRINGS: Record<Language, {
   title: string;
   subtitle: string;
   playersLabel: string;
@@ -362,6 +363,69 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     podiumSubtitle: 'النتائج النهائية',
     playAgain: 'العب مرة أخرى',
     done: 'تم',
+    scoreOf: (correct, total) => `${correct}/${total}`,
+  },
+  ru: {
+    title: 'Hot Seat',
+    subtitle: 'Pass-around classroom mode — one device, many players.',
+    playersLabel: 'Players (one name per line)',
+    playersPlaceholder: 'Sarah\nDaniel\nMaya\n…',
+    playersHint: 'Need at least 2 players.',
+    wordsLabel: 'Words',
+    sourcePaste: 'Paste',
+    sourceAssignment: 'Assignment',
+    sourceCamera: 'Camera',
+    sourceTopic: 'Topic',
+    pickAssignment: 'Pick an assignment',
+    pickTopic: 'Pick a topic pack',
+    wordsPlaceholder: 'apple\nbook\ncat\n…',
+    wordsHint: 'One English word per line. We look up the translation in the curriculum.',
+    cameraHint: 'Snap a photo of your word list. We read it and pull translations from the curriculum.',
+    cameraBtn: 'Take photo',
+    galleryBtn: 'Choose from gallery',
+    ocrReading: 'Reading words from photo…',
+    ocrError: "Couldn't read words from that photo. Try a clearer shot.",
+    ocrFoundCount: (n) => `Found ${n} word${n === 1 ? '' : 's'} in the photo`,
+    matchedHint: (matched, total) =>
+      total === matched
+        ? `${matched} words ready`
+        : `${matched} of ${total} words found — others skipped`,
+    poolHint: (count) => `${count} words available`,
+    poolTooSmall: 'Need at least 4 words with the chosen translation.',
+    translateTo: 'Translate to:',
+    hebrew: 'Hebrew',
+    arabic: 'Arabic',
+    qpp: 'Questions per player',
+    reviewBtn: (n) => `Review ${n} word${n === 1 ? '' : 's'} →`,
+    reviewTitle: 'Words to play',
+    reviewSubtitle: (n) => `${n} word${n === 1 ? '' : 's'} ready to play`,
+    reviewEmpty: 'Pick a source above first.',
+    reviewStartBtn: 'Start Hot Seat',
+    reviewCancelBtn: 'Cancel',
+    removeWord: 'Remove word',
+    editTranslation: 'Edit translation',
+    saveEdit: 'Save',
+    cancelEdit: 'Cancel edit',
+    missingTranslation: 'Missing translation',
+    translationPlaceholder: 'Type a translation…',
+    startBtn: 'Start Hot Seat',
+    exitBtn: 'Back',
+    needTwo: 'Add at least 2 player names to start.',
+    loadingWords: 'Loading words…',
+    passTo: 'Pass to',
+    passToTurn: (n, total) => `Question ${n} of ${total}`,
+    readyBtn: "I'm ready →",
+    questionOf: (n, total) => `Q ${n}/${total}`,
+    pickHebrew: 'Pick the Hebrew translation',
+    pickArabic: 'Pick the Arabic translation',
+    correct: 'Correct!',
+    wrong: 'Not quite —',
+    correctAnswer: 'Correct answer:',
+    replay: 'Replay',
+    podiumTitle: 'Hot Seat results',
+    podiumSubtitle: 'Final scores',
+    playAgain: 'Play again',
+    done: 'Done',
     scoreOf: (correct, total) => `${correct}/${total}`,
   },
 };

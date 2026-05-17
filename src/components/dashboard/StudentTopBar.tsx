@@ -1,7 +1,7 @@
 import { LogOut, Globe } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "../../core/supabase";
-import { useLanguage, languageNames, type Language } from "../../hooks/useLanguage";
+import { useLanguage, languageNames, ALL_LANGUAGES, type Language } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 /**
@@ -20,7 +20,7 @@ export default function StudentTopBar() {
   const { language, setLanguage } = useLanguage();
   const t = studentDashboardT[language];
   const [langOpen, setLangOpen] = useState(false);
-  const langs: Language[] = ["en", "he", "ar"];
+  const langs: Language[] = ALL_LANGUAGES;
 
   return (
     <div className="flex justify-end items-center gap-2 mb-4">

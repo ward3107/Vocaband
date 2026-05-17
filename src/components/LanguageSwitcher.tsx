@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Globe, Check } from "lucide-react";
-import { useLanguage, languageNames, Language } from "../hooks/useLanguage";
+import { useLanguage, languageNames, Language, ALL_LANGUAGES } from "../hooks/useLanguage";
 
 interface LanguageSwitcherProps {
   className?: string;
@@ -16,7 +16,7 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = "", var
   const [isOpen, setIsOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
-  const languages: Language[] = ["en", "he", "ar"];
+  const languages: Language[] = ALL_LANGUAGES;
 
   // Close on outside click / Esc.  Hover-driven open + click-toggle on
   // touch devices both route through the same isOpen state, so this

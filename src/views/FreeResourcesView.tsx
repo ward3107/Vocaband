@@ -419,6 +419,7 @@ const generateWorksheetHTML = (pack: TopicPack, words: Word[], lang: string, set
     en: { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", listen: "Listen" },
     he: { title: "גיליון עבודה - אוצר מילים", word: "אנגלית", translation: "תרגום", practice: "תרגול כתיבה", name: "שם:", date: "תאריך:", school: "בית ספר:", className: "כיתה:", listen: "הקשבה" },
     ar: { title: "ورقة عمل - المفردات", word: "الإنجليزية", translation: "الترجمة", practice: "تمارين الكتابة", name: "الاسم:", date: "التاريخ:", school: "المدرسة:", className: "الصف:", listen: "استمع" },
+    ru: { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", listen: "Listen" },
   }[lang as "en" | "he" | "ar"] || undefined;
   const s = t || { title: "Vocabulary Worksheet", word: "English", translation: "Translation", practice: "Practice Writing", name: "Name:", date: "Date:", school: "School:", className: "Class:", listen: "Listen" };
 
@@ -523,6 +524,7 @@ const generateMatchingExerciseHTML = (pack: TopicPack, words: Word[], lang: stri
     en: { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", name: "Name:", date: "Date:" },
     he: { title: "תרגיל התאמה", instructions: "כתבו את מספר המילה הנכונה באנגלית ליד כל תרגום.", englishWords: "מילים באנגלית", translations: "תרגומים", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
     ar: { title: "تمرين المطابقة", instructions: "اكتب رقم الكلمة الإنجليزية الصحيحة بجانب كل ترجمة.", englishWords: "الكلمات الإنجليزية", translations: "الترجمات", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:" },
+    ru: { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", name: "Name:", date: "Date:" },
   }[lang as "en" | "he" | "ar"] || { title: "Matching Exercise", instructions: "Write the number of the correct English word next to each translation.", englishWords: "English Words", translations: "Translations", answerKey: "Answer Key", name: "Name:", date: "Date:" };
 
   const numbered = words.map((w, i) => ({ word: w, number: i + 1 }));
@@ -624,6 +626,7 @@ const generateFlashcardsHTML = (pack: TopicPack, words: Word[], lang: string, se
     en: { title: "Flashcards", instructions: "Cut along the solid lines. Fold along the dashed line — English on the front, translation on the back.", english: "English", translation: "Translation" },
     he: { title: "כרטיסיות", instructions: "גזרו לאורך הקווים המלאים. קפלו לאורך הקו המקווקו — אנגלית בקדמה, תרגום בגב.", english: "אנגלית", translation: "תרגום" },
     ar: { title: "بطاقات تعليمية", instructions: "قص على طول الخطوط المتصلة. اطوِ على الخط المتقطع — الإنجليزية أمامًا والترجمة خلفًا.", english: "الإنجليزية", translation: "الترجمة" },
+    ru: { title: "Flashcards", instructions: "Cut along the solid lines. Fold along the dashed line — English on the front, translation on the back.", english: "English", translation: "Translation" },
   }[lang as "en" | "he" | "ar"] || { title: "Flashcards", instructions: "Cut along the solid lines. Fold along the dashed line — English on the front, translation on the back.", english: "English", translation: "Translation" };
 
   const cardBorder = inkSaver ? "#000000" : "#93c5fd";
@@ -690,6 +693,7 @@ const generateBingoCardsHTML = (pack: TopicPack, words: Word[], lang: string, se
     en: { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation. Win by completing a full row, column, or diagonal!", free: "FREE", wordList: "Word List", card: "Card", callersTitle: "Caller's Checklist", callersInstructions: "Read these English words to the class in any order. Tick each word as you call it." },
     he: { title: "כרטיסי בינגו", instructions: "המורה אומרת מילים באנגלית, התלמידים מסמנים את התרגום. מנצחים על-ידי השלמת שורה, טור או אלכסון מלא!", free: "חינם", wordList: "רשימת מילים", card: "כרטיס", callersTitle: "רשימת הקראה למורה", callersInstructions: "הקריאו לתלמידים את המילים באנגלית בכל סדר. סמנו כל מילה אחרי שהקראתם אותה." },
     ar: { title: "بطاقات البينغو", instructions: "يقول المعلم الكلمات بالإنجليزية، ويضع الطلاب علامة على الترجمة. الفوز بإكمال صف أو عمود أو قطر كامل!", free: "مجاني", wordList: "قائمة الكلمات", card: "بطاقة", callersTitle: "قائمة المعلم للنداء", callersInstructions: "اقرأ هذه الكلمات الإنجليزية للصف بأي ترتيب. ضع علامة على كل كلمة بعد قراءتها." },
+    ru: { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation. Win by completing a full row, column, or diagonal!", free: "FREE", wordList: "Word List", card: "Card", callersTitle: "Caller's Checklist", callersInstructions: "Read these English words to the class in any order. Tick each word as you call it." },
   }[lang as "en" | "he" | "ar"] || { title: "Bingo Cards", instructions: "Teacher calls out English words; students mark the matching translation.", free: "FREE", wordList: "Word List", card: "Card", callersTitle: "Caller's Checklist", callersInstructions: "Read these English words to the class in any order. Tick each word as you call it." };
 
   // Cells per card depends on grid size. Centre cell is "free" only on odd
@@ -846,6 +850,7 @@ const generateWordSearchHTML = (pack: TopicPack, words: Word[], lang: string, se
     en: { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" },
     he: { title: "חיפוש מילים", instructions: "מצאו את כל המילים המוסתרות באנגלית. המילים יכולות להיות אופקיות, אנכיות או אלכסוניות.", wordsToFind: "מילים למציאה", answerKey: "פתרון", name: "שם:", date: "תאריך:", className: "כיתה:" },
     ar: { title: "بحث الكلمات", instructions: "ابحث عن جميع الكلمات الإنجليزية المخفية. يمكن أن تكون الكلمات أفقية أو عمودية أو قطرية.", wordsToFind: "الكلمات المطلوبة", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:", className: "الصف:" },
+    ru: { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" },
   }[lang as "en" | "he" | "ar"] || { title: "Word Search Puzzle", instructions: "Find the hidden English words. Words can run horizontally, vertically, or diagonally.", wordsToFind: "Words to Find", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" };
 
   // Cap and filter to letters-only English; sort longer first to improve placement success.
@@ -1005,6 +1010,7 @@ const generateFillBlankHTML = (pack: TopicPack, words: Word[], lang: string, set
     en: { title: "Fill in the Blank", instructions: "Use the words from the word bank to fill in each blank.", wordBank: "Word Bank", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" },
     he: { title: "השלמת חסר", instructions: "השתמשו במילים מבנק המילים כדי להשלים כל חסר.", wordBank: "בנק מילים", answerKey: "פתרון", name: "שם:", date: "תאריך:", className: "כיתה:" },
     ar: { title: "املأ الفراغ", instructions: "استخدم الكلمات من بنك الكلمات لملء كل فراغ.", wordBank: "بنك الكلمات", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:", className: "الصف:" },
+    ru: { title: "Fill in the Blank", instructions: "Use the words from the word bank to fill in each blank.", wordBank: "Word Bank", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" },
   }[lang as "en" | "he" | "ar"] || { title: "Fill in the Blank", instructions: "Use the words from the word bank to fill in each blank.", wordBank: "Word Bank", answerKey: "Answer Key", name: "Name:", date: "Date:", className: "Class:" };
 
   const BLANK = "____________";
@@ -1136,6 +1142,7 @@ const generateSpellingTestHTML = (pack: TopicPack, words: Word[], lang: string, 
     en: { title: "Spelling Test", instructions: "Listen to your teacher and write each word on the correct line.", studentTitle: "✍️ Student Sheet", callerTitle: "📣 Teacher's Caller List", callerInstructions: "Read each English word aloud. Tick it after you've called it.", answerKey: "Answer Key", name: "Name:", date: "Date:" },
     he: { title: "מבחן איות", instructions: "הקשיבו למורה וכתבו כל מילה על השורה הנכונה.", studentTitle: "✍️ דף תלמיד", callerTitle: "📣 רשימת הקראה למורה", callerInstructions: "הקריאו כל מילה בקול. סמנו אחרי שהקראתם.", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
     ar: { title: "اختبار الإملاء", instructions: "استمع للمعلم واكتب كل كلمة على السطر الصحيح.", studentTitle: "✍️ ورقة الطالب", callerTitle: "📣 قائمة المعلم للنداء", callerInstructions: "اقرأ كل كلمة بصوت عالٍ. ضع علامة بعد قراءتها.", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:" },
+    ru: { title: "Spelling Test", instructions: "Listen to your teacher and write each word on the correct line.", studentTitle: "✍️ Student Sheet", callerTitle: "📣 Teacher's Caller List", callerInstructions: "Read each English word aloud. Tick it after you've called it.", answerKey: "Answer Key", name: "Name:", date: "Date:" },
   }[lang as "en" | "he" | "ar"] || { title: "Spelling Test", instructions: "Listen to your teacher and write each word on the correct line.", studentTitle: "✍️ Student Sheet", callerTitle: "📣 Teacher's Caller List", callerInstructions: "Read each English word aloud. Tick it after you've called it.", answerKey: "Answer Key", name: "Name:", date: "Date:" };
 
   const lineColor = inkSaver ? "#000000" : "#94a3b8";
@@ -1208,6 +1215,7 @@ const generateWordScrambleHTML = (pack: TopicPack, words: Word[], lang: string, 
     en: { title: "Word Scramble", instructions: "Unscramble the letters and write the English word on the line. The translation is given as a hint.", letters: "Scrambled", clue: "Hint", answer: "Your answer", answerKey: "Answer Key", name: "Name:", date: "Date:" },
     he: { title: "ערבוב אותיות", instructions: "סדרו את האותיות וכתבו את המילה באנגלית על השורה. התרגום נתון כרמז.", letters: "מעורבב", clue: "רמז", answer: "התשובה שלך", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
     ar: { title: "ترتيب الحروف", instructions: "رتب الحروف واكتب الكلمة الإنجليزية على السطر. الترجمة مذكورة كتلميح.", letters: "مخلوط", clue: "تلميح", answer: "إجابتك", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:" },
+    ru: { title: "Word Scramble", instructions: "Unscramble the letters and write the English word on the line. The translation is given as a hint.", letters: "Scrambled", clue: "Hint", answer: "Your answer", answerKey: "Answer Key", name: "Name:", date: "Date:" },
   }[lang as "en" | "he" | "ar"] || { title: "Word Scramble", instructions: "Unscramble the letters and write the English word on the line. The translation is given as a hint.", letters: "Scrambled", clue: "Hint", answer: "Your answer", answerKey: "Answer Key", name: "Name:", date: "Date:" };
 
   // Filter to single-token alpha words; multi-word entries don't scramble cleanly.
@@ -1299,6 +1307,7 @@ const generateVocabQuizHTML = (pack: TopicPack, words: Word[], lang: string, set
     en: { title: "Vocabulary Quiz", instructions: "Circle the letter (A, B, C or D) of the correct answer.", part1: "Part 1 — Choose the correct translation", part2: "Part 2 — Choose the correct English word", answerKey: "Answer Key", name: "Name:", date: "Date:", score: "Score:" },
     he: { title: "מבחן אוצר מילים", instructions: "הקיפו את האות (A, B, C או D) של התשובה הנכונה.", part1: "חלק 1 — בחרו את התרגום הנכון", part2: "חלק 2 — בחרו את המילה הנכונה באנגלית", answerKey: "פתרון", name: "שם:", date: "תאריך:", score: "ציון:" },
     ar: { title: "اختبار المفردات", instructions: "ضع دائرة حول الحرف (A أو B أو C أو D) للإجابة الصحيحة.", part1: "الجزء 1 — اختر الترجمة الصحيحة", part2: "الجزء 2 — اختر الكلمة الإنجليزية الصحيحة", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:", score: "النتيجة:" },
+    ru: { title: "Vocabulary Quiz", instructions: "Circle the letter (A, B, C or D) of the correct answer.", part1: "Part 1 — Choose the correct translation", part2: "Part 2 — Choose the correct English word", answerKey: "Answer Key", name: "Name:", date: "Date:", score: "Score:" },
   }[lang as "en" | "he" | "ar"] || { title: "Vocabulary Quiz", instructions: "Circle the letter (A, B, C or D) of the correct answer.", part1: "Part 1 — Choose the correct translation", part2: "Part 2 — Choose the correct English word", answerKey: "Answer Key", name: "Name:", date: "Date:", score: "Score:" };
 
   // Half EN→translation, half translation→EN. We split the word list so a
@@ -1542,6 +1551,7 @@ const generateCrosswordHTML = (pack: TopicPack, words: Word[], lang: string, set
     en: { title: "Crossword Puzzle", instructions: "Solve the crossword. Use the translations as clues to find each English word.", across: "Across", down: "Down", solution: "Solution", name: "Name:", date: "Date:" },
     he: { title: "תשבץ", instructions: "פתרו את התשבץ. השתמשו בתרגומים כרמזים למציאת כל מילה באנגלית.", across: "מאוזן", down: "מאונך", solution: "פתרון", name: "שם:", date: "תאריך:" },
     ar: { title: "لغز الكلمات المتقاطعة", instructions: "حل اللغز. استخدم الترجمات كتلميحات لإيجاد كل كلمة إنجليزية.", across: "أفقي", down: "عمودي", solution: "الحل", name: "الاسم:", date: "التاريخ:" },
+    ru: { title: "Crossword Puzzle", instructions: "Solve the crossword. Use the translations as clues to find each English word.", across: "Across", down: "Down", solution: "Solution", name: "Name:", date: "Date:" },
   }[lang as "en" | "he" | "ar"] || { title: "Crossword Puzzle", instructions: "Solve the crossword. Use the translations as clues to find each English word.", across: "Across", down: "Down", solution: "Solution", name: "Name:", date: "Date:" };
 
   const entries = words.map((w) => ({ english: w.english, clue: getTranslation(w, lang) }));
@@ -1662,6 +1672,7 @@ const generateClozeHTML = (pack: TopicPack, words: Word[], lang: string, setting
     en: { title: "Cloze Reading", instructions: "Read the passage and fill in each blank with a word from the word bank.", wordBank: "Word Bank", passage: "Passage", answerKey: "Answer Key", name: "Name:", date: "Date:" },
     he: { title: "קריאה והשלמה", instructions: "קראו את הקטע והשלימו כל חסר במילה מבנק המילים.", wordBank: "בנק מילים", passage: "קטע", answerKey: "פתרון", name: "שם:", date: "תאריך:" },
     ar: { title: "قراءة وملء الفراغات", instructions: "اقرأ النص واملأ كل فراغ بكلمة من بنك الكلمات.", wordBank: "بنك الكلمات", passage: "النص", answerKey: "مفتاح الإجابة", name: "الاسم:", date: "التاريخ:" },
+    ru: { title: "Cloze Reading", instructions: "Read the passage and fill in each blank with a word from the word bank.", wordBank: "Word Bank", passage: "Passage", answerKey: "Answer Key", name: "Name:", date: "Date:" },
   }[lang as "en" | "he" | "ar"] || { title: "Cloze Reading", instructions: "Read the passage and fill in each blank with a word from the word bank.", wordBank: "Word Bank", passage: "Passage", answerKey: "Answer Key", name: "Name:", date: "Date:" };
 
   const BLANK = "____________";
@@ -1796,6 +1807,7 @@ const generateTracingHTML = (pack: TopicPack, words: Word[], lang: string, setti
     en: { title: "Tracing Practice", instructions: "Trace the dotted letters, then write each word again on the line below.", name: "Name:", date: "Date:" },
     he: { title: "תרגול כתיבה", instructions: "עברו על האותיות המקווקוות, ואז כתבו את כל מילה שוב על השורה למטה.", name: "שם:", date: "תאריך:" },
     ar: { title: "تمرين الكتابة", instructions: "تتبع الحروف المنقطة، ثم اكتب كل كلمة مرة أخرى على السطر أدناه.", name: "الاسم:", date: "التاريخ:" },
+    ru: { title: "Tracing Practice", instructions: "Trace the dotted letters, then write each word again on the line below.", name: "Name:", date: "Date:" },
   }[lang as "en" | "he" | "ar"] || { title: "Tracing Practice", instructions: "Trace the dotted letters, then write each word again on the line below.", name: "Name:", date: "Date:" };
 
   const accent = inkSaver ? "#000000" : "#9333ea";
@@ -1851,6 +1863,7 @@ const generateMemoryMatchHTML = (pack: TopicPack, words: Word[], lang: string, s
     en: { title: "Memory Match Cards", instructions: "Cut along the dashed lines. Place the cards face-down. Take turns flipping two cards — match each English word with its translation to keep the pair." },
     he: { title: "כרטיסי משחק זיכרון", instructions: "גזרו לאורך הקווים המקווקוים. הניחו את הכרטיסים הפוכים. סובבו שני כרטיסים בכל תור — התאימו מילה באנגלית עם התרגום שלה כדי לשמור על הזוג." },
     ar: { title: "بطاقات لعبة الذاكرة", instructions: "قص على طول الخطوط المتقطعة. ضع البطاقات وجهها للأسفل. اقلب بطاقتين في كل دور — طابق كل كلمة إنجليزية مع ترجمتها للاحتفاظ بالزوج." },
+    ru: { title: "Memory Match Cards", instructions: "Cut along the dashed lines. Place the cards face-down. Take turns flipping two cards — match each English word with its translation to keep the pair." },
   }[lang as "en" | "he" | "ar"] || { title: "Memory Match Cards", instructions: "Cut along the dashed lines. Place the cards face-down. Take turns flipping two cards — match each English word with its translation to keep the pair." };
 
   // 8 pairs × 2 cards = 16 cards per A4 page in 4×4 grid. Each grid is
@@ -1922,6 +1935,7 @@ const generatePictionaryHTML = (pack: TopicPack, words: Word[], lang: string, se
     en: { title: "Pictionary Cards", instructions: "Cut along the dashed lines. Pick a card. Draw the word — your partner guesses!", drawHere: "Draw here" },
     he: { title: "כרטיסי ציור", instructions: "גזרו לאורך הקווים המקווקוים. בחרו כרטיס. ציירו את המילה — בן הזוג שלכם מנחש!", drawHere: "ציירו כאן" },
     ar: { title: "بطاقات الرسم", instructions: "قص على طول الخطوط المتقطعة. اختر بطاقة. ارسم الكلمة — يخمنها شريكك!", drawHere: "ارسم هنا" },
+    ru: { title: "Pictionary Cards", instructions: "Cut along the dashed lines. Pick a card. Draw the word — your partner guesses!", drawHere: "Draw here" },
   }[lang as "en" | "he" | "ar"] || { title: "Pictionary Cards", instructions: "Cut along the dashed lines. Pick a card. Draw the word — your partner guesses!", drawHere: "Draw here" };
 
   // 4 cards per A4 portrait — 2×2 grid, each card is roughly half-page.
@@ -2024,6 +2038,20 @@ const generateParentHandoutHTML = (pack: TopicPack, words: Word[], lang: string,
       ],
       qrHint: "امسحوا رموز QR للنطق",
       footer: "شكرًا لدعمكم لتعلم طفلكم! ❤️",
+    },
+    ru: {
+      title: "Parent's Guide",
+      greeting: "Dear Parent,",
+      intro: "Your child is learning these English words this week. Here are simple, screen-free ways to practise at home — 5 minutes is enough!",
+      wordsTitle: "This week's words",
+      activitiesTitle: "Try these at home",
+      activities: [
+        { emoji: "🗣️", title: "Say it together", desc: "Read each English word aloud with your child. Then say it in your own language. Repeat 3 times — short and fun." },
+        { emoji: "🔍", title: "Spot it around the house", desc: "Walk around your home and find one item for as many words as you can. Point and say the English word." },
+        { emoji: "✏️", title: "Write 3 favourites", desc: "Ask your child to choose 3 words and write each one on a small paper. Stick them on the fridge for a week." },
+      ],
+      qrHint: "Scan the QR codes for pronunciation",
+      footer: "Thank you for supporting your child's learning! ❤️",
     },
   }[lang as "en" | "he" | "ar"] || {
     title: "Parent's Guide",

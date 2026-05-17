@@ -296,4 +296,69 @@ export const teacherModalsT: Record<Language, TeacherModalsT> = {
     scaleLargeAria: "حجم كبير",
     scaleXLargeAria: "حجم كبير جدًا",
   },
+
+  ru: {
+    cancel: "Cancel",
+    saving: "Saving…",
+
+    createTitle: "Create New Class",
+    createBlurb: "Enter a name for your class (e.g. Grade 8-B)",
+    classNamePlaceholder: "Class Name",
+    createBtn: "Create",
+
+    classCreatedTitle: "Class Created!",
+    classCreatedBlurb: "Share this code with your students so they can join.",
+    copyShort: "Copy",
+    whatsAppShort: "WhatsApp",
+    doneBtn: "Done",
+    classCardCopyMsg: (className, code) => `${className} - Class Code: ${code}`,
+
+    editTitle: "Edit class",
+    editBlurb: "Rename this class or pick a new avatar — students, assignments, and progress all stay intact.  Class code stays the same.",
+    classNameLabel: "Class name",
+    classNameInputPlaceholder: "e.g. Grade 8-B",
+    classCodeStatic: (code) => `Class code: ${code} (cannot change)`,
+    classAvatarLabel: "Class avatar",
+    useDefaultIconTitle: "Use default icon",
+    saveChanges: "Save changes",
+
+    delAssignTitle: "Delete Assignment?",
+    delAssignBody: (title) =>
+      `You're about to delete "${title}". This action cannot be undone — all student progress and data for this assignment will be permanently removed.`,
+    delAssignWarn: "⚠️ Make sure you want to delete this assignment before continuing.",
+    delAssignKeep: "Keep Assignment",
+    delAssignConfirm: "Delete Assignment",
+
+    rejectTitle: "Reject Student?",
+    rejectBody: (name) =>
+      `You're about to reject "${name}". They will need to sign up again with a new class code to join your class.`,
+    rejectWarn: "⚠️ This action cannot be undone. The student's profile will be marked as rejected.",
+    rejectKeep: "Keep Student",
+    rejectConfirm: "Reject Student",
+
+    confirmActionTitle: "Confirm Action",
+    confirmBtn: "Confirm",
+
+    sendXpBoostTitle: "Send XP Boost",
+    sendXpBoostBlurb: (name) => `Reward ${name} for their hard work`,
+    selectXpAmount: "Select XP amount:",
+    shortMsgToStudentLabel: "Short message to the student (optional)",
+    shortMsgPlaceholder: "e.g., Great participation today!",
+    shortMsgHelper: "Shows up in the student's dashboard next to the XP boost.",
+    closeAria: "Close",
+    sendingShort: "Sending...",
+    sendXp: "Send XP",
+    sentXpToast: (xp, name) => `Sent +${xp} XP to ${name}!`,
+    rewardErrorToast: (reason) => `Couldn't give reward: ${reason}`,
+    rewardUnknownError: "unknown error",
+
+    themeMenuHeading: "Dashboard theme",
+    themeMenuBlurb: "Pick a look for your teacher dashboard.  Only you see this — students keep their own theme from the shop.",
+    themeCloseAria: "Close theme picker",
+
+    scaleGroupAria: "Display size",
+    scaleNormalAria: "Normal size",
+    scaleLargeAria: "Large size",
+    scaleXLargeAria: "Extra large size",
+  },
 };

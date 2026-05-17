@@ -32,6 +32,13 @@ const STEPS_BY_LANG: Record<Language, Step[]> = {
     { icon: '⚡', title: 'اكسب XP وارتقِ', description: 'كل لعبة تمنحك XP. سجّل 80%+ للحفاظ على سلسلة الانتصارات! ارتقِ في الرتب: متعلّم → دارس → خبير → ماستر → أسطورة.' },
     { icon: '🛍️', title: 'زُر المتجر', description: 'استخدم XP لشراء أفاتارات وثيمات ومعزّزات وألقاب. اجعل ملفك مميزًا!' },
   ],
+  ru: [
+    { icon: '👋', title: 'Welcome to Vocaband!', description: "This is your learning dashboard. Here you'll find assignments from your teacher and track your progress." },
+    { icon: '📝', title: 'Complete Assignments', description: 'Your teacher will create word assignments. Each one has multiple game modes — pick the one you like!' },
+    { icon: '🎮', title: '15 Game Modes', description: 'Classic quiz, Spelling, Matching, Listening, Scramble, and more. Each mode helps you learn in a different way.' },
+    { icon: '⚡', title: 'Earn XP & Level Up', description: 'Every game earns you XP. Score 80%+ to keep your streak going! Reach new ranks: Learner → Scholar → Expert → Master → Legend.' },
+    { icon: '🛍️', title: 'Visit the Shop', description: 'Spend your XP on avatars, themes, power-ups, and titles. Make your profile unique!' },
+  ],
 };
 
 export default function StudentOnboarding({ userName, onComplete }: StudentOnboardingProps) {

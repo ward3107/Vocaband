@@ -262,4 +262,67 @@ export const onboardingWizardT: Record<Language, OnboardingWizardT> = {
     createClass: "إنشاء الصف",
     openDashboard: "افتح لوحة التحكم",
   },
+
+  ru: {
+    skip: "Skip",
+
+    welcomeHeading: "Welcome to Vocaband",
+    welcomeSubtitle: "Let's set up your first class in under a minute.",
+    pickStarterPackLabel: "Choose a starter word pack",
+
+    pack1Label: "Foundation",
+    pack1Subtitle: "Everyday English — best for grades 4–5",
+    pack1Samples: "school · water · family · friend · happy",
+
+    pack2Label: "Building blocks",
+    pack2Subtitle: "Common school words — best for grades 6–7",
+    pack2Samples: "weather · country · decide · special · finally",
+
+    pack3Label: "Bridge to fluency",
+    pack3Subtitle: "Advanced vocabulary — best for grades 8–9",
+    pack3Samples: "economy · environment · achievement · recommend",
+
+    packCustomLabel: "I'll add my own",
+    packCustomSubtitle: "Skip the starter pack — type or upload later",
+    packCustomSamples: "",
+
+    nameClassHeading: "Name your class",
+    nameClassSubtitle: "Students will see this when they join.",
+    classNamePlaceholder: "e.g. 5th Grade English",
+    classNameHelp: "You can rename this or add more classes anytime.",
+    defaultClassName: (teacherName) =>
+      teacherName ? `${teacherName}'s class` : "My first class",
+
+    pickModesHeading: "Pick game modes",
+    pickModesSubtitle: "We've pre-checked the popular ones. Change anytime.",
+    modeFlashcards: "Flashcards",
+    modeClassic: "Classic",
+    modeMatching: "Matching",
+    modeListening: "Listening",
+    modeTrueFalse: "True / False",
+    modeSpelling: "Spelling",
+    modeScramble: "Scramble",
+    modeReverse: "Reverse",
+    modesSelectedCount: (n) =>
+      n === 1 ? "1 mode selected" : `${n} modes selected`,
+
+    successHeading: "You're all set!",
+    successSubtitle: "Your class is ready. Here's what to do next.",
+    yourClassCodeLabel: "Your class code",
+    whatNextHeading: "Three quick steps",
+    whatNextStep1: "Share the code below with your students.",
+    whatNextStep2: "They go to vocaband.com and tap \"Join class\".",
+    whatNextStep3: "Approve them on your dashboard and they're in.",
+    copyCode: "Copy code",
+    copied: "Copied!",
+    shareWhatsApp: "Share via WhatsApp",
+    whatsAppMessage: (code) =>
+      `Join my Vocaband class!\n\nClass code: ${code}\n\nGo to https://vocaband.com and tap "Join class".`,
+
+    next: "Next",
+    back: "Back",
+    creatingClass: "Setting things up…",
+    createClass: "Create class",
+    openDashboard: "Open my dashboard",
+  },
 };

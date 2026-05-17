@@ -2,13 +2,13 @@ import { Users, Plus } from "lucide-react";
 import ClassCard from "../ClassCard";
 import type { ClassData, AssignmentData, CompetitionData } from "../../core/supabase";
 import type { VocaId } from "../../core/subject";
-import { useLanguage } from "../../hooks/useLanguage";
+import { useLanguage, type Language } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
 
 // Build a WhatsApp share message that includes the full /student?class=
 // join URL — clicking it lands the student on the join screen with the
 // code prefilled, so no copy/paste from the parent's phone.
-function buildWhatsAppShareText(code: string, language: "en" | "he" | "ar"): string {
+function buildWhatsAppShareText(code: string, language: Language): string {
   const origin =
     typeof window !== "undefined" && window.location?.origin
       ? window.location.origin
@@ -19,6 +19,9 @@ function buildWhatsAppShareText(code: string, language: "en" | "he" | "ar"): str
   }
   if (language === "ar") {
     return `انضموا إلى صفي في فوكاباند 🎓\n${url}\n(رمز الصف: ${code})`;
+  }
+  if (language === "ru") {
+    return `Присоединяйтесь к моему классу в Vocaband 🎓\n${url}\n(код класса: ${code})`;
   }
   return `Join my class on Vocaband 🎓\n${url}\n(class code: ${code})`;
 }

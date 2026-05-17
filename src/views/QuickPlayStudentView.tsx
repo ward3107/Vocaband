@@ -9,7 +9,7 @@ import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
-import { useLanguage, type Language, languageNames } from "../hooks/useLanguage";
+import { useLanguage, type Language, languageNames, ALL_LANGUAGES } from "../hooks/useLanguage";
 
 // ─── Feature flag ──────────────────────────────────────────────────────
 // When `VITE_QUICKPLAY_V2=true`, the join flow skips Supabase entirely —
@@ -469,7 +469,7 @@ export default function QuickPlayStudentView({
               </div>
 
               <div className="space-y-3">
-                {(["en", "he", "ar"] as Language[]).map((lang) => (
+                {ALL_LANGUAGES.map((lang) => (
                   <button
                     key={lang}
                     onClick={() => {

@@ -15,6 +15,7 @@
 import { motion } from 'motion/react';
 import { Brain, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
+import type { Language } from "../../hooks/useLanguage";
 
 interface ReviewQueueCardProps {
   dueCount: number;
@@ -22,7 +23,7 @@ interface ReviewQueueCardProps {
   onStart: () => void;
 }
 
-const STRINGS: Record<'en' | 'he' | 'ar', {
+const STRINGS: Record<Language, {
   title: string;
   loading: string;
   empty: string;
@@ -57,6 +58,15 @@ const STRINGS: Record<'en' | 'he' | 'ar', {
     count: n => `${n} ${n === 1 ? 'كلمة' : 'كلمات'} مستحقة`,
     countSubtitle: 'تدرب عليها الآن لتثبتها في الذاكرة.',
     startCta: 'ابدأ المراجعة',
+  },
+  ru: {
+    title: 'Spaced review',
+    loading: 'Checking your queue…',
+    empty: 'All caught up!',
+    emptySubtitle: 'No words to review right now. Keep playing to build the queue.',
+    count: n => `${n} ${n === 1 ? 'word' : 'words'} due`,
+    countSubtitle: 'Practice these now to lock them into memory.',
+    startCta: 'Start review',
   },
 };
 

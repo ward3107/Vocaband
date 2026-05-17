@@ -116,4 +116,37 @@ export const dashboardOnboardingT: Record<Language, DashboardOnboardingStrings> 
     next: "التالي",
     gotIt: "فهمت!",
   },
+  ru: {
+    steps: [
+      {
+        title: "Quick Online Challenge",
+        description: "Create a QR code for instant vocabulary games — students scan and play, no login needed.",
+      },
+      {
+        title: "Classroom Analytics",
+        description: "See scores, trends, most-missed words, and which students need extra help.",
+      },
+      {
+        title: "Students & Grades",
+        description: "Track every student's progress, scores, and detailed mistake history.",
+      },
+      {
+        title: "Student Approvals",
+        description: "When students sign up with your class code, approve or reject them here.",
+      },
+      {
+        title: "Your Classes",
+        description: "Create classes, get shareable codes, assign vocabulary, and manage students.",
+      },
+      {
+        title: "Create Your First Class",
+        description: "Start here — create a class to get a code you can share with your students.",
+      },
+    ],
+    stepCounter: (cur, total) => `Step ${cur} of ${total}`,
+    skipTour: "Skip tour",
+    skipAll: "Skip All",
+    next: "Next",
+    gotIt: "Got it!",
+  },
 };

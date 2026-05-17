@@ -7,13 +7,15 @@
  * the HTML generators; same `lang` argument for translation column.
  */
 import type { Word } from "../data/vocabulary";
+import type { Language } from "../hooks/useLanguage";
 
-type WorksheetLang = "en" | "he" | "ar";
+type WorksheetLang = "en" | "he" | "ar" | "ru";
 
 const TITLE_STRINGS: Record<WorksheetLang, { title: string; subtitle: string; word: string; translation: string }> = {
   en: { title: "English Vocabulary", subtitle: "Vocaband · Free Slides Pack", word: "English", translation: "Translation" },
   he: { title: "אוצר מילים באנגלית", subtitle: "Vocaband · ערכת שקופיות חינם", word: "אנגלית", translation: "תרגום" },
   ar: { title: "المفردات الإنجليزية", subtitle: "Vocaband · حزمة شرائح مجانية", word: "الإنجليزية", translation: "الترجمة" },
+  ru: { title: "English Vocabulary", subtitle: "Vocaband · Free Slides Pack", word: "English", translation: "Translation" },
 };
 
 const getTranslation = (w: Word, lang: WorksheetLang): string =>

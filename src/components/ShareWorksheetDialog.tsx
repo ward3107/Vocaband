@@ -21,6 +21,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { shareWorksheetT } from "../locales/teacher/share-worksheet";
 import type { Exercise, ExerciseType, TranslationDirection } from "../worksheet/types";
 import { WorksheetShareCard } from "./WorksheetShareCard";
+import type { Language } from "../hooks/useLanguage";
 
 // Exercise types that need a context sentence for each word. When the
 // teacher picks any of these, the dialog also calls /api/generate-sentences
@@ -33,7 +34,7 @@ const SENTENCE_DEPENDENT_TYPES = new Set<ExerciseType>([
   "word_in_context",
 ]);
 
-export type WorksheetLang = "en" | "he" | "ar";
+export type WorksheetLang = "en" | "he" | "ar" | "ru";
 
 export interface ShareSource {
   topicName: string;

@@ -18,6 +18,7 @@
 import React from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { appModalsT } from "../locales/teacher/app-modals";
+import type { Language } from "../hooks/useLanguage";
 
 // ── ConsentModal ──────────────────────────────────────────────────────────
 export interface ConsentModalProps {
@@ -103,7 +104,7 @@ export interface ExitConfirmModalProps {
   student?: { name: string; classCode: string | null } | null;
 }
 
-const STUDENT_STRINGS: Record<'en' | 'he' | 'ar', {
+const STUDENT_STRINGS: Record<Language, {
   headline: (n: string) => string;
   classCodeLabel: string;
   hint: string;
@@ -130,6 +131,13 @@ const STUDENT_STRINGS: Record<'en' | 'he' | 'ar', {
     hint: 'امسح رمز QR أو افتح رابط معلمك للعودة.',
     keepPlaying: 'تابع اللعب',
     switchClass: 'تغيير الصف',
+  },
+  ru: {
+    headline: n => `See you tomorrow, ${n}! 👋`,
+    classCodeLabel: 'Your class code:',
+    hint: "Scan the QR or open your teacher's link to come back.",
+    keepPlaying: 'Keep playing',
+    switchClass: 'Switch class',
   },
 };
 

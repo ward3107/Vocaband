@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Send, CheckCircle2, Phone, School, User } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
+import type { Language } from "../hooks/useLanguage";
 
 interface SubjectRequestModalProps {
   isOpen: boolean;
@@ -24,36 +25,36 @@ const SubjectRequestModal: React.FC<SubjectRequestModalProps> = ({ isOpen, onClo
   });
 
   const subjects = [
-    { value: "math", label: { en: "Mathematics", he: "מתמטיקה", ar: "الرياضيات" } },
-    { value: "science", label: { en: "Science", he: "מדעים", ar: "العلوم" } },
-    { value: "physics", label: { en: "Physics", he: "פיזיקה", ar: "الفيزياء" } },
-    { value: "chemistry", label: { en: "Chemistry", he: "כימיה", ar: "الكيمياء" } },
-    { value: "biology", label: { en: "Biology", he: "ביולוגיה", ar: "الأحياء" } },
-    { value: "history", label: { en: "History", he: "היסטוריה", ar: "التاريخ" } },
-    { value: "geography", label: { en: "Geography", he: "גאוגרפיה", ar: "الجغرافيا" } },
-    { value: "bible", label: { en: "Bible", he: "תנ\"ך", ar: "الكتاب المقدس" } },
-    { value: "grammar", label: { en: "Grammar", he: "דקדוק", ar: "القواعد" } },
-    { value: "literature", label: { en: "Literature", he: "ספרות", ar: "الأدب" } },
-    { value: "civics", label: { en: "Civics", he: "אזרחות", ar: "التربية المدنية" } },
-    { value: "hebrew", label: { en: "Hebrew", he: "עברית", ar: "العبرية" } },
-    { value: "arabic", label: { en: "Arabic", he: "ערבית", ar: "اللغة العربية" } },
-    { value: "english", label: { en: "English", he: "אנגלית", ar: "اللغة الإنجليزية" } },
-    { value: "computers", label: { en: "Computer Science", he: "מדעי המחשב", ar: "علوم الحاسوب" } },
-    { value: "art", label: { en: "Art", he: "אמנות", ar: "الفن" } },
-    { value: "music", label: { en: "Music", he: "מוזיקה", ar: "الموسيقى" } },
-    { value: "pe", label: { en: "Physical Education", he: "חינוך גופני", ar: "التربية البدنية" } },
-    { value: "other", label: { en: "Other", he: "אחר", ar: "أخرى" } },
+    { value: "math", label: { en: "Mathematics", he: "מתמטיקה", ar: "الرياضيات", ru: "Mathematics", } },
+    { value: "science", label: { en: "Science", he: "מדעים", ar: "العلوم", ru: "Science", } },
+    { value: "physics", label: { en: "Physics", he: "פיזיקה", ar: "الفيزياء", ru: "Physics", } },
+    { value: "chemistry", label: { en: "Chemistry", he: "כימיה", ar: "الكيمياء", ru: "Chemistry", } },
+    { value: "biology", label: { en: "Biology", he: "ביולוגיה", ar: "الأحياء", ru: "Biology", } },
+    { value: "history", label: { en: "History", he: "היסטוריה", ar: "التاريخ", ru: "History", } },
+    { value: "geography", label: { en: "Geography", he: "גאוגרפיה", ar: "الجغرافيا", ru: "Geography", } },
+    { value: "bible", label: { en: "Bible", he: "תנ\"ך", ar: "الكتاب المقدس", ru: "Bible", } },
+    { value: "grammar", label: { en: "Grammar", he: "דקדוק", ar: "القواعد", ru: "Grammar", } },
+    { value: "literature", label: { en: "Literature", he: "ספרות", ar: "الأدب", ru: "Literature", } },
+    { value: "civics", label: { en: "Civics", he: "אזרחות", ar: "التربية المدنية", ru: "Civics", } },
+    { value: "hebrew", label: { en: "Hebrew", he: "עברית", ar: "العبرية", ru: "Hebrew", } },
+    { value: "arabic", label: { en: "Arabic", he: "ערבית", ar: "اللغة العربية", ru: "Arabic", } },
+    { value: "english", label: { en: "English", he: "אנגלית", ar: "اللغة الإنجليزية", ru: "English", } },
+    { value: "computers", label: { en: "Computer Science", he: "מדעי המחשב", ar: "علوم الحاسوب", ru: "Computer Science", } },
+    { value: "art", label: { en: "Art", he: "אמנות", ar: "الفن", ru: "Art", } },
+    { value: "music", label: { en: "Music", he: "מוזיקה", ar: "الموسيقى", ru: "Music", } },
+    { value: "pe", label: { en: "Physical Education", he: "חינוך גופני", ar: "التربية البدنية", ru: "Physical Education", } },
+    { value: "other", label: { en: "Other", he: "אחר", ar: "أخرى", ru: "Other", } },
   ];
 
   const grades = [
-    { value: "elementary", label: { en: "Elementary (1-6)", he: "יסודי (1-6)", ar: "الابتدائية (1-6)" } },
-    { value: "middle", label: { en: "Middle School (7-9)", he: "חטיבת ביניים (7-9)", ar: "المتوسطة (7-9)" } },
-    { value: "high", label: { en: "High School (10-12)", he: "תיכון (10-12)", ar: "الثانوية (10-12)" } },
+    { value: "elementary", label: { en: "Elementary (1-6)", he: "יסודי (1-6)", ar: "الابتدائية (1-6)", ru: "Elementary (1-6)", } },
+    { value: "middle", label: { en: "Middle School (7-9)", he: "חטיבת ביניים (7-9)", ar: "المتوسطة (7-9)", ru: "Middle School (7-9)", } },
+    { value: "high", label: { en: "High School (10-12)", he: "תיכון (10-12)", ar: "الثانوية (10-12)", ru: "High School (10-12)", } },
   ];
 
   const schoolTypes = [
-    { value: "private", label: { en: "Private Tutoring", he: "שיעורים פרטיים", ar: "دروس خصوصية" } },
-    { value: "school", label: { en: "School", he: "בית ספר", ar: "مدرسة" } },
+    { value: "private", label: { en: "Private Tutoring", he: "שיעורים פרטיים", ar: "دروس خصوصية", ru: "Private Tutoring", } },
+    { value: "school", label: { en: "School", he: "בית ספר", ar: "مدرسة", ru: "School", } },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,7 +140,7 @@ Grade Level: ${getGradeLabel()}`;
     }));
   };
 
-  const getLabel = (label: { en: string; he: string; ar: string }) => {
+  const getLabel = (label: { en: string; he: string; ar: string; ru: string }) => {
     return label[language as keyof typeof label] || label.en;
   };
 

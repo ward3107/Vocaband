@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
-import { useLanguage, Language } from "../hooks/useLanguage";
+import { useLanguage, Language, ALL_LANGUAGES } from "../hooks/useLanguage";
 import { AvatarPicker } from "./AvatarPicker";
 import { getSentencesForWord } from "../data/sentence-bank";
 import { isAnswerCorrect, cleanWordForDisplay } from "../utils/answerMatch";
@@ -352,6 +352,94 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     streak: "السلسلة",
     frame: "إطار",
   },
+  ru: {
+    demoMode: "Demo Mode — a hands-on preview of Vocaband",
+    signUpFree: "",
+    welcomeTitle: "Welcome to Vocaband",
+    welcomeDesc: "An English vocabulary app students actually want to play — built for ESL classrooms.",
+    introHook: "Why Vocaband?",
+    introHookBody: "Most vocabulary practice feels like homework. Vocaband turns it into a game: XP, streaks, avatars, mystery eggs, and 15 game modes keep students coming back. Teachers get clear analytics on every word each student is learning.",
+    forTeachersTitle: "For English Teachers",
+    forTeachersDesc: "Create assignments in minutes, track per-student + per-word mastery, run live challenges, and grade automatically.",
+    forStudentsTitle: "For Students",
+    forStudentsDesc: "1000+ curated words from Sets 1–3. 15 game modes. XP, streaks, avatars, and a shop full of cosmetics and power-ups.",
+    tryDemoIntro: "In the next 2 minutes you'll play a real game mode with 10 sample words and see the XP, avatar and shop systems live.",
+    experienceTitle: "What you'll try in this demo:",
+    sampleWords: "100 sample words from Set 1 (real vocabulary)",
+    gameModes: "A real game mode, end-to-end",
+    xpStreak: "XP, streak, and title progression",
+    achievements: "Achievements & reward pop-ups",
+    shopPreview: "A tour of the avatar + shop system",
+    fullVersionTitle: "The full version adds:",
+    fullVersionBullets: "• 1000+ words across Sets 1–3\n• 15+ game modes (Classic, Spelling, Matching, Listening, Flashcards, Sentence Builder…)\n• Teacher dashboard, class codes, live challenges, gradebook\n• Mystery eggs, premium avatars, themes, titles, frames, boosters\n• Per-student word-mastery analytics",
+    demoRuntime: "~2 minutes, no account needed",
+    letsGo: "Start the demo →",
+    chooseAvatar: "Choose Your Avatar",
+    pickEmoji: "Pick an emoji to represent you",
+    yourName: "Your Name",
+    enterNickname: "Enter a nickname...",
+    continue: "Continue",
+    back: "Back",
+    chooseGame: "Choose a Game Mode",
+    tryPopular: "Try one of our popular modes!",
+    exit: "Exit",
+    orTryShop: "or Visit Shop",
+    wordOf: "Word {current} of {total}",
+    tapToHear: "Tap to hear",
+    whatDoesMean: "What does this word mean?",
+    correct: "Correct!",
+    notQuite: "Not quite!",
+    theAnswerIs: "The answer is:",
+    matched: "Matched:",
+    tapCards: "Tap matching pairs",
+    tapTwoCards: "Tap two cards to match words with meanings",
+    greatJob: "Great Job!",
+    completedDemo: "You've completed the demo!",
+    correctAns: "Correct",
+    xpEarned: "XP Earned",
+    yourAvatar: "Your Avatar",
+    wantMore: "What you just saw",
+    unlockFeatures: "This was a taste of what students experience every day in Vocaband. The full version expands into 1000+ words, 15+ game modes, live class challenges, and a full teacher dashboard.",
+    playAgain: "Play Again",
+    closeDemo: "Close Demo",
+    signFree: "",
+    check: "Check",
+    typeWord: "Type the word in English",
+    translation: "Translation:",
+    unscramble: "Unscramble the letters",
+    listenType: "Listen and type what you hear",
+    trueFalse: "Is this translation correct?",
+    trueBtn: "True",
+    falseBtn: "False",
+    flashcardTap: "Tap to flip",
+    flashcardMeaning: "Meaning",
+    flashcardWord: "Word",
+    reverseTitle: "Translate to English",
+    next: "Next",
+    skip: "Skip",
+    hint: "Hint",
+    shop: "🛍️ Shop",
+    shopFull: "Shop available in full version!",
+    avatars: "Avatars",
+    themes: "Themes",
+    powerups: "Power-ups",
+    freeInDemo: "FREE in demo!",
+    premium: "Premium",
+    selectAvatar: "Select Avatar",
+    xpTitle: "XP Title",
+    currentTitle: "Current Title",
+    unlockedInFull: "Unlock in full version",
+    youEarned: "You earned",
+    totalXP: "Total XP",
+    wordsLearned: "words mastered",
+    badgesEarned: "Badges",
+    playPronunciation: "Play pronunciation",
+    typeInEnglish: "Type in English...",
+    typeTheWord: "Type the word...",
+    clearBtn: "Clear",
+    streak: "Streak",
+    frame: "Frame",
+  },
 };
 
 // Visual mapping for mode cards — mirrors the real app's
@@ -571,6 +659,18 @@ const GAME_MODES: Record<Language, { id: string; name: string; emoji: string; de
     { id: "reverse", name: "عكس", emoji: "🔄", desc: "ترجم للإنجليزية" },
     { id: "letter-sounds", name: "أصوات الحروف", emoji: "🔡", desc: "انطقها" },
     { id: "sentence-builder", name: "بناء الجمل", emoji: "🧩", desc: "ابني جملًا" },
+  ],
+  ru: [
+    { id: "classic", name: "Classic", emoji: "📖", desc: "See the word, pick the right translation." },
+    { id: "listening", name: "Listening", emoji: "🎧", desc: "Only hear the word. No English text!" },
+    { id: "spelling", name: "Spelling", emoji: "✏️", desc: "Hear the word, type it in English." },
+    { id: "matching", name: "Matching", emoji: "⚡", desc: "Match Hebrew/Arabic to English pairs." },
+    { id: "true-false", name: "True / False", emoji: "✅", desc: "Is the translation correct? Quick!" },
+    { id: "flashcards", name: "Flashcards", emoji: "🃏", desc: "Review at your own pace." },
+    { id: "scramble", name: "Scramble", emoji: "🔤", desc: "Unscramble the letters into a word." },
+    { id: "reverse", name: "Reverse", emoji: "🔄", desc: "See the translation, pick the English word." },
+    { id: "letter-sounds", name: "Letter Sounds", emoji: "🔡", desc: "Hear each letter, type the full word." },
+    { id: "sentence-builder", name: "Sentence Builder", emoji: "🧩", desc: "Tap the words in the right order." },
   ],
 };
 
@@ -1353,7 +1453,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </p>
                 {/* Force LTR direction so buttons stay in place: EN | HE | AR */}
                 <div className="flex gap-3" dir="ltr">
-                  {(['en', 'he', 'ar'] as Language[]).map((lang) => (
+                  {ALL_LANGUAGES.map((lang) => (
                     <button
                       key={lang}
                       onClick={() => setLanguage(lang)}
