@@ -16,7 +16,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  ArrowLeft,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -39,6 +38,7 @@ import {
   type WorksheetLang,
 } from "../components/ShareWorksheetDialog";
 import { extractMisses, type Answer } from "../worksheet/types";
+import PageHero from "../components/PageHero";
 
 type WorksheetFormat = "matching" | "quiz" | "fillblank" | "listening";
 
@@ -120,7 +120,6 @@ interface Props {
 }
 
 export default function WorksheetAttemptsView({ user, onBack }: Props) {
-  const { isRTL } = useLanguage();
   const [worksheets, setWorksheets] = useState<Worksheet[]>([]);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -226,18 +225,16 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
   );
 
   return (
-    <div className="min-h-screen bg-[var(--vb-bg)] px-4 py-6 sm:py-10">
-      <div className="max-w-4xl mx-auto">
-        <button
-          type="button"
-          onClick={() => (selectedSlug ? setSelectedSlug(null) : onBack())}
-          className="flex items-center gap-2 text-violet-600 font-bold hover:text-violet-700 transition-all mb-6"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-        >
-          <ArrowLeft size={18} className={isRTL ? "rotate-180" : ""} />
-          <span>{selectedSlug ? "All worksheets" : "Back"}</span>
-        </button>
+    <div className="min-h-screen bg-[var(--vb-bg)]">
+      <PageHero
+        icon={<ClipboardList size={32} className="text-white" />}
+        title="Worksheet Results"
+        subtitle="See who completed each shared worksheet."
+        onBack={() => (selectedSlug ? setSelectedSlug(null) : onBack())}
+        backLabel={selectedSlug ? "All worksheets" : "Back"}
+      />
 
+      <div className="max-w-4xl mx-auto px-4 pt-6 sm:pt-10 pb-10">
         {loading ? (
           <div className="flex items-center justify-center gap-3 text-[var(--vb-text-muted)] py-20">
             <Loader2 size={20} className="animate-spin" />
@@ -291,20 +288,6 @@ const WorksheetList: React.FC<{
 
   return (
     <>
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
-            <ClipboardList size={20} className="text-violet-600" />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-[var(--vb-text-primary)]">
-            Worksheet Results
-          </h1>
-        </div>
-        <p className="text-sm text-[var(--vb-text-secondary)]">
-          Tap a worksheet to see who completed it.
-        </p>
-      </div>
-
       <div className="space-y-3">
         {worksheets.map((w) => {
           const att = attemptsBySlug.get(w.slug) ?? [];

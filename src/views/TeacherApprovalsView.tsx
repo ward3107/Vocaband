@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { CheckCircle2, Check, RefreshCw, X, AlertTriangle, Info, GraduationCap, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Check, RefreshCw, X, AlertTriangle, Info, GraduationCap } from "lucide-react";
 import { supabase } from "../core/supabase";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
@@ -8,6 +8,7 @@ import { useFirstTimeGuide } from "../hooks/useFirstTimeGuide";
 import FirstTimeGuide from "../components/onboarding/FirstTimeGuide";
 import GuideTriggerButton from "../components/onboarding/GuideTriggerButton";
 import { teacherGuidesT } from "../locales/teacher/guides";
+import PageHero from "../components/PageHero";
 
 interface PendingStudent {
   id: string;
@@ -65,45 +66,26 @@ export default function TeacherApprovalsView({
   void user;
 
   return (
-    <div dir={dir} className="min-h-screen p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div dir={dir} className="min-h-screen" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       {consentModal}
       {exitConfirmModal}
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-        className="max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
-      >
-        {/* Header — title + Back button, identical chrome to Worksheet. */}
-        <div className="flex items-center justify-between mb-6 sm:mb-8 gap-3">
-          <div className="min-w-0">
-            <h1 className="text-3xl sm:text-4xl font-black mb-1" style={{ color: 'var(--vb-text-primary)' }}>
-              {t.approvalsTitle}
-            </h1>
-            <p className="text-sm sm:text-base truncate" style={{ color: 'var(--vb-text-secondary)' }}>
-              {t.approvalsSubtitle}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <GuideTriggerButton onClick={guide.open} />
-            <button
-              type="button"
-              onClick={() => setView("teacher-dashboard")}
-              style={{
-                borderColor: 'var(--vb-border)',
-                color: 'var(--vb-text-secondary)',
-                backgroundColor: 'var(--vb-surface)',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent' as never,
-              }}
-              className="px-4 py-2 rounded-lg border-2 inline-flex items-center gap-2 hover:opacity-90"
-            >
-              <ArrowLeft size={16} />
-              <span className="hidden sm:inline">{t.backToDashboard}</span>
-            </button>
-          </div>
-        </div>
+      <PageHero
+        icon={<CheckCircle2 size={32} className="text-white" />}
+        title={t.approvalsTitle}
+        subtitle={t.approvalsSubtitle}
+        onBack={() => setView("teacher-dashboard")}
+        backLabel={t.backToDashboard}
+        trailing={<GuideTriggerButton onClick={guide.open} />}
+      />
+
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+          className="max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
+        >
 
         {pendingStudents.length === 0 ? (
           /* Empty state — calm, friendly, dashed border treatment now
@@ -250,7 +232,8 @@ export default function TeacherApprovalsView({
             </div>
           </>
         )}
-      </motion.div>
+        </motion.div>
+      </div>
 
       {/* Toast Notifications */}
       <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2 px-4 w-full max-w-md">
