@@ -22,6 +22,7 @@ const CookieBanner = lazy(() => import('../components/CookieBanner'));
 const QuickPlayResumeBanner = lazy(() => import('../components/QuickPlayResumeBanner'));
 const ImageCropModal = lazy(() => import('../components/ImageCropModal'));
 const PwaInstallGate = lazy(() => import('../components/PwaInstallGate'));
+const InAppBrowserWarning = lazy(() => import('../components/InAppBrowserWarning'));
 
 export interface UseAppPreOverlaysDeps {
   user: AppUser | null;
@@ -69,6 +70,13 @@ export function useAppPreOverlays(deps: UseAppPreOverlaysDeps): AppPreOverlays {
           <PwaInstallGate />
         </Suspense>
       )}
+      {/* In-app browser warning — shown to ALL users (not gated on auth)
+          because the WebView's broken SW + tiny IDB quota would silently
+          erase progress for anyone, including landing-page visitors who
+          tap "play demo." */}
+      <Suspense fallback={null}>
+        <InAppBrowserWarning />
+      </Suspense>
     </>
   );
 
