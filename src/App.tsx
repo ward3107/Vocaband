@@ -5,55 +5,7 @@ import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import type { Word } from "./data/vocabulary";
 import { useVocabularyLazy } from "./hooks/useVocabularyLazy";
 import { generateSentencesForAssignment } from "./data/sentence-bank";
-// The three icons App.tsx renders eagerly (RefreshCw, AlertTriangle,
-// ArrowLeftRight) used to be imported from lucide-react, which pulled
-// the ~17 kB gz lucide chunk into the App.tsx modulepreload chain.
-// Every visitor on cold first-paint paid for the whole icon bundle
-// just so this file could render four small SVGs. Inlined below as
-// plain <svg> elements using lucide's exact path data (v0.546.0, ISC
-// licensed). Every other file in the codebase continues to import
-// from lucide-react normally — the chunk still ships, just no longer
-// on App.tsx's preload graph. Net cold-load win: one fewer module
-// preload + ~17 kB gz saved on the critical path.
-const SvgSpinner: React.FC<{ size?: number; className?: string }> = ({ size = 24, className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    aria-hidden="true"
-  >
-    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-    <path d="M21 3v5h-5" />
-    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-    <path d="M8 16H3v5" />
-  </svg>
-);
-const SvgAlertTriangle: React.FC<{ size?: number; className?: string }> = ({ size = 24, className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    aria-hidden="true"
-  >
-    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
-    <path d="M12 9v4" />
-    <path d="M12 17h.01" />
-  </svg>
-);
+import SvgSpinner from "./components/svg/SvgSpinner";
 // motion is no longer imported eagerly here. Its three eager consumers
 // (CookieBanner, QuickPlayResumeBanner, ImageCropModal — all defined
 // further down as React.lazy) carry it in their own chunks now, so the
@@ -61,9 +13,8 @@ const SvgAlertTriangle: React.FC<{ size?: number; className?: string }> = ({ siz
 // on cold first-paint. AnimatePresence / motion.div weren't used in
 // this file anyway, so the original `import { motion, AnimatePresence }`
 // was a dead import.
-import { supabase, isSupabaseConfigured, OperationType, handleDbError, hasTeacherAccess, ASSIGNMENT_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, OperationType, handleDbError, hasTeacherAccess, ASSIGNMENT_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { isPro } from "./core/plan";
-import { OfflineIndicator } from "./components/OfflineIndicator";
 import { useAudio } from "./hooks/useAudio";
 import { useLanguage } from "./hooks/useLanguage";
 import { appToastsT } from "./locales/app-toasts";
@@ -74,16 +25,6 @@ import { useBoosters } from "./hooks/useBoosters";
 import { shuffle, chunkArray, addUnique, removeKey, secureRandomInt } from './utils';
 import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
 import { isAnswerCorrect } from './utils/answerMatch';
-// SetupWizard is now lazy-loaded via QuickPlaySetupView
-// CreateAssignmentWizard is now lazy-loaded via CreateAssignmentView
-// CookieBanner, QuickPlayResumeBanner, ImageCropModal — eager-imported
-// before; now React.lazy so motion (~43 kB gz) is removed from the
-// App.tsx static-import graph and stops being preloaded on cold visit.
-// All three render conditionally / with null Suspense fallback so the
-// extra round-trip is invisible to the user.
-const CookieBanner = lazy(() => import("./components/CookieBanner"));
-const QuickPlayResumeBanner = lazy(() => import("./components/QuickPlayResumeBanner"));
-const ImageCropModal = lazy(() => import("./components/ImageCropModal"));
 import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
 
@@ -105,6 +46,7 @@ import { useApplyTeacherTheme } from "./hooks/useApplyTeacherTheme";
 import { useAuthRestore } from "./hooks/useAuthRestore";
 import { useDeepLinkConsumers } from "./hooks/useDeepLinkConsumers";
 import { useAppMiscEffects } from "./hooks/useAppMiscEffects";
+import { useAppPreOverlays } from "./hooks/useAppPreOverlays";
 import { renderHebrewRoute } from "./views/HebrewRoutes";
 import { renderQuickPlayExitScreens } from "./views/QuickPlayExitScreens";
 import { useAppOverlays } from "./hooks/useAppOverlays";
@@ -1350,51 +1292,18 @@ export default function App() {
     !!quickPlaySessionParam ||
     !!quickPlayActiveSession ||
     view === "quick-play-student";
-  const cookieBannerOverlay = (
-    <>
-      {showCookieBanner && !user && (
-        <Suspense fallback={null}>
-          <CookieBanner onAccept={handleCookieAccept} onCustomize={handleCookieCustomize} />
-        </Suspense>
-      )}
-      <Suspense fallback={null}>
-        <QuickPlayResumeBanner suppress={qpResumeSuppress} />
-      </Suspense>
-      {/* Global amber pill when the browser reports the network is down.
-          See OfflineIndicator + useOnlineStatus for the implementation,
-          and R2 in docs/SCHOOL-PERFORMANCE-PLAN.md for the rationale. */}
-      <OfflineIndicator />
-    </>
-  );
-
-  // Image crop modal for OCR — shown when user picks a photo, before uploading
-  const ocrCropModal = ocrPendingFile ? (
-    <Suspense fallback={null}>
-      <ImageCropModal
-        file={ocrPendingFile.file}
-        onConfirm={(croppedFile) => processOcrFile(croppedFile, ocrPendingFile.inputRef)}
-        onCancel={() => {
-          if (ocrPendingFile.inputRef?.target) ocrPendingFile.inputRef.target.value = '';
-          setOcrPendingFile(null);
-        }}
-      />
-    </Suspense>
-  ) : null;
+  // Pre-auth overlays (cookie banner / QP resume banner / offline
+  // pill / OCR crop modal / config-error banner).  See useAppPreOverlays.
+  const { cookieBannerOverlay, ocrCropModal, configErrorBanner } = useAppPreOverlays({
+    user, showCookieBanner, handleCookieAccept, handleCookieCustomize,
+    qpResumeSuppress, ocrPendingFile, setOcrPendingFile, processOcrFile,
+  });
 
   if (loading && !quickPlaySessionParam) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
       <SvgSpinner className="animate-spin text-blue-700" size={48} />
     </div>;
   }
-
-
-  // Configuration error banner — shown when Supabase env vars are missing
-  const configErrorBanner = !isSupabaseConfigured ? (
-    <div className="fixed top-0 left-0 w-full bg-red-600 text-white px-4 py-3 text-center text-sm font-bold z-[9999]">
-      <SvgAlertTriangle size={16} className="inline mr-2" />
-      Supabase is not configured. Copy <code className="bg-red-700 px-1 rounded">.env.example</code> to <code className="bg-red-700 px-1 rounded">.env</code> and add your credentials, then restart the server.
-    </div>
-  ) : null;
 
   // --- PUBLIC VIEWS (No authentication required) ---
   // The four public view blocks (landing / terms / privacy /
