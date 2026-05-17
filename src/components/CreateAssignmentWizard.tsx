@@ -132,7 +132,7 @@ export interface CreateAssignmentWizardProps {
   /** Wires the ActivityTypeTabs strip inside SetupWizard.  When the
    *  teacher picks a non-Assignment tab, the parent (App.tsx) closes
    *  the wizard and opens the chosen tool with this class preselected. */
-  onSwitchActivity?: (type: 'class-show' | 'worksheet' | 'hot-seat' | 'vocabagrut') => void;
+  onSwitchActivity?: (type: 'class-show' | 'hot-seat' | 'vocabagrut') => void;
 }
 
 export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({

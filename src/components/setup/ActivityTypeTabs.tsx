@@ -3,7 +3,7 @@
  * Activity wizard.  Lets the teacher pick what kind of thing they
  * want to create for the current class without leaving the wizard.
  *
- *   [📚 Assignment] [📺 Class Show] [🖨️ Worksheet] [👥 Hot Seat] [✨ Vocabagrut]
+ *   [📚 Assignment] [📺 Class Show] [👥 Hot Seat] [✨ Vocabagrut]
  *
  * Tapping a non-Assignment tab calls onSwitch with the activity id;
  * the parent closes the wizard and opens the matching view with the
@@ -16,13 +16,12 @@
  * tiles used).
  */
 import React from 'react';
-// `Printer` belongs to the hidden Worksheet tab below — re-add when re-enabling.
 import { BookOpen, Tv2, Users, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { teacherWizardsT } from '../../locales/teacher/wizards';
 import { teacherDashboardT } from '../../locales/teacher/dashboard';
 
-export type ActivityType = 'assignment' | 'class-show' | 'worksheet' | 'hot-seat' | 'vocabagrut';
+export type ActivityType = 'assignment' | 'class-show' | 'hot-seat' | 'vocabagrut';
 
 export interface ActivityTypeTabsProps {
   /** Currently-rendered activity. The wizard always passes
@@ -62,8 +61,6 @@ const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
   const tabs: TabDef[] = [
     { id: 'assignment', label: tw.activityTabAssignment, icon: <BookOpen size={16} />, activeBg: 'bg-indigo-600', iconColor: 'text-indigo-600' },
     { id: 'class-show', label: td.classShowTitle, icon: <Tv2 size={16} />, activeBg: 'bg-fuchsia-600', iconColor: 'text-fuchsia-600' },
-    // Worksheet tab hidden from teachers — keep the entry/handlers around so we can re-enable later.
-    // { id: 'worksheet', label: td.worksheetTitle, icon: <Printer size={16} />, activeBg: 'bg-emerald-600', iconColor: 'text-emerald-600' },
     ...(hideEnglishOnlyTabs ? [] : [
       { id: 'hot-seat' as const, label: td.hotSeatTitle, icon: <Users size={16} />, activeBg: 'bg-orange-600', iconColor: 'text-orange-600' },
       { id: 'vocabagrut' as const, label: td.vocabagrutTitle, icon: <Sparkles size={16} />, activeBg: 'bg-violet-600', iconColor: 'text-violet-600' },
