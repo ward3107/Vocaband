@@ -1,0 +1,305 @@
+/**
+ * The remaining view branches that didn't merit their own section
+ * file — bundled into a single dispatching renderer.  Mostly
+ * prop-forwarding to lazy-loaded views.
+ *
+ * Covered:
+ *   - shop                          (student)
+ *   - voca-picker                   (admin)
+ *   - hot-seat                      (teacher)
+ *   - vocabagrut + Hebrew variant   (teacher)
+ *   - global-leaderboard
+ *   - teacher-approvals
+ *   - worksheet-attempts
+ *   - classroom / analytics / gradebook (legacy aliases)
+ *   - live-challenge-class-select + Hebrew variant
+ *   - live-challenge without class (redirect placeholder)
+ *   - students (legacy alias — redirected to gradebook elsewhere)
+ */
+import { lazy, type ReactNode } from 'react';
+import type React from 'react';
+import { LazyWrapper } from '../components/SuspenseWrapper';
+import SvgSpinner from '../components/svg/SvgSpinner';
+import { hasTeacherAccess, type AppUser, type ClassData, type AssignmentData } from '../core/supabase';
+import type { VocaId } from '../core/subject';
+import type { View } from '../core/views';
+
+const ShopView = lazy(() => import('./ShopMarketplaceView'));
+const VocaPickerView = lazy(() => import('./VocaPickerView'));
+const HotSeatView = lazy(() => import('./HotSeatView'));
+const VocabagrutShell = lazy(() => import('../features/vocabagrut/VocabagrutShell'));
+const HebrewComingSoonView = lazy(() => import('./HebrewComingSoonView'));
+const GlobalLeaderboardView = lazy(() => import('./GlobalLeaderboardView'));
+const TeacherApprovalsView = lazy(() => import('./TeacherApprovalsView'));
+const WorksheetAttemptsView = lazy(() => import('./WorksheetAttemptsView'));
+const ClassroomView = lazy(() => import('./ClassroomView'));
+const LiveChallengeClassSelectView = lazy(() => import('./LiveChallengeClassSelectView'));
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Anyish = any;
+
+export interface RenderMiscViewsDeps {
+  view: View;
+  user: AppUser | null;
+  activeVoca: VocaId | null;
+  selectedClass: ClassData | null;
+  activityNavOrigin: 'create-assignment' | null;
+
+  setView: React.Dispatch<React.SetStateAction<View>>;
+  setSelectedClass: React.Dispatch<React.SetStateAction<ClassData | null>>;
+  setIsLiveChallenge: React.Dispatch<React.SetStateAction<boolean>>;
+  setActiveVoca: React.Dispatch<React.SetStateAction<VocaId | null>>;
+
+  xp: number;
+  setXp: React.Dispatch<React.SetStateAction<number>>;
+  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
+  showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  boostersActivate: (...args: Anyish[]) => Anyish;
+
+  visibleClasses: ClassData[];
+  visibleAssignments: AssignmentData[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  speakWord: any;
+  topicPacks: { name: string; icon: string; ids: number[] }[];
+
+  globalLeaderboard: Anyish;
+
+  pendingStudents: Anyish[];
+  toasts: Anyish[];
+  consentModal: ReactNode;
+  exitConfirmModal: ReactNode;
+  loadPendingStudents: () => void;
+  handleApproveStudent: (...args: Anyish[]) => Anyish;
+  handleRejectStudent: (...args: Anyish[]) => Anyish;
+
+  allScores: Anyish;
+  classStudents: Anyish;
+  selectedWords: number[];
+  setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
+  expandedStudent: Anyish;
+  setExpandedStudent: React.Dispatch<React.SetStateAction<Anyish>>;
+
+  socket: Anyish;
+}
+
+export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
+  const {
+    view, user, activeVoca, selectedClass, activityNavOrigin,
+    setView, setSelectedClass, setIsLiveChallenge, setActiveVoca,
+    xp, setXp, setUser, showToast, boostersActivate,
+    visibleClasses, visibleAssignments, speakWord, topicPacks,
+    globalLeaderboard,
+    pendingStudents, toasts, consentModal, exitConfirmModal,
+    loadPendingStudents, handleApproveStudent, handleRejectStudent,
+    allScores, classStudents, selectedWords, setSelectedWords,
+    expandedStudent, setExpandedStudent, socket,
+  } = deps;
+
+  // Back-destination shared by Hot Seat / Vocabagrut / Hebrew-coming-soon
+  // when the wizard launched the activity tab.
+  const wizardBackOrDashboard = (): View =>
+    activityNavOrigin === 'create-assignment' && selectedClass ? 'create-assignment' : 'teacher-dashboard';
+
+  if (user?.role === 'student' && view === 'shop') {
+    return (
+      <LazyWrapper loadingMessage="Loading shop...">
+        <ShopView
+          user={user}
+          xp={xp}
+          setXp={setXp}
+          setUser={setUser}
+          setView={setView}
+          showToast={showToast}
+          activateBooster={boostersActivate}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  // Voca picker — admin-only entry point.
+  if (hasTeacherAccess(user) && view === 'voca-picker') {
+    return (
+      <LazyWrapper loadingMessage="Loading...">
+        <VocaPickerView
+          user={user!}
+          onPickVoca={(voca) => { setActiveVoca(voca); setView('teacher-dashboard'); }}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'hot-seat') {
+    // Pass-around classroom mode — feeds the teacher's English
+    // assignments as one possible word pool (in addition to Sets 1/2/3).
+    // Scope to selectedClass when set.  Scores stay in-memory.
+    const hotSeatAssignments = visibleAssignments
+      .filter((a) => !selectedClass || a.classId === selectedClass.id)
+      .map((a) => ({ id: a.id, title: a.title, wordIds: a.wordIds, words: a.words }));
+    return (
+      <LazyWrapper loadingMessage="Loading Hot Seat…">
+        <HotSeatView
+          onExit={() => setView(wizardBackOrDashboard())}
+          speak={speakWord}
+          assignments={hotSeatAssignments}
+          topicPacks={topicPacks}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'vocabagrut' && user) {
+    // No Hebrew analog — Hebrew literature has its own Bagrut, shaped
+    // nothing like the English one.  Hebrew-tab teachers hit the
+    // coming-soon screen via direct URL nav.
+    if (activeVoca === 'hebrew') {
+      return (
+        <LazyWrapper loadingMessage="טוען…">
+          <HebrewComingSoonView
+            titleHe="Vocabagrut"
+            descriptionHe="מבחן מתכונת בסגנון בגרות זמין כרגע רק במסלול האנגלית."
+            onBack={() => setView(wizardBackOrDashboard())}
+          />
+        </LazyWrapper>
+      );
+    }
+    return (
+      <LazyWrapper loadingMessage="Loading Vocabagrut…">
+        <VocabagrutShell
+          user={user}
+          classes={visibleClasses}
+          teacherAssignments={visibleAssignments}
+          onExit={() => {
+            if (user.role === 'student') {
+              setView('student-dashboard');
+            } else {
+              setView(wizardBackOrDashboard());
+            }
+          }}
+          showToast={showToast}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'global-leaderboard') {
+    return (
+      <LazyWrapper loadingMessage="Loading leaderboard...">
+        <GlobalLeaderboardView
+          userRole={user?.role}
+          setView={setView}
+          globalLeaderboard={globalLeaderboard}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  // Legacy "students" view merged into gradebook — redirect on next frame.
+  if (view === 'students') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-100">
+        <SvgSpinner className="animate-spin text-blue-700" size={48} />
+      </div>
+    );
+  }
+
+  if (view === 'teacher-approvals') {
+    return (
+      <LazyWrapper loadingMessage="Loading approvals...">
+        <TeacherApprovalsView
+          user={user}
+          pendingStudents={pendingStudents}
+          toasts={toasts}
+          consentModal={consentModal}
+          exitConfirmModal={exitConfirmModal}
+          setView={setView}
+          loadPendingStudents={loadPendingStudents}
+          handleApproveStudent={handleApproveStudent}
+          handleRejectStudent={handleRejectStudent}
+          showToast={showToast}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'worksheet-attempts' && user) {
+    return (
+      <LazyWrapper loadingMessage="Loading worksheet results...">
+        <WorksheetAttemptsView user={user} onBack={() => setView('teacher-dashboard')} />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'classroom' || view === 'analytics' || view === 'gradebook') {
+    // Legacy /analytics → Mastery tab, legacy /gradebook → Pulse tab.
+    const initialTab = view === 'analytics' ? 'mastery' : 'pulse';
+    return (
+      <LazyWrapper loadingMessage="Loading classroom...">
+        <ClassroomView
+          user={user}
+          classes={visibleClasses}
+          allScores={allScores}
+          teacherAssignments={visibleAssignments}
+          classStudents={classStudents}
+          selectedClass={selectedClass}
+          setSelectedClass={setSelectedClass}
+          selectedWords={selectedWords}
+          setSelectedWords={setSelectedWords}
+          expandedStudent={expandedStudent}
+          setExpandedStudent={setExpandedStudent}
+          setView={setView}
+          showToast={showToast}
+          initialTab={initialTab}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'live-challenge-class-select') {
+    // Hebrew teachers see the same coming-soon screen since Live
+    // Challenge isn't Hebrew-aware yet.
+    if (activeVoca === 'hebrew') {
+      return (
+        <LazyWrapper loadingMessage="טוען…">
+          <HebrewComingSoonView
+            titleHe="אתגר חי"
+            descriptionHe="מצב כיתה חי עם לוח שיא בזמן אמת — בקרוב באוצר המילים העברי."
+            onBack={() => setView('teacher-dashboard')}
+          />
+        </LazyWrapper>
+      );
+    }
+    return (
+      <LazyWrapper loadingMessage="Loading classes...">
+        <LiveChallengeClassSelectView
+          user={user}
+          classes={visibleClasses}
+          socket={socket}
+          setView={setView}
+          setSelectedClass={setSelectedClass}
+          setIsLiveChallenge={setIsLiveChallenge}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  // Fallback: view === "live-challenge" but selectedClass was cleared.
+  if (view === 'live-challenge' && !selectedClass) {
+    setTimeout(() => {
+      setIsLiveChallenge(false);
+      if (hasTeacherAccess(user)) setView('live-challenge-class-select');
+      else if (user?.role === 'student') setView('student-dashboard');
+      else setView('public-landing');
+    }, 0);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 text-white p-6">
+        <div className="text-center">
+          <div className="text-5xl mb-4">⏳</div>
+          <p className="font-black text-lg">Redirecting…</p>
+          <p className="text-white/80 text-sm mt-1">Taking you back to your home screen.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}

@@ -89,25 +89,13 @@ import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
 
 // Lazy-loaded views (code-split into separate chunks)
-const ShopView = lazy(() => import("./views/ShopMarketplaceView"));
 const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
-const GlobalLeaderboardView = lazy(() => import("./views/GlobalLeaderboardView"));
-const TeacherApprovalsView = lazy(() => import("./views/TeacherApprovalsView"));
-const WorksheetAttemptsView = lazy(() => import("./views/WorksheetAttemptsView"));
-// AnalyticsView + GradebookView are no longer routed directly here —
-// they're now lazy-loaded inside ClassroomView and rendered as tabs.
-const ClassroomView = lazy(() => import("./views/ClassroomView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
-const HotSeatView = lazy(() => import("./views/HotSeatView"));
-const HebrewComingSoonView = lazy(() => import("./views/HebrewComingSoonView"));
-const VocabagrutShell = lazy(() => import("./features/vocabagrut/VocabagrutShell"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
-const LiveChallengeClassSelectView = lazy(() => import("./views/LiveChallengeClassSelectView"));
 const GameModeIntroView = lazy(() => import("./views/GameModeIntroView"));
 const GameModeSelectionView = lazy(() => import("./views/GameModeSelectionView"));
 const GameFinishedView = lazy(() => import("./views/GameFinishedView"));
 const GameActiveView = lazy(() => import("./views/GameActiveView"));
-const VocaPickerView = lazy(() => import("./views/VocaPickerView"));
 const HebrewModeSelectionView = lazy(() => import("./views/HebrewModeSelectionView"));
 import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
@@ -134,6 +122,7 @@ import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
 import { StudentDashboardSection } from "./views/StudentDashboardSection";
+import { renderMiscViews } from "./views/MiscViewSections";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -1573,38 +1562,6 @@ export default function App() {
   }
 
   // --- SHOP VIEW (single-screen marketplace, lazy-loaded) ---
-  if (user?.role === "student" && view === "shop") {
-    return (
-      <LazyWrapper loadingMessage="Loading shop...">
-        <ShopView
-          user={user}
-          xp={xp}
-          setXp={setXp}
-          setUser={setUser}
-          setView={setView}
-          showToast={showToast}
-          activateBooster={boosters.activate}
-        />
-      </LazyWrapper>
-    );
-  }
-  // Voca picker — admin-only entry point.  Teachers have a single
-  // users.subject so they auto-route past this view via the routing
-  // effect above.  Admins land here on first dashboard visit each
-  // session; picking writes activeVoca and routes into that dashboard.
-  if (hasTeacherAccess(user) && view === "voca-picker") {
-    return (
-      <LazyWrapper loadingMessage="Loading...">
-        <VocaPickerView
-          user={user}
-          onPickVoca={(voca) => {
-            setActiveVoca(voca);
-            setView("teacher-dashboard");
-          }}
-        />
-      </LazyWrapper>
-    );
-  }
   // All Hebrew-side routing (vocahebrew-dashboard + the four mode
   // views) lives in renderHebrewRoute.  Returns JSX or null.
   const hebrewRoute = renderHebrewRoute({
@@ -1718,71 +1675,6 @@ export default function App() {
   // without the teacher-login tab visible.  Redirect to the right home
   // view instead so students get their dashboard back and teachers can
   // re-select a class.
-  if (view === "live-challenge" && !selectedClass) {
-    // useEffect-style redirect without the hook — render a calm loading
-    // state while we schedule the navigation change.
-    setTimeout(() => {
-      setIsLiveChallenge(false);
-      if (hasTeacherAccess(user)) setView('live-challenge-class-select');
-      else if (user?.role === 'student') setView('student-dashboard');
-      else setView('public-landing');
-    }, 0);
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 text-white p-6">
-        <div className="text-center">
-          <div className="text-5xl mb-4">⏳</div>
-          <p className="font-black text-lg">Redirecting…</p>
-          <p className="text-white/80 text-sm mt-1">Taking you back to your home screen.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === "global-leaderboard") {
-    return (
-      <LazyWrapper loadingMessage="Loading leaderboard...">
-        <GlobalLeaderboardView
-          userRole={user?.role}
-          setView={setView}
-          globalLeaderboard={globalLeaderboard}
-        />
-      </LazyWrapper>
-    );
-  }
-
-  // "students" view merged into gradebook — redirect if somehow navigated here
-  // (wrapped in useEffect-safe pattern to avoid setState during render)
-  if (view === "students") {
-    // Return a loading state while the effect below redirects
-    return <div className="min-h-screen flex items-center justify-center bg-stone-100"><SvgSpinner className="animate-spin text-blue-700" size={48} /></div>;
-  }
-
-  if (view === "teacher-approvals") {
-    return (
-      <LazyWrapper loadingMessage="Loading approvals...">
-        <TeacherApprovalsView
-          user={user}
-          pendingStudents={pendingStudents}
-          toasts={toasts}
-          consentModal={consentModal}
-          exitConfirmModal={exitConfirmModal}
-          setView={setView}
-          loadPendingStudents={loadPendingStudents}
-          handleApproveStudent={handleApproveStudent}
-          handleRejectStudent={handleRejectStudent}
-          showToast={showToast}
-        />
-      </LazyWrapper>
-    );
-  }
-
-  if (view === "worksheet-attempts" && user) {
-    return (
-      <LazyWrapper loadingMessage="Loading worksheet results...">
-        <WorksheetAttemptsView user={user} onBack={() => setView("teacher-dashboard")} />
-      </LazyWrapper>
-    );
-  }
 
   if (view === "quick-play-setup") {
     return QuickPlaySetupSection({
@@ -1800,38 +1692,6 @@ export default function App() {
   }
 
 
-  if (view === "hot-seat") {
-    // Pass-around classroom mode — one device, many players.  Owns its
-    // own setup screen + game loop + podium internally; we feed it the
-    // teacher's English assignments so they can pick one as the word
-    // pool (in addition to the curriculum Sets 1/2/3).  Scope to the
-    // selected class when one is set — usually the case since Hot Seat
-    // launches from the class wizard's tab strip.  Scores stay
-    // in-memory; no Supabase writes since the players aren't logged in.
-    const hotSeatAssignments = visibleAssignments
-      .filter(a => !selectedClass || a.classId === selectedClass.id)
-      .map(a => ({ id: a.id, title: a.title, wordIds: a.wordIds, words: a.words }));
-    return (
-      <LazyWrapper loadingMessage="Loading Hot Seat…">
-        <HotSeatView
-          onExit={() => {
-            // When launched from the New Activity wizard's tab strip,
-            // back should land on the wizard (so the teacher keeps
-            // their tab context); otherwise return to dashboard.
-            if (activityNavOrigin === 'create-assignment' && selectedClass) {
-              setView('create-assignment');
-            } else {
-              setView('teacher-dashboard');
-            }
-          }}
-          speak={speakWord}
-          assignments={hotSeatAssignments}
-          topicPacks={TOPIC_PACKS}
-        />
-      </LazyWrapper>
-    );
-  }
-
   const classShowOrWorksheet = renderClassShowOrWorksheet({
     view, user, selectedClass, activeVoca, activityNavOrigin,
     classShowAssignment, worksheetAssignment,
@@ -1841,54 +1701,6 @@ export default function App() {
     onPickerOcrUpload, showToast,
   });
   if (classShowOrWorksheet) return classShowOrWorksheet;
-
-  if (view === "vocabagrut" && user) {
-    // Vocabagrut = Israeli English-Bagrut mock exam. There is no Hebrew
-    // analog (Hebrew literature has its own Bagrut, structured nothing
-    // like the English one), so Hebrew-tab teachers shouldn't see it at
-    // all. The TeacherQuickActions tile is also hidden when isHebrew —
-    // this guard catches direct navigation (URL state restore, etc.).
-    if (activeVoca === "hebrew") {
-      return (
-        <LazyWrapper loadingMessage="טוען…">
-          <HebrewComingSoonView
-            titleHe="Vocabagrut"
-            descriptionHe="מבחן מתכונת בסגנון בגרות זמין כרגע רק במסלול האנגלית."
-            onBack={() => {
-              if (activityNavOrigin === 'create-assignment' && selectedClass) {
-                setView('create-assignment');
-              } else {
-                setView('teacher-dashboard');
-              }
-            }}
-          />
-        </LazyWrapper>
-      );
-    }
-    return (
-      <LazyWrapper loadingMessage="Loading Vocabagrut…">
-        <VocabagrutShell
-          user={user}
-          classes={visibleClasses}
-          teacherAssignments={visibleAssignments}
-          onExit={() => {
-            // Students always return to their own dashboard.  Teachers
-            // who entered Vocabagrut via the New Activity wizard's tab
-            // strip go back to the wizard; other teachers (direct
-            // navigation, state restore) land on the dashboard.
-            if (user.role === 'student') {
-              setView('student-dashboard');
-            } else if (activityNavOrigin === 'create-assignment' && selectedClass) {
-              setView('create-assignment');
-            } else {
-              setView('teacher-dashboard');
-            }
-          }}
-          showToast={showToast}
-        />
-      </LazyWrapper>
-    );
-  }
 
   const teacherLiveScreen = renderTeacherLiveScreens({
     view, user, selectedClass, setView, setIsLiveChallenge,
@@ -1900,66 +1712,29 @@ export default function App() {
   });
   if (teacherLiveScreen) return teacherLiveScreen;
 
+  // Remaining smaller view branches (shop / voca-picker / hot-seat /
+  // vocabagrut / global-leaderboard / teacher-approvals / worksheet-
+  // attempts / classroom / live-challenge-class-select / students /
+  // live-challenge fallback) bundled in renderMiscViews.
+  const miscView = renderMiscViews({
+    view, user, activeVoca, selectedClass, activityNavOrigin,
+    setView, setSelectedClass, setIsLiveChallenge, setActiveVoca,
+    xp, setXp, setUser, showToast,
+    boostersActivate: boosters.activate,
+    visibleClasses, visibleAssignments, speakWord, topicPacks: TOPIC_PACKS,
+    globalLeaderboard,
+    pendingStudents, toasts, consentModal, exitConfirmModal,
+    loadPendingStudents, handleApproveStudent, handleRejectStudent,
+    allScores, classStudents, selectedWords, setSelectedWords,
+    expandedStudent, setExpandedStudent, socket,
+  });
+  if (miscView) return miscView;
+
   // Single "Classroom" entry point now wraps Analytics + Gradebook under
   // a tabbed UI (Pulse / Mastery / Records). Legacy /analytics and
   // /gradebook view strings still resolve here so existing dashboard
   // buttons + history-stack entries keep working — they just land on
   // the matching tab inside the merged view.
-  if (view === "classroom" || view === "analytics" || view === "gradebook") {
-    // Legacy /analytics → Mastery tab, legacy /gradebook → Pulse tab
-    // (Records tab was removed — its content lived inside Pulse anyway).
-    const initialTab = view === "analytics" ? "mastery" : "pulse";
-    return (
-      <LazyWrapper loadingMessage="Loading classroom...">
-        <ClassroomView
-          user={user}
-          classes={visibleClasses}
-          allScores={allScores}
-          teacherAssignments={visibleAssignments}
-          classStudents={classStudents}
-          selectedClass={selectedClass}
-          setSelectedClass={setSelectedClass}
-          selectedWords={selectedWords}
-          setSelectedWords={setSelectedWords}
-          expandedStudent={expandedStudent}
-          setExpandedStudent={setExpandedStudent}
-          setView={setView}
-          showToast={showToast}
-          initialTab={initialTab}
-        />
-      </LazyWrapper>
-    );
-  }
-
-  if (view === "live-challenge-class-select") {
-    // Hebrew teachers landing on the class-select would otherwise see a
-    // picker that leads into the (English-only) socket session. Mirror
-    // the guard at the live-challenge route. Gated on activeVoca because
-    // no class has been selected yet at this stage.
-    if (activeVoca === "hebrew") {
-      return (
-        <LazyWrapper loadingMessage="טוען…">
-          <HebrewComingSoonView
-            titleHe="אתגר חי"
-            descriptionHe="מצב כיתה חי עם לוח שיא בזמן אמת — בקרוב באוצר המילים העברי."
-            onBack={() => setView("teacher-dashboard")}
-          />
-        </LazyWrapper>
-      );
-    }
-    return (
-      <LazyWrapper loadingMessage="Loading classes...">
-        <LiveChallengeClassSelectView
-          user={user}
-          classes={visibleClasses}
-          socket={socket}
-          setView={setView}
-          setSelectedClass={setSelectedClass}
-          setIsLiveChallenge={setIsLiveChallenge}
-        />
-      </LazyWrapper>
-    );
-  }
 
   if (isFinished) {
     return (
