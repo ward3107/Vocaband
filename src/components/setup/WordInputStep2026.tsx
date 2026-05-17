@@ -915,7 +915,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
               value is fine; no classroom requires it. */}
           <div>
             <label htmlFor="custom-word-russian" className="block text-sm font-semibold text-[var(--vb-text-secondary)] mb-1 flex items-center gap-2">
-              <span>🇷🇺</span> Russian
+              Russian
             </label>
             <input
               type="text"

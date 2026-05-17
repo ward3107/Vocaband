@@ -1465,8 +1465,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                           : 'bg-white/90 text-on-surface border-white/60 hover:bg-white hover:scale-102'
                       }`}
                     >
-                      <span className="text-xl">{lang === 'en' ? '🇬🇧' : lang === 'he' ? '🇮🇱' : '🇸🇦'}</span>
-                      <span className="block text-xs mt-0.5">{lang === 'en' ? 'English' : lang === 'he' ? 'עברית' : 'العربية'}</span>
+                      <span className="block text-base font-black">{lang === 'en' ? 'English' : lang === 'he' ? 'עברית' : 'العربية'}</span>
                     </button>
                   ))}
                 </div>

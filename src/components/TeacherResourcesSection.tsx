@@ -32,20 +32,15 @@ type PdfLanguage = "en" | "he" | "ar";
 interface PdfLangSpec {
   code: PdfLanguage;
   name: string;
-  flag: string;
   /** "rtl" so Hebrew / Arabic names render with the right shaping
    *  even when the surrounding card is LTR. */
   dir: "ltr" | "rtl";
 }
 
 const PDF_LANGUAGES: PdfLangSpec[] = [
-  // No flag for English — Windows renders 🇬🇧 as literal "GB"
-  // letters (no emoji font fallback for regional indicator pairs),
-  // which collided with the "EN" label sitting right next to it.
-  // The other regional flags render correctly across our target OSes.
-  { code: "en", name: "English", flag: "",   dir: "ltr" },
-  { code: "he", name: "עברית",   flag: "🇮🇱", dir: "rtl" },
-  { code: "ar", name: "العربية", flag: "🇸🇦", dir: "rtl" },
+  { code: "en", name: "English", dir: "ltr" },
+  { code: "he", name: "עברית",   dir: "rtl" },
+  { code: "ar", name: "العربية", dir: "rtl" },
 ];
 
 // Languages that actually have a generated PDF in public/docs/.
@@ -297,9 +292,6 @@ const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRT
                         isCurrent && available ? "ring-2 ring-white/70" : "ring-1 ring-white/15",
                       ].join(" ")}
                     >
-                      {lang.flag && (
-                        <span className="text-sm leading-none" aria-hidden="true">{lang.flag}</span>
-                      )}
                       <span className="uppercase tracking-wide" dir="ltr">{lang.code}</span>
                       {available ? (
                         <Download size={12} aria-hidden="true" className="opacity-90" />

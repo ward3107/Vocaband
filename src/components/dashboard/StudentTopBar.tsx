@@ -6,7 +6,7 @@ import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 /**
  * Top bar for the student dashboard.  Logout affordance + a compact
- * language switcher (🌐 EN / 🇮🇱 HE / 🇸🇦 AR).  The student-facing
+ * language switcher (Globe icon + EN/HE/AR label).  The student-facing
  * screens are all translated to EN/HE/AR via src/locales/student/*.ts
  * but the LanguageSwitcher component was previously only mounted on
  * the legal pages (Terms / Privacy / Accessibility / Security), so

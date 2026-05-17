@@ -29,7 +29,7 @@ const VOCA_CARDS: readonly VocaCard[] = [
     id: "english",
     name: "VocaEnglish",
     tag: "Build vocabulary in English",
-    emoji: "🇬🇧",
+    emoji: "🔤",
     gradient: "from-indigo-500 via-violet-500 to-fuchsia-600",
   },
   {
