@@ -339,6 +339,32 @@ export function mapUser(row: any): AppUser {
   };
 }
 
+/**
+ * Look up an AppUser by Supabase auth uid, with a single retry on
+ * transient errors.  Returns null when the row genuinely doesn't
+ * exist (PKCE first-sign-in / pre-trigger window).
+ *
+ * Used by the auth/onAuthStateChange restore flow — kept here next
+ * to USER_COLUMNS + mapUser so the lookup, projection list, and shape
+ * mapping stay in sync.
+ */
+export async function fetchUserProfile(
+  uid: string,
+  retries = 1,
+): Promise<AppUser | null> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const { data: userRow, error } = await supabase
+      .from('users')
+      .select(USER_COLUMNS)
+      .eq('uid', uid)
+      .maybeSingle();
+    if (userRow) return mapUser(userRow);
+    if (!error) return null;
+    if (attempt < retries) await new Promise((r) => setTimeout(r, 500));
+  }
+  return null;
+}
+
 export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
   return {
     uid: u.uid,
