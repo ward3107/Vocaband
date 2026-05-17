@@ -142,9 +142,13 @@ interface HeroPasteAreaProps {
   onAnalyze: (text: string) => void;
   isAnalyzing: boolean;
   allWords: Word[];
+  /** English words already in the teacher's selected list — we hide
+   *  these from autocomplete + fuzzy suggestions so we never propose
+   *  a word they've already added. */
+  takenEnglish: Set<string>;
 }
 
-const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, allWords }) => {
+const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, allWords, takenEnglish }) => {
   const TEXT = useStepTexts();
   const isDesktop = useIsDesktopPointer();
   const [text, setText] = useState('');
@@ -186,10 +190,10 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
       return;
     }
     const id = window.setTimeout(() => {
-      setSuggestions(suggestCorrections(text, allWords, { ignored }));
+      setSuggestions(suggestCorrections(text, allWords, { ignored, taken: takenEnglish }));
     }, 400);
     return () => window.clearTimeout(id);
-  }, [text, allWords, ignored]);
+  }, [text, allWords, ignored, takenEnglish]);
 
   const acceptSuggestion = (s: SpellSuggestion) => {
     setText(prev => applySuggestion(prev, s.typo, s.suggestion));
@@ -212,8 +216,8 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
     [text, caretPos, isFocused, isDesktop]
   );
   const autocompleteMatches: AutocompleteMatch[] = useMemo(
-    () => (isDesktop ? getAutocompleteMatches(currentToken.token, allWords, { max: 5 }) : []),
-    [currentToken.token, allWords, isDesktop]
+    () => (isDesktop ? getAutocompleteMatches(currentToken.token, allWords, { max: 5, taken: takenEnglish }) : []),
+    [currentToken.token, allWords, isDesktop, takenEnglish]
   );
 
   const acceptAutocomplete = useCallback(
@@ -2269,10 +2273,18 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     showToast?.('Translations updated', 'success');
   }, [selectedWords, onSelectedWordsChange, showToast]);
 
+  // English-only lower-cased set of already-selected words. Passed to
+  // the paste textarea so live + post-paste suggestions never propose
+  // a word the teacher has already added.
+  const takenEnglish = useMemo(
+    () => new Set(selectedWords.map(w => (w.english || '').toLowerCase().trim()).filter(Boolean)),
+    [selectedWords]
+  );
+
   return (
     <div>
       {/* Hero Paste Area */}
-      <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} allWords={allWords} />
+      <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} allWords={allWords} takenEnglish={takenEnglish} />
 
       {/* OR Separator */}
       <div className="flex items-center gap-4 my-8">

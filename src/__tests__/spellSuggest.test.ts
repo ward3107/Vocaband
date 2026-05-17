@@ -80,6 +80,11 @@ describe('suggestCorrections', () => {
     expect(suggestCorrections('appel, banan', CURRICULUM, { ignored })).toHaveLength(1);
   });
 
+  it('skips suggestions whose candidate is already in the taken set', () => {
+    const taken = new Set(['apple']);
+    expect(suggestCorrections('appel', CURRICULUM, { taken })).toEqual([]);
+  });
+
   it('caps results to maxSuggestions', () => {
     const text = 'appel banan oranje grappe houze mouze horze wateer';
     const out = suggestCorrections(text, CURRICULUM, { maxSuggestions: 3 });
@@ -141,6 +146,12 @@ describe('getAutocompleteMatches', () => {
 
   it('caps results at max', () => {
     expect(getAutocompleteMatches('a', CURRICULUM, { max: 2, minLength: 1 }).length).toBeLessThanOrEqual(2);
+  });
+
+  it('hides words already in the taken set', () => {
+    const taken = new Set(['apple']);
+    const out = getAutocompleteMatches('app', CURRICULUM, { taken });
+    expect(out.map(o => o.word)).not.toContain('apple');
   });
 });
 

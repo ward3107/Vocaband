@@ -71,9 +71,9 @@ function getIndex(allWords: Word[]): CurriculumIndex {
 export function suggestCorrections(
   text: string,
   allWords: Word[],
-  options: { maxSuggestions?: number; maxDistance?: number; ignored?: Set<string> } = {}
+  options: { maxSuggestions?: number; maxDistance?: number; ignored?: Set<string>; taken?: Set<string> } = {}
 ): SpellSuggestion[] {
-  const { maxSuggestions = 6, maxDistance = 2, ignored } = options;
+  const { maxSuggestions = 6, maxDistance = 2, ignored, taken } = options;
   if (!text || !allWords?.length) return [];
 
   const index = getIndex(allWords);
@@ -90,6 +90,7 @@ export function suggestCorrections(
       const bucket = index.byLength.get(len);
       if (!bucket) continue;
       for (const candidate of bucket) {
+        if (taken?.has(candidate)) continue;
         const d = levenshteinDistance(token, candidate);
         if (d > maxDistance) continue;
         // For distance > 1, require same first letter — cuts false
@@ -162,9 +163,9 @@ export interface AutocompleteMatch {
 export function getAutocompleteMatches(
   partial: string,
   allWords: Word[],
-  options: { max?: number; minLength?: number } = {}
+  options: { max?: number; minLength?: number; taken?: Set<string> } = {}
 ): AutocompleteMatch[] {
-  const { max = 5, minLength = 2 } = options;
+  const { max = 5, minLength = 2, taken } = options;
   if (!partial || partial.length < minLength) return [];
   if (NON_ENGLISH_RE.test(partial)) return [];
   if (!allWords?.length) return [];
@@ -175,7 +176,9 @@ export function getAutocompleteMatches(
   const bucket = index.byFirstChar.get(partial[0]) ?? [];
   const prefixHits: string[] = [];
   for (const w of bucket) {
-    if (w.startsWith(partial) && w !== partial) prefixHits.push(w);
+    if (w === partial) continue;
+    if (taken?.has(w)) continue;
+    if (w.startsWith(partial)) prefixHits.push(w);
   }
   prefixHits.sort((a, b) => a.length - b.length || a.localeCompare(b));
 
@@ -192,6 +195,7 @@ export function getAutocompleteMatches(
     if (!lenBucket) continue;
     for (const candidate of lenBucket) {
       if (prefixSet.has(candidate)) continue;
+      if (taken?.has(candidate)) continue;
       const d = levenshteinDistance(partial, candidate);
       if (d === 0 || d > 2) continue;
       if (d > 1 && partial[0] !== candidate[0]) continue;
