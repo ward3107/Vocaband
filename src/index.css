@@ -231,62 +231,95 @@
 }
 
 /* =============================================================================
-   Material Design 3 Theme Configuration for Vocaband
+   Tailwind 4 @theme block — exposes the Vocaband palette as utilities.
+
+   The hex values here are kept in lockstep with --vb-* at the top of
+   this file (the single source of truth, per the comment up there).
+   Components can use whichever access pattern fits the situation:
+
+     - Utility class:   <div className="bg-surface text-on-surface">
+     - Inline style:    <div style={{ backgroundColor: 'var(--vb-surface)' }}>
+     - Arbitrary value: <div className="bg-[var(--vb-surface)]">
+
+   The Material-3-flavoured names (surface / on-surface / primary-container
+   etc.) are retained because ~80 files already consume them; only the
+   underlying *colors* changed.  If you adjust a colour, update both the
+   --vb-* default at the top AND the matching --color-* entry here.
    ============================================================================= */
 
 @theme {
-  /* --- Semantic Colors (Material Design 3) --- */
-  --color-surface-dim: #ded2ca;
-  --color-on-secondary-container: #3424cc;
-  --color-surface-container: #f1e6df;
-  --color-on-tertiary: #fff0e3;
-  --color-on-surface: #332e2a;
-  --color-secondary-container: #cfcdff;
-  --color-background: #fff5ee;
-  --color-secondary-dim: #3d30d4;
-  --color-surface-container-high: #ece0d9;
-  --color-primary-dim: #0046bb;
-  --color-tertiary-container: #f8a010;
-  --color-on-primary-fixed-variant: #00266e;
-  --color-tertiary-fixed-dim: #e79400;
-  --color-primary: #0050d4;
-  --color-on-error-container: #570008;
-  --color-secondary-fixed-dim: #c0bdff;
-  --color-primary-fixed-dim: #658eff;
-  --color-on-tertiary-fixed-variant: #563400;
-  --color-inverse-primary: #618bff;
-  --color-outline-variant: #b4aba6;
-  --color-on-secondary-fixed: #2000b0;
-  --color-on-secondary-fixed-variant: #3e32d5;
-  --color-outline: #7d7570;
-  --color-surface-variant: #e6dbd3;
-  --color-on-background: #332e2a;
-  --color-on-primary: #f1f2ff;
-  --color-surface-bright: #fff5ee;
-  --color-surface-container-low: #f9efe8;
-  --color-primary-fixed: #7b9cff;
-  --color-inverse-on-surface: #a39b96;
-  --color-surface: #fff5ee;
-  --color-on-error: #ffefee;
-  --color-error-container: #fb5151;
+  /* --- Semantic colors --- aligned with --vb-* tokens (the canonical
+        source of truth declared at the top of this file).  Tailwind 4's
+        @theme block turns each entry into a utility (bg-surface,
+        text-on-surface, etc.), so keeping the hex values in lockstep
+        with --vb-* lets the 80+ files that use these Material-style
+        utility names render the same neutral-stone + indigo palette as
+        the files that consume --vb-* directly via inline style. */
+
+  /* Surfaces (= --vb-surface / --vb-surface-alt / --vb-surface-elevated) */
+  --color-surface: #fafaf9;
+  --color-surface-bright: #ffffff;
+  --color-surface-dim: #d6d3d1;
+  --color-surface-variant: #e7e5e4;
   --color-surface-container-lowest: #ffffff;
-  --color-error: #b31b25;
-  --color-tertiary: #815100;
-  --color-inverse-surface: #110d0a;
-  --color-surface-tint: #0050d4;
-  --color-secondary-fixed: #cfcdff;
-  --color-on-primary-container: #001e5a;
-  --color-tertiary-dim: #714600;
-  --color-error-dim: #9f0519;
-  --color-on-tertiary-fixed: #2a1700;
-  --color-on-secondary: #f4f1ff;
-  --color-primary-container: #7b9cff;
-  --color-secondary: #4a40e0;
-  --color-surface-container-highest: #e6dbd3;
-  --color-on-surface-variant: #615a56;
-  --color-tertiary-fixed: #f8a010;
-  --color-on-tertiary-container: #4a2c00;
-  --color-on-primary-fixed: #000000;
+  --color-surface-container-low: #fafaf9;
+  --color-surface-container: #f5f5f4;
+  --color-surface-container-high: #f5f5f4;
+  --color-surface-container-highest: #e7e5e4;
+  --color-background: #fafaf9;
+  --color-surface-tint: #6366f1;
+
+  /* Text on surface (= --vb-text-primary / --vb-text-secondary) */
+  --color-on-surface: #1c1917;
+  --color-on-surface-variant: #57534e;
+  --color-on-background: #1c1917;
+  --color-inverse-surface: #1c1917;
+  --color-inverse-on-surface: #f5f5f4;
+
+  /* Outline (= --vb-border / --vb-border-strong) */
+  --color-outline: #a8a29e;
+  --color-outline-variant: #e7e5e4;
+
+  /* Primary (= --vb-accent, indigo) */
+  --color-primary: #6366f1;
+  --color-primary-dim: #4f46e5;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #eef2ff;
+  --color-on-primary-container: #4338ca;
+  --color-primary-fixed: #c7d2fe;
+  --color-primary-fixed-dim: #818cf8;
+  --color-on-primary-fixed: #312e81;
+  --color-on-primary-fixed-variant: #3730a3;
+  --color-inverse-primary: #818cf8;
+
+  /* Secondary (violet — complements indigo for student-side accents) */
+  --color-secondary: #7c3aed;
+  --color-secondary-dim: #6d28d9;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #ede9fe;
+  --color-on-secondary-container: #5b21b6;
+  --color-secondary-fixed: #ddd6fe;
+  --color-secondary-fixed-dim: #c4b5fd;
+  --color-on-secondary-fixed: #4c1d95;
+  --color-on-secondary-fixed-variant: #5b21b6;
+
+  /* Tertiary (amber — for XP / streaks / warnings) */
+  --color-tertiary: #d97706;
+  --color-tertiary-dim: #b45309;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #fef3c7;
+  --color-on-tertiary-container: #78350f;
+  --color-tertiary-fixed: #fde68a;
+  --color-tertiary-fixed-dim: #fcd34d;
+  --color-on-tertiary-fixed: #78350f;
+  --color-on-tertiary-fixed-variant: #92400e;
+
+  /* Error (= --vb-error) */
+  --color-error: #dc2626;
+  --color-error-dim: #b91c1c;
+  --color-on-error: #ffffff;
+  --color-error-container: #fee2e2;
+  --color-on-error-container: #7f1d1d;
 
   /* --- Font Families --- */
   --font-headline: "Plus Jakarta Sans", system-ui, sans-serif;
@@ -466,12 +499,13 @@ html[dir="rtl"] .rtl-flip {
 .hover\:bg-stone-200-high:hover { background-color: var(--vb-surface-alt, #e7e5e4); }
 .hover\:bg-stone-200-highest:hover { background-color: var(--vb-border, #d6d3d1); }
 
-/* Text color utilities */
-.text-primary-dim { color: #0046bb; }
-.hover\:text-primary-dim:hover { color: #0046bb; }
+/* Text color utilities — `primary-dim` is the pressed/active state of
+   the primary accent.  Aligned with --vb-accent-hover. */
+.text-primary-dim { color: #4f46e5; }
+.hover\:text-primary-dim:hover { color: #4f46e5; }
 
 /* Border color utilities */
-.border-surface-container-highest { border-color: var(--vb-border, #e6dbd3); }
+.border-surface-container-highest { border-color: var(--vb-border, #e7e5e4); }
 .border-stone-300\/10 { border-color: rgba(214, 211, 209, 0.1); }
 .border-stone-300\/20 { border-color: rgba(214, 211, 209, 0.2); }
 .border-stone-300\/30 { border-color: var(--vb-border, rgba(214, 211, 209, 0.3)); }
@@ -479,21 +513,24 @@ html[dir="rtl"] .rtl-flip {
 .border-stone-300\/40 { border-color: rgba(214, 211, 209, 0.4); }
 .hover\:border-stone-300:hover { border-color: #d6d3d1; }
 
-/* Additional utilities */
-.hover\:border-primary\/30:hover { border-color: rgba(0, 80, 212, 0.3); }
-.hover\:border-primary\/50:hover { border-color: rgba(0, 80, 212, 0.5); }
-.border-primary\/30 { border-color: rgba(0, 80, 212, 0.3); }
+/* Additional utilities — primary border alphas use indigo-500 (--vb-accent). */
+.hover\:border-primary\/30:hover { border-color: rgba(99, 102, 241, 0.3); }
+.hover\:border-primary\/50:hover { border-color: rgba(99, 102, 241, 0.5); }
+.border-primary\/30 { border-color: rgba(99, 102, 241, 0.3); }
 .bg-stone-100 { background-color: #f5f5f4; }
 .text-stone-600\/50 { color: rgba(87, 83, 78, 0.5); }
 
-/* Signature gradient for primary actions */
+/* Signature gradient for primary actions — indigo -> violet -> fuchsia,
+   matching the student-side hero gradient (--vb-accent + violet/fuchsia
+   complements) so the brand mark feels of-a-piece with the rest of the
+   student app instead of leaning on the older blue/purple/pink mix. */
 .signature-gradient {
-  background: linear-gradient(135deg, #2563eb 0%, #9333ea 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 50%, #d946ef 100%);
 }
 
 /* Signature gradient text */
 .signature-gradient-text {
-  background: linear-gradient(135deg, #2563eb 0%, #9333ea 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 50%, #d946ef 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -626,9 +663,10 @@ html[dir="rtl"] .rtl-flip {
   white-space: normal;
 }
 
-/* Focus visible indicator for keyboard navigation (2.4.7) */
+/* Focus visible indicator for keyboard navigation (2.4.7).
+   Colour matches --vb-accent / --vb-focus-ring (indigo-500). */
 *:focus-visible {
-  outline: 3px solid #0050d4 !important;
+  outline: 3px solid #6366f1 !important;
   outline-offset: 3px !important;
 }
 
@@ -645,9 +683,9 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #0050d4 !important;
+  outline: 3px solid #6366f1 !important;
   outline-offset: 3px !important;
-  box-shadow: 0 0 0 6px rgba(0, 80, 212, 0.3) !important;
+  box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.3) !important;
 }
 
 /* Skip navigation link styles (WCAG 2.4.1).  Pattern: visually hidden
