@@ -208,7 +208,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
     if (!row) return [];
     if (Array.isArray(row.exercises) && row.exercises.length > 0) return row.exercises;
     if (row.format && Array.isArray(row.word_ids) && row.word_ids.length > 0) {
-      return [{ type: row.format as Exercise["type"], word_ids: row.word_ids }];
+      return [{ type: row.format, word_ids: row.word_ids } as Exercise];
     }
     return [];
   }, [row]);

@@ -181,7 +181,7 @@ export default function GameModeSelectionView({
   return (
     <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-3 bg-blue-600" />
+        <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600" />
         <button
           onClick={handleExitGame}
           className="absolute top-4 right-4 sm:top-10 sm:right-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300"
