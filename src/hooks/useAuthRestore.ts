@@ -491,6 +491,34 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                   await supabase.from('users')
                     .update({ uid: supabaseUser.id })
                     .eq('uid', savedUid);
+
+                  // Try the bootstrap RPC. After the UID rewrite above,
+                  // auth.uid() now points to the rewritten users row,
+                  // so the RPC's Step 1 (users lookup) succeeds and
+                  // returns the full dashboard payload in one round
+                  // trip. Saves the separate fetchUserProfile +
+                  // classes.select + Promise.all(assignments, progress)
+                  // queries below.
+                  const boot = await bootstrapStudentSession().catch(() => null);
+                  if (boot?.status === 'ok' && boot.user) {
+                    setUser(boot.user);
+                    checkConsent(boot.user);
+                    if (boot.user.role === "student") {
+                      setStudentAssignments(boot.assignments);
+                      setStudentProgress(boot.progress);
+                    }
+                    setBadges(boot.user.badges || []);
+                    setXp(boot.user.xp ?? 0);
+                    setStreak(boot.user.streak ?? 0);
+                    setView(hasTeacherAccess(boot.user) ? "teacher-dashboard" : "student-dashboard");
+                    localStorage.setItem('vocaband_student_login', JSON.stringify({
+                      classCode:   boot.user.classCode || savedCode,
+                      displayName: boot.user.displayName || savedName,
+                      uid:         supabaseUser.id,
+                    }));
+                    return;
+                  }
+
                   const restored = await fetchUserProfile(supabaseUser.id);
                   if (restored) {
                     setUser(restored);
