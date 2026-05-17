@@ -1854,46 +1854,28 @@ export default function App() {
     });
   };
 
-  if (view === "vocahebrew-niqqud") {
+  // Table-driven Hebrew mode views — all four share the same prop shape
+  // (onExit / lemmaIds / onComplete).  Distinguishing fields: which view
+  // id, which mode key (for saveHebrewScore), which lazy component,
+  // which loading label.
+  const HEBREW_VIEW_MAP: Record<string, { Component: React.ComponentType<{
+    onExit: () => void; lemmaIds: number[] | undefined;
+    onComplete: (s: number, t: number) => Promise<void> | void;
+  }>; label: string; mode: HebrewMode }> = {
+    "vocahebrew-niqqud":     { Component: NiqqudModeView,     label: "Loading Niqqud Mode...",   mode: "niqqud" },
+    "vocahebrew-shoresh":    { Component: ShoreshHuntView,    label: "Loading Shoresh Hunt...",  mode: "shoresh" },
+    "vocahebrew-synonyms":   { Component: SynonymMatchView,   label: "Loading Synonym Match...", mode: "synonym" },
+    "vocahebrew-listening":  { Component: ListeningModeView,  label: "Loading Listening Mode...", mode: "listening" },
+  };
+  const hebrewView = HEBREW_VIEW_MAP[view];
+  if (hebrewView) {
+    const { Component, label, mode } = hebrewView;
     return (
-      <LazyWrapper loadingMessage="Loading Niqqud Mode...">
-        <NiqqudModeView
+      <LazyWrapper loadingMessage={label}>
+        <Component
           onExit={hebrewExit}
           lemmaIds={hebrewLemmaIds}
-          onComplete={(s, t) => saveHebrewScore("niqqud", s, t)}
-        />
-      </LazyWrapper>
-    );
-  }
-  if (view === "vocahebrew-shoresh") {
-    return (
-      <LazyWrapper loadingMessage="Loading Shoresh Hunt...">
-        <ShoreshHuntView
-          onExit={hebrewExit}
-          lemmaIds={hebrewLemmaIds}
-          onComplete={(s, t) => saveHebrewScore("shoresh", s, t)}
-        />
-      </LazyWrapper>
-    );
-  }
-  if (view === "vocahebrew-synonyms") {
-    return (
-      <LazyWrapper loadingMessage="Loading Synonym Match...">
-        <SynonymMatchView
-          onExit={hebrewExit}
-          lemmaIds={hebrewLemmaIds}
-          onComplete={(s, t) => saveHebrewScore("synonym", s, t)}
-        />
-      </LazyWrapper>
-    );
-  }
-  if (view === "vocahebrew-listening") {
-    return (
-      <LazyWrapper loadingMessage="Loading Listening Mode...">
-        <ListeningModeView
-          onExit={hebrewExit}
-          lemmaIds={hebrewLemmaIds}
-          onComplete={(s, t) => saveHebrewScore("listening", s, t)}
+          onComplete={(s, t) => saveHebrewScore(mode, s, t)}
         />
       </LazyWrapper>
     );
