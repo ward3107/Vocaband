@@ -254,10 +254,10 @@ const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({
           {sections.map(({ key, icon, gradient }) => (
             <section
               key={key}
-              className="bg-white p-6 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60"
+              className="bg-white p-6 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60"
             >
               <h2 className="text-lg font-black text-slate-900 mb-2 flex items-center gap-3">
-                <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center shrink-0 shadow-md`}>
+                <span className={`w-9 h-9 rounded-lg bg-gradient-to-br ${gradient} text-white flex items-center justify-center shrink-0 shadow-md`}>
                   {icon}
                 </span>
                 {tt.sections[key].title}
@@ -274,7 +274,7 @@ const PublicSecurityPage: React.FC<PublicSecurityPageProps> = ({
             surfaces (same family as PublicPrivacyPage.tsx:62 + the
             shop's hero cards). Keeps a single visual language across
             the legal/info pages instead of an isolated stone-grey card. */}
-        <section className="mt-10 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white p-8 rounded-2xl shadow-lg shadow-violet-500/20">
+        <section className="mt-10 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white p-8 rounded-xl shadow-lg shadow-violet-500/20">
           <h3 className="text-2xl font-black mb-3">{tt.contact.title}</h3>
           <p className="text-white/85 mb-4">
             {tt.contact.body}{" "}

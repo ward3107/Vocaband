@@ -308,7 +308,7 @@ export default function StudentDashboardView({
             ) : (
               /* Picker hasn't fired yet — render a placeholder slot so
                  the shop tile doesn't slide across the full width. */
-              <div className="rounded-3xl bg-stone-100 min-h-[200px]" aria-hidden />
+              <div className="rounded-2xl bg-stone-100 min-h-[200px]" aria-hidden />
             )}
             <ShopSquare xp={xp} onOpen={() => setView('shop')} />
           </div>
@@ -411,10 +411,10 @@ export default function StudentDashboardView({
               backgroundColor: 'var(--vb-surface)',
               borderColor: 'var(--vb-border)',
             }}
-            className="group relative w-full rounded-2xl p-4 text-left border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
+            className="group relative w-full rounded-xl p-4 text-left border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0">
                 <span className="text-white text-lg font-black">B</span>
               </div>
               <div className="flex-1 min-w-0">

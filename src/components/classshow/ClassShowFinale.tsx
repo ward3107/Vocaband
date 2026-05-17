@@ -23,7 +23,7 @@ export default function ClassShowFinale({ questionsCovered, onPlayAnother, onBac
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-        className="w-full max-w-2xl rounded-3xl border shadow-2xl p-8 sm:p-12 text-center"
+        className="w-full max-w-2xl rounded-2xl border shadow-2xl p-8 sm:p-12 text-center"
       >
         <div
           className="mx-auto w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center mb-6 bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg"
@@ -45,7 +45,7 @@ export default function ClassShowFinale({ questionsCovered, onPlayAnother, onBac
               color: 'var(--vb-text-secondary)',
               backgroundColor: 'var(--vb-surface)',
             }}
-            className="px-6 py-4 rounded-2xl font-bold border-2 inline-flex items-center justify-center gap-2 hover:opacity-90 transition-colors"
+            className="px-6 py-4 rounded-xl font-bold border-2 inline-flex items-center justify-center gap-2 hover:opacity-90 transition-colors"
           >
             <Home size={20} />
             {t.backToDashboard}
@@ -57,7 +57,7 @@ export default function ClassShowFinale({ questionsCovered, onPlayAnother, onBac
               backgroundColor: 'var(--vb-accent)',
               color: 'var(--vb-accent-text)',
             }}
-            className="px-6 py-4 rounded-2xl font-black inline-flex items-center justify-center gap-2 shadow-lg"
+            className="px-6 py-4 rounded-xl font-black inline-flex items-center justify-center gap-2 shadow-lg"
           >
             <RotateCcw size={20} />
             {t.playAnother}

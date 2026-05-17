@@ -148,7 +148,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 p-8 text-white text-center shadow-lg shadow-amber-500/20"
+          className="max-w-md w-full rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 p-8 text-white text-center shadow-lg shadow-amber-500/20"
         >
           <div className="text-7xl mb-4 drop-shadow-lg">
             {pct >= 80 ? "🏆" : pct >= 50 ? "🎯" : "💪"}
@@ -164,7 +164,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
               type="button"
               onClick={restart}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="px-5 py-3 rounded-xl bg-white text-orange-700 font-black text-sm tracking-wide shadow-sm hover:bg-amber-100"
+              className="px-5 py-3 rounded-lg bg-white text-orange-700 font-black text-sm tracking-wide shadow-sm hover:bg-amber-100"
             >
               {t.playAgain}
             </button>
@@ -172,7 +172,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
               type="button"
               onClick={onExit}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
+              className="px-5 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
             >
               {t.done}
             </button>
@@ -232,7 +232,7 @@ export default function ListeningModeView({ onExit, gradeBand, lemmaIds, onCompl
             const isCorrect = round.correctIndex === i;
             const showResult = picked !== null;
             const baseClass =
-              "relative rounded-2xl p-5 sm:p-6 text-2xl sm:text-3xl font-black text-white shadow-lg overflow-hidden transition-all";
+              "relative rounded-xl p-5 sm:p-6 text-2xl sm:text-3xl font-black text-white shadow-lg overflow-hidden transition-all";
             let bgClass =
               "bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 shadow-orange-500/20";
             if (showResult) {

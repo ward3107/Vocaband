@@ -67,7 +67,7 @@ export default function SavedTasksSection({
         {tasks.map(task => (
           <div
             key={task.id}
-            className="relative border-2 rounded-2xl p-4 hover:shadow-md transition-all"
+            className="relative border-2 rounded-xl p-4 hover:shadow-md transition-all"
             style={{
               backgroundColor: 'var(--vb-surface)',
               borderColor: 'var(--vb-border)',
@@ -111,7 +111,7 @@ export default function SavedTasksSection({
               <button
                 type="button"
                 onClick={() => onUse(task)}
-                className="flex-1 py-2 px-3 text-sm font-bold rounded-xl flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition-transform"
+                className="flex-1 py-2 px-3 text-sm font-bold rounded-lg flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition-transform"
                 style={{
                   backgroundColor: 'var(--vb-accent)',
                   color: 'var(--vb-accent-text)',
@@ -126,7 +126,7 @@ export default function SavedTasksSection({
                 onClick={() => {
                   if (confirm(t.deleteConfirm(task.title || t.untitledTemplate))) onRemove(task.id);
                 }}
-                className="p-2 rounded-xl hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                className="p-2 rounded-lg hover:bg-rose-100 hover:text-rose-600 transition-colors"
                 style={{
                   backgroundColor: 'var(--vb-surface-alt)',
                   color: 'var(--vb-text-muted)',

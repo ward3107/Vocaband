@@ -250,7 +250,7 @@ export default function RelationsGame({
               disabled={showResult}
               type="button"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-              className={`px-4 py-4 sm:py-5 rounded-2xl text-center font-black text-lg sm:text-xl transition-all shadow-sm ${stateClasses}`}
+              className={`px-4 py-4 sm:py-5 rounded-xl text-center font-black text-lg sm:text-xl transition-all shadow-sm ${stateClasses}`}
             >
               <span className="inline-block w-7 h-7 mr-2 rounded-full bg-stone-100 text-stone-700 text-xs font-black leading-7 text-center">
                 {String.fromCharCode(65 + i)}
@@ -269,7 +269,7 @@ export default function RelationsGame({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className={`mt-5 w-full max-w-2xl rounded-2xl border-2 p-4 sm:p-5 ${
+            className={`mt-5 w-full max-w-2xl rounded-xl border-2 p-4 sm:p-5 ${
               picked === current.answer ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
             }`}
           >
@@ -299,7 +299,7 @@ export default function RelationsGame({
           <button
             type="button"
             onClick={handleNext}
-            className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-black text-white shadow-md hover:opacity-90 ${theme.fill}`}
+            className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg font-black text-white shadow-md hover:opacity-90 ${theme.fill}`}
           >
             {questionIdx + 1 >= round.length
               ? (language === 'he' ? 'סיום' : language === 'ar' ? 'إنهاء' : 'Finish')
@@ -310,7 +310,7 @@ export default function RelationsGame({
         <button
           type="button"
           onClick={handleEnd}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-bold transition"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-bold transition"
         >
           <X size={16} />
           {language === 'he' ? 'סיים' : language === 'ar' ? 'إنهاء' : 'End round'}

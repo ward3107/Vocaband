@@ -20,7 +20,7 @@ export default function AccessibilityStatement({ onNavigate, onGetStarted, onTea
 
   // Light readable cards on a dark gradient page bg (Option A theme).
   const Section = ({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) => (
-    <section className="bg-white rounded-2xl p-5 sm:p-6 shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+    <section className="bg-white rounded-xl p-5 sm:p-6 shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
       <h2 className="text-lg font-black text-slate-900 mb-3 flex items-center gap-2">{icon} {title}</h2>
       {children}
     </section>

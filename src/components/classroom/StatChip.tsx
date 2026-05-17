@@ -152,7 +152,7 @@ export default function StatChip({
       {tooltip && tipOpen && (
         <div
           role="tooltip"
-          className="absolute z-20 top-full left-0 right-0 mt-2 p-3 text-xs rounded-xl shadow-2xl leading-snug"
+          className="absolute z-20 top-full left-0 right-0 mt-2 p-3 text-xs rounded-lg shadow-2xl leading-snug"
           style={{ backgroundColor: 'var(--vb-text-primary)', color: 'var(--vb-surface)' }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -178,7 +178,7 @@ export default function StatChip({
             WebkitTapHighlightColor: "transparent" as never,
             backgroundColor: 'var(--vb-surface)',
           }}
-          className={`relative w-full text-left rounded-xl px-3 py-2 border transition-colors ${RING_TONE[resolvedTone]}`}
+          className={`relative w-full text-left rounded-lg px-3 py-2 border transition-colors ${RING_TONE[resolvedTone]}`}
         >
           {body}
         </button>
@@ -189,7 +189,7 @@ export default function StatChip({
     <div
       ref={ref}
       style={{ backgroundColor: 'var(--vb-surface)' }}
-      className={`relative rounded-xl px-3 py-2 border ${RING_TONE[resolvedTone]}`}
+      className={`relative rounded-lg px-3 py-2 border ${RING_TONE[resolvedTone]}`}
     >
       {body}
     </div>

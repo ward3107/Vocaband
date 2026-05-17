@@ -114,7 +114,7 @@ export const TrueFalseExercise: ExerciseComponent<ExerciseOf<"true_false">> = ({
   const wasRight = reveal && picked === current.is_true_statement;
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
         <span className="text-xs font-bold text-stone-500">
           {idx + 1} / {items.length}
@@ -130,7 +130,7 @@ export const TrueFalseExercise: ExerciseComponent<ExerciseOf<"true_false">> = ({
         key={idx}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-100 px-5 py-8 mb-6 text-center"
+        className="rounded-xl bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-100 px-5 py-8 mb-6 text-center"
       >
         <p className="text-lg sm:text-xl font-bold text-stone-800 leading-relaxed">
           <span dir="ltr">"{current.english}"</span> means{" "}
@@ -158,7 +158,7 @@ export const TrueFalseExercise: ExerciseComponent<ExerciseOf<"true_false">> = ({
               whileTap={{ scale: picked === null ? 0.96 : 1 }}
               disabled={picked !== null}
               onClick={() => handlePick(value)}
-              className={`py-5 rounded-2xl border-2 font-black text-xl transition-colors flex items-center justify-center gap-2 ${style}`}
+              className={`py-5 rounded-xl border-2 font-black text-xl transition-colors flex items-center justify-center gap-2 ${style}`}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >
               {value ? <Check size={22} /> : <X size={22} />}

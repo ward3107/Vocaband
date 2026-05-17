@@ -83,7 +83,7 @@ export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) 
   return (
     <section
       aria-label={t.identityProfileAria}
-      className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${heroGradient} text-white shadow-xl ring-1 ring-white/10 p-5 sm:p-7 mb-4`}
+      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${heroGradient} text-white shadow-xl ring-1 ring-white/10 p-5 sm:p-7 mb-4`}
     >
       {/* Decorative corner blobs — soft atmosphere, not busy */}
       <div aria-hidden className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/15 blur-3xl" />
@@ -122,7 +122,7 @@ export const IdentityHero: React.FC<IdentityHeroProps> = ({ user, xp, streak }) 
         {/* ring-offset-transparent lets the hero gradient show through
             the 2px offset gap; avoids the ring reading as an orange
             "collar" when the theme is cool-toned (Ocean, Galaxy, …). */}
-        <div className={`shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-3xl bg-white flex items-center justify-center shadow-2xl ${frameRingClass} ring-offset-2 ring-offset-transparent`}>
+        <div className={`shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-white flex items-center justify-center shadow-2xl ${frameRingClass} ring-offset-2 ring-offset-transparent`}>
           <span className="text-6xl sm:text-7xl" aria-hidden>{avatar}</span>
         </div>
 

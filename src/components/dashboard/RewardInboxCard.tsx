@@ -255,7 +255,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, x: 60, transition: { duration: 0.25 } }}
               transition={{ delay: i * 0.08, type: 'spring', stiffness: 220, damping: 20 }}
-              className={`relative rounded-3xl p-5 sm:p-6 bg-gradient-to-br ${meta.gradient} text-white shadow-xl ring-1 ring-white/20 overflow-hidden`}
+              className={`relative rounded-2xl p-5 sm:p-6 bg-gradient-to-br ${meta.gradient} text-white shadow-xl ring-1 ring-white/20 overflow-hidden`}
             >
               <button
                 type="button"
@@ -272,7 +272,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
                   initial={{ rotate: -20, scale: 0.7 }}
                   animate={{ rotate: 0, scale: 1 }}
                   transition={{ delay: i * 0.08 + 0.15, type: 'spring', stiffness: 260, damping: 14 }}
-                  className="shrink-0 w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-inner"
+                  className="shrink-0 w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-inner"
                 >
                   {meta.icon}
                 </motion.div>
@@ -301,7 +301,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
                       type="button"
                       onClick={() => dismiss(r)}
                       disabled={isDismissing}
-                      className="px-4 py-2 rounded-xl bg-white text-stone-900 font-black text-sm hover:bg-white/90 transition-colors shadow-sm disabled:opacity-60"
+                      className="px-4 py-2 rounded-lg bg-white text-stone-900 font-black text-sm hover:bg-white/90 transition-colors shadow-sm disabled:opacity-60"
                     >
                       {t.thanksBtn}
                     </button>

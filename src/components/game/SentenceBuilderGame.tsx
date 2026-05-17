@@ -88,7 +88,7 @@ export default function SentenceBuilderGame({
           button has to be unmissable.  Big teal card, huge tap
           target, sentence counter sits below as supporting text. */}
       <div
-        className={`rounded-3xl p-5 sm:p-6 flex flex-col items-center gap-3 shadow-sm ${
+        className={`rounded-2xl p-5 sm:p-6 flex flex-col items-center gap-3 shadow-sm ${
           themed ? `${themed.cardBg} border-2 ${themed.border}` : "bg-stone-50 border-2 border-stone-200"
         }`}
       >
@@ -117,7 +117,7 @@ export default function SentenceBuilderGame({
           who tapped "She / is / happy" saw "happy / is / She". */}
       <div
         dir="ltr"
-        className={`min-h-[96px] sm:min-h-[112px] border-2 rounded-3xl p-3 sm:p-4 flex flex-wrap gap-2 items-center justify-center transition-colors ${canvasBorderClass}`}
+        className={`min-h-[96px] sm:min-h-[112px] border-2 rounded-2xl p-3 sm:p-4 flex flex-wrap gap-2 items-center justify-center transition-colors ${canvasBorderClass}`}
       >
         {builtSentence.length === 0 && (
           <span className="text-stone-400 text-sm sm:text-base italic w-full text-center">
@@ -136,7 +136,7 @@ export default function SentenceBuilderGame({
               whileTap={!isLocked ? { scale: 0.95 } : undefined}
               onClick={() => !isLocked && onSentenceWordTap(word, false)}
               disabled={isLocked}
-              className={`px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl font-black text-base sm:text-lg shadow-md flex items-center gap-1.5 ${
+              className={`px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black text-base sm:text-lg shadow-md flex items-center gap-1.5 ${
                 themed
                   ? "bg-gradient-to-br from-teal-500 to-emerald-600 text-white"
                   : "bg-blue-600 text-white"
@@ -168,7 +168,7 @@ export default function SentenceBuilderGame({
               whileTap={!isLocked ? { scale: 0.95 } : undefined}
               onClick={() => !isLocked && onSentenceWordTap(word, true)}
               disabled={isLocked}
-              className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl font-black text-base sm:text-lg bg-white border-2 shadow-sm transition-all ${
+              className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-black text-base sm:text-lg bg-white border-2 shadow-sm transition-all ${
                 themed
                   ? "border-teal-200 text-stone-800 hover:bg-teal-50 hover:border-teal-400 hover:text-teal-700"
                   : "border-stone-200 text-stone-800 hover:border-blue-400 hover:text-blue-700"
@@ -194,7 +194,7 @@ export default function SentenceBuilderGame({
             setBuiltSentence([]);
           }}
           disabled={isLocked || builtSentence.length === 0}
-          className="flex-shrink-0 px-4 sm:px-5 h-12 sm:h-14 rounded-2xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-700 font-black text-sm sm:text-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="flex-shrink-0 px-4 sm:px-5 h-12 sm:h-14 rounded-xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-700 font-black text-sm sm:text-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           {t.clear}
@@ -203,7 +203,7 @@ export default function SentenceBuilderGame({
           type="button"
           onClick={onSentenceCheck}
           disabled={builtSentence.length === 0 || isLocked}
-          className={`flex-1 h-12 sm:h-14 rounded-2xl font-black text-lg sm:text-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`flex-1 h-12 sm:h-14 rounded-xl font-black text-lg sm:text-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
             themed
               ? "bg-gradient-to-br from-teal-500 to-emerald-600 text-white hover:shadow-xl"
               : "bg-stone-900 text-white hover:bg-black"

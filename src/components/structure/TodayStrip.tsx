@@ -58,7 +58,7 @@ export const TodayStrip: React.FC<TodayStripProps> = ({
   return (
     <section
       aria-label={t.todayAria}
-      className="mb-4 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 rounded-3xl p-4 sm:p-5 shadow-lg text-white"
+      className="mb-4 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 rounded-2xl p-4 sm:p-5 shadow-lg text-white"
     >
       <div className="flex items-center gap-3 sm:gap-4">
         {/* Left: greeting + streak */}
@@ -84,7 +84,7 @@ export const TodayStrip: React.FC<TodayStripProps> = ({
             onClick={() => onPlayNextAssignment(nextAssignment)}
             type="button"
             style={{ touchAction: 'manipulation' }}
-            className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-white text-indigo-700 font-black text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all"
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl bg-white text-indigo-700 font-black text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all"
           >
             <Play size={16} fill="currentColor" />
             {t.todayPlay}
@@ -94,7 +94,7 @@ export const TodayStrip: React.FC<TodayStripProps> = ({
             onClick={onPractice}
             type="button"
             style={{ touchAction: 'manipulation' }}
-            className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-white text-indigo-700 font-black text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all"
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl bg-white text-indigo-700 font-black text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all"
           >
             <Sparkles size={16} />
             {t.todayPractice}

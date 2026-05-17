@@ -131,7 +131,7 @@ export const ClozeExercise: ExerciseComponent<ExerciseOf<"cloze">> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
         <span className="text-xs font-bold text-stone-500">
           {submitted.filter(Boolean).length} / {blanks.length} filled
@@ -146,7 +146,7 @@ export const ClozeExercise: ExerciseComponent<ExerciseOf<"cloze">> = ({
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-100 px-5 py-5 mb-2"
+        className="rounded-xl bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-100 px-5 py-5 mb-2"
       >
         <div className="space-y-3 text-base sm:text-lg leading-relaxed text-stone-800" dir="ltr">
           {blanks.map((b, i) => {
@@ -219,7 +219,7 @@ export const ClozeExercise: ExerciseComponent<ExerciseOf<"cloze">> = ({
         disabled={
           allDone || submitted[activeIdx] || !typed[activeIdx]?.trim()
         }
-        className="mt-4 w-full py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold transition-all inline-flex items-center justify-center gap-2"
+        className="mt-4 w-full py-3 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold transition-all inline-flex items-center justify-center gap-2"
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       >
         <Check size={16} />

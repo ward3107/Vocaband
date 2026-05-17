@@ -233,7 +233,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
         backgroundColor: 'var(--vb-surface)',
         borderColor: 'var(--vb-border)',
       }}
-      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow"
+      className="rounded-xl border shadow-sm hover:shadow-md transition-shadow"
     >
       {/* School branding strip — only rendered when set, so legacy
           classes (no school configured yet) keep their existing
@@ -273,7 +273,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   touchAction: 'manipulation',
                   ...(avatar ? { backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' } : {}),
                 }}
-                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'border' : 'bg-gradient-to-br from-indigo-300 to-violet-400'}`}
+                className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'border' : 'bg-gradient-to-br from-indigo-300 to-violet-400'}`}
                 title={t.changeAvatarTitle}
               >
                 {avatar ? (
@@ -286,7 +286,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
               {/* Avatar picker popover */}
               {avatarPickerOpen && onAvatarChange && (
                 <div
-                  className="absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl z-30 p-4"
+                  className="absolute left-0 top-full mt-2 w-72 rounded-xl border shadow-2xl z-30 p-4"
                   style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
                 >
                   <div className="flex items-center justify-between mb-3">
@@ -314,7 +314,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                       borderColor: avatar === null ? 'var(--vb-accent)' : 'var(--vb-border)',
                       color: avatar === null ? 'var(--vb-accent)' : 'var(--vb-text-secondary)',
                     }}
-                    className={`w-full mb-3 px-3 py-2 rounded-xl flex items-center gap-2 transition-all border-2 ${
+                    className={`w-full mb-3 px-3 py-2 rounded-lg flex items-center gap-2 transition-all border-2 ${
                       avatar === null ? 'ring-2 ring-[var(--vb-accent-soft)]' : 'hover:border-[var(--vb-text-muted)]'
                     }`}
                   >
@@ -455,7 +455,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   backgroundColor: 'var(--vb-surface)',
                   borderColor: 'var(--vb-border)',
                 }}
-                className="absolute right-0 top-full mt-1 w-48 rounded-xl border shadow-lg py-1 z-20"
+                className="absolute right-0 top-full mt-1 w-48 rounded-lg border shadow-lg py-1 z-20"
               >
                 {/* Edit class — opens the full EditClassModal (name,
                     avatar, school branding).  Placed at the top of the
@@ -572,7 +572,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
               backgroundColor: 'var(--vb-accent)',
               color: 'var(--vb-accent-text)',
             }}
-            className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+            className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
           >
             <Zap size={15} />
             {t.newAssignment}
@@ -586,7 +586,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 backgroundColor: 'var(--vb-surface-alt)',
                 color: 'var(--vb-text-secondary)',
               }}
-              className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-sm transition-colors hover:opacity-90"
+              className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-lg font-semibold text-sm transition-colors hover:opacity-90"
               title={t.rosterButtonTitle}
               aria-label={t.rosterButtonAria}
             >
@@ -603,7 +603,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 backgroundColor: 'var(--vb-surface-alt)',
                 color: 'var(--vb-text-secondary)',
               }}
-              className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-sm transition-colors hover:opacity-90"
+              className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-lg font-semibold text-sm transition-colors hover:opacity-90"
               aria-expanded={showAssignments}
             >
               <BookOpen size={15} />
@@ -626,7 +626,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
             borderColor: 'var(--vb-border)',
             backgroundColor: 'var(--vb-surface-alt)',
           }}
-          className="border-t px-5 py-4 space-y-2 rounded-b-2xl"
+          className="border-t px-5 py-4 space-y-2 rounded-b-xl"
         >
           {assignments.map((assignment) => {
             const competition = competitionsByAssignment?.get(assignment.id) ?? null;
@@ -637,7 +637,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 backgroundColor: 'var(--vb-surface)',
                 borderColor: 'var(--vb-border)',
               }}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border"
             >
               <div className="min-w-0 flex-1">
                 <p

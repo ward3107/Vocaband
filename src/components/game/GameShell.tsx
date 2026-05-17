@@ -98,7 +98,7 @@ export default function GameShell({ theme, modeLabel, children, bottomBar, gradi
   return (
     <div
       className={`w-full flex flex-col items-center gap-3 sm:gap-5 ${
-        gradient ? `bg-gradient-to-b ${colors.gradient} rounded-2xl p-3 sm:p-5` : ""
+        gradient ? `bg-gradient-to-b ${colors.gradient} rounded-xl p-3 sm:p-5` : ""
       }`}
     >
       <span

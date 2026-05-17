@@ -143,7 +143,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
       {/* Spotlight border glow */}
       {rect && (
         <div
-          className="absolute rounded-2xl ring-2 ring-blue-400 ring-offset-2 ring-offset-transparent"
+          className="absolute rounded-xl ring-2 ring-blue-400 ring-offset-2 ring-offset-transparent"
           style={{
             top: rect.top - padding,
             left: rect.left - padding,
@@ -167,7 +167,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
-          className="absolute bg-[var(--vb-surface)] rounded-2xl shadow-2xl p-5 border border-[var(--vb-border)] max-w-[calc(100vw-24px)]"
+          className="absolute bg-[var(--vb-surface)] rounded-xl shadow-2xl p-5 border border-[var(--vb-border)] max-w-[calc(100vw-24px)]"
           style={getTooltipStyle()}
           dir={dir}
         >
@@ -218,7 +218,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
             {!isLast ? (
               <button
                 onClick={() => setStep(s => s + 1)}
-                className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-lg shadow-blue-200"
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-lg shadow-blue-200"
               >
                 {t.next}
                 <ChevronRight size={14} />
@@ -226,7 +226,7 @@ export default function DashboardOnboarding({ onComplete }: Props) {
             ) : (
               <button
                 onClick={onComplete}
-                className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-200"
+                className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-200"
               >
                 <Sparkles size={14} />
                 {t.gotIt}

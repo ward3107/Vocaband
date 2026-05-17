@@ -90,7 +90,7 @@ export const ListeningDictationExercise: ExerciseComponent<ExerciseOf<"listening
   const translation = translationFor(current, targetLang);
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
         <span className="text-xs font-bold text-stone-500">
           {idx + 1} / {order.length}
@@ -137,7 +137,7 @@ export const ListeningDictationExercise: ExerciseComponent<ExerciseOf<"listening
           autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
-          className={`w-full px-4 py-3 rounded-xl border-2 font-bold text-lg text-center transition-all ${
+          className={`w-full px-4 py-3 rounded-lg border-2 font-bold text-lg text-center transition-all ${
             !submitted
               ? "border-stone-200 focus:border-violet-500 focus:outline-none text-stone-900"
               : isRight
@@ -163,7 +163,7 @@ export const ListeningDictationExercise: ExerciseComponent<ExerciseOf<"listening
           <button
             type="submit"
             disabled={submitted || !typed.trim()}
-            className="px-5 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold transition-all"
+            className="px-5 py-2.5 rounded-lg bg-violet-500 hover:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold transition-all"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >
             Submit

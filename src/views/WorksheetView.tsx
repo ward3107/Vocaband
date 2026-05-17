@@ -328,7 +328,7 @@ export default function WorksheetView({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-        className="max-w-5xl mx-auto rounded-3xl border shadow-2xl p-6 sm:p-10"
+        className="max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -350,7 +350,7 @@ export default function WorksheetView({
                 color: 'var(--vb-text-secondary)',
                 backgroundColor: 'var(--vb-surface)',
               }}
-              className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
+              className="px-4 py-2 rounded-lg border-2 inline-flex items-center gap-2 hover:opacity-90"
             >
               <ArrowLeft size={16} />
               {t.backButton}
@@ -377,7 +377,7 @@ export default function WorksheetView({
                     borderColor: selected ? 'var(--vb-accent)' : 'var(--vb-border)',
                     color: 'var(--vb-text-primary)',
                   }}
-                  className="text-left px-4 py-3 rounded-xl border-2 transition-colors"
+                  className="text-left px-4 py-3 rounded-lg border-2 transition-colors"
                 >
                   <div className="font-bold text-sm flex items-center gap-2">
                     {isCustom && <Wand2 size={14} style={{ color: 'var(--vb-accent)' }} />}
@@ -395,7 +395,7 @@ export default function WorksheetView({
 
           {/* Build custom list — embedded WordPicker. */}
           {pickerWiring && (
-            <div className="mt-4 p-4 rounded-xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
+            <div className="mt-4 p-4 rounded-lg border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
               <WordPicker
                 allWords={pickerWiring.allWords}
                 selectedWords={customWords}
@@ -432,7 +432,7 @@ export default function WorksheetView({
                   style={{
                     borderColor: selected ? 'var(--vb-accent)' : 'transparent',
                   }}
-                  className={`relative bg-gradient-to-br ${s.gradient} text-white rounded-2xl p-4 flex flex-col items-start gap-2 border-2 text-left transition-transform ${selected ? 'scale-[1.02] shadow-lg' : 'hover:scale-[1.01]'}`}
+                  className={`relative bg-gradient-to-br ${s.gradient} text-white rounded-xl p-4 flex flex-col items-start gap-2 border-2 text-left transition-transform ${selected ? 'scale-[1.02] shadow-lg' : 'hover:scale-[1.01]'}`}
                 >
                   <div className="absolute top-2 right-2">
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? 'border-white bg-white/30' : 'border-white/50'}`}>
@@ -451,7 +451,7 @@ export default function WorksheetView({
         {/* AI Sentence Generation — shown only when sentence-based sheets are selected */}
         {Array.from(selectedSheetTypes).some(type => type === 'fill-blank' || type === 'sentence-builder') && (
           <div className="mb-8">
-            <div className="flex items-center justify-between p-4 rounded-2xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
+            <div className="flex items-center justify-between p-4 rounded-xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
               <div className="flex items-center gap-3">
                 {isGeneratingSentences ? (
                   <Loader2 size={20} className="animate-spin" style={{ color: 'var(--vb-accent)' }} />
@@ -481,7 +481,7 @@ export default function WorksheetView({
                   backgroundColor: aiEnabled ? 'var(--vb-accent)' : 'var(--vb-surface-alt)',
                   color: aiEnabled ? 'var(--vb-accent-text)' : 'var(--vb-text-muted)',
                 }}
-                className="px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                className="px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
               >
                 {isGeneratingSentences ? (
                   <>
@@ -524,7 +524,7 @@ export default function WorksheetView({
               color: 'var(--vb-text-primary)',
               backgroundColor: 'var(--vb-surface)',
             }}
-            className="w-full px-4 py-3 rounded-xl border-2 outline-none font-bold"
+            className="w-full px-4 py-3 rounded-lg border-2 outline-none font-bold"
           />
         </div>
 
@@ -598,7 +598,7 @@ export default function WorksheetView({
             {t.preview}
           </h2>
           <div
-            className="rounded-2xl border-2 p-4 sm:p-6 max-h-[480px] overflow-y-auto"
+            className="rounded-xl border-2 p-4 sm:p-6 max-h-[480px] overflow-y-auto"
             style={{
               backgroundColor: '#ffffff',
               borderColor: 'var(--vb-border)',
@@ -651,7 +651,7 @@ export default function WorksheetView({
               })
             }
             disabled={wordsForSheet.length === 0}
-            className="px-6 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-emerald-500/30 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="px-6 py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-emerald-500/30 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             <Share2 size={20} />
@@ -665,7 +665,7 @@ export default function WorksheetView({
               backgroundColor: 'var(--vb-accent)',
               color: 'var(--vb-accent-text)',
             }}
-            className="px-8 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 shadow-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-8 py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Printer size={20} />
             {t.print}

@@ -202,7 +202,7 @@ export const MetaphorScene: React.FC<MetaphorSceneProps> = ({ kind, slots, onTap
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-3xl shadow-xl ring-1 ring-stone-900/10"
+      className="relative w-full overflow-hidden rounded-2xl shadow-xl ring-1 ring-stone-900/10"
       style={{ aspectRatio: '3 / 2' }}
       aria-label={t.metaphorSlotAria(kind)}
     >
@@ -229,7 +229,7 @@ export const MetaphorScene: React.FC<MetaphorSceneProps> = ({ kind, slots, onTap
               <>
                 {/* Earned slot: designed card, not a sticker */}
                 <div
-                  className={`w-[44px] h-[44px] sm:w-[52px] sm:h-[52px] rounded-xl bg-gradient-to-br from-white to-stone-100
+                  className={`w-[44px] h-[44px] sm:w-[52px] sm:h-[52px] rounded-lg bg-gradient-to-br from-white to-stone-100
                               flex items-center justify-center
                               shadow-[0_6px_14px_-4px_rgba(0,0,0,0.55)]
                               ring-1 ring-stone-900/10

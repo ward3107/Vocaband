@@ -109,7 +109,7 @@ export default function SpellingGame({
               return (
                 <div
                   key={idx}
-                  className={`w-8 h-10 sm:w-10 sm:h-12 rounded-lg sm:rounded-xl border-2 flex items-center justify-center font-black text-base sm:text-xl tabular-nums uppercase transition-colors ${slotClass}`}
+                  className={`w-8 h-10 sm:w-10 sm:h-12 rounded-lg sm:rounded-lg border-2 flex items-center justify-center font-black text-base sm:text-xl tabular-nums uppercase transition-colors ${slotClass}`}
                 >
                   {displayChar || "·"}
                 </div>
@@ -126,7 +126,7 @@ export default function SpellingGame({
       {/* Translation prompt — bigger, theme-tinted hero card. */}
       {isSpelling && (
         <div
-          className={`p-4 sm:p-5 rounded-2xl mb-4 sm:mb-6 text-center ${
+          className={`p-4 sm:p-5 rounded-xl mb-4 sm:mb-6 text-center ${
             themed ? `${themed.cardBg} border-2 ${themed.border}` : "bg-stone-50 border border-stone-200"
           }`}
         >
@@ -165,7 +165,7 @@ export default function SpellingGame({
         onChange={(e) => setSpellingInput(e.target.value)}
         disabled={isInputDisabled}
         placeholder={t.typeInEnglish}
-        className={`w-full p-3 sm:p-4 text-lg sm:text-2xl font-black text-center border-2 rounded-2xl mb-3 sm:mb-4 transition-all ${
+        className={`w-full p-3 sm:p-4 text-lg sm:text-2xl font-black text-center border-2 rounded-xl mb-3 sm:mb-4 transition-all ${
           feedback === "correct" ? "border-emerald-600 bg-emerald-50 text-emerald-700" :
           feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
           feedback === "show-answer" ? "border-amber-500 bg-amber-50 text-amber-700 cursor-not-allowed" :
@@ -180,7 +180,7 @@ export default function SpellingGame({
       <button
         type="submit"
         disabled={!!feedback}
-        className={`w-full py-4 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`w-full py-4 sm:py-5 rounded-xl font-black text-lg sm:text-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
           themed
             ? "bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white hover:shadow-xl"
             : "bg-stone-900 text-white hover:bg-black"

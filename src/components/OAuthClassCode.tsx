@@ -177,7 +177,7 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
             <p className="block text-sm font-bold text-on-surface mb-2">
               Joining class:
             </p>
-            <div className="w-full px-4 py-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 flex items-center justify-between gap-3">
+            <div className="w-full px-4 py-3 rounded-lg border-2 border-emerald-200 bg-emerald-50 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
                 <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
                 <span className="text-lg font-bold tracking-wider text-emerald-800 truncate">
@@ -209,7 +209,7 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
               value={classCode}
               onChange={(e) => setClassCode(e.target.value.toUpperCase())}
               placeholder="MATH101"
-              className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/20 focus:border-primary focus:outline-none text-lg font-bold text-center uppercase"
+              className="w-full px-4 py-3 rounded-lg border-2 border-outline-variant/20 focus:border-primary focus:outline-none text-lg font-bold text-center uppercase"
               disabled={isLoading}
               maxLength={20}
             />
@@ -223,14 +223,14 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
           </label>
           <button
             onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-            className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant/20 hover:border-primary focus:outline-none text-center text-4xl transition-all"
+            className="w-full px-4 py-3 rounded-lg border-2 border-outline-variant/20 hover:border-primary focus:outline-none text-center text-4xl transition-all"
             disabled={isLoading}
           >
             {avatar}
           </button>
 
           {showAvatarPicker && (
-            <div className="mt-2 p-4 bg-surface-container-low rounded-xl border border-outline-variant/20 max-h-64 overflow-y-auto">
+            <div className="mt-2 p-4 bg-surface-container-low rounded-lg border border-outline-variant/20 max-h-64 overflow-y-auto">
               {avatarCategories.map((category) => (
                 <div key={category.name} className="mb-4 last:mb-0">
                   <p className="text-xs font-bold text-on-surface-variant mb-2 uppercase">
@@ -264,7 +264,7 @@ const OAuthClassCode: React.FC<OAuthClassCodeProps> = ({
         <button
           onClick={handleSubmit}
           disabled={isLoading || !classCode}
-          className="w-full signature-gradient text-white py-4 rounded-xl text-lg font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full signature-gradient text-white py-4 rounded-lg text-lg font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>

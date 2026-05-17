@@ -179,13 +179,6 @@ export const languageNames: Record<Language, string> = {
   ru: 'Русский',
 };
 
-export const languageFlags: Record<Language, string> = {
-  en: '🇬🇧',
-  he: '🇮🇱',
-  ar: '🇸🇦',
-  ru: '🇷🇺',
-};
-
 /** Short labels for UI toggles (2-3 chars). */
 export const languageShortLabels: Record<Language, string> = {
   en: 'EN',
@@ -200,11 +193,10 @@ export const languageShortLabels: Record<Language, string> = {
  *  Russian-PDF feature, but the UI toggle no longer offers it. */
 export const ALL_LANGUAGES: Language[] = ['en', 'he', 'ar'];
 
-/** Language options for dropdowns/toggles with code, label, and flag. */
-export const languageOptions: { code: Language; label: string; flag: string }[] = ALL_LANGUAGES.map(
+/** Language options for dropdowns/toggles with code + label. */
+export const languageOptions: { code: Language; label: string }[] = ALL_LANGUAGES.map(
   (code) => ({
     code,
     label: languageShortLabels[code],
-    flag: languageFlags[code],
   })
 );

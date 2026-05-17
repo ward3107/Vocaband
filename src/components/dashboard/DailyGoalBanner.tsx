@@ -44,11 +44,11 @@ export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoal
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
-          className="relative overflow-hidden rounded-2xl mb-6 bg-gradient-to-r from-emerald-500 to-teal-500 p-4 sm:p-5 shadow-md shadow-emerald-500/20"
+          className="relative overflow-hidden rounded-xl mb-6 bg-gradient-to-r from-emerald-500 to-teal-500 p-4 sm:p-5 shadow-md shadow-emerald-500/20"
         >
           <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 bg-yellow-300/30 rounded-full blur-2xl" />
           <div className="relative flex items-center gap-3 sm:gap-4">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shrink-0">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shrink-0">
               <CheckCircle2 size={22} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
@@ -65,14 +65,14 @@ export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoal
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
-          className="relative overflow-hidden rounded-2xl mb-6 bg-white border border-stone-200 shadow-sm p-4 sm:p-5"
+          className="relative overflow-hidden rounded-xl mb-6 bg-white border border-stone-200 shadow-sm p-4 sm:p-5"
         >
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Flame glows as they approach the goal */}
             <motion.div
               animate={{ scale: pct > 0 ? [1, 1.08, 1] : 1 }}
               transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-              className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${
+              className={`w-11 h-11 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center shrink-0 ${
                 pct >= 50 ? "bg-gradient-to-br from-orange-400 to-rose-500" : "bg-stone-100"
               }`}
             >

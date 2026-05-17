@@ -192,7 +192,7 @@ export default function StudentAccountLoginView({
               type="button"
               onClick={() => codeInputRef.current?.focus()}
               className={[
-                'w-9 h-11 sm:w-11 sm:h-14 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-black transition-all',
+                'w-9 h-11 sm:w-11 sm:h-14 rounded-lg flex items-center justify-center text-xl sm:text-2xl font-black transition-all',
                 ch
                   ? 'bg-white text-stone-900 shadow-lg shadow-indigo-500/30'
                   : 'bg-white/20 backdrop-blur-sm text-white/40',
@@ -247,7 +247,7 @@ export default function StudentAccountLoginView({
             but there's no student profile yet for this email. */}
         {showOAuthClassCode && oauthEmail && oauthAuthUid && (
           <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-6">
-            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl w-full max-w-md">
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl w-full max-w-md">
               <OAuthClassCode
                 email={oauthEmail}
                 authUid={oauthAuthUid}
@@ -309,7 +309,7 @@ export default function StudentAccountLoginView({
                   {langOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setLangOpen(false)} />
-                      <div className="absolute top-full mt-2 right-0 z-50 bg-white rounded-xl shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
+                      <div className="absolute top-full mt-2 right-0 z-50 bg-white rounded-lg shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
                         {langs.map(lng => (
                           <button
                             key={lng}
@@ -361,7 +361,7 @@ export default function StudentAccountLoginView({
                   </div>
                 </div>
 
-                <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8">
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 sm:p-8">
                   {/* Class-code entry */}
                   <div className="mb-5">
                     <label
@@ -371,7 +371,7 @@ export default function StudentAccountLoginView({
                       {t.classCodeLabel}
                     </label>
 
-                    <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-2xl p-4 shadow-inner">
+                    <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-xl p-4 shadow-inner">
                       {renderCodeBoxes()}
                     </div>
                     <input
@@ -409,7 +409,7 @@ export default function StudentAccountLoginView({
                         id="student-login-error"
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="mt-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
+                        className="mt-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2"
                         role="alert"
                       >
                         <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />

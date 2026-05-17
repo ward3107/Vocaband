@@ -174,7 +174,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
-            className="relative w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
             style={{ backgroundColor: "var(--vb-surface)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -208,8 +208,8 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
             </div>
 
             <div className="px-6 pt-6 pb-6 -mt-4">
-              <div className="rounded-2xl bg-white p-5 shadow-lg shadow-indigo-500/10 border border-stone-200 flex flex-col items-center gap-4">
-                <div className="rounded-xl bg-white p-3 ring-1 ring-stone-200">
+              <div className="rounded-xl bg-white p-5 shadow-lg shadow-indigo-500/10 border border-stone-200 flex flex-col items-center gap-4">
+                <div className="rounded-lg bg-white p-3 ring-1 ring-stone-200">
                   <QRCodeSVG
                     value={url}
                     size={192}
@@ -229,7 +229,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center gap-2 rounded-2xl border bg-[var(--vb-surface-alt)] px-3 py-2.5"
+              <div className="mt-4 flex items-center gap-2 rounded-xl border bg-[var(--vb-surface-alt)] px-3 py-2.5"
                    style={{ borderColor: "var(--vb-border)" }}>
                 <Link2 size={16} className="shrink-0 text-indigo-500" />
                 <span
@@ -259,7 +259,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                     backgroundColor: "var(--vb-surface-alt)",
                     color: "var(--vb-text-secondary)",
                   }}
-                  className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm hover:opacity-90 active:scale-[0.97] transition-all"
+                  className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm hover:opacity-90 active:scale-[0.97] transition-all"
                 >
                   {copiedCode ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
                   {copiedCode ? t.shareClassLinkCopied : t.copyClassCode}
@@ -272,7 +272,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                     }}
                     type="button"
                     style={{ touchAction: "manipulation" }}
-                    className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm bg-emerald-500 text-white hover:bg-emerald-600 active:scale-[0.97] transition-all"
+                    className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-emerald-500 text-white hover:bg-emerald-600 active:scale-[0.97] transition-all"
                   >
                     <MessageCircle size={15} />
                     {t.shareWhatsApp}
@@ -282,7 +282,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                     onClick={onClose}
                     type="button"
                     style={{ touchAction: "manipulation" }}
-                    className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm bg-indigo-500 text-white hover:bg-indigo-600 active:scale-[0.97] transition-all"
+                    className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-indigo-500 text-white hover:bg-indigo-600 active:scale-[0.97] transition-all"
                   >
                     {t.shareClassLinkDone}
                   </button>

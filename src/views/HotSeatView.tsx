@@ -768,10 +768,10 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
             {t.exitBtn}
           </button>
 
-          <div className="rounded-3xl bg-white shadow-lg border border-orange-100 overflow-hidden">
+          <div className="rounded-2xl bg-white shadow-lg border border-orange-100 overflow-hidden">
             <div className="bg-gradient-to-br from-orange-500 via-amber-500 to-rose-500 px-6 py-6 text-white">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
                   <Users size={26} className="text-white" />
                 </div>
                 <div>
@@ -792,7 +792,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                   placeholder={t.playersPlaceholder}
                   rows={6}
                   dir={dir}
-                  className="w-full rounded-xl border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
+                  className="w-full rounded-lg border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
                 />
                 <p className="mt-1 text-xs text-stone-500">{t.playersHint}</p>
               </div>
@@ -823,7 +823,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                           type="button"
                           onClick={() => setSourceKind(opt.kind)}
                           style={{ touchAction: 'manipulation' }}
-                          className={`flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-xl font-black text-sm border-2 transition-all ${
+                          className={`flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-lg font-black text-sm border-2 transition-all ${
                             active
                               ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
                               : 'bg-white text-stone-700 border-stone-200 hover:border-orange-200'
@@ -843,7 +843,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                       placeholder={t.wordsPlaceholder}
                       rows={5}
                       dir="ltr"
-                      className="w-full rounded-xl border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
+                      className="w-full rounded-lg border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
                     />
                     <p className="mt-1 text-xs text-stone-500">{t.wordsHint}</p>
                   </>
@@ -854,7 +854,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                     onChange={e => setAssignmentId(e.target.value || null)}
                     dir={dir}
                     aria-label={t.pickAssignment}
-                    className="w-full rounded-xl border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
+                    className="w-full rounded-lg border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
                   >
                     {availableAssignments.map(a => (
                       <option key={a.id} value={a.id}>{a.title}</option>
@@ -867,7 +867,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                     onChange={e => setTopicIdx(Number(e.target.value))}
                     dir={dir}
                     aria-label={t.pickTopic}
-                    className="w-full rounded-xl border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
+                    className="w-full rounded-lg border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
                   >
                     {availableTopics.map((pack, i) => (
                       <option key={`${pack.name}-${i}`} value={String(i)}>
@@ -884,7 +884,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                         type="button"
                         onClick={() => setShowCamera(true)}
                         style={{ touchAction: 'manipulation' }}
-                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-900 text-white font-bold text-sm active:scale-[0.98] transition"
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-stone-900 text-white font-bold text-sm active:scale-[0.98] transition"
                       >
                         <Camera size={16} />
                         {t.cameraBtn}
@@ -893,7 +893,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                         type="button"
                         onClick={() => galleryInputRef.current?.click()}
                         style={{ touchAction: 'manipulation' }}
-                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white border-2 border-stone-200 text-stone-700 font-bold text-sm hover:border-orange-200 active:scale-[0.98] transition"
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-white border-2 border-stone-200 text-stone-700 font-bold text-sm hover:border-orange-200 active:scale-[0.98] transition"
                       >
                         <ImageIcon size={16} />
                         {t.galleryBtn}
@@ -947,7 +947,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                       type="button"
                       onClick={() => chooseTargetLang(lang)}
                       style={{ touchAction: 'manipulation' }}
-                      className={`py-2.5 rounded-xl font-bold text-sm border-2 transition-all ${
+                      className={`py-2.5 rounded-lg font-bold text-sm border-2 transition-all ${
                         targetLang === lang
                           ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
                           : 'bg-white text-stone-600 border-stone-200 hover:border-orange-200'
@@ -987,7 +987,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                 onClick={() => setShowReview(true)}
                 disabled={!canStart}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                className="w-full py-3.5 rounded-lg bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
               >
                 <Eye size={18} />
                 {!vocab ? t.loadingWords : t.reviewBtn(wordPool.length)}
@@ -1039,7 +1039,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                 transition={{ type: 'spring', damping: 24, stiffness: 240 }}
                 onClick={(e) => e.stopPropagation()}
                 dir={dir}
-                className="w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                className="w-full sm:max-w-3xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
               >
                 <div className="bg-gradient-to-br from-orange-500 via-amber-500 to-rose-500 px-5 py-4 text-white">
                   <div className="flex items-center justify-between gap-3">
@@ -1074,7 +1074,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                         return (
                           <li
                             key={w.id}
-                            className={`flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-xl border ${
+                            className={`flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-lg border ${
                               missing && !isEditing
                                 ? 'bg-rose-50/60 border-rose-200'
                                 : 'bg-stone-50 border-stone-100'
@@ -1174,7 +1174,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                     type="button"
                     onClick={closeReview}
                     style={{ touchAction: 'manipulation' }}
-                    className="py-3 rounded-xl bg-stone-100 text-stone-700 font-black text-sm hover:bg-stone-200 active:scale-[0.98] transition"
+                    className="py-3 rounded-lg bg-stone-100 text-stone-700 font-black text-sm hover:bg-stone-200 active:scale-[0.98] transition"
                   >
                     {t.reviewCancelBtn}
                   </button>
@@ -1183,7 +1183,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                     onClick={handleStart}
                     disabled={!canStart}
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    className="py-3 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-sm shadow-md disabled:opacity-50 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                    className="py-3 rounded-lg bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-sm shadow-md disabled:opacity-50 active:scale-[0.98] transition flex items-center justify-center gap-2"
                   >
                     <Play size={16} />
                     {t.reviewStartBtn}
@@ -1229,7 +1229,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
             type="button"
             onClick={handleReady}
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-lg shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-lg shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             {t.readyBtn}
           </button>
@@ -1322,7 +1322,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                 type="button"
                 dir={optionDir}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className={`h-full px-4 py-4 rounded-3xl text-center font-black text-3xl sm:text-5xl md:text-6xl leading-tight transition-all shadow-md break-words flex items-center justify-center ${cls}`}
+                className={`h-full px-4 py-4 rounded-2xl text-center font-black text-3xl sm:text-5xl md:text-6xl leading-tight transition-all shadow-md break-words flex items-center justify-center ${cls}`}
               >
                 <span>{translationOf(opt, targetLang) || opt.english}</span>
               </motion.button>
@@ -1361,9 +1361,9 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-rose-50 p-4 sm:p-6" dir={dir}>
       <div className="max-w-3xl mx-auto">
-        <div className="rounded-3xl bg-white shadow-lg border border-amber-100 overflow-hidden">
+        <div className="rounded-2xl bg-white shadow-lg border border-amber-100 overflow-hidden">
           <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 py-6 text-white text-center">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center mb-3">
+            <div className="w-16 h-16 mx-auto rounded-xl bg-white/20 backdrop-blur flex items-center justify-center mb-3">
               <Trophy size={32} className="text-white" />
             </div>
             <h1 className="text-2xl font-black">{t.podiumTitle}</h1>
@@ -1374,7 +1374,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
             {podium.map((p, rank) => (
               <div
                 key={`${p.name}-${p.originalIdx}`}
-                className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border-2 ${
+                className={`flex items-center justify-between gap-3 px-4 py-3 rounded-lg border-2 ${
                   rank === 0
                     ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
                     : rank === 1
@@ -1402,7 +1402,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
               type="button"
               onClick={handlePlayAgain}
               style={{ touchAction: 'manipulation' }}
-              className="py-3 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-sm shadow-md active:scale-[0.98] transition-all"
+              className="py-3 rounded-lg bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-sm shadow-md active:scale-[0.98] transition-all"
             >
               {t.playAgain}
             </button>
@@ -1410,7 +1410,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
               type="button"
               onClick={onExit}
               style={{ touchAction: 'manipulation' }}
-              className="py-3 rounded-xl bg-stone-100 text-stone-700 font-black text-sm hover:bg-stone-200 active:scale-[0.98] transition-all"
+              className="py-3 rounded-lg bg-stone-100 text-stone-700 font-black text-sm hover:bg-stone-200 active:scale-[0.98] transition-all"
             >
               {t.done}
             </button>

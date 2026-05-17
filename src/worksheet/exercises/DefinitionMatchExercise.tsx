@@ -108,7 +108,7 @@ export const DefinitionMatchExercise: ExerciseComponent<ExerciseOf<"definition_m
   // dropping the exercise entirely.
   if (options.length < 2) {
     return (
-      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl text-center">
+      <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl text-center">
         <p className="text-stone-700">
           Not enough banked definitions in this worksheet for a Definition
           Match round.
@@ -118,7 +118,7 @@ export const DefinitionMatchExercise: ExerciseComponent<ExerciseOf<"definition_m
   }
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
         <span className="text-xs font-bold text-stone-500">
           {idx + 1} / {items.length}
@@ -171,7 +171,7 @@ export const DefinitionMatchExercise: ExerciseComponent<ExerciseOf<"definition_m
               whileTap={{ scale: pickedDefinition !== null ? 1 : 0.97 }}
               disabled={pickedDefinition !== null}
               onClick={() => handlePick(opt)}
-              className={`p-4 rounded-2xl border-2 font-bold text-start text-base sm:text-lg transition-colors ${style}`}
+              className={`p-4 rounded-xl border-2 font-bold text-start text-base sm:text-lg transition-colors ${style}`}
               dir="ltr"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >

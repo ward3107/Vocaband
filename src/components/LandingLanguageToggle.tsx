@@ -31,7 +31,7 @@ const LandingLanguageToggle: React.FC<LandingLanguageToggleProps> = ({ className
               stiffness: 400,
               damping: 25,
             }}
-            className="flex gap-1.5 p-1.5 rounded-xl bg-white/95 backdrop-blur-xl shadow-lg border border-white/50"
+            className="flex gap-1.5 p-1.5 rounded-lg bg-white/95 backdrop-blur-xl shadow-lg border border-white/50"
           >
             {languages.map((lang) => (
               <motion.button
@@ -72,7 +72,7 @@ const LandingLanguageToggle: React.FC<LandingLanguageToggleProps> = ({ className
               stiffness: 400,
               damping: 20,
             }}
-            className="relative w-11 h-11 rounded-xl bg-white/95 backdrop-blur-xl shadow-lg border border-white/50 flex items-center justify-center overflow-hidden group"
+            className="relative w-11 h-11 rounded-lg bg-white/95 backdrop-blur-xl shadow-lg border border-white/50 flex items-center justify-center overflow-hidden group"
             type="button"
             aria-label={language === 'he' ? 'החלף שפה' : language === 'ar' ? 'تغيير اللغة' : 'Change language'}
           >

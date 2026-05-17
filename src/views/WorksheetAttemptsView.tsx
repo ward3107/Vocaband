@@ -276,7 +276,7 @@ const WorksheetList: React.FC<{
 }> = ({ worksheets, attemptsBySlug, childrenByParent, onSelect }) => {
   if (worksheets.length === 0) {
     return (
-      <div className="text-center max-w-md mx-auto p-10 rounded-3xl bg-[var(--vb-surface)] border border-[var(--vb-border)]">
+      <div className="text-center max-w-md mx-auto p-10 rounded-2xl bg-[var(--vb-surface)] border border-[var(--vb-border)]">
         <Inbox size={40} className="mx-auto mb-4 text-[var(--vb-text-muted)]" />
         <h2 className="text-xl font-black text-[var(--vb-text-primary)] mb-2">
           No shared worksheets yet
@@ -293,7 +293,7 @@ const WorksheetList: React.FC<{
     <>
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
             <ClipboardList size={20} className="text-violet-600" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-[var(--vb-text-primary)]">
@@ -333,7 +333,7 @@ const WorksheetList: React.FC<{
                 backgroundColor: "var(--vb-surface)",
                 borderColor: "var(--vb-border)",
               }}
-              className="w-full text-left rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all"
+              className="w-full text-left rounded-xl p-5 border shadow-sm hover:shadow-md transition-all"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
@@ -463,14 +463,14 @@ const WorksheetDetail: React.FC<{
         </p>
       </div>
 
-      <div className="mb-6 rounded-2xl border border-[var(--vb-border)] bg-[var(--vb-surface)] overflow-hidden">
+      <div className="mb-6 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] overflow-hidden">
         <button
           type="button"
           onClick={() => setShareOpen((v) => !v)}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--vb-surface-alt)] transition-colors"
         >
-          <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
             <QrCode size={18} />
           </div>
           <div className="flex-1 text-left min-w-0">
@@ -509,7 +509,7 @@ const WorksheetDetail: React.FC<{
       </div>
 
       {completed.length === 0 ? (
-        <div className="text-center p-10 rounded-3xl bg-[var(--vb-surface)] border border-[var(--vb-border)]">
+        <div className="text-center p-10 rounded-2xl bg-[var(--vb-surface)] border border-[var(--vb-border)]">
           <Inbox size={36} className="mx-auto mb-3 text-[var(--vb-text-muted)]" />
           <p className="text-sm text-[var(--vb-text-secondary)]">
             No submissions yet. Share the QR or link above with your students.
@@ -535,7 +535,7 @@ const WorksheetDetail: React.FC<{
             return (
               <div
                 key={a.id}
-                className="rounded-2xl border border-[var(--vb-border)] bg-[var(--vb-surface)] overflow-hidden"
+                className="rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] overflow-hidden"
               >
                 <button
                   type="button"
@@ -685,7 +685,7 @@ const AttemptSummary: React.FC<{
           whileHover={wrongWordCount > 0 ? { scale: 1.02 } : undefined}
           whileTap={wrongWordCount > 0 ? { scale: 0.97 } : undefined}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm shadow-sm transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-colors ${
             wrongWordCount === 0
               ? "bg-stone-100 text-stone-400 cursor-not-allowed"
               : "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-700 hover:to-fuchsia-700"
@@ -761,7 +761,7 @@ const PracticeRounds: React.FC<{
           return (
             <div key={i} className="flex items-center gap-1.5 shrink-0">
               <div
-                className={`min-w-[88px] rounded-xl border px-2.5 py-1.5 text-center ${color}`}
+                className={`min-w-[88px] rounded-lg border px-2.5 py-1.5 text-center ${color}`}
               >
                 <p className="text-[9px] uppercase tracking-widest font-bold opacity-80">
                   {step.label}
@@ -868,7 +868,7 @@ const AnswerBreakdown: React.FC<{ answers: AnswerRow[] }> = ({ answers }) => {
           return (
             <div
               key={idx}
-              className={`flex items-center gap-3 p-3 rounded-xl text-sm ${
+              className={`flex items-center gap-3 p-3 rounded-lg text-sm ${
                 a.is_correct
                   ? "bg-emerald-50 border border-emerald-100"
                   : "bg-rose-50 border border-rose-100"
@@ -897,7 +897,7 @@ const AnswerBreakdown: React.FC<{ answers: AnswerRow[] }> = ({ answers }) => {
           return (
             <div
               key={idx}
-              className={`flex items-center gap-3 p-3 rounded-xl text-sm ${
+              className={`flex items-center gap-3 p-3 rounded-lg text-sm ${
                 a.mistakes_count === 0
                   ? "bg-emerald-50 border border-emerald-100"
                   : a.mistakes_count <= 2
@@ -969,7 +969,7 @@ const GenericAnswerRow: React.FC<{ answer: GenericAnswer }> = ({ answer }) => {
         : "bg-stone-50 border-stone-100";
 
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-xl text-sm border ${bg}`}>
+    <div className={`flex items-start gap-3 p-3 rounded-lg text-sm border ${bg}`}>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-[var(--vb-text-primary)]" dir="auto">
           {label}
@@ -988,7 +988,7 @@ const GenericAnswerRow: React.FC<{ answer: GenericAnswer }> = ({ answer }) => {
 };
 
 const ErrorCard: React.FC<{ message: string }> = ({ message }) => (
-  <div className="text-center max-w-md mx-auto p-8 rounded-3xl bg-rose-50 border border-rose-200">
+  <div className="text-center max-w-md mx-auto p-8 rounded-2xl bg-rose-50 border border-rose-200">
     <p className="font-bold text-rose-900 mb-1">Couldn't load worksheet results</p>
     <p className="text-rose-700 text-sm">{message}</p>
   </div>

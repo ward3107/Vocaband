@@ -80,10 +80,10 @@ export default function LeaderboardTeaser({
       onClick={() => setView('global-leaderboard')}
       type="button"
       style={{ touchAction: 'manipulation' }}
-      className="w-full bg-white rounded-2xl border border-stone-200 shadow-sm hover:shadow-md hover:border-stone-300 active:scale-[0.99] transition-all p-4 sm:p-5 mb-6 text-left flex items-center gap-3 sm:gap-4"
+      className="w-full bg-white rounded-xl border border-stone-200 shadow-sm hover:shadow-md hover:border-stone-300 active:scale-[0.99] transition-all p-4 sm:p-5 mb-6 text-left flex items-center gap-3 sm:gap-4"
     >
       {/* Rank badge */}
-      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
+      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
         myRank === 1
           ? 'bg-gradient-to-br from-yellow-400 to-amber-500'
           : myRank === 2

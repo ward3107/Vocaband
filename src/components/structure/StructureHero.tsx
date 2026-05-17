@@ -59,7 +59,7 @@ export const StructureHero: React.FC<StructureHeroProps> = ({ kind, slots, nextL
             student SEES the counter move after every game, even if the
             piece hasn't unlocked yet.  Perfect-score and streak pieces
             don't have a progress bar — they fire on the exact event. */}
-        <div className="mt-3 bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-sm border border-stone-200/60">
+        <div className="mt-3 bg-white/80 backdrop-blur-sm rounded-xl px-4 py-3 shadow-sm border border-stone-200/60">
           {nextLocked ? (
             <>
               <div className="flex items-center justify-between gap-3">
@@ -69,7 +69,7 @@ export const StructureHero: React.FC<StructureHeroProps> = ({ kind, slots, nextL
                     {t.nextPieceLine(nextLocked.label, nextLocked.origin)}
                   </p>
                 </div>
-                <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center text-lg shadow-sm">
+                <div className="shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center text-lg shadow-sm">
                   {nextLocked.emoji}
                 </div>
               </div>
@@ -101,7 +101,7 @@ export const StructureHero: React.FC<StructureHeroProps> = ({ kind, slots, nextL
                   {t.completeBody(earnedCount)}
                 </p>
               </div>
-              <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-lg shadow-sm">
+              <div className="shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-lg shadow-sm">
                 🏆
               </div>
             </div>

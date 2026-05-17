@@ -28,7 +28,7 @@ export const ComingSoonExercise: ExerciseComponent = ({ config, onComplete }) =>
   const label = LABELS[config.type] ?? config.type;
   return (
     <div
-      className="bg-white rounded-3xl p-8 sm:p-10 shadow-2xl text-center max-w-md mx-auto"
+      className="bg-white rounded-2xl p-8 sm:p-10 shadow-2xl text-center max-w-md mx-auto"
       dir={isRTL ? "rtl" : "ltr"}
     >
       <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-2">
@@ -43,7 +43,7 @@ export const ComingSoonExercise: ExerciseComponent = ({ config, onComplete }) =>
       <button
         type="button"
         onClick={() => onComplete({ score: 0, total: 0, answers: [] })}
-        className="px-6 py-3 rounded-xl bg-stone-900 text-white font-bold hover:bg-stone-700 transition-all"
+        className="px-6 py-3 rounded-lg bg-stone-900 text-white font-bold hover:bg-stone-700 transition-all"
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       >
         Skip

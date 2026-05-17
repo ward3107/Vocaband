@@ -72,7 +72,7 @@ export const QuizExercise: ExerciseComponent<ExerciseOf<"quiz">> = ({
   }
 
   return (
-    <div className="bg-white rounded-3xl p-4 sm:p-8 shadow-2xl">
+    <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
         <span className="text-xs font-bold text-stone-500">
           {idx + 1} / {order.length}
@@ -119,7 +119,7 @@ export const QuizExercise: ExerciseComponent<ExerciseOf<"quiz">> = ({
               whileTap={{ scale: pickedId !== null ? 1 : 0.96 }}
               disabled={pickedId !== null}
               onClick={() => handlePick(opt)}
-              className={`p-4 rounded-2xl border-2 font-bold text-lg sm:text-xl transition-colors ${style}`}
+              className={`p-4 rounded-xl border-2 font-bold text-lg sm:text-xl transition-colors ${style}`}
               dir="auto"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >

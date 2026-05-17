@@ -55,14 +55,14 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-4 text-left text-white shadow-lg shadow-orange-300/40"
+          className="relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-4 text-left text-white shadow-lg shadow-orange-300/40"
         >
           <div aria-hidden className="pointer-events-none absolute -top-6 -right-6 w-24 h-24 bg-yellow-200/40 rounded-full blur-2xl" />
           <div className="relative flex items-center gap-3">
             <motion.div
               animate={{ rotate: [-5, 5, -5], scale: [1, 1.05, 1] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-12 h-12 rounded-2xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-2xl"
+              className="w-12 h-12 rounded-xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-2xl"
             >
               🎁
             </motion.div>
@@ -71,7 +71,7 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
               <p className="font-black text-sm">{t.claimTodaysReward}</p>
               <p className="text-xs text-white/90">{t.bonusXpStreakKeeper}</p>
             </div>
-            <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 font-black text-sm border border-white/30">{t.openButton}</div>
+            <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 font-black text-sm border border-white/30">{t.openButton}</div>
           </div>
         </motion.button>
       )}
@@ -86,28 +86,28 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 p-4 text-left text-white shadow-lg shadow-blue-300/40"
+          className="relative overflow-hidden rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 p-4 text-left text-white shadow-lg shadow-blue-300/40"
         >
           <div className="relative flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-2xl">👋</div>
+            <div className="w-12 h-12 rounded-xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-2xl">👋</div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black uppercase tracking-widest text-white/85">{t.welcomeBack}</p>
               <p className="font-black text-sm">{t.weMissedYou}</p>
               <p className="text-xs text-white/90">{t.claimBonusForReturning}</p>
             </div>
-            <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 font-black text-sm border border-white/30">{t.claimButton}</div>
+            <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 font-black text-sm border border-white/30">{t.claimButton}</div>
           </div>
         </motion.button>
       )}
 
       {/* Weekly challenge — progress card, claim state when full */}
       <div
-        className={`relative overflow-hidden rounded-2xl p-4 border ${weeklyChallengeClaimable
+        className={`relative overflow-hidden rounded-xl p-4 border ${weeklyChallengeClaimable
           ? 'bg-gradient-to-br from-emerald-500 to-green-600 border-emerald-600 text-white shadow-lg shadow-emerald-300/40'
           : 'bg-white border-stone-200'}`}
       >
         <div className="flex items-center gap-3">
-          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${weeklyChallengeClaimable ? 'bg-white/25 backdrop-blur-sm' : 'bg-emerald-100'}`}>
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${weeklyChallengeClaimable ? 'bg-white/25 backdrop-blur-sm' : 'bg-emerald-100'}`}>
             <Trophy size={20} className={weeklyChallengeClaimable ? 'text-white' : 'text-emerald-600'} />
           </div>
           <div className="flex-1 min-w-0">
@@ -127,7 +127,7 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
               onClick={handleWeekly}
               type="button"
               style={{ touchAction: 'manipulation' }}
-              className="shrink-0 bg-white/25 hover:bg-white/35 backdrop-blur-sm rounded-xl px-3 py-2 font-black text-sm border border-white/30 transition-colors"
+              className="shrink-0 bg-white/25 hover:bg-white/35 backdrop-blur-sm rounded-lg px-3 py-2 font-black text-sm border border-white/30 transition-colors"
             >
               {t.claimButton}
             </button>

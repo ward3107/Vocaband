@@ -72,7 +72,7 @@ export default function MatchingModeGame({
         disabled={isMatchingProcessing || isMatched}
         dir="auto"
         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-        className={`relative w-full p-3 sm:p-5 rounded-2xl shadow-md font-black text-base sm:text-xl h-16 sm:h-20 flex items-center justify-center text-center transition-colors duration-200 break-words ${bgClass} ${isMatchingProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
+        className={`relative w-full p-3 sm:p-5 rounded-xl shadow-md font-black text-base sm:text-xl h-16 sm:h-20 flex items-center justify-center text-center transition-colors duration-200 break-words ${bgClass} ${isMatchingProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
       >
         {item.text}
       </motion.button>

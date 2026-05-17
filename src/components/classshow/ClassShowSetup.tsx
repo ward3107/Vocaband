@@ -177,7 +177,7 @@ export default function ClassShowSetup({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-        className="w-full max-w-5xl mx-auto rounded-3xl border shadow-2xl p-6 sm:p-10"
+        className="w-full max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
       >
         {/* Header with back button */}
         <div className="flex items-center justify-between mb-8">
@@ -199,7 +199,7 @@ export default function ClassShowSetup({
                 color: 'var(--vb-text-secondary)',
                 backgroundColor: 'var(--vb-surface)',
               }}
-              className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
+              className="px-4 py-2 rounded-lg border-2 inline-flex items-center gap-2 hover:opacity-90"
             >
               <ArrowLeft size={16} />
               <span className="hidden sm:inline">Back</span>
@@ -227,7 +227,7 @@ export default function ClassShowSetup({
                     borderColor: selected ? 'var(--vb-accent)' : 'var(--vb-border)',
                     color: 'var(--vb-text-primary)',
                   }}
-                  className="text-left px-4 py-3 rounded-xl border-2 transition-colors"
+                  className="text-left px-4 py-3 rounded-lg border-2 transition-colors"
                 >
                   <div className="font-bold text-sm flex items-center gap-2">
                     {isCustom && <Wand2 size={14} style={{ color: 'var(--vb-accent)' }} />}
@@ -246,7 +246,7 @@ export default function ClassShowSetup({
           {/* Build custom list — embedded WordPicker.  Only available
               when the parent provided picker wiring (allWords + callbacks). */}
           {pickerWiring && (
-            <div className="mt-4 p-4 rounded-xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
+            <div className="mt-4 p-4 rounded-lg border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
               <WordPicker
                 allWords={pickerWiring.allWords}
                 selectedWords={customWords}
@@ -285,7 +285,7 @@ export default function ClassShowSetup({
                     touchAction: 'manipulation',
                     borderColor: selected ? 'var(--vb-accent)' : 'transparent',
                   }}
-                  className={`relative bg-gradient-to-br ${m.gradient} text-white rounded-2xl p-4 flex flex-col items-center gap-2 border-2 transition-transform ${selected ? 'scale-[1.03] shadow-lg' : 'hover:scale-[1.02]'}`}
+                  className={`relative bg-gradient-to-br ${m.gradient} text-white rounded-xl p-4 flex flex-col items-center gap-2 border-2 transition-transform ${selected ? 'scale-[1.03] shadow-lg' : 'hover:scale-[1.02]'}`}
                 >
                   {m.icon}
                   <span className="text-sm font-black">{t[m.nameKey] as string}</span>
@@ -305,7 +305,7 @@ export default function ClassShowSetup({
               backgroundColor: canStart ? 'var(--vb-accent)' : 'var(--vb-surface-alt)',
               color: canStart ? 'var(--vb-accent-text)' : 'var(--vb-text-muted)',
             }}
-            className="px-8 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 shadow-lg disabled:cursor-not-allowed"
+            className="px-8 py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-lg disabled:cursor-not-allowed"
           >
             <Play size={20} />
             {t.startShow}

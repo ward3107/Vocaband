@@ -119,7 +119,7 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-3xl p-5 sm:p-6 shadow-lg border border-stone-100"
+        className="bg-white rounded-2xl p-5 sm:p-6 shadow-lg border border-stone-100"
       >
         <div className="flex items-center gap-2 mb-1">
           <Calendar size={20} className="text-indigo-500" />
@@ -178,7 +178,7 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="bg-white rounded-3xl p-5 sm:p-6 shadow-lg border border-stone-100"
+        className="bg-white rounded-2xl p-5 sm:p-6 shadow-lg border border-stone-100"
       >
         <div className="flex items-center gap-2 mb-1">
           <AlertTriangle size={20} className="text-rose-500" />
@@ -197,7 +197,7 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
             {hardestWords.map(({ word, count }, idx) => (
               <div
                 key={word.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl bg-rose-50/60 border border-rose-100"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-rose-50/60 border border-rose-100"
               >
                 <div className="w-6 h-6 rounded-full bg-rose-500 text-white text-xs font-black flex items-center justify-center shrink-0">
                   {idx + 1}

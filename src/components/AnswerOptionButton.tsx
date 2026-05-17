@@ -65,7 +65,7 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
       disabled={isDisabled}
       dir={gameMode === "reverse" || gameMode === "fill-blank" ? "ltr" : "auto"}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-      className={`py-5 px-5 sm:py-6 sm:px-8 rounded-2xl sm:rounded-3xl text-xl sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[88px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
+      className={`py-5 px-5 sm:py-6 sm:px-8 rounded-xl sm:rounded-2xl text-xl sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[88px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
         showCorrect
           ? "bg-blue-600 text-white motion-safe:scale-105 shadow-xl"
           : feedback === "wrong" && !isCorrect

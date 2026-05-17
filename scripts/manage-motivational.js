@@ -67,7 +67,7 @@ const listMotivationalFiles = async () => {
     }
   });
 
-  console.log('🇬🇧 English Files:');
+  console.log('English Files:');
   if (englishFiles.length > 0) {
     englishFiles.forEach(f => console.log(`  ✓ ${f}`));
   } else {
@@ -75,7 +75,7 @@ const listMotivationalFiles = async () => {
   }
   console.log(`  Total: ${englishFiles.length}\n`);
 
-  console.log('🇮🇱 Hebrew Files:');
+  console.log('Hebrew Files:');
   if (hebrewFiles.length > 0) {
     hebrewFiles.forEach(f => console.log(`  ⚠️  ${f} [HEBREW CHARACTERS DETECTED]`));
   } else {
@@ -83,7 +83,7 @@ const listMotivationalFiles = async () => {
   }
   console.log(`  Total: ${hebrewFiles.length}\n`);
 
-  console.log('🇸🇦 Arabic Files:');
+  console.log('Arabic Files:');
   if (arabicFiles.length > 0) {
     arabicFiles.forEach(f => console.log(`  ⚠️  ${f} [ARABIC CHARACTERS DETECTED]`));
   } else {

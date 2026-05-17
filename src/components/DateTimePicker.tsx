@@ -220,7 +220,7 @@ export function DateTimePicker({ value, onChange, placeholder, minDate }: DateTi
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`w-full p-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all cursor-pointer outline-none bg-[var(--vb-surface)] ${
+        className={`w-full p-3 rounded-lg border-2 text-left flex items-center gap-3 transition-all cursor-pointer outline-none bg-[var(--vb-surface)] ${
           open ? "border-primary ring-4 ring-primary/10" : "border-[var(--vb-text-muted)]/60 hover:border-primary/40"
         }`}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
@@ -247,7 +247,7 @@ export function DateTimePicker({ value, onChange, placeholder, minDate }: DateTi
 
       {/* Popover - opens upward to avoid going off-screen on mobile */}
       {open && (
-        <div className="absolute z-50 bottom-full left-0 mb-2 bg-[var(--vb-surface)] rounded-2xl shadow-2xl border border-[var(--vb-border)] w-80 overflow-hidden">
+        <div className="absolute z-50 bottom-full left-0 mb-2 bg-[var(--vb-surface)] rounded-xl shadow-2xl border border-[var(--vb-border)] w-80 overflow-hidden">
           {/* Month nav */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--vb-border)]">
             <button

@@ -54,11 +54,11 @@ export const PartOriginSheet: React.FC<PartOriginSheetProps> = ({ open, part, ea
             exit={{ y: 60, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 260, damping: 26 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-6 m-0 sm:m-4"
+            className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 sm:p-6 m-0 sm:m-4"
             dir={dir}
           >
             <div className="flex items-start gap-4">
-              <div className={`shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl ${isEarned ? 'bg-gradient-to-br from-emerald-400 to-teal-500' : 'bg-stone-200'}`}>
+              <div className={`shrink-0 w-16 h-16 rounded-xl flex items-center justify-center text-3xl ${isEarned ? 'bg-gradient-to-br from-emerald-400 to-teal-500' : 'bg-stone-200'}`}>
                 <span aria-hidden="true">{part.emoji}</span>
               </div>
               <div className="flex-1 min-w-0">
@@ -85,7 +85,7 @@ export const PartOriginSheet: React.FC<PartOriginSheetProps> = ({ open, part, ea
             <button
               onClick={onClose}
               type="button"
-              className="mt-5 w-full py-3 rounded-xl font-bold bg-stone-900 text-white hover:bg-stone-800 active:scale-[0.99] transition-all"
+              className="mt-5 w-full py-3 rounded-lg font-bold bg-stone-900 text-white hover:bg-stone-800 active:scale-[0.99] transition-all"
             >
               {t.partGotIt}
             </button>

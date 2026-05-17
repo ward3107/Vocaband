@@ -20,7 +20,7 @@
  * map onto the closest v2 tab when the flag is on.
  *
  * 2026-05 redesign: both layouts now sit inside the Worksheet/Class
- * Show "card chrome" — a max-w-5xl rounded-3xl card with shadow-2xl
+ * Show "card chrome" — a max-w-5xl rounded-2xl card with shadow-2xl
  * over the surface-alt background. Tabs render as a pill row at the
  * top of the card body, and the page-level TopAppBar has been replaced
  * with the same in-card title + Back button used by Worksheet/Class
@@ -246,7 +246,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
             touchAction: 'manipulation',
             WebkitTapHighlightColor: 'transparent' as never,
           }}
-          className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
+          className="px-4 py-2 rounded-lg border-2 inline-flex items-center gap-2 hover:opacity-90"
         >
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">{tViews.backToDashboard}</span>
@@ -267,7 +267,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-          className="max-w-5xl mx-auto rounded-3xl border shadow-2xl p-6 sm:p-10"
+          className="max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
         >
           {cardHeader(activeTabMeta?.blurb ?? "")}
 
@@ -557,7 +557,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-        className="max-w-5xl mx-auto rounded-3xl border shadow-2xl p-6 sm:p-10"
+        className="max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
       >
         {cardHeader(t.legacySubtitle)}
 

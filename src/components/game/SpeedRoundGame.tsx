@@ -295,7 +295,7 @@ export default function SpeedRoundGame({
             initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            className="mb-3 px-4 py-2 rounded-2xl bg-amber-500 text-white font-black text-sm shadow-lg flex items-center gap-2"
+            className="mb-3 px-4 py-2 rounded-xl bg-amber-500 text-white font-black text-sm shadow-lg flex items-center gap-2"
           >
             🔥 {comboFlash.at} {language === "he" ? "ברצף!" : language === "ar" ? "متتالية!" : "in a row!"}
             <span className="bg-white/30 px-2 py-0.5 rounded-full">+{comboFlash.bonus}</span>
@@ -367,7 +367,7 @@ export default function SpeedRoundGame({
               type="button"
               dir={targetLanguage === "hebrew" || targetLanguage === "arabic" ? "rtl" : "ltr"}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`px-4 py-4 sm:py-5 rounded-2xl text-center font-black text-lg sm:text-xl transition-all shadow-sm ${stateClasses}`}
+              className={`px-4 py-4 sm:py-5 rounded-xl text-center font-black text-lg sm:text-xl transition-all shadow-sm ${stateClasses}`}
             >
               {translationOf(opt, targetLanguage) || opt.english}
             </motion.button>
@@ -381,7 +381,7 @@ export default function SpeedRoundGame({
           type="button"
           onClick={handleSkip}
           disabled={picked != null}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 disabled:opacity-50 text-stone-700 text-sm font-bold transition"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 disabled:opacity-50 text-stone-700 text-sm font-bold transition"
         >
           <SkipForward size={16} />
           {language === "he" ? "דלג" : language === "ar" ? "تخطي" : "Skip"}
@@ -389,7 +389,7 @@ export default function SpeedRoundGame({
         <button
           type="button"
           onClick={handleEnd}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-bold transition"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-bold transition"
         >
           <X size={16} />
           {language === "he" ? "סיים" : language === "ar" ? "إنهاء" : "End round"}

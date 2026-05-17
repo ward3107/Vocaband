@@ -176,7 +176,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
             {onTeacherLogin && (
               <button
                 onClick={onTeacherLogin}
-                className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 text-sm font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 hover:from-indigo-600 hover:via-violet-700 hover:to-fuchsia-700 rounded-xl shadow-lg shadow-violet-500/40 hover:shadow-xl hover:shadow-violet-500/55 ring-2 ring-violet-300/50 hover:ring-violet-300/70 hover:scale-[1.04] transition-all"
+                className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 text-sm font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 hover:from-indigo-600 hover:via-violet-700 hover:to-fuchsia-700 rounded-lg shadow-lg shadow-violet-500/40 hover:shadow-xl hover:shadow-violet-500/55 ring-2 ring-violet-300/50 hover:ring-violet-300/70 hover:scale-[1.04] transition-all"
                 type="button"
                 style={{ touchAction: 'manipulation' }}
                 aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
@@ -278,7 +278,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
                     setMobileOpen(false);
                     onTeacherLogin();
                   }}
-                  className="w-full inline-flex items-center justify-center gap-3 px-4 py-4 text-lg font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 rounded-2xl shadow-lg shadow-violet-500/40 ring-2 ring-violet-300/50"
+                  className="w-full inline-flex items-center justify-center gap-3 px-4 py-4 text-lg font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 rounded-xl shadow-lg shadow-violet-500/40 ring-2 ring-violet-300/50"
                   type="button"
                   style={{ touchAction: 'manipulation' }}
                   aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}

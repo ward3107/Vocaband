@@ -212,7 +212,7 @@ export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 p-8 text-white text-center shadow-lg shadow-indigo-500/20"
+          className="max-w-md w-full rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-8 text-white text-center shadow-lg shadow-indigo-500/20"
         >
           <div className="text-7xl mb-4 drop-shadow-lg">
             {pct >= 80 ? "🏆" : pct >= 50 ? "🎯" : "💪"}
@@ -228,7 +228,7 @@ export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete
               type="button"
               onClick={restart}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="px-5 py-3 rounded-xl bg-white text-indigo-700 font-black text-sm tracking-wide shadow-sm hover:bg-amber-100"
+              className="px-5 py-3 rounded-lg bg-white text-indigo-700 font-black text-sm tracking-wide shadow-sm hover:bg-amber-100"
             >
               {t.playAgain}
             </button>
@@ -236,7 +236,7 @@ export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete
               type="button"
               onClick={onExit}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
+              className="px-5 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
             >
               {t.done}
             </button>
@@ -294,7 +294,7 @@ export default function NiqqudModeView({ onExit, gradeBand, lemmaIds, onComplete
             const isCorrect = round.correctIndex === i;
             const showResult = picked !== null;
             const baseClass =
-              "relative rounded-2xl p-5 sm:p-6 text-2xl sm:text-3xl font-black text-white shadow-lg overflow-hidden transition-all";
+              "relative rounded-xl p-5 sm:p-6 text-2xl sm:text-3xl font-black text-white shadow-lg overflow-hidden transition-all";
             let bgClass = "bg-gradient-to-br from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 shadow-indigo-500/20";
             if (showResult) {
               if (isCorrect) {

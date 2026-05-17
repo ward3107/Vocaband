@@ -35,7 +35,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
         backgroundColor: 'var(--vb-surface)',
         borderColor: 'var(--vb-border)',
       }}
-      className="group relative w-full h-full rounded-2xl p-5 sm:p-6 text-left border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
+      className="group relative w-full h-full rounded-xl p-5 sm:p-6 text-left border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
     >
       {badge != null && badge > 0 && (
         <span className="absolute top-3 right-3 bg-rose-500 text-white text-xs font-bold rounded-full min-w-6 h-6 px-1.5 flex items-center justify-center shadow-sm">
@@ -43,7 +43,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
         </span>
       )}
       <div className="flex items-start gap-4 mb-4 sm:mb-5">
-        <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
+        <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
           <span className={iconColor}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0 pt-0.5">

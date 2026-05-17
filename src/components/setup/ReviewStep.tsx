@@ -120,14 +120,14 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button onClick={onBack} className="signature-gradient text-white px-3 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2">
+          <button onClick={onBack} className="signature-gradient text-white px-3 py-2 rounded-lg font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2">
             <ArrowLeft size={16} /> {t.back}
           </button>
           {isQuickPlay && (
             <div className="flex gap-2">
               <button
                 onClick={onEditWords}
-                className="px-3 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:opacity-80 transition-all flex items-center gap-1 border-2 border-[var(--vb-border)] text-sm"
+                className="px-3 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-lg font-bold hover:opacity-80 transition-all flex items-center gap-1 border-2 border-[var(--vb-border)] text-sm"
               >
                 <BookOpen size={14} />
                 <span className="hidden sm:inline">{t.editWordsFull}</span>
@@ -135,7 +135,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               </button>
               <button
                 onClick={onEditModes}
-                className="px-3 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:opacity-80 transition-all flex items-center gap-1 border-2 border-[var(--vb-border)] text-sm"
+                className="px-3 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-lg font-bold hover:opacity-80 transition-all flex items-center gap-1 border-2 border-[var(--vb-border)] text-sm"
               >
                 <Target size={14} />
                 <span className="hidden sm:inline">{t.editModesFull}</span>
@@ -167,7 +167,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: -10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-3xl p-6 shadow-2xl"
+          className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-2xl p-6 shadow-2xl"
         >
           {/* Animated background decoration */}
           <div className="absolute inset-0 opacity-20">
@@ -194,7 +194,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
-              className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-sm rounded-2xl sm:rounded-3xl mb-3 sm:mb-4 shadow-lg"
+              className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl mb-3 sm:mb-4 shadow-lg"
             >
               <Sparkles size={32} className="text-yellow-300 sm:w-10 sm:h-10" strokeWidth={2.5} />
             </motion.div>
@@ -230,7 +230,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         </motion.div>
       )}
 
-      <div className="bg-[var(--vb-surface-alt)]-lowest rounded-3xl shadow-xl border-2 border-surface-container-highest overflow-hidden">
+      <div className="bg-[var(--vb-surface-alt)]-lowest rounded-2xl shadow-xl border-2 border-surface-container-highest overflow-hidden">
         <div className="flex items-center justify-around p-4 sm:p-6 bg-[var(--vb-surface-alt)] border-b border-surface-container-highest">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
@@ -292,7 +292,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             {selectedWords.map(word => (
               <span
                 key={word.id}
-                className={`px-3 py-1.5 rounded-xl text-sm font-bold ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-bold ${
                   word.id < 0
                     ? 'bg-amber-100 text-amber-800 border-2 border-amber-300'
                     : 'bg-blue-100 text-blue-900 border-2 border-primary/30'
@@ -314,7 +314,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             {modeBadges.map(badge => (
               <span
                 key={badge!.id}
-                className="px-3 py-1.5 bg-[var(--vb-surface-alt)]-high rounded-xl text-sm font-bold text-[var(--vb-text-secondary)] flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-[var(--vb-surface-alt)]-high rounded-lg text-sm font-bold text-[var(--vb-text-secondary)] flex items-center gap-1.5"
               >
                 <span>{badge!.emoji}</span>
                 <span>{badge!.name}</span>
@@ -331,7 +331,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           edit-mode (templates are created from new tasks). */}
       {showSaveToggle && (
         <label
-          className={`flex items-start gap-3 p-3 rounded-2xl border-2 cursor-pointer transition-colors ${
+          className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
             saveAsTemplate
               ? 'border-indigo-300 bg-indigo-50'
               : 'border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-[var(--vb-text-muted)]'
@@ -365,7 +365,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       {isAssignment && onCompetitionChange && (() => {
         const hasDeadline = !!assignmentDeadline && !Number.isNaN(new Date(assignmentDeadline).getTime());
         const toggled = enableCompetition && hasDeadline;
-        const sharedClass = `w-full flex items-start gap-3 p-3 rounded-2xl border-2 transition-colors text-left ${
+        const sharedClass = `w-full flex items-start gap-3 p-3 rounded-xl border-2 transition-colors text-left ${
           toggled
             ? 'border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50'
             : hasDeadline
@@ -442,7 +442,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               wordIds: selectedWords.map((w) => w.id),
             })
           }
-          className="w-full mb-3 py-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold border-2 border-emerald-200 flex items-center justify-center gap-2 transition-all"
+          className="w-full mb-3 py-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold border-2 border-emerald-200 flex items-center justify-center gap-2 transition-all"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         >
           <Share2 size={18} />
@@ -453,7 +453,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       <div className="flex gap-3 fixed sm:static bottom-0 inset-x-0 sm:inset-auto z-30 px-4 sm:px-0 bg-gradient-to-t sm:bg-none from-white via-white/95 to-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 sm:pt-0 sm:pb-0">
         <button
           onClick={onBack}
-          className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-primary)] rounded-2xl font-bold hover:opacity-80 border-2 border-[var(--vb-border)] transition-all"
+          className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-primary)] rounded-xl font-bold hover:opacity-80 border-2 border-[var(--vb-border)] transition-all"
         >
           ← {t.back}
         </button>
@@ -468,7 +468,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             }
             onLaunch();
           }}
-          className={`flex-1 py-4 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-4 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 ${
             isAssignment
               ? 'signature-gradient'
               : 'bg-gradient-to-r from-green-500 to-emerald-600'
@@ -493,7 +493,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-fuchsia-50 to-violet-50 rounded-2xl p-4 sm:p-6 border-2 border-fuchsia-200"
+          className="bg-gradient-to-br from-fuchsia-50 to-violet-50 rounded-xl p-4 sm:p-6 border-2 border-fuchsia-200"
         >
           <h3 className="text-sm font-bold text-fuchsia-900 mb-3 flex items-center gap-2">
             <span>📖</span> Reading Text ({aiGeneratedLesson.wordCount} words)

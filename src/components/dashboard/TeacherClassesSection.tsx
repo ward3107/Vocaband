@@ -110,7 +110,7 @@ export default function TeacherClassesSection({
             backgroundColor: 'var(--vb-accent)',
             color: 'var(--vb-accent-text)',
           }}
-          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all"
+          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg font-semibold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all"
           aria-label="Create new class"
         >
           <Plus size={16} />
@@ -121,14 +121,14 @@ export default function TeacherClassesSection({
 
       {classes.length === 0 ? (
         <div
-          className="border border-dashed rounded-2xl py-16 px-6 text-center"
+          className="border border-dashed rounded-xl py-16 px-6 text-center"
           style={{
             backgroundColor: 'var(--vb-surface)',
             borderColor: 'var(--vb-border)',
           }}
         >
           <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4"
             style={{ backgroundColor: 'var(--vb-surface-alt)' }}
           >
             <Users size={24} style={{ color: 'var(--vb-text-muted)' }} />
@@ -149,7 +149,7 @@ export default function TeacherClassesSection({
               backgroundColor: 'var(--vb-accent)',
               color: 'var(--vb-accent-text)',
             }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all"
           >
             <Plus size={16} />
             {t.emptyCta}

@@ -72,7 +72,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
         {/* Sections */}
         <div className="space-y-8">
           {/* Section 1: Acceptance */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">1</span>
               {language === 'en' ? 'Acceptance of Terms' : language === 'he' ? 'קבלת התנאים' : 'قبول الشروط'}
@@ -92,7 +92,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 2: Description */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">2</span>
               {language === 'en' ? 'Description of Service' : language === 'he' ? 'תיאור השירות' : 'وصف الخدمة'}
@@ -113,7 +113,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 3: User Accounts */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">3</span>
               <Users size={20} className="text-primary" />
@@ -121,7 +121,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
             </h2>
 
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-slate-50 p-5 rounded-xl ring-1 ring-slate-200/60">
+              <div className="bg-slate-50 p-5 rounded-lg ring-1 ring-slate-200/60">
                 <h3 className={`font-bold text-slate-900 mb-3 ${isRTL ? 'text-right' : ''}`}>
                   {language === 'en' ? 'Teacher Accounts' : language === 'he' ? 'חשבונות מורים' : 'حسابات المعلمين'}
                 </h3>
@@ -131,7 +131,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
                   ))}
                 </ul>
               </div>
-              <div className="bg-slate-50 p-5 rounded-xl ring-1 ring-slate-200/60">
+              <div className="bg-slate-50 p-5 rounded-lg ring-1 ring-slate-200/60">
                 <h3 className={`font-bold text-slate-900 mb-3 ${isRTL ? 'text-right' : ''}`}>
                   {language === 'en' ? 'Student Accounts' : language === 'he' ? 'חשבונות תלמידים' : 'حسابات الطلاب'}
                 </h3>
@@ -149,7 +149,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 4: Code of Conduct */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">4</span>
               <Shield size={20} className="text-primary" />
@@ -183,7 +183,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 5: Teacher Responsibilities */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">5</span>
               {language === 'en' ? 'Teacher Responsibilities' : language === 'he' ? 'אחריות מורים' : 'مسؤوليات المعلم'}
@@ -199,7 +199,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 6: Intellectual Property */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">6</span>
               {language === 'en' ? 'Intellectual Property' : language === 'he' ? 'קניין רוחני' : 'الملكية الفكرية'}
@@ -219,7 +219,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 7: Data Protection */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">7</span>
               {language === 'en' ? 'Data Protection' : language === 'he' ? 'הגנת נתונים' : 'حماية البيانات'}
@@ -238,7 +238,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 8: Limitation of Liability */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">8</span>
               <AlertTriangle size={20} className="text-amber-500" />
@@ -252,7 +252,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 9: Governing Law */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3 ${isRTL ? 'justify-end' : ''}`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">9</span>
               <Gavel size={20} className="text-primary" />
@@ -266,7 +266,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
           </section>
 
           {/* Section 10: Contact */}
-          <section className="bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-8 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 text-white shadow-2xl shadow-violet-900/30">
+          <section className="bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-8 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6 text-white shadow-2xl shadow-violet-900/30">
             <div className={isRTL ? 'text-right' : ''}>
               <h3 className="text-xl font-black font-headline mb-2 text-white">{t.footer.questions}</h3>
               <p className="text-white/90">{t.footer.contact}</p>
@@ -274,7 +274,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
             <div className="flex items-center gap-4">
               <a
                 href="mailto:contact@vocaband.com"
-                className="inline-flex items-center gap-2 bg-white text-violet-700 px-6 py-3 rounded-xl font-black hover:scale-105 transition-all shadow-lg"
+                className="inline-flex items-center gap-2 bg-white text-violet-700 px-6 py-3 rounded-lg font-black hover:scale-105 transition-all shadow-lg"
               >
                 <Mail size={18} /> contact@vocaband.com
               </a>

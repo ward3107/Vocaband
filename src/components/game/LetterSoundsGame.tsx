@@ -59,7 +59,7 @@ export default function LetterSoundsGame({
     <div className="max-w-lg mx-auto px-2">
       {/* Translation hero card */}
       <div
-        className={`p-4 sm:p-5 rounded-2xl mb-5 sm:mb-7 text-center ${
+        className={`p-4 sm:p-5 rounded-xl mb-5 sm:mb-7 text-center ${
           themed ? `${themed.cardBg} border-2 ${themed.border}` : "bg-stone-50 border border-stone-200"
         }`}
       >
@@ -103,7 +103,7 @@ export default function LetterSoundsGame({
                       stiffness: 320,
                       damping: 18,
                     }}
-                    className="w-12 h-14 sm:w-16 sm:h-20 rounded-2xl font-black text-2xl sm:text-4xl flex items-center justify-center border-4 flex-shrink-0 shadow-md"
+                    className="w-12 h-14 sm:w-16 sm:h-20 rounded-xl font-black text-2xl sm:text-4xl flex items-center justify-center border-4 flex-shrink-0 shadow-md"
                     style={{
                       color: revealed ? color : color + "40",
                       borderColor: revealed ? color : color + "40",
@@ -135,7 +135,7 @@ export default function LetterSoundsGame({
             onChange={(e) => setSpellingInput(e.target.value)}
             disabled={feedback === "show-answer" || feedback === "correct"}
             placeholder={t.typeTheWord}
-            className={`w-full p-3 sm:p-4 text-xl sm:text-2xl font-black text-center border-2 rounded-2xl mb-3 transition-all ${
+            className={`w-full p-3 sm:p-4 text-xl sm:text-2xl font-black text-center border-2 rounded-xl mb-3 transition-all ${
               feedback === "correct" ? "border-emerald-600 bg-emerald-50 text-emerald-700" :
               feedback === "wrong" ? "border-rose-500 bg-rose-50 text-rose-700" :
               feedback === "show-answer" ? "border-amber-500 bg-amber-50 text-amber-700 cursor-not-allowed" :
@@ -148,7 +148,7 @@ export default function LetterSoundsGame({
           <button
             type="submit"
             disabled={!!feedback}
-            className={`w-full py-4 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`w-full py-4 sm:py-5 rounded-xl font-black text-lg sm:text-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
               themed
                 ? "bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white hover:shadow-xl"
                 : "bg-stone-900 text-white hover:bg-black"

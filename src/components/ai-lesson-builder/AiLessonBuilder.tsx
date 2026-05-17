@@ -242,7 +242,7 @@ export default function AiLessonBuilder({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-[var(--vb-surface)] rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 flex items-center justify-between shrink-0">
@@ -268,7 +268,7 @@ export default function AiLessonBuilder({
             /* Config Form */
             <div className="space-y-6">
               {/* Reading Text Section */}
-              <div className="border-2 border-[var(--vb-border)] rounded-xl p-4">
+              <div className="border-2 border-[var(--vb-border)] rounded-lg p-4">
                 <button
                   type="button"
                   onClick={() => setExpandedSection(expandedSection === 'text' ? null : 'text')}
@@ -298,7 +298,7 @@ export default function AiLessonBuilder({
                         value={textDifficulty}
                         onChange={(e) => setTextDifficulty(e.target.value)}
                         placeholder={t.studentLevelPlaceholder}
-                        className="w-full px-4 py-3 border-2 border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-[var(--vb-text-primary)]"
+                        className="w-full px-4 py-3 border-2 border-[var(--vb-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-[var(--vb-text-primary)]"
                       />
                       <p className="mt-1 text-xs text-[var(--vb-text-muted)]">
                         {t.studentLevelHelper}
@@ -314,7 +314,7 @@ export default function AiLessonBuilder({
                         value={textType}
                         onChange={(e) => setTextType(e.target.value)}
                         placeholder={t.textTypePlaceholder}
-                        className="w-full px-4 py-3 border-2 border-[var(--vb-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-[var(--vb-text-primary)] resize-none h-24"
+                        className="w-full px-4 py-3 border-2 border-[var(--vb-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 text-[var(--vb-text-primary)] resize-none h-24"
                       />
                       <p className="mt-1 text-xs text-[var(--vb-text-muted)]">
                         {t.textTypeHelper}
@@ -346,7 +346,7 @@ export default function AiLessonBuilder({
               </div>
 
               {/* Questions Section */}
-              <div className="border-2 border-[var(--vb-border)] rounded-xl p-4">
+              <div className="border-2 border-[var(--vb-border)] rounded-lg p-4">
                 <button
                   type="button"
                   onClick={() => setExpandedSection(expandedSection === 'questions' ? null : 'questions')}
@@ -445,7 +445,7 @@ export default function AiLessonBuilder({
                 onClick={handleGenerate}
                 disabled={isGenerating || selectedWords.length === 0 || totalQuestions === 0}
                 type="button"
-                className="w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-shadow"
+                className="w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-shadow"
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
               >
                 {isGenerating ? (
@@ -487,7 +487,7 @@ export default function AiLessonBuilder({
               </div>
 
               {/* Reading Text */}
-              <div className="border-2 border-[var(--vb-border)] rounded-xl p-4">
+              <div className="border-2 border-[var(--vb-border)] rounded-lg p-4">
                 <button
                   type="button"
                   onClick={() => setShowPreview(!showPreview)}
@@ -512,7 +512,7 @@ export default function AiLessonBuilder({
               </div>
 
               {/* Questions */}
-              <div className="border-2 border-[var(--vb-border)] rounded-xl p-4">
+              <div className="border-2 border-[var(--vb-border)] rounded-lg p-4">
                 <h3 className="font-bold text-[var(--vb-text-primary)] flex items-center gap-2 mb-3">
                   <HelpCircle className="w-5 h-5 text-violet-600" />
                   {t.questionsCountHeading(generatedLesson.questions.length)}
@@ -560,7 +560,7 @@ export default function AiLessonBuilder({
                 <button
                   onClick={() => window.print()}
                   type="button"
-                  className="flex-1 py-3 bg-violet-600 text-white rounded-xl font-bold hover:bg-violet-700 transition-all flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-violet-600 text-white rounded-lg font-bold hover:bg-violet-700 transition-all flex items-center justify-center gap-2"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <Printer className="w-5 h-5" />
@@ -573,7 +573,7 @@ export default function AiLessonBuilder({
                       handleClose();
                     }}
                     type="button"
-                    className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                   >
                     <Check className="w-5 h-5" />
@@ -583,7 +583,7 @@ export default function AiLessonBuilder({
                 <button
                   onClick={handleClose}
                   type="button"
-                  className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-border)] transition-all"
+                  className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-lg font-bold hover:bg-[var(--vb-border)] transition-all"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   {t.done}

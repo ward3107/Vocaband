@@ -131,7 +131,7 @@ export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBanne
       role="alert"
       aria-live="polite"
     >
-        <div className="bg-white rounded-2xl shadow-2xl border-2 border-emerald-300 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-2xl border-2 border-emerald-300 overflow-hidden">
           <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 px-4 py-2 text-white text-xs font-black uppercase tracking-widest">
             {tQp.welcome}
           </div>
@@ -149,7 +149,7 @@ export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBanne
               <button
                 type="button"
                 onClick={handleResume}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-black text-xs shadow-md active:scale-95 transition-transform"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-black text-xs shadow-md active:scale-95 transition-transform"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 <Play size={12} />
