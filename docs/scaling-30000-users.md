@@ -59,19 +59,58 @@ Code-only changes I can ship without operator action.
 
 ---
 
-## Cost estimate (post-rollout, monthly)
+## Cost model (post-rollout, monthly)
 
-| Service | Current | After |
+> Assumptions: **1,000 teachers + 30,000 students**, ~50% of teachers using AI features daily, 22 school days/month, audio served from R2.
+
+### Full breakdown by tool
+
+| Tool | What it does | Plan / spec | Monthly |
+|---|---|---|---|
+| **Fly.io** | Express + socket.io VMs | 8 × `performance-1x` (1 CPU, 2GB), auto-stop nights/weekends | **$140–180** |
+| **Supabase Pro** | Postgres + Auth + Storage + Realtime | Pro $25 + Medium compute add-on $60 | **$85** |
+| **Upstash Redis** | socket.io multi-VM adapter | Pay-as-you-go (~5M commands/day) | **$15–40** |
+| **Cloudflare Workers** | Edge proxy + SPA hosting | Paid plan $5 + ~35M extra req/mo | **$15** |
+| **Cloudflare R2** | Audio + image CDN (free egress!) | ~6 GB storage + 45M reads/mo | **$15** |
+| **Cloudflare Pages** | Static SPA hosting | Free tier | **$0** |
+| **Sentry** | Error monitoring across 8 VMs | Team plan, 50k events/mo with sampling | **$26** |
+| **UptimeRobot** | `/api/health` uptime ping | Free (5-min) or Pro (1-min) | **$0–7** |
+| **Gemini (Google AI)** | OCR + sentence gen + translation + TTS | ~220k Flash calls + 80k OCR + 30k TTS / mo | **$50–100** |
+| **Anthropic Claude** | Bagrut test generation | Lower volume, ~10k generations/mo | **$20–50** |
+| **Resend** | Parent digests + OTP emails | Pro $20 (OTP only) → Scale $90 (weekly digests) | **$20–90** |
+| **Domain** | vocaband.com renewal | Amortized | **$1** |
+| **GitHub** | Code + Actions | Free tier | **$0** |
+| **Total** | | | **~$390–610/mo** |
+
+**Most likely landing: ~$500/mo. Per-student: ~$0.017 (1.7¢).**
+
+### Where it could be cheaper (with tradeoffs)
+
+| Cut | Saves | Cost of cutting |
 |---|---|---|
-| Fly.io (compute) | ~$10 (3× shared-cpu-1x) | ~$160 (8× performance-1x) |
-| Supabase | $25 (Pro) | $25 + ~$60 compute add-on = $85 |
-| Upstash Redis | $0 (free) | $10 |
-| Cloudflare R2 + CDN | ~$0 | ~$15 (storage + 1.5M egress requests/day) |
-| Sentry | $0 | $26 |
-| Cloudflare Workers + Pages | bundled | bundled |
-| **Total** | **~$35/mo** | **~$295/mo** |
+| 6 VMs instead of 8 | -$40 | Less spike headroom during synchronized lesson slots |
+| Sentry free tier | -$26 | Single-user, no team alerts |
+| UptimeRobot free | -$7 | 5-min detection vs 1-min |
+| Self-host Redis on a Fly VM | -$20 | You now own ops for it |
+| Aggressive AI per-teacher limits | -$50 | More support load from teachers hitting caps |
 
-At 30k students, that's **$0.01/student/month** in infra cost. Healthy.
+**Floor with cuts: ~$320/mo. Recommended: ~$500/mo. Buffered budget: $600/mo.**
+
+### Cost gotchas
+
+1. **AI APIs are the wildcard.** A teacher looping OCR on a textbook batch could spike to $300+/day with no cap. **Set hard monthly spending limits in Google Cloud + Anthropic dashboards** — this is tracked in operator-tasks.
+2. **Supabase egress doubles the bill if audio stays on Storage.** Add +$100–200/mo if W3.1 (R2 migration) slips. R2 has *free* egress, which is why the migration pays for itself in ~2 months.
+3. **Resend cost depends entirely on parent-digest volume.** OTP-only = $20/mo. Weekly digest to every parent = $90+/mo. Decide before launching the parent-digest feature.
+4. **Upstash pay-as-you-go is unpredictable.** Once real usage is observed, switching to their **Fixed $60/mo unlimited plan** removes the variance.
+
+### Comparison to today
+
+| | Now (~3k users) | At 30k users | Delta |
+|---|---|---|---|
+| Total infra spend | ~$40 | ~$500 | +$460/mo |
+| Per-user cost | ~$0.013 | ~$0.017 | flat |
+
+At 30k students, that's **$6,000/year in infra** — well within any reasonable per-student license fee or Ministry contract.
 
 ---
 
