@@ -10,6 +10,7 @@
 // howler's load time, so the user never perceives the deferred fetch.
 import type { Howl as HowlType } from 'howler'
 import { getWordAudioUrl } from '../utils/audioUrl'
+import { isSlowConnection } from './useEffectiveConnection'
 
 let HowlCtor: typeof HowlType | null = null
 let howlLoadPromise: Promise<typeof HowlType> | null = null
@@ -345,6 +346,13 @@ export const useAudio = (options: UseAudioOptions = {}) => {
       return
     }
 
+    // Skip preloading on 2G / data-saver — the user will get TTS via the
+    // speak() short-circuit, so eagerly fetching an MP3 that won't be
+    // played is pure waste of their data plan.
+    if (isSlowConnection()) {
+      return
+    }
+
     if (!wordCache[key]) {
       // Evict oldest entry if cache is full
       if (wordCacheOrder.length >= MAX_WORD_CACHE_SIZE) {
@@ -429,6 +437,18 @@ export const useAudio = (options: UseAudioOptions = {}) => {
       if (fallbackText) {
         speakWithTTS(fallbackText, lang)
       }
+      return
+    }
+
+    // 2G / data-saver short-circuit: an MP3 fetch on a 35 kbps pipe leaves
+    // the student staring at a silent button for 5+ seconds. speechSynthesis
+    // produces a voice locally with zero network cost. Already-cached MP3s
+    // would be free to play, but we can't introspect the SW cache
+    // synchronously — the cost of the wrong call (a few cached MP3s served
+    // as TTS) is acceptable compared to the wrong call in the other
+    // direction (a 5-second hang per word on a real 2G connection).
+    if (isSlowConnection() && fallbackText) {
+      speakWithTTS(fallbackText, lang)
       return
     }
 
