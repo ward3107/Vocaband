@@ -396,6 +396,38 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
           } else {
             // Broken users row — most commonly an OAuth student whose
             // previous sign-in didn't complete class-code entry.
+            //
+            // The bootstrap RPC handles the entire mint-from-profile +
+            // dashboard-load flow server-side in one round trip (the
+            // legacy block below does 4 sequential queries worst case).
+            // Falls back to the legacy path on RPC failure so a server
+            // regression can't lock students out.
+            const boot = await bootstrapStudentSession().catch(() => null);
+            if (boot?.status === 'ok' && boot.user) {
+              setUser(boot.user);
+              setStudentAssignments(boot.assignments);
+              setStudentProgress(boot.progress);
+              if (!shouldPreserveView("student", currentViewRef.current)) {
+                setView("student-dashboard");
+              }
+              return;
+            }
+            if (boot?.status === 'pending-approval' && boot.pendingProfile) {
+              showPendingApproval({
+                name:      boot.pendingProfile.displayName,
+                classCode: boot.pendingProfile.classCode,
+                profileId: boot.pendingProfile.id,
+              });
+              return;
+            }
+            if (boot?.status === 'needs-class-code') {
+              setOauthEmail(supabaseUser.email || "");
+              setOauthAuthUid(supabaseUser.id);
+              setShowOAuthClassCode(true);
+              setView("student-account-login");
+              return;
+            }
+
             const { data: studentProfile } = await supabase
               .from('student_profiles')
               .select('id, email, status, display_name, class_code, xp, avatar')
@@ -496,6 +528,32 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
           const oauthProvider = supabaseUser.app_metadata?.provider;
           const isOAuthSignIn = oauthProvider === 'google' || oauthProvider === 'azure';
           if (isOAuthSignIn) {
+            // Try the bootstrap RPC first — Step 2 server-side covers
+            // the student_profile-by-email lookup + mint + dashboard load.
+            // On status:'needs-class-code' we must STILL fall through to
+            // the legacy block below because the teacher-allowlist check
+            // (is_teacher_allowed) disambiguates teacher vs student
+            // signups, and the RPC has no notion of teacher intent.
+            const boot = await bootstrapStudentSession().catch(() => null);
+            if (boot?.status === 'ok' && boot.user) {
+              setUser(boot.user);
+              setStudentAssignments(boot.assignments);
+              setStudentProgress(boot.progress);
+              if (!shouldPreserveView("student", currentViewRef.current)) {
+                setView("student-dashboard");
+              }
+              return;
+            }
+            if (boot?.status === 'pending-approval' && boot.pendingProfile) {
+              showPendingApproval({
+                name:      boot.pendingProfile.displayName,
+                classCode: boot.pendingProfile.classCode,
+                profileId: boot.pendingProfile.id,
+              });
+              setLoading(false);
+              return;
+            }
+
             const { data: studentProfile } = await supabase
               .from('student_profiles')
               .select('id, email, status, display_name, class_code, xp, avatar')
