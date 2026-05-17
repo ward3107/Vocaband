@@ -39,7 +39,11 @@ export default function PowerUpToolbar({
             const newPowerUps = { ...powerUps, fifty_fifty: (powerUps['fifty_fifty'] ?? 1) - 1 };
             setHiddenOptions(toHide);
             setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-            setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
+            // Server-side atomic decrement — the F2 trigger blocks direct
+            // users.power_ups updates from authenticated callers, so this
+            // MUST go through the consume_power_up RPC. Optimistic UI
+            // update above stays for snappiness.
+            setTimeout(() => { supabase.rpc('consume_power_up', { p_kind: 'fifty_fifty' }); }, 0);
           }}
           className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-200 transition-all flex items-center gap-1 border border-amber-200"
         >
@@ -53,7 +57,7 @@ export default function PowerUpToolbar({
             setCurrentIndex(prev => Math.min(prev + 1, gameWordsLength - 1));
             setHiddenOptions([]);
             setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-            setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
+            setTimeout(() => { supabase.rpc('consume_power_up', { p_kind: 'skip' }); }, 0);
           }}
           className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-200 transition-all flex items-center gap-1 border border-blue-200"
         >
@@ -66,7 +70,7 @@ export default function PowerUpToolbar({
             const newPowerUps = { ...powerUps, reveal_letter: (powerUps['reveal_letter'] ?? 1) - 1 };
             if (currentWord) setSpellingInput(currentWord.english[0]);
             setUser(prev => prev ? { ...prev, powerUps: newPowerUps } : prev);
-            setTimeout(() => { supabase.from('users').update({ power_ups: newPowerUps }).eq('uid', user.uid); }, 0);
+            setTimeout(() => { supabase.rpc('consume_power_up', { p_kind: 'reveal_letter' }); }, 0);
           }}
           className="px-3 py-1.5 bg-green-100 text-green-700 rounded-xl text-xs font-bold hover:bg-green-200 transition-all flex items-center gap-1 border border-green-200"
         >
