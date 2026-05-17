@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
+import React, { useState, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import type { View } from "./core/views";
-import { type VocaId, ACTIVE_VOCA_KEY, getEntitledVocas } from "./core/subject";
+import { getEntitledVocas } from "./core/subject";
 import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import type { Word } from "./data/vocabulary";
 import { useVocabularyLazy } from "./hooks/useVocabularyLazy";
@@ -105,6 +105,7 @@ import { useCookieConsent } from "./hooks/useCookieConsent";
 import { useAwardBadge } from "./hooks/useAwardBadge";
 import { useToasts } from "./hooks/useToasts";
 import { useOAuthState } from "./hooks/useOAuthState";
+import { useActiveVocaState } from "./hooks/useActiveVocaState";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -149,21 +150,7 @@ export default function App() {
   const fromShareLinkRef = useRef(new URLSearchParams(window.location.search).get('share') === '1');
 
   const [view, setView] = useState<View>(resolveInitialView);
-  // Which Voca the teacher is currently working in.  null until they
-  // pick (or are auto-picked into) one.  Persisted across same-tab
-  // refreshes via sessionStorage so we don't pop the picker again.
-  const [activeVoca, setActiveVoca] = useState<VocaId | null>(() => {
-    try {
-      const raw = sessionStorage.getItem(ACTIVE_VOCA_KEY);
-      return raw === "english" || raw === "hebrew" ? raw : null;
-    } catch { return null; }
-  });
-  useEffect(() => {
-    try {
-      if (activeVoca) sessionStorage.setItem(ACTIVE_VOCA_KEY, activeVoca);
-      else sessionStorage.removeItem(ACTIVE_VOCA_KEY);
-    } catch { /* sessionStorage may be blocked; non-fatal */ }
-  }, [activeVoca]);
+  const [activeVoca, setActiveVoca] = useActiveVocaState();
 
   // First-time-guide persistence (teacher-only) wired through a hook
   // so the optimistic-update + rollback dance lives next to the store.
