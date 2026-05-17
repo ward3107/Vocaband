@@ -91,16 +91,6 @@ import { useRetention } from "./hooks/useRetention";
 import { useSavedTasks, type SavedTask } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
-import QuickPlayKickedScreen from "./components/QuickPlayKickedScreen";
-// QuickPlaySessionEndScreen is the post-Quick-Play podium shown to
-// students when their session ends — it uses lucide-react icons
-// (Trophy/Medal/Award) for the 1st/2nd/3rd-place medals, which used
-// to drag the ~17 kB gz lucide chunk into the App.tsx eager
-// preload chain. Lazy-loading defers that cost to the moment the
-// session actually ends, and the screen always renders inside a
-// full-page conditional so a null Suspense fallback during the
-// chunk fetch is invisible.
-const QuickPlaySessionEndScreen = lazy(() => import("./components/QuickPlaySessionEndScreen"));
 import PendingApprovalScreen from "./components/PendingApprovalScreen";
 import { ConsentModal, ExitConfirmModal, ClassSwitchModal } from "./components/AppModals";
 import { ClassNotFoundBanner } from "./components/ClassNotFoundBanner";
@@ -172,6 +162,7 @@ import { useAuthRestore } from "./hooks/useAuthRestore";
 import { useDeepLinkConsumers } from "./hooks/useDeepLinkConsumers";
 import { useAppMiscEffects } from "./hooks/useAppMiscEffects";
 import { renderHebrewRoute } from "./views/HebrewRoutes";
+import { renderQuickPlayExitScreens } from "./views/QuickPlayExitScreens";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -1535,56 +1526,16 @@ export default function App() {
   }
 
   // Shared "exit to public landing" path used by both the Kicked and
-  // SessionEnded screens — cleanup save queue, wipe QP session state,
-  // sign out the guest identity, route home.  Callers still own the
-  // screen-specific flag reset (setQuickPlayKicked / -Ended).
-  const exitQuickPlayToLanding = () => {
-    cleanupSessionData();
-    setQuickPlayActiveSession(null);
-    setActiveAssignment(null);
-    setUser(null);
-    setView("public-landing");
-    try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
-  };
-
-  // Quick Play: Kicked by teacher
-  if (quickPlayKicked) {
-    return (
-      <QuickPlayKickedScreen
-        onGoHome={() => { setQuickPlayKicked(false); exitQuickPlayToLanding(); }}
-        // Only offer rejoin when we still have the session context.  The
-        // rejoin path clears the guest identity (localStorage + anon auth
-        // sign-out) so the student picks up a fresh uid, then drops them
-        // back on the Quick Play student view where the same session is
-        // still active — name-change happens there via the join form.
-        onRejoin={quickPlayActiveSession ? () => {
-          cleanupSessionData();
-          try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
-          supabase.auth.signOut().catch(() => { /* best-effort */ });
-          setQuickPlayKicked(false);
-          setActiveAssignment(null);
-          setUser(null);
-          setQuickPlayStudentName("");
-          setView("quick-play-student");
-        } : undefined}
-      />
-    );
-  }
-
-  // Quick Play: Session ended by teacher
-  if (quickPlaySessionEnded) {
-    return (
-      <Suspense fallback={null}>
-        <QuickPlaySessionEndScreen
-          studentName={user?.displayName || quickPlayStudentName || "Player"}
-          finalScore={score || 0}
-          sessionId={quickPlayActiveSession?.id}
-          studentUid={user?.uid}
-          onGoHome={() => { setQuickPlaySessionEnded(false); exitQuickPlayToLanding(); }}
-        />
-      </Suspense>
-    );
-  }
+  // Quick Play exit screens (Kicked + SessionEnded) + shared
+  // exit-to-landing cleanup — see views/QuickPlayExitScreens.
+  const qpExit = renderQuickPlayExitScreens({
+    quickPlayKicked, quickPlaySessionEnded, quickPlayActiveSession,
+    user, quickPlayStudentName, score,
+    cleanupSessionData,
+    setQuickPlayKicked, setQuickPlaySessionEnded, setQuickPlayActiveSession,
+    setActiveAssignment, setUser, setQuickPlayStudentName, setView,
+  });
+  if (qpExit) return qpExit;
 
   if (view === "quick-play-student") {
     return (
