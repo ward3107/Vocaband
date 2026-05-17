@@ -16,6 +16,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.vocaband.com/?lang=en"/>
     <xhtml:link rel="alternate" hreflang="he" href="https://www.vocaband.com/?lang=he"/>
     <xhtml:link rel="alternate" hreflang="ar" href="https://www.vocaband.com/?lang=ar"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://www.vocaband.com/?lang=ru"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.vocaband.com/"/>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -25,6 +26,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.vocaband.com/student?lang=en"/>
     <xhtml:link rel="alternate" hreflang="he" href="https://www.vocaband.com/student?lang=he"/>
     <xhtml:link rel="alternate" hreflang="ar" href="https://www.vocaband.com/student?lang=ar"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://www.vocaband.com/student?lang=ru"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.vocaband.com/student"/>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
@@ -34,6 +36,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.vocaband.com/accessibility-statement?lang=en"/>
     <xhtml:link rel="alternate" hreflang="he" href="https://www.vocaband.com/accessibility-statement?lang=he"/>
     <xhtml:link rel="alternate" hreflang="ar" href="https://www.vocaband.com/accessibility-statement?lang=ar"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://www.vocaband.com/accessibility-statement?lang=ru"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.vocaband.com/accessibility-statement"/>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
