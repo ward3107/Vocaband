@@ -99,11 +99,7 @@ const WorksheetAttemptsView = lazy(() => import("./views/WorksheetAttemptsView")
 const ClassroomView = lazy(() => import("./views/ClassroomView"));
 const StudentAccountLoginView = lazy(() => import("./views/StudentAccountLoginView"));
 const QuickPlayTeacherMonitorView = lazy(() => import("./views/QuickPlayTeacherMonitorView"));
-const ClassShowView = lazy(() => import("./views/ClassShowView"));
 const HotSeatView = lazy(() => import("./views/HotSeatView"));
-const HebrewClassShowView = lazy(() => import("./views/HebrewClassShowView"));
-const WorksheetView = lazy(() => import("./views/WorksheetView"));
-const HebrewWorksheetView = lazy(() => import("./views/HebrewWorksheetView"));
 const HebrewComingSoonView = lazy(() => import("./views/HebrewComingSoonView"));
 const VocabagrutShell = lazy(() => import("./features/vocabagrut/VocabagrutShell"));
 const QuickPlayStudentView = lazy(() => import("./views/QuickPlayStudentView"));
@@ -138,6 +134,7 @@ import { useAppOverlays } from "./hooks/useAppOverlays";
 import { TeacherDashboardSection } from "./views/TeacherDashboardSection";
 import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
 import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
+import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
 import {
   startQuickPlayFromDashboard,
   startAssignClassFlow,
@@ -1946,155 +1943,15 @@ export default function App() {
     );
   }
 
-  if (view === "class-show") {
-    // Hebrew classes get a focused 2-mode projector view
-    // (HebrewClassShowView). The English ClassShowView is shaped
-    // around Word + 6 English-specific modes; the subject-aware fold
-    // is a future PR — see task 12 in the parity memory.
-    //
-    // Two paths land here: a teacher-selected class (selectedClass set)
-    // OR the dashboard's "Class Show" tile (selectedClass may be stale).
-    // Use activeVoca as the second signal so a Hebrew-tab teacher can't
-    // fall through to the English picker just because no class is
-    // currently selected.
-    if (selectedClass?.subject === "hebrew" || activeVoca === "hebrew") {
-      return (
-        <LazyWrapper loadingMessage="טוען מצב הקרנה…">
-          <HebrewClassShowView
-            initialLemmaIds={classShowAssignment?.wordIds}
-            className={selectedClass?.name ?? null}
-            onExit={() => {
-              setClassShowAssignment(null);
-              if (activityNavOrigin === 'create-assignment' && selectedClass) {
-                setView('create-assignment');
-              } else {
-                setView('teacher-dashboard');
-              }
-            }}
-          />
-        </LazyWrapper>
-      );
-    }
-
-    // Build the word-source list: optional pre-filled assignment.
-    // The setup panel selects index 0 automatically; if an assignment
-    // is pre-filled, it goes first.
-    const sources: { label: string; description?: string; words: Word[] }[] = [];
-    if (classShowAssignment) {
-      const knownWords = ALL_WORDS.filter(w => classShowAssignment.wordIds.includes(w.id));
-      const customs = classShowAssignment.customWords ?? [];
-      const merged = [...knownWords, ...customs.filter(c => !knownWords.some(k => k.id === c.id))];
-      if (merged.length > 0) {
-        sources.push({
-          label: classShowAssignment.title || "Assignment",
-          description: "From assignment",
-          words: merged,
-        });
-      }
-    }
-    return (
-      <LazyWrapper loadingMessage="Loading class show…">
-        <ClassShowView
-          user={user}
-          initialSources={sources}
-          initialSourceIndex={0}
-          pickerWiring={{
-            allWords: ALL_WORDS,
-            onTranslateWord: translateWord,
-            onTranslateBatch: translateWordsBatch,
-            onOcrUpload: onPickerOcrUpload,
-            topicPacks: TOPIC_PACKS,
-            // savedGroups: pass [] for now — wiring useSavedWordGroups
-            // through App-level state is a future PR.  WordPicker's
-            // SavedGroupsPanel renders an empty state cleanly when [].
-            savedGroups: [],
-            showToast,
-          }}
-          onExit={() => {
-            setClassShowAssignment(null);
-            if (activityNavOrigin === 'create-assignment' && selectedClass) {
-              setView('create-assignment');
-            } else {
-              setView('teacher-dashboard');
-            }
-          }}
-        />
-      </LazyWrapper>
-    );
-  }
-
-  if (view === "worksheet") {
-    // Hebrew classes get a focused single-template worksheet view
-    // (HebrewWorksheetView). The full English builder isn't subject-aware
-    // yet — task 10 in the parity memory tracks the eventual fold so
-    // both subjects share one component.
-    //
-    // Gate on activeVoca too: the dashboard's "Worksheet" tile fires
-    // setView("worksheet") without setting selectedClass, so a Hebrew-tab
-    // teacher with no class currently selected was falling through to
-    // the English builder + ALL_WORDS / TOPIC_PACKS.
-    if (selectedClass?.subject === "hebrew" || activeVoca === "hebrew") {
-      return (
-        <LazyWrapper loadingMessage="טוען בונה דפי עבודה…">
-          <HebrewWorksheetView
-            initialLemmaIds={worksheetAssignment?.wordIds}
-            initialTitle={worksheetAssignment?.title}
-            className={worksheetAssignment?.className ?? selectedClass?.name ?? null}
-            onBack={() => {
-              setWorksheetAssignment(null);
-              if (activityNavOrigin === 'create-assignment' && selectedClass) {
-                setView('create-assignment');
-              } else {
-                setView('teacher-dashboard');
-              }
-            }}
-          />
-        </LazyWrapper>
-      );
-    }
-
-    const sources: { label: string; description?: string; words: Word[] }[] = [];
-    if (worksheetAssignment) {
-      const knownWords = ALL_WORDS.filter(w => worksheetAssignment.wordIds.includes(w.id));
-      const customs = worksheetAssignment.customWords ?? [];
-      const merged = [...knownWords, ...customs.filter(c => !knownWords.some(k => k.id === c.id))];
-      if (merged.length > 0) {
-        sources.push({
-          label: worksheetAssignment.title || "Assignment",
-          description: "From assignment",
-          words: merged,
-        });
-      }
-    }
-    return (
-      <LazyWrapper loadingMessage="Loading worksheet builder…">
-        <WorksheetView
-          user={user}
-          initialSources={sources}
-          initialSourceIndex={0}
-          initialTitle={worksheetAssignment?.title}
-          className={worksheetAssignment?.className ?? null}
-          pickerWiring={{
-            allWords: ALL_WORDS,
-            onTranslateWord: translateWord,
-            onTranslateBatch: translateWordsBatch,
-            onOcrUpload: onPickerOcrUpload,
-            topicPacks: TOPIC_PACKS,
-            savedGroups: [],
-            showToast,
-          }}
-          onExit={() => {
-            setWorksheetAssignment(null);
-            if (activityNavOrigin === 'create-assignment' && selectedClass) {
-              setView('create-assignment');
-            } else {
-              setView('teacher-dashboard');
-            }
-          }}
-        />
-      </LazyWrapper>
-    );
-  }
+  const classShowOrWorksheet = renderClassShowOrWorksheet({
+    view, user, selectedClass, activeVoca, activityNavOrigin,
+    classShowAssignment, worksheetAssignment,
+    setClassShowAssignment, setWorksheetAssignment, setView,
+    allWords: ALL_WORDS, topicPacks: TOPIC_PACKS,
+    translateWord, translateWordsBatch,
+    onPickerOcrUpload, showToast,
+  });
+  if (classShowOrWorksheet) return classShowOrWorksheet;
 
   if (view === "vocabagrut" && user) {
     // Vocabagrut = Israeli English-Bagrut mock exam. There is no Hebrew
