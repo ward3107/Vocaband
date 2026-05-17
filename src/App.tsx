@@ -224,6 +224,7 @@ import { generateAiLesson, type AiLessonParams } from "./utils/aiLesson";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { stripUrlParam } from "./utils/url";
 import { resolveInitialView } from "./utils/resolveInitialView";
+import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/teacherOnboarding";
 import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
@@ -353,18 +354,7 @@ export default function App() {
     handleCookieCustomize,
   } = useCookieConsent();
 
-  const handlePublicNavigate = (page: "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status") => {
-    const viewMap = {
-      home: "public-landing",
-      terms: "public-terms",
-      privacy: "public-privacy",
-      accessibility: "accessibility-statement",
-      security: "public-security",
-      resources: "public-free-resources",
-      status: "public-status",
-    } as const;
-    setView(viewMap[page]);
-  };
+  const handlePublicNavigate = (page: PublicPage) => setView(PUBLIC_PAGE_VIEW[page]);
   const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
 
