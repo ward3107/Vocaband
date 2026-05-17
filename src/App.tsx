@@ -104,6 +104,7 @@ import { useOcrUpload } from "./hooks/useOcrUpload";
 import { useCookieConsent } from "./hooks/useCookieConsent";
 import { useAwardBadge } from "./hooks/useAwardBadge";
 import { useToasts } from "./hooks/useToasts";
+import { useOAuthState } from "./hooks/useOAuthState";
 import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
@@ -272,30 +273,16 @@ export default function App() {
   const [consentChecked, setConsentChecked] = useState(false);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
-  // --- OAUTH STATE ---
-  const [isOAuthCallback, setIsOAuthCallback] = useState(false);
-  const [oauthEmail, setOauthEmail] = useState<string | null>(null);
-  const [oauthAuthUid, setOauthAuthUid] = useState<string | null>(null);
-  const [showOAuthClassCode, setShowOAuthClassCode] = useState(false);
-  // Sticky banner: when a student typed a class code that doesn't exist,
-  // surface a persistent banner on the dashboard so they can't miss it
-  // (toasts get dismissed/ignored). Funnel point for both the OAuth
-  // path and the session-restore path.
-  const [classNotFoundIntent, setClassNotFoundIntent] = useState<string | null>(null);
-
-  // --- CLASS SWITCH STATE ---
-  // Set when an already-approved student logs in with a class code that
-  // differs from their current class_code. Shows a confirmation modal;
-  // on confirm, student_profiles.class_code + users.class_code are updated
-  // and the student lands on the new class's dashboard. See "Approach 1,
-  // skip approval on switch" in the design discussion.
-  const [pendingClassSwitch, setPendingClassSwitch] = useState<{
-    fromCode: string;
-    fromClassName: string | null;
-    toCode: string;
-    toClassName: string | null;
-    supabaseUser: { id: string; email?: string | null };
-  } | null>(null);
+  // OAuth callback state + class-switch confirmation state. See
+  // useOAuthState for the (classNotFoundIntent / pendingClassSwitch) docs.
+  const {
+    isOAuthCallback, setIsOAuthCallback,
+    oauthEmail, setOauthEmail,
+    oauthAuthUid, setOauthAuthUid,
+    showOAuthClassCode, setShowOAuthClassCode,
+    classNotFoundIntent, setClassNotFoundIntent,
+    pendingClassSwitch, setPendingClassSwitch,
+  } = useOAuthState();
 
   // AVATAR_CATEGORIES + selectedAvatarCategory moved into StudentAccountLoginView
   // (see src/views/StudentAccountLoginView.tsx; constants live in src/constants/avatars.ts)
