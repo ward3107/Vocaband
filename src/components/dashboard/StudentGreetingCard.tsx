@@ -155,7 +155,7 @@ export default function StudentGreetingCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
-      className={`relative overflow-hidden rounded-[28px] sm:rounded-[32px] mb-6 bg-gradient-to-br ${titleGradient} p-5 sm:p-7 shadow-xl shadow-violet-500/20`}
+      className={`relative overflow-hidden rounded-2xl sm:rounded-2xl mb-6 bg-gradient-to-br ${titleGradient} p-5 sm:p-7 shadow-xl shadow-violet-500/20`}
     >
       {/* Soft glow blobs in the background — pure decoration */}
       <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 bg-pink-400/30 rounded-full blur-3xl" />
@@ -196,8 +196,8 @@ export default function StudentGreetingCard({
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           className="relative shrink-0"
         >
-          <div className="absolute inset-0 rounded-[28px] bg-white/40 blur-xl animate-pulse" />
-          <div className={`relative w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-[28px] flex items-center justify-center text-5xl sm:text-7xl shadow-2xl ${frameRingClass}`}>
+          <div className="absolute inset-0 rounded-2xl bg-white/40 blur-xl animate-pulse" />
+          <div className={`relative w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-2xl flex items-center justify-center text-5xl sm:text-7xl shadow-2xl ${frameRingClass}`}>
             {user.avatar || '🦊'}
           </div>
           {streak > 0 && (

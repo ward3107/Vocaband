@@ -259,7 +259,7 @@ export default function GameFinishedView({
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 240, damping: 22, delay: 0.3 }}
-        className={`${t.card} rounded-[28px] shadow-2xl border ${isDark ? 'border-gray-700' : 'border-stone-200'} p-5 sm:p-6 w-full max-w-md`}
+        className={`${t.card} rounded-2xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-stone-200'} p-5 sm:p-6 w-full max-w-md`}
       >
         <p className={`text-[11px] font-black uppercase tracking-widest text-center mb-3 ${isDark ? 'text-gray-400' : 'text-stone-400'}`}>
           {tt.whatsNext}

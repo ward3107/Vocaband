@@ -107,7 +107,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             style={{ backgroundColor: 'var(--vb-surface)' }}
-            className="rounded-[32px] p-6 sm:p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="rounded-2xl p-6 sm:p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="mb-5">
               <h2 className="text-2xl font-black" style={{ color: 'var(--vb-text-primary)' }}>

@@ -641,7 +641,7 @@ export function IdiomProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
         initial={{ rotateY: -20, opacity: 0 }}
         animate={{ rotateY: 0, opacity: 1 }}
         transition={{ duration: 0.35 }}
-        className="relative w-full max-w-4xl aspect-[5/3] rounded-[40px] bg-gradient-to-br from-sky-500 to-cyan-600 shadow-2xl flex items-center justify-center text-white px-8"
+        className="relative w-full max-w-4xl aspect-[5/3] rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-600 shadow-2xl flex items-center justify-center text-white px-8"
       >
         {!revealed ? (
           <div className="text-center">

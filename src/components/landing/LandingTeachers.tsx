@@ -77,7 +77,7 @@ const LandingTeachers: React.FC = () => {
           whileHover={{ y: -12, scale: 1.02 }}
           className="relative group md:col-span-2"
         >
-          <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(14,165,233,0.3)] hover:shadow-[0_30px_80px_rgba(14,165,233,0.4)] transition-all duration-300 overflow-hidden">
+          <div className="h-full p-6 md:p-8 rounded-2xl bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(14,165,233,0.3)] hover:shadow-[0_30px_80px_rgba(14,165,233,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10 flex flex-col md:flex-row items-center gap-5 md:gap-8">
               <div className="w-20 h-20 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
@@ -105,7 +105,7 @@ const LandingTeachers: React.FC = () => {
           whileHover={{ y: -12, scale: 1.03 }}
           className="relative group"
         >
-          <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-emerald-500/35 via-teal-500/35 to-cyan-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
+          <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-emerald-500/35 via-teal-500/35 to-cyan-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
               <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
@@ -150,7 +150,7 @@ const LandingTeachers: React.FC = () => {
           whileHover={{ y: -12, scale: 1.03 }}
           className="relative group"
         >
-          <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
+          <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
               <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
@@ -189,7 +189,7 @@ const LandingTeachers: React.FC = () => {
           whileHover={{ y: -12, scale: 1.03 }}
           className="relative group"
         >
-          <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
+          <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
               <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
@@ -226,7 +226,7 @@ const LandingTeachers: React.FC = () => {
           whileHover={{ y: -12, scale: 1.03 }}
           className="relative group"
         >
-          <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(244,114,182,0.3)] hover:shadow-[0_30px_80px_rgba(244,114,182,0.4)] transition-all duration-300 overflow-hidden">
+          <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(244,114,182,0.3)] hover:shadow-[0_30px_80px_rgba(244,114,182,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
               <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
@@ -281,7 +281,7 @@ const LandingTeachers: React.FC = () => {
           whileHover={{ y: -12, scale: 1.03 }}
           className="relative group"
         >
-          <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-purple-500 via-violet-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
+          <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-purple-500 via-violet-500 to-indigo-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
               <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
@@ -307,7 +307,7 @@ const LandingTeachers: React.FC = () => {
           whileHover={{ y: -12, scale: 1.03 }}
           className="relative group"
         >
-          <div className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
+          <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10">
               <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner">
@@ -338,7 +338,7 @@ const LandingTeachers: React.FC = () => {
           whileHover={{ y: -12, scale: 1.02 }}
           className="relative group md:col-span-2"
         >
-          <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
+          <div className="h-full p-6 md:p-8 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10 flex flex-col md:flex-row items-center gap-5 md:gap-8">
               <div className="w-20 h-20 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">
@@ -375,7 +375,7 @@ const LandingTeachers: React.FC = () => {
           whileHover={{ y: -12, scale: 1.02 }}
           className="relative group md:col-span-2"
         >
-          <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
+          <div className="h-full p-6 md:p-8 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
             <div className="relative z-10 flex flex-col md:flex-row items-center gap-5 md:gap-8">
               <div className="w-20 h-20 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner flex-shrink-0">

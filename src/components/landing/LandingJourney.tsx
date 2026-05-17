@@ -242,12 +242,12 @@ const LandingJourney: React.FC = () => {
             transition={{ type: "spring", stiffness: 60, damping: 14, delay: 0.2 }}
             className="relative flex justify-center pt-4"
           >
-            <div className="relative p-6 md:px-14 md:py-10 rounded-[2rem] bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-500 text-white shadow-[0_20px_60px_rgba(251,191,36,0.55)] text-center overflow-hidden max-w-md">
+            <div className="relative p-6 md:px-14 md:py-10 rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-500 text-white shadow-[0_20px_60px_rgba(251,191,36,0.55)] text-center overflow-hidden max-w-md">
               <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
               <motion.div
                 animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.7, 0.4] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -inset-6 rounded-[3rem] bg-amber-300/30 blur-3xl -z-10"
+                className="absolute -inset-6 rounded-2xl bg-amber-300/30 blur-3xl -z-10"
               />
               <div className="relative z-10">
                 <motion.div

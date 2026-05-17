@@ -126,7 +126,7 @@ function FlashcardsLayout({
         type="button"
         onClick={onFlip}
         style={{ touchAction: 'manipulation' }}
-        className="relative w-full max-w-4xl aspect-[5/3] rounded-[40px] bg-gradient-to-br from-fuchsia-500 to-purple-600 shadow-2xl flex items-center justify-center text-white"
+        className="relative w-full max-w-4xl aspect-[5/3] rounded-2xl bg-gradient-to-br from-fuchsia-500 to-purple-600 shadow-2xl flex items-center justify-center text-white"
       >
         <motion.div
           key={flipped ? 'back' : 'front'}

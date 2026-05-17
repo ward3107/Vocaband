@@ -1396,7 +1396,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
               {/* Main content */}
               <div className="relative z-10">
-                <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 mb-5 shadow-xl shadow-violet-500/20 text-center">
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 mb-5 shadow-xl shadow-violet-500/20 text-center">
                   <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
                   <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-pink-400/30 rounded-full blur-3xl" />
 
@@ -1675,7 +1675,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     onClick={() => startGame(learn.id)}
                     type="button"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    className="w-full mb-4 sm:mb-6 p-5 sm:p-8 rounded-[32px] text-left relative overflow-hidden shadow-xl hover:shadow-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white"
+                    className="w-full mb-4 sm:mb-6 p-5 sm:p-8 rounded-2xl text-left relative overflow-hidden shadow-xl hover:shadow-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white"
                     dir={dir}
                   >
                     <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
@@ -1742,14 +1742,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onClick={() => startGame(mode.id)}
                       type="button"
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                      className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[modeColor]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
+                      className={`p-4 sm:p-8 rounded-2xl sm:rounded-2xl text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[modeColor]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                       initial={{ opacity: 0, scale: 0.9, y: 20 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       transition={{ delay: idx * 0.05 }}
                       whileHover={{ scale: 1.05, translateY: -8 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[16px] sm:rounded-[24px] bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[modeColor]} relative`}>
+                      <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[modeColor]} relative`}>
                         {mode.icon}
                       </div>
                       <p className="font-black text-base sm:text-xl mb-1 sm:mb-2 leading-tight">{mode.name}</p>
@@ -1810,13 +1810,13 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}
                 transition={{ duration: 0.35 }}
                 dir={dir}
-                className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-xl mx-auto text-left"
+                className="bg-white rounded-2xl sm:rounded-2xl shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-xl mx-auto text-left"
               >
                 <motion.div
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.1 }}
-                  className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-[22px] sm:rounded-[28px] bg-gradient-to-br ${info.cardClass} flex items-center justify-center text-4xl sm:text-5xl shadow-lg`}
+                  className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-xl sm:rounded-2xl bg-gradient-to-br ${info.cardClass} flex items-center justify-center text-4xl sm:text-5xl shadow-lg`}
                 >
                   {info.icon}
                 </motion.div>
@@ -1976,7 +1976,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-emerald-50 to-green-50 border-[3px] border-emerald-500 shadow-emerald-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-emerald-100"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-emerald-50 to-green-50 border-[3px] border-emerald-500 shadow-emerald-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-emerald-100"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-500 shadow-lg shadow-emerald-300/50"
@@ -2042,7 +2042,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
@@ -2148,7 +2148,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-blue-50 to-emerald-50 border-[3px] border-blue-600 shadow-blue-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-stone-100"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-blue-50 to-emerald-50 border-[3px] border-blue-600 shadow-blue-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-stone-100"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-gradient-to-r from-purple-500 to-purple-600 transition-all duration-500 shadow-lg shadow-purple-300/50"
@@ -2227,7 +2227,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
@@ -2294,7 +2294,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
@@ -2356,7 +2356,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white rounded-xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden"
+                  className="bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden"
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-gradient-to-r from-cyan-500 to-cyan-600 transition-all duration-500 shadow-lg shadow-cyan-300/50"
@@ -2370,7 +2370,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   {/* Hero card with the word/translation (inner, sits inside
                       the main game card so we match the GameActiveView
                       structure: outer card + progress + inner content). */}
-                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-xl sm:rounded-[28px] p-5 sm:p-10 border-2 border-stone-200 shadow-sm min-h-[220px] flex flex-col items-center justify-center text-center mb-4 sm:mb-6 max-w-md mx-auto">
+                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-xl sm:rounded-2xl p-5 sm:p-10 border-2 border-stone-200 shadow-sm min-h-[220px] flex flex-col items-center justify-center text-center mb-4 sm:mb-6 max-w-md mx-auto">
                     {!isFlipped ? (
                       <>
                         <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-3">{t.flashcardWord}</p>
@@ -2436,7 +2436,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
@@ -2504,7 +2504,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-blue-50 to-emerald-50 border-[3px] border-blue-600 shadow-blue-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-stone-100"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-blue-50 to-emerald-50 border-[3px] border-blue-600 shadow-blue-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-stone-100"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-gradient-to-r from-violet-500 to-violet-600 transition-all duration-500 shadow-lg shadow-violet-300/50"
@@ -2597,7 +2597,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white rounded-xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 relative overflow-hidden"
+                  className="bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 relative overflow-hidden"
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
@@ -2819,7 +2819,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ type: "spring", stiffness: 240, damping: 22, delay: 0.3 }}
-                className="w-full bg-white rounded-[28px] shadow-2xl border border-stone-200 p-5 sm:p-6 max-w-md"
+                className="w-full bg-white rounded-2xl shadow-2xl border border-stone-200 p-5 sm:p-6 max-w-md"
               >
                 <p className="text-[11px] font-black uppercase tracking-widest text-center mb-3 text-stone-400">
                   What's next?
@@ -2886,7 +2886,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {/* Shop hero — same gradient hero as the real ShopView hub
                   so students feel the same visual language before and
                   after they sign up. */}
-              <div className="relative overflow-hidden rounded-[28px] mb-5 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-rose-500 p-5 sm:p-7 shadow-xl shadow-pink-500/20">
+              <div className="relative overflow-hidden rounded-2xl mb-5 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-rose-500 p-5 sm:p-7 shadow-xl shadow-pink-500/20">
                 <div className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
                 <div className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-cyan-400/25 rounded-full blur-3xl" />
                 <div className="relative">

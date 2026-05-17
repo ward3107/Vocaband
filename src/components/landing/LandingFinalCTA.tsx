@@ -39,7 +39,7 @@ const LandingFinalCTA: React.FC<LandingFinalCTAProps> = ({ onTryDemo, onTeacherL
         transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
         className="max-w-5xl mx-auto relative z-10"
       >
-        <div className="relative p-6 md:p-20 rounded-[2rem] md:rounded-[3rem] bg-gradient-to-br from-violet-600/40 via-purple-600/40 to-fuchsia-600/40 backdrop-blur-sm border border-white/15 text-white text-center overflow-hidden">
+        <div className="relative p-6 md:p-20 rounded-2xl md:rounded-2xl bg-gradient-to-br from-violet-600/40 via-purple-600/40 to-fuchsia-600/40 backdrop-blur-sm border border-white/15 text-white text-center overflow-hidden">
           <div className="absolute inset-0 opacity-10">
             <motion.div
               animate={{ x: [0, 50, 0], y: [0, -50, 0] }}
@@ -55,7 +55,7 @@ const LandingFinalCTA: React.FC<LandingFinalCTAProps> = ({ onTryDemo, onTeacherL
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
 
-          <div className="absolute inset-0 rounded-[3rem] shadow-[inset_0_2px_20px_rgba(255,255,255,0.2)]" />
+          <div className="absolute inset-0 rounded-2xl shadow-[inset_0_2px_20px_rgba(255,255,255,0.2)]" />
 
           <div className="relative z-10">
             <motion.div

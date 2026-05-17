@@ -32,7 +32,7 @@ export default function StudentAssignmentsList({
   const { language } = useLanguage();
   const t = studentDashboardT[language];
   return (
-    <div className="bg-white p-5 sm:p-8 rounded-[28px] sm:rounded-[40px] shadow-xl">
+    <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-2xl shadow-xl">
       <h2 className="text-xl sm:text-2xl font-black mb-5 sm:mb-6 flex items-center gap-2">
         <BookOpen className="text-blue-700" size={22} /> {t.yourAssignments}
       </h2>

@@ -250,7 +250,7 @@ export default function LiveChallengeView({
         )}
 
         {/* Rest of Leaderboard */}
-        <div className="bg-white/10 backdrop-blur-md rounded-[40px] p-6 sm:p-8 border border-white/20 shadow-2xl">
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-white/20 shadow-2xl">
           <h2 className="text-xl sm:text-2xl 2xl:text-3xl font-black mb-4 sm:mb-6 flex items-center gap-2">
             <span className="text-2xl 2xl:text-3xl">📊</span> {t.fullLeaderboard}
             {sortedLeaderboard.length > 0 && (

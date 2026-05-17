@@ -26,7 +26,7 @@ export default function ClassCreatedModal({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             style={{ backgroundColor: 'var(--vb-surface)' }}
-            className="rounded-[32px] p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center max-h-[90vh] overflow-y-auto"
+            className="rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center max-h-[90vh] overflow-y-auto"
           >
             <div
               className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"

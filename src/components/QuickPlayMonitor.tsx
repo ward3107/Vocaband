@@ -1209,7 +1209,7 @@ export default function QuickPlayMonitor({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-[var(--vb-surface)] rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl"
+              className="bg-[var(--vb-surface)] rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl"
             >
               <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <LogOut size={32} />
@@ -1258,7 +1258,7 @@ export default function QuickPlayMonitor({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-[var(--vb-surface)] rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col"
+              className="bg-[var(--vb-surface)] rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col"
             >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">

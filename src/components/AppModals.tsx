@@ -158,7 +158,7 @@ export const ExitConfirmModal: React.FC<ExitConfirmModalProps> = ({
         className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50"
         dir={dir}
       >
-        <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl border border-white/80 text-center">
+        <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl border border-white/80 text-center">
           <h2 className="text-2xl sm:text-3xl font-black text-stone-900 mb-3 break-words">
             {t.headline(student.name)}
           </h2>
@@ -200,7 +200,7 @@ export const ExitConfirmModal: React.FC<ExitConfirmModalProps> = ({
   const t = appModalsT[language];
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
-      <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl" dir={dir}>
+      <div className="bg-white rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl" dir={dir}>
         <h2 className="text-2xl font-black mb-2">{t.exitTitle}</h2>
         <p className="text-stone-500 mb-6">
           {t.exitBody}
@@ -249,7 +249,7 @@ export const ClassSwitchModal: React.FC<ClassSwitchModalProps> = ({
   if (!pendingClassSwitch) return null;
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
-      <div className="bg-white rounded-[32px] p-6 sm:p-8 w-full max-w-md shadow-2xl" dir={dir}>
+      <div className="bg-white rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl" dir={dir}>
         <h2 className="text-2xl font-black mb-2">{t.switchTitle}</h2>
         <p className="text-stone-600 mb-6 leading-relaxed">
           {t.switchSentenceLead}

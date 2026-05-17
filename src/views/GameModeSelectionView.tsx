@@ -143,7 +143,7 @@ export default function GameModeSelectionView({
   }
 
   const colorClasses: Record<string, string> = {
-    emerald: "bg-blue-50 border-blue-100 hover:bg-blue-50 text-blue-700",
+    emerald: "bg-emerald-50 border-emerald-100 hover:bg-emerald-100 text-emerald-700",
     blue: "bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700",
     purple: "bg-purple-50 border-purple-100 hover:bg-purple-100 text-purple-700",
     amber: "bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-700",
@@ -161,7 +161,7 @@ export default function GameModeSelectionView({
   };
 
   const iconColorClasses: Record<string, string> = {
-    emerald: "text-blue-700",
+    emerald: "text-emerald-600",
     blue: "text-blue-600",
     purple: "text-purple-600",
     amber: "text-amber-600",
@@ -180,7 +180,7 @@ export default function GameModeSelectionView({
 
   return (
     <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-4xl bg-white rounded-[48px] shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden">
+      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-3 bg-blue-600" />
         <button
           onClick={handleExitGame}
@@ -232,7 +232,7 @@ export default function GameModeSelectionView({
                 setShowModeSelection(false);
                 setShowModeIntro(true);
               }}
-              className={`w-full mb-6 sm:mb-8 p-5 sm:p-8 rounded-[32px] text-left relative overflow-hidden shadow-xl transition-all ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-2xl'} bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white`}
+              className={`w-full mb-6 sm:mb-8 p-5 sm:p-8 rounded-2xl text-left relative overflow-hidden shadow-xl transition-all ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-2xl'} bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white`}
               style={{ touchAction: 'manipulation' }}
               dir={dir}
             >
@@ -300,14 +300,14 @@ export default function GameModeSelectionView({
                   setShowModeIntro(true);
                 }}
                 disabled={isQpLocked}
-                className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : ''} ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
+                className={`p-4 sm:p-8 rounded-2xl sm:rounded-2xl text-center transition-all border-2 border-transparent flex flex-col items-center ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : ''} ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 whileHover={{ scale: 1.05, translateY: -8 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[16px] sm:rounded-[24px] bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
+                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
                   {mode.icon}
                   {(isCompleted || isQpLocked) && (
                     <div className={`absolute -top-2 -right-2 ${isQpLocked ? 'bg-gray-500' : 'bg-blue-600'} text-white rounded-full p-1 shadow-md`}>

@@ -396,7 +396,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                         so the card feels substantial on a phone screen
                         (was 4:3 with tighter sizing — read as small).
                         Tablet+: original 4:3 / p-8 / smaller icon. */}
-                    <div className={`p-10 sm:p-6 md:p-8 rounded-[2rem] bg-gradient-to-br ${card.color} shadow-2xl backdrop-blur-sm border border-white/20 aspect-[5/4] sm:aspect-[4/3]`}>
+                    <div className={`p-10 sm:p-6 md:p-8 rounded-2xl bg-gradient-to-br ${card.color} shadow-2xl backdrop-blur-sm border border-white/20 aspect-[5/4] sm:aspect-[4/3]`}>
                       <div className="h-full flex flex-col items-center justify-center gap-5 sm:gap-4">
                         <div className="w-28 h-28 sm:w-24 sm:h-24 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
                           {card.icon}

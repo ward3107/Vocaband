@@ -84,14 +84,14 @@ export default function GameModeIntroView({
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-md sm:max-w-xl w-full"
+        className="bg-white rounded-2xl sm:rounded-2xl shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-md sm:max-w-xl w-full"
       >
         {/* Hero icon with gradient circle */}
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.1 }}
-          className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-[22px] sm:rounded-[28px] bg-gradient-to-br ${theme.card} flex items-center justify-center text-4xl sm:text-5xl shadow-lg`}
+          className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-xl sm:rounded-2xl bg-gradient-to-br ${theme.card} flex items-center justify-center text-4xl sm:text-5xl shadow-lg`}
         >
           {info.icon}
         </motion.div>

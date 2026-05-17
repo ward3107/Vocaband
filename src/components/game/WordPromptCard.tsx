@@ -58,7 +58,7 @@ export default function WordPromptCard({
             src={currentWord.imageUrl}
             alt={currentWord.english}
             referrerPolicy="no-referrer"
-            className="w-28 h-28 sm:w-48 sm:h-48 object-cover rounded-2xl sm:rounded-[32px] shadow-lg border-4 border-white"
+            className="w-28 h-28 sm:w-48 sm:h-48 object-cover rounded-2xl sm:rounded-2xl shadow-lg border-4 border-white"
           />
         )}
         <h2
