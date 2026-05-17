@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
+import { suggestCorrections, applySuggestion, type SpellSuggestion } from '../../utils/spellSuggest';
 import InPageCamera from '../InPageCamera';
 import { useLanguage } from '../../hooks/useLanguage';
 import { wordInputStepT } from '../../locales/teacher/word-input-step';
@@ -110,11 +111,14 @@ export type TranslationLang = 'both' | 'hebrew' | 'arabic';
 interface HeroPasteAreaProps {
   onAnalyze: (text: string) => void;
   isAnalyzing: boolean;
+  allWords: Word[];
 }
 
-const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing }) => {
+const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, allWords }) => {
   const TEXT = useStepTexts();
   const [text, setText] = useState('');
+  const [suggestions, setSuggestions] = useState<SpellSuggestion[]>([]);
+  const [ignored, setIgnored] = useState<Set<string>>(new Set());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-grow the textarea so a long paste (10, 50, 200 words) doesn't
@@ -131,6 +135,33 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing })
     const min = 128; // h-32 in px
     el.style.height = `${Math.max(min, Math.min(el.scrollHeight, max))}px`;
   }, [text]);
+
+  // Debounced live spell-check against the English curriculum. Runs
+  // 400ms after the teacher stops typing — short enough to feel
+  // responsive, long enough that we're not Levenshtein-scanning 6.5k
+  // words on every keystroke.
+  useEffect(() => {
+    if (!text.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    const id = window.setTimeout(() => {
+      setSuggestions(suggestCorrections(text, allWords, { ignored }));
+    }, 400);
+    return () => window.clearTimeout(id);
+  }, [text, allWords, ignored]);
+
+  const acceptSuggestion = (s: SpellSuggestion) => {
+    setText(prev => applySuggestion(prev, s.typo, s.suggestion));
+  };
+
+  const dismissSuggestion = (typo: string) => {
+    setIgnored(prev => {
+      const next = new Set(prev);
+      next.add(typo);
+      return next;
+    });
+  };
 
   return (
     <motion.div
@@ -164,6 +195,54 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing })
             <span>💡</span>
             <span>{TEXT.pasteTip}</span>
           </p>
+
+          {/* Live spell suggestions (English only) */}
+          <AnimatePresence>
+            {suggestions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-3 overflow-hidden"
+              >
+                <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-3" dir="ltr">
+                  <div className="flex items-center gap-2 mb-2 text-amber-700">
+                    <Sparkles className="w-4 h-4" />
+                    <span className="text-sm font-semibold">{TEXT.suggestionsTitle}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestions.map(s => (
+                      <div
+                        key={s.typo}
+                        className="inline-flex items-center gap-1 rounded-full bg-white border border-amber-200 pl-3 pr-1 py-1 shadow-sm"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => acceptSuggestion(s)}
+                          className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-amber-700"
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                          title={TEXT.suggestionAcceptTitle(s.typo, s.suggestion)}
+                        >
+                          <span className="line-through text-gray-400">{s.typo}</span>
+                          <ChevronRight className="w-3 h-3 text-amber-500" />
+                          <span className="font-semibold text-emerald-700">{s.suggestion}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => dismissSuggestion(s.typo)}
+                          className="ml-1 w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                          aria-label={TEXT.suggestionDismissAria(s.typo)}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* CTA Button */}
           <button
@@ -2036,7 +2115,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   return (
     <div>
       {/* Hero Paste Area */}
-      <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
+      <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} allWords={allWords} />
 
       {/* OR Separator */}
       <div className="flex items-center gap-4 my-8">
