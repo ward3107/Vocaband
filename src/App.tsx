@@ -1,20 +1,15 @@
-import React, { useState, useMemo, useRef, useCallback, lazy, Suspense } from "react";
+import React, { useState, useMemo, useRef, useCallback, lazy } from "react";
 import type { View } from "./core/views";
 import { getEntitledVocas } from "./core/subject";
-import { HelpTooltip, HelpIcon } from "./components/HelpTooltip";
 import type { Word } from "./data/vocabulary";
 import { useVocabularyLazy } from "./hooks/useVocabularyLazy";
-import { generateSentencesForAssignment } from "./data/sentence-bank";
 import SvgSpinner from "./components/svg/SvgSpinner";
 // motion is no longer imported eagerly here. Its three eager consumers
 // (CookieBanner, QuickPlayResumeBanner, ImageCropModal — all defined
 // further down as React.lazy) carry it in their own chunks now, so the
 // ~43 kB gz motion bundle drops out of the App.tsx modulepreload chain
-// on cold first-paint. AnimatePresence / motion.div weren't used in
-// this file anyway, so the original `import { motion, AnimatePresence }`
-// was a dead import.
-import { OperationType, handleDbError, hasTeacherAccess, ASSIGNMENT_COLUMNS, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
-import { isPro } from "./core/plan";
+// on cold first-paint.
+import { hasTeacherAccess, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { useAudio } from "./hooks/useAudio";
 import { useLanguage } from "./hooks/useLanguage";
 import { appToastsT } from "./locales/app-toasts";
@@ -22,24 +17,17 @@ import { useRetention } from "./hooks/useRetention";
 import { useSavedTasks } from "./hooks/useSavedTasks";
 import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
-import { shuffle, chunkArray, addUnique, removeKey } from './utils';
-import { LeaderboardEntry, SOCKET_EVENTS } from './core/types';
-import { isAnswerCorrect } from './utils/answerMatch';
+import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
 import { LazyWrapper} from "./components/SuspenseWrapper";
 
-// Lazy-loaded views (code-split into separate chunks)
 const PrivacySettingsView = lazy(() => import("./views/PrivacySettingsView"));
-import { loadMammoth, loadSocketIO } from "./utils/lazyLoad";
 import { createGuestUser } from "./utils/createGuestUser";
 import { readQpResumeScore } from "./utils/qpResumeHint";
 import {
   readIntendedClassCode,
   clearIntendedClassCode,
 } from "./utils/oauthIntent";
-import { celebrate } from "./utils/celebrate";
-import { compressImageForUpload } from "./utils/compressImage";
-// ImageCropModal moved to a React.lazy at the top of this file.
 import { useTeacherGuidesSync } from "./hooks/useTeacherGuidesSync";
 import { useVocaRouting } from "./hooks/useVocaRouting";
 import { useApplyTeacherTheme } from "./hooks/useApplyTeacherTheme";
@@ -59,20 +47,8 @@ import { StudentDashboardSection } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
 import { renderGameRoute } from "./views/GameRoutes";
 import { renderStudentAuthRoute } from "./views/StudentAuthRoutes";
-import {
-  startQuickPlayFromDashboard,
-  startAssignClassFlow,
-  loadAssignmentIntoCreateForm,
-  applySavedTask,
-} from "./handlers/teacherDashboardActions";
 import { getGameDebugger } from "./utils/gameDebug";
-import {
-  MAX_ATTEMPTS_PER_WORD, AUTO_SKIP_DELAY_MS, SHOW_ANSWER_DELAY_MS, WRONG_FEEDBACK_DELAY_MS,
-  MAX_ASSIGNMENT_ROUNDS,
-  STREAK_CELEBRATION_MILESTONES,
-  ALL_GAME_MODES,
-  type GameMode,
-} from "./constants/game";
+import { type GameMode } from "./constants/game";
 import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
 import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
@@ -108,15 +84,11 @@ import { useOAuthState } from "./hooks/useOAuthState";
 import { useActiveVocaState } from "./hooks/useActiveVocaState";
 import { useOnboardingFlags } from "./hooks/useOnboardingFlags";
 import { useQuickPlayGuestState } from "./hooks/useQuickPlayGuestState";
-import { requestCustomWordAudio } from "./utils/requestCustomWordAudio";
 import { parseSearchTerms } from "./utils/parseSearchTerms";
 import { resolveInitialView } from "./utils/resolveInitialView";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { isPublicView, shouldPreserveView } from "./utils/authViews";
-import { completeTeacherOnboarding, skipTeacherOnboarding } from "./handlers/teacherOnboarding";
-import { saveClassEdit, renameClass, changeClassAvatar } from "./handlers/classEdits";
-import { deleteAssignmentWithUndo, deleteAssignmentImmediate } from "./handlers/deleteAssignmentWithUndo";
 import { buildEmitScoreUpdate } from "./handlers/emitScoreUpdate";
 import { navigateToTeacherLogin, navigateToStudentLogin } from "./handlers/landingNav";
 import { buildCleanupSessionData, buildCleanupQuickPlayGuest } from "./handlers/sessionCleanups";
@@ -250,9 +222,11 @@ export default function App() {
   // this hook runs either way so the localStorage state is always
   // consistent if the flag flips mid-session.
   const structure = useStructure(user?.uid);
-  // Keys of parts that were just unlocked — used to bounce-animate
-  // them on the next render, then cleared after a short delay.
-  const [celebrateStructureKeys, setCelebrateStructureKeys] = useState<string[]>([]);
+  // Keys of parts that were just unlocked — used to bounce-animate them
+  // on the next render.  Currently never populated (the bounce trigger
+  // was never wired up); kept here as a stable [] reference so the
+  // dashboard section's prop contract stays unchanged.
+  const celebrateStructureKeys: string[] = [];
 
   // Active boosters (xp_booster, weekend_warrior, streak_freeze,
   // lucky_charm, focus_mode).  Scoped per-user via uid; persists in
@@ -735,13 +709,10 @@ export default function App() {
     setView("student-pending-approval");
     try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
   };
-  // Student-account login flow — the approved-student finishing path
-  // (processStudentProfile with its SECURITY check against impersonation)
-  // and the profile-id login wrapper used by PendingApprovalScreen and
-  // the OAuth approved-student branch.
+  // Student-account login flow — the profile-id login wrapper used by
+  // PendingApprovalScreen and the OAuth approved-student branch.
   const {
     handleLoginAsStudent,
-    processStudentProfile,
     renameStudentDisplayName,
   } = useStudentLogin({
     user, setUser, setError, setLoading, setView,
