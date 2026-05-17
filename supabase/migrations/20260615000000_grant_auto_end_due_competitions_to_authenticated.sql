@@ -1,0 +1,25 @@
+-- =============================================================================
+-- Grant EXECUTE on auto_end_due_competitions() back to authenticated
+-- =============================================================================
+--
+-- Fix: 20260517115649_revoke_anon_grants_on_definer_rpcs.sql miscategorized
+-- public.auto_end_due_competitions() as "service_role-only" and revoked
+-- without re-granting to authenticated. That broke the client-side
+-- opportunistic close called from useCompetitions.ts (both
+-- useCompetitionsForClass and useCompetitionsForClassIds), producing
+-- repeated 403s on every teacher/student dashboard load:
+--
+--   POST /rest/v1/rpc/auto_end_due_competitions 403 (Forbidden)
+--
+-- The function is intended to be called from the client — the original
+-- migration (20260516120000_classroom_competitions.sql) granted it to
+-- authenticated and documented it as "Called opportunistically from the
+-- client (cheap, idempotent) so we don't need a cron extension."
+--
+-- It is safe to expose to authenticated: the function takes no parameters,
+-- has no caller-controlled inputs, and only flips overdue rows
+-- (status='live' AND closes_at <= now()) to 'ended'. It cannot leak data
+-- and cannot affect any competition whose deadline has not already passed.
+-- =============================================================================
+
+GRANT EXECUTE ON FUNCTION public.auto_end_due_competitions() TO authenticated;
