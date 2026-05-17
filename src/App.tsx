@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback } from "react";
 import type { View } from "./core/views";
 import { getEntitledVocas } from "./core/subject";
 import type { Word } from "./data/vocabulary";
-import { useVocabularyLazy } from "./hooks/useVocabularyLazy";
+import { useVocabularyLazyWithDefaults } from "./hooks/useVocabularyLazy";
 import SvgSpinner from "./components/svg/SvgSpinner";
 // motion is no longer imported eagerly here. Its three eager consumers
 // (CookieBanner, QuickPlayResumeBanner, ImageCropModal — all defined
@@ -164,20 +164,11 @@ export default function App() {
   const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
 
-  // Lazy-load vocabulary out of the initial bundle — public visitors
-  // (landing, terms, privacy, security, accessibility) never need it.
-  // DemoMode lazy-loads vocabulary itself via its own static import.
-  // See docs/perf-2026-04-28.md for rationale + measurements.
-  const vocab = useVocabularyLazy(!isPublicView(view));
-  // Falsy-safe constants so existing code paths that reference these
-  // names compile unchanged.  When vocab is null (still loading or
-  // never triggered), these are empty arrays — every consumer is
-  // either gated behind an authenticated view (which won't render
-  // until vocab resolves) OR it's a fallback path that's safe to skip.
-  const ALL_WORDS = vocab?.ALL_WORDS ?? [];
-  const SET_1_WORDS = vocab?.SET_1_WORDS ?? [];
-  const SET_2_WORDS = vocab?.SET_2_WORDS ?? [];
-  const TOPIC_PACKS = vocab?.TOPIC_PACKS ?? [];
+  // Lazy-load vocabulary out of the initial bundle (gated off public
+  // views).  Returns the four populated arrays with `[]` defaults so
+  // consumers don't need a null-gate.  See useVocabularyLazy.
+  const { ALL_WORDS, SET_1_WORDS, SET_2_WORDS, TOPIC_PACKS } =
+    useVocabularyLazyWithDefaults(!isPublicView(view));
   // Track whether handleStudentLogin is in progress so onAuthStateChange
   // doesn't clobber loading/view mid-login (signInAnonymously fires the
   // listener before handleStudentLogin finishes its DB queries).

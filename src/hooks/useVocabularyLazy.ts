@@ -77,6 +77,22 @@ export function useVocabularyLazy(shouldLoad: boolean): VocabularyModule | null 
 }
 
 /**
+ * Convenience wrapper around `useVocabularyLazy` that always returns
+ * the four populated arrays (defaulting to `[]` while the chunk is
+ * still loading). Consumers that gate on a non-public view can use
+ * this to avoid an `if (!vocab) return null` dance.
+ */
+export function useVocabularyLazyWithDefaults(shouldLoad: boolean) {
+  const vocab = useVocabularyLazy(shouldLoad);
+  return {
+    ALL_WORDS: vocab?.ALL_WORDS ?? [],
+    SET_1_WORDS: vocab?.SET_1_WORDS ?? [],
+    SET_2_WORDS: vocab?.SET_2_WORDS ?? [],
+    TOPIC_PACKS: vocab?.TOPIC_PACKS ?? [],
+  };
+}
+
+/**
  * Synchronous accessor for code paths that absolutely need the
  * vocabulary right now (e.g. game-mode transition handlers running
  * after the user has been authenticated for several seconds).
