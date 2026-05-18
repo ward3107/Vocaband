@@ -62,11 +62,11 @@ export default function IdiomsBonusCard({ onStart }: IdiomsBonusCardProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="rounded-3xl border border-white/80 shadow-sm bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 p-4 sm:p-5"
+      className="rounded-2xl border border-white/80 shadow-sm bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 p-4 sm:p-5"
       dir={dir}
     >
       <div className="flex items-start gap-3 mb-3">
-        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center shadow-sm shrink-0">
+        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center shadow-sm shrink-0">
           <span className="text-xl" aria-hidden>💭</span>
         </div>
         <div className="flex-1 min-w-0">
@@ -85,7 +85,7 @@ export default function IdiomsBonusCard({ onStart }: IdiomsBonusCardProps) {
         type="button"
         onClick={onStart}
         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-        className="w-full py-3 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+        className="w-full py-3 rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
       >
         {t.startCta}
         <ArrowRight size={16} />

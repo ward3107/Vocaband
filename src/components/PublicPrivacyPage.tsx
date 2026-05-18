@@ -63,7 +63,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
         </section>
 
         {/* Summary Card */}
-        <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-900 rounded-2xl p-8 text-white mb-8 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-900 rounded-xl p-8 text-white mb-8 relative overflow-hidden">
           <div className="relative z-10">
             <div className={`inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full mb-4`}>
               <Shield size={14} />
@@ -79,7 +79,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
         {/* Sections */}
         <div className="space-y-8">
           {/* Section 1: Data Controller */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">1</span>
               {language === 'en' ? 'Data Controller (בעל המאגר)' : language === 'he' ? 'בעל המאגר' : 'مراقب البيانات (בעל המאגר)'}
@@ -122,7 +122,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 2: What We Collect */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">2</span>
               <Database size={20} className="text-violet-600" />
@@ -130,7 +130,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
             </h2>
 
             <div className={`grid md:grid-cols-2 gap-6 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
-              <div className="bg-surface-container-low p-5 rounded-xl">
+              <div className="bg-surface-container-low p-5 rounded-lg">
                 <div className={`flex items-center gap-2 mb-3`}>
                   <Users size={18} className="text-violet-600" />
                   <h3 className="font-bold text-on-surface">{ui.forStudents}</h3>
@@ -168,9 +168,28 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                    language === 'he' ? 'איננו אוספים: דוא"ל, טלפון, כתובת, תמונות, תעודות זהות' :
                    'لا نجمع: البريد الإلكتروني، الهاتف، العنوان، الصور، الهويات'}
                 </p>
+                {/* Synthetic placeholder email disclosure — required so a reviewer
+                    reading the auth schema (which shows a student-*@class-*.vocaband.local
+                    address) understands it's a non-deliverable internal identifier,
+                    not a real student inbox. */}
+                <p className={`text-xs text-slate-500 mt-2 leading-relaxed`}>
+                  {language === 'en' ? (
+                    <>
+                      <strong>Note:</strong> For class-code login, the auth system creates an internal placeholder address like <code className="bg-slate-100 px-1 rounded text-[10px]">student-&lt;id&gt;@class-&lt;code&gt;.vocaband.local</code>. It is never delivered to a real inbox — it exists only to satisfy the authentication system's unique-identifier requirement.
+                    </>
+                  ) : language === 'he' ? (
+                    <>
+                      <strong>הערה:</strong> בכניסה עם קוד כיתה, מערכת האימות יוצרת כתובת מציין מקום פנימית כמו <code className="bg-slate-100 px-1 rounded text-[10px]">student-&lt;id&gt;@class-&lt;code&gt;.vocaband.local</code>. היא לעולם לא נשלחת לתיבת דואר אמיתית — היא משמשת רק כדי לעמוד בדרישת המזהה הייחודי של מערכת האימות.
+                    </>
+                  ) : (
+                    <>
+                      <strong>ملاحظة:</strong> لتسجيل الدخول برمز الفصل، ينشئ نظام المصادقة عنوانًا مؤقتًا داخليًا مثل <code className="bg-slate-100 px-1 rounded text-[10px]">student-&lt;id&gt;@class-&lt;code&gt;.vocaband.local</code>. لا يُرسل أبدًا إلى صندوق بريد حقيقي — يُستخدم فقط لتلبية متطلب المعرف الفريد لنظام المصادقة.
+                    </>
+                  )}
+                </p>
               </div>
 
-              <div className="bg-surface-container-low p-5 rounded-xl">
+              <div className="bg-surface-container-low p-5 rounded-lg">
                 <div className={`flex items-center gap-2 mb-3`}>
                   <School size={18} className="text-violet-600" />
                   <h3 className="font-bold text-on-surface">{ui.forTeachers}</h3>
@@ -205,7 +224,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 3: How We Use Data */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">3</span>
               {language === 'en' ? 'How We Use Your Data' : language === 'he' ? 'כיצד אנו משתמשים בנתונים שלך' : 'كيف نستخدم بياناتك'}
@@ -280,7 +299,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                 </tbody>
               </table>
             </div>
-            <div className="mt-4 p-4 bg-red-50 rounded-xl">
+            <div className="mt-4 p-4 bg-red-50 rounded-lg">
               <p className={`text-sm text-red-700 font-medium`}>
                 {language === 'en' ? 'We do NOT: Sell data • Show ads • Create profiles • Share with brokers • Use tracking cookies' :
                  language === 'he' ? 'איננו: מוכרים נתונים • מציגים פרסומות • יוצרים פרופילים • משתפים עם מתווכים • משתמשים בעוגיות מעקב' :
@@ -290,7 +309,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 4: Third Parties */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">4</span>
               <Globe size={20} className="text-violet-600" />
@@ -347,7 +366,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 5: Retention */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">5</span>
               <Clock size={20} className="text-violet-600" />
@@ -374,7 +393,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 6: Your Rights */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">6</span>
               <Gavel size={20} className="text-violet-600" />
@@ -386,21 +405,21 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                'بموجب قانون حماية الخصوصية الإسرائيلي (التعديل 13)، لديك الحق في:'}
             </p>
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-surface-container-low p-4 rounded-xl text-center">
+              <div className="bg-surface-container-low p-4 rounded-lg text-center">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
                   <Database size={18} className="text-violet-600" />
                 </div>
                 <h4 className="font-bold text-on-surface text-sm">{ui.rights.access}</h4>
                 <p className={`text-xs text-on-surface-variant mt-1`}>{ui.rights.accessDesc}</p>
               </div>
-              <div className="bg-surface-container-low p-4 rounded-xl text-center">
+              <div className="bg-surface-container-low p-4 rounded-lg text-center">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
                   <Lock size={18} className="text-violet-600" />
                 </div>
                 <h4 className="font-bold text-on-surface text-sm">{ui.rights.deletion}</h4>
                 <p className={`text-xs text-on-surface-variant mt-1`}>{ui.rights.deletionDesc}</p>
               </div>
-              <div className="bg-surface-container-low p-4 rounded-xl text-center">
+              <div className="bg-surface-container-low p-4 rounded-lg text-center">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
                   <FileText size={18} className="text-violet-600" />
                 </div>
@@ -411,7 +430,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 7: Children's Privacy */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">7</span>
               <Users size={20} className="text-violet-600" />
@@ -422,7 +441,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                language === 'he' ? 'Vocaband מיועד לתלמידים בבתי ספר ברחבי העולם. המוסד החינוכי (בית הספר) מאשר שימוש תלמידים. על ידי מתן קוד כיתה, המורה (מטעם בית הספר) מאשר גישת תלמידים.' :
                'Vocaband مصمم للطلاب في المدارس حول العالم. المؤسسة التعليمية (المدرسة) تصرح باستخدام الطلاب. من خلال تقديم رمز الفصل، يصرح المعلم (نيابة عن المدرسة) بوصول الطلاب.'}
             </p>
-            <div className="bg-green-50 p-4 rounded-xl">
+            <div className="bg-green-50 p-4 rounded-lg">
               <p className={`text-sm text-green-800 font-medium`}>
                 {language === 'en' ? 'We minimize data collection from students: No email required • No real name required • No location tracking • No behavioral advertising' :
                  language === 'he' ? 'אנו ממזערים איסוף נתונים מתלמידים: ללא דוא"ל • ללא שם אמיתי • ללא מעקב מיקום • ללא פרסום התנהגותית' :
@@ -432,7 +451,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 8: Security */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">8</span>
               <Lock size={20} className="text-violet-600" />
@@ -463,7 +482,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 9: Complaints */}
-          <section className="bg-white p-8 rounded-2xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
+          <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">9</span>
               <AlertTriangle size={20} className="text-amber-500" />
@@ -488,14 +507,14 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           </section>
 
           {/* Section 10: Contact */}
-          <section className="bg-surface-container-high/50 p-8 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+          <section className="bg-surface-container-high/50 p-8 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6">
             <div className={isRTL ? 'text-right' : ''}>
               <h3 className="text-xl font-black font-headline mb-2">{t.footer.haveQuestions}</h3>
               <p className="text-on-surface-variant">{t.footer.responseTime}</p>
             </div>
             <a
               href="mailto:contact@vocaband.com"
-              className={`inline-flex items-center gap-3 bg-on-background text-background px-6 py-3 rounded-xl font-black hover:scale-105 transition-all`}
+              className={`inline-flex items-center gap-3 bg-on-background text-background px-6 py-3 rounded-lg font-black hover:scale-105 transition-all`}
             >
               <Mail size={18} /> contact@vocaband.com
             </a>

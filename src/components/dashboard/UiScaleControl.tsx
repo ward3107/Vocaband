@@ -26,7 +26,7 @@ export default function UiScaleControl() {
     <div
       role="group"
       aria-label={t.scaleGroupAria}
-      className="hidden sm:inline-flex items-stretch rounded-xl bg-surface-container-lowest border-2 border-primary-container/30 overflow-hidden shadow-sm"
+      className="hidden sm:inline-flex items-stretch rounded-lg bg-surface-container-lowest border-2 border-primary-container/30 overflow-hidden shadow-sm"
     >
       {OPTIONS.map((opt) => {
         const active = scale === opt.id;

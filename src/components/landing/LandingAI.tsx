@@ -62,7 +62,7 @@ const LandingAI: React.FC = () => {
           whileHover={{ y: -8, scale: 1.02 }}
           className="relative group"
         >
-          <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500/35 via-teal-500/35 to-cyan-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300">
+          <div className="h-full p-6 md:p-8 rounded-2xl bg-gradient-to-br from-emerald-500/35 via-teal-500/35 to-cyan-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300">
             <div className="relative z-10 text-center">
               <motion.div
                 whileHover={{ scale: 1.1, rotate: [0, -10, 10, 0] }}
@@ -76,7 +76,7 @@ const LandingAI: React.FC = () => {
                 {t.aiZeroWorkDesc}
               </p>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-[2rem]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-2xl" />
           </div>
         </motion.div>
 
@@ -89,7 +89,7 @@ const LandingAI: React.FC = () => {
           whileHover={{ y: -8, scale: 1.02 }}
           className="relative group"
         >
-          <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-violet-500/35 via-purple-500/35 to-fuchsia-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300">
+          <div className="h-full p-6 md:p-8 rounded-2xl bg-gradient-to-br from-violet-500/35 via-purple-500/35 to-fuchsia-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300">
             <div className="relative z-10 text-center">
               <motion.div
                 whileHover={{ scale: 1.1 }}
@@ -103,7 +103,7 @@ const LandingAI: React.FC = () => {
                 {t.aiAutoSentencesDesc}
               </p>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-[2rem]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-2xl" />
           </div>
         </motion.div>
 
@@ -116,7 +116,7 @@ const LandingAI: React.FC = () => {
           whileHover={{ y: -8, scale: 1.02 }}
           className="relative group"
         >
-          <div className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-amber-500/35 via-orange-500/35 to-rose-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300">
+          <div className="h-full p-6 md:p-8 rounded-2xl bg-gradient-to-br from-amber-500/35 via-orange-500/35 to-rose-500/35 backdrop-blur-sm border border-white/15 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300">
             <div className="relative z-10 text-center">
               <motion.div
                 whileHover={{ scale: 1.1, rotate: [0, 15, -15, 0] }}
@@ -130,7 +130,7 @@ const LandingAI: React.FC = () => {
                 {t.aiAutoGradingDesc}
               </p>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-[2rem]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-2xl" />
           </div>
         </motion.div>
       </div>

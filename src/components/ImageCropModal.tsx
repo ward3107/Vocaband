@@ -369,13 +369,13 @@ export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropM
         <div className="flex gap-3 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-black/90">
           <button
             onClick={onCancel}
-            className="flex-1 py-3.5 bg-white/10 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all"
+            className="flex-1 py-3.5 bg-white/10 text-white rounded-xl font-bold text-sm active:scale-95 transition-all"
           >
             {labels.cancel}
           </button>
           <button
             onClick={handleConfirm}
-            className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+            className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
           >
             <Check size={18} /> {labels.scanWords}
           </button>

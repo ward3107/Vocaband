@@ -86,7 +86,7 @@ export function SpellingProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
           return (
             <div
               key={idx}
-              className="w-14 h-20 sm:w-20 sm:h-28 rounded-2xl border-4 flex items-center justify-center text-4xl sm:text-6xl font-black uppercase shadow-lg"
+              className="w-14 h-20 sm:w-20 sm:h-28 rounded-xl border-4 flex items-center justify-center text-4xl sm:text-6xl font-black uppercase shadow-lg"
               style={{
                 backgroundColor: filled ? (correct ? '#10b981' : '#fff') : 'var(--vb-surface)',
                 borderColor: filled ? (correct ? '#059669' : '#dc2626') : 'var(--vb-border)',
@@ -140,7 +140,7 @@ export function ScrambleProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
             initial={{ rotate: -10, scale: 0.9 }}
             animate={{ rotate: 0, scale: 1 }}
             transition={{ delay: idx * 0.04 }}
-            className="w-16 h-24 sm:w-24 sm:h-32 rounded-2xl flex items-center justify-center text-5xl sm:text-7xl font-black uppercase shadow-xl bg-gradient-to-br from-orange-500 to-red-600 text-white"
+            className="w-16 h-24 sm:w-24 sm:h-32 rounded-xl flex items-center justify-center text-5xl sm:text-7xl font-black uppercase shadow-xl bg-gradient-to-br from-orange-500 to-red-600 text-white"
           >
             {letter}
           </motion.div>
@@ -219,7 +219,7 @@ export function LetterSoundsProjector({ word, pool, revealed }: BaseProps) {
                 color: highlight ? '#ffffff' : 'var(--vb-text-primary)',
                 borderColor: highlight ? '#059669' : 'var(--vb-border)',
               }}
-              className={`flex items-center justify-center px-6 py-8 rounded-3xl border-2 shadow-lg transition-all text-3xl sm:text-5xl font-black ${dim ? 'opacity-30' : ''} ${highlight ? 'scale-[1.03]' : ''}`}
+              className={`flex items-center justify-center px-6 py-8 rounded-2xl border-2 shadow-lg transition-all text-3xl sm:text-5xl font-black ${dim ? 'opacity-30' : ''} ${highlight ? 'scale-[1.03]' : ''}`}
             >
               {opt}
             </div>
@@ -306,7 +306,7 @@ export function MatchingProjector({
                   color: done ? '#ffffff' : 'var(--vb-text-primary)',
                   borderColor: done ? '#059669' : sel ? 'var(--vb-accent)' : 'var(--vb-border)',
                 }}
-                className={`px-6 py-5 rounded-2xl border-2 text-2xl sm:text-4xl font-black text-left shadow-md transition-all ${done ? 'opacity-80' : 'hover:scale-[1.01]'}`}
+                className={`px-6 py-5 rounded-xl border-2 text-2xl sm:text-4xl font-black text-left shadow-md transition-all ${done ? 'opacity-80' : 'hover:scale-[1.01]'}`}
               >
                 {w.english}
               </button>
@@ -327,7 +327,7 @@ export function MatchingProjector({
                   color: done ? '#ffffff' : 'var(--vb-text-primary)',
                   borderColor: done ? '#059669' : 'var(--vb-border)',
                 }}
-                className={`px-6 py-5 rounded-2xl border-2 text-2xl sm:text-4xl font-black text-right shadow-md transition-all ${done ? 'opacity-80' : 'hover:scale-[1.01]'}`}
+                className={`px-6 py-5 rounded-xl border-2 text-2xl sm:text-4xl font-black text-right shadow-md transition-all ${done ? 'opacity-80' : 'hover:scale-[1.01]'}`}
                 dir="auto"
               >
                 {translation(words[wordIdx])}
@@ -429,7 +429,7 @@ export function MemoryFlipProjector({ words, revealed }: { words: Word[]; reveal
                 color: isFront ? (isMatched ? '#ffffff' : 'var(--vb-text-primary)') : '#ffffff',
                 borderColor: isFront ? (isMatched ? '#059669' : 'var(--vb-border)') : '#5b21b6',
               }}
-              className="aspect-[3/2] rounded-2xl border-2 flex items-center justify-center text-xl sm:text-3xl font-black shadow-lg transition-all p-2"
+              className="aspect-[3/2] rounded-xl border-2 flex items-center justify-center text-xl sm:text-3xl font-black shadow-lg transition-all p-2"
               dir="auto"
             >
               {isFront ? card.text : '?'}
@@ -495,7 +495,7 @@ export function SentenceBuilderProjector({ word, revealed }: Omit<BaseProps, 'po
         {placedSlots.map((slot, idx) => (
           <div
             key={`slot-${idx}`}
-            className="min-w-[80px] px-4 py-3 rounded-xl border-2 text-2xl sm:text-3xl font-bold flex items-center justify-center"
+            className="min-w-[80px] px-4 py-3 rounded-lg border-2 text-2xl sm:text-3xl font-bold flex items-center justify-center"
             style={{
               backgroundColor: slot ? (slot.correct ? '#10b981' : '#fff') : 'var(--vb-surface-alt)',
               borderColor: slot ? (slot.correct ? '#059669' : '#dc2626') : 'var(--vb-border)',
@@ -527,7 +527,7 @@ export function SentenceBuilderProjector({ word, revealed }: Omit<BaseProps, 'po
                   color: 'var(--vb-text-primary)',
                   borderColor: 'var(--vb-border)',
                 }}
-                className="px-4 py-3 rounded-xl border-2 text-2xl sm:text-3xl font-bold shadow-md hover:scale-[1.02] transition-transform"
+                className="px-4 py-3 rounded-lg border-2 text-2xl sm:text-3xl font-bold shadow-md hover:scale-[1.02] transition-transform"
               >
                 {s.tok}
               </motion.button>
@@ -641,7 +641,7 @@ export function IdiomProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
         initial={{ rotateY: -20, opacity: 0 }}
         animate={{ rotateY: 0, opacity: 1 }}
         transition={{ duration: 0.35 }}
-        className="relative w-full max-w-4xl aspect-[5/3] rounded-[40px] bg-gradient-to-br from-sky-500 to-cyan-600 shadow-2xl flex items-center justify-center text-white px-8"
+        className="relative w-full max-w-4xl aspect-[5/3] rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-600 shadow-2xl flex items-center justify-center text-white px-8"
       >
         {!revealed ? (
           <div className="text-center">
@@ -690,7 +690,7 @@ export function WordChainsProjector({ word, pool, revealed }: BaseProps) {
     <motion.div
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: dim ? 0.45 : 1 }}
-      className="px-6 py-6 sm:px-10 sm:py-10 rounded-3xl border-2 shadow-xl text-3xl sm:text-5xl font-black"
+      className="px-6 py-6 sm:px-10 sm:py-10 rounded-2xl border-2 shadow-xl text-3xl sm:text-5xl font-black"
       style={{
         backgroundColor: dim ? 'var(--vb-surface-alt)' : 'var(--vb-surface)',
         color: 'var(--vb-text-primary)',
@@ -719,7 +719,7 @@ export function WordChainsProjector({ word, pool, revealed }: BaseProps) {
         <motion.div
           initial={{ scale: 0.85 }}
           animate={{ scale: 1 }}
-          className="px-8 py-8 sm:px-14 sm:py-12 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-2xl text-4xl sm:text-6xl font-black"
+          className="px-8 py-8 sm:px-14 sm:py-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-2xl text-4xl sm:text-6xl font-black"
         >
           {word.english}
         </motion.div>

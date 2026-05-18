@@ -83,7 +83,7 @@ export default function TopStrugglingWords({
 
   return (
     <section
-      className="rounded-2xl border-2 shadow-sm p-4 sm:p-5"
+      className="rounded-xl border-2 shadow-sm p-4 sm:p-5"
       style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
     >
       <header className="flex items-start gap-2 mb-3">
@@ -103,7 +103,7 @@ export default function TopStrugglingWords({
           <button
             type="button"
             onClick={() => onCreateReteachAssignment(rows.map(r => r.wid))}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-sm shrink-0"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-sm shrink-0"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
           >
             <Plus size={14} />

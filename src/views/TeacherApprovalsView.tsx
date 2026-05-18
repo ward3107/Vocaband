@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { CheckCircle2, Check, RefreshCw, X, AlertTriangle, Info, GraduationCap, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Check, RefreshCw, X, AlertTriangle, Info, GraduationCap } from "lucide-react";
 import { supabase } from "../core/supabase";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
@@ -8,6 +8,7 @@ import { useFirstTimeGuide } from "../hooks/useFirstTimeGuide";
 import FirstTimeGuide from "../components/onboarding/FirstTimeGuide";
 import GuideTriggerButton from "../components/onboarding/GuideTriggerButton";
 import { teacherGuidesT } from "../locales/teacher/guides";
+import PageHero from "../components/PageHero";
 
 interface PendingStudent {
   id: string;
@@ -65,54 +66,35 @@ export default function TeacherApprovalsView({
   void user;
 
   return (
-    <div dir={dir} className="min-h-screen p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div dir={dir} className="min-h-screen" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       {consentModal}
       {exitConfirmModal}
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-        className="max-w-5xl mx-auto rounded-3xl border shadow-2xl p-6 sm:p-10"
-      >
-        {/* Header — title + Back button, identical chrome to Worksheet. */}
-        <div className="flex items-center justify-between mb-6 sm:mb-8 gap-3">
-          <div className="min-w-0">
-            <h1 className="text-3xl sm:text-4xl font-black mb-1" style={{ color: 'var(--vb-text-primary)' }}>
-              {t.approvalsTitle}
-            </h1>
-            <p className="text-sm sm:text-base truncate" style={{ color: 'var(--vb-text-secondary)' }}>
-              {t.approvalsSubtitle}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <GuideTriggerButton onClick={guide.open} />
-            <button
-              type="button"
-              onClick={() => setView("teacher-dashboard")}
-              style={{
-                borderColor: 'var(--vb-border)',
-                color: 'var(--vb-text-secondary)',
-                backgroundColor: 'var(--vb-surface)',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent' as never,
-              }}
-              className="px-4 py-2 rounded-xl border-2 inline-flex items-center gap-2 hover:opacity-90"
-            >
-              <ArrowLeft size={16} />
-              <span className="hidden sm:inline">{t.backToDashboard}</span>
-            </button>
-          </div>
-        </div>
+      <PageHero
+        icon={<CheckCircle2 size={32} className="text-white" />}
+        title={t.approvalsTitle}
+        subtitle={t.approvalsSubtitle}
+        onBack={() => setView("teacher-dashboard")}
+        backLabel={t.backToDashboard}
+        trailing={<GuideTriggerButton onClick={guide.open} />}
+      />
+
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+          className="max-w-6xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
+        >
 
         {pendingStudents.length === 0 ? (
           /* Empty state — calm, friendly, dashed border treatment now
              sits naturally inside the white surface card. */
           <div
-            className="border border-dashed rounded-2xl py-16 px-6 text-center"
+            className="border border-dashed rounded-xl py-16 px-6 text-center"
             style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
           >
-            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <div className="w-16 h-16 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 size={28} className="text-emerald-500" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: 'var(--vb-text-primary)' }}>{t.allCaughtUp}</h2>
@@ -123,7 +105,7 @@ export default function TeacherApprovalsView({
               onClick={() => setView("teacher-dashboard")}
               type="button"
               style={{ touchAction: 'manipulation', backgroundColor: 'var(--vb-accent)', color: 'var(--vb-accent-text)' }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 hover:opacity-90 rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 hover:opacity-90 rounded-lg font-semibold text-sm shadow-sm active:scale-95 transition-all"
             >
               {t.backToDashboard}
             </button>
@@ -145,7 +127,7 @@ export default function TeacherApprovalsView({
                   onClick={loadPendingStudents}
                   type="button"
                   style={{ touchAction: 'manipulation', backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-secondary)' }}
-                  className="inline-flex items-center gap-2 px-3.5 py-2.5 hover:bg-[var(--vb-surface-alt)] border rounded-xl font-semibold text-sm active:scale-95 transition-all"
+                  className="inline-flex items-center gap-2 px-3.5 py-2.5 hover:bg-[var(--vb-surface-alt)] border rounded-lg font-semibold text-sm active:scale-95 transition-all"
                   title={t.refreshTitle}
                 >
                   <RefreshCw size={15} />
@@ -167,7 +149,7 @@ export default function TeacherApprovalsView({
                     }}
                     type="button"
                     style={{ touchAction: 'manipulation' }}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm shadow-sm active:scale-95 transition-all"
                     title={t.approveAllTitle}
                   >
                     <Check size={15} />
@@ -186,12 +168,12 @@ export default function TeacherApprovalsView({
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
-                  className="rounded-2xl border-2 transition-shadow p-4 sm:p-5"
+                  className="rounded-xl border-2 transition-shadow p-4 sm:p-5"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     {/* Student identity */}
                     <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0 shadow-sm">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0 shadow-sm">
                         <GraduationCap size={20} className="text-white" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -216,7 +198,7 @@ export default function TeacherApprovalsView({
                         onClick={() => handleRejectStudent(student.id, student.displayName)}
                         type="button"
                         style={{ touchAction: 'manipulation', color: 'var(--vb-text-muted)' }}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                         title={t.rejectTitle}
                       >
                         <X size={16} />
@@ -226,7 +208,7 @@ export default function TeacherApprovalsView({
                         onClick={() => handleApproveStudent(student.id, student.displayName)}
                         type="button"
                         style={{ touchAction: 'manipulation' }}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-95 transition-all"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm shadow-sm active:scale-95 transition-all"
                         title={t.approveTitle}
                       >
                         <Check size={16} />
@@ -240,7 +222,7 @@ export default function TeacherApprovalsView({
 
             {/* Bottom helper — surface-alt inset to match the row cards. */}
             <div
-              className="mt-6 p-4 border rounded-xl flex gap-3"
+              className="mt-6 p-4 border rounded-lg flex gap-3"
               style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
             >
               <Info size={16} className="shrink-0 mt-0.5" style={{ color: 'var(--vb-text-muted)' }} />
@@ -250,7 +232,8 @@ export default function TeacherApprovalsView({
             </div>
           </>
         )}
-      </motion.div>
+        </motion.div>
+      </div>
 
       {/* Toast Notifications */}
       <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2 px-4 w-full max-w-md">
@@ -261,7 +244,7 @@ export default function TeacherApprovalsView({
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className={`px-5 py-3.5 rounded-2xl shadow-lg font-semibold text-sm flex items-center gap-2.5 ${
+              className={`px-5 py-3.5 rounded-xl shadow-lg font-semibold text-sm flex items-center gap-2.5 ${
                 toast.type === 'success' ? 'bg-emerald-600 text-white' :
                 toast.type === 'error' ? 'bg-rose-600 text-white' :
                 'bg-indigo-600 text-white'

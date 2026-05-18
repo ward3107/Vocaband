@@ -12,7 +12,7 @@ interface NavLanguageToggleProps {
 }
 
 const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" }) => {
-  const { language, setLanguage, isRTL } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   // Hover-to-open is a nicety on desktop but breaks badly on touch:
@@ -79,8 +79,9 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
     closeTimerRef.current = window.setTimeout(() => setIsOpen(false), 200);
   };
 
-  // Position dropdown based on direction: LTR aligns right, RTL aligns left
-  const dropdownPosition = isRTL ? "left-0" : "right-0";
+  // Dropdown anchors to the inline-end so it stays aligned with the
+  // trigger button in both LTR (right edge) and RTL (left edge).
+  const dropdownPosition = "end-0";
 
   return (
     <div
@@ -92,7 +93,7 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
       {/* Dropdown menu */}
       {isOpen && (
           <div
-            className={`absolute top-full mt-2 py-2 rounded-2xl bg-white shadow-2xl border border-stone-200 overflow-hidden min-w-[160px] z-[200] ${dropdownPosition}`}
+            className={`absolute top-full mt-2 py-2 rounded-xl bg-white shadow-2xl border border-stone-200 overflow-hidden min-w-[160px] z-[200] ${dropdownPosition}`}
             role="menu"
           >
             {languages.map((lang) => (

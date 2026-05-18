@@ -84,14 +84,14 @@ export default function GameModeIntroView({
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-md sm:max-w-xl w-full"
+        className="bg-white rounded-2xl sm:rounded-2xl shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-md sm:max-w-xl w-full"
       >
         {/* Hero icon with gradient circle */}
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.1 }}
-          className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-[22px] sm:rounded-[28px] bg-gradient-to-br ${theme.card} flex items-center justify-center text-4xl sm:text-5xl shadow-lg`}
+          className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-xl sm:rounded-2xl bg-gradient-to-br ${theme.card} flex items-center justify-center text-4xl sm:text-5xl shadow-lg`}
         >
           {info.icon}
         </motion.div>
@@ -112,7 +112,7 @@ export default function GameModeIntroView({
               initial={{ opacity: 0, x: isRtl ? 20 : -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 + i * 0.1 }}
-              className={`flex items-center gap-3 sm:gap-4 ${theme.stepBg} border p-3 sm:p-4 rounded-2xl`}
+              className={`flex items-center gap-3 sm:gap-4 ${theme.stepBg} border p-3 sm:p-4 rounded-xl`}
               dir={isRtl ? "rtl" : "ltr"}
             >
               <span className={`w-8 h-8 sm:w-10 sm:h-10 ${theme.stepNum} text-white rounded-full flex items-center justify-center text-sm sm:text-base font-black flex-shrink-0 shadow-sm`}>
@@ -132,7 +132,7 @@ export default function GameModeIntroView({
           transition={{ delay: 0.4 + info.steps.length * 0.1 }}
           onClick={onLetsGo ?? (() => setShowModeIntro(false))}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className={`w-full py-4 sm:py-5 bg-gradient-to-br ${theme.cta} text-white rounded-2xl font-black text-lg sm:text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-transform`}
+          className={`w-full py-4 sm:py-5 bg-gradient-to-br ${theme.cta} text-white rounded-xl font-black text-lg sm:text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-transform`}
         >
           {t.letsGo}
         </motion.button>

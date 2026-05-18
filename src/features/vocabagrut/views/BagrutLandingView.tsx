@@ -228,7 +228,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
             <ArrowLeft size={18} /> {t.back}
           </button>
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
               <Sparkles size={32} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
@@ -258,7 +258,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setModule(m)}
-                  className={`relative rounded-2xl p-4 text-left overflow-hidden transition-all border-2 ${active ? 'border-violet-500 shadow-lg shadow-violet-500/20' : 'border-transparent'}`}
+                  className={`relative rounded-xl p-4 text-left overflow-hidden transition-all border-2 ${active ? 'border-violet-500 shadow-lg shadow-violet-500/20' : 'border-transparent'}`}
                 >
                   <div className={`absolute inset-0 bg-gradient-to-br ${MODULE_GRADIENTS[m]} opacity-90`} />
                   <div className="relative z-10 text-white">
@@ -282,7 +282,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                 return (
                   <div
                     key={m}
-                    className="relative rounded-2xl p-4 text-left overflow-hidden border-2 border-dashed cursor-not-allowed"
+                    className="relative rounded-xl p-4 text-left overflow-hidden border-2 border-dashed cursor-not-allowed"
                     style={{ borderColor: 'var(--vb-border)' }}
                     title={t.comingSoonTitle(spec.label)}
                   >
@@ -317,7 +317,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                 value={pasteDraft}
                 onChange={e => setPasteDraft(e.target.value)}
                 placeholder={t.pastePlaceholder}
-                className="w-full min-h-[140px] p-3 rounded-xl border text-sm"
+                className="w-full min-h-[140px] p-3 rounded-lg border text-sm"
                 style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
               />
               <div className="flex items-center justify-between gap-3">
@@ -343,7 +343,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                   type="button"
                   onClick={() => setShowCamera(true)}
                   disabled={ocrLoading}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
                 >
                   <Camera size={18} /> {t.openCamera}
                 </button>
@@ -351,7 +351,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={ocrLoading}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold border"
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold border"
                   style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
                 >
                   {t.uploadFromGallery}
@@ -384,7 +384,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
               <select
                 value={selectedClassId ?? ''}
                 onChange={e => { setSelectedClassId(e.target.value || null); setSelectedAssignmentId(null); }}
-                className="w-full p-3 rounded-xl border text-sm"
+                className="w-full p-3 rounded-lg border text-sm"
                 style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
               >
                 <option value="">{t.selectClass}</option>
@@ -396,7 +396,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                 <select
                   value={selectedAssignmentId ?? ''}
                   onChange={e => setSelectedAssignmentId(e.target.value || null)}
-                  className="w-full p-3 rounded-xl border text-sm"
+                  className="w-full p-3 rounded-lg border text-sm"
                   style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
                 >
                   <option value="">{t.selectAssignment}</option>
@@ -406,7 +406,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
                 </select>
               )}
               {selectedAssignment && (
-                <div className="rounded-xl p-3 border" style={{ borderColor: 'var(--vb-border)' }}>
+                <div className="rounded-lg p-3 border" style={{ borderColor: 'var(--vb-border)' }}>
                   <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--vb-text-muted)' }}>
                     {t.wordsInAssignment(assignmentWords.length)}
                   </div>
@@ -444,7 +444,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
             )}
           </div>
           <div
-            className="rounded-2xl p-4 border min-h-[88px]"
+            className="rounded-xl p-4 border min-h-[88px]"
             style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
           >
             {pendingWords.length === 0 ? (
@@ -484,7 +484,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
         {/* ── Generate ── */}
         <section className="pt-2">
           {gen.error && (
-            <div className="mb-3 rounded-xl p-3 text-sm bg-rose-50 text-rose-700 border border-rose-200">
+            <div className="mb-3 rounded-lg p-3 text-sm bg-rose-50 text-rose-700 border border-rose-200">
               {gen.error}
             </div>
           )}
@@ -494,7 +494,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
             whileTap={{ scale: gen.loading || pendingWords.length === 0 ? 1 : 0.97 }}
             onClick={handleGenerate}
             disabled={gen.loading || pendingWords.length === 0}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold text-white text-base disabled:opacity-50 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30"
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold text-white text-base disabled:opacity-50 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30"
           >
             {gen.loading ? (
               <><Loader2 size={20} className="animate-spin" /> {t.generating(module)}</>
@@ -524,7 +524,7 @@ function SourceTab({ active, icon, label, onClick }: { active: boolean; icon: Re
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all ${active ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-transparent'}`}
+      className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-semibold border transition-all ${active ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-transparent'}`}
       style={!active ? { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' } : undefined}
     >
       {icon} {label}

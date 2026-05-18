@@ -207,8 +207,70 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
   doc.save(`${safeFileName(test.title)}.pdf`);
 
   // ── Renderers ───────────────────────────────────────────────────────
+  //
+  // Page-break strategy: every renderer pre-computes the height of the
+  // block it's about to draw and asks `ensureRoom` for that full height
+  // before drawing anything.  This stops the previous bug where the
+  // estimate undercounted (especially for multiple-choice questions
+  // with wrapped options) and content overflowed past the page bottom
+  // or got orphaned across a page break.
+  //
+  // For questions that are taller than a full page (rare — only happens
+  // when an AI-generated writing prompt has many bullets), we still try
+  // to fit them; if they're truly bigger than a page the renderer falls
+  // back to page-by-page flow rather than infinite-looping a new page.
+
+  /** Usable vertical space on a page after the top margin. */
+  const PAGE_INNER_HEIGHT = PAGE_HEIGHT - MARGIN - MARGIN - 24; // 24 = footer reserve
+
+  /** Measure how many points a question will consume so the
+   *  pre-allocation in `renderQuestion` is accurate.  Mirrors the
+   *  drawing math exactly — keep these two functions in sync. */
+  function measureQuestion(q: BagrutQuestion, qNum: number): number {
+    const promptWrapped = doc.splitTextToSize(`${qNum}.  ${q.prompt}`, CONTENT_WIDTH - 28);
+    let h = promptWrapped.length * 14 + 2;
+
+    if (q.type === 'mc' && q.options) {
+      for (const opt of q.options) {
+        const wrapped = doc.splitTextToSize(`(${opt.letter})  ${opt.text}`, CONTENT_WIDTH - 40);
+        h += wrapped.length * 14;
+      }
+      h += 8;
+    } else if (q.type === 'short') {
+      // 3 ruled lines at 14pt apart + 12pt bottom padding = 54pt.
+      h += 3 * 14 + 12;
+    } else if (q.type === 'writing') {
+      if (q.bullets && q.bullets.length > 0) {
+        h += 14; // "Your writing should include:" header
+        for (const bullet of q.bullets) {
+          const wrapped = doc.splitTextToSize(`•  ${bullet}`, CONTENT_WIDTH - 36);
+          h += wrapped.length * 12;
+        }
+        h += 6;
+      }
+      if (q.word_count_min && q.word_count_max) {
+        h += 14;
+      }
+      h += spec.writingLines * 16 + 12;
+    }
+
+    return h;
+  }
+
   function renderSection(section: BagrutSection) {
-    ensureRoom(40);
+    // Reserve enough room to draw the section title, the divider line,
+    // AND the first piece of content (passage line OR first question
+    // header).  This stops orphaned section titles where the title
+    // landed at the bottom of a page and its first question jumped to
+    // the next page — the user-reported "part on a page and the other
+    // part jumps" problem.
+    const firstChildHeight = section.passage
+      ? 16 // first passage line
+      : section.questions.length > 0
+        ? Math.min(measureQuestion(section.questions[0], 1), PAGE_INNER_HEIGHT - 60)
+        : 0;
+    ensureRoom(40 + firstChildHeight);
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(20, 20, 20);
@@ -256,8 +318,19 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
   function renderQuestion(q: BagrutQuestion, qNum: number) {
     const promptWrapped = doc.splitTextToSize(`${qNum}.  ${q.prompt}`, CONTENT_WIDTH - 28);
     const ptsLabel = `(${q.points} pts)`;
+    const needed = measureQuestion(q, qNum);
 
-    ensureRoom(promptWrapped.length * 14 + (q.type === 'mc' ? 60 : q.type === 'writing' ? spec.writingLines * 14 + 40 : 50));
+    // Reserve the whole question up front.  For questions that fit on a
+    // page, this guarantees the prompt + answer area stay together.
+    // For oversized writing questions (rare) we still trigger a
+    // pre-emptive page break so at least the prompt + most of the
+    // answer area is on the new page, instead of half on each.
+    if (needed <= PAGE_INNER_HEIGHT) {
+      ensureRoom(needed);
+    } else {
+      // Bigger than a full page — start fresh and let the content flow.
+      ensureRoom(PAGE_INNER_HEIGHT);
+    }
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
@@ -272,17 +345,21 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
 
     if (q.type === 'mc' && q.options) {
       for (const opt of q.options) {
-        ensureRoom(14);
         const text = `(${opt.letter})  ${opt.text}`;
         const wrapped = doc.splitTextToSize(text, CONTENT_WIDTH - 40);
+        // Each option is one logical unit — keep all of its wrapped
+        // lines together so we don't split "(a) lorem" / "ipsum" across
+        // a page boundary.
+        ensureRoom(wrapped.length * 14);
         doc.text(wrapped, MARGIN + 24, y);
         y += wrapped.length * 14;
       }
       y += 8;
     } else if (q.type === 'short') {
-      // 3 ruled blank lines.
+      // 3 ruled blank lines — drawn together so they stay on the same
+      // page as the prompt.
+      ensureRoom(3 * 14 + 12);
       for (let i = 0; i < 3; i++) {
-        ensureRoom(18);
         y += 14;
         doc.setDrawColor(180, 180, 180);
         doc.setLineWidth(0.3);
@@ -297,33 +374,43 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
         doc.text('Your writing should include:', MARGIN + 6, y);
         y += 14;
         for (const bullet of q.bullets) {
-          ensureRoom(14);
           const wrapped = doc.splitTextToSize(`•  ${bullet}`, CONTENT_WIDTH - 36);
+          ensureRoom(wrapped.length * 12);
           doc.text(wrapped, MARGIN + 18, y);
           y += wrapped.length * 12;
         }
         y += 6;
       }
       if (q.word_count_min && q.word_count_max) {
+        ensureRoom(14);
         doc.setFont('helvetica', 'italic');
         doc.setFontSize(9);
         doc.setTextColor(110, 110, 110);
         doc.text(`Write ${q.word_count_min}–${q.word_count_max} words.`, MARGIN + 6, y);
         y += 14;
       }
-      // Ruled writing box.
+      // Ruled writing box.  When the box is taller than a page (huge
+      // spec.writingLines) we draw what fits on this page and let the
+      // overflow happen — that's better than skipping pages of room.
       const linesNeeded = spec.writingLines;
-      ensureRoom(linesNeeded * 16 + 20);
+      const fullBoxHeight = linesNeeded * 16;
+      // If the remaining page can't fit even ~6 lines of writing,
+      // start a new page so the student has a real answer area.
+      const remaining = PAGE_HEIGHT - MARGIN - 24 - y;
+      if (remaining < 6 * 16 && fullBoxHeight + 12 <= PAGE_INNER_HEIGHT) {
+        doc.addPage();
+        y = MARGIN;
+      }
       doc.setDrawColor(120, 120, 120);
       doc.setLineWidth(0.4);
-      doc.rect(MARGIN, y, CONTENT_WIDTH, linesNeeded * 16);
+      doc.rect(MARGIN, y, CONTENT_WIDTH, fullBoxHeight);
       doc.setDrawColor(220, 220, 220);
       doc.setLineWidth(0.3);
       for (let i = 1; i < linesNeeded; i++) {
         const ly = y + i * 16;
         doc.line(MARGIN + 4, ly, MARGIN + CONTENT_WIDTH - 4, ly);
       }
-      y += linesNeeded * 16 + 12;
+      y += fullBoxHeight + 12;
     }
   }
 }

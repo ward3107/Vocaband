@@ -26,7 +26,7 @@ export default function ClassCreatedModal({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             style={{ backgroundColor: 'var(--vb-surface)' }}
-            className="rounded-[32px] p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center max-h-[90vh] overflow-y-auto"
+            className="rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center max-h-[90vh] overflow-y-auto"
           >
             <div
               className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
@@ -45,7 +45,7 @@ export default function ClassCreatedModal({
             </p>
 
             <div
-              className="p-6 rounded-3xl border-2 mb-6 relative overflow-hidden"
+              className="p-6 rounded-2xl border-2 mb-6 relative overflow-hidden"
               style={{
                 backgroundColor: 'var(--vb-accent-soft)',
                 borderColor: 'var(--vb-border)',
@@ -71,7 +71,7 @@ export default function ClassCreatedModal({
                   color: 'var(--vb-text-primary)',
                   borderColor: 'var(--vb-border)',
                 }}
-                className="py-4 rounded-2xl font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 hover:scale-105 border-2"
+                className="py-4 rounded-xl font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 hover:scale-105 border-2"
               >
                 {copiedCode === createdClassCode
                   ? <Check size={20} style={{ color: 'var(--vb-accent)' }} />
@@ -83,7 +83,7 @@ export default function ClassCreatedModal({
                 href={`https://wa.me/?text=${encodeURIComponent(createdClassCode || "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="py-4 bg-[#25D366] text-white rounded-2xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
+                className="py-4 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
               >
                 <MessageCircle size={20} />
                 <span>{t.whatsAppShort}</span>
@@ -93,7 +93,7 @@ export default function ClassCreatedModal({
             <button
               onClick={onDone}
               style={{ color: 'var(--vb-text-secondary)' }}
-              className="w-full py-4 font-bold hover:opacity-80 rounded-2xl transition-all"
+              className="w-full py-4 font-bold hover:opacity-80 rounded-xl transition-all"
             >
               {t.doneBtn}
             </button>

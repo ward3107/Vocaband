@@ -159,7 +159,7 @@ export default function TodayActionList({
 
   return (
     <section
-      className="rounded-2xl p-4 border"
+      className="rounded-xl p-4 border"
       style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
     >
       <header className="flex items-center gap-2 mb-3">
@@ -174,7 +174,7 @@ export default function TodayActionList({
             key={item.key}
             type="button"
             onClick={item.onClick}
-            className={`group w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-left ${
+            className={`group w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
               item.tone === "amber"
                 ? "border-amber-100 hover:bg-amber-50/40"
                 : item.tone === "rose"
@@ -183,7 +183,7 @@ export default function TodayActionList({
             }`}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
           >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
               item.tone === "amber"
                 ? "bg-amber-100 text-amber-700"
                 : item.tone === "rose"

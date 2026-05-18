@@ -37,6 +37,7 @@ import {
 import { isPro, FREE_TIER_LIMITS } from "../core/plan";
 import { cachedRead } from "../core/readCache";
 import { trackAutoError } from "../errorTracking";
+import { logAudit } from "../utils/audit";
 
 interface PendingStudent {
   id: string;
@@ -167,10 +168,9 @@ export function useTeacherData(params: UseTeacherDataParams) {
           ttlMs: 2 * 60 * 1000,
           onCacheHit: (cached) => setStudentAssignments(cached),
         },
-      ).then<{ kind: 'ok'; data: AssignmentData[] } | { kind: 'kept-cache' }>(
-        fresh => ({ kind: 'ok', data: fresh }),
-        () => ({ kind: 'kept-cache' }),
-      ),
+      )
+        .then(fresh => ({ kind: 'ok' as const, data: fresh }))
+        .catch(() => ({ kind: 'kept-cache' as const })),
       supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid),
     ]);
 
@@ -269,6 +269,13 @@ export function useTeacherData(params: UseTeacherDataParams) {
         throw error;
       }
 
+      // Central audit_log entry — the SECURITY DEFINER RPC writes
+      // approved_at / approved_by directly on the profile row but
+      // doesn't emit an Amendment-13-style audit row, so we add it
+      // here.  Profile id goes in metadata; auth UID isn't returned
+      // by the RPC (yet) so we don't attempt to populate targetUid.
+      void logAudit('approve_student', 'users', { metadata: { profile_id: studentId } });
+
       // Refresh the list
       await loadPendingStudents();
 
@@ -293,6 +300,11 @@ export function useTeacherData(params: UseTeacherDataParams) {
         .eq('id', studentId);
 
       if (error) throw error;
+
+      // A rejected student never receives an auth UID, so target_uid
+      // stays null and the profile id rides in metadata for forensic
+      // lookup.
+      void logAudit('reject_student', 'users', { metadata: { profile_id: studentId } });
 
       // Refresh the list
       await loadPendingStudents();

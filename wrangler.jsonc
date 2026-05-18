@@ -11,18 +11,31 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     // Cloudflare Workers Assets serves matching static files BEFORE
-    // invoking the Worker by default. That meant our edge-side
-    // metadata rewrite for ?lang=he|ar never ran — / matched
-    // /index.html and was served straight from the asset cache.
-    // run_worker_first tells the runtime to invoke worker/index.ts
-    // first for these three SPA HTML routes; the worker then either
-    // rewrites the response (when ?lang=he|ar) or falls through to
-    // env.ASSETS.fetch() unchanged. Static assets (JS/CSS/fonts/img)
-    // aren't listed, so they skip the worker pass and stay cheap.
+    // invoking the Worker by default — and with not_found_handling
+    // set to "single-page-application", unmatched paths fall through
+    // to /index.html with status 200, so the Worker never runs at all
+    // unless a path is explicitly opted in here.
+    //
+    // Two distinct reasons paths appear in this list:
+    //   1. SPA HTML routes (/, /student, /accessibility-statement) —
+    //      the Worker rewrites <title>/<meta>/<html> for ?lang=he|ar|ru
+    //      so Googlebot indexes localized snippets (see worker/index.ts
+    //      localizeHtmlResponse). Static assets (JS/CSS/fonts/img)
+    //      aren't listed, so they skip the worker pass and stay cheap.
+    //   2. Backend-proxy routes (/api/*, /socket.io/*) — the Worker
+    //      passthrough-proxies these to Fly.io. Without the glob here
+    //      the asset handler's SPA fallback served /index.html for
+    //      every API call and every WebSocket upgrade, so OCR /
+    //      translate / AI / Live Challenge / Quick Play all silently
+    //      broke after the 2026-04-25 Render→Fly migration moved
+    //      socket.io off api.vocaband.com onto same-origin
+    //      /socket.io/. The Worker code was correct; it just never ran.
     "run_worker_first": [
       "/",
       "/student",
-      "/accessibility-statement"
+      "/accessibility-statement",
+      "/api/*",
+      "/socket.io/*"
     ]
   },
   "compatibility_flags": [

@@ -93,7 +93,7 @@ export default function MasteryHeatmap({ rows, getLabel, title }: MasteryHeatmap
   });
 
   return (
-    <div className="bg-[var(--vb-surface)] rounded-2xl p-4 border border-[var(--vb-border)]">
+    <div className="bg-[var(--vb-surface)] rounded-xl p-4 border border-[var(--vb-border)]">
       {title && (
         <h4 className="text-xs font-black uppercase tracking-widest text-[var(--vb-text-muted)] mb-3">
           {title}

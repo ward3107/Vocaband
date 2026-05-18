@@ -161,7 +161,7 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
             exit={{ scale: 0.92, opacity: 0, y: 12 }}
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md bg-[var(--vb-surface)] rounded-3xl shadow-2xl p-6 sm:p-8"
+            className="relative w-full max-w-md bg-[var(--vb-surface)] rounded-2xl shadow-2xl p-6 sm:p-8"
             dir={dir}
           >
             <button
@@ -208,7 +208,7 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
                         role="radio"
                         aria-checked={selectedRating === n}
                         aria-label={t.starAria(n)}
-                        className="p-2 sm:p-3 rounded-2xl hover:bg-amber-50 transition-colors disabled:opacity-60"
+                        className="p-2 sm:p-3 rounded-xl hover:bg-amber-50 transition-colors disabled:opacity-60"
                         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                       >
                         <Star
@@ -242,7 +242,7 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
                   type="button"
                   onClick={() => selectedRating != null && handleSubmit(selectedRating)}
                   disabled={selectedRating == null || submitting}
-                  className="w-full py-3 rounded-2xl font-bold bg-amber-400 text-stone-900 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full py-3 rounded-xl font-bold bg-amber-400 text-stone-900 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                 >
                   {submitting ? t.sending : t.sendRating}
@@ -265,7 +265,7 @@ export default function RatingPrompt({ user, kind, guestStorage, onDone }: Ratin
                       onClick={() => handleSubmit(idx + 1)}
                       disabled={submitting}
                       aria-label={t.studentRatingAria(idx + 1)}
-                      className="text-4xl sm:text-5xl p-2 rounded-2xl hover:bg-[var(--vb-surface-alt)] hover:scale-110 active:scale-95 transition-transform disabled:opacity-60"
+                      className="text-4xl sm:text-5xl p-2 rounded-xl hover:bg-[var(--vb-surface-alt)] hover:scale-110 active:scale-95 transition-transform disabled:opacity-60"
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                     >
                       {emoji}

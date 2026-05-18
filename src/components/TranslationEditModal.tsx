@@ -82,9 +82,9 @@ export const TranslationEditModal: React.FC<TranslationEditModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-surface rounded-3xl shadow-2xl max-w-lg w-full">
+      <div className="bg-surface rounded-2xl shadow-2xl max-w-lg w-full">
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 rounded-t-3xl">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black text-white">Edit Translation</h2>
             <button
@@ -107,7 +107,7 @@ export const TranslationEditModal: React.FC<TranslationEditModalProps> = ({
               type="text"
               value={word.english}
               disabled
-              className="w-full px-4 py-3 rounded-xl bg-surface-container-highest border-2 border-surface-container-highest text-on-surface opacity-50"
+              className="w-full px-4 py-3 rounded-lg bg-surface-container-highest border-2 border-surface-container-highest text-on-surface opacity-50"
             />
           </div>
 
@@ -124,7 +124,7 @@ export const TranslationEditModal: React.FC<TranslationEditModalProps> = ({
                 setHasChanges(true);
               }}
               placeholder={phHe}
-              className="w-full px-4 py-3 rounded-xl bg-surface-container-highest border-2 border-surface-container-highest text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full px-4 py-3 rounded-lg bg-surface-container-highest border-2 border-surface-container-highest text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               dir="rtl"
             />
           </div>
@@ -142,13 +142,13 @@ export const TranslationEditModal: React.FC<TranslationEditModalProps> = ({
                 setHasChanges(true);
               }}
               placeholder={phAr}
-              className="w-full px-4 py-3 rounded-xl bg-surface-container-highest border-2 border-surface-container-highest text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full px-4 py-3 rounded-lg bg-surface-container-highest border-2 border-surface-container-highest text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               dir="rtl"
             />
           </div>
 
           {/* Info */}
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-900">
               <strong>ℹ️ Tip:</strong> Your corrections will apply to all assignments and games.
               Other teachers won't see your corrections unless they edit the same word.
@@ -161,7 +161,7 @@ export const TranslationEditModal: React.FC<TranslationEditModalProps> = ({
           <button
             onClick={handleReset}
             disabled={isSaving}
-            className="flex-1 px-4 py-3 rounded-xl border-2 border-surface-container-highest text-on-surface hover:bg-surface-container-highest disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-3 rounded-lg border-2 border-surface-container-highest text-on-surface hover:bg-surface-container-highest disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
           >
             <RotateCcw size={18} />
             Reset to Default
@@ -169,7 +169,7 @@ export const TranslationEditModal: React.FC<TranslationEditModalProps> = ({
           <button
             onClick={handleSave}
             disabled={isSaving || !hasChanges}
-            className="flex-1 px-4 py-3 rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-3 rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
           >
             <Check size={18} />
             {isSaving ? 'Saving...' : 'Save Correction'}

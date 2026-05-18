@@ -205,7 +205,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Header */}
-        <div className="rounded-2xl p-5 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
+        <div className="rounded-xl p-5 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
           <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--vb-text-muted)' }}>
             {t.testHeader(spec.label, String(spec.pointTrack), spec.cefr)}
           </div>
@@ -225,7 +225,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
         </div>
 
         {/* Publish controls */}
-        <div className="rounded-2xl p-4 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
+        <div className="rounded-xl p-4 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1">
               <label className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-muted)' }}>
@@ -256,7 +256,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
 
         {/* Sections */}
         {draft.sections.map((section, secIdx) => (
-          <div key={secIdx} className="rounded-2xl p-5 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
+          <div key={secIdx} className="rounded-xl p-5 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-primary)' }}>
                 {section.title}
@@ -320,7 +320,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
         ))}
 
         {/* Answer key toggle */}
-        <div className="rounded-2xl p-4 border flex items-center gap-3" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
+        <div className="rounded-xl p-4 border flex items-center gap-3" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
           <input
             id="answerKey"
             type="checkbox"

@@ -77,9 +77,9 @@ const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
       </p>
 
       {/* Horizontal scroller for narrow viewports — the 5 pills don't
-          fit on a 360px phone otherwise. */}
+          fit on a 360px phone otherwise. Centered when there's room. */}
       <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex items-center gap-2 min-w-max">
+        <div className="flex items-center justify-center gap-2 min-w-max mx-auto">
           {tabs.map(tab => {
             const isActive = tab.id === active;
             return (

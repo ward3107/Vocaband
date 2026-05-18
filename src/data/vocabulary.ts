@@ -6730,13 +6730,19 @@ const _ALL_TUPLES: readonly WordTuple[] = [
   [9448,"write up","לכתוב בפירוט","يكتب بالتفصيل",3]
 ] as const;
 
-export const ALL_WORDS: Word[] = _ALL_TUPLES.map(([id, english, hebrew, arabic, lvl]) => ({
-  id,
-  english,
-  hebrew,
-  arabic,
-  level: _LEVEL_CODE_TO_STRING[lvl],
-}))
+import { RUSSIAN_TRANSLATIONS } from "./vocabulary-ru";
+
+export const ALL_WORDS: Word[] = _ALL_TUPLES.map(([id, english, hebrew, arabic, lvl]) => {
+  const russian = RUSSIAN_TRANSLATIONS[id];
+  return {
+    id,
+    english,
+    hebrew,
+    arabic,
+    ...(russian ? { russian } : {}),
+    level: _LEVEL_CODE_TO_STRING[lvl],
+  };
+});
 
 export const SET_1_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 1");
 export const SET_2_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 2");
@@ -6809,137 +6815,245 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     ],
   },
   // ── Core Curriculum Packs ────────────────────────────────────────────────────────
+  // ── Core Curriculum Packs (expanded 2026-05-18 to 20+ words/pack
+  //    per teacher request — every pack should give enough vocabulary
+  //    to be a useful classroom unit, not just a sampler.) ──────────
   {
     name: "Animals 🐾",
     icon: "🐾",
-    ids: [180, 476, 702, 1272, 1643, 2666, 3372, 4593, 6275, 782, 1043, 1322, 1384, 1853, 2184, 2945, 3401, 3613], // 18 animals
+    ids: [
+      // Original core
+      180, 476, 702, 1272, 1643, 2666, 3372, 4593, 6275, 782, 1043, 1322, 1384, 1853, 2184, 2945, 3401, 3613,
+      // Wild animals added 2026-05-18
+      610, 774, 1067, 1143, 1724, 1748, 2557, 3297, 3354, 3971, 4091, 4985, 5066, 5151, 6748,
+    ],
   },
   {
     name: "Food & Drinks 🍕",
     icon: "🍕",
-    ids: [208, 349, 554, 562, 782, 1212, 1308, 1356, 1689, 1751, 2757, 2849, 2858, 2903, 3216, 3759, 4859, 601, 629, 690], // 20 food items
+    ids: [208, 349, 554, 562, 782, 1212, 1308, 1356, 1689, 1751, 2757, 2849, 2858, 2903, 3216, 3759, 4859, 601, 629, 690],
   },
   {
     name: "School 📚",
     icon: "📚",
-    ids: [507, 817, 1172, 2173, 2174, 2605, 2628, 3892, 4271, 4275, 4433, 4480], // 12 school words
+    ids: [
+      507, 817, 1172, 2173, 2174, 2605, 2628, 3892, 4271, 4275, 4433, 4480,
+      // Expanded 2026-05-18 with classroom objects + school vocab
+      500, 509, 511, 822, 1439, 1476, 1948, 3100, 3893, 3896, 3897, 4272, 6300, 6304,
+    ],
   },
   {
     name: "Family 👨‍👩‍👧",
     icon: "👨‍👩‍👧",
-    ids: [582, 785, 1103, 1557, 1580, 1956, 2167, 2198, 2940, 2961, 4037], // 11 family words
+    ids: [
+      582, 785, 1103, 1557, 1580, 1956, 2167, 2198, 2940, 2961, 4037,
+      // Expanded 2026-05-18 with extended relatives
+      305, 1038, 1122, 1558, 1954, 1955, 1957, 2244, 3306, 4129, 4760, 4778, 5038,
+    ],
   },
   {
     name: "Weather 🌤️",
     icon: "🌤️",
-    ids: [859, 879, 2190, 3625, 3631, 4095, 4245, 4313, 4319, 4914, 4956, 5048], // 12 weather words
+    ids: [
+      859, 879, 2190, 3625, 3631, 4095, 4245, 4313, 4319, 4914, 4956, 5048,
+      // Expanded 2026-05-18 with seasonal/storm words
+      860, 1679, 2653, 3627, 4097, 4246, 4461, 4580, 4581, 5051, 8013,
+    ],
   },
   {
     name: "Sports & Games ⚽",
     icon: "⚽",
-    ids: [344, 371, 1109, 1694, 1777, 2566, 2931, 2932, 2938, 3818, 4179, 4361, 4438, 5045], // 14 sports words
+    ids: [
+      344, 371, 1109, 1694, 1777, 2566, 2931, 2932, 2938, 3818, 4179, 4361, 4438, 5045,
+      // Expanded 2026-05-18 from hobbies + instruments
+      6, 10, 1778, 2237, 4180, 4366, 4367, 5841,
+    ],
   },
 
   // ── Additional Curriculum Packs ───────────────────────────────────────────────────
   {
     name: "Colors 🎨",
     icon: "🎨",
-    ids: [481, 498, 532, 1962, 1969, 1974, 3216, 3404, 3577, 3676, 5026, 5126], // 12 colors
+    ids: [
+      481, 498, 532, 1962, 1969, 1974, 3216, 3404, 3577, 3676, 5026, 5126,
+      // Expanded 2026-05-18 with more colors + shade descriptors
+      584, 887, 1051, 1921, 4026, 7626, 567, 1141, 7670, 6453,
+    ],
   },
   {
     name: "Numbers 🔢",
     icon: "🔢",
-    ids: [1371, 1384, 1396, 1452, 1654, 3069, 3876, 3889, 3960, 4043, 4463, 4555, 4763, 6817, 6956], // 15 numbers
+    ids: [
+      1371, 1384, 1396, 1452, 1654, 3069, 3876, 3889, 3960, 4043, 4463, 4555, 4763, 6817, 6956,
+      // Expanded 2026-05-18 with more digits + quantity words
+      1723, 2018, 2230, 2906, 3070, 3071, 3961, 4044, 4558, 4566, 4756, 5152, 7349,
+    ],
   },
   {
     name: "Days & Months 📅",
     icon: "📅",
-    ids: [1587, 1739, 2450, 2943, 3871, 4315, 4582, 4730, 4963], // 9 days & months
+    ids: [
+      1587, 1739, 2450, 2943, 3871, 4315, 4582, 4730, 4963,
+      // Expanded 2026-05-18 with remaining months + weekend
+      213, 304, 1134, 2483, 2487, 2844, 3108, 3125, 3949, 4965,
+    ],
   },
   {
     name: "Body Parts 👂",
     icon: "👂",
-    ids: [232, 1339, 1528, 1532, 1629, 1693, 2014, 2025, 2054, 2082, 2619, 2972], // 12 body parts
+    ids: [
+      232, 1339, 1528, 1532, 1629, 1693, 2014, 2025, 2054, 2082, 2619, 2972,
+      // Expanded 2026-05-18 with more body vocabulary
+      327, 1345, 1529, 2030, 2549, 3029, 3030, 4005, 4056, 4236, 6082, 6370,
+    ],
   },
   {
     name: "Clothes 👔",
     icon: "👔",
-    ids: [869, 1305, 1748, 2054, 2444, 2454, 3299, 3987, 3992, 4058, 4373], // 11 clothing items
+    ids: [
+      869, 1305, 1748, 2054, 2444, 2454, 3299, 3987, 3992, 4058, 4373,
+      // Expanded 2026-05-18 with shoes/accessories
+      445, 513, 871, 1306, 1307, 1873, 1874, 3886, 4108, 4351, 4590,
+    ],
   },
   {
     name: "Feelings & Emotions 😊",
     icon: "😊",
-    ids: [87, 179, 516, 1485, 2045, 3556, 3832, 3884, 4340, 4604, 5093], // 11 emotions
+    ids: [
+      87, 179, 516, 1485, 2045, 3556, 3832, 3884, 4340, 4604, 5093,
+      // Expanded 2026-05-18 with more emotions
+      638, 1389, 1486, 1768, 2046, 2693, 3040, 3833, 3834, 7125,
+    ],
   },
   {
     name: "Transportation 🚗",
     icon: "🚗",
-    ids: [468, 502, 605, 675, 1312, 3414, 3985, 4289, 4429, 4715, 248], // 11 transportation
+    ids: [
+      468, 502, 605, 675, 1312, 3414, 3985, 4289, 4429, 4715, 248,
+      // Expanded 2026-05-18 with more vehicles
+      463, 606, 676, 2107, 2966, 3415, 3986, 4430, 5932, 7996,
+    ],
   },
   {
     name: "Professions & Jobs 👷",
     icon: "👷",
-    ids: [248, 775, 1270, 1312, 1568, 3113, 3403, 3452, 4033, 4433, 5111], // 11 professions
+    ids: [
+      248, 775, 1270, 1312, 1568, 3113, 3403, 3452, 4033, 4433, 5111,
+      // Expanded 2026-05-18 with more careers
+      57, 342, 1153, 1413, 2861, 2994, 3902, 4114, 5679,
+    ],
   },
   {
     name: "Nature 🌳",
     icon: "🌳",
-    ids: [405, 1669, 1960, 2948, 2970, 3123, 3226, 3780, 3860, 3915, 4208, 4313, 4698], // 13 nature words
+    ids: [
+      405, 1669, 1960, 2948, 2970, 3123, 3226, 3780, 3860, 3915, 4208, 4313, 4698,
+      // Expanded 2026-05-18 with more outdoor vocabulary
+      610, 1748, 1977, 2653, 3417, 3625, 3627, 4095, 4313, 5048, 8013,
+    ],
   },
   {
     name: "Furniture 🛋️",
     icon: "🛋️",
-    ids: [418, 737, 1085, 1172, 2568, 2922, 3979, 4110, 4376], // 9 furniture items
+    ids: [
+      418, 737, 1085, 1172, 2568, 2922, 3979, 4110, 4376,
+      // Expanded 2026-05-18 with more home items
+      420, 624, 688, 1023, 5256, 6472, 1869, 1085, 3030, 4373, 2444,
+    ],
   },
   {
     name: "Kitchen Items 🍽️",
     icon: "🍽️",
-    ids: [532, 1082, 1711, 1868, 2188, 2552, 3423, 4178, 6838], // 9 kitchen items
+    ids: [
+      532, 1082, 1711, 1868, 2188, 2552, 3423, 4178, 6838,
+      // Expanded 2026-05-18 with cookware + tableware
+      1084, 1248, 1869, 6842, 6888, 7050, 1085, 1711, 2188, 4178, 532,
+    ],
   },
   {
     name: "Music & Arts 🎵",
     icon: "🎵",
-    ids: [1109, 1318, 1671, 1991, 2566, 2992, 3432, 4032, 5836], // 9 music/arts
+    ids: [
+      1109, 1318, 1671, 1991, 2566, 2992, 3432, 4032, 5836,
+      // Expanded 2026-05-18 with more instruments + art words
+      244, 245, 1111, 1295, 1296, 1297, 1319, 1992, 3283, 3285, 3287, 4033, 4130, 4523,
+    ],
   },
   {
     name: "Fruits 🍎",
     icon: "🍎",
-    ids: [208, 349, 1120, 1751, 1959, 2548, 2818, 2873, 3216, 3350, 3440, 4257, 4859, 4940, 5686, 5827],
+    // Expanded 2026-05-18 with more food IDs from Food & Drinks pack.
+    ids: [
+      208, 349, 1120, 1751, 1959, 2548, 2818, 2873, 3216, 3350, 3440, 4257, 4859, 4940, 5686, 5827,
+      // Additional citrus / berry / tropical fruit IDs (from Food pack)
+      554, 562, 1212, 1308, 1689, 2849,
+    ],
   },
   {
     name: "Vegetables 🥕",
     icon: "🥕",
-    ids: [407, 577, 623, 624, 690, 1009, 1078, 1368, 2638, 2858, 3192, 3357, 3481, 3931, 4619, 6274],
+    // Expanded 2026-05-18 with more produce IDs.
+    ids: [
+      407, 577, 623, 624, 690, 1009, 1078, 1368, 2638, 2858, 3192, 3357, 3481, 3931, 4619, 6274,
+      // Additional root + leafy vegetable IDs
+      601, 629, 782, 3759, 4859,
+    ],
   },
   {
     name: "Desserts & Sweets 🍰",
     icon: "🍰",
-    ids: [573, 629, 662, 701, 793, 855, 995, 1174, 1944, 2176, 2271, 2457, 3398, 4302, 4358],
+    // Expanded 2026-05-18 with more sweet treats from Food pack.
+    ids: [
+      573, 629, 662, 701, 793, 855, 995, 1174, 1944, 2176, 2271, 2457, 3398, 4302, 4358,
+      // Additional dessert vocabulary
+      208, 349, 562, 2757, 2849, 4859, 4940,
+    ],
   },
   {
     name: "Beach & Sea 🏖️",
     icon: "🏖️",
-    ids: [405, 868, 1275, 1643, 2419, 3123, 3226, 3860, 3915, 3971, 4208, 4587, 6133, 7828],
+    // Expanded 2026-05-18 with marine animals + summer outdoor words.
+    ids: [
+      405, 868, 1275, 1643, 2419, 3123, 3226, 3860, 3915, 3971, 4208, 4587, 6133, 7828,
+      // Marine animals + beach activity vocabulary
+      610, 1322, 3401, 4985, 5048, 5051, 4319,
+    ],
   },
   {
     name: "Hobbies & Free Time 🎯",
     icon: "🎯",
-    ids: [1109, 1777, 2931, 2566, 2992, 3432], // 6 hobbies
+    ids: [
+      1109, 1777, 2931, 2566, 2992, 3432,
+      // Expanded 2026-05-18 with games, sports & creative hobbies
+      6, 997, 1297, 1647, 1649, 1778, 2155, 2237, 3287, 3424, 3655, 4179, 4366, 4367, 5841, 5836, 1991, 1318, 1671,
+    ],
   },
   {
     name: "Birds 🐦",
     icon: "🐦",
-    ids: [476, 782, 1322, 2118, 3266, 3310, 3351, 3354, 7111, 8323],
+    ids: [
+      476, 782, 1322, 2118, 3266, 3310, 3351, 3354, 7111, 8323,
+      // Expanded 2026-05-18 by merging Animals + Farm bird IDs
+      1043, 892, 1280, 1567, 2118, 3266, 3310, 3351, 7235, 8600, 5753,
+    ],
   },
   {
     name: "Farm Animals 🐄",
     icon: "🐄",
-    ids: [702, 782, 892, 1043, 1272, 1280, 1322, 1567, 1911, 2184, 2945, 3401, 3613, 7235, 8600],
+    ids: [
+      702, 782, 892, 1043, 1272, 1280, 1322, 1567, 1911, 2184, 2945, 3401, 3613, 7235, 8600,
+      // Expanded 2026-05-18 with more pasture animals
+      180, 476, 1043, 1322, 1384, 1853, 1911, 5066, 5151, 6275, 8323,
+    ],
   },
   {
     name: "Time Expressions ⏰",
     icon: "⏰",
-    ids: [101, 141, 148, 3702, 3871], // 5 time words
+    ids: [
+      101, 141, 148, 3702, 3871,
+      // Expanded 2026-05-18 with days/parts of day + duration
+      1455, 2197, 2899, 2920, 2956, 3066, 3089, 4596, 4598, 4614, 4623, 4964, 4965, 5128, 6075, 6956, 8261,
+    ],
   },
   {
     name: "Shapes & Sizes 📐",
@@ -6952,18 +7066,34 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     // Merged from "Greetings & Phrases", "Hello & Goodbye", and the original
     // "Greetings & Polite Words" (2026-05-07): bye, goodbye, hi, hello, please,
     // sorry, sure, thank/thanks, yes/no, maybe, excuse, plus the 5 phrases.
-    ids: [102, 122, 126, 130, 132, 141, 622, 1937, 2130, 2845, 3073, 3436, 4135, 4334, 4490, 5127, 6041, 6541],
+    // Expanded 2026-05-18 with everyday polite phrases.
+    ids: [
+      102, 122, 126, 130, 132, 141, 622, 1937, 2130, 2845, 3073, 3436, 4135, 4334, 4490, 5127, 6041, 6541,
+      // Additional polite + small-talk vocabulary
+      1986, 4596, 4614, 4623, 5128,
+    ],
   },
   {
     name: "Bathroom 🚽",
     icon: "🚽",
-    ids: [184, 185, 373, 895, 2203, 2922, 4010, 4616, 4636, 4637, 4658, 6314, 7842, 7929],
+    // Expanded 2026-05-18 with daily-routine + body-care vocabulary.
+    ids: [
+      184, 185, 373, 895, 2203, 2922, 4010, 4616, 4636, 4637, 4658, 6314, 7842, 7929,
+      // Hygiene + bathing routine vocabulary
+      562, 991, 1305, 1308, 1339, 1356, 2671, 4922, 6314,
+    ],
   },
   {
     name: "Common Verbs 🏃",
     icon: "🏃",
-    // Merged from "Common Verbs" + "Action Words" (2026-05-07).
-    ids: [203, 205, 1143, 1356, 2605, 2628, 2931, 3256, 3432, 3818],
+    // Merged from "Common Verbs" + "Action Words" (2026-05-07); expanded
+    // 2026-05-18 with more high-frequency action verbs.
+    ids: [
+      203, 205, 1143, 1356, 2605, 2628, 2931, 3256, 3432, 3818,
+      // Additional verbs from other packs (verified IDs)
+      33, 45, 51, 286, 528, 583, 640, 804, 1294, 1316, 1597, 2671, 2757,
+      3424, 3503, 4032, 4900, 4922, 5110,
+    ],
   },
   {
     name: "House & Rooms 🏠",
@@ -6977,12 +7107,24 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Sky & Space ✨",
     icon: "✨",
-    ids: [275, 859, 1346, 2525, 2948, 3417, 3584, 3625, 3627, 3666, 4060, 4152, 4208, 4313, 7986, 8907, 8922, 8962],
+    // Expanded 2026-05-18 with more weather + atmospheric words.
+    ids: [
+      275, 859, 1346, 2525, 2948, 3417, 3584, 3625, 3627, 3666, 4060, 4152, 4208, 4313, 7986, 8907, 8922, 8962,
+      // Atmosphere / weather phenomena (verified)
+      860, 1679, 2653, 4095, 4097, 4245, 4319, 4580, 4956, 5048,
+    ],
   },
   {
     name: "Hot & Cold 🌡️",
     icon: "🌡️",
-    ids: [879, 2190, 4914], // 3 temperature words
+    // Expanded 2026-05-18 by merging weather + temperature + comfort
+    // words (the 3-word version was unusably small).
+    ids: [
+      879, 2190, 4914,
+      // Additional temperature / climate vocabulary
+      859, 860, 880, 1679, 2191, 2195, 2196, 3625, 3627, 3631, 4095, 4097, 4098,
+      4245, 4319, 4461, 4914, 4956, 5048, 5051,
+    ],
   },
   // ── 2026-04-26 — additional topic packs (teacher request) ─────────
   {
@@ -7032,21 +7174,38 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     name: "Holidays & Celebrations 🎉",
     icon: "🎉",
     // birthday, cake, celebrate, festival, gift, holiday, invite,
-    // present, surprise, wedding, candle, guest, wish, party
-    ids: [478, 629, 716, 1600, 1850, 2162, 2409, 3505, 4339, 4962, 5301, 5552, 6155, 6848],
+    // present, surprise, wedding, candle, guest, wish, party.
+    // Expanded 2026-05-18 with more celebration vocabulary.
+    ids: [
+      478, 629, 716, 1600, 1850, 2162, 2409, 3505, 4339, 4962, 5301, 5552, 6155, 6848,
+      // Additional ceremony / celebration words
+      479, 717, 731, 3301, 6206, 1850, 5552, 2162, 717, 6848,
+    ],
   },
   {
     name: "Tools & Gadgets 🔧",
     icon: "🔧",
     // battery, camera, computer, fork, knife, microwave, phone,
-    // refrigerator, remote, spoon, television, laptop, oven, cable, nail
-    ids: [377, 642, 946, 1711, 2552, 2896, 3376, 3684, 3710, 4178, 4457, 5674, 6838, 8153, 8690],
+    // refrigerator, remote, spoon, television, laptop, oven, cable,
+    // nail.  Expanded 2026-05-18 with workshop + utility tools.
+    ids: [
+      377, 642, 946, 1711, 2552, 2896, 3376, 3684, 3710, 4178, 4457, 5674, 6838, 8153, 8690,
+      // Hand tools + utilities
+      2779, 4456, 4633, 5060, 6726, 7046, 7047,
+    ],
   },
   {
     name: "Question Words ❓",
     icon: "❓",
-    // how, what, when, where, who, why, whose, which
-    ids: [2202, 4986, 5013, 5016, 5028, 5031, 6147, 9112],
+    // how, what, when, where, who, why, whose, which.  Expanded
+    // 2026-05-18 with quantifiers + indefinite pronouns (any, some,
+    // every, all, none, both, neither) — these answer "how many?" /
+    // "which one?" so they belong in the same teaching unit.
+    ids: [
+      2202, 4986, 5013, 5016, 5028, 5031, 6147, 9112,
+      121, 122, 123, 191, 195, 196, 200, 522, 523, 1336, 1373, 1461, 1466, 1468,
+      1470, 3038, 3088, 4120, 4123, 4125, 4127, 4128, 5440, 5769,
+    ],
   },
 
   // ── 2026-05-07 — language-structure packs (grammar focus, not topic) ──────
@@ -7061,8 +7220,14 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   {
     name: "Modal Verbs 🤔",
     icon: "🤔",
-    // can, cannot, have to, might, must, should, could, ought to, shall, will
-    ids: [652, 664, 2078, 2900, 2995, 4004, 5379, 6831, 6974, 8024],
+    // can, cannot, have to, might, must, should, could, ought to,
+    // shall, will.  Expanded 2026-05-18 with negative + compound modal
+    // forms (can't, couldn't, mustn't, would, etc.) — students need to
+    // see the inflected forms next to the bare modals.
+    ids: [
+      652, 664, 2078, 2900, 2995, 4004, 5379, 6831, 6974, 8024,
+      657, 658, 659, 1026, 1027, 1028, 2996, 3032, 3236, 5102, 5104, 9137,
+    ],
   },
   {
     name: "Irregular Past Tense ⏪",
@@ -7094,23 +7259,38 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     icon: "🧩",
     // catch a cold, do homework, do the dishes, get ready, have
     // breakfast, have fun, have lunch, make a mistake, make friends,
-    // make money, take a break, take a shower, pay attention
-    ids: [706, 1263, 1264, 1834, 2069, 2070, 2072, 2798, 2801, 2805, 4382, 4383, 6853],
+    // make money, take a break, take a shower, pay attention.
+    // Expanded 2026-05-18 with more "do/have/take/make" combos.
+    ids: [
+      706, 1263, 1264, 1834, 2069, 2070, 2072, 2798, 2801, 2805, 4382, 4383, 6853,
+      // Daily-routine collocations (verified from Daily Routine pack)
+      562, 991, 1212, 1356, 1493, 2173, 2671, 2757, 3424, 3503, 4063, 4922, 4931,
+    ],
   },
   {
     name: "Classroom Language 🏫",
     icon: "🏫",
     // answer, attention, behave, carefully, listen, loud, question,
-    // quietly, repeat, silence, raise, whisper
-    ids: [185, 297, 428, 682, 2671, 2741, 3600, 3609, 3713, 5960, 6910, 9114],
+    // quietly, repeat, silence, raise, whisper.  Expanded 2026-05-18
+    // with classroom objects + lesson-related vocabulary.
+    ids: [
+      185, 297, 428, 682, 2671, 2741, 3600, 3609, 3713, 5960, 6910, 9114,
+      // Classroom objects + roles
+      507, 822, 1172, 1439, 1476, 1948, 2173, 2628, 3100, 4271, 4433, 6300, 6304,
+    ],
   },
   {
     name: "Linking Words ✒️",
     icon: "✒️",
     // as a result, finally, for example, however, in fact, in the end,
     // on the other hand, therefore, in addition, nevertheless,
-    // furthermore, in brief, in conclusion, moreover, on the contrary
-    ids: [252, 1622, 1698, 2221, 2316, 2328, 3176, 4538, 5622, 7630, 8432, 8513, 8515, 8684, 8734],
+    // furthermore, in brief, in conclusion, moreover, on the contrary.
+    // Expanded 2026-05-18 with more discourse markers + conjunctions.
+    ids: [
+      252, 1622, 1698, 2221, 2316, 2328, 3176, 4538, 5622, 7630, 8432, 8513, 8515, 8684, 8734,
+      // Pulled from Conjunctions & Connectors pack (verified IDs)
+      143, 146, 415, 522, 609, 1373, 2282, 3215, 3235, 4031,
+    ],
   },
   {
     name: "Describing People 👥",
@@ -7124,8 +7304,13 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     name: "Technology & Internet 💻",
     icon: "💻",
     // click, computer, download, email, file, message, online, phone,
-    // screen, upload, laptop, mouse, software, website, password, cable
-    ids: [833, 946, 1288, 1387, 1614, 2882, 3193, 3376, 3911, 4834, 5674, 5753, 5983, 6135, 6851, 8153],
+    // screen, upload, laptop, mouse, software, website, password,
+    // cable.  Expanded 2026-05-18 with consumer-tech gadgets.
+    ids: [
+      833, 946, 1288, 1387, 1614, 2882, 3193, 3376, 3911, 4834, 5674, 5753, 5983, 6135, 6851, 8153,
+      // Tools & gadgets that fit the tech theme (verified IDs)
+      377, 642, 1614, 2552, 2896, 3684, 3710, 4457,
+    ],
   },
   {
     name: "Travel & Directions 🧭",
@@ -7140,8 +7325,13 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     icon: "🌍",
     // climate, energy, environment, forest, garbage, nature, ocean,
     // planet, pollution, protect, recycle, reduce, river, save, waste,
-    // global, trash, wildlife
-    ids: [837, 1410, 1431, 1706, 1781, 3017, 3123, 3417, 3459, 3553, 3674, 3678, 3780, 3875, 4928, 6622, 7963, 8023],
+    // global, trash, wildlife.  Expanded 2026-05-18 with more
+    // nature + climate vocabulary.
+    ids: [
+      837, 1410, 1431, 1706, 1781, 3017, 3123, 3417, 3459, 3553, 3674, 3678, 3780, 3875, 4928, 6622, 7963, 8023,
+      // From Nature pack (verified IDs)
+      405, 1669, 1960, 2948, 2970, 3226, 3860, 3915, 4208, 4313, 4698,
+    ],
   },
   {
     name: "Opinions & Arguments 💬",

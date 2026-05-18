@@ -222,7 +222,7 @@ export default function ShopMarketplaceView({
       type="button"
       onClick={(e) => { e.stopPropagation(); togglePin(kind, id); }}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-      className={`absolute top-1.5 ${isRTL ? 'left-1.5' : 'right-1.5'} w-7 h-7 rounded-full backdrop-blur-sm flex items-center justify-center transition-all ${
+      className={`absolute top-1.5 end-1.5 w-7 h-7 rounded-full backdrop-blur-sm flex items-center justify-center transition-all ${
         isPinned(kind, id) ? 'bg-emerald-500 text-white' : 'bg-white/80 text-stone-600 hover:bg-white'
       }`}
       aria-label={isPinned(kind, id) ? 'Unpin' : 'Pin'}
@@ -242,9 +242,9 @@ export default function ShopMarketplaceView({
         onClick={() => canAfford && purchaseEgg(egg)}
         disabled={!canAfford}
         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-        className={`relative w-44 sm:w-48 rounded-3xl bg-gradient-to-br ${rarity.bg} p-4 ring-2 ${rarity.ring} shadow-md hover:shadow-xl transition-all ${!canAfford ? 'opacity-70' : ''}`}
+        className={`relative w-44 sm:w-48 rounded-2xl bg-gradient-to-br ${rarity.bg} p-4 ring-2 ${rarity.ring} shadow-md hover:shadow-xl transition-all ${!canAfford ? 'opacity-70' : ''}`}
       >
-        <div aria-hidden className={`pointer-events-none absolute -top-8 -right-8 w-28 h-28 rounded-full blur-3xl bg-gradient-to-br ${rarity.glow}`} />
+        <div aria-hidden className={`pointer-events-none absolute -top-8 -end-8 w-28 h-28 rounded-full blur-3xl bg-gradient-to-br ${rarity.glow}`} />
         <div className="relative flex justify-end">
           <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${rarity.badge}`}>{egg.rarity}</span>
         </div>
@@ -271,7 +271,7 @@ export default function ShopMarketplaceView({
     const gap = a.cost - xp;
     return (
       <div
-        className={`relative w-32 sm:w-36 rounded-3xl bg-white p-3 ring-2 ${equipped ? 'ring-violet-500 shadow-lg shadow-violet-500/30' : 'ring-stone-200'} shadow-sm hover:shadow-md transition-all ${!owned && !canAfford ? 'opacity-75' : ''}`}
+        className={`relative w-32 sm:w-36 rounded-2xl bg-white p-3 ring-2 ${equipped ? 'ring-violet-500 shadow-lg shadow-violet-500/30' : 'ring-stone-200'} shadow-sm hover:shadow-md transition-all ${!owned && !canAfford ? 'opacity-75' : ''}`}
       >
         {!owned && <PinButton kind="avatar" id={a.id} />}
         <div className="flex justify-center my-1">
@@ -284,7 +284,7 @@ export default function ShopMarketplaceView({
           {owned ? (
             equipped ? (
               <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600">
-                <Check size={11} className="inline -mt-0.5 mr-0.5" /> {t.unlocked}
+                <Check size={11} className="inline -mt-0.5 me-0.5" /> {t.unlocked}
               </span>
             ) : (
               <motion.button
@@ -320,7 +320,7 @@ export default function ShopMarketplaceView({
     const active = user.activeTheme === th.id || (!user.activeTheme && th.id === 'default');
     const canAfford = xp >= th.cost;
     return (
-      <div className={`relative w-40 sm:w-44 rounded-3xl ${th.colors.bg} ${th.colors.card === 'bg-white' ? '' : th.colors.card} p-3 ring-2 ${active ? 'ring-violet-500' : 'ring-stone-200'} shadow-sm`}>
+      <div className={`relative w-40 sm:w-44 rounded-2xl ${th.colors.bg} ${th.colors.card === 'bg-white' ? '' : th.colors.card} p-3 ring-2 ${active ? 'ring-violet-500' : 'ring-stone-200'} shadow-sm`}>
         {!owned && <PinButton kind="theme" id={th.id} />}
         <div className={`flex justify-center text-4xl ${th.colors.text}`}>{th.preview}</div>
         <h3 className={`mt-2 text-xs font-black text-center ${th.colors.text}`}>
@@ -330,7 +330,7 @@ export default function ShopMarketplaceView({
           {owned ? (
             active ? (
               <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600">
-                <Check size={11} className="inline -mt-0.5 mr-0.5" /> Active
+                <Check size={11} className="inline -mt-0.5 me-0.5" /> Active
               </span>
             ) : (
               <motion.button
@@ -366,7 +366,7 @@ export default function ShopMarketplaceView({
     const active = user.activeFrame === f.id;
     const canAfford = xp >= f.cost;
     return (
-      <div className={`relative w-36 sm:w-40 rounded-3xl bg-white p-3 ${active ? 'ring-2 ring-violet-500' : 'ring-1 ring-stone-200'} shadow-sm`}>
+      <div className={`relative w-36 sm:w-40 rounded-2xl bg-white p-3 ${active ? 'ring-2 ring-violet-500' : 'ring-1 ring-stone-200'} shadow-sm`}>
         {!owned && <PinButton kind="frame" id={f.id} />}
         <div className="flex justify-center my-1">
           <div className={`w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center text-3xl ${f.border}`}>{f.preview}</div>
@@ -377,7 +377,7 @@ export default function ShopMarketplaceView({
         <div className="mt-2">
           {owned ? (
             active ? (
-              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600"><Check size={11} className="inline -mt-0.5 mr-0.5" />Equipped</span>
+              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600"><Check size={11} className="inline -mt-0.5 me-0.5" />Equipped</span>
             ) : (
               <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => equipFrame(f.id)} className="w-full text-[11px] font-black bg-violet-600 text-white rounded-full py-1.5">Equip</motion.button>
             )
@@ -397,7 +397,7 @@ export default function ShopMarketplaceView({
     const canAfford = xp >= ti.cost;
     const style = TITLE_STYLES[ti.id] ?? 'text-stone-900 font-black';
     return (
-      <div className={`relative w-44 sm:w-48 rounded-3xl bg-white p-3 ${active ? 'ring-2 ring-violet-500' : 'ring-1 ring-stone-200'} shadow-sm`}>
+      <div className={`relative w-44 sm:w-48 rounded-2xl bg-white p-3 ${active ? 'ring-2 ring-violet-500' : 'ring-1 ring-stone-200'} shadow-sm`}>
         {!owned && <PinButton kind="title" id={ti.id} />}
         <div className="flex justify-center my-2">
           <span className={`text-lg ${style}`}>{catalogDisplay('titles', ti.id, language, ti.display)}</span>
@@ -405,7 +405,7 @@ export default function ShopMarketplaceView({
         <div className="mt-2">
           {owned ? (
             active ? (
-              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600"><Check size={11} className="inline -mt-0.5 mr-0.5" />Equipped</span>
+              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600"><Check size={11} className="inline -mt-0.5 me-0.5" />Equipped</span>
             ) : (
               <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => equipTitle(ti.id)} className="w-full text-[11px] font-black bg-violet-600 text-white rounded-full py-1.5">Equip</motion.button>
             )
@@ -424,7 +424,7 @@ export default function ShopMarketplaceView({
     const canAfford = xp >= p.cost;
     const grad = POWERUP_STYLES[p.id] ?? 'from-stone-500 to-stone-700';
     return (
-      <div className={`relative w-44 sm:w-48 rounded-3xl bg-gradient-to-br ${grad} p-4 shadow-md`}>
+      <div className={`relative w-44 sm:w-48 rounded-2xl bg-gradient-to-br ${grad} p-4 shadow-md`}>
         {!canAfford && <PinButton kind="powerUp" id={p.id} />}
         <div className="flex justify-center my-1">
           <span className="text-5xl drop-shadow">{p.emoji}</span>
@@ -450,7 +450,7 @@ export default function ShopMarketplaceView({
     const canAfford = xp >= b.cost;
     const grad = BOOSTER_STYLES[b.id] ?? 'from-stone-500 to-stone-700';
     return (
-      <div className={`relative w-44 sm:w-48 rounded-3xl bg-gradient-to-br ${grad} p-4 shadow-md`}>
+      <div className={`relative w-44 sm:w-48 rounded-2xl bg-gradient-to-br ${grad} p-4 shadow-md`}>
         {!canAfford && <PinButton kind="booster" id={b.id} />}
         <div className="flex justify-center my-1">
           <span className="text-5xl drop-shadow">{b.emoji}</span>
@@ -483,7 +483,7 @@ export default function ShopMarketplaceView({
             <ChevronLeft size={16} className={isRTL ? 'rotate-180' : ''} />
             Dashboard
           </button>
-          <div className="flex items-center gap-2 bg-white rounded-full pl-2 pr-3 py-1.5 border border-stone-200 shadow-sm">
+          <div className="flex items-center gap-2 bg-white rounded-full ps-2 pe-3 py-1.5 border border-stone-200 shadow-sm">
             <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
               <Zap size={14} className="text-white fill-white" />
             </span>

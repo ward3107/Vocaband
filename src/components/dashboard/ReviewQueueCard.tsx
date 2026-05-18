@@ -77,13 +77,13 @@ export default function ReviewQueueCard({ dueCount, isLoading, onStart }: Review
   if (isLoading) {
     return (
       <div
-        className="rounded-3xl border border-white/80 shadow-sm bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 p-4 sm:p-5 animate-pulse"
+        className="rounded-2xl border border-white/80 shadow-sm bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 p-4 sm:p-5 animate-pulse"
         style={{ minHeight: 120 }}
         dir={dir}
       >
         <div className="h-4 w-32 bg-white/60 rounded mb-3" />
         <div className="h-3 w-48 bg-white/40 rounded mb-2" />
-        <div className="h-10 w-32 bg-white/40 rounded-xl" />
+        <div className="h-10 w-32 bg-white/40 rounded-lg" />
       </div>
     );
   }
@@ -97,11 +97,11 @@ export default function ReviewQueueCard({ dueCount, isLoading, onStart }: Review
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="rounded-3xl border border-white/80 shadow-sm bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4 sm:p-5"
+        className="rounded-2xl border border-white/80 shadow-sm bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4 sm:p-5"
         dir={dir}
       >
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm shrink-0">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm shrink-0">
             <CheckCircle2 size={20} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -120,11 +120,11 @@ export default function ReviewQueueCard({ dueCount, isLoading, onStart }: Review
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="rounded-3xl border border-white/80 shadow-sm bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 p-4 sm:p-5"
+      className="rounded-2xl border border-white/80 shadow-sm bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 p-4 sm:p-5"
       dir={dir}
     >
       <div className="flex items-start gap-3 mb-3">
-        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm shrink-0">
+        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm shrink-0">
           <Brain size={20} className="text-white" />
         </div>
         <div className="flex-1 min-w-0">
@@ -142,7 +142,7 @@ export default function ReviewQueueCard({ dueCount, isLoading, onStart }: Review
         type="button"
         onClick={onStart}
         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-        className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+        className="w-full py-3 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
       >
         {t.startCta}
         <ArrowRight size={16} />

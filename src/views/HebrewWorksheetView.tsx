@@ -158,18 +158,18 @@ export default function HebrewWorksheetView({
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,2fr)] gap-6 print:block">
           {/* ─── Picker + settings ─────────────────────────────── */}
           <aside className="space-y-5 print:hidden">
-            <section className="rounded-2xl bg-white/5 border border-white/10 p-4">
+            <section className="rounded-xl bg-white/5 border border-white/10 p-4">
               <label className="block text-white/70 font-black text-xs mb-2">כותרת הדף</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white placeholder-white/30 font-bold text-base focus:outline-none focus:border-blue-400"
+                className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white placeholder-white/30 font-bold text-base focus:outline-none focus:border-blue-400"
                 dir="auto"
               />
             </section>
 
-            <section className="rounded-2xl bg-white/5 border border-white/10 p-4">
+            <section className="rounded-xl bg-white/5 border border-white/10 p-4">
               <div className="text-white/70 font-black text-xs mb-2">סינון לפי כיתה</div>
               <div className="flex gap-2 flex-wrap">
                 <button
@@ -196,7 +196,7 @@ export default function HebrewWorksheetView({
               </div>
             </section>
 
-            <section className="rounded-2xl bg-white/5 border border-white/10 p-4">
+            <section className="rounded-xl bg-white/5 border border-white/10 p-4">
               <div className="text-white/70 font-black text-xs mb-2">מילים</div>
               <div className="text-white/50 text-xs font-bold mb-3">{selectedIds.length} נבחרו</div>
               <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
@@ -242,7 +242,7 @@ export default function HebrewWorksheetView({
               </div>
             </section>
 
-            <section className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+            <section className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
               <div className="text-white/70 font-black text-xs mb-1">סוג הדף</div>
               <div className="grid grid-cols-2 gap-2">
                 {(["word-list", "match-up"] as const).map((tpl) => {
@@ -265,7 +265,7 @@ export default function HebrewWorksheetView({
               </div>
             </section>
 
-            <section className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+            <section className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
               <div className="text-white/70 font-black text-xs mb-1">הגדרות הדפסה</div>
               <div className="flex gap-2">
                 {(["small", "medium", "large"] as const).map((sz) => (
@@ -297,7 +297,7 @@ export default function HebrewWorksheetView({
                 onClick={printNow}
                 disabled={selectedLemmas.length === 0}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-sm shadow-lg transition ${
+                className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-black text-sm shadow-lg transition ${
                   selectedLemmas.length === 0
                     ? "bg-white/10 text-white/40 cursor-not-allowed"
                     : "bg-white/10 text-white hover:bg-white/15 border border-white/15"
@@ -310,7 +310,7 @@ export default function HebrewWorksheetView({
                 onClick={exportPdf}
                 disabled={selectedLemmas.length === 0 || exporting}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-sm shadow-lg transition ${
+                className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-black text-sm shadow-lg transition ${
                   selectedLemmas.length === 0 || exporting
                     ? "bg-white/10 text-white/40 cursor-not-allowed"
                     : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-indigo-500/30"
@@ -322,7 +322,7 @@ export default function HebrewWorksheetView({
           </aside>
 
           {/* ─── Preview / printable area ──────────────────────── */}
-          <div className="rounded-2xl bg-white p-6 sm:p-10 print:rounded-none print:p-0 print:bg-white" dir="rtl">
+          <div className="rounded-xl bg-white p-6 sm:p-10 print:rounded-none print:p-0 print:bg-white" dir="rtl">
             <div ref={printRef} className="text-slate-900">
               <div className="text-center mb-6 pb-4 border-b-2 border-slate-300">
                 <h1 className="text-2xl font-black mb-1" lang="he">{title}</h1>

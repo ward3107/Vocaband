@@ -196,16 +196,16 @@ export default function GameFinishedView({
         {tt.subtitles[secureRandomInt(tt.subtitles.length)]}
       </p>
       <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
-        <div className={`${t.card} p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center`}>
+        <div className={`${t.card} p-5 sm:p-8 rounded-2xl shadow-md flex-1 text-center`}>
           <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>{tt.finalScore}</p>
           <p className="text-4xl sm:text-6xl font-black text-blue-500">{score}</p>
         </div>
-        <div className={`${t.card} p-5 sm:p-8 rounded-3xl shadow-md flex-1 text-center`}>
+        <div className={`${t.card} p-5 sm:p-8 rounded-2xl shadow-md flex-1 text-center`}>
           <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>{tt.totalXp}</p>
           <p className="text-4xl sm:text-6xl font-black text-blue-600">{xp}</p>
         </div>
         {streak > 0 && (
-          <div className={`${t.card} p-6 sm:p-8 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center`}>
+          <div className={`${t.card} p-6 sm:p-8 rounded-2xl shadow-md border-2 border-orange-100 flex-1 text-center`}>
             <p className="text-sm uppercase tracking-widest text-orange-500 mb-1">{tt.streak}</p>
             <p className="text-5xl sm:text-6xl font-black text-orange-600">{streak} 🔥</p>
           </div>
@@ -213,9 +213,9 @@ export default function GameFinishedView({
       </div>
       {/* Accuracy summary */}
       {gameWords.length > 0 && (
-        <div className={`${t.card} rounded-2xl shadow-sm px-6 py-3 mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
+        <div className={`${t.card} rounded-xl shadow-sm px-6 py-3 mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
           {tt.correctOf(gameWords.length - mistakes.length, gameWords.length)}
-          {mistakes.length > 0 && <span className="ml-2 text-rose-500 font-bold">{tt.toReview(mistakes.length)}</span>}
+          {mistakes.length > 0 && <span className="ms-2 text-rose-500 font-bold">{tt.toReview(mistakes.length)}</span>}
         </div>
       )}
       {badges.length > 0 && (
@@ -227,7 +227,7 @@ export default function GameFinishedView({
                 key={badge}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className={`${t.card} px-6 py-3 rounded-2xl shadow-sm border ${isDark ? 'border-gray-700' : 'border-stone-100'} flex items-center gap-2`}
+                className={`${t.card} px-6 py-3 rounded-xl shadow-sm border ${isDark ? 'border-gray-700' : 'border-stone-100'} flex items-center gap-2`}
               >
                 <span className="text-xl">{badge.split(' ')[0]}</span>
                 <span className={`font-bold ${t.text}`}>{badge.split(' ').slice(1).join(' ')}</span>
@@ -259,7 +259,7 @@ export default function GameFinishedView({
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 240, damping: 22, delay: 0.3 }}
-        className={`${t.card} rounded-[28px] shadow-2xl border ${isDark ? 'border-gray-700' : 'border-stone-200'} p-5 sm:p-6 w-full max-w-md`}
+        className={`${t.card} rounded-2xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-stone-200'} p-5 sm:p-6 w-full max-w-md`}
       >
         <p className={`text-[11px] font-black uppercase tracking-widest text-center mb-3 ${isDark ? 'text-gray-400' : 'text-stone-400'}`}>
           {tt.whatsNext}
@@ -288,7 +288,7 @@ export default function GameFinishedView({
                 disabled={isSaving}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white px-6 py-5 rounded-2xl font-black text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white px-6 py-5 rounded-xl font-black text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 <Grid3X3 size={22} />
                 {tt.backToModes}
@@ -320,7 +320,7 @@ export default function GameFinishedView({
                 disabled={isSaving}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-5 rounded-2xl font-black text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-5 rounded-xl font-black text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 <Grid3X3 size={22} />
                 {tt.backToModes}
@@ -341,7 +341,7 @@ export default function GameFinishedView({
                   disabled={isSaving}
                   type="button"
                   style={{ touchAction: 'manipulation' }}
-                  className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-rose-900/40 text-rose-200 hover:bg-rose-900/60' : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'}`}
+                  className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-rose-900/40 text-rose-200 hover:bg-rose-900/60' : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'}`}
                 >
                   {tt.reviewMissedWord(mistakes.length)}
                 </button>
@@ -357,7 +357,7 @@ export default function GameFinishedView({
                   disabled={certLoading || isSaving}
                   type="button"
                   style={{ touchAction: 'manipulation' }}
-                  className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-amber-900/40 text-amber-200 hover:bg-amber-900/60' : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'}`}
+                  className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-amber-900/40 text-amber-200 hover:bg-amber-900/60' : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'}`}
                 >
                   {certLoading ? <RefreshCw size={16} className="animate-spin" /> : <Printer size={16} />}
                   {certLoading ? tt.preparingCertificate : tt.getCertificate}
@@ -400,7 +400,7 @@ export default function GameFinishedView({
               initial={{ opacity: 0, y: -20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.9 }}
-              className={`px-6 py-4 rounded-2xl shadow-2xl font-bold flex items-center gap-3 min-w-[300px] ${
+              className={`px-6 py-4 rounded-xl shadow-2xl font-bold flex items-center gap-3 min-w-[300px] ${
                 toast.type === 'success' ? 'bg-green-600 text-white' :
                 toast.type === 'error' ? 'bg-red-600 text-white' :
                 'bg-blue-600 text-white'
@@ -411,7 +411,7 @@ export default function GameFinishedView({
               {toast.type === 'info' && <Info size={24} />}
               <span className="flex-1">{toast.message}</span>
               {toast.action && (
-                <button onClick={toast.action.onClick} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
+                <button onClick={toast.action.onClick} className="ms-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
                   {toast.action.label}
                 </button>
               )}
@@ -458,7 +458,7 @@ export default function GameFinishedView({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
+              className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl text-center"
             >
               <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle size={32} />
@@ -468,13 +468,13 @@ export default function GameFinishedView({
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
-                  className="flex-1 py-4 bg-stone-200 text-stone-700 rounded-2xl font-bold hover:bg-stone-300 transition-all border-2 border-blue-200"
+                  className="flex-1 py-4 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 transition-all border-2 border-blue-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDialog.onConfirm}
-                  className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                  className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
                 >
                   Confirm
                 </button>

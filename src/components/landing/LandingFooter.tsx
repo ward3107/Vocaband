@@ -71,7 +71,7 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
               custom={0}
               className="flex items-center gap-3 mb-3"
             >
-              <div className="w-11 h-11 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+              <div className="w-11 h-11 rounded-lg signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
                 <span className="text-white text-2xl font-black font-headline italic">V</span>
               </div>
               <span className="text-white font-black text-xl">Vocaband</span>

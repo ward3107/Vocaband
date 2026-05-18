@@ -23,33 +23,28 @@ import { Download, Eye } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherResourcesT } from "../locales/student/teacher-resources";
 
-// PDF download languages. Independent of the UI Language type so we can
-// offer Russian PDFs (for Russian-speaking parents in mixed classrooms)
-// without dragging Russian through the rest of the app's i18n surface.
-type PdfLanguage = "en" | "he" | "ar" | "ru";
+// PDF download languages.  Independent of the UI Language type so the
+// picker can evolve separately.  Russian PDFs still exist in
+// public/docs/ but are no longer advertised in the picker — Russian
+// has been removed sitewide alongside the UI toggle.
+type PdfLanguage = "en" | "he" | "ar";
 
 interface PdfLangSpec {
   code: PdfLanguage;
   name: string;
-  flag: string;
   /** "rtl" so Hebrew / Arabic names render with the right shaping
    *  even when the surrounding card is LTR. */
   dir: "ltr" | "rtl";
 }
 
 const PDF_LANGUAGES: PdfLangSpec[] = [
-  // No flag for English — Windows renders 🇬🇧 as literal "GB"
-  // letters (no emoji font fallback for regional indicator pairs),
-  // which collided with the "EN" label sitting right next to it.
-  // The other regional flags render correctly across our target OSes.
-  { code: "en", name: "English", flag: "",   dir: "ltr" },
-  { code: "he", name: "עברית",   flag: "🇮🇱", dir: "rtl" },
-  { code: "ar", name: "العربية", flag: "🇸🇦", dir: "rtl" },
-  { code: "ru", name: "Русский", flag: "🇷🇺", dir: "ltr" },
+  { code: "en", name: "English", dir: "ltr" },
+  { code: "he", name: "עברית",   dir: "rtl" },
+  { code: "ar", name: "العربية", dir: "rtl" },
 ];
 
 // Languages that actually have a generated PDF in public/docs/.
-const AVAILABLE_PDF_LANGUAGES: ReadonlySet<PdfLanguage> = new Set(["en", "he", "ar", "ru"]);
+const AVAILABLE_PDF_LANGUAGES: ReadonlySet<PdfLanguage> = new Set(["en", "he", "ar"]);
 
 interface TeacherResourcesSectionProps {
   /** "hero" — big section with eyebrow + heading + subtitle (landing page).
@@ -243,13 +238,13 @@ const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRT
           return (
             <div
               key={card.key}
-              className={`relative overflow-hidden rounded-2xl p-4 md:p-4 h-full bg-gradient-to-br ${card.gradient} text-white shadow-md shadow-violet-500/10 ring-1 ${card.ring} flex flex-col gap-3`}
+              className={`relative overflow-hidden rounded-xl p-4 md:p-4 h-full bg-gradient-to-br ${card.gradient} text-white shadow-md shadow-violet-500/10 ring-1 ${card.ring} flex flex-col gap-3`}
             >
               {/* Header row — compact: smaller emoji + title side-by-side.
                   Preview eye opens user's language in a new tab for
                   users who want to look before downloading. */}
               <div className={`flex items-start gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.iconBg} flex items-center justify-center text-lg shadow shadow-black/10 ring-1 ring-white/30 shrink-0`}>
+                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${card.iconBg} flex items-center justify-center text-lg shadow shadow-black/10 ring-1 ring-white/30 shrink-0`}>
                   <span aria-hidden="true">{card.emoji}</span>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -297,9 +292,6 @@ const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRT
                         isCurrent && available ? "ring-2 ring-white/70" : "ring-1 ring-white/15",
                       ].join(" ")}
                     >
-                      {lang.flag && (
-                        <span className="text-sm leading-none" aria-hidden="true">{lang.flag}</span>
-                      )}
                       <span className="uppercase tracking-wide" dir="ltr">{lang.code}</span>
                       {available ? (
                         <Download size={12} aria-hidden="true" className="opacity-90" />

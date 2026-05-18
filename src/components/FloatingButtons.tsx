@@ -1,10 +1,32 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Share2, MessageCircle, Link2, Check, ArrowUp, Facebook, Instagram, Music2 } from "lucide-react";
+import { Share2, MessageCircle, Link2, Check, ArrowUp, Music2 } from "lucide-react";
 // motion/react removed — FloatingButtons is statically imported by
 // LandingPage, so its motion dep pulled the ~43 kB gz chunk into the
 // landing-page chunk graph. Static positioning + Tailwind hover
 // classes preserve the same affordance without the JS animation lib.
 import { useLanguage } from "../hooks/useLanguage";
+
+// Facebook + Instagram inlined as SVG because lucide-react v1 dropped
+// all brand glyphs (trademark concerns). Match lucide's outlined,
+// stroked style so they sit naturally next to the other share icons.
+interface BrandIconProps extends React.SVGProps<SVGSVGElement> {
+  size?: number;
+  strokeWidth?: number;
+}
+
+const FacebookIcon: React.FC<BrandIconProps> = ({ size = 24, strokeWidth = 2, ...rest }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" {...rest}>
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+  </svg>
+);
+
+const InstagramIcon: React.FC<BrandIconProps> = ({ size = 24, strokeWidth = 2, ...rest }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" {...rest}>
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
 
 // Brand colors for social platforms
 const BRAND_COLORS = {
@@ -272,7 +294,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   const shareOptions = useMemo(() => [
     {
       name: "Facebook",
-      icon: Facebook,
+      icon: FacebookIcon,
       brandColor: BRAND_COLORS.facebook,
       gradient: false,
       action: () => {
@@ -302,7 +324,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     },
     {
       name: "Instagram",
-      icon: Instagram,
+      icon: InstagramIcon,
       brandColor: BRAND_COLORS.instagram,
       gradient: true,
       // Instagram doesn't support web-based link sharing (no web share
@@ -431,7 +453,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     <div
       ref={shareRef}
       data-floating-buttons
-      className={`fixed left-3 bottom-28 md:left-4 md:bottom-28 z-[80] flex flex-col gap-3 ${className}`}
+      className={`fixed start-3 bottom-28 md:start-4 md:bottom-28 z-[80] flex flex-col gap-3 ${className}`}
     >
       <div
         ref={containerRef}

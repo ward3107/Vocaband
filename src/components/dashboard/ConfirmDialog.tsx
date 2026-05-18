@@ -31,7 +31,7 @@ export default function ConfirmDialog({ confirmDialog, setConfirmDialog }: Confi
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-[var(--vb-surface)] rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
+            className="bg-[var(--vb-surface)] rounded-2xl p-8 max-w-md w-full shadow-2xl text-center"
           >
             <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={32} />
@@ -41,13 +41,13 @@ export default function ConfirmDialog({ confirmDialog, setConfirmDialog }: Confi
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
-                className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold hover:bg-[var(--vb-border)] transition-all border-2 border-blue-200"
+                className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-border)] transition-all border-2 border-blue-200"
               >
                 {t.cancel}
               </button>
               <button
                 onClick={confirmDialog.onConfirm}
-                className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
               >
                 {t.confirmBtn}
               </button>

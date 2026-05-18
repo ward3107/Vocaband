@@ -126,7 +126,7 @@ function FlashcardsLayout({
         type="button"
         onClick={onFlip}
         style={{ touchAction: 'manipulation' }}
-        className="relative w-full max-w-4xl aspect-[5/3] rounded-[40px] bg-gradient-to-br from-fuchsia-500 to-purple-600 shadow-2xl flex items-center justify-center text-white"
+        className="relative w-full max-w-4xl aspect-[5/3] rounded-2xl bg-gradient-to-br from-fuchsia-500 to-purple-600 shadow-2xl flex items-center justify-center text-white"
       >
         <motion.div
           key={flipped ? 'back' : 'front'}
@@ -221,7 +221,7 @@ function RevealableCard({ label, isCorrect, revealed, tone }: {
   const ring = revealed && isCorrect ? 'ring-4 ring-amber-300 scale-105' : '';
   return (
     <div
-      className={`bg-gradient-to-br ${baseGradient} text-white rounded-3xl py-12 sm:py-16 text-center font-black text-5xl sm:text-7xl shadow-xl transition-all ${ring} ${dim ? 'opacity-30' : ''}`}
+      className={`bg-gradient-to-br ${baseGradient} text-white rounded-2xl py-12 sm:py-16 text-center font-black text-5xl sm:text-7xl shadow-xl transition-all ${ring} ${dim ? 'opacity-30' : ''}`}
     >
       {label}
     </div>
@@ -301,7 +301,7 @@ function MultiChoiceLayout({
                 color: highlight ? '#ffffff' : 'var(--vb-text-primary)',
                 borderColor: highlight ? '#059669' : 'var(--vb-border)',
               }}
-              className={`flex items-center gap-4 px-6 py-6 sm:py-8 rounded-3xl border-2 shadow-lg transition-all ${dim ? 'opacity-30' : ''} ${highlight ? 'scale-[1.03] ring-4 ring-emerald-200' : ''}`}
+              className={`flex items-center gap-4 px-6 py-6 sm:py-8 rounded-2xl border-2 shadow-lg transition-all ${dim ? 'opacity-30' : ''} ${highlight ? 'scale-[1.03] ring-4 ring-emerald-200' : ''}`}
             >
               <span
                 className="w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-3xl sm:text-4xl font-black shrink-0"

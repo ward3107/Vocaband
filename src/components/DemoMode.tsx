@@ -1396,7 +1396,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
               {/* Main content */}
               <div className="relative z-10">
-                <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 mb-5 shadow-xl shadow-violet-500/20 text-center">
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 mb-5 shadow-xl shadow-violet-500/20 text-center">
                   <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
                   <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-pink-400/30 rounded-full blur-3xl" />
 
@@ -1409,10 +1409,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 >
                   <div className="relative">
                     {/* 3D shadow layers */}
-                    <div className="absolute inset-0 bg-black/20 rounded-xl transform translate-x-1 translate-y-1" />
-                    <div className="absolute inset-0 bg-black/10 rounded-xl transform translate-x-0.5 translate-y-0.5" />
+                    <div className="absolute inset-0 bg-black/20 rounded-lg transform translate-x-1 translate-y-1" />
+                    <div className="absolute inset-0 bg-black/10 rounded-lg transform translate-x-0.5 translate-y-0.5" />
                     {/* Main badge */}
-                    <div className="relative bg-white rounded-xl px-4 py-2 shadow-lg border-2 border-white/50 transform rotate-3">
+                    <div className="relative bg-white rounded-lg px-4 py-2 shadow-lg border-2 border-white/50 transform rotate-3">
                       <div className="flex items-center gap-2">
                         <motion.span
                           animate={{ rotateY: [0, 360] }}
@@ -1459,14 +1459,13 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onClick={() => setLanguage(lang)}
                       type="button"
                       style={{ touchAction: 'manipulation', minWidth: '100px', flex: 1 }}
-                      className={`py-3 px-3 rounded-xl font-bold text-sm border-2 transition-all shadow-lg ${
+                      className={`py-3 px-3 rounded-lg font-bold text-sm border-2 transition-all shadow-lg ${
                         language === lang
                           ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white border-orange-400 shadow-orange-500/50 scale-105'
                           : 'bg-white/90 text-on-surface border-white/60 hover:bg-white hover:scale-102'
                       }`}
                     >
-                      <span className="text-xl">{lang === 'en' ? '🇬🇧' : lang === 'he' ? '🇮🇱' : '🇸🇦'}</span>
-                      <span className="block text-xs mt-0.5">{lang === 'en' ? 'English' : lang === 'he' ? 'עברית' : 'العربية'}</span>
+                      <span className="block text-base font-black">{lang === 'en' ? 'English' : lang === 'he' ? 'עברית' : 'العربية'}</span>
                     </button>
                   ))}
                 </div>
@@ -1478,7 +1477,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 style={{ touchAction: 'manipulation' }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-4 rounded-2xl font-black text-lg transition-all shadow-xl shadow-violet-500/40 border-2 border-white/30"
+                className="w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-4 rounded-xl font-black text-lg transition-all shadow-xl shadow-violet-500/40 border-2 border-white/30"
               >
                 {t.letsGo}
               </motion.button>
@@ -1538,7 +1537,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     }
                   }}
                   placeholder={t.enterNickname}
-                  className={`w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-xl border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 ${textAlign}`}
+                  className={`w-full px-6 py-4 text-lg font-bold bg-surface-container-lowest rounded-lg border-2 border-surface-container-highest focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/50 ${textAlign}`}
                   maxLength={15}
                   dir={dir}
                 />
@@ -1559,7 +1558,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
               {/* XP Title Display */}
               {xp > 0 && (
-                <div className="bg-gradient-to-r from-primary/10 to-tertiary/10 rounded-2xl p-4 mb-6 border border-primary/20">
+                <div className="bg-gradient-to-r from-primary/10 to-tertiary/10 rounded-xl p-4 mb-6 border border-primary/20">
                   <div className="flex items-center justify-center gap-2">
                     <Crown size={20} style={{ color: xpTitle.color }} />
                     <span className="font-black" style={{ color: xpTitle.color }}>{xpTitle.title}</span>
@@ -1572,7 +1571,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 ref={continueButtonRef}
                 onClick={() => setView("game-select")}
                 disabled={!displayName.trim()}
-                className="w-full signature-gradient text-white py-5 rounded-xl text-xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                className="w-full signature-gradient text-white py-5 rounded-lg text-xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 {t.continue}
@@ -1646,7 +1645,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     return (
                       <div
                         key={pu.id}
-                        className={`relative bg-gradient-to-br ${theme[pu.id] ?? 'from-stone-300 to-stone-500'} px-3.5 py-2 rounded-2xl text-center shadow-lg ring-1 min-w-[64px] backdrop-blur-sm`}
+                        className={`relative bg-gradient-to-br ${theme[pu.id] ?? 'from-stone-300 to-stone-500'} px-3.5 py-2 rounded-xl text-center shadow-lg ring-1 min-w-[64px] backdrop-blur-sm`}
                       >
                         <span className="text-2xl block leading-none drop-shadow-sm">{pu.emoji}</span>
                         <p className="text-[11px] font-black text-white/95 mt-1 tracking-wide">
@@ -1676,7 +1675,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     onClick={() => startGame(learn.id)}
                     type="button"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    className="w-full mb-4 sm:mb-6 p-5 sm:p-8 rounded-[32px] text-left relative overflow-hidden shadow-xl hover:shadow-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white"
+                    className="w-full mb-4 sm:mb-6 p-5 sm:p-8 rounded-2xl text-left relative overflow-hidden shadow-xl hover:shadow-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white"
                     dir={dir}
                   >
                     <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
@@ -1687,7 +1686,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       </span>
                     </div>
                     <div className="flex items-center gap-4 sm:gap-6 mt-10 sm:mt-6">
-                      <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
+                      <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
                         <GraduationCap size={32} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1743,14 +1742,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onClick={() => startGame(mode.id)}
                       type="button"
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                      className={`p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[modeColor]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
+                      className={`p-4 sm:p-8 rounded-2xl sm:rounded-2xl text-center transition-all border-2 border-transparent flex flex-col items-center ${colorClasses[modeColor]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
                       initial={{ opacity: 0, scale: 0.9, y: 20 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       transition={{ delay: idx * 0.05 }}
                       whileHover={{ scale: 1.05, translateY: -8 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[16px] sm:rounded-[24px] bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[modeColor]} relative`}>
+                      <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[modeColor]} relative`}>
                         {mode.icon}
                       </div>
                       <p className="font-black text-base sm:text-xl mb-1 sm:mb-2 leading-tight">{mode.name}</p>
@@ -1811,13 +1810,13 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}
                 transition={{ duration: 0.35 }}
                 dir={dir}
-                className="bg-white rounded-[28px] sm:rounded-[36px] shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-xl mx-auto text-left"
+                className="bg-white rounded-2xl sm:rounded-2xl shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-xl mx-auto text-left"
               >
                 <motion.div
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.1 }}
-                  className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-[22px] sm:rounded-[28px] bg-gradient-to-br ${info.cardClass} flex items-center justify-center text-4xl sm:text-5xl shadow-lg`}
+                  className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-xl sm:rounded-2xl bg-gradient-to-br ${info.cardClass} flex items-center justify-center text-4xl sm:text-5xl shadow-lg`}
                 >
                   {info.icon}
                 </motion.div>
@@ -1831,7 +1830,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.2 + i * 0.1 }}
-                      className={`flex items-center gap-3 sm:gap-4 ${info.stepBgClass} border p-3 sm:p-4 rounded-2xl`}
+                      className={`flex items-center gap-3 sm:gap-4 ${info.stepBgClass} border p-3 sm:p-4 rounded-xl`}
                     >
                       <span className={`w-8 h-8 sm:w-10 sm:h-10 ${info.stepNumClass} text-white rounded-full flex items-center justify-center text-sm sm:text-base font-black flex-shrink-0 shadow-sm`}>
                         {i + 1}
@@ -1848,7 +1847,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   transition={{ delay: 0.4 + info.steps.length * 0.1 }}
                   onClick={beginGameplay}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  className={`w-full py-4 sm:py-5 bg-gradient-to-br ${info.ctaClass} text-white rounded-2xl font-black text-lg sm:text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-transform`}
+                  className={`w-full py-4 sm:py-5 bg-gradient-to-br ${info.ctaClass} text-white rounded-xl font-black text-lg sm:text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-transform`}
                 >
                   Let's Go! →
                 </motion.button>
@@ -1926,7 +1925,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 return (
                   <div className="flex justify-center gap-2 mb-3">
                     {canFiftyFifty && (
-                      <motion.button onClick={handleFiftyFifty} className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 rounded-xl text-xs font-bold hover:from-amber-200 hover:to-amber-300 transition-all flex items-center gap-1 border border-amber-300 shadow-sm hover:shadow-md"
+                      <motion.button onClick={handleFiftyFifty} className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 rounded-lg text-xs font-bold hover:from-amber-200 hover:to-amber-300 transition-all flex items-center gap-1 border border-amber-300 shadow-sm hover:shadow-md"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -1934,7 +1933,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       </motion.button>
                     )}
                     {canSkip && (
-                      <motion.button onClick={handleSkip} className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-xl text-xs font-bold hover:from-blue-200 hover:to-blue-300 transition-all flex items-center gap-1 border border-blue-300 shadow-sm hover:shadow-md"
+                      <motion.button onClick={handleSkip} className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-lg text-xs font-bold hover:from-blue-200 hover:to-blue-300 transition-all flex items-center gap-1 border border-blue-300 shadow-sm hover:shadow-md"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -1942,7 +1941,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       </motion.button>
                     )}
                     {canHint && (
-                      <motion.button onClick={handleRevealLetter} className="px-3 py-1.5 bg-gradient-to-r from-green-100 to-green-200 text-green-700 rounded-xl text-xs font-bold hover:from-green-200 hover:to-green-300 transition-all flex items-center gap-1 border border-green-300 shadow-sm hover:shadow-md"
+                      <motion.button onClick={handleRevealLetter} className="px-3 py-1.5 bg-gradient-to-r from-green-100 to-green-200 text-green-700 rounded-lg text-xs font-bold hover:from-green-200 hover:to-green-300 transition-all flex items-center gap-1 border border-green-300 shadow-sm hover:shadow-md"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -1977,7 +1976,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-emerald-50 to-green-50 border-[3px] border-emerald-500 shadow-emerald-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-emerald-100"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-emerald-50 to-green-50 border-[3px] border-emerald-500 shadow-emerald-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-emerald-100"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-500 shadow-lg shadow-emerald-300/50"
@@ -2022,7 +2021,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                           onClick={() => handleClassicAnswer(option)}
                           disabled={selectedAnswer !== null}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                          className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${btnClass}`}
+                          className={`py-3 px-3 sm:py-6 sm:px-8 rounded-lg sm:rounded-2xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${btnClass}`}
                           dir={isRTL ? 'rtl' : 'ltr'}
                           whileHover={{ scale: showResult ? 1 : 1.02 }}
                           whileTap={{ scale: 0.97 }}
@@ -2043,7 +2042,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
@@ -2089,7 +2088,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                           onClick={() => handleClassicAnswer(option)}
                           disabled={selectedAnswer !== null}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                          className={`py-3 px-3 sm:py-6 sm:px-8 rounded-xl sm:rounded-3xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${btnClass}`}
+                          className={`py-3 px-3 sm:py-6 sm:px-8 rounded-lg sm:rounded-2xl text-sm sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[56px] sm:min-h-[80px] flex items-center justify-center gap-2 ${btnClass}`}
                           dir={isRTL ? 'rtl' : 'ltr'}
                           whileHover={{ scale: showResult ? 1 : 1.02 }}
                           whileTap={{ scale: 0.97 }}
@@ -2126,7 +2125,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                           disabled={card.matched}
                           dir="auto"
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                          className={`p-3 sm:p-6 rounded-xl sm:rounded-2xl shadow-md font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 border-2 ${
+                          className={`p-3 sm:p-6 rounded-lg sm:rounded-xl shadow-md font-black text-lg sm:text-2xl h-20 sm:h-32 flex items-center justify-center transition-all duration-200 border-2 ${
                             card.selected
                               ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-xl shadow-blue-300/50 ring-4 ring-blue-200 border-blue-400"
                               : "bg-gradient-to-br from-white to-stone-50 text-stone-800 border-stone-200 hover:shadow-lg hover:border-blue-200"
@@ -2149,7 +2148,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-blue-50 to-emerald-50 border-[3px] border-blue-600 shadow-blue-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-stone-100"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-blue-50 to-emerald-50 border-[3px] border-blue-600 shadow-blue-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-stone-100"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-gradient-to-r from-purple-500 to-purple-600 transition-all duration-500 shadow-lg shadow-purple-300/50"
@@ -2181,7 +2180,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   {/* Power-ups for spelling */}
                   {powerUps.reveal_letter > 0 && !selectedAnswer && spellingInput.length === 0 && (
                     <div className="flex justify-center mb-3">
-                      <button onClick={handleRevealLetter} className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 rounded-xl text-xs font-bold hover:from-emerald-100 hover:to-emerald-200 transition-all flex items-center gap-1 border border-emerald-300 shadow-sm hover:shadow-md">
+                      <button onClick={handleRevealLetter} className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:from-emerald-100 hover:to-emerald-200 transition-all flex items-center gap-1 border border-emerald-300 shadow-sm hover:shadow-md">
                         💡 {t.hint} <span className="bg-emerald-200 px-1.5 py-0.5 rounded-md text-[10px]">×{powerUps.reveal_letter}</span>
                       </button>
                     </div>
@@ -2200,7 +2199,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder={t.typeInEnglish}
                       disabled={selectedAnswer !== null}
-                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all shadow-sm ${
+                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-xl sm:rounded-2xl mb-3 sm:mb-5 transition-all shadow-sm ${
                         isCorrect === true ? "border-blue-500 bg-gradient-to-br from-blue-50 to-emerald-50 text-blue-700 shadow-blue-200/50" :
                         isCorrect === false ? "border-rose-500 bg-gradient-to-br from-rose-50 to-red-50 text-rose-700 shadow-rose-200/50" :
                         "border-stone-200 bg-white focus:border-purple-400 focus:ring-4 focus:ring-purple-100 outline-none hover:border-stone-300"
@@ -2212,7 +2211,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         type="submit"
                         disabled={!spellingInput.trim()}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="w-full py-3 sm:py-4 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                        className="w-full py-3 sm:py-4 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-xl font-black text-base sm:text-xl hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                         whileHover={{ scale: spellingInput.trim() ? 1.02 : 1 }}
                         whileTap={{ scale: 0.97 }}
                       >
@@ -2228,7 +2227,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
@@ -2264,7 +2263,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder={t.typeInEnglish}
                       disabled={selectedAnswer !== null}
-                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all shadow-sm ${
+                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-xl sm:rounded-2xl mb-3 sm:mb-5 transition-all shadow-sm ${
                         isCorrect === true ? "border-blue-500 bg-gradient-to-br from-blue-50 to-emerald-50 text-blue-700 shadow-blue-200/50" :
                         isCorrect === false ? "border-rose-500 bg-gradient-to-br from-rose-50 to-red-50 text-rose-700 shadow-rose-200/50" :
                         "border-stone-200 bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 outline-none hover:border-stone-300"
@@ -2276,7 +2275,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         type="submit"
                         disabled={!spellingInput.trim()}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="w-full py-3 sm:py-4 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                        className="w-full py-3 sm:py-4 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-xl font-black text-base sm:text-xl hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                         whileHover={{ scale: spellingInput.trim() ? 1.02 : 1 }}
                         whileTap={{ scale: 0.97 }}
                       >
@@ -2295,7 +2294,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
@@ -2306,7 +2305,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     {currentWordIndex + 1} / {DEMO_WORDS.length}
                   </span>
 
-                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-5 sm:p-8 rounded-2xl sm:rounded-3xl mb-4 shadow-sm border border-stone-200 max-w-lg mx-auto">
+                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 p-5 sm:p-8 rounded-xl sm:rounded-2xl mb-4 shadow-sm border border-stone-200 max-w-lg mx-auto">
                     <div className="text-2xl sm:text-4xl md:text-5xl font-black text-stone-900 mb-2" dir="ltr">
                       {cleanWordForDisplay(tfStatement.word.english)}
                     </div>
@@ -2329,7 +2328,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onClick={() => handleTFAnswer(true)}
                       disabled={selectedAnswer !== null}
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '64px' }}
-                      className="py-6 sm:py-8 rounded-2xl sm:rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/50 hover:shadow-xl hover:shadow-emerald-400/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ring-2 ring-emerald-300"
+                      className="py-6 sm:py-8 rounded-xl sm:rounded-2xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/50 hover:shadow-xl hover:shadow-emerald-400/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ring-2 ring-emerald-300"
                       whileHover={{ scale: selectedAnswer === null ? 1.05 : 1, translateY: selectedAnswer === null ? -4 : 0 }}
                       whileTap={{ scale: 0.95 }}
                     >
@@ -2340,7 +2339,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onClick={() => handleTFAnswer(false)}
                       disabled={selectedAnswer !== null}
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '64px' }}
-                      className="py-6 sm:py-8 rounded-2xl sm:rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-lg shadow-rose-300/50 hover:shadow-xl hover:shadow-rose-400/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ring-2 ring-rose-300"
+                      className="py-6 sm:py-8 rounded-xl sm:rounded-2xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-lg shadow-rose-300/50 hover:shadow-xl hover:shadow-rose-400/60 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ring-2 ring-rose-300"
                       whileHover={{ scale: selectedAnswer === null ? 1.05 : 1, translateY: selectedAnswer === null ? -4 : 0 }}
                       whileTap={{ scale: 0.95 }}
                     >
@@ -2357,7 +2356,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden"
+                  className="bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden"
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-gradient-to-r from-cyan-500 to-cyan-600 transition-all duration-500 shadow-lg shadow-cyan-300/50"
@@ -2371,7 +2370,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   {/* Hero card with the word/translation (inner, sits inside
                       the main game card so we match the GameActiveView
                       structure: outer card + progress + inner content). */}
-                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-2xl sm:rounded-[28px] p-5 sm:p-10 border-2 border-stone-200 shadow-sm min-h-[220px] flex flex-col items-center justify-center text-center mb-4 sm:mb-6 max-w-md mx-auto">
+                  <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-xl sm:rounded-2xl p-5 sm:p-10 border-2 border-stone-200 shadow-sm min-h-[220px] flex flex-col items-center justify-center text-center mb-4 sm:mb-6 max-w-md mx-auto">
                     {!isFlipped ? (
                       <>
                         <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-3">{t.flashcardWord}</p>
@@ -2402,7 +2401,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     <motion.button
                       onClick={() => setIsFlipped(!isFlipped)}
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                      className="w-full py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-lg sm:text-xl font-bold bg-gradient-to-r from-stone-100 to-stone-200 text-stone-700 hover:from-stone-200 hover:to-stone-300 transition-all shadow-sm hover:shadow-md"
+                      className="w-full py-4 sm:py-6 rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold bg-gradient-to-r from-stone-100 to-stone-200 text-stone-700 hover:from-stone-200 hover:to-stone-300 transition-all shadow-sm hover:shadow-md"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.97 }}
                     >
@@ -2413,14 +2412,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         <motion.button
                           onClick={() => { setIsCorrect(false); handleFeedback(false); setSelectedAnswer("unknown"); }}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '56px' }}
-                          className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-gradient-to-br from-rose-50 to-rose-100 text-rose-600 hover:from-rose-100 hover:to-rose-200 transition-all shadow-sm hover:shadow-md border border-rose-200"
+                          className="py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold bg-gradient-to-br from-rose-50 to-rose-100 text-rose-600 hover:from-rose-100 hover:to-rose-200 transition-all shadow-sm hover:shadow-md border border-rose-200"
                           whileHover={{ scale: 1.05, translateY: -2 }}
                           whileTap={{ scale: 0.95 }}
                         >Still Learning</motion.button>
                         <motion.button
                           onClick={() => { setIsCorrect(true); handleFeedback(true); setSelectedAnswer("known"); }}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '56px' }}
-                          className="py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-bold bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm hover:shadow-md border border-blue-200"
+                          className="py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm hover:shadow-md border border-blue-200"
                           whileHover={{ scale: 1.05, translateY: -2 }}
                           whileTap={{ scale: 0.95 }}
                         >Got It!</motion.button>
@@ -2437,7 +2436,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-blue-50 border-[3px] border-blue-600" : isCorrect === false ? "bg-red-50 border-[3px] border-red-500" : "border-[3px] border-transparent"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
@@ -2475,7 +2474,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onChange={(e) => setSpellingInput(e.target.value)}
                       placeholder={t.typeInEnglish}
                       disabled={selectedAnswer !== null}
-                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-2xl sm:rounded-3xl mb-3 sm:mb-5 transition-all shadow-sm ${
+                      className={`w-full p-3 sm:p-5 text-base sm:text-2xl font-black text-center border-4 rounded-xl sm:rounded-2xl mb-3 sm:mb-5 transition-all shadow-sm ${
                         isCorrect === true ? "border-blue-500 bg-gradient-to-br from-blue-50 to-emerald-50 text-blue-700 shadow-blue-200/50" :
                         isCorrect === false ? "border-rose-500 bg-gradient-to-br from-rose-50 to-red-50 text-rose-700 shadow-rose-200/50" :
                         "border-stone-200 bg-white focus:border-fuchsia-400 focus:ring-4 focus:ring-fuchsia-100 outline-none hover:border-stone-300"
@@ -2487,7 +2486,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         type="submit"
                         disabled={!spellingInput.trim()}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="w-full py-3 sm:py-4 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                        className="w-full py-3 sm:py-4 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-xl font-black text-base sm:text-xl hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                         whileHover={{ scale: spellingInput.trim() ? 1.02 : 1 }}
                         whileTap={{ scale: 0.97 }}
                       >
@@ -2505,7 +2504,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-blue-50 to-emerald-50 border-[3px] border-blue-600 shadow-blue-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-stone-100"}`}
+                  className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 text-center relative overflow-hidden transition-colors duration-300 ${isCorrect === true ? "bg-gradient-to-br from-blue-50 to-emerald-50 border-[3px] border-blue-600 shadow-blue-200/50" : isCorrect === false ? "bg-gradient-to-br from-rose-50 to-red-50 border-[3px] border-rose-500 shadow-rose-200/50" : "border-[3px] border-stone-100"}`}
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-gradient-to-r from-violet-500 to-violet-600 transition-all duration-500 shadow-lg shadow-violet-300/50"
@@ -2530,7 +2529,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                             initial={{ opacity: 0, scale: 0.5 }}
                             animate={{ opacity: revealed ? 1 : 0.15, scale: revealed ? 1 : 0.5 }}
                             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                            className="w-10 h-12 sm:w-14 sm:h-16 rounded-xl font-black text-lg sm:text-3xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0"
+                            className="w-10 h-12 sm:w-14 sm:h-16 rounded-lg font-black text-lg sm:text-3xl flex items-center justify-center border-[3px] sm:border-4 flex-shrink-0"
                             style={{
                               color: revealed ? color : color + "40",
                               borderColor: revealed ? color : color + "40",
@@ -2558,7 +2557,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         onChange={(e) => setSpellingInput(e.target.value)}
                         placeholder={t.typeTheWord}
                         disabled={selectedAnswer !== null}
-                        className={`w-full p-3 sm:p-4 text-base sm:text-2xl font-black text-center border-4 rounded-2xl mb-3 transition-all ${
+                        className={`w-full p-3 sm:p-4 text-base sm:text-2xl font-black text-center border-4 rounded-xl mb-3 transition-all ${
                           isCorrect === true ? "border-blue-600 bg-blue-50 text-blue-700" :
                           isCorrect === false ? "border-rose-500 bg-rose-50 text-rose-700" :
                           "border-stone-100 focus:border-stone-900 outline-none"
@@ -2570,7 +2569,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                           type="submit"
                           disabled={!spellingInput.trim()}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                          className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-2xl font-black text-base sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-3 sm:py-4 bg-stone-900 text-white rounded-xl font-black text-base sm:text-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Check Answer
                         </button>
@@ -2581,7 +2580,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       <button
                         onClick={() => { setRevealedLetters(0); }}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="px-6 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-colors inline-flex items-center gap-2"
+                        className="px-6 py-3 bg-stone-100 text-stone-700 rounded-lg font-bold hover:bg-stone-200 transition-colors inline-flex items-center gap-2"
                       >
                         🔊 Replay Sounds
                       </button>
@@ -2598,7 +2597,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-4 sm:p-8 relative overflow-hidden"
+                  className="bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 relative overflow-hidden"
                 >
                   <div
                     className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-500"
@@ -2623,7 +2622,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
                   <div className="max-w-xl mx-auto">
                     {/* Built sentence area */}
-                    <div className={`min-h-[64px] sm:min-h-[72px] border-4 rounded-2xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
+                    <div className={`min-h-[64px] sm:min-h-[72px] border-4 rounded-xl p-3 mb-4 flex flex-wrap gap-2 items-center transition-colors ${
                       sentenceFeedback === "correct" ? "border-blue-500 bg-blue-50" :
                       sentenceFeedback === "incorrect" ? "border-rose-500 bg-rose-50" :
                       "border-stone-200 bg-stone-50"
@@ -2640,7 +2639,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                               setAvailableWords(prev => [...prev, word]);
                             }}
                             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                            className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold text-sm sm:text-base hover:from-blue-600 hover:to-blue-700 active:scale-95 transition-all shadow-sm hover:shadow-md"
+                            className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-bold text-sm sm:text-base hover:from-blue-600 hover:to-blue-700 active:scale-95 transition-all shadow-sm hover:shadow-md"
                           >{word}</button>
                         ))
                       )}
@@ -2657,7 +2656,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                             setBuiltSentence(prev => [...prev, word]);
                           }}
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                          className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-xl font-bold text-sm sm:text-base hover:border-teal-400 hover:text-teal-700 active:scale-95 transition-all shadow-sm hover:shadow-md"
+                          className="px-3 py-1.5 bg-white border-2 border-stone-200 text-stone-800 rounded-lg font-bold text-sm sm:text-base hover:border-teal-400 hover:text-teal-700 active:scale-95 transition-all shadow-sm hover:shadow-md"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >{word}</motion.button>
@@ -2675,7 +2674,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         }}
                         disabled={sentenceFeedback !== null}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="flex-1 py-2 bg-gradient-to-r from-stone-100 to-stone-200 text-stone-600 rounded-xl font-bold hover:from-stone-200 hover:to-stone-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                        className="flex-1 py-2 bg-gradient-to-r from-stone-100 to-stone-200 text-stone-600 rounded-lg font-bold hover:from-stone-200 hover:to-stone-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
                         whileHover={{ scale: sentenceFeedback === null ? 1.02 : 1 }}
                         whileTap={{ scale: 0.97 }}
                       >{t.clearBtn}</motion.button>
@@ -2693,7 +2692,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         }}
                         disabled={builtSentence.length === 0 || sentenceFeedback !== null}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                        className="flex-2 py-2 px-6 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-xl font-bold hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 shadow-lg hover:shadow-xl"
+                        className="flex-2 py-2 px-6 bg-gradient-to-r from-stone-800 to-stone-900 text-white rounded-lg font-bold hover:from-stone-900 hover:to-black transition-all disabled:opacity-50 shadow-lg hover:shadow-xl"
                         whileHover={{ scale: (builtSentence.length > 0 && sentenceFeedback === null) ? 1.02 : 1 }}
                         whileTap={{ scale: 0.97 }}
                       >Check ✓</motion.button>
@@ -2707,7 +2706,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`mt-4 p-4 rounded-2xl ${
+                  className={`mt-4 p-4 rounded-xl ${
                     isCorrect ? "bg-green-100" : "bg-red-100"
                   }`}
                 >
@@ -2765,16 +2764,16 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
               {/* Score / XP / Streak triple card — matches GameFinishedView */}
               <div className="w-full flex flex-col sm:flex-row gap-3 mb-4 sm:mb-6">
-                <div className="bg-white p-5 sm:p-7 rounded-3xl shadow-md flex-1 text-center border border-stone-100">
+                <div className="bg-white p-5 sm:p-7 rounded-2xl shadow-md flex-1 text-center border border-stone-100">
                   <p className="text-[10px] sm:text-xs uppercase tracking-widest text-stone-500 mb-1 font-black">Final Score</p>
                   <p className="text-4xl sm:text-6xl font-black text-blue-500">{score}</p>
                 </div>
-                <div className="bg-white p-5 sm:p-7 rounded-3xl shadow-md flex-1 text-center border border-stone-100">
+                <div className="bg-white p-5 sm:p-7 rounded-2xl shadow-md flex-1 text-center border border-stone-100">
                   <p className="text-[10px] sm:text-xs uppercase tracking-widest text-stone-500 mb-1 font-black">Total XP</p>
                   <p className="text-4xl sm:text-6xl font-black text-blue-600">{xp}</p>
                 </div>
                 {streak > 0 && (
-                  <div className="bg-white p-5 sm:p-7 rounded-3xl shadow-md border-2 border-orange-100 flex-1 text-center">
+                  <div className="bg-white p-5 sm:p-7 rounded-2xl shadow-md border-2 border-orange-100 flex-1 text-center">
                     <p className="text-[10px] sm:text-xs uppercase tracking-widest text-orange-500 mb-1 font-black">{t.streak}</p>
                     <p className="text-4xl sm:text-6xl font-black text-orange-600">{streak} 🔥</p>
                   </div>
@@ -2782,12 +2781,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               </div>
 
               {/* Accuracy summary row — new, matches real app */}
-              <div className="bg-white rounded-2xl shadow-sm px-6 py-3 mb-6 text-stone-600 text-sm">
+              <div className="bg-white rounded-xl shadow-sm px-6 py-3 mb-6 text-stone-600 text-sm">
                 <span className="font-bold">{score}</span> / {DEMO_WORDS.length} correct
               </div>
 
               {/* XP Title callout */}
-              <div className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 mb-6 border border-blue-200">
+              <div className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200">
                 <div className="flex items-center justify-center gap-2">
                   <Crown size={20} style={{ color: xpTitle.color }} />
                   <span className="font-black text-lg" style={{ color: xpTitle.color }}>{xpTitle.title}</span>
@@ -2804,7 +2803,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         key={badge}
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="bg-white px-4 py-2 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2"
+                        className="bg-white px-4 py-2 rounded-xl shadow-sm border border-stone-100 flex items-center gap-2"
                       >
                         <span className="text-lg">🏅</span>
                         <span className="font-bold text-stone-800 text-sm">{badge}</span>
@@ -2820,7 +2819,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ type: "spring", stiffness: 240, damping: 22, delay: 0.3 }}
-                className="w-full bg-white rounded-[28px] shadow-2xl border border-stone-200 p-5 sm:p-6 max-w-md"
+                className="w-full bg-white rounded-2xl shadow-2xl border border-stone-200 p-5 sm:p-6 max-w-md"
               >
                 <p className="text-[11px] font-black uppercase tracking-widest text-center mb-3 text-stone-400">
                   What's next?
@@ -2831,7 +2830,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     onClick={resetDemo}
                     type="button"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all"
+                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-4 rounded-xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all"
                   >
                     <RefreshCw size={20} />
                     {t.playAgain}
@@ -2840,7 +2839,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     onClick={() => setView("game-select")}
                     type="button"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-white border-2 border-stone-200 text-stone-800 px-6 py-3 rounded-2xl font-black text-sm sm:text-base hover:border-stone-300 active:scale-[0.98] transition-all"
+                    className="w-full inline-flex items-center justify-center gap-2 bg-white border-2 border-stone-200 text-stone-800 px-6 py-3 rounded-xl font-black text-sm sm:text-base hover:border-stone-300 active:scale-[0.98] transition-all"
                   >
                     Try Another Mode
                   </button>
@@ -2887,7 +2886,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {/* Shop hero — same gradient hero as the real ShopView hub
                   so students feel the same visual language before and
                   after they sign up. */}
-              <div className="relative overflow-hidden rounded-[28px] mb-5 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-rose-500 p-5 sm:p-7 shadow-xl shadow-pink-500/20">
+              <div className="relative overflow-hidden rounded-2xl mb-5 bg-gradient-to-br from-fuchsia-600 via-pink-500 to-rose-500 p-5 sm:p-7 shadow-xl shadow-pink-500/20">
                 <div className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
                 <div className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-cyan-400/25 rounded-full blur-3xl" />
                 <div className="relative">
@@ -2903,7 +2902,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   ShopView's category set so the demo previews the full
                   shop breadth (eggs, themes, frames are the three new
                   ones that were missing before). */}
-              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5 mb-6" style={{ scrollSnapType: 'x mandatory' }}>
+              <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5 mb-6" style={{ scrollSnapType: 'x mandatory' }}>
                 {(["eggs", "avatars", "themes", "frames", "titles", "powerups", "premium"] as const).map(tab => {
                   const isActive = shopTab === tab;
                   const labels: Record<typeof tab, { emoji: string; text: string }> = {
@@ -2921,7 +2920,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       onClick={() => setShopTab(tab)}
                       type="button"
                       style={{ touchAction: 'manipulation', scrollSnapAlign: 'center' }}
-                      className={`flex-1 min-w-fit flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${isActive ? "bg-stone-900 text-white shadow-sm" : "text-stone-500 hover:bg-stone-50 hover:text-stone-900"}`}
+                      className={`flex-1 min-w-fit flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${isActive ? "bg-stone-900 text-white shadow-sm" : "text-stone-500 hover:bg-stone-50 hover:text-stone-900"}`}
                     >
                       <span className="text-base">{labels[tab].emoji}</span>
                       <span>{labels[tab].text}</span>
@@ -2936,7 +2935,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   hint (opening is locked in demo). */}
               {shopTab === "eggs" && (
                 <div>
-                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-5 mb-4 shadow-lg shadow-violet-500/20">
+                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-5 mb-4 shadow-lg shadow-violet-500/20">
                     <div aria-hidden className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 bg-amber-300/40 rounded-full blur-3xl" />
                     <div className="relative">
                       <h2 className="text-lg sm:text-xl font-black text-white">Mystery Eggs & Chests</h2>
@@ -2957,7 +2956,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         legendary: 'ring-amber-300', mythic: 'ring-fuchsia-400',
                       };
                       return (
-                        <div key={egg.id} className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${rarityBg[egg.rarity]} p-4 sm:p-5 ring-2 ${rarityRing[egg.rarity]} shadow-lg`}>
+                        <div key={egg.id} className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${rarityBg[egg.rarity]} p-4 sm:p-5 ring-2 ${rarityRing[egg.rarity]} shadow-lg`}>
                           <div className="flex justify-end">
                             <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/70 text-stone-700">{egg.rarity}</span>
                           </div>
@@ -2971,7 +2970,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                               {egg.minXp}–{egg.maxXp} XP drop
                             </span>
                           </div>
-                          <div className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-sm font-black bg-white/60 text-stone-500 border border-white/80">
+                          <div className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-black bg-white/60 text-stone-500 border border-white/80">
                             <ShoppingBag size={14} />
                             Unlock in full app
                           </div>
@@ -2992,7 +2991,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {THEMES.slice(0, 6).map(theme => (
-                      <div key={theme.id} className="relative overflow-hidden rounded-3xl shadow-lg border-2 border-white/80">
+                      <div key={theme.id} className="relative overflow-hidden rounded-2xl shadow-lg border-2 border-white/80">
                         <div className={`${theme.colors.bg} h-28 sm:h-32 relative flex items-center justify-center`}>
                           <span className="text-5xl sm:text-6xl drop-shadow-lg">{theme.preview}</span>
                           <div aria-hidden className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
@@ -3022,11 +3021,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {NAME_FRAMES.slice(0, 6).map(frame => (
-                      <div key={frame.id} className="relative overflow-hidden rounded-3xl shadow-lg bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 p-5">
+                      <div key={frame.id} className="relative overflow-hidden rounded-2xl shadow-lg bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 p-5">
                         <div aria-hidden className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-violet-500/30 to-pink-500/30 rounded-full blur-3xl" />
                         <div className="relative flex items-center gap-4">
-                          <div className="shrink-0 w-20 h-20 rounded-2xl bg-gradient-to-br from-stone-100 to-white flex items-center justify-center shadow-inner border border-white/20">
-                            <span className={`w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-3xl ${frame.border}`}>
+                          <div className="shrink-0 w-20 h-20 rounded-xl bg-gradient-to-br from-stone-100 to-white flex items-center justify-center shadow-inner border border-white/20">
+                            <span className={`w-16 h-16 rounded-xl bg-white flex items-center justify-center text-3xl ${frame.border}`}>
                               {avatar || '😎'}
                             </span>
                           </div>
@@ -3052,7 +3051,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     const isUnlocked = xp >= unlock.xpRequired;
                     const progressPercent = unlock.xpRequired > 0 ? Math.min(100, Math.round((xp / unlock.xpRequired) * 100)) : 100;
                     return (
-                      <div key={category} className={`rounded-2xl border-2 overflow-hidden transition-all ${isUnlocked ? 'border-green-200 bg-green-50/50' : 'border-stone-200 bg-stone-50'}`}>
+                      <div key={category} className={`rounded-xl border-2 overflow-hidden transition-all ${isUnlocked ? 'border-green-200 bg-green-50/50' : 'border-stone-200 bg-stone-50'}`}>
                         <div className={`flex items-center justify-between px-4 py-3 ${isUnlocked ? 'bg-green-100/50' : 'bg-stone-100'}`}>
                           <div className="flex items-center gap-2">
                             {isUnlocked ? (
@@ -3084,7 +3083,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                                 onClick={() => { if (isUnlocked) { setAvatar(a); setView('game-select'); } }}
                                 type="button"
                                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                                className={`relative aspect-square flex items-center justify-center rounded-2xl text-3xl sm:text-4xl transition-all border ${
+                                className={`relative aspect-square flex items-center justify-center rounded-xl text-3xl sm:text-4xl transition-all border ${
                                   isEquipped
                                     ? 'bg-gradient-to-br from-indigo-400 via-violet-500 to-fuchsia-500 border-white shadow-lg shadow-violet-300/50 ring-2 ring-violet-400 scale-105'
                                     : isUnlocked
@@ -3107,7 +3106,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   })}
 
                   {/* Premium Avatars - LOCKED */}
-                  <div className={`bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-4 shadow-md border-2 border-amber-200 ${isRTL ? 'text-right' : ''}`}>
+                  <div className={`bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 shadow-md border-2 border-amber-200 ${isRTL ? 'text-right' : ''}`}>
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-bold text-stone-800">✨ Premium Avatars</h3>
                       <span className="text-xs bg-gradient-to-r from-pink-500 to-orange-500 text-white px-3 py-1 rounded-full font-bold flex items-center gap-1">
@@ -3116,12 +3115,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     </div>
                     <div className="grid grid-cols-6 gap-2 opacity-50 mb-3">
                       {PREMIUM_AVATARS.map((avatar) => (
-                        <div key={avatar.emoji} className="text-2xl p-2 bg-white rounded-xl text-center border border-stone-200">
+                        <div key={avatar.emoji} className="text-2xl p-2 bg-white rounded-lg text-center border border-stone-200">
                           {avatar.emoji}
                         </div>
                       ))}
                     </div>
-                    <div className="w-full py-3 bg-white text-stone-700 rounded-xl font-bold flex items-center justify-center gap-2 border border-amber-200">
+                    <div className="w-full py-3 bg-white text-stone-700 rounded-lg font-bold flex items-center justify-center gap-2 border border-amber-200">
                       <ShoppingBag size={18} />
                       Available in the full version
                     </div>
@@ -3139,7 +3138,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     return (
                       <div
                         key={title.title}
-                        className={`bg-white rounded-3xl p-4 shadow-md border-2 transition-all ${isUnlocked ? 'border-green-300 hover:border-green-400' : 'border-stone-200 opacity-50'} ${currentTitle.title === title.title ? 'ring-2 ring-primary' : ''}`}
+                        className={`bg-white rounded-2xl p-4 shadow-md border-2 transition-all ${isUnlocked ? 'border-green-300 hover:border-green-400' : 'border-stone-200 opacity-50'} ${currentTitle.title === title.title ? 'ring-2 ring-primary' : ''}`}
                       >
                         <div className="flex items-center gap-4">
                           <div
@@ -3166,21 +3165,21 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
 
               {/* Power-ups Tab - FREE IN DEMO */}
               {shopTab === "powerups" && (
-                <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-stone-200">
-                  <div className="mb-4 p-3 bg-green-50 rounded-xl text-center">
+                <div className="bg-white rounded-2xl p-6 shadow-md border-2 border-stone-200">
+                  <div className="mb-4 p-3 bg-green-50 rounded-lg text-center">
                     <p className="font-bold text-green-700">⚡ All power-ups are FREE in demo!</p>
                     <p className="text-xs text-green-600">You have: {powerUps.skip} Skip, {powerUps.fifty_fifty} 50/50, {powerUps.reveal_letter} Hints</p>
                   </div>
                   <div className="space-y-3">
                     {POWER_UPS.map((powerUp) => (
-                      <div key={powerUp.id} className="flex items-center gap-4 p-4 bg-stone-50 rounded-2xl border-2 border-green-200">
+                      <div key={powerUp.id} className="flex items-center gap-4 p-4 bg-stone-50 rounded-xl border-2 border-green-200">
                         <span className="text-3xl">{powerUp.emoji}</span>
                         <div className="flex-1">
                           <p className="font-bold text-stone-800">{powerUp.name}</p>
                           <p className="text-xs text-stone-500">{powerUp.desc}</p>
                         </div>
                         <div className="text-center">
-                          <span className="bg-green-100 text-green-700 px-3 py-1 rounded-xl text-xs font-bold">
+                          <span className="bg-green-100 text-green-700 px-3 py-1 rounded-lg text-xs font-bold">
                             ×{powerUp.freeInDemo || 3}
                           </span>
                         </div>
@@ -3193,7 +3192,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {/* Premium Tab - LOCKED */}
               {shopTab === "premium" && (
                 <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-3xl p-6 border-2 border-pink-200">
+                  <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-2xl p-6 border-2 border-pink-200">
                     <h2 className="text-xl font-black mb-2 bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent">
                       🔥 {t.shopFull}
                     </h2>
@@ -3204,11 +3203,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   </div>
 
                   {/* Locked Premium Avatars Preview */}
-                  <div className="bg-white rounded-3xl p-4 shadow-md border-2 border-stone-200">
+                  <div className="bg-white rounded-2xl p-4 shadow-md border-2 border-stone-200">
                     <h3 className="font-bold text-stone-800 mb-3">🌟 Premium Avatars</h3>
                     <div className="grid grid-cols-6 gap-2">
                       {["🐉", "🦅", "🐺", "👑", "🎖️", "🦸"].map((e) => (
-                        <div key={e} className="text-2xl p-2 bg-stone-100 rounded-xl text-center opacity-40">
+                        <div key={e} className="text-2xl p-2 bg-stone-100 rounded-lg text-center opacity-40">
                           {e}
                         </div>
                       ))}

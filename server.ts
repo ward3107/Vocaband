@@ -1373,6 +1373,47 @@ async function startServer() {
     });
   });
 
+  // Audit-log immutability health check — confirms the triggers from
+  // supabase/migrations/20260518120000 are still attached. If they
+  // disappear (e.g. a future migration drops them, or the table gets
+  // recreated), the log is no longer append-only and Reg 2017 § 8
+  // compliance is broken silently. This endpoint surfaces that.
+  //
+  // No auth required: returns only boolean presence, no DB contents,
+  // so it's safe to expose for uptime monitoring.
+  app.get("/api/health/audit-log", async (_req, res) => {
+    if (!supabaseAdmin) {
+      res.status(503).json({ status: "unavailable", reason: "supabase not configured" });
+      return;
+    }
+    try {
+      const { data, error } = await supabaseAdmin.rpc("audit_log_immutability_status");
+
+      if (error) {
+        res.status(503).json({
+          status: "error",
+          reason: "rpc audit_log_immutability_status failed — migration 20260518120000 may not be applied",
+          error: error.message,
+        });
+        return;
+      }
+
+      const result = data as { ok: boolean; update_trigger_present: boolean; delete_trigger_present: boolean } | null;
+      const ok = !!result?.ok;
+
+      res.status(ok ? 200 : 503).json({
+        status: ok ? "ok" : "broken",
+        updateTriggerPresent: !!result?.update_trigger_present,
+        deleteTriggerPresent: !!result?.delete_trigger_present,
+      });
+    } catch (err) {
+      res.status(503).json({
+        status: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+
   // Redis adapter diagnostic — no auth, no secrets in response. Hit this
   // after `fly secrets set REDIS_URL=...` to confirm the adapter actually
   // attached and pub/sub round-trips work. Returns 200 in single-VM mode
@@ -2093,7 +2134,8 @@ Quality rules:
     message: { error: "Too many lookups, please try again in a minute." },
   });
   app.get("/api/quick-play/session/:code", qpSessionLimiter, async (req, res) => {
-    const code = req.params.code;
+    // @types/express 5 widens req.params.* to string | string[]; narrow it.
+    const code = typeof req.params.code === "string" ? req.params.code : "";
     if (!code || !/^[A-Z0-9]{4,8}$/i.test(code)) {
       return res.status(400).json({ error: "Invalid session code format" });
     }
@@ -2997,7 +3039,10 @@ Important notes:
       res.type("text/plain").sendFile(path.join(distPath, ".well-known", "security.txt"));
     });
 
-    app.get("*", (_req, res) => {
+    // Express 5 + path-to-regexp v6 reject bare "*" wildcards — they
+    // require a named splat parameter. Without this the server crashes
+    // at startup with `PathError: Missing parameter name at index 1`.
+    app.get("/*splat", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }

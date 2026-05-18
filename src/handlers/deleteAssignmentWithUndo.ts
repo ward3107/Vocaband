@@ -16,6 +16,7 @@
  */
 import type React from 'react';
 import { supabase, type AssignmentData } from '../core/supabase';
+import { logAudit } from '../utils/audit';
 
 interface ToastEntry {
   id: string;
@@ -58,7 +59,13 @@ export function deleteAssignmentWithUndo(
 
   const undoTimeout = setTimeout(async () => {
     const { error } = await supabase.from('assignments').delete().eq('id', deletedId);
-    if (error) showToast(deps.failedDeleteMsg(error.message), 'error');
+    if (error) {
+      showToast(deps.failedDeleteMsg(error.message), 'error');
+    } else {
+      // Logged only when the delete actually commits — an undone delete
+      // never reaches here, so the audit row reflects reality.
+      void logAudit('delete_assignment', 'assignments', { metadata: { assignment_id: deletedId } });
+    }
     delete undoWindow().__undoAssignment;
     delete undoWindow().__undoDeleteTimeout;
   }, 8000);
@@ -114,6 +121,7 @@ export async function deleteAssignmentImmediate(
     deps.showToast(deps.failedDeleteMsg(error.message), 'error');
     return;
   }
+  void logAudit('delete_assignment', 'assignments', { metadata: { assignment_id: assignmentId } });
   deps.setTeacherAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
   deps.showToast(deps.deletedMsg, 'success');
 }

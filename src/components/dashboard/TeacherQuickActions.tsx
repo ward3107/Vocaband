@@ -40,7 +40,7 @@ export default function TeacherQuickActions({
           type="button"
           onClick={onQuickPlayClick}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className={`group relative w-full rounded-3xl p-6 sm:p-8 ${isHebrew ? "text-right" : "text-left"} overflow-hidden transition-all hover:shadow-xl active:scale-[0.99] mb-6`}
+          className={`group relative w-full rounded-2xl p-6 sm:p-8 ${isHebrew ? "text-right" : "text-left"} overflow-hidden transition-all hover:shadow-xl active:scale-[0.99] mb-6`}
           data-tour="quick-play"
         >
           {/* Animated gradient background */}
@@ -50,7 +50,7 @@ export default function TeacherQuickActions({
           {/* Content */}
           <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             {/* Icon */}
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <Zap size={32} className="sm:w-10 sm:h-10 text-white fill-white" />
             </div>
 
@@ -70,7 +70,7 @@ export default function TeacherQuickActions({
 
             {/* CTA Button */}
             <div className="shrink-0 self-center sm:self-auto">
-              <div className="flex items-center gap-2 px-6 py-3 bg-[var(--vb-surface)] text-violet-600 rounded-xl font-bold shadow-lg group-hover:shadow-xl group-hover:bg-white/95 transition-all">
+              <div className="flex items-center gap-2 px-6 py-3 bg-[var(--vb-surface)] text-violet-600 rounded-lg font-bold shadow-lg group-hover:shadow-xl group-hover:bg-white/95 transition-all">
                 <span>{t.qpStartBtn}</span>
                 <svg className={`w-5 h-5 ${isHebrew ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -190,7 +190,7 @@ const CompactActionCard: React.FC<CompactActionCardProps> = ({
         backgroundColor: 'var(--vb-surface)',
         borderColor: 'var(--vb-border)',
       }}
-      className={`group relative w-full rounded-2xl p-4 ${isHebrew ? "text-right" : "text-left"} border shadow-sm hover:shadow-md active:scale-[0.99] transition-all`}
+      className={`group relative w-full rounded-xl p-4 ${isHebrew ? "text-right" : "text-left"} border shadow-sm hover:shadow-md active:scale-[0.99] transition-all`}
     >
       {badge != null && badge > 0 && (
         <span className={`absolute top-3 ${isHebrew ? "left-3" : "right-3"} bg-rose-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center shadow-sm`}>

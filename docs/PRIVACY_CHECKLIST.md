@@ -46,10 +46,11 @@ Tracks all privacy features required for Israeli PPA Amendment 13 compliance. Us
 | Requirement | Status | Location |
 |-------------|--------|----------|
 | Audit log table | Done | `public.audit_log` — records actor, action, data category, target, timestamp |
+| Audit log immutability (Reg 2017 § 8) | Done (2026-05-18) | Migration `20260518120000_audit_log_immutability.sql` — BEFORE UPDATE trigger raises unconditionally; BEFORE DELETE trigger raises except via the controlled retention purge in `cleanup_expired_data` (txn-scoped GUC `app.allow_audit_purge`). UPDATE/DELETE explicitly REVOKEd from anon + authenticated. Pen-test gates 17+18 in `scripts/security-pen-test.sh`. |
 | Audit log helper in app code | Done (2026-05-04) | `src/utils/audit.ts → logAudit()` — best-effort, never throws |
 | Teacher gradebook access logged | Done (2026-05-04) | `useTeacherActions.fetchScores()` calls `logAudit('view_gradebook', 'progress', { metadata: { rows, classes } })` after successful fetch |
 | Class deletion logged | Done (2026-05-04) | `useTeacherActions.handleDeleteClass` calls `logAudit('delete_class', 'classes', { metadata: { class_id } })` after successful delete |
-| Other admin actions logged | TODO | `delete_assignment`, `award_reward`, `approve_student`, `reject_student`, `remove_student`, `edit_class`, `edit_assignment` — wire incrementally as each surface is touched.  All have AuditAction values pre-defined in `src/utils/audit.ts`. |
+| Other admin actions logged | Done (2026-05-18) | `delete_assignment` (handlers/deleteAssignmentWithUndo.ts), `award_reward` (components/dashboard/TeacherRewardModal.tsx), `approve_student` + `reject_student` (hooks/useTeacherData.ts), `remove_student` (components/ClassRosterModal.tsx), `edit_class` (handlers/classEdits.ts — 3 surfaces: save/rename/avatar), `edit_assignment` (hooks/useTeacherActions.ts — edit branch of handleSaveAssignment).  All write to `public.audit_log` via the best-effort `logAudit()` helper in `src/utils/audit.ts`. |
 | Data export logged | Done | `export_my_data()` RPC inserts audit log entry; `PrivacySettingsView` now calls the RPC (was bypassing it before 2026-05-04) |
 | Account deletion logged | Done | `delete_my_account()` RPC inserts audit log entry before deletion; `PrivacySettingsView` now calls the RPC (was bypassing it before 2026-05-04) |
 | Audit log retention enforced | Done (2026-05-04) | `cleanup_expired_data()` function exists in `010_privacy_compliance.sql`; `20260605_cleanup_expired_data_cron.sql` schedules it nightly at 03:30 UTC |
@@ -68,7 +69,7 @@ Tracks all privacy features required for Israeli PPA Amendment 13 compliance. Us
 | Audit log: 2 years default | Done | `RETENTION_PERIODS.auditLogDays` |
 | Cleanup RPC function | Done | `public.cleanup_expired_data()` — admin-only |
 | Class deletion clears student class_code | Done | `on_class_deleted` trigger sets `class_code = NULL` |
-| Backup retention documented | Done | Privacy Settings → "Data in encrypted backups may be retained for up to 30 days" |
+| Backup retention documented | Done | `RETENTION_PERIODS.backupSupabasePlatformDays` (30) + `backupOffsiteR2Days` (365) in `privacy-config.ts`. Surfaced via Privacy Settings retention note + the generated `privacy.html` §6. R2 number must match the lifecycle rule on the `vocaband-backups` bucket. |
 
 ## 6. Third Parties & Transfers
 
@@ -79,6 +80,8 @@ Tracks all privacy features required for Israeli PPA Amendment 13 compliance. Us
 | Data categories per third party | Done | `dataCategories` field on each entry |
 | Hosting region per third party | Done | `hostingRegion` field on each entry |
 | Cross-border transfers documented | Done | `HOSTING_REGIONS` in privacy-config.ts, `DATA_FLOW.md` |
+| Student-side Google / Microsoft OAuth removed | Done (2026-05-18) | Visible UI stripped from `StudentAccountLoginView.tsx`; stale OAuth student sessions are rejected in `useAuthRestore.ts` (signed out + routed to PIN login with an explanatory error).  Orphan files deleted: `OAuthButton.tsx`, `OAuthCallback.tsx`, `OAuthClassCode.tsx`, `StudentEmailOtpCard.tsx`, `useOAuthFlow.ts`.  Teacher OAuth (`TeacherLoginCard.tsx` → `signInWithOAuth`) is unaffected.  Aligns code with the policy's "students share no real email" claim. |
+| Parent Weekly Digest stub removed | Done (2026-05-18) | Phase 1 + Phase 2 infrastructure rolled back in migration `20260618000000_drop_parent_digest_stub.sql` (drops `digest_send_log` table + 3 columns on `users` + 2 CHECK constraints).  UI block + state + handlers removed from `PrivacySettingsView.tsx`; 12 locale keys × 4 languages removed from `src/locales/privacy-settings.ts`; AppUser type fields + mapper entries removed from `src/core/supabase.ts`.  Edge Function `supabase/functions/send_parent_digest/` and setup doc `docs/PARENT-DIGEST-SETUP.md` deleted.  Aligns code with policy: we don't collect parent emails at all.  Re-introduce alongside Resend in `THIRD_PARTY_REGISTRY` + a privacy-policy version bump if/when the feature ships. |
 
 ## 7. Documentation
 
@@ -89,6 +92,19 @@ Tracks all privacy features required for Israeli PPA Amendment 13 compliance. Us
 | `PRIVACY_CHECKLIST.md` | Done | This file |
 | `src/privacy-config.ts` | Done | Machine-readable privacy configuration |
 | `supabase/migrations/010_privacy_compliance.sql` | Done | Database schema for compliance tables |
+| `INFORMATION-SECURITY-POLICY.md` | Done (2026-05-18) | `docs/` — formal מדיניות אבטחת מידע v1.0 with DPO signoff block |
+| `RISK-REGISTER.md` | Done (2026-05-18) | `docs/` — 15-row סקר סיכונים, 5×5 severity-likelihood scoring, heat map (lawyer ratification pending) |
+| `DPIA-TECHNICAL.md` | Done (2026-05-04) | `docs/` — technical sections of the DPIA; legal sections await lawyer consult |
+| `INCIDENT-RESPONSE.md` | Done | `docs/` — severity scale, 30-min playbook, bilingual HE/EN breach notification templates |
+| `DISASTER-RECOVERY.md` | Done (2026-05-18) | `docs/` — RTO/RPO targets, 5 scenarios, quarterly tabletop schedule |
+| `SUBPROCESSORS.md` | Done | `docs/` — public-facing third-party processor list |
+| `MOE-REQUIREMENTS.md` | Done | `docs/` — master MoE-compliance tracker |
+| `MOE-VENDOR-QUESTIONNAIRE.md` | Done | `docs/` — pre-filled Tofes 22/23 answers |
+| `OPERATOR-PLAYBOOK-MOE.md` | Done (2026-05-18) | `docs/` — 15 operator tasks with how/when/cost |
+| `LAWYER-BRIEF-MOE.md` | Done (2026-05-18) | `docs/` — 7 specific questions for the lawyer consult |
+| `quarterly-audit-TEMPLATE.md` | Done (2026-05-18) | `docs/` — fill-in form for the quarterly internal audit |
+| `supabase/migrations/20260518120000_audit_log_immutability.sql` | Done (2026-05-18) | Audit log triggers + REVOKE; closes Reg 2017 § 8 immutability requirement |
+| `.github/workflows/backup-supabase-weekly.yml` | Done (2026-05-18) | Off-Supabase weekly pg_dump to Cloudflare R2; closes DR Scenario E |
 
 ---
 

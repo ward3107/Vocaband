@@ -24,9 +24,6 @@ interface Props {
   /** Called after successful signInWithPassword.  App.tsx's auth listener
    *  then hydrates the AppUser from public.users. */
   onSuccess: () => void;
-  /** Called when the student doesn't see their name and wants to fall
-   *  back to Google/Microsoft/email-OTP. */
-  onUseDifferentMethod: () => void;
 }
 
 const PIN_LENGTH = 6;
@@ -34,7 +31,7 @@ const PIN_LENGTH = 6;
 // (no I/L/O, no 0/1).
 const PIN_REGEX = /^[A-HJ-KM-NP-Z2-9]{6}$/;
 
-const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSuccess, onUseDifferentMethod }) => {
+const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSuccess }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = studentPinLoginT[language];
   const [step, setStep] = useState<"pick" | "pin">("pick");
@@ -193,7 +190,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
           <ArrowLeft size={12} className={isRTL ? "rotate-180" : ""} /> {t.notMe}
         </button>
 
-        <div className="flex items-center gap-3 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-2xl p-4">
+        <div className="flex items-center gap-3 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-xl p-4">
           <span className="text-3xl">{selected.avatar}</span>
           <div className="min-w-0">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">{t.signingInAs}</p>
@@ -225,7 +222,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
               if (e.key === "Enter" && pin.length === PIN_LENGTH) handleSubmit();
             }}
             placeholder="• • • • • •"
-            className="w-full text-center text-3xl font-black tracking-[0.4em] font-mono py-4 rounded-2xl border-2 border-stone-200 focus:border-indigo-500 outline-none text-stone-900 placeholder:text-stone-300"
+            className="w-full text-center text-3xl font-black tracking-[0.4em] font-mono py-4 rounded-xl border-2 border-stone-200 focus:border-indigo-500 outline-none text-stone-900 placeholder:text-stone-300"
             aria-describedby={pinError ? "pin-error" : undefined}
           />
         </div>
@@ -235,7 +232,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
             id="pin-error"
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2"
+            className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2"
             role="alert"
           >
             <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
@@ -247,7 +244,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
           type="button"
           onClick={handleSubmit}
           disabled={pin.length !== PIN_LENGTH || signingIn}
-          className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-600 text-white font-black text-base shadow-lg shadow-violet-500/30 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50 disabled:shadow-none"
+          className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-600 text-white font-black text-base shadow-lg shadow-violet-500/30 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50 disabled:shadow-none"
           style={{ touchAction: "manipulation" }}
         >
           {signingIn ? t.signingIn : (<><Sparkles size={18} /> {t.letsGo}</>)}
@@ -273,12 +270,12 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
       {rosterLoading ? (
         <p className="text-center text-sm text-stone-500 py-8">{t.loading}</p>
       ) : rosterError ? (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm font-bold flex items-start gap-2">
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2">
           <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
           <span>{rosterError}</span>
         </div>
       ) : roster.length === 0 ? (
-        <div className="text-center py-6 px-3 bg-amber-50 border border-amber-200 rounded-2xl">
+        <div className="text-center py-6 px-3 bg-amber-50 border border-amber-200 rounded-xl">
           <p className="text-3xl mb-2">🦊</p>
           <p className="text-sm font-bold text-amber-900">{t.emptyRosterTitle}</p>
           <p className="text-xs text-amber-800 mt-1">
@@ -289,17 +286,17 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
         <>
           {roster.length > 8 && (
             <div className="relative">
-              <Search size={14} className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-stone-400`} />
+              <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
                 type="search"
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
                 placeholder={t.findYourName}
-                className={`w-full ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2 rounded-xl border-2 border-stone-200 focus:border-indigo-500 outline-none text-sm font-medium`}
+                className="w-full ps-9 pe-3 py-2 rounded-lg border-2 border-stone-200 focus:border-indigo-500 outline-none text-sm font-medium"
               />
             </div>
           )}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-72 overflow-y-auto pe-1">
             <AnimatePresence initial={false}>
               {filtered.map(s => (
                 <motion.button
@@ -312,7 +309,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
                   exit={{ opacity: 0, scale: 0.95 }}
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  className={`flex items-center gap-2 p-2.5 rounded-xl border border-stone-200 hover:border-indigo-400 hover:bg-indigo-50 transition-colors ${isRTL ? 'text-right' : 'text-left'}`}
+                  className="flex items-center gap-2 p-2.5 rounded-lg border border-stone-200 hover:border-indigo-400 hover:bg-indigo-50 transition-colors text-start"
                   style={{ touchAction: "manipulation" }}
                 >
                   <span className="text-2xl shrink-0">{s.avatar}</span>
@@ -329,14 +326,6 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
         </>
       )}
 
-      <button
-        type="button"
-        onClick={onUseDifferentMethod}
-        className="w-full text-xs font-bold text-stone-500 hover:text-stone-900 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg hover:bg-stone-100 transition-colors"
-        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as unknown as string }}
-      >
-        {t.useDifferentMethod}
-      </button>
     </motion.div>
   );
 };

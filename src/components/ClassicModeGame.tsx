@@ -31,7 +31,7 @@ const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOpti
   if (!currentWord) {
     console.error('[Classic Mode ERROR] No currentWord!', { gameMode, currentIndex, gameWordsCount });
     return (
-      <div className="text-center p-8 bg-red-50 rounded-2xl">
+      <div className="text-center p-8 bg-red-50 rounded-xl">
         <p className="text-red-600 font-black">{errLabels.noWordTitle}</p>
         <p className="text-sm text-red-500 mt-2">{errLabels.noWordHelp}</p>
       </div>
@@ -41,7 +41,7 @@ const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOpti
   if (options.length === 0) {
     console.error('[Classic Mode ERROR] No options!', { currentWordId: currentWord.id, gameWordsCount });
     return (
-      <div className="text-center p-8 bg-amber-50 rounded-2xl">
+      <div className="text-center p-8 bg-amber-50 rounded-xl">
         <p className="text-amber-600 font-black">{errLabels.noOptionsTitle}</p>
         <p className="text-sm text-amber-500 mt-2">{errLabels.noOptionsHelp}</p>
       </div>

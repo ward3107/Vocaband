@@ -183,7 +183,7 @@ export default function ScrambleGame({
           onClick={() => handleSlotTap(i)}
           disabled={isLocked || !filled}
           aria-label={filled ? `Remove letter ${ch}` : "Empty slot"}
-          className={`w-9 h-12 sm:w-12 sm:h-14 rounded-xl border-2 flex items-center justify-center font-black text-lg sm:text-2xl uppercase transition-colors ${slotClass} ${filled && !isLocked ? "cursor-pointer active:scale-95" : "cursor-default"}`}
+          className={`w-9 h-12 sm:w-12 sm:h-14 rounded-lg border-2 flex items-center justify-center font-black text-lg sm:text-2xl uppercase transition-colors ${slotClass} ${filled && !isLocked ? "cursor-pointer active:scale-95" : "cursor-default"}`}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           {display || (filled ? "" : "·")}
@@ -200,7 +200,7 @@ export default function ScrambleGame({
     >
       {/* Translation prompt — indigo-tinted hero card. */}
       <div
-        className={`p-4 sm:p-5 rounded-2xl mb-4 sm:mb-5 text-center ${
+        className={`p-4 sm:p-5 rounded-xl mb-4 sm:mb-5 text-center ${
           themed ? `${themed.cardBg} border-2 ${themed.border}` : "bg-stone-50 border border-stone-200"
         }`}
       >
@@ -253,7 +253,7 @@ export default function ScrambleGame({
                 onClick={() => handleTileTap(idx)}
                 disabled={used || isLocked || isFull}
                 aria-label={`Place letter ${letter}`}
-                className={`w-12 h-14 sm:w-14 sm:h-16 rounded-2xl border-2 font-black text-2xl sm:text-3xl uppercase shadow-md transition-shadow ${
+                className={`w-12 h-14 sm:w-14 sm:h-16 rounded-xl border-2 font-black text-2xl sm:text-3xl uppercase shadow-md transition-shadow ${
                   used
                     ? "bg-stone-100 border-stone-200 text-stone-400 cursor-not-allowed"
                     : themed
@@ -284,7 +284,7 @@ export default function ScrambleGame({
           onClick={handleClearLast}
           disabled={isLocked || usedTileIndexes.length === 0}
           aria-label={tAria.removeLastLetter}
-          className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           <Delete size={22} />
@@ -293,7 +293,7 @@ export default function ScrambleGame({
           type="button"
           onClick={handleClearAll}
           disabled={isLocked || usedTileIndexes.length === 0}
-          className="flex-shrink-0 px-3 sm:px-4 h-12 sm:h-14 rounded-2xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-700 font-black text-sm sm:text-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="flex-shrink-0 px-3 sm:px-4 h-12 sm:h-14 rounded-xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-700 font-black text-sm sm:text-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           {t.clear}
@@ -301,7 +301,7 @@ export default function ScrambleGame({
         <button
           type="submit"
           disabled={!!feedback || !isFull}
-          className={`flex-1 h-12 sm:h-14 rounded-2xl font-black text-lg sm:text-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`flex-1 h-12 sm:h-14 rounded-xl font-black text-lg sm:text-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
             themed
               ? "bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:shadow-xl"
               : "bg-stone-900 text-white hover:bg-black"

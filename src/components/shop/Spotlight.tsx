@@ -312,11 +312,11 @@ export default function Spotlight(props: SpotlightProps) {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} p-4 sm:p-5 shadow-lg shadow-violet-500/20 mb-5`}
+      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} p-4 sm:p-5 shadow-lg shadow-violet-500/20 mb-5`}
     >
       <div aria-hidden className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 bg-white/20 rounded-full blur-3xl" />
       <div className={`relative flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
           {icon}
         </div>
         <div className="flex-1 min-w-0">

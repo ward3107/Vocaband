@@ -352,7 +352,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="signature-gradient text-white px-4 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2"
+          className="signature-gradient text-white px-4 py-2 rounded-lg font-bold hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2"
         >
           <ArrowLeft size={18} />
           {t.back}
@@ -381,7 +381,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         className="space-y-4"
       >
         {/* Activity Type Toggle */}
-        <div className="flex items-center justify-center gap-2 p-1 bg-[var(--vb-surface-alt)] rounded-2xl">
+        <div className="flex items-center justify-center gap-2 p-1 bg-[var(--vb-surface-alt)] rounded-xl">
           <button
             onClick={() => {
               setActivityType('game-modes');
@@ -391,7 +391,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               }
             }}
             type="button"
-            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
               activityType === 'game-modes'
                 ? 'bg-[var(--vb-surface)] text-indigo-700 shadow-md'
                 : 'text-[var(--vb-text-secondary)] hover:text-[var(--vb-text-primary)] hover:bg-[var(--vb-surface-alt)]'
@@ -417,7 +417,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 }
               }}
               type="button"
-              className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+              className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                 activityType === 'ai-generator'
                   ? 'bg-[var(--vb-surface)] text-fuchsia-700 shadow-md'
                   : 'text-[var(--vb-text-secondary)] hover:text-[var(--vb-text-primary)] hover:bg-[var(--vb-surface-alt)]'
@@ -489,7 +489,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                       onClick={() => toggleGameMode(gameMode.id)}
                       whileHover={{ scale: isSelected ? 1.05 : 1.1 }}
                       whileTap={{ scale: 0.95 }}
-                      className={`relative p-3 sm:p-4 rounded-2xl border-2 transition-all duration-300 text-center ${
+                      className={`relative p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 text-center ${
                         isSelected
                           ? 'border-primary bg-gradient-to-br from-primary to-primary-dim shadow-xl shadow-primary/40 scale-105'
                           : 'border-outline/20 bg-[var(--vb-surface-alt)] hover:border-primary/40 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 hover:shadow-md'
@@ -531,7 +531,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                       )}
                       {isSelected && (
                         <motion.div
-                          className="absolute inset-0 bg-white/20 rounded-2xl"
+                          className="absolute inset-0 bg-white/20 rounded-xl"
                           animate={{
                             scale: [1, 1.05, 1],
                             opacity: [0.3, 0.1, 0.3],
@@ -583,7 +583,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-gradient-to-br from-fuchsia-50 to-violet-50 rounded-2xl p-4 border-2 border-fuchsia-200"
+                className="bg-gradient-to-br from-fuchsia-50 to-violet-50 rounded-xl p-4 border-2 border-fuchsia-200"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -621,7 +621,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 animate={{ opacity: 1, scale: 1 }}
                 onClick={() => setShowAiLessonBuilder(true)}
                 type="button"
-                className="w-full py-5 bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-5 bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 <Wand2 size={22} className="animate-pulse" />
@@ -664,7 +664,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
         </div>
 
         {isAssignment && selectedModes.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[var(--vb-border)] bg-[var(--vb-surface)] px-4 py-4 text-center text-xs text-[var(--vb-text-muted)]">
+          <div className="rounded-xl border border-dashed border-[var(--vb-border)] bg-[var(--vb-surface)] px-4 py-4 text-center text-xs text-[var(--vb-text-muted)]">
             <Sparkles size={14} className="inline-block text-amber-500 mr-1.5 -mt-0.5" />
             {t.pickModesNudge}
           </div>
@@ -693,7 +693,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 placeholder={isAssignment
                   ? 'e.g., Fruits Vocabulary - Unit 5'
                   : 'e.g., Period 3 warm-up'}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all"
+                className="w-full px-3 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all"
               />
             </div>
 
@@ -714,7 +714,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 }}
                 placeholder={isAssignment ? t.instructionsPlaceholderAssignment : t.instructionsPlaceholderQp}
                 rows={2}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all overflow-y-auto"
+                className="w-full px-3 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all overflow-y-auto"
               />
             </div>
           </div>
@@ -784,7 +784,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                   type="button"
                   onClick={generateAISentences}
                   disabled={blocked || isGeneratingAI}
-                  className="mt-3 w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-lg disabled:cursor-not-allowed"
+                  className="mt-3 w-full py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-lg disabled:cursor-not-allowed"
                 >
                   {isGeneratingAI ? (
                     <>
@@ -819,7 +819,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 onChange={(e) => setCustomSentenceInput(e.target.value)}
                 placeholder={t.sentencePlaceholder}
                 rows={2}
-                className="flex-1 px-4 py-3 text-sm rounded-xl border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none overflow-y-auto"
+                className="flex-1 px-4 py-3 text-sm rounded-lg border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none overflow-y-auto"
               />
               <button
                 onClick={() => {
@@ -829,7 +829,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                   }
                 }}
                 disabled={!customSentenceInput.trim()}
-                className="px-4 py-2 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2 self-end"
+                className="px-4 py-2 bg-primary text-white rounded-lg font-bold shadow-lg shadow-primary/20 hover:shadow-xl disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2 self-end"
               >
                 <Plus size={18} />
                 {t.addBtn}
@@ -857,7 +857,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                         {sentence}
                       </span>
                       {/* Hover preview tooltip — smart positioning */}
-                      <div className={`hidden group-hover:block z-10 w-80 sm:w-96 bg-[var(--vb-surface-alt)] rounded-xl shadow-xl border-2 border-[var(--vb-text-muted)]/30 p-3 pointer-events-none ${
+                      <div className={`hidden group-hover:block z-10 w-80 sm:w-96 bg-[var(--vb-surface-alt)] rounded-lg shadow-xl border-2 border-[var(--vb-text-muted)]/30 p-3 pointer-events-none ${
                         isInFirstHalf ? 'absolute top-full left-0 mt-2' : 'absolute bottom-full left-0 mb-2'
                       }`}>
                         <div className="text-sm text-[var(--vb-text-primary)] break-words" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -887,7 +887,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           {/* Sentence Edit Modal */}
           {editingSentenceIndex !== null && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingSentenceIndex(null)}>
-              <div className="bg-[var(--vb-surface-alt)] rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-[var(--vb-surface-alt)] rounded-xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-lg font-bold text-[var(--vb-text-primary)] mb-4">
                   Edit Sentence #{editingSentenceIndex + 1}
                 </h3>
@@ -901,19 +901,19 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                     onSentencesChange?.(updated);
                   }}
                   rows={3}
-                  className="w-full px-4 py-3 text-base rounded-xl border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none overflow-y-auto"
+                  className="w-full px-4 py-3 text-base rounded-lg border-2 border-[var(--vb-text-muted)]/30 bg-[var(--vb-surface-alt)]-lowest text-[var(--vb-text-primary)] focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none overflow-y-auto"
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                 />
                 <div className="flex gap-3 mt-4">
                   <button
                     onClick={() => setEditingSentenceIndex(null)}
-                    className="flex-1 py-3 signature-gradient text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95"
+                    className="flex-1 py-3 signature-gradient text-white rounded-lg font-bold shadow-lg hover:shadow-xl transition-all active:scale-95"
                   >
                     {t.cancel}
                   </button>
                   <button
                     onClick={() => setEditingSentenceIndex(null)}
-                    className="flex-1 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
+                    className="flex-1 py-3 bg-primary text-white rounded-lg font-bold shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
                   >
                     {t.done}
                   </button>
@@ -942,7 +942,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           </div>
           <div
             ref={deadlineRef}
-            className={`rounded-2xl transition-shadow ${
+            className={`rounded-xl transition-shadow ${
               highlightDeadline
                 ? 'ring-4 ring-amber-400/70 shadow-lg shadow-amber-400/30 p-3 -m-3 animate-pulse'
                 : ''
@@ -969,7 +969,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
       <div className="flex gap-3 pt-4 pb-2 fixed sm:static bottom-0 inset-x-0 sm:inset-auto z-30 px-4 sm:px-0 bg-gradient-to-t sm:bg-none from-white via-white/95 to-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-2">
         <button
           onClick={onBack}
-          className="flex-1 py-3 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+          className="flex-1 py-3 signature-gradient text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
         >
           ← {t.back}
         </button>
@@ -977,7 +977,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           ref={nextButtonRef}
           onClick={onNext}
           disabled={!canProceed}
-          className="flex-1 py-4 signature-gradient text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center justify-center gap-2"
+          className="flex-1 py-4 signature-gradient text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center justify-center gap-2"
         >
           {isAssignment ? (
             <>

@@ -94,7 +94,7 @@ const FillBlankGame = React.memo(({
 
   if (!currentWord) {
     return (
-      <div className="text-center p-8 bg-red-50 rounded-2xl">
+      <div className="text-center p-8 bg-red-50 rounded-xl">
         <p className="text-red-600 font-black">[!] Error: No word loaded</p>
       </div>
     );
@@ -102,7 +102,7 @@ const FillBlankGame = React.memo(({
 
   if (options.length === 0) {
     return (
-      <div className="text-center p-8 bg-amber-50 rounded-2xl">
+      <div className="text-center p-8 bg-amber-50 rounded-xl">
         <p className="text-amber-600 font-black">[!] Error: No answer options available</p>
         <p className="text-sm text-amber-500 mt-2">You need at least 4 words in the assignment for this mode to work</p>
       </div>
@@ -134,7 +134,7 @@ const FillBlankGame = React.memo(({
           readable text.  The blank is rendered inline as a slot
           box that sits on the same line as the surrounding text. */}
       <div
-        className={`min-h-[100px] sm:min-h-[120px] rounded-3xl p-5 sm:p-7 text-lg sm:text-2xl font-bold text-stone-800 leading-relaxed text-center break-words ${
+        className={`min-h-[100px] sm:min-h-[120px] rounded-2xl p-5 sm:p-7 text-lg sm:text-2xl font-bold text-stone-800 leading-relaxed text-center break-words ${
           themed
             ? `border-2 ${themed.border} ${themed.cardBg}`
             : "border-2 border-lime-200 bg-lime-50/60"
@@ -143,7 +143,7 @@ const FillBlankGame = React.memo(({
         <span>{before}</span>
         {sentinelIdx >= 0 && (
           <span
-            className="inline-flex items-center justify-center align-middle min-w-[64px] sm:min-w-[88px] h-9 sm:h-12 px-3 sm:px-4 mx-1 sm:mx-1.5 rounded-xl border-2 border-dashed border-lime-500 bg-white text-lime-600 font-black text-xl sm:text-3xl"
+            className="inline-flex items-center justify-center align-middle min-w-[64px] sm:min-w-[88px] h-9 sm:h-12 px-3 sm:px-4 mx-1 sm:mx-1.5 rounded-lg border-2 border-dashed border-lime-500 bg-white text-lime-600 font-black text-xl sm:text-3xl"
             aria-label={language === 'he' ? 'מלא את החסר' : language === 'ar' ? 'املأ الفراغ' : 'Fill in the blank'}
           >
             ?

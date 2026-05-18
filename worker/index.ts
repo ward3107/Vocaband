@@ -314,8 +314,14 @@ export default {
       return passthroughProxy(request, url);
     }
     if (url.pathname.startsWith("/socket.io/")) {
+      // Pass the original Request as fetch()'s init parameter — wrapping
+      // with `new Request(url, request)` produces a fresh Request without
+      // the WebSocket-upgrade marker the Workers runtime uses to bridge
+      // client ↔ backend. The upgrade headers reach Fly.io, but Cloudflare
+      // never establishes the WebSocket pair, so wss://vocaband.com/socket.io/
+      // fails to connect.
       const backendUrl = new URL(url.pathname + url.search, API_BACKEND);
-      return fetch(new Request(backendUrl.toString(), request));
+      return fetch(backendUrl.toString(), request);
     }
 
     // PDFs (school decks + teacher/parent guides linked from the

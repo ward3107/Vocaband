@@ -412,7 +412,7 @@ export default function AnalyticsView({
         />
       )}
 
-      <main id="main-content" className={`${embedded ? "pt-4" : "pt-24"} px-4 max-w-5xl mx-auto`}>
+      <main id="main-content" className={`${embedded ? "pt-4" : "pt-24"} px-4 max-w-6xl mx-auto`}>
         {/* Class filter — explicitly labelled as a filter so teachers
             don't read the pills as a second row of tabs ("what does
             clicking my class do?" was the confusion report).  Filter
@@ -450,7 +450,7 @@ export default function AnalyticsView({
         </div>
 
         {allScores.length === 0 ? (
-          <div className="bg-[var(--vb-surface)] p-12 rounded-3xl shadow-xl text-center">
+          <div className="bg-[var(--vb-surface)] p-12 rounded-2xl shadow-xl text-center">
             <Sparkles className="mx-auto text-[var(--vb-border)] mb-4" size={48} />
             <p className="text-[var(--vb-text-muted)] font-medium">{t.noStudentData}</p>
           </div>
@@ -467,7 +467,7 @@ export default function AnalyticsView({
                     <button
                       key={c.code}
                       onClick={() => setSelectedClass(c.code)}
-                      className="bg-[var(--vb-surface)] p-6 rounded-3xl shadow-xl hover:shadow-2xl transition-all text-left group border-2 border-transparent hover:border-indigo-200"
+                      className="bg-[var(--vb-surface)] p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all text-left group border-2 border-transparent hover:border-indigo-200"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <span className="text-4xl">{c.avatar || '📖'}</span>
@@ -529,9 +529,9 @@ export default function AnalyticsView({
                 {/* 3-CARD DESIGN */}
                 <div className="space-y-6">
                   {/* CARD 1: WHO NEEDS HELP */}
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-3xl shadow-xl border-2 border-amber-200">
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl shadow-xl border-2 border-amber-200">
                     <h2 className="font-black text-lg text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
                         <Users className="text-amber-700" size={20} />
                       </div>
                       {t.whoNeedsHelp}
@@ -546,7 +546,7 @@ export default function AnalyticsView({
                           return (
                             <div
                               key={s.name}
-                              className="bg-[var(--vb-surface)] p-4 rounded-2xl shadow-sm hover:shadow-md transition-all border-2 border-amber-100 hover:border-amber-300"
+                              className="bg-[var(--vb-surface)] p-4 rounded-xl shadow-sm hover:shadow-md transition-all border-2 border-amber-100 hover:border-amber-300"
                             >
                               <button
                                 onClick={() => setSelectedStudent(s.name)}
@@ -601,10 +601,10 @@ export default function AnalyticsView({
                   </div>
 
                   {/* CARD 2: WHAT TO RETEACH (with selection) */}
-                  <div className="bg-gradient-to-br from-rose-50 to-pink-50 p-6 rounded-3xl shadow-xl border-2 border-rose-200">
+                  <div className="bg-gradient-to-br from-rose-50 to-pink-50 p-6 rounded-2xl shadow-xl border-2 border-rose-200">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="font-black text-lg text-[var(--vb-text-primary)] flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
                           <BookOpen className="text-rose-700" size={20} />
                         </div>
                         {t.whatToReteach}
@@ -637,7 +637,7 @@ export default function AnalyticsView({
                             <button
                               key={word.id}
                               onClick={() => toggleReteachWord(word.id)}
-                              className={`relative p-4 rounded-2xl border-2 transition-all text-left ${
+                              className={`relative p-4 rounded-xl border-2 transition-all text-left ${
                                 isSelected
                                   ? 'bg-rose-500 border-rose-600 shadow-lg'
                                   : 'bg-[var(--vb-surface)] border-rose-100 hover:border-rose-300 shadow-sm'
@@ -674,7 +674,7 @@ export default function AnalyticsView({
                     )}
 
                     {reteachWords.size > 0 && (
-                      <div className="mt-4 p-3 bg-rose-100 rounded-xl flex items-center justify-between">
+                      <div className="mt-4 p-3 bg-rose-100 rounded-lg flex items-center justify-between">
                         <span className="text-rose-700 font-bold text-sm">
                           {t.wordsSelected(reteachWords.size)}
                         </span>
@@ -684,9 +684,9 @@ export default function AnalyticsView({
                   </div>
 
                   {/* CARD 3: CLASS HEALTH */}
-                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-6 rounded-3xl shadow-xl border-2 border-emerald-200">
+                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-6 rounded-2xl shadow-xl border-2 border-emerald-200">
                     <h2 className="font-black text-lg text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
                         <TrendingUp className="text-emerald-700" size={20} />
                       </div>
                       {t.classHealth}
@@ -713,9 +713,9 @@ export default function AnalyticsView({
                       </div>
 
                       {/* Best Mode */}
-                      <div className="flex items-center justify-between bg-[var(--vb-surface)] p-4 rounded-2xl shadow-sm">
+                      <div className="flex items-center justify-between bg-[var(--vb-surface)] p-4 rounded-xl shadow-sm">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
                             <Gamepad2 className="text-indigo-600" size={20} />
                           </div>
                           <div>
@@ -732,11 +732,11 @@ export default function AnalyticsView({
 
                       {/* Engagement Summary */}
                       <div className="flex items-center gap-4">
-                        <div className="flex-1 bg-[var(--vb-surface)] p-4 rounded-2xl shadow-sm text-center">
+                        <div className="flex-1 bg-[var(--vb-surface)] p-4 rounded-xl shadow-sm text-center">
                           <p className="text-3xl font-black text-indigo-600">{currentAnalytics.studentCount}</p>
                           <p className="text-[var(--vb-text-muted)] text-sm">{t.activeStudents}</p>
                         </div>
-                        <div className="flex-1 bg-[var(--vb-surface)] p-4 rounded-2xl shadow-sm text-center">
+                        <div className="flex-1 bg-[var(--vb-surface)] p-4 rounded-xl shadow-sm text-center">
                           <p className="text-3xl font-black text-indigo-600">{currentAnalytics.totalAttempts}</p>
                           <p className="text-[var(--vb-text-muted)] text-sm">{t.totalAttempts}</p>
                         </div>
@@ -763,7 +763,7 @@ export default function AnalyticsView({
         <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:w-auto z-40">
           <button
             onClick={handleCreateAssignment}
-            className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 font-bold"
+            className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-4 rounded-xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 font-bold"
           >
             <Plus size={20} />
             {t.createAssignmentWithWords(reteachWords.size)}
@@ -799,7 +799,7 @@ export default function AnalyticsView({
 
         return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedStudent(null)}>
-            <div className="bg-[var(--vb-surface)] rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
                   <span className="text-4xl">{avatar}</span>
@@ -814,7 +814,7 @@ export default function AnalyticsView({
               </div>
 
               {/* Average Score */}
-              <div className={`p-6 rounded-2xl mb-6 ${
+              <div className={`p-6 rounded-xl mb-6 ${
                 avgScore >= 80 ? 'bg-emerald-50' : avgScore >= 70 ? 'bg-amber-50' : 'bg-rose-50'
               }`}>
                 <p className="text-[var(--vb-text-muted)] text-sm font-bold uppercase mb-1">{t.averageScore}</p>
@@ -832,7 +832,7 @@ export default function AnalyticsView({
                   </h3>
                   <div className="space-y-2">
                     {topMistakes.map(({ word, count }) => (
-                      <div key={word.id} className="bg-[var(--vb-surface)] p-3 rounded-xl flex justify-between items-center">
+                      <div key={word.id} className="bg-[var(--vb-surface)] p-3 rounded-lg flex justify-between items-center">
                         <div>
                           <p className="font-bold text-[var(--vb-text-primary)]">{word.primary}</p>
                           <p className="text-[var(--vb-text-muted)] text-sm">{word.secondary || ''}</p>
@@ -854,7 +854,7 @@ export default function AnalyticsView({
                     .map(s => (
                       <div
                         key={s.id}
-                        className={`p-4 rounded-xl border-2 cursor-pointer hover:shadow-md transition-all ${
+                        className={`p-4 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all ${
                           s.score >= 80 ? 'bg-emerald-50 border-emerald-200' : s.score >= 70 ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200'
                         }`}
                         onClick={() => { setSelectedStudent(null); setSelectedScore(s); }}
@@ -880,7 +880,7 @@ export default function AnalyticsView({
       {/* SCORE DETAIL MODAL */}
       {selectedScore && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedScore(null)}>
-          <div className="bg-[var(--vb-surface)] rounded-3xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h2 className="text-xl font-black text-[var(--vb-text-primary)]">{selectedScore.studentName}</h2>
@@ -891,7 +891,7 @@ export default function AnalyticsView({
               </button>
             </div>
 
-            <div className={`p-6 rounded-2xl mb-6 text-center ${
+            <div className={`p-6 rounded-xl mb-6 text-center ${
               selectedScore.score >= 80 ? 'bg-emerald-50' : selectedScore.score >= 70 ? 'bg-amber-50' : 'bg-rose-50'
             }`}>
               <p className={`text-5xl font-black ${selectedScore.score >= 80 ? 'text-emerald-600' : selectedScore.score >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
@@ -913,7 +913,7 @@ export default function AnalyticsView({
                       wordIdSubjectMap.get(wordId) ?? "english",
                     );
                     return (
-                      <div key={idx} className="bg-rose-50 p-3 rounded-xl border border-rose-200">
+                      <div key={idx} className="bg-rose-50 p-3 rounded-lg border border-rose-200">
                         <p className="font-bold text-[var(--vb-text-primary)]">{word?.primary || t.unknownWord}</p>
                         <p className="text-[var(--vb-text-muted)] text-sm">{word?.secondary || ''}</p>
                       </div>

@@ -157,7 +157,7 @@ export default function MemoryFlipGame({
                   >
                     {/* FACE DOWN — pink gradient + Brain icon. */}
                     <div
-                      className="absolute inset-0 rounded-2xl bg-gradient-to-br from-pink-400 to-rose-500 shadow-md flex items-center justify-center text-white"
+                      className="absolute inset-0 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 shadow-md flex items-center justify-center text-white"
                       style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}
                     >
                       <Brain size={28} className="opacity-90" />
@@ -168,7 +168,7 @@ export default function MemoryFlipGame({
                         kid sees which side they're matching at a
                         glance once flipped. */}
                     <div
-                      className={`absolute inset-0 rounded-2xl shadow-md p-2 flex items-center justify-center text-center break-words font-black text-sm sm:text-lg border-2 ${
+                      className={`absolute inset-0 rounded-xl shadow-md p-2 flex items-center justify-center text-center break-words font-black text-sm sm:text-lg border-2 ${
                         item.type === 'english'
                           ? 'bg-pink-50 text-pink-900 border-pink-200'
                           : 'bg-rose-50 text-rose-900 border-rose-200'

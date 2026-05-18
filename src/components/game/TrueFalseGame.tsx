@@ -94,7 +94,7 @@ export default function TrueFalseGame({
           x: swiping === "right" ? 12 : swiping === "left" ? -12 : 0,
         }}
         transition={{ type: "spring", stiffness: 260, damping: 22 }}
-        className={`p-6 sm:p-10 rounded-3xl mb-5 sm:mb-7 shadow-xl border-2 ${
+        className={`p-6 sm:p-10 rounded-2xl mb-5 sm:mb-7 shadow-xl border-2 ${
           themed
             ? `${themed.cardBg} ${themed.border}`
             : "bg-gradient-to-br from-stone-50 to-stone-100 border-stone-200"
@@ -118,7 +118,7 @@ export default function TrueFalseGame({
           onClick={handleTap(false)}
           disabled={!!feedback}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '96px' }}
-          className="py-7 sm:py-10 rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-xl hover:shadow-2xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
+          className="py-7 sm:py-10 rounded-2xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-xl hover:shadow-2xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
         >
           <span className="text-3xl sm:text-4xl">✗</span>
           <span>{t.falseLabel}</span>
@@ -128,7 +128,7 @@ export default function TrueFalseGame({
           onClick={handleTap(true)}
           disabled={!!feedback}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '96px' }}
-          className="py-7 sm:py-10 rounded-3xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-xl hover:shadow-2xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
+          className="py-7 sm:py-10 rounded-2xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-xl hover:shadow-2xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
         >
           <span className="text-3xl sm:text-4xl">✓</span>
           <span>{t.trueLabel}</span>

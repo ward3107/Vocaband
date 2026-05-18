@@ -112,7 +112,7 @@ export default function QuickPlayStudentView({
   // picker can fire the join with it.  Defaults to empty string
   // and is overwritten when the student clicks Continue on the form.
   const stagedNameRef = useRef<string>("");
-  const { language: qpLanguage, setLanguage: setAppLanguage } = useLanguage();
+  const { language: qpLanguage, setLanguage: setAppLanguage, isRTL: qpIsRTL } = useLanguage();
 
   // Surface server-side join errors as toasts so the student isn't
   // stuck staring at the join screen. "nickname_taken" has its own
@@ -342,7 +342,7 @@ export default function QuickPlayStudentView({
     <div className="min-h-screen flex flex-col bg-surface">
       <header className="w-full sticky top-0 bg-surface flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 z-50">
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
             <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
           </div>
           <div className="flex flex-col">
@@ -358,7 +358,7 @@ export default function QuickPlayStudentView({
           }}
           className="text-on-surface-variant font-bold text-sm hover:text-on-surface flex items-center gap-1"
         >
-          ← Back
+          {qpIsRTL ? '→' : '←'} Back
         </button>
       </header>
 
@@ -382,6 +382,26 @@ export default function QuickPlayStudentView({
             <div className="text-center py-12 sm:py-20">
               <Loader2 className="mx-auto animate-spin text-primary mb-4 w-9 h-9 sm:w-12 sm:h-12" />
               <p className="text-on-surface-variant font-bold text-sm sm:text-base">Loading Quick Play session...</p>
+              {/* Manual escape — the bootstrap has a 15s timeout that
+                  auto-bounces to landing, but on a phone holding the
+                  loader for 15s feels broken.  A visible escape link
+                  reassures the student they can recover even before
+                  the timeout fires. */}
+              <button
+                type="button"
+                onClick={() => {
+                  cleanupSessionData();
+                  try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* storage unavailable */ }
+                  setQuickPlayActiveSession(null);
+                  setQuickPlayStudentName('');
+                  setUser(null);
+                  window.history.replaceState({}, '', window.location.pathname);
+                  setView('public-landing');
+                }}
+                className="mt-6 text-sm font-bold text-on-surface-variant underline hover:text-on-surface"
+              >
+                Cancel and go back
+              </button>
             </div>
           ) : userIsActiveGuest && quickPlayStudentName ? (
             // Resume card: reached when the mobile back button pops the
@@ -426,7 +446,7 @@ export default function QuickPlayStudentView({
                     advance();
                   }
                 }}
-                className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {resuming ? (
                   <>
@@ -434,7 +454,7 @@ export default function QuickPlayStudentView({
                     Reconnecting…
                   </>
                 ) : (
-                  <>Continue Playing →</>
+                  <>Continue Playing {qpIsRTL ? '←' : '→'}</>
                 )}
               </button>
               <button
@@ -484,7 +504,7 @@ export default function QuickPlayStudentView({
                       }
                       runJoin(name);
                     }}
-                    className="w-full py-4 sm:py-5 bg-surface-container hover:bg-surface-container-high active:scale-[0.98] rounded-2xl font-black text-lg sm:text-xl transition-all shadow-md flex items-center justify-center gap-3 border-2 border-surface-container-highest"
+                    className="w-full py-4 sm:py-5 bg-surface-container hover:bg-surface-container-high active:scale-[0.98] rounded-xl font-black text-lg sm:text-xl transition-all shadow-md flex items-center justify-center gap-3 border-2 border-surface-container-highest"
                     style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
                   >
                     <Globe className="w-8 h-8 sm:w-10 sm:h-10 text-on-surface-variant" strokeWidth={2} aria-hidden />
@@ -497,7 +517,7 @@ export default function QuickPlayStudentView({
                 onClick={() => setJoinStep("form")}
                 className="mt-5 w-full py-2 text-sm text-on-surface-variant hover:text-on-surface font-bold"
               >
-                ← Back
+                {qpIsRTL ? '→' : '←'} Back
               </button>
             </div>
           ) : !quickPlayStudentName ? (
@@ -523,7 +543,7 @@ export default function QuickPlayStudentView({
 
 
                 <div className="relative">
-                  <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
+                  <label className="absolute -top-2.5 start-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
                   {(() => {
                     // Check if student already joined this session — lock their name
                     let lockedName = '';
@@ -544,7 +564,7 @@ export default function QuickPlayStudentView({
                           type="text"
                           value={lockedName}
                           readOnly
-                          className="w-full px-4 py-3 sm:py-4 bg-surface-container border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface cursor-not-allowed opacity-70"
+                          className="w-full px-4 py-3 sm:py-4 bg-surface-container border-4 border-stone-200 rounded-xl text-base sm:text-lg font-black text-on-surface cursor-not-allowed opacity-70"
                         />
                         <p className="text-xs text-on-surface-variant mt-1 text-center">You already joined as <strong>{lockedName}</strong></p>
                       </>
@@ -559,7 +579,7 @@ export default function QuickPlayStudentView({
                         maxLength={30}
                         defaultValue={quickPlayStudentName}
                         placeholder={qpLanguage === 'he' ? 'הכניסו כינוי...' : qpLanguage === 'ar' ? 'أدخل اسمك المستعار...' : 'Enter your nickname...'}
-                        className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-2xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         autoFocus
                       />
                     );
@@ -611,13 +631,13 @@ export default function QuickPlayStudentView({
                     stagedNameRef.current = trimmedName;
                     setJoinStep("language");
                   }}
-                  className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
+                  className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
                 >
-                  Continue →
+                  Continue {qpIsRTL ? '←' : '→'}
                 </button>
               </div>
 
-              <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-surface-container-low rounded-2xl border-2 border-surface-container-highest">
+              <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-surface-container-low rounded-xl border-2 border-surface-container-highest">
                 <p className="text-xs sm:text-sm text-on-surface-variant text-center">
                   ℹ️ Your progress won't be saved (guest mode). Create an account to track your XP and unlock features!
                 </p>

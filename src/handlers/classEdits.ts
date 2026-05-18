@@ -14,6 +14,7 @@
  */
 import type React from 'react';
 import { supabase, type ClassData } from '../core/supabase';
+import { logAudit } from '../utils/audit';
 
 type ToastFn = (msg: string, type?: 'success' | 'error' | 'info') => void;
 type SetClasses = React.Dispatch<React.SetStateAction<ClassData[]>>;
@@ -28,6 +29,8 @@ export interface ClassEditFields {
   avatar: string | null;
   schoolName?: string | null;
   schoolLogoUrl?: string | null;
+  /** Hex string (e.g. '#fde68a') or null to clear. */
+  backgroundColor?: string | null;
 }
 
 export async function saveClassEdit(
@@ -39,6 +42,11 @@ export async function saveClassEdit(
   // trimmed string or NULL, never an empty string.
   const schoolName = next.schoolName?.trim() || null;
   const schoolLogoUrl = next.schoolLogoUrl?.trim() || null;
+  // Background color — DB CHECK constraint enforces `#rrggbb[aa]`, so
+  // we only forward values that match.  Empty/null clears the tint.
+  const backgroundColor = next.backgroundColor && /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(next.backgroundColor)
+    ? next.backgroundColor
+    : null;
 
   const { error } = await supabase
     .from('classes')
@@ -47,16 +55,24 @@ export async function saveClassEdit(
       avatar: next.avatar,
       school_name: schoolName,
       school_logo_url: schoolLogoUrl,
+      background_color: backgroundColor,
     })
     .eq('id', classId);
   if (error) {
     deps.showToast('Could not save class changes. Please try again.', 'error');
     return;
   }
+  // Field names go in metadata but never values — names of school
+  // branding fields aren't PII, but the field VALUES could be (e.g.
+  // a school name).  The audit row is "edit happened", not "here's
+  // what changed to what".
+  void logAudit('edit_class', 'classes', {
+    metadata: { class_id: classId, fields: ['name', 'avatar', 'school_name', 'school_logo_url'] },
+  });
   deps.setClasses((prev) =>
     prev.map((c) =>
       c.id === classId
-        ? { ...c, name: next.name, avatar: next.avatar, schoolName, schoolLogoUrl }
+        ? { ...c, name: next.name, avatar: next.avatar, schoolName, schoolLogoUrl, backgroundColor }
         : c,
     ),
   );
@@ -77,6 +93,9 @@ export async function renameClass(
     deps.showToast('Could not update name. Please try again.', 'error');
     return;
   }
+  void logAudit('edit_class', 'classes', {
+    metadata: { class_id: classId, fields: ['name'] },
+  });
   deps.setClasses((prev) =>
     prev.map((c) => (c.id === classId ? { ...c, name: newName } : c)),
   );
@@ -96,6 +115,9 @@ export async function changeClassAvatar(
     deps.showToast('Could not update avatar. Please try again.', 'error');
     return;
   }
+  void logAudit('edit_class', 'classes', {
+    metadata: { class_id: classId, fields: ['avatar'] },
+  });
   deps.setClasses((prev) =>
     prev.map((c) => (c.id === classId ? { ...c, avatar: newAvatar } : c)),
   );

@@ -145,7 +145,7 @@ export default function AssignmentDetail({
       {!assignment ? null : (
         <div className="p-4 sm:p-5 space-y-4 pb-24">
           {/* ── Headline completion ────────────────────────────────── */}
-          <div className="rounded-2xl p-4 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100">
+          <div className="rounded-xl p-4 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="text-[11px] font-black uppercase tracking-wider text-[var(--vb-text-muted)]">
@@ -228,7 +228,7 @@ export default function AssignmentDetail({
               notStarted.slice(0, 20).map(name => (
                 <div
                   key={name}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/60"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/60"
                 >
                   <span className="text-lg" aria-hidden>🦊</span>
                   <div className="flex-1 min-w-0">
@@ -249,7 +249,7 @@ export default function AssignmentDetail({
           <button
             type="button"
             onClick={() => onReassign?.(strugglerNames)}
-            className="w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/30 hover:shadow-xl transition-shadow"
+            className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/30 hover:shadow-xl transition-shadow"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
           >
             <Send size={16} />
@@ -279,7 +279,7 @@ function Bucket({
     stone:   "border-[var(--vb-border)]",
   };
   return (
-    <section className={`bg-[var(--vb-surface)] rounded-2xl p-4 border ${toneRing[tone]}`}>
+    <section className={`bg-[var(--vb-surface)] rounded-xl p-4 border ${toneRing[tone]}`}>
       <header className="flex items-center gap-2 mb-3">
         {icon}
         <h3 className="text-sm font-black text-[var(--vb-text-primary)]">{title}</h3>
@@ -293,7 +293,7 @@ function Bucket({
 
 function StudentRow({ student, showScore, rowSummary }: { student: StudentScore; showScore?: boolean; rowSummary: (plays: number, best: number) => string }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/60">
+    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/60">
       <span className="text-lg shrink-0" aria-hidden>{student.avatar}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-[var(--vb-text-primary)] truncate">{student.name}</p>

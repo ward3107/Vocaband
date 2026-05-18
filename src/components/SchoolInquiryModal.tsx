@@ -189,7 +189,7 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="w-full max-w-md max-h-[92vh] overflow-y-auto bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-3xl shadow-2xl pointer-events-auto"
+              className="w-full max-w-md max-h-[92vh] overflow-y-auto bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-2xl shadow-2xl pointer-events-auto"
               dir={dir}
             >
               {/* Header */}
@@ -203,7 +203,7 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
                 </button>
 
                 <div className="flex items-center gap-2.5 mb-1">
-                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
                     <GraduationCap size={18} className="text-white" />
                   </div>
                   <div>
@@ -335,7 +335,7 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       disabled={isSubmitting}
-                      className="w-full py-3 mt-1 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                      className="w-full py-3 mt-1 rounded-lg bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                       type="submit"
                     >
                       {isSubmitting ? (

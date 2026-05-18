@@ -231,7 +231,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
                   onCancel();      // close the camera modal first
                   onUseGallery();  // then open the gallery picker
                 }}
-                className="w-full px-6 py-3 mb-3 rounded-xl bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
+                className="w-full px-6 py-3 mb-3 rounded-lg bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
               >
                 <ImageIcon className="w-5 h-5" />
@@ -241,7 +241,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-3 rounded-xl bg-white/10 text-white font-bold text-sm border border-white/20"
+              className="px-6 py-3 rounded-lg bg-white/10 text-white font-bold text-sm border border-white/20"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
             >
               Close

@@ -89,7 +89,7 @@ export default function PetEvolutionCard({ state, isLoading }: PetEvolutionCardP
   if (isLoading || !state) {
     return (
       <div
-        className="rounded-3xl border border-white/80 shadow-sm bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4 sm:p-5 animate-pulse"
+        className="rounded-2xl border border-white/80 shadow-sm bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4 sm:p-5 animate-pulse"
         style={{ minHeight: 160 }}
         dir={dir}
       >
@@ -129,7 +129,7 @@ export default function PetEvolutionCard({ state, isLoading }: PetEvolutionCardP
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className={`rounded-3xl border border-white/80 shadow-sm ${moodMeta.bg} p-4 sm:p-5`}
+      className={`rounded-2xl border border-white/80 shadow-sm ${moodMeta.bg} p-4 sm:p-5`}
       dir={dir}
     >
       <header className="flex items-center justify-between mb-3 sm:mb-4">

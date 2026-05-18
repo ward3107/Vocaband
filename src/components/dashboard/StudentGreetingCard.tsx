@@ -155,7 +155,7 @@ export default function StudentGreetingCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
-      className={`relative overflow-hidden rounded-[28px] sm:rounded-[32px] mb-6 bg-gradient-to-br ${titleGradient} p-5 sm:p-7 shadow-xl shadow-violet-500/20`}
+      className={`relative overflow-hidden rounded-2xl sm:rounded-2xl mb-6 bg-gradient-to-br ${titleGradient} p-5 sm:p-7 shadow-xl shadow-violet-500/20`}
     >
       {/* Soft glow blobs in the background — pure decoration */}
       <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 bg-pink-400/30 rounded-full blur-3xl" />
@@ -196,8 +196,8 @@ export default function StudentGreetingCard({
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           className="relative shrink-0"
         >
-          <div className="absolute inset-0 rounded-[28px] bg-white/40 blur-xl animate-pulse" />
-          <div className={`relative w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-[28px] flex items-center justify-center text-5xl sm:text-7xl shadow-2xl ${frameRingClass}`}>
+          <div className="absolute inset-0 rounded-2xl bg-white/40 blur-xl animate-pulse" />
+          <div className={`relative w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-2xl flex items-center justify-center text-5xl sm:text-7xl shadow-2xl ${frameRingClass}`}>
             {user.avatar || '🦊'}
           </div>
           {streak > 0 && (
@@ -225,7 +225,7 @@ export default function StudentGreetingCard({
                   }}
                   maxLength={30}
                   disabled={renameSaving}
-                  className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white text-stone-900 text-xl sm:text-2xl font-black placeholder:text-stone-400 outline-none focus:ring-2 focus:ring-white/70"
+                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-white text-stone-900 text-xl sm:text-2xl font-black placeholder:text-stone-400 outline-none focus:ring-2 focus:ring-white/70"
                   placeholder={t.yourNamePlaceholder}
                   aria-label={t.yourDisplayName}
                 />
@@ -234,7 +234,7 @@ export default function StudentGreetingCard({
                   onClick={() => void submitRename()}
                   disabled={renameSaving}
                   style={{ touchAction: 'manipulation' }}
-                  className="p-2 rounded-xl bg-white text-stone-900 hover:bg-white/90 disabled:opacity-60 shrink-0"
+                  className="p-2 rounded-lg bg-white text-stone-900 hover:bg-white/90 disabled:opacity-60 shrink-0"
                   aria-label={t.saveName}
                 >
                   <Check size={18} />
@@ -244,7 +244,7 @@ export default function StudentGreetingCard({
                   onClick={() => setIsRenaming(false)}
                   disabled={renameSaving}
                   style={{ touchAction: 'manipulation' }}
-                  className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white disabled:opacity-60 shrink-0"
+                  className="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white disabled:opacity-60 shrink-0"
                   aria-label={t.cancel}
                 >
                   <XIcon size={18} />
@@ -335,8 +335,8 @@ export default function StudentGreetingCard({
         <div className="hidden sm:flex shrink-0 flex-col gap-2">
           {/* Highlighted XP card — amber/yellow gradient + spark icon so
               it catches the eye as the main metric. */}
-          <div className="relative bg-gradient-to-br from-amber-300 to-yellow-400 rounded-2xl px-5 py-3 shadow-lg shadow-amber-500/30 border-2 border-white/60">
-            <div className="absolute inset-0 rounded-2xl bg-white/20 blur-lg opacity-60 pointer-events-none" />
+          <div className="relative bg-gradient-to-br from-amber-300 to-yellow-400 rounded-xl px-5 py-3 shadow-lg shadow-amber-500/30 border-2 border-white/60">
+            <div className="absolute inset-0 rounded-xl bg-white/20 blur-lg opacity-60 pointer-events-none" />
             <div className="relative flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-inner">
                 <Zap size={16} className="text-white fill-white" />
@@ -354,7 +354,7 @@ export default function StudentGreetingCard({
             onClick={onShopClick}
             type="button"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            className="relative inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-2xl shadow-lg shadow-pink-500/40 hover:shadow-xl hover:shadow-pink-500/50 active:scale-95 transition-all text-sm border-2 border-white/60"
+            className="relative inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-xl shadow-lg shadow-pink-500/40 hover:shadow-xl hover:shadow-pink-500/50 active:scale-95 transition-all text-sm border-2 border-white/60"
           >
             <ShoppingBag size={16} />
             Shop
@@ -368,7 +368,7 @@ export default function StudentGreetingCard({
       {/* Mobile row — XP pill + Shop button side-by-side so phones get
           the same info density as the desktop stack. */}
       <div className="sm:hidden mt-4 flex items-stretch gap-2">
-        <div className="flex-1 relative bg-gradient-to-br from-amber-300 to-yellow-400 rounded-2xl px-3 py-2 shadow-lg shadow-amber-500/30 border-2 border-white/60 flex items-center gap-2">
+        <div className="flex-1 relative bg-gradient-to-br from-amber-300 to-yellow-400 rounded-xl px-3 py-2 shadow-lg shadow-amber-500/30 border-2 border-white/60 flex items-center gap-2">
           <Zap size={14} className="text-stone-900 fill-amber-600 shrink-0" />
           <div className="flex flex-col min-w-0">
             <span className="text-lg font-black text-stone-900 tabular-nums leading-none truncate">{displayedXp}</span>
@@ -379,7 +379,7 @@ export default function StudentGreetingCard({
           onClick={onShopClick}
           type="button"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-2xl shadow-lg shadow-pink-500/40 active:scale-95 transition-all text-sm border-2 border-white/60"
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-xl shadow-lg shadow-pink-500/40 active:scale-95 transition-all text-sm border-2 border-white/60"
         >
           <ShoppingBag size={14} />
           Shop
