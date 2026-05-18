@@ -1,8 +1,76 @@
-<!DOCTYPE html>
+// =============================================================================
+// generate-privacy-html.ts
+// =============================================================================
+// Generates `public/privacy.html` from `src/config/privacy-config.ts`.
+//
+// `privacy-config.ts` is the single source of truth for sub-processors,
+// retention, hosting regions, DPO, and policy version. The in-app React
+// privacy page (`PublicPrivacyPage.tsx`) already reads from there; this script
+// keeps the static HTML version (linked from the consent modal and Privacy
+// Settings as the "Full Privacy Policy") aligned so the two views can't drift.
+//
+// Wired into `prebuild` in package.json — runs on every build.
+// =============================================================================
+
+import { writeFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import {
+  DATA_CONTROLLER,
+  DATA_PROTECTION_OFFICER,
+  PRIVACY_POLICY_VERSION,
+  HOSTING_REGIONS,
+  THIRD_PARTY_REGISTRY,
+  RETENTION_PERIODS,
+  CLIENT_STORAGE_KEYS,
+} from "../src/config/privacy-config";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const OUT_PATH = resolve(__dirname, "..", "public", "privacy.html");
+
+const escape = (s: string): string =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+const subProcessorRows = THIRD_PARTY_REGISTRY.map(
+  (p) => `
+    <tr>
+      <td><strong>${escape(p.name)}</strong></td>
+      <td>${escape(p.purpose)}</td>
+      <td>${escape(p.dataCategories.join("; "))}</td>
+      <td>${escape(p.hostingRegion)}</td>
+      <td>${escape(p.endpoint)}</td>
+    </tr>`,
+).join("");
+
+const crossBorderRows = THIRD_PARTY_REGISTRY.map(
+  (p) => `
+    <tr>
+      <td>${escape(p.hostingRegion)}</td>
+      <td>${escape(p.name)}</td>
+      <td>${escape(
+        p.processorOnly
+          ? "Processor under DPA; encryption in transit + at rest"
+          : "Independent controller for this surface; encryption in transit",
+      )}</td>
+    </tr>`,
+).join("");
+
+const storageRows = Object.entries(CLIENT_STORAGE_KEYS)
+  .map(
+    ([label, key]) => `
+    <tr>
+      <td><code>${escape(key)}</code></td>
+      <td>${escape(label)}</td>
+    </tr>`,
+  )
+  .join("");
+
+const html = `<!DOCTYPE html>
 <!--
   AUTO-GENERATED from src/config/privacy-config.ts via scripts/generate-privacy-html.ts.
   Do not edit by hand. To change disclosures, edit the config and rerun
-  `tsx scripts/generate-privacy-html.ts` (also runs on `npm run build`).
+  \`tsx scripts/generate-privacy-html.ts\` (also runs on \`npm run build\`).
 -->
 <html lang="en" dir="ltr">
 <head>
@@ -33,7 +101,7 @@
 
   <h1>Privacy Policy</h1>
   <div class="meta">
-    <p><strong>Effective Date:</strong> 2026-05-04 | <strong>Version:</strong> 2.1</p>
+    <p><strong>Effective Date:</strong> ${escape(PRIVACY_POLICY_VERSION)} | <strong>Version:</strong> 2.1</p>
     <p><strong>Legal Basis:</strong> Privacy Protection Law, 5741-1981 (Israel), Amendment 13 (תיקון 13 לחוק הגנת הפרטיות)</p>
   </div>
 
@@ -45,19 +113,19 @@
   <h2>1. Data Controller (בעל המאגר) &amp; Data Protection Officer</h2>
   <p>Under the Israeli Privacy Protection Law (Amendment 13), the data controller for Vocaband is:</p>
   <ul>
-    <li><strong>Entity:</strong> Vocaband</li>
-    <li><strong>Country:</strong> Israel</li>
-    <li><strong>General Contact:</strong> <a href="mailto:contact@vocaband.com">contact@vocaband.com</a></li>
+    <li><strong>Entity:</strong> ${escape(DATA_CONTROLLER.name)}</li>
+    <li><strong>Country:</strong> ${escape(DATA_CONTROLLER.country)}</li>
+    <li><strong>General Contact:</strong> <a href="mailto:${escape(DATA_CONTROLLER.contactEmail)}">${escape(DATA_CONTROLLER.contactEmail)}</a></li>
     <li><strong>Database Registration:</strong> As required under Section 18 of the Privacy Protection Law</li>
   </ul>
 
   <h3>Data Protection Officer (ממונה על הגנת הפרטיות)</h3>
   <p>Amendment 13 requires a public, accountable privacy contact. For Vocaband, that is:</p>
   <ul>
-    <li><strong>Name:</strong> Waseem Abu Akel</li>
-    <li><strong>Role:</strong> Founder &amp; Data Protection Officer</li>
-    <li><strong>Privacy Email:</strong> <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a></li>
-    <li><strong>Response SLA:</strong> 24 hours for security incident reports; 30 days for data-subject rights requests (access, deletion, rectification).</li>
+    <li><strong>Name:</strong> ${escape(DATA_PROTECTION_OFFICER.name)}</li>
+    <li><strong>Role:</strong> ${escape(DATA_PROTECTION_OFFICER.role)}</li>
+    <li><strong>Privacy Email:</strong> <a href="mailto:${escape(DATA_PROTECTION_OFFICER.email)}">${escape(DATA_PROTECTION_OFFICER.email)}</a></li>
+    <li><strong>Response SLA:</strong> ${DATA_PROTECTION_OFFICER.responseSlaHours} hours for security incident reports; 30 days for data-subject rights requests (access, deletion, rectification).</li>
   </ul>
 
   <!-- Section 2: Legal Basis -->
@@ -107,56 +175,7 @@
   <h2>4. Third-Party Sub-processors</h2>
   <p>Vocaband uses the following third-party services. All processors are bound by data processing agreements. Independent controllers (e.g., Google OAuth, Google Fonts) are noted as such. This list is the authoritative registry from our internal configuration — any new service is added here <em>before</em> it is used in production.</p>
   <table class="table">
-    <tr><th>Service</th><th>Purpose</th><th>Data Categories</th><th>Hosting Region</th><th>Endpoint</th></tr>
-    <tr>
-      <td><strong>Supabase</strong></td>
-      <td>PostgreSQL database, authentication, row-level security, file storage, real-time subscriptions</td>
-      <td>user profiles; class data; assignments; progress scores; audit logs; auth tokens; uploaded vocabulary lists</td>
-      <td>EU (Frankfurt) — eu-central-1</td>
-      <td>*.supabase.co (custom domain auth.vocaband.com)</td>
-    </tr>
-    <tr>
-      <td><strong>Fly.io</strong></td>
-      <td>Application server hosting (REST API, WebSocket server, OCR + AI translation endpoints)</td>
-      <td>HTTP requests (IP, User-Agent); live challenge scores (in-memory only — never written to disk); OCR uploaded images (in-memory only — discarded after processing)</td>
-      <td>EU (Amsterdam) — ams</td>
-      <td>api.vocaband.com (vocaband.fly.dev)</td>
-    </tr>
-    <tr>
-      <td><strong>Cloudflare</strong></td>
-      <td>DNS, CDN, TLS termination, DDoS mitigation, Workers (request routing), privacy-friendly Web Analytics (no cookies)</td>
-      <td>HTTP request metadata (IP, User-Agent, geolocation country); TLS handshake metadata</td>
-      <td>Global edge network</td>
-      <td>vocaband.com, *.vocaband.com</td>
-    </tr>
-    <tr>
-      <td><strong>Google OAuth</strong></td>
-      <td>Teacher authentication via Google Sign-In (alternative path to email + OTP)</td>
-      <td>email address; display name; OAuth ID + refresh tokens</td>
-      <td>Global (US-anchored)</td>
-      <td>accounts.google.com</td>
-    </tr>
-    <tr>
-      <td><strong>Anthropic (Claude API)</strong></td>
-      <td>AI sentence generation for vocabulary worksheets and AI lesson builder</td>
-      <td>vocabulary words (no personal data); generation parameters (difficulty level, language pair)</td>
-      <td>United States</td>
-      <td>api.anthropic.com</td>
-    </tr>
-    <tr>
-      <td><strong>Google Cloud (Gemini API)</strong></td>
-      <td>Server-side OCR of teacher-uploaded vocabulary list images (replaces previous in-process Tesseract.js)</td>
-      <td>uploaded image bytes (typically a worksheet photo containing only English words)</td>
-      <td>EU (europe-west)</td>
-      <td>generativelanguage.googleapis.com</td>
-    </tr>
-    <tr>
-      <td><strong>Google Fonts</strong></td>
-      <td>Web font delivery (Plus Jakarta Sans, Heebo, Be Vietnam Pro, Fredoka)</td>
-      <td>HTTP request metadata (IP, User-Agent, Referer) when the browser fetches font files</td>
-      <td>Global edge network</td>
-      <td>fonts.googleapis.com, fonts.gstatic.com</td>
-    </tr>
+    <tr><th>Service</th><th>Purpose</th><th>Data Categories</th><th>Hosting Region</th><th>Endpoint</th></tr>${subProcessorRows}
   </table>
   <p>We do <strong>not</strong> use advertising networks, behavioral analytics, marketing pixels, or data brokers.</p>
 
@@ -185,10 +204,10 @@
   <p>Under Amendment 13 we retain data only as long as necessary:</p>
   <table class="table">
     <tr><th>Data Type</th><th>Retention Period</th><th>Deletion Trigger</th></tr>
-    <tr><td>Student progress records</td><td>365 days after assignment completion</td><td>Class deletion, account deletion, or scheduled cleanup</td></tr>
-    <tr><td>Orphaned student accounts (no class membership)</td><td>90 days after last login</td><td>Automatic cleanup</td></tr>
-    <tr><td>Audit log entries</td><td>730 days (≈ 2 years)</td><td>Automatic deletion</td></tr>
-    <tr><td>Consent log entries</td><td>3650 days (≈ 10 years)</td><td>Legal requirement</td></tr>
+    <tr><td>Student progress records</td><td>${RETENTION_PERIODS.progressRecordsDays} days after assignment completion</td><td>Class deletion, account deletion, or scheduled cleanup</td></tr>
+    <tr><td>Orphaned student accounts (no class membership)</td><td>${RETENTION_PERIODS.orphanedStudentDays} days after last login</td><td>Automatic cleanup</td></tr>
+    <tr><td>Audit log entries</td><td>${RETENTION_PERIODS.auditLogDays} days (≈ 2 years)</td><td>Automatic deletion</td></tr>
+    <tr><td>Consent log entries</td><td>${RETENTION_PERIODS.consentLogDays} days (≈ 10 years)</td><td>Legal requirement</td></tr>
     <tr><td>Database backups</td><td>30 days rolling</td><td>Automatic rotation (weekly snapshots in encrypted off-region storage)</td></tr>
   </table>
   <p>When a class is deleted, all associated assignments and progress records are removed via cascading delete. Database backups may contain copies of deleted data for up to 30 additional days before backup rotation overwrites them.</p>
@@ -197,42 +216,7 @@
   <h2>7. Cross-Border Data Transfers</h2>
   <p>Some processing occurs outside Israel. Below is the destination for each sub-processor, with safeguards in place:</p>
   <table class="table">
-    <tr><th>Destination</th><th>Service</th><th>Safeguards</th></tr>
-    <tr>
-      <td>EU (Frankfurt) — eu-central-1</td>
-      <td>Supabase</td>
-      <td>Processor under DPA; encryption in transit + at rest</td>
-    </tr>
-    <tr>
-      <td>EU (Amsterdam) — ams</td>
-      <td>Fly.io</td>
-      <td>Processor under DPA; encryption in transit + at rest</td>
-    </tr>
-    <tr>
-      <td>Global edge network</td>
-      <td>Cloudflare</td>
-      <td>Processor under DPA; encryption in transit + at rest</td>
-    </tr>
-    <tr>
-      <td>Global (US-anchored)</td>
-      <td>Google OAuth</td>
-      <td>Independent controller for this surface; encryption in transit</td>
-    </tr>
-    <tr>
-      <td>United States</td>
-      <td>Anthropic (Claude API)</td>
-      <td>Processor under DPA; encryption in transit + at rest</td>
-    </tr>
-    <tr>
-      <td>EU (europe-west)</td>
-      <td>Google Cloud (Gemini API)</td>
-      <td>Processor under DPA; encryption in transit + at rest</td>
-    </tr>
-    <tr>
-      <td>Global edge network</td>
-      <td>Google Fonts</td>
-      <td>Independent controller for this surface; encryption in transit</td>
-    </tr>
+    <tr><th>Destination</th><th>Service</th><th>Safeguards</th></tr>${crossBorderRows}
   </table>
   <p>All transfers use Standard Contractual Clauses or the processor's equivalent, plus encryption in transit (TLS 1.3) and at rest.</p>
 
@@ -241,12 +225,12 @@
   <p>Under Israeli Privacy Protection Law (Amendment 13) and international standards (GDPR-compatible), you have the right to:</p>
   <table class="table">
     <tr><th>Right</th><th>Description</th><th>How to Exercise</th></tr>
-    <tr><td><strong>Access</strong></td><td>Receive a copy of all your personal data</td><td>Privacy Settings → "Export My Data", or email <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a></td></tr>
+    <tr><td><strong>Access</strong></td><td>Receive a copy of all your personal data</td><td>Privacy Settings → "Export My Data", or email <a href="mailto:${escape(DATA_PROTECTION_OFFICER.email)}">${escape(DATA_PROTECTION_OFFICER.email)}</a></td></tr>
     <tr><td><strong>Rectification</strong></td><td>Correct inaccurate data (e.g., display name)</td><td>Edit directly in app or Privacy Settings</td></tr>
     <tr><td><strong>Erasure</strong></td><td>Permanently delete your account and associated data</td><td>Privacy Settings → "Delete My Account"</td></tr>
     <tr><td><strong>Portability</strong></td><td>Receive data in a machine-readable format (JSON)</td><td>Privacy Settings → "Export My Data"</td></tr>
     <tr><td><strong>Withdraw Consent</strong></td><td>Withdraw previously given consent</td><td>Privacy Settings → "Withdraw Consent"</td></tr>
-    <tr><td><strong>Object</strong></td><td>Object to processing based on legitimate interests</td><td>Email <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a> with the specific request</td></tr>
+    <tr><td><strong>Object</strong></td><td>Object to processing based on legitimate interests</td><td>Email <a href="mailto:${escape(DATA_PROTECTION_OFFICER.email)}">${escape(DATA_PROTECTION_OFFICER.email)}</a> with the specific request</td></tr>
   </table>
   <p>We respond to all requests within <strong>30 days</strong>. Access and deletion requests are free of charge.</p>
 
@@ -267,7 +251,7 @@
   </ul>
 
   <h3>9.3 Parental Rights</h3>
-  <p>Parents or legal guardians may exercise data subject rights on behalf of their children by contacting the school or emailing <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a> with verification of guardianship.</p>
+  <p>Parents or legal guardians may exercise data subject rights on behalf of their children by contacting the school or emailing <a href="mailto:${escape(DATA_PROTECTION_OFFICER.email)}">${escape(DATA_PROTECTION_OFFICER.email)}</a> with verification of guardianship.</p>
 
   <!-- Section 10: Security -->
   <h2>10. Security Measures</h2>
@@ -286,27 +270,7 @@
   <h2>11. Cookies and Local Storage</h2>
   <p>Vocaband uses no tracking, advertising, or third-party analytics cookies. The following keys are stored in your browser:</p>
   <table class="table">
-    <tr><th>Storage Key</th><th>Purpose</th></tr>
-    <tr>
-      <td><code>sb-*-auth-token</code></td>
-      <td>supabaseAuth</td>
-    </tr>
-    <tr>
-      <td><code>vocaband_welcome_seen</code></td>
-      <td>welcomeSeen</td>
-    </tr>
-    <tr>
-      <td><code>vocaband_retry_*</code></td>
-      <td>retryProgress</td>
-    </tr>
-    <tr>
-      <td><code>oauth_exchange_failed</code></td>
-      <td>oauthExchangeFailed</td>
-    </tr>
-    <tr>
-      <td><code>vocaband_consent_version</code></td>
-      <td>consentVersion</td>
-    </tr>
+    <tr><th>Storage Key</th><th>Purpose</th></tr>${storageRows}
   </table>
   <p>Cloudflare Web Analytics is used for traffic measurement; it stores no cookies and does not identify individual users.</p>
 
@@ -322,7 +286,7 @@
   <!-- Section 13: Complaints -->
   <h2>13. Complaints and Regulatory Authority</h2>
   <ol>
-    <li>Contact us first at <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a></li>
+    <li>Contact us first at <a href="mailto:${escape(DATA_PROTECTION_OFFICER.email)}">${escape(DATA_PROTECTION_OFFICER.email)}</a></li>
     <li>If unresolved, file a complaint with the Israeli Privacy Protection Authority (הרשות להגנת הפרטיות):
       <ul>
         <li>Website: <a href="https://www.gov.il/he/departments/the_privacy_protection_authority" target="_blank" rel="noopener">www.gov.il</a></li>
@@ -334,9 +298,9 @@
   <!-- Section 14: Contact -->
   <h2>14. Contact</h2>
   <ul>
-    <li><strong>Privacy / data-subject requests:</strong> <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a></li>
-    <li><strong>General inquiries:</strong> <a href="mailto:contact@vocaband.com">contact@vocaband.com</a></li>
-    <li><strong>Response SLA:</strong> 24 hours for security incidents; 30 days for data-subject rights requests</li>
+    <li><strong>Privacy / data-subject requests:</strong> <a href="mailto:${escape(DATA_PROTECTION_OFFICER.email)}">${escape(DATA_PROTECTION_OFFICER.email)}</a></li>
+    <li><strong>General inquiries:</strong> <a href="mailto:${escape(DATA_CONTROLLER.contactEmail)}">${escape(DATA_CONTROLLER.contactEmail)}</a></li>
+    <li><strong>Response SLA:</strong> ${DATA_PROTECTION_OFFICER.responseSlaHours} hours for security incidents; 30 days for data-subject rights requests</li>
   </ul>
 
   <hr style="margin: 3rem 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -346,3 +310,7 @@
   </p>
 </body>
 </html>
+`;
+
+writeFileSync(OUT_PATH, html, "utf8");
+console.log(`✓ Generated ${OUT_PATH} (policy version ${PRIVACY_POLICY_VERSION}, ${THIRD_PARTY_REGISTRY.length} sub-processors)`);
