@@ -14,6 +14,7 @@
  */
 import type React from 'react';
 import { supabase, type ClassData } from '../core/supabase';
+import { logAudit } from '../utils/audit';
 
 type ToastFn = (msg: string, type?: 'success' | 'error' | 'info') => void;
 type SetClasses = React.Dispatch<React.SetStateAction<ClassData[]>>;
@@ -53,6 +54,13 @@ export async function saveClassEdit(
     deps.showToast('Could not save class changes. Please try again.', 'error');
     return;
   }
+  // Field names go in metadata but never values — names of school
+  // branding fields aren't PII, but the field VALUES could be (e.g.
+  // a school name).  The audit row is "edit happened", not "here's
+  // what changed to what".
+  void logAudit('edit_class', 'classes', {
+    metadata: { class_id: classId, fields: ['name', 'avatar', 'school_name', 'school_logo_url'] },
+  });
   deps.setClasses((prev) =>
     prev.map((c) =>
       c.id === classId
@@ -77,6 +85,9 @@ export async function renameClass(
     deps.showToast('Could not update name. Please try again.', 'error');
     return;
   }
+  void logAudit('edit_class', 'classes', {
+    metadata: { class_id: classId, fields: ['name'] },
+  });
   deps.setClasses((prev) =>
     prev.map((c) => (c.id === classId ? { ...c, name: newName } : c)),
   );
@@ -96,6 +107,9 @@ export async function changeClassAvatar(
     deps.showToast('Could not update avatar. Please try again.', 'error');
     return;
   }
+  void logAudit('edit_class', 'classes', {
+    metadata: { class_id: classId, fields: ['avatar'] },
+  });
   deps.setClasses((prev) =>
     prev.map((c) => (c.id === classId ? { ...c, avatar: newAvatar } : c)),
   );
