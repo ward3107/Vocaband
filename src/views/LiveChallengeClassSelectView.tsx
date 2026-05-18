@@ -41,7 +41,7 @@ export default function LiveChallengeClassSelectView({
 
       <main id="main-content" className="pt-24 px-6 max-w-5xl mx-auto">
         {/* Header Card */}
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 rounded-xl p-6 mb-8 text-center shadow-xl">
+        <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 rounded-xl p-6 mb-8 text-center shadow-xl">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

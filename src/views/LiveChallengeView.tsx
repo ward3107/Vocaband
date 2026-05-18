@@ -80,8 +80,8 @@ export default function LiveChallengeView({
   };
 
   return (
-    <div dir={dir} className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
-      <div className="max-w-5xl mx-auto">
+    <div dir={dir} className="min-h-screen bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-4 sm:p-6 text-white">
+      <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-8">
           <button onClick={exitChallenge} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">{t.backToClassSelection}</button>
           <div className="flex items-center gap-3">
@@ -139,7 +139,7 @@ export default function LiveChallengeView({
           >
             {t.liveChallengeFor(selectedClass.name)}
           </motion.h1>
-          <p className="text-white/90 font-bold text-sm sm:text-base 2xl:text-lg">{t.classCodeLabel} <span className="bg-white text-purple-600 px-4 py-2 rounded-lg font-mono font-black ml-2 shadow-lg 2xl:text-xl">{selectedClass.code}</span></p>
+          <p className="text-white/90 font-bold text-sm sm:text-base 2xl:text-lg">{t.classCodeLabel} <span className="bg-white text-violet-600 px-4 py-2 rounded-lg font-mono font-black ml-2 shadow-lg 2xl:text-xl">{selectedClass.code}</span></p>
         </div>
 
         {/* Socket-offline warning — if the live socket never connects,
@@ -356,7 +356,7 @@ export default function LiveChallengeView({
                 onClick={() => { setShowResultsModal(false); exitChallenge(); }}
                 type="button"
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl transition-all"
+                className="w-full py-4 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white rounded-xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl transition-all"
               >
                 {t.close}
               </button>

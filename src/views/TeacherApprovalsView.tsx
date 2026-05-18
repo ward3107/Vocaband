@@ -84,7 +84,7 @@ export default function TeacherApprovalsView({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-          className="max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
+          className="max-w-6xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
         >
 
         {pendingStudents.length === 0 ? (
