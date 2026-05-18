@@ -8,6 +8,8 @@
 import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
 import { AnimatePresence } from 'motion/react';
 import TopAppBar from '../TopAppBar';
+import PageHero from '../PageHero';
+import { Sparkles, BookOpen, Zap } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty } from '../../constants/game';
 import { WizardMode, AssignmentData, DEFAULT_ASSIGNMENT_MODE_IDS } from './types';
@@ -430,8 +432,19 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   const isQuickPlay = mode === 'quick-play';
   const isAssignment = mode === 'assignment';
 
+  // Hero copy — pulls from the same locale strings the TopAppBar used,
+  // so editing flows stay consistent across the wizard chrome.
+  const heroTitle = isQuickPlay
+    ? t.qpSetupTitle
+    : editingAssignment
+    ? t.editAssignmentTitle
+    : t.createAssignmentTitle;
+  const heroSubtitle = isQuickPlay ? t.qpSetupSubtitle : t.assignmentSubtitle;
+  const HeroIcon = isQuickPlay ? Zap : editingAssignment ? Sparkles : BookOpen;
+  const stepEyebrow = `${currentStep} / 3 · ${stepLabels[currentStep]}`;
+
   return (
-    <div dir={dir} className="min-h-screen bg-gradient-to-b from-stone-50 to-white pt-36 sm:pt-32 pb-20 sm:pb-12 px-3 sm:px-4 md:px-6">
+    <div dir={dir} className="min-h-screen pt-20 sm:pt-24 pb-20 sm:pb-12" style={{ backgroundColor: 'var(--vb-bg)' }}>
       <TopAppBar
         title={isQuickPlay ? t.qpSetupTitle : editingAssignment ? t.editAssignmentTitle : t.createAssignmentTitle}
         subtitle={isQuickPlay ? t.qpSetupSubtitle : t.assignmentSubtitle}
@@ -442,7 +455,17 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
         onLogout={onLogout}
       />
 
-      <div className={`mx-auto ${currentStep === 3 && isQuickPlay ? 'max-w-5xl' : 'max-w-2xl'}`}>
+      {/* Vocabagrut-style hero — anchors the wizard with the same
+          gradient + frosted-medallion identity the Vocabagrut, dashboard,
+          and Free Resources tabs use. */}
+      <PageHero
+        icon={<HeroIcon size={32} className="text-white" />}
+        eyebrow={stepEyebrow}
+        title={heroTitle}
+        subtitle={heroSubtitle}
+      />
+
+      <div className={`mx-auto px-3 sm:px-4 md:px-6 pt-6 sm:pt-8 ${currentStep === 3 && isQuickPlay ? 'max-w-5xl' : 'max-w-2xl'}`}>
         {/* Activity type tabs — only on the Assignment flow.  Quick Play
             is its own un-classed flow and shouldn't surface these. */}
         {isAssignment && onSwitchActivity && (

@@ -20,9 +20,10 @@ import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Layers, Headphones, ArrowLeftRight, FileText, CheckCircle, Sparkles, Play,
-  Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle, Wand2, ArrowLeft,
-  MessageCircle, Zap, Link,
+  Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle, Wand2,
+  MessageCircle, Zap, Link, Tv2,
 } from 'lucide-react';
+import PageHero from '../PageHero';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings, type ClassShowStrings } from '../../locales/student/class-show';
 import type { Word } from '../../data/vocabulary';
@@ -172,40 +173,23 @@ export default function ClassShowSetup({
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+      <PageHero
+        icon={<Tv2 size={32} className="text-white" />}
+        title={t.classShow}
+        subtitle={t.projectToClass}
+        onBack={onCancel}
+        gradient="from-fuchsia-500 via-pink-500 to-rose-500"
+        trailing={<GuideTriggerButton onClick={guide.open} />}
+      />
+
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-8">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
         className="w-full max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
       >
-        {/* Header with back button */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
-              {t.classShow}
-            </h1>
-            <p className="text-sm sm:text-base" style={{ color: 'var(--vb-text-secondary)' }}>
-              {t.projectToClass}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <GuideTriggerButton onClick={guide.open} />
-            <button
-              type="button"
-              onClick={onCancel}
-              style={{
-                borderColor: 'var(--vb-border)',
-                color: 'var(--vb-text-secondary)',
-                backgroundColor: 'var(--vb-surface)',
-              }}
-              className="px-4 py-2 rounded-lg border-2 inline-flex items-center gap-2 hover:opacity-90"
-            >
-              <ArrowLeft size={16} />
-              <span className="hidden sm:inline">Back</span>
-            </button>
-          </div>
-        </div>
 
         {/* Word source picker */}
         <div className="mb-8">
@@ -312,6 +296,7 @@ export default function ClassShowSetup({
           </button>
         </div>
       </motion.div>
+      </div>
 
       <FirstTimeGuide
         isOpen={guide.isOpen}
