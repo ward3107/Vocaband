@@ -2134,7 +2134,8 @@ Quality rules:
     message: { error: "Too many lookups, please try again in a minute." },
   });
   app.get("/api/quick-play/session/:code", qpSessionLimiter, async (req, res) => {
-    const code = req.params.code;
+    // @types/express 5 widens req.params.* to string | string[]; narrow it.
+    const code = typeof req.params.code === "string" ? req.params.code : "";
     if (!code || !/^[A-Z0-9]{4,8}$/i.test(code)) {
       return res.status(400).json({ error: "Invalid session code format" });
     }
@@ -3038,7 +3039,10 @@ Important notes:
       res.type("text/plain").sendFile(path.join(distPath, ".well-known", "security.txt"));
     });
 
-    app.get("*", (_req, res) => {
+    // Express 5 + path-to-regexp v6 reject bare "*" wildcards — they
+    // require a named splat parameter. Without this the server crashes
+    // at startup with `PathError: Missing parameter name at index 1`.
+    app.get("/*splat", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
