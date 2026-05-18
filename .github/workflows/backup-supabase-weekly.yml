@@ -1,0 +1,164 @@
+# =============================================================================
+# backup-supabase-weekly.yml
+#
+# Weekly off-Supabase database backup. Runs every Sunday at 03:00 UTC
+# (~06:00 IL) and on manual dispatch. Pushes a compressed pg_dump custom
+# archive to the Cloudflare R2 bucket configured below.
+#
+# Closes Risk R12 (Data integrity loss) + Disaster Recovery Scenario E
+# (Complete loss of Supabase project) in docs/RISK-REGISTER.md and
+# docs/DISASTER-RECOVERY.md.
+#
+# Operator setup (one-time):
+#   1. Cloudflare R2 → create bucket `vocaband-backups` (private; lifecycle
+#      rule: transition to "Archive" class at 30 days; delete at 365 days).
+#   2. Cloudflare R2 → API Tokens → create token scoped to
+#      `vocaband-backups` only with Object Read + Write. Save the
+#      Access Key ID + Secret.
+#   3. Supabase Dashboard → Settings → Database → Connection string →
+#      "URI" mode → copy the full postgres:// string (includes password).
+#      Replace `[YOUR-PASSWORD]` placeholder before pasting into the
+#      GitHub secret.
+#   4. GitHub repo → Settings → Secrets and variables → Actions → add:
+#        SUPABASE_DB_URL         = postgres://postgres.<ref>:<pwd>@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
+#        R2_ACCOUNT_ID           = your Cloudflare account ID
+#        R2_ACCESS_KEY_ID        = from step 2
+#        R2_SECRET_ACCESS_KEY    = from step 2
+#        R2_BACKUP_BUCKET        = vocaband-backups
+#   5. Run `gh workflow run backup-supabase-weekly.yml` once to verify
+#      end-to-end before relying on the schedule.
+#
+# Restore-test cadence: every 6 months, run scripts/restore-from-r2-backup.sh
+# against a staging Supabase project. File results in
+# docs/postmortems/<YYYY-MM-DD>-dr-drill.md.
+# =============================================================================
+
+name: Weekly Supabase backup → R2
+
+on:
+  schedule:
+    # Sunday 03:00 UTC = 06:00 Israel (winter) / 06:00 IDT (summer)
+    - cron: "0 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why are you triggering a manual backup?"
+        required: false
+        default: "manual verification"
+
+# Lock concurrency so two scheduled runs can never race against each
+# other if the previous run hangs longer than a week.
+concurrency:
+  group: backup-supabase
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Install Postgres 16 client
+        run: |
+          # Supabase runs PG 15.x on most projects; PG 16 client is
+          # backwards-compatible. The bundled Ubuntu PG client is too old
+          # for some Supabase features (e.g. native types added in 15).
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+          pg_dump --version
+
+      - name: Install AWS CLI (R2 is S3-compatible)
+        run: |
+          # Ubuntu runners come with a recent aws-cli already; verify.
+          aws --version
+
+      - name: Run pg_dump → compress → upload
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_BACKUP_BUCKET: ${{ secrets.R2_BACKUP_BUCKET }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
+            echo "::error::SUPABASE_DB_URL secret not set"
+            exit 1
+          fi
+          if [[ -z "${R2_ACCOUNT_ID:-}" || -z "${AWS_ACCESS_KEY_ID:-}" || -z "${AWS_SECRET_ACCESS_KEY:-}" || -z "${R2_BACKUP_BUCKET:-}" ]]; then
+            echo "::error::R2 secrets (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BACKUP_BUCKET) not all set"
+            exit 1
+          fi
+
+          DATE="$(date -u +%Y-%m-%d)"
+          YEAR="$(date -u +%Y)"
+          OUTFILE="supabase-pg-${DATE}.dump.gz"
+          R2_KEY="db-backups/${YEAR}/${OUTFILE}"
+          R2_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          echo "▶ Dumping Supabase public schema (custom format) → ${OUTFILE}"
+          # --format=custom gives us a binary, gzip-internal-compressed,
+          # selectively-restorable archive (pg_restore -L can pick objects).
+          # --no-owner / --no-acl avoid restore failures when target DB has
+          # different role names than source (the common case).
+          # --schema=public + auth schema is the dataset we care about;
+          # storage objects are mirrored separately by scripts/mirror-supabase-to-r2.ts.
+          pg_dump \
+            --format=custom \
+            --no-owner \
+            --no-acl \
+            --schema=public \
+            --schema=auth \
+            --exclude-table-data='auth.sessions' \
+            --exclude-table-data='auth.refresh_tokens' \
+            --file="/tmp/${OUTFILE%.gz}" \
+            "${SUPABASE_DB_URL}"
+
+          # pg_dump's custom format is already compressed; wrap in gzip for
+          # an additional ~10-15% saving + consistent ".gz" naming.
+          gzip --best "/tmp/${OUTFILE%.gz}"
+
+          SIZE_BYTES=$(stat -c%s "/tmp/${OUTFILE}")
+          SIZE_MB=$(( SIZE_BYTES / 1024 / 1024 ))
+          echo "▶ Dump size: ${SIZE_MB} MiB (${SIZE_BYTES} bytes)"
+
+          # Sanity check: a real backup at our scale should be ≥ 50 KB.
+          # Anything smaller likely means pg_dump silently produced an
+          # empty archive (auth failure, network blip, etc.).
+          if [[ ${SIZE_BYTES} -lt 51200 ]]; then
+            echo "::error::Backup suspiciously small (${SIZE_BYTES} bytes) — aborting upload"
+            exit 1
+          fi
+
+          echo "▶ Uploading to s3://${R2_BACKUP_BUCKET}/${R2_KEY}"
+          aws s3 cp "/tmp/${OUTFILE}" "s3://${R2_BACKUP_BUCKET}/${R2_KEY}" \
+            --endpoint-url "${R2_ENDPOINT}" \
+            --no-progress
+
+          echo "▶ Verifying upload by re-listing"
+          aws s3 ls "s3://${R2_BACKUP_BUCKET}/${R2_KEY}" \
+            --endpoint-url "${R2_ENDPOINT}"
+
+          # Don't leave the dump on the runner — runner is ephemeral but
+          # be explicit so the secret isn't readable in any caches.
+          rm -f "/tmp/${OUTFILE}"
+
+          echo "::notice::Backup ${R2_KEY} uploaded successfully (${SIZE_MB} MiB)"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Backup summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Trigger: ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Status: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Restore-test cadence: every 6 months via scripts/restore-from-r2-backup.sh" >> "$GITHUB_STEP_SUMMARY"

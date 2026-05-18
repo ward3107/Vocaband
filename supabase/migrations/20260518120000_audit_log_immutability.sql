@@ -124,7 +124,45 @@ BEGIN
 END;
 $$;
 
--- 6. Verification helpers — paste into Supabase SQL editor after applying.
+-- 6. Health-check RPC — exposes presence of the two triggers as a single
+--    JSONB blob. Called by /api/health/audit-log (server.ts) so uptime
+--    monitors can alert if a future migration ever drops the triggers.
+--    SECURITY DEFINER because pg_trigger is system schema; only the two
+--    trigger names this app cares about are returned (no other table info).
+CREATE OR REPLACE FUNCTION public.audit_log_immutability_status()
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  has_update_trigger BOOLEAN;
+  has_delete_trigger BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'trg_audit_log_no_update' AND NOT tgisinternal
+  ) INTO has_update_trigger;
+
+  SELECT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'trg_audit_log_no_delete' AND NOT tgisinternal
+  ) INTO has_delete_trigger;
+
+  RETURN jsonb_build_object(
+    'update_trigger_present', has_update_trigger,
+    'delete_trigger_present', has_delete_trigger,
+    'ok', has_update_trigger AND has_delete_trigger
+  );
+END;
+$$;
+
+-- Open it to the service_role only — the server-side health endpoint uses
+-- the admin client, and there's no reason to let anon/authenticated probe.
+REVOKE EXECUTE ON FUNCTION public.audit_log_immutability_status() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.audit_log_immutability_status() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.audit_log_immutability_status() FROM authenticated;
+GRANT  EXECUTE ON FUNCTION public.audit_log_immutability_status() TO service_role;
+
+-- 7. Verification helpers — paste into Supabase SQL editor after applying.
 --
 -- a) UPDATE should fail with 42501:
 --      UPDATE public.audit_log SET action = 'tampered' WHERE id = (SELECT id FROM public.audit_log LIMIT 1);

@@ -46,6 +46,7 @@ Tracks all privacy features required for Israeli PPA Amendment 13 compliance. Us
 | Requirement | Status | Location |
 |-------------|--------|----------|
 | Audit log table | Done | `public.audit_log` — records actor, action, data category, target, timestamp |
+| Audit log immutability (Reg 2017 § 8) | Done (2026-05-18) | Migration `20260518120000_audit_log_immutability.sql` — BEFORE UPDATE trigger raises unconditionally; BEFORE DELETE trigger raises except via the controlled retention purge in `cleanup_expired_data` (txn-scoped GUC `app.allow_audit_purge`). UPDATE/DELETE explicitly REVOKEd from anon + authenticated. Pen-test gates 17+18 in `scripts/security-pen-test.sh`. |
 | Audit log helper in app code | Done (2026-05-04) | `src/utils/audit.ts → logAudit()` — best-effort, never throws |
 | Teacher gradebook access logged | Done (2026-05-04) | `useTeacherActions.fetchScores()` calls `logAudit('view_gradebook', 'progress', { metadata: { rows, classes } })` after successful fetch |
 | Class deletion logged | Done (2026-05-04) | `useTeacherActions.handleDeleteClass` calls `logAudit('delete_class', 'classes', { metadata: { class_id } })` after successful delete |
@@ -89,6 +90,19 @@ Tracks all privacy features required for Israeli PPA Amendment 13 compliance. Us
 | `PRIVACY_CHECKLIST.md` | Done | This file |
 | `src/privacy-config.ts` | Done | Machine-readable privacy configuration |
 | `supabase/migrations/010_privacy_compliance.sql` | Done | Database schema for compliance tables |
+| `INFORMATION-SECURITY-POLICY.md` | Done (2026-05-18) | `docs/` — formal מדיניות אבטחת מידע v1.0 with DPO signoff block |
+| `RISK-REGISTER.md` | Done (2026-05-18) | `docs/` — 15-row סקר סיכונים, 5×5 severity-likelihood scoring, heat map (lawyer ratification pending) |
+| `DPIA-TECHNICAL.md` | Done (2026-05-04) | `docs/` — technical sections of the DPIA; legal sections await lawyer consult |
+| `INCIDENT-RESPONSE.md` | Done | `docs/` — severity scale, 30-min playbook, bilingual HE/EN breach notification templates |
+| `DISASTER-RECOVERY.md` | Done (2026-05-18) | `docs/` — RTO/RPO targets, 5 scenarios, quarterly tabletop schedule |
+| `SUBPROCESSORS.md` | Done | `docs/` — public-facing third-party processor list |
+| `MOE-REQUIREMENTS.md` | Done | `docs/` — master MoE-compliance tracker |
+| `MOE-VENDOR-QUESTIONNAIRE.md` | Done | `docs/` — pre-filled Tofes 22/23 answers |
+| `OPERATOR-PLAYBOOK-MOE.md` | Done (2026-05-18) | `docs/` — 15 operator tasks with how/when/cost |
+| `LAWYER-BRIEF-MOE.md` | Done (2026-05-18) | `docs/` — 7 specific questions for the lawyer consult |
+| `quarterly-audit-TEMPLATE.md` | Done (2026-05-18) | `docs/` — fill-in form for the quarterly internal audit |
+| `supabase/migrations/20260518120000_audit_log_immutability.sql` | Done (2026-05-18) | Audit log triggers + REVOKE; closes Reg 2017 § 8 immutability requirement |
+| `.github/workflows/backup-supabase-weekly.yml` | Done (2026-05-18) | Off-Supabase weekly pg_dump to Cloudflare R2; closes DR Scenario E |
 
 ---
 
