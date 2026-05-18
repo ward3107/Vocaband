@@ -380,7 +380,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               className={`${sharedClass} cursor-pointer`}
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
-              <div className="w-5 h-5 mt-0.5 rounded border-2 border-amber-400 bg-white flex items-center justify-center shrink-0">
+              <div
+                style={{ backgroundColor: 'var(--vb-surface)' }}
+                className="w-5 h-5 mt-0.5 rounded border-2 border-amber-400 flex items-center justify-center shrink-0"
+              >
                 <Trophy size={11} className="text-amber-500" />
               </div>
               <div className="flex-1">

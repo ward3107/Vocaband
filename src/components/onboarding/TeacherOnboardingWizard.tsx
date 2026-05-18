@@ -186,7 +186,8 @@ export default function TeacherOnboardingWizard({
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 30, opacity: 0, scale: 0.97 }}
             transition={{ type: 'spring', damping: 22, stiffness: 220 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[92vh] overflow-hidden flex flex-col relative"
+            style={{ backgroundColor: 'var(--vb-surface)' }}
+            className="rounded-2xl shadow-2xl max-w-xl w-full max-h-[92vh] overflow-hidden flex flex-col relative"
             role="dialog"
             aria-modal="true"
             aria-label={t.welcomeHeading}
@@ -197,7 +198,10 @@ export default function TeacherOnboardingWizard({
             )}
 
             {/* Header — stepper + skip link */}
-            <div className={`px-6 sm:px-8 pt-5 pb-4 border-b border-stone-100 flex items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <div
+              style={{ borderColor: 'var(--vb-border)' }}
+              className={`px-6 sm:px-8 pt-5 pb-4 border-b flex items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}
+            >
               <div className={`flex items-center gap-1.5 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 {[0, 1, 2, 3].map(i => (
                   <span
@@ -207,8 +211,9 @@ export default function TeacherOnboardingWizard({
                         ? 'w-8 bg-indigo-500'
                         : i < step
                         ? 'w-4 bg-indigo-300'
-                        : 'w-4 bg-stone-200'
+                        : 'w-4'
                     }`}
+                    style={i !== step && i >= step ? { backgroundColor: 'var(--vb-border)' } : undefined}
                     aria-hidden
                   />
                 ))}
@@ -216,7 +221,8 @@ export default function TeacherOnboardingWizard({
               {step < 3 && (
                 <button
                   onClick={onSkip}
-                  className={`text-xs sm:text-sm text-stone-400 hover:text-stone-700 font-semibold transition flex items-center gap-1 ${isRTL ? 'flex-row-reverse' : ''}`}
+                  style={{ color: 'var(--vb-text-muted)' }}
+                  className={`text-xs sm:text-sm font-semibold transition flex items-center gap-1 hover:opacity-70 ${isRTL ? 'flex-row-reverse' : ''}`}
                   type="button"
                 >
                   <X size={14} />
@@ -241,11 +247,14 @@ export default function TeacherOnboardingWizard({
                         <Sparkles className="w-7 h-7 text-white" />
                       </div>
                       <div className={isRTL ? 'text-right' : 'text-left'}>
-                        <h2 className="text-xl sm:text-2xl font-black text-stone-900 leading-tight">{t.welcomeHeading}</h2>
-                        <p className="text-sm text-stone-500 mt-0.5">{t.welcomeSubtitle}</p>
+                        <h2 className="text-xl sm:text-2xl font-black leading-tight" style={{ color: 'var(--vb-text-primary)' }}>{t.welcomeHeading}</h2>
+                        <p className="text-sm mt-0.5" style={{ color: 'var(--vb-text-secondary)' }}>{t.welcomeSubtitle}</p>
                       </div>
                     </div>
-                    <p className={`text-sm font-bold text-stone-700 mb-3 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <p
+                      className={`text-sm font-bold mb-3 ${isRTL ? 'text-right' : 'text-left'}`}
+                      style={{ color: 'var(--vb-text-secondary)' }}
+                    >
                       {t.pickStarterPackLabel}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -258,24 +267,38 @@ export default function TeacherOnboardingWizard({
                             onClick={() => setStarterPack(p.id)}
                             className={`${isRTL ? 'text-right' : 'text-left'} p-3.5 rounded-xl border-2 transition-all ${
                               selected
-                                ? 'border-indigo-500 bg-indigo-50 shadow-sm'
-                                : 'border-stone-200 hover:border-stone-300 bg-white'
+                                ? 'border-indigo-500 shadow-sm'
+                                : ''
                             }`}
-                            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+                            style={{
+                              touchAction: 'manipulation',
+                              WebkitTapHighlightColor: 'transparent' as never,
+                              backgroundColor: selected
+                                ? 'color-mix(in srgb, var(--vb-accent) 12%, var(--vb-surface))'
+                                : 'var(--vb-surface)',
+                              borderColor: selected ? undefined : 'var(--vb-border)',
+                            }}
                           >
                             <div className={`flex items-start gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                               <span className={`shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br ${p.accent} flex items-center justify-center text-xl shadow-sm`}>
                                 {p.emoji}
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className={`font-black text-sm ${selected ? 'text-indigo-700' : 'text-stone-900'}`}>
+                                <p
+                                  className="font-black text-sm"
+                                  style={{ color: selected ? 'var(--vb-accent)' : 'var(--vb-text-primary)' }}
+                                >
                                   {t[p.labelKey]}
                                 </p>
-                                <p className="text-xs text-stone-500 mt-0.5 leading-snug">
+                                <p className="text-xs mt-0.5 leading-snug" style={{ color: 'var(--vb-text-secondary)' }}>
                                   {t[p.subKey]}
                                 </p>
                                 {t[p.samplesKey] && (
-                                  <p className="text-[11px] text-stone-400 mt-1.5 font-mono tracking-tight" dir="ltr">
+                                  <p
+                                    className="text-[11px] mt-1.5 font-mono tracking-tight"
+                                    style={{ color: 'var(--vb-text-muted)' }}
+                                    dir="ltr"
+                                  >
                                     {t[p.samplesKey]}
                                   </p>
                                 )}
@@ -301,8 +324,8 @@ export default function TeacherOnboardingWizard({
                         <GraduationCap className="w-7 h-7 text-white" />
                       </div>
                       <div className={isRTL ? 'text-right' : 'text-left'}>
-                        <h2 className="text-xl sm:text-2xl font-black text-stone-900 leading-tight">{t.nameClassHeading}</h2>
-                        <p className="text-sm text-stone-500 mt-0.5">{t.nameClassSubtitle}</p>
+                        <h2 className="text-xl sm:text-2xl font-black leading-tight" style={{ color: 'var(--vb-text-primary)' }}>{t.nameClassHeading}</h2>
+                        <p className="text-sm mt-0.5" style={{ color: 'var(--vb-text-secondary)' }}>{t.nameClassSubtitle}</p>
                       </div>
                     </div>
                     <input
@@ -313,9 +336,14 @@ export default function TeacherOnboardingWizard({
                       maxLength={60}
                       autoFocus
                       dir={dir}
-                      className={`w-full px-4 py-3.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-base font-bold text-stone-900 ${isRTL ? 'text-right' : 'text-left'}`}
+                      style={{
+                        backgroundColor: 'var(--vb-surface)',
+                        borderColor: 'var(--vb-border)',
+                        color: 'var(--vb-text-primary)',
+                      }}
+                      className={`w-full px-4 py-3.5 rounded-xl border-2 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-base font-bold ${isRTL ? 'text-right' : 'text-left'}`}
                     />
-                    <p className={`text-xs text-stone-400 mt-2 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <p className={`text-xs mt-2 ${isRTL ? 'text-right' : 'text-left'}`} style={{ color: 'var(--vb-text-muted)' }}>
                       {t.classNameHelp}
                     </p>
                   </motion.div>
@@ -334,8 +362,8 @@ export default function TeacherOnboardingWizard({
                         <BookOpen className="w-7 h-7 text-white" />
                       </div>
                       <div className={isRTL ? 'text-right' : 'text-left'}>
-                        <h2 className="text-xl sm:text-2xl font-black text-stone-900 leading-tight">{t.pickModesHeading}</h2>
-                        <p className="text-sm text-stone-500 mt-0.5">{t.pickModesSubtitle}</p>
+                        <h2 className="text-xl sm:text-2xl font-black leading-tight" style={{ color: 'var(--vb-text-primary)' }}>{t.pickModesHeading}</h2>
+                        <p className="text-sm mt-0.5" style={{ color: 'var(--vb-text-secondary)' }}>{t.pickModesSubtitle}</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -347,25 +375,37 @@ export default function TeacherOnboardingWizard({
                             type="button"
                             onClick={() => toggleMode(m.id)}
                             className={`flex items-center gap-2 p-2.5 rounded-lg border-2 transition-all ${isRTL ? 'flex-row-reverse text-right' : 'text-left'} ${
-                              checked
-                                ? 'border-indigo-500 bg-indigo-50'
-                                : 'border-stone-200 hover:border-stone-300'
+                              checked ? 'border-indigo-500' : ''
                             }`}
-                            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+                            style={{
+                              touchAction: 'manipulation',
+                              WebkitTapHighlightColor: 'transparent' as never,
+                              backgroundColor: checked
+                                ? 'color-mix(in srgb, var(--vb-accent) 12%, var(--vb-surface))'
+                                : 'var(--vb-surface)',
+                              borderColor: checked ? undefined : 'var(--vb-border)',
+                            }}
                           >
-                            <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                              checked ? 'bg-indigo-500 text-white' : 'bg-stone-100 text-stone-400'
-                            }`}>
+                            <span
+                              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                              style={{
+                                backgroundColor: checked ? 'var(--vb-accent)' : 'var(--vb-surface-alt)',
+                                color: checked ? 'var(--vb-accent-text)' : 'var(--vb-text-muted)',
+                              }}
+                            >
                               {checked ? <Check size={14} /> : <span className="text-base">{m.emoji}</span>}
                             </span>
-                            <span className={`text-sm font-bold truncate ${checked ? 'text-indigo-700' : 'text-stone-900'}`}>
+                            <span
+                              className="text-sm font-bold truncate"
+                              style={{ color: checked ? 'var(--vb-accent)' : 'var(--vb-text-primary)' }}
+                            >
                               {t[m.labelKey]}
                             </span>
                           </button>
                         );
                       })}
                     </div>
-                    <p className={`text-xs text-stone-400 mt-3 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <p className={`text-xs mt-3 ${isRTL ? 'text-right' : 'text-left'}`} style={{ color: 'var(--vb-text-muted)' }}>
                       {t.modesSelectedCount(selectedModes.size)}
                     </p>
                   </motion.div>
@@ -387,17 +427,27 @@ export default function TeacherOnboardingWizard({
                       >
                         <PartyPopper className="w-10 h-10 text-white" />
                       </motion.div>
-                      <h2 className="text-2xl sm:text-3xl font-black text-stone-900 mb-1">{t.successHeading}</h2>
-                      <p className="text-sm text-stone-600">{t.successSubtitle}</p>
+                      <h2 className="text-2xl sm:text-3xl font-black mb-1" style={{ color: 'var(--vb-text-primary)' }}>{t.successHeading}</h2>
+                      <p className="text-sm" style={{ color: 'var(--vb-text-secondary)' }}>{t.successSubtitle}</p>
                     </div>
 
                     {/* Class code — big, copyable, gradient frame */}
-                    <div className="bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 rounded-xl p-5 mb-5 border border-indigo-100/60">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2 text-center">
+                    <div
+                      style={{
+                        background: 'color-mix(in srgb, var(--vb-accent) 12%, var(--vb-surface))',
+                        borderColor: 'color-mix(in srgb, var(--vb-accent) 30%, transparent)',
+                      }}
+                      className="rounded-xl p-5 mb-5 border"
+                    >
+                      <p
+                        className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 text-center"
+                        style={{ color: 'var(--vb-text-muted)' }}
+                      >
                         {t.yourClassCodeLabel}
                       </p>
                       <p
-                        className="text-3xl sm:text-4xl font-black text-indigo-700 font-mono tracking-widest text-center select-all"
+                        className="text-3xl sm:text-4xl font-black font-mono tracking-widest text-center select-all"
+                        style={{ color: 'var(--vb-accent)' }}
                         dir="ltr"
                       >
                         {classCode}
@@ -406,8 +456,11 @@ export default function TeacherOnboardingWizard({
 
                     {/* "What next" — three numbered steps so the teacher
                         knows exactly what to do with the code */}
-                    <div className="bg-stone-50 rounded-xl p-4 mb-5">
-                      <p className={`text-xs font-black uppercase tracking-widest text-stone-500 mb-3 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <div style={{ backgroundColor: 'var(--vb-surface-alt)' }} className="rounded-xl p-4 mb-5">
+                      <p
+                        className={`text-xs font-black uppercase tracking-widest mb-3 ${isRTL ? 'text-right' : 'text-left'}`}
+                        style={{ color: 'var(--vb-text-muted)' }}
+                      >
                         {t.whatNextHeading}
                       </p>
                       <ol className="space-y-2.5">
@@ -416,7 +469,7 @@ export default function TeacherOnboardingWizard({
                             <span className="shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-black flex items-center justify-center shadow-sm">
                               {i + 1}
                             </span>
-                            <p className="text-sm text-stone-700 leading-snug">{line}</p>
+                            <p className="text-sm leading-snug" style={{ color: 'var(--vb-text-secondary)' }}>{line}</p>
                           </li>
                         ))}
                       </ol>
@@ -427,10 +480,15 @@ export default function TeacherOnboardingWizard({
                       <button
                         type="button"
                         onClick={handleCopy}
-                        className={`flex-1 py-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-sm flex items-center justify-center gap-1.5 transition ${isRTL ? 'flex-row-reverse' : ''}`}
-                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+                        style={{
+                          touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent' as never,
+                          backgroundColor: 'var(--vb-surface-alt)',
+                          color: 'var(--vb-text-secondary)',
+                        }}
+                        className={`flex-1 py-2.5 rounded-lg hover:opacity-90 font-bold text-sm flex items-center justify-center gap-1.5 transition ${isRTL ? 'flex-row-reverse' : ''}`}
                       >
-                        {copied ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+                        {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
                         {copied ? t.copied : t.copyCode}
                       </button>
                       <button
@@ -449,13 +507,21 @@ export default function TeacherOnboardingWizard({
             </div>
 
             {/* Footer — primary CTA + back affordance for steps 1–2 */}
-            <div className={`px-6 sm:px-8 py-4 border-t border-stone-100 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <div
+              style={{ borderColor: 'var(--vb-border)' }}
+              className={`px-6 sm:px-8 py-4 border-t flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}
+            >
               {step > 0 && step < 3 && (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className={`px-4 py-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-sm flex items-center justify-center gap-1.5 transition ${isRTL ? 'flex-row-reverse' : ''}`}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+                  style={{
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent' as never,
+                    backgroundColor: 'var(--vb-surface-alt)',
+                    color: 'var(--vb-text-secondary)',
+                  }}
+                  className={`px-4 py-3 rounded-xl hover:opacity-90 font-bold text-sm flex items-center justify-center gap-1.5 transition ${isRTL ? 'flex-row-reverse' : ''}`}
                 >
                   <BackArrow size={16} />
                   {t.back}

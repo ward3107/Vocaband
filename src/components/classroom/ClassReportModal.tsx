@@ -232,7 +232,8 @@ export default function ClassReportModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="relative w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden bg-white"
+            style={{ backgroundColor: 'var(--vb-surface)' }}
+            className="relative w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden print:bg-white"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -258,7 +259,7 @@ export default function ClassReportModal({
 
             {/* Body — also the print/pdf source */}
             <div className="p-4 sm:p-6 max-h-[75vh] overflow-y-auto">
-              <div ref={printRef} className="text-stone-900">
+              <div ref={printRef} style={{ color: 'var(--vb-text-primary)' }} className="print:text-stone-900">
                 {/* Print-only header — only renders in the PDF/print */}
                 <div className="hidden print:block mb-4">
                   <h1 className="text-2xl font-black text-indigo-700">{t.reportModalTitle}</h1>
@@ -266,7 +267,7 @@ export default function ClassReportModal({
                 </div>
 
                 {empty ? (
-                  <div className="text-center py-12 text-stone-500 text-sm">
+                  <div className="text-center py-12 text-sm" style={{ color: 'var(--vb-text-muted)' }}>
                     {t.reportEmpty}
                   </div>
                 ) : (
@@ -339,7 +340,7 @@ export default function ClassReportModal({
                       subtitle={t.reportTopWordsSubtitle}
                     >
                       {topWords.length === 0 ? (
-                        <p className="text-center py-8 text-stone-500 text-sm italic">
+                        <p className="text-center py-8 text-sm italic" style={{ color: 'var(--vb-text-muted)' }}>
                           {t.reportTopWordsEmpty}
                         </p>
                       ) : (
@@ -371,12 +372,21 @@ export default function ClassReportModal({
                     </ChartCard>
 
                     {/* Status table */}
-                    <div className="rounded-xl border border-stone-200 overflow-hidden mt-6 vb-print-avoid-break">
-                      <div className="px-4 py-3 bg-stone-50 border-b border-stone-200">
-                        <h3 className="font-black text-sm text-stone-800">{t.reportStatusTableHeading}</h3>
+                    <div
+                      style={{ borderColor: 'var(--vb-border)' }}
+                      className="rounded-xl border overflow-hidden mt-6 vb-print-avoid-break print:border-stone-200"
+                    >
+                      <div
+                        style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
+                        className="px-4 py-3 border-b print:bg-stone-50 print:border-stone-200"
+                      >
+                        <h3 className="font-black text-sm print:text-stone-800" style={{ color: 'var(--vb-text-primary)' }}>{t.reportStatusTableHeading}</h3>
                       </div>
                       <table className="w-full text-sm">
-                        <thead className="bg-stone-100/70 text-stone-600 text-xs uppercase tracking-wider">
+                        <thead
+                          style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
+                          className="text-xs uppercase tracking-wider print:bg-stone-100/70 print:text-stone-600"
+                        >
                           <tr>
                             <th className={`px-4 py-2 ${isRTL ? 'text-right' : 'text-left'} font-bold`}>{t.pdfColStudent}</th>
                             <th className="px-4 py-2 text-center font-bold">{t.pdfColPlays}</th>
@@ -387,11 +397,20 @@ export default function ClassReportModal({
                         </thead>
                         <tbody>
                           {students.map((s, i) => (
-                            <tr key={s.studentName} className={i % 2 === 0 ? 'bg-white' : 'bg-stone-50/60'}>
-                              <td className={`px-4 py-2 font-semibold text-stone-900 ${isRTL ? 'text-right' : 'text-left'}`}>{s.studentName}</td>
-                              <td className="px-4 py-2 text-center tabular-nums">{s.plays}</td>
+                            <tr
+                              key={s.studentName}
+                              style={{ backgroundColor: i % 2 === 0 ? 'var(--vb-surface)' : 'var(--vb-surface-alt)' }}
+                              className={i % 2 === 0 ? 'print:bg-white' : 'print:bg-stone-50/60'}
+                            >
+                              <td
+                                className={`px-4 py-2 font-semibold print:text-stone-900 ${isRTL ? 'text-right' : 'text-left'}`}
+                                style={{ color: 'var(--vb-text-primary)' }}
+                              >
+                                {s.studentName}
+                              </td>
+                              <td className="px-4 py-2 text-center tabular-nums" style={{ color: 'var(--vb-text-secondary)' }}>{s.plays}</td>
                               <td className="px-4 py-2 text-center tabular-nums font-bold" style={{ color: STATUS_COLOR[s.status] }}>{s.avgScore}%</td>
-                              <td className="px-4 py-2 text-center tabular-nums">{s.totalMistakes}</td>
+                              <td className="px-4 py-2 text-center tabular-nums" style={{ color: 'var(--vb-text-secondary)' }}>{s.totalMistakes}</td>
                               <td className="px-4 py-2 text-center">
                                 <span
                                   className="inline-block px-2 py-0.5 rounded-full text-xs font-bold"
@@ -429,8 +448,13 @@ export default function ClassReportModal({
                 type="button"
                 onClick={handlePrint}
                 disabled={empty}
-                style={{ touchAction: 'manipulation' }}
-                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-black text-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                style={{
+                  touchAction: 'manipulation',
+                  backgroundColor: 'var(--vb-surface-alt)',
+                  color: 'var(--vb-text-secondary)',
+                  borderColor: 'var(--vb-border)',
+                }}
+                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg border hover:opacity-90 font-black text-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <Printer size={16} />
                 {t.reportPrintBtn}
@@ -474,9 +498,12 @@ interface ChartCardProps {
 
 function ChartCard({ title, subtitle, children }: ChartCardProps) {
   return (
-    <div className="rounded-xl border border-stone-200 bg-white p-4 mt-4 vb-print-avoid-break">
-      <h3 className="font-black text-sm text-stone-800">{title}</h3>
-      {subtitle && <p className="text-xs text-stone-500 mt-0.5">{subtitle}</p>}
+    <div
+      style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+      className="rounded-xl border p-4 mt-4 vb-print-avoid-break print:bg-white print:border-stone-200"
+    >
+      <h3 className="font-black text-sm print:text-stone-800" style={{ color: 'var(--vb-text-primary)' }}>{title}</h3>
+      {subtitle && <p className="text-xs mt-0.5 print:text-stone-500" style={{ color: 'var(--vb-text-muted)' }}>{subtitle}</p>}
       <div className="mt-3">{children}</div>
     </div>
   );

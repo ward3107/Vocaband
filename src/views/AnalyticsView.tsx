@@ -399,7 +399,11 @@ export default function AnalyticsView({
   }, [selectedClass]);
 
   return (
-    <div dir={dir} className={embedded ? "pb-24" : "min-h-screen bg-gradient-to-b from-stone-50 to-white pb-24"}>
+    <div
+      dir={dir}
+      className={embedded ? "pb-24" : "min-h-screen pb-24"}
+      style={embedded ? undefined : { backgroundColor: 'var(--vb-surface-alt)' }}
+    >
       {!embedded && (
         <TopAppBar
           title={t.title}

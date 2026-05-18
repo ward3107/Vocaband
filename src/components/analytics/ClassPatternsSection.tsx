@@ -69,8 +69,8 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
   }, [filtered, weeks]);
 
   const cellColor = (count: number, max: number): string => {
-    if (count === 0) return 'bg-slate-100';
-    if (max === 0) return 'bg-slate-100';
+    if (count === 0) return 'bg-[var(--vb-surface-alt)]';
+    if (max === 0) return 'bg-[var(--vb-surface-alt)]';
     const intensity = count / max;
     if (intensity > 0.75) return 'bg-indigo-600';
     if (intensity > 0.5) return 'bg-indigo-500';
@@ -119,19 +119,20 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl p-5 sm:p-6 shadow-lg border border-stone-100"
+        style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+        className="rounded-2xl p-5 sm:p-6 shadow-lg border"
       >
         <div className="flex items-center gap-2 mb-1">
           <Calendar size={20} className="text-indigo-500" />
-          <h3 className="text-lg font-black text-stone-900">{t.activityPattern}</h3>
+          <h3 className="text-lg font-black" style={{ color: 'var(--vb-text-primary)' }}>{t.activityPattern}</h3>
         </div>
-        <p className="text-sm text-stone-500 mb-4">
+        <p className="text-sm mb-4" style={{ color: 'var(--vb-text-secondary)' }}>
           {t.activityIntro(weeks)}
           {busiestDayLabel && <> {t.busiestDayLabel} <strong>{busiestDayLabel}</strong>.</>}
         </p>
 
         {heatmap.max === 0 ? (
-          <div className="py-6 text-center text-sm text-stone-400 font-medium">
+          <div className="py-6 text-center text-sm font-medium" style={{ color: 'var(--vb-text-muted)' }}>
             {t.noPlaysInWindow}
           </div>
         ) : (
@@ -139,7 +140,11 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
             {/* Column headers — day labels (translated) */}
             <div className="flex gap-1 mb-2 pl-10">
               {t.dayLabels.map(label => (
-                <div key={label} className="flex-1 text-center text-[10px] font-black uppercase text-stone-400 tracking-widest">
+                <div
+                  key={label}
+                  className="flex-1 text-center text-[10px] font-black uppercase tracking-widest"
+                  style={{ color: 'var(--vb-text-muted)' }}
+                >
                   {label[0]}
                 </div>
               ))}
@@ -154,14 +159,18 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
                 : t.weeksAgo(weekOffset);
               return (
                 <div key={rIdx} className="flex gap-1 mb-1 items-center">
-                  <div className="w-10 text-right text-[10px] font-bold uppercase text-stone-400 mr-1 tabular-nums">
+                  <div
+                    className="w-10 text-right text-[10px] font-bold uppercase mr-1 tabular-nums"
+                    style={{ color: 'var(--vb-text-muted)' }}
+                  >
                     {label}
                   </div>
                   {row.map((count, dIdx) => (
                     <div
                       key={dIdx}
                       title={t.playsTooltip(count)}
-                      className={`flex-1 h-6 rounded-md ${cellColor(count, heatmap.max)} flex items-center justify-center text-[10px] font-black ${count > 0 && count / heatmap.max > 0.5 ? 'text-white' : 'text-stone-700'}`}
+                      className={`flex-1 h-6 rounded-md ${cellColor(count, heatmap.max)} flex items-center justify-center text-[10px] font-black ${count > 0 && count / heatmap.max > 0.5 ? 'text-white' : ''}`}
+                      style={count > 0 && count / heatmap.max > 0.5 ? undefined : { color: 'var(--vb-text-primary)' }}
                     >
                       {count > 0 ? count : ''}
                     </div>
@@ -178,18 +187,19 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="bg-white rounded-2xl p-5 sm:p-6 shadow-lg border border-stone-100"
+        style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+        className="rounded-2xl p-5 sm:p-6 shadow-lg border"
       >
         <div className="flex items-center gap-2 mb-1">
           <AlertTriangle size={20} className="text-rose-500" />
-          <h3 className="text-lg font-black text-stone-900">{t.hardestWords}</h3>
+          <h3 className="text-lg font-black" style={{ color: 'var(--vb-text-primary)' }}>{t.hardestWords}</h3>
         </div>
-        <p className="text-sm text-stone-500 mb-4">
+        <p className="text-sm mb-4" style={{ color: 'var(--vb-text-secondary)' }}>
           {t.hardestWordsIntro}
         </p>
 
         {hardestWords.length === 0 ? (
-          <div className="py-6 text-center text-sm text-stone-400 font-medium">
+          <div className="py-6 text-center text-sm font-medium" style={{ color: 'var(--vb-text-muted)' }}>
             {t.noMistakesNiceWork}
           </div>
         ) : (
@@ -197,20 +207,20 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
             {hardestWords.map(({ word, count }, idx) => (
               <div
                 key={word.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-rose-50/60 border border-rose-100"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/20"
               >
                 <div className="w-6 h-6 rounded-full bg-rose-500 text-white text-xs font-black flex items-center justify-center shrink-0">
                   {idx + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-stone-900 truncate">{word.english}</p>
-                  <p className="text-xs text-stone-500 truncate" dir="auto">
+                  <p className="font-bold truncate" style={{ color: 'var(--vb-text-primary)' }}>{word.english}</p>
+                  <p className="text-xs truncate" dir="auto" style={{ color: 'var(--vb-text-muted)' }}>
                     {word.hebrew}
-                    {word.arabic && <span className="mx-1.5 text-stone-300">·</span>}
+                    {word.arabic && <span className="mx-1.5 opacity-50">·</span>}
                     {word.arabic}
                   </p>
                 </div>
-                <div className="text-sm font-black text-rose-600 shrink-0">
+                <div className="text-sm font-black text-rose-500 shrink-0">
                   {count}×
                 </div>
               </div>

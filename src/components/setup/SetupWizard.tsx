@@ -615,8 +615,12 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
           <button
             type="button"
             onClick={onBack}
-            className="text-sm font-bold text-stone-500 hover:text-stone-700 underline-offset-4 hover:underline transition-colors"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+            style={{
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent' as never,
+              color: 'var(--vb-text-muted)',
+            }}
+            className="text-sm font-bold underline-offset-4 hover:underline hover:opacity-80 transition-colors"
           >
             {t.cancel}
           </button>

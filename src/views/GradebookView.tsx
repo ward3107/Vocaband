@@ -694,7 +694,8 @@ export default function GradebookView({
                 return (
                   <div
                     key={r.key}
-                    className="rounded-lg border border-[var(--vb-border)] bg-white/40 hover:bg-[var(--vb-surface)] transition-colors overflow-hidden"
+                    style={{ backgroundColor: 'var(--vb-surface)' }}
+                    className="rounded-lg border border-[var(--vb-border)] hover:opacity-95 transition-colors overflow-hidden"
                   >
                     <div className="flex items-center gap-3 p-3 sm:p-4">
                       <button
@@ -842,8 +843,8 @@ export default function GradebookView({
                     key={a.assignmentId}
                     type="button"
                     onClick={() => setDrillAssignmentId(a.assignmentId)}
-                    className="w-full flex items-center gap-3 p-3 bg-white/40 hover:bg-[var(--vb-surface-alt)]/60 rounded-lg transition-colors"
-                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+                    style={{ backgroundColor: 'var(--vb-surface-alt)', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
+                    className="w-full flex items-center gap-3 p-3 hover:opacity-90 rounded-lg transition-colors"
                   >
                     {RowInner}
                     <ChevronDown size={16} className="text-[var(--vb-border)] -rotate-90 shrink-0" aria-hidden />
@@ -851,7 +852,8 @@ export default function GradebookView({
                 ) : (
                   <div
                     key={a.assignmentId}
-                    className="flex items-center gap-3 p-3 bg-white/40 rounded-lg"
+                    style={{ backgroundColor: 'var(--vb-surface-alt)' }}
+                    className="flex items-center gap-3 p-3 rounded-lg"
                   >
                     {RowInner}
                   </div>

@@ -425,7 +425,10 @@ const WorksheetList: React.FC<{
                   <p className="text-xs uppercase tracking-widest font-bold text-violet-500 mb-1 flex items-center gap-2">
                     <span>{w.format}</span>
                     {w.archived_at && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-stone-200 text-stone-700 text-[10px] normal-case tracking-normal">
+                      <span
+                        style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] normal-case tracking-normal"
+                      >
                         <Archive size={10} /> Archived
                       </span>
                     )}
@@ -583,7 +586,10 @@ const WorksheetDetail: React.FC<{
         <p className="text-xs font-mono uppercase tracking-widest text-[var(--vb-text-muted)] mt-2">
           /w/{worksheet.slug}
           {isArchived && (
-            <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-stone-200 text-stone-700 normal-case tracking-normal">
+            <span
+              style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
+              className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full normal-case tracking-normal"
+            >
               <Archive size={10} /> Archived
             </span>
           )}
@@ -628,7 +634,14 @@ const WorksheetDetail: React.FC<{
       </div>
 
       {isArchived ? (
-        <div className="mb-6 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+        <div
+          style={{
+            borderColor: 'var(--vb-border)',
+            backgroundColor: 'var(--vb-surface-alt)',
+            color: 'var(--vb-text-secondary)',
+          }}
+          className="mb-6 rounded-xl border px-4 py-3 text-sm"
+        >
           The share link is disabled while this worksheet is archived.
           Unarchive to let students open it again.
         </div>
@@ -857,10 +870,16 @@ const AttemptSummary: React.FC<{
           disabled={wrongWordCount === 0}
           whileHover={wrongWordCount > 0 ? { scale: 1.02 } : undefined}
           whileTap={wrongWordCount > 0 ? { scale: 0.97 } : undefined}
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
+            ...(wrongWordCount === 0
+              ? { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-muted)' }
+              : {}),
+          }}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-colors ${
             wrongWordCount === 0
-              ? "bg-stone-100 text-stone-400 cursor-not-allowed"
+              ? "cursor-not-allowed"
               : "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-700 hover:to-fuchsia-700"
           }`}
         >
@@ -1136,13 +1155,18 @@ const GenericAnswerRow: React.FC<{ answer: GenericAnswer }> = ({ answer }) => {
 
   const bg =
     correct === true
-      ? "bg-emerald-50 border-emerald-100"
+      ? "bg-emerald-500/10 border-emerald-500/30"
       : correct === false
-        ? "bg-rose-50 border-rose-100"
-        : "bg-stone-50 border-stone-100";
+        ? "bg-rose-500/10 border-rose-500/30"
+        : "";
 
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg text-sm border ${bg}`}>
+    <div
+      className={`flex items-start gap-3 p-3 rounded-lg text-sm border ${bg}`}
+      style={correct === null || correct === undefined
+        ? { backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }
+        : undefined}
+    >
       <div className="flex-1 min-w-0">
         <p className="font-bold text-[var(--vb-text-primary)]" dir="auto">
           {label}
