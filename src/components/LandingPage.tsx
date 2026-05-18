@@ -220,7 +220,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </div>
 
         {/* Hero Section - Floating 3D Cards + Gradient Mesh */}
-        <section className="min-h-screen pt-20 pb-12 px-4 md:px-6 relative isolate flex items-center justify-center overflow-hidden">
+        <section className="min-h-screen pt-20 pb-8 px-4 md:px-6 relative isolate flex items-start lg:items-center justify-center overflow-hidden">
           {/* Brand-tint backdrop — fully GPU-rendered gradient, no video
               fetch.  The animated mesh below paints the motion that used
               to come from a 2 MB MP4. */}
@@ -243,8 +243,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left Content */}
               <div className="text-center lg:text-left">
-                {/* Main Headline - 3D Text Effect */}
-                <h1 className="relative z-20 text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black font-headline italic leading-tight break-words mb-6">
+                {/* Main Headline - 3D Text Effect.
+                    lg:text-8xl was clipping the CTAs below the fold on
+                    standard 1366×768 laptops; capped at xl:text-8xl so
+                    only large desktops get the chunkiest variant. */}
+                <h1 className="relative z-20 text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black font-headline italic leading-tight break-words mb-4 md:mb-5">
                   <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
                     {t.heroTitleLine1}
                   </span>
@@ -256,7 +259,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
                 {/* Subtitle */}
                 <p
-                  className="text-lg md:text-xl text-white/80 mb-8 max-w-xl"
+                  className="text-lg md:text-xl text-white/80 mb-6 max-w-xl"
                   dir={dir}
                 >
                   {t.heroSubtitle}
@@ -274,7 +277,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     style={{ touchAction: 'manipulation' }}
                     type="button"
                     aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
-                    className="group relative w-full sm:w-auto px-10 md:px-14 py-6 md:py-7 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_14px_0_0_#581c87,0_28px_60px_rgba(168,85,247,0.55)] hover:shadow-[0_18px_0_0_#4c1d95,0_32px_70px_rgba(168,85,247,0.7)] active:shadow-[0_4px_0_0_#581c87,0_12px_28px_rgba(168,85,247,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60"
+                    className="group relative w-full sm:w-auto px-10 md:px-14 py-5 md:py-6 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_14px_0_0_#581c87,0_28px_60px_rgba(168,85,247,0.55)] hover:shadow-[0_18px_0_0_#4c1d95,0_32px_70px_rgba(168,85,247,0.7)] active:shadow-[0_4px_0_0_#581c87,0_12px_28px_rgba(168,85,247,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60"
                   >
                     <GraduationCap size={32} strokeWidth={2.5} className="relative z-10" />
                     <div className={`relative z-10 flex flex-col ${isRTL ? "items-end" : "items-start"} leading-tight`}>
@@ -296,7 +299,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     style={{ touchAction: 'manipulation' }}
                     type="button"
                     aria-label={t.heroCtaStudent}
-                    className="group relative w-full sm:w-auto px-10 md:px-14 py-6 md:py-7 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_14px_0_0_#9a3412,0_28px_60px_rgba(251,146,60,0.55)] hover:shadow-[0_18px_0_0_#7c2d12,0_32px_70px_rgba(251,146,60,0.7)] active:shadow-[0_4px_0_0_#9a3412,0_12px_28px_rgba(251,146,60,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/50 hover:ring-amber-300/70"
+                    className="group relative w-full sm:w-auto px-10 md:px-14 py-5 md:py-6 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_14px_0_0_#9a3412,0_28px_60px_rgba(251,146,60,0.55)] hover:shadow-[0_18px_0_0_#7c2d12,0_32px_70px_rgba(251,146,60,0.7)] active:shadow-[0_4px_0_0_#9a3412,0_12px_28px_rgba(251,146,60,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/50 hover:ring-amber-300/70"
                   >
                     <BookOpen size={32} strokeWidth={2.5} className="relative z-10" />
                     <span className="relative z-10">{t.heroCtaStudent}</span>
@@ -311,7 +314,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     stats live elsewhere (or wait for real data).
                     See docs/PRICING-MODEL.md for positioning. */}
                 <div
-                  className={`mt-8 flex flex-wrap items-center gap-2 ${isRTL ? "justify-center lg:justify-end" : "justify-center lg:justify-start"}`}
+                  className={`mt-6 flex flex-wrap items-center gap-2 ${isRTL ? "justify-center lg:justify-end" : "justify-center lg:justify-start"}`}
                   dir={dir}
                 >
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-100 border border-amber-400/30 font-bold text-xs backdrop-blur-sm">
