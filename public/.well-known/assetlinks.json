@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.vocaband.app",
+      "sha256_cert_fingerprints": [
+        "10:71:23:E8:B7:B8:A4:7F:B2:E8:A0:43:9D:71:21:20:16:86:47:8F:CD:8E:9B:33:8C:1E:D7:A6:17:C8:2B:90"
+      ]
+    }
+  }
+]
