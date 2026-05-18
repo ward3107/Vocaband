@@ -60,22 +60,9 @@ export interface PrivacySettingsStrings {
   toastDeleteFailed: string;
   toastNameUpdated: string;
   toastNameFailed: string;
-
-  // Parent Weekly Digest opt-in (only rendered for students when the
-  // VITE_PARENT_DIGEST flag is on — the worker + cron + email template
-  // ship in later phases; this card just collects the email).
-  parentDigestTitle: string;
-  parentDigestSubtitle: string;
-  parentDigestEmailLabel: string;
-  parentDigestEmailPlaceholder: string;
-  parentDigestSave: string;
-  parentDigestRemove: string;
-  parentDigestRemoveConfirm: string;
-  parentDigestCurrentLabel: string;
-  parentDigestSavedToast: string;
-  parentDigestRemovedToast: string;
-  parentDigestSaveFailed: string;
-  parentDigestInvalidEmail: string;
+  // (Parent Weekly Digest opt-in keys lived here until 2026-05-18 —
+  // removed alongside the schema in migration
+  // 20260618000000_drop_parent_digest_stub.sql.)
 }
 
 export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
@@ -118,18 +105,6 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     toastDeleteFailed: "Failed to delete account.",
     toastNameUpdated: "Name updated!",
     toastNameFailed: "Failed to update name.",
-    parentDigestTitle: "Send my parent a weekly progress email",
-    parentDigestSubtitle: "Every Friday afternoon, your parent gets a short email about what you learned that week.",
-    parentDigestEmailLabel: "Parent's email",
-    parentDigestEmailPlaceholder: "parent@example.com",
-    parentDigestSave: "Save",
-    parentDigestRemove: "Stop sending emails",
-    parentDigestRemoveConfirm: "Stop sending the Friday update to this email?",
-    parentDigestCurrentLabel: "Currently sending to:",
-    parentDigestSavedToast: "Parent email saved. The next update sends Friday.",
-    parentDigestRemovedToast: "Parent email removed.",
-    parentDigestSaveFailed: "Couldn't save right now. Try again in a moment.",
-    parentDigestInvalidEmail: "That doesn't look like an email address.",
   },
   he: {
     back: "חזרה",
@@ -170,18 +145,6 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     toastDeleteFailed: "מחיקת החשבון נכשלה.",
     toastNameUpdated: "השם עודכן!",
     toastNameFailed: "עדכון השם נכשל.",
-    parentDigestTitle: "שלחו להורה שלי מייל שבועי על ההתקדמות",
-    parentDigestSubtitle: "כל יום שישי אחר הצהריים, ההורה שלכם מקבל מייל קצר על מה שלמדתם השבוע.",
-    parentDigestEmailLabel: 'דוא"ל של הורה',
-    parentDigestEmailPlaceholder: "parent@example.com",
-    parentDigestSave: "שמירה",
-    parentDigestRemove: "הפסקת שליחת מיילים",
-    parentDigestRemoveConfirm: 'להפסיק לשלוח את העדכון של יום שישי לדוא"ל הזה?',
-    parentDigestCurrentLabel: "שולח כרגע אל:",
-    parentDigestSavedToast: 'דוא"ל הורה נשמר. העדכון הבא יישלח ביום שישי.',
-    parentDigestRemovedToast: 'דוא"ל הורה הוסר.',
-    parentDigestSaveFailed: "לא הצלחנו לשמור כרגע. נסו שוב בעוד רגע.",
-    parentDigestInvalidEmail: 'זה לא נראה כמו כתובת דוא"ל.',
   },
   ar: {
     back: "رجوع",
@@ -222,18 +185,6 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     toastDeleteFailed: "فشل حذف الحساب.",
     toastNameUpdated: "تم تحديث الاسم!",
     toastNameFailed: "فشل تحديث الاسم.",
-    parentDigestTitle: "أرسل لوالدي بريداً أسبوعياً عن تقدمي",
-    parentDigestSubtitle: "كل يوم جمعة بعد الظهر، يحصل والدك على بريد قصير عما تعلمته هذا الأسبوع.",
-    parentDigestEmailLabel: "بريد الوالد",
-    parentDigestEmailPlaceholder: "parent@example.com",
-    parentDigestSave: "حفظ",
-    parentDigestRemove: "إيقاف إرسال البريد",
-    parentDigestRemoveConfirm: "إيقاف إرسال تحديث الجمعة إلى هذا البريد؟",
-    parentDigestCurrentLabel: "يُرسل حالياً إلى:",
-    parentDigestSavedToast: "تم حفظ بريد الوالد. سيُرسل التحديث التالي يوم الجمعة.",
-    parentDigestRemovedToast: "تم حذف بريد الوالد.",
-    parentDigestSaveFailed: "تعذر الحفظ الآن. حاول مرة أخرى بعد لحظة.",
-    parentDigestInvalidEmail: "هذا لا يبدو كعنوان بريد إلكتروني.",
   },
   ru: {
     back: "Back",
@@ -274,17 +225,5 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     toastDeleteFailed: "Failed to delete account.",
     toastNameUpdated: "Name updated!",
     toastNameFailed: "Failed to update name.",
-    parentDigestTitle: "Send my parent a weekly progress email",
-    parentDigestSubtitle: "Every Friday afternoon, your parent gets a short email about what you learned that week.",
-    parentDigestEmailLabel: "Parent's email",
-    parentDigestEmailPlaceholder: "parent@example.com",
-    parentDigestSave: "Save",
-    parentDigestRemove: "Stop sending emails",
-    parentDigestRemoveConfirm: "Stop sending the Friday update to this email?",
-    parentDigestCurrentLabel: "Currently sending to:",
-    parentDigestSavedToast: "Parent email saved. The next update sends Friday.",
-    parentDigestRemovedToast: "Parent email removed.",
-    parentDigestSaveFailed: "Couldn't save right now. Try again in a moment.",
-    parentDigestInvalidEmail: "That doesn't look like an email address.",
   },
 };

@@ -6,12 +6,10 @@ import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
 import { privacySettingsT } from "../locales/privacy-settings";
 
-// Parent Weekly Digest — Phase 1 of the Friday email feature.  The
-// opt-in card stays hidden in production until the worker + cron
-// schedule ship (later phases); flipping this flag on in dev lets
-// the team test the capture flow without exposing parents to a
-// promise we can't yet keep.  See open-issues.md Tier 2 item #5.
-const PARENT_DIGEST_ENABLED = import.meta.env.VITE_PARENT_DIGEST === 'true';
+// (Parent Weekly Digest opt-in was removed in the 2026-05-18 privacy
+// review.  See migration 20260618000000_drop_parent_digest_stub.sql
+// and PRIVACY_CHECKLIST §6.  Re-introduce alongside the worker + cron
+// + privacy-policy disclosure if/when the Friday-digest feature ships.)
 
 type ToastType = "success" | "error" | "info";
 
@@ -108,77 +106,6 @@ export default function PrivacySettingsView({
     }
   };
 
-  // ── Parent Weekly Digest opt-in ─────────────────────────────────
-  // Only mounted for authenticated real students when the feature
-  // flag is on.  The DB columns landed in migration
-  // 20260612000000_parent_digest_optin.sql; the worker + cron + email
-  // template ship in later phases.  Locale is snapshot at save time
-  // so the email stays in the language the student picked even if
-  // they later switch their UI.
-  const showParentDigest = PARENT_DIGEST_ENABLED && user.role === 'student';
-  const [parentEmailInput, setParentEmailInput] = useState(user.parentEmail ?? '');
-  const [parentEmailSaving, setParentEmailSaving] = useState(false);
-
-  const handleSaveParentEmail = async () => {
-    const trimmed = parentEmailInput.trim();
-    // Loose validation — mirrors the DB CHECK (just confirms an `@`
-    // and a `.`).  Full RFC validation is left to bounce handling.
-    if (!trimmed || !trimmed.includes('@') || !trimmed.includes('.')) {
-      showToast(t.parentDigestInvalidEmail, 'error');
-      return;
-    }
-    setParentEmailSaving(true);
-    try {
-      const now = new Date().toISOString();
-      const { error: updateErr } = await supabase.from('users').update({
-        parent_email: trimmed,
-        parent_email_locale: language,
-        parent_email_opt_in_at: now,
-      }).eq('uid', user.uid);
-      if (updateErr) throw updateErr;
-      setUser(prev => prev ? {
-        ...prev,
-        parentEmail: trimmed,
-        parentEmailLocale: language,
-        parentEmailOptInAt: now,
-      } : prev);
-      showToast(t.parentDigestSavedToast, 'success');
-    } catch {
-      showToast(t.parentDigestSaveFailed, 'error');
-    } finally {
-      setParentEmailSaving(false);
-    }
-  };
-
-  const handleRemoveParentEmail = () => {
-    setConfirmDialog({
-      show: true,
-      message: t.parentDigestRemoveConfirm,
-      onConfirm: async () => {
-        try {
-          const { error: updateErr } = await supabase.from('users').update({
-            parent_email: null,
-            parent_email_locale: null,
-            parent_email_opt_in_at: null,
-          }).eq('uid', user.uid);
-          if (updateErr) throw updateErr;
-          setUser(prev => prev ? {
-            ...prev,
-            parentEmail: null,
-            parentEmailLocale: null,
-            parentEmailOptInAt: null,
-          } : prev);
-          setParentEmailInput('');
-          showToast(t.parentDigestRemovedToast, 'success');
-        } catch {
-          showToast(t.parentDigestSaveFailed, 'error');
-        } finally {
-          setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
-        }
-      },
-    });
-  };
-
   return (
     <div dir={dir} className="min-h-screen bg-stone-100 p-4 sm:p-6">
       {consentModal}
@@ -225,66 +152,6 @@ export default function PrivacySettingsView({
             {user.classCode && <p><strong>{t.classCode}</strong> {user.classCode}</p>}
           </div>
         </div>
-
-        {/* Parent Weekly Digest opt-in (feature-flagged, students only). */}
-        {showParentDigest && (
-          <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
-            <h2 className="font-bold text-stone-800 mb-1">{t.parentDigestTitle}</h2>
-            <p className="text-sm text-stone-500 mb-4">{t.parentDigestSubtitle}</p>
-            {user.parentEmail ? (
-              <div className="space-y-3">
-                <div className="text-sm text-stone-700">
-                  <span className="text-stone-500">{t.parentDigestCurrentLabel}</span>{" "}
-                  <span dir="ltr" className="font-bold break-all">{user.parentEmail}</span>
-                </div>
-                <div className={`flex flex-wrap gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <button
-                    type="button"
-                    onClick={() => setParentEmailInput('')}
-                    className="text-blue-600 font-bold text-xs hover:underline"
-                  >
-                    {t.edit}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRemoveParentEmail}
-                    className="text-rose-600 font-bold text-xs hover:underline"
-                  >
-                    {t.parentDigestRemove}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <label className="block text-xs font-bold text-stone-600 uppercase tracking-wide" htmlFor="parent-email-input">
-                  {t.parentDigestEmailLabel}
-                </label>
-                <div className={`flex flex-wrap gap-2 items-stretch ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <input
-                    id="parent-email-input"
-                    name="parentEmail"
-                    type="email"
-                    autoComplete="off"
-                    inputMode="email"
-                    value={parentEmailInput}
-                    onChange={(e) => setParentEmailInput(e.target.value)}
-                    placeholder={t.parentDigestEmailPlaceholder}
-                    dir="ltr"
-                    className="flex-1 min-w-[200px] border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveParentEmail}
-                    disabled={parentEmailSaving || parentEmailInput.trim().length === 0}
-                    className="signature-gradient text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-50 hover:scale-105 active:scale-95 transition-all"
-                  >
-                    {t.parentDigestSave}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* What data we store */}
         <div className="bg-white rounded-xl p-5 shadow-sm mb-4">

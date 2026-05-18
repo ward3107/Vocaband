@@ -81,6 +81,7 @@ Tracks all privacy features required for Israeli PPA Amendment 13 compliance. Us
 | Hosting region per third party | Done | `hostingRegion` field on each entry |
 | Cross-border transfers documented | Done | `HOSTING_REGIONS` in privacy-config.ts, `DATA_FLOW.md` |
 | Student-side Google / Microsoft OAuth removed | Done (2026-05-18) | Visible UI stripped from `StudentAccountLoginView.tsx`; stale OAuth student sessions are rejected in `useAuthRestore.ts` (signed out + routed to PIN login with an explanatory error).  Orphan files deleted: `OAuthButton.tsx`, `OAuthCallback.tsx`, `OAuthClassCode.tsx`, `StudentEmailOtpCard.tsx`, `useOAuthFlow.ts`.  Teacher OAuth (`TeacherLoginCard.tsx` → `signInWithOAuth`) is unaffected.  Aligns code with the policy's "students share no real email" claim. |
+| Parent Weekly Digest stub removed | Done (2026-05-18) | Phase 1 + Phase 2 infrastructure rolled back in migration `20260618000000_drop_parent_digest_stub.sql` (drops `digest_send_log` table + 3 columns on `users` + 2 CHECK constraints).  UI block + state + handlers removed from `PrivacySettingsView.tsx`; 12 locale keys × 4 languages removed from `src/locales/privacy-settings.ts`; AppUser type fields + mapper entries removed from `src/core/supabase.ts`.  Edge Function `supabase/functions/send_parent_digest/` and setup doc `docs/PARENT-DIGEST-SETUP.md` deleted.  Aligns code with policy: we don't collect parent emails at all.  Re-introduce alongside Resend in `THIRD_PARTY_REGISTRY` + a privacy-policy version bump if/when the feature ships. |
 
 ## 7. Documentation
 
