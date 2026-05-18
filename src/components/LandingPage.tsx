@@ -249,15 +249,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               {/* Left Content */}
               <div className="text-center lg:text-left">
                 {/* Main Headline - 3D Text Effect.
-                    lg:text-8xl was clipping the CTAs below the fold on
-                    standard 1366×768 laptops; capped at xl:text-8xl so
-                    only large desktops get the chunkiest variant. */}
-                <h1 className="relative z-20 text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black font-headline italic leading-tight break-words mb-4 md:mb-5">
-                  <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
+                    Sized to keep both CTA buttons above the fold on a
+                    typical 1366×768 laptop, AND to keep the Hebrew /
+                    Arabic line 2 from wrapping into two visual lines —
+                    that's what was eating the vertical budget in the
+                    RTL builds. xl:text-7xl is the chunkiest variant
+                    (was 8xl) so even very wide screens get a headline
+                    that fits a 3-word Hebrew phrase on one line. */}
+                <h1 className="relative z-20 text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black font-headline italic leading-[1.05] text-balance break-words mb-3 md:mb-4">
+                  <span className="inline-block pr-4 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
                     {t.heroTitleLine1}
                   </span>
                   <br />
-                  <span className="inline-block pr-4 pb-2 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
+                  <span className="inline-block pr-4 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
                     {t.heroTitleLine2}
                   </span>
                 </h1>
