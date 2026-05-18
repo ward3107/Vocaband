@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Check, Copy, X, Link2, MessageCircle } from "lucide-react";
+import { Check, Copy, X, Link2, MessageCircle, Printer } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import type { Language } from "../hooks/useLanguage";
@@ -288,6 +288,27 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* Printable poster — only for the canonical class-share
+                  flow. Hidden for assignment shares and Class Minute
+                  sends since those are one-off contexts where a wall
+                  poster doesn't apply. /poster (no .html) sidesteps the
+                  Cloudflare auto-trailing-slash redirect that was
+                  getting cached by the Service Worker. */}
+              {!isAssignmentShare && !isClassMinuteShare && (
+                <button
+                  onClick={() => {
+                    const posterUrl = `/poster?class=${encodeURIComponent(code)}&ref=teacher-${encodeURIComponent(code)}`;
+                    window.open(posterUrl, '_blank', 'noopener');
+                  }}
+                  type="button"
+                  style={{ touchAction: "manipulation", color: "var(--vb-text-secondary)" }}
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold hover:bg-[var(--vb-surface-alt)] active:scale-[0.97] transition-all"
+                >
+                  <Printer size={15} className="text-indigo-500" />
+                  {t.printPoster}
+                </button>
+              )}
             </div>
           </motion.div>
         </motion.div>
