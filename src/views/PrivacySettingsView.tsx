@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { supabase, hasTeacherAccess, type AppUser } from "../core/supabase";
-import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY } from "../config/privacy-config";
+import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY, RETENTION_PERIODS } from "../config/privacy-config";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
 import { privacySettingsT } from "../locales/privacy-settings";
@@ -377,7 +377,7 @@ export default function PrivacySettingsView({
             </button>
           </div>
           <p className="text-xs text-stone-400 mt-3">
-            {t.retentionNote(DATA_CONTROLLER.contactEmail)}
+            {t.retentionNote(DATA_CONTROLLER.contactEmail, RETENTION_PERIODS.backupSupabasePlatformDays, RETENTION_PERIODS.backupOffsiteR2Days)}
           </p>
         </div>
       </div>

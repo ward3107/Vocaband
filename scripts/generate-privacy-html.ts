@@ -208,9 +208,10 @@ const html = `<!DOCTYPE html>
     <tr><td>Orphaned student accounts (no class membership)</td><td>${RETENTION_PERIODS.orphanedStudentDays} days after last login</td><td>Automatic cleanup</td></tr>
     <tr><td>Audit log entries</td><td>${RETENTION_PERIODS.auditLogDays} days (≈ 2 years)</td><td>Automatic deletion</td></tr>
     <tr><td>Consent log entries</td><td>${RETENTION_PERIODS.consentLogDays} days (≈ 10 years)</td><td>Legal requirement</td></tr>
-    <tr><td>Database backups</td><td>30 days rolling</td><td>Automatic rotation (weekly snapshots in encrypted off-region storage)</td></tr>
+    <tr><td>Database provider platform backups (Supabase PITR / daily snapshots)</td><td>Up to ${RETENTION_PERIODS.backupSupabasePlatformDays} days</td><td>Automatic rotation by the provider</td></tr>
+    <tr><td>Off-site disaster-recovery archive (encrypted weekly <code>pg_dump</code> in Cloudflare R2)</td><td>Up to ${RETENTION_PERIODS.backupOffsiteR2Days} days (≈ ${Math.round(RETENTION_PERIODS.backupOffsiteR2Days / 30)} months)</td><td>R2 lifecycle policy — automatic deletion at ${RETENTION_PERIODS.backupOffsiteR2Days} days</td></tr>
   </table>
-  <p>When a class is deleted, all associated assignments and progress records are removed via cascading delete. Database backups may contain copies of deleted data for up to 30 additional days before backup rotation overwrites them.</p>
+  <p>When a class is deleted, all associated assignments and progress records are removed via cascading delete. Encrypted backups may still contain copies of deleted data until the windows above expire and the backups are overwritten or automatically deleted.</p>
 
   <!-- Section 7: Cross-Border Transfers -->
   <h2>7. Cross-Border Data Transfers</h2>

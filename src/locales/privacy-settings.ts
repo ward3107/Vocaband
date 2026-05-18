@@ -51,7 +51,7 @@ export interface PrivacySettingsStrings {
   downloadMyData: string;
   deleteMyAccount: string;
   deleteConfirm: string;
-  retentionNote: (email: string) => string;
+  retentionNote: (email: string, platformDays: number, offsiteDays: number) => string;
 
   // Toasts
   toastDataExported: string;
@@ -110,7 +110,8 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     downloadMyData: "Download My Data (JSON)",
     deleteMyAccount: "Delete My Account",
     deleteConfirm: "This will permanently delete your account and all associated data. This action cannot be undone. Are you sure?",
-    retentionNote: (email) => `Note: Data in encrypted backups may be retained for up to 30 days after deletion. Contact ${email} for questions.`,
+    retentionNote: (email, platformDays, offsiteDays) =>
+      `Note: Data in encrypted backups may persist after deletion — up to ${platformDays} days in our database provider's platform backups, and up to ${offsiteDays} days (about ${Math.round(offsiteDays / 30)} months) in our off-site disaster-recovery archive. After those windows, the backups are overwritten or deleted automatically. Contact ${email} for questions.`,
     toastDataExported: "Data exported successfully!",
     toastExportFailed: "Failed to export data.",
     toastAccountDeleted: "Account deleted successfully.",
@@ -161,7 +162,8 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     downloadMyData: "הורד את המידע שלי (JSON)",
     deleteMyAccount: "מחיקת החשבון שלי",
     deleteConfirm: "זה ימחק לצמיתות את החשבון שלכם ואת כל הנתונים הקשורים. הפעולה אינה הפיכה. בטוחים?",
-    retentionNote: (email) => `שימו לב: נתונים בגיבויים מוצפנים עשויים להישמר עד 30 ימים לאחר המחיקה. שאלות? כתבו ל-${email}.`,
+    retentionNote: (email, platformDays, offsiteDays) =>
+      `שימו לב: נתונים בגיבויים מוצפנים עשויים להישמר לאחר המחיקה — עד ${platformDays} ימים בגיבויי הפלטפורמה של ספק מסד הנתונים שלנו, ועד ${offsiteDays} ימים (כ-${Math.round(offsiteDays / 30)} חודשים) בארכיון השחזור החיצוני שלנו. לאחר תקופות אלו, הגיבויים נמחקים או נדרסים אוטומטית. שאלות? כתבו ל-${email}.`,
     toastDataExported: "הנתונים יוצאו בהצלחה!",
     toastExportFailed: "ייצוא הנתונים נכשל.",
     toastAccountDeleted: "החשבון נמחק בהצלחה.",
@@ -212,7 +214,8 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     downloadMyData: "تنزيل بياناتي (JSON)",
     deleteMyAccount: "حذف حسابي",
     deleteConfirm: "سيتم حذف حسابك وجميع بياناتك بشكل نهائي. لا يمكن التراجع. هل أنت متأكد؟",
-    retentionNote: (email) => `ملاحظة: قد تُحتفظ النسخ الاحتياطية المشفّرة لمدة تصل إلى 30 يوماً بعد الحذف. للاستفسارات راسل ${email}.`,
+    retentionNote: (email, platformDays, offsiteDays) =>
+      `ملاحظة: قد تستمر البيانات في النسخ الاحتياطية المشفّرة بعد الحذف — حتى ${platformDays} يوماً في النسخ الاحتياطية لمنصّة قاعدة البيانات لدينا، وحتى ${offsiteDays} يوماً (حوالي ${Math.round(offsiteDays / 30)} شهراً) في أرشيف التعافي من الكوارث خارج الموقع. بعد هذه الفترات، تُستبدل النسخ الاحتياطية أو تُحذف تلقائياً. للاستفسارات راسل ${email}.`,
     toastDataExported: "تم تصدير البيانات بنجاح!",
     toastExportFailed: "فشل تصدير البيانات.",
     toastAccountDeleted: "تم حذف الحساب بنجاح.",
@@ -263,7 +266,8 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     downloadMyData: "Download My Data (JSON)",
     deleteMyAccount: "Delete My Account",
     deleteConfirm: "This will permanently delete your account and all associated data. This action cannot be undone. Are you sure?",
-    retentionNote: (email) => `Note: Data in encrypted backups may be retained for up to 30 days after deletion. Contact ${email} for questions.`,
+    retentionNote: (email, platformDays, offsiteDays) =>
+      `Note: Data in encrypted backups may persist after deletion — up to ${platformDays} days in our database provider's platform backups, and up to ${offsiteDays} days (about ${Math.round(offsiteDays / 30)} months) in our off-site disaster-recovery archive. After those windows, the backups are overwritten or deleted automatically. Contact ${email} for questions.`,
     toastDataExported: "Data exported successfully!",
     toastExportFailed: "Failed to export data.",
     toastAccountDeleted: "Account deleted successfully.",

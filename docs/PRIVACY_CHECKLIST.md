@@ -69,7 +69,7 @@ Tracks all privacy features required for Israeli PPA Amendment 13 compliance. Us
 | Audit log: 2 years default | Done | `RETENTION_PERIODS.auditLogDays` |
 | Cleanup RPC function | Done | `public.cleanup_expired_data()` — admin-only |
 | Class deletion clears student class_code | Done | `on_class_deleted` trigger sets `class_code = NULL` |
-| Backup retention documented | Done | Privacy Settings → "Data in encrypted backups may be retained for up to 30 days" |
+| Backup retention documented | Done | `RETENTION_PERIODS.backupSupabasePlatformDays` (30) + `backupOffsiteR2Days` (365) in `privacy-config.ts`. Surfaced via Privacy Settings retention note + the generated `privacy.html` §6. R2 number must match the lifecycle rule on the `vocaband-backups` bucket. |
 
 ## 6. Third Parties & Transfers
 
