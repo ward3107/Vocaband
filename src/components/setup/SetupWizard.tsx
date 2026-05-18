@@ -465,7 +465,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
         subtitle={heroSubtitle}
       />
 
-      <div className={`mx-auto px-3 sm:px-4 md:px-6 pt-6 sm:pt-8 ${currentStep === 3 && isQuickPlay ? 'max-w-5xl' : 'max-w-2xl'}`}>
+      <div className="mx-auto px-3 sm:px-4 md:px-6 pt-6 sm:pt-8 max-w-5xl">
         {/* Activity type tabs — only on the Assignment flow.  Quick Play
             is its own un-classed flow and shouldn't surface these. */}
         {isAssignment && onSwitchActivity && (
