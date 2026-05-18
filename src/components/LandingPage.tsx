@@ -219,8 +219,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           </p>
         </div>
 
-        {/* Hero Section - Floating 3D Cards + Gradient Mesh */}
-        <section className="min-h-screen pt-20 pb-8 px-4 md:px-6 relative isolate flex items-start lg:items-center justify-center overflow-hidden">
+        {/* Hero Section - Floating 3D Cards + Gradient Mesh.
+            Vertical centering is height-gated (not width-gated) — a
+            1366×768 laptop is `lg` by width but only ~648 px tall after
+            Chrome's UI, so centering would push the CTAs off-screen.
+            Anchor to the top until the viewport has the room to center
+            comfortably (~780 px+). */}
+        <section className="min-h-screen pt-20 pb-8 px-4 md:px-6 relative isolate flex items-start [@media(min-height:780px)]:items-center justify-center overflow-hidden">
           {/* Brand-tint backdrop — fully GPU-rendered gradient, no video
               fetch.  The animated mesh below paints the motion that used
               to come from a 2 MB MP4. */}
