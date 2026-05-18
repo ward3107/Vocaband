@@ -179,12 +179,12 @@ export default function GameModeSelectionView({
   };
 
   return (
-    <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
+    <div dir={dir} className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600" />
+        <div className="absolute top-0 start-0 w-full h-3 bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600" />
         <button
           onClick={handleExitGame}
-          className="absolute top-4 right-4 sm:top-10 sm:right-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300"
+          className="absolute top-4 end-4 sm:top-10 sm:end-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300"
           aria-label={t.closeAria}
           title={t.closeAria}
         >
@@ -232,12 +232,12 @@ export default function GameModeSelectionView({
                 setShowModeSelection(false);
                 setShowModeIntro(true);
               }}
-              className={`w-full mb-6 sm:mb-8 p-5 sm:p-8 rounded-2xl text-left relative overflow-hidden shadow-xl transition-all ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-2xl'} bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white`}
+              className={`w-full mb-6 sm:mb-8 p-5 sm:p-8 rounded-2xl text-start relative overflow-hidden shadow-xl transition-all ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-2xl'} bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white`}
               style={{ touchAction: 'manipulation' }}
               dir={dir}
             >
-              <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
-              <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-5 pt-4">
+              <div className="absolute -top-8 -end-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+              <div className="absolute top-0 start-0 end-0 flex justify-between items-start px-5 pt-4">
                 <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
                   <Sparkles size={12} />
                   {t.startHereBadge}
@@ -265,7 +265,7 @@ export default function GameModeSelectionView({
         })()}
 
         {practiceModes.length > 0 && (
-          <div className="mb-3 text-left" dir={dir}>
+          <div className="mb-3 text-start" dir={dir}>
             <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-400">{t.thenPractiseWith}</p>
           </div>
         )}
@@ -310,7 +310,7 @@ export default function GameModeSelectionView({
                 <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
                   {mode.icon}
                   {(isCompleted || isQpLocked) && (
-                    <div className={`absolute -top-2 -right-2 ${isQpLocked ? 'bg-gray-500' : 'bg-blue-600'} text-white rounded-full p-1 shadow-md`}>
+                    <div className={`absolute -top-2 -end-2 ${isQpLocked ? 'bg-gray-500' : 'bg-blue-600'} text-white rounded-full p-1 shadow-md`}>
                       <CheckCircle2 size={16} />
                     </div>
                   )}
@@ -329,7 +329,7 @@ export default function GameModeSelectionView({
                   );
                 })()}
 
-                <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute bottom-4 end-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Zap size={20} className="animate-pulse" />
                 </div>
               </motion.button>

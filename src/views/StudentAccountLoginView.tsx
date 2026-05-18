@@ -210,7 +210,7 @@ export default function StudentAccountLoginView({
   };
 
   const hasEnoughCode = studentLoginClassCode.trim().length >= 3;
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, isRTL } = useLanguage();
   const t = studentLoginT[language];
   const [langOpen, setLangOpen] = useState(false);
   const langs: Language[] = ALL_LANGUAGES;
@@ -279,7 +279,7 @@ export default function StudentAccountLoginView({
                 type="button"
                 className="flex items-center gap-2 text-white/80 hover:text-white transition-colors font-bold text-sm px-3 py-2 rounded-full bg-white/10 backdrop-blur-sm"
               >
-                <ArrowLeft size={16} />
+                <ArrowLeft size={16} className={isRTL ? 'rotate-180' : ''} />
                 {t.back}
               </button>
               <div className="flex items-center gap-3">
@@ -309,7 +309,7 @@ export default function StudentAccountLoginView({
                   {langOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setLangOpen(false)} />
-                      <div className="absolute top-full mt-2 right-0 z-50 bg-white rounded-lg shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
+                      <div className="absolute top-full mt-2 end-0 z-50 bg-white rounded-lg shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
                         {langs.map(lng => (
                           <button
                             key={lng}
@@ -507,7 +507,7 @@ export default function StudentAccountLoginView({
                       key={f.text}
                       className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs font-bold text-white/90 border border-white/10"
                     >
-                      <span className="mr-1">{f.emoji}</span>
+                      <span className="me-1">{f.emoji}</span>
                       {f.text}
                     </span>
                   ))}

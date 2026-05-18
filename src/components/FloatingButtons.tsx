@@ -453,7 +453,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     <div
       ref={shareRef}
       data-floating-buttons
-      className={`fixed left-3 bottom-28 md:left-4 md:bottom-28 z-[80] flex flex-col gap-3 ${className}`}
+      className={`fixed start-3 bottom-28 md:start-4 md:bottom-28 z-[80] flex flex-col gap-3 ${className}`}
     >
       <div
         ref={containerRef}

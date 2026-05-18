@@ -112,7 +112,7 @@ export default function QuickPlayStudentView({
   // picker can fire the join with it.  Defaults to empty string
   // and is overwritten when the student clicks Continue on the form.
   const stagedNameRef = useRef<string>("");
-  const { language: qpLanguage, setLanguage: setAppLanguage } = useLanguage();
+  const { language: qpLanguage, setLanguage: setAppLanguage, isRTL: qpIsRTL } = useLanguage();
 
   // Surface server-side join errors as toasts so the student isn't
   // stuck staring at the join screen. "nickname_taken" has its own
@@ -358,7 +358,7 @@ export default function QuickPlayStudentView({
           }}
           className="text-on-surface-variant font-bold text-sm hover:text-on-surface flex items-center gap-1"
         >
-          ← Back
+          {qpIsRTL ? '→' : '←'} Back
         </button>
       </header>
 
@@ -454,7 +454,7 @@ export default function QuickPlayStudentView({
                     Reconnecting…
                   </>
                 ) : (
-                  <>Continue Playing →</>
+                  <>Continue Playing {qpIsRTL ? '←' : '→'}</>
                 )}
               </button>
               <button
@@ -517,7 +517,7 @@ export default function QuickPlayStudentView({
                 onClick={() => setJoinStep("form")}
                 className="mt-5 w-full py-2 text-sm text-on-surface-variant hover:text-on-surface font-bold"
               >
-                ← Back
+                {qpIsRTL ? '→' : '←'} Back
               </button>
             </div>
           ) : !quickPlayStudentName ? (
@@ -543,7 +543,7 @@ export default function QuickPlayStudentView({
 
 
                 <div className="relative">
-                  <label className="absolute -top-2.5 left-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
+                  <label className="absolute -top-2.5 start-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
                   {(() => {
                     // Check if student already joined this session — lock their name
                     let lockedName = '';
@@ -633,7 +633,7 @@ export default function QuickPlayStudentView({
                   }}
                   className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
                 >
-                  Continue →
+                  Continue {qpIsRTL ? '←' : '→'}
                 </button>
               </div>
 

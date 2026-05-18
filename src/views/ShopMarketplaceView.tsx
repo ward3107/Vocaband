@@ -222,7 +222,7 @@ export default function ShopMarketplaceView({
       type="button"
       onClick={(e) => { e.stopPropagation(); togglePin(kind, id); }}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-      className={`absolute top-1.5 ${isRTL ? 'left-1.5' : 'right-1.5'} w-7 h-7 rounded-full backdrop-blur-sm flex items-center justify-center transition-all ${
+      className={`absolute top-1.5 end-1.5 w-7 h-7 rounded-full backdrop-blur-sm flex items-center justify-center transition-all ${
         isPinned(kind, id) ? 'bg-emerald-500 text-white' : 'bg-white/80 text-stone-600 hover:bg-white'
       }`}
       aria-label={isPinned(kind, id) ? 'Unpin' : 'Pin'}
@@ -244,7 +244,7 @@ export default function ShopMarketplaceView({
         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         className={`relative w-44 sm:w-48 rounded-2xl bg-gradient-to-br ${rarity.bg} p-4 ring-2 ${rarity.ring} shadow-md hover:shadow-xl transition-all ${!canAfford ? 'opacity-70' : ''}`}
       >
-        <div aria-hidden className={`pointer-events-none absolute -top-8 -right-8 w-28 h-28 rounded-full blur-3xl bg-gradient-to-br ${rarity.glow}`} />
+        <div aria-hidden className={`pointer-events-none absolute -top-8 -end-8 w-28 h-28 rounded-full blur-3xl bg-gradient-to-br ${rarity.glow}`} />
         <div className="relative flex justify-end">
           <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${rarity.badge}`}>{egg.rarity}</span>
         </div>
@@ -284,7 +284,7 @@ export default function ShopMarketplaceView({
           {owned ? (
             equipped ? (
               <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600">
-                <Check size={11} className="inline -mt-0.5 mr-0.5" /> {t.unlocked}
+                <Check size={11} className="inline -mt-0.5 me-0.5" /> {t.unlocked}
               </span>
             ) : (
               <motion.button
@@ -330,7 +330,7 @@ export default function ShopMarketplaceView({
           {owned ? (
             active ? (
               <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600">
-                <Check size={11} className="inline -mt-0.5 mr-0.5" /> Active
+                <Check size={11} className="inline -mt-0.5 me-0.5" /> Active
               </span>
             ) : (
               <motion.button
@@ -377,7 +377,7 @@ export default function ShopMarketplaceView({
         <div className="mt-2">
           {owned ? (
             active ? (
-              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600"><Check size={11} className="inline -mt-0.5 mr-0.5" />Equipped</span>
+              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600"><Check size={11} className="inline -mt-0.5 me-0.5" />Equipped</span>
             ) : (
               <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => equipFrame(f.id)} className="w-full text-[11px] font-black bg-violet-600 text-white rounded-full py-1.5">Equip</motion.button>
             )
@@ -405,7 +405,7 @@ export default function ShopMarketplaceView({
         <div className="mt-2">
           {owned ? (
             active ? (
-              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600"><Check size={11} className="inline -mt-0.5 mr-0.5" />Equipped</span>
+              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600"><Check size={11} className="inline -mt-0.5 me-0.5" />Equipped</span>
             ) : (
               <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => equipTitle(ti.id)} className="w-full text-[11px] font-black bg-violet-600 text-white rounded-full py-1.5">Equip</motion.button>
             )
@@ -483,7 +483,7 @@ export default function ShopMarketplaceView({
             <ChevronLeft size={16} className={isRTL ? 'rotate-180' : ''} />
             Dashboard
           </button>
-          <div className="flex items-center gap-2 bg-white rounded-full pl-2 pr-3 py-1.5 border border-stone-200 shadow-sm">
+          <div className="flex items-center gap-2 bg-white rounded-full ps-2 pe-3 py-1.5 border border-stone-200 shadow-sm">
             <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
               <Zap size={14} className="text-white fill-white" />
             </span>

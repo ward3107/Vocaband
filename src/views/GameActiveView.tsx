@@ -411,12 +411,12 @@ export default function GameActiveView({
   return (
     <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 font-sans max-w-7xl mx-auto`}>
       {saveError && (
-        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
+        <div className="fixed bottom-4 end-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />
           <span className="text-sm">{saveError}</span>
           <button
             onClick={() => setSaveError(null)}
-            className="ml-1 hover:opacity-75"
+            className="ms-1 hover:opacity-75"
             aria-label={t.dismissError}
             title={t.dismissError}
           >
@@ -481,16 +481,18 @@ export default function GameActiveView({
                 exit={{ opacity: 0, x: -50 }}
                 className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-2 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-3 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-3 border-red-500" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-transparent"}`}
               >
-                {/* Progress Bar */}
+                {/* Progress Bar — inherits dir from <html> so it fills
+                    end-to-start in RTL (which means right-to-left in
+                    Hebrew/Arabic, matching reading direction). */}
                 <progress
-                  className="absolute top-0 left-0 h-2 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
+                  className="absolute top-0 start-0 h-2 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
                   max={100}
                   value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
                 />
 
                 {/* Show correct answer after 3 failed attempts */}
                 {feedback === "show-answer" && (
-                  <div className="absolute top-12 sm:top-16 left-0 right-0 flex justify-center pointer-events-none z-20">
+                  <div className="absolute top-12 sm:top-16 start-0 end-0 flex justify-center pointer-events-none z-20">
                     <ShowAnswerFeedback
                       answer={gameMode === "reverse" ? currentWord?.english : currentWord?.[targetLanguage]}
                       dir="auto"
