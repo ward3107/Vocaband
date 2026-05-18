@@ -137,7 +137,7 @@ export const MatchingExercise: ExerciseComponent<ExerciseOf<"matching">> = ({
   if (rounds.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-2xl">
+    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-2xl">
       <div className="flex items-center justify-between mb-4 px-1">
         <span className="text-xs font-bold text-stone-500">
           Round {roundIdx + 1} / {rounds.length}

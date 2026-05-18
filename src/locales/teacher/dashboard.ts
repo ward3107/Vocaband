@@ -221,8 +221,8 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     shareShortLabel: "Share",
     projectToClassAria: "Project to class",
     projectShortLabel: "Project",
-    printWorksheetAria: "Print worksheet",
-    printShortLabel: "Print",
+    printWorksheetAria: "Worksheet — print or share online",
+    printShortLabel: "Worksheet",
   },
 
   he: {
@@ -320,8 +320,8 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     shareShortLabel: "שתף",
     projectToClassAria: "הקרנה לכיתה",
     projectShortLabel: "הקרן",
-    printWorksheetAria: "הדפסת דף עבודה",
-    printShortLabel: "הדפס",
+    printWorksheetAria: "דף עבודה — הדפסה או שיתוף מקוון",
+    printShortLabel: "דף עבודה",
   },
 
   ar: {
@@ -419,8 +419,8 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     shareShortLabel: "مشاركة",
     projectToClassAria: "عرض على الصف",
     projectShortLabel: "عرض",
-    printWorksheetAria: "طباعة ورقة العمل",
-    printShortLabel: "طباعة",
+    printWorksheetAria: "ورقة عمل — طباعة أو مشاركة عبر الإنترنت",
+    printShortLabel: "ورقة عمل",
   },
 
   ru: {
@@ -518,7 +518,7 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     shareShortLabel: "Share",
     projectToClassAria: "Project to class",
     projectShortLabel: "Project",
-    printWorksheetAria: "Print worksheet",
-    printShortLabel: "Print",
+    printWorksheetAria: "Worksheet — print or share online",
+    printShortLabel: "Worksheet",
   },
 };

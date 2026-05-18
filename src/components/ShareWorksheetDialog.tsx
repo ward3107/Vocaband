@@ -22,6 +22,7 @@ import { shareWorksheetT } from "../locales/teacher/share-worksheet";
 import type { Exercise, ExerciseType, TranslationDirection } from "../worksheet/types";
 import { WorksheetShareCard } from "./WorksheetShareCard";
 import type { Language } from "../hooks/useLanguage";
+import { getOrCreateMinterFingerprint, recordMyWorksheet } from "../utils/myWorksheets";
 
 // Exercise types that need a context sentence for each word. When the
 // teacher picks any of these, the dialog also calls /api/generate-sentences
@@ -285,6 +286,12 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       if (Object.keys(aiSentences).length > 0) {
         settings.sentences = aiSentences;
       }
+      // Per-device fingerprint lets an anonymous mint be revoked later
+      // from the same browser via revoke_my_worksheet(). The server
+      // stamps it onto interactive_worksheets.minter_fingerprint and
+      // also uses it as the rate-limit actor key when there's no
+      // auth.uid().
+      const minterFp = getOrCreateMinterFingerprint();
       const { data, error: rpcErr } = await supabase.rpc(
         "create_interactive_worksheet_v2",
         {
@@ -292,13 +299,20 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
           p_exercises: exercises,
           p_settings: settings,
           p_parent_slug: parentSlug ?? null,
+          p_minter_fingerprint: minterFp,
         },
       );
       if (rpcErr || !data) {
         setError(rpcErr?.message ?? t.generateError);
         return;
       }
-      setSlug(String(data));
+      const newSlug = String(data);
+      recordMyWorksheet({
+        slug: newSlug,
+        topicName: source.topicName,
+        createdAt: Date.now(),
+      });
+      setSlug(newSlug);
     } finally {
       setCreating(false);
     }
@@ -314,7 +328,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+        className="bg-white w-full sm:max-w-lg sm:rounded-xl rounded-t-xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
         dir={dir}
       >
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-4 flex items-center gap-3">
@@ -394,7 +408,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
                   aiPhase === "generating" ||
                   pendingConfirm !== null
                 }
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 {creating || aiPhase === "generating" ? (
@@ -477,7 +491,7 @@ const ExercisePicker: React.FC<{
           return (
             <div
               key={type}
-              className={`rounded-xl border-2 transition-all ${
+              className={`rounded-lg border-2 transition-all ${
                 active ? "bg-emerald-50 border-emerald-500" : "bg-white border-stone-200"
               }`}
             >

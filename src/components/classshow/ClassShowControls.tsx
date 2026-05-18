@@ -41,7 +41,7 @@ export default function ClassShowControls({
               color: 'var(--vb-text-secondary)',
               backgroundColor: 'var(--vb-surface)',
             }}
-            className="px-5 py-3 rounded-2xl font-bold border-2 inline-flex items-center gap-2"
+            className="px-5 py-3 rounded-xl font-bold border-2 inline-flex items-center gap-2"
           >
             <X size={18} />
             {t.endShow}
@@ -53,7 +53,7 @@ export default function ClassShowControls({
               backgroundColor: 'var(--vb-surface-alt)',
               color: 'var(--vb-text-secondary)',
             }}
-            className="px-5 py-3 rounded-2xl font-bold inline-flex items-center gap-2"
+            className="px-5 py-3 rounded-xl font-bold inline-flex items-center gap-2"
           >
             <SkipForward size={18} />
             {t.skip}
@@ -66,7 +66,7 @@ export default function ClassShowControls({
                 backgroundColor: 'var(--vb-accent)',
                 color: 'var(--vb-accent-text)',
               }}
-              className="px-8 py-4 rounded-2xl font-black text-lg shadow-lg inline-flex items-center gap-2"
+              className="px-8 py-4 rounded-xl font-black text-lg shadow-lg inline-flex items-center gap-2"
             >
               <Eye size={20} />
               {t.reveal}
@@ -79,7 +79,7 @@ export default function ClassShowControls({
                 backgroundColor: 'var(--vb-accent)',
                 color: 'var(--vb-accent-text)',
               }}
-              className="px-8 py-4 rounded-2xl font-black text-lg shadow-lg inline-flex items-center gap-2"
+              className="px-8 py-4 rounded-xl font-black text-lg shadow-lg inline-flex items-center gap-2"
             >
               {isLast ? t.endShow : t.next}
               <ChevronRight size={20} />

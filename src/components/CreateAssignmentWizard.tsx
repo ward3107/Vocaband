@@ -132,7 +132,7 @@ export interface CreateAssignmentWizardProps {
   /** Wires the ActivityTypeTabs strip inside SetupWizard.  When the
    *  teacher picks a non-Assignment tab, the parent (App.tsx) closes
    *  the wizard and opens the chosen tool with this class preselected. */
-  onSwitchActivity?: (type: 'class-show' | 'worksheet' | 'hot-seat' | 'vocabagrut') => void;
+  onSwitchActivity?: (type: 'class-show' | 'hot-seat' | 'vocabagrut') => void;
 }
 
 export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
@@ -244,20 +244,17 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   };
 
   // ── Share via WhatsApp ─────────────────────────────────────────────────────
-  // Mirrors TeacherClassesSection.buildWhatsAppShareText — include the
-  // /student?class= deep link so parents tap the URL and land on the join
-  // screen with the code prefilled, instead of having to copy a bare code
-  // from the message into the app manually.
+  // Mirrors TeacherClassesSection.buildWhatsAppShareText.  The share text
+  // is always English — it's sent to the student, not the teacher, so the
+  // teacher's UI-language pick must not leak into a message the student
+  // (or their parent) opens.
   const shareViaWhatsApp = () => {
     const code = selectedClass?.code ?? '';
     const origin = typeof window !== 'undefined' && window.location?.origin
       ? window.location.origin
       : 'https://www.vocaband.com';
     const joinUrl = `${origin}/student?class=${encodeURIComponent(code)}`;
-    const message =
-      language === 'he' ? `הצטרפו לכיתה שלי בווקבנד 🎓\n${joinUrl}\n(קוד כיתה: ${code})` :
-      language === 'ar' ? `انضموا إلى صفي في فوكاباند 🎓\n${joinUrl}\n(رمز الصف: ${code})` :
-      `Join my class on Vocaband 🎓\n${joinUrl}\n(class code: ${code})`;
+    const message = `Join my class on Vocaband 🎓\n${joinUrl}\n(class code: ${code})`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -285,7 +282,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', duration: 0.6 }}
-            className="bg-surface-container-lowest rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-primary/20 text-center space-y-6"
+            className="bg-surface-container-lowest rounded-2xl p-6 sm:p-8 shadow-2xl border-2 border-primary/20 text-center space-y-6"
           >
             {/* Success Icon */}
             <motion.div
@@ -316,7 +313,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="bg-surface-container rounded-2xl p-4 space-y-3"
+              className="bg-surface-container rounded-xl p-4 space-y-3"
             >
               <div>
                 <div className="text-sm font-bold text-on-surface">{assignmentTitle}</div>
@@ -339,7 +336,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border-2 border-blue-100"
+                className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-100"
               >
                 <div className="text-sm text-blue-700 mb-2 font-bold">{t.shareWithStudents}</div>
                 <div className="text-3xl font-black text-blue-900 mb-4 tracking-wider">
@@ -348,14 +345,14 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 <div className="flex gap-2">
                   <button
                     onClick={copyClassCode}
-                    className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-lg font-bold hover:bg-[var(--vb-surface-alt)] transition-all flex items-center justify-center gap-2"
                   >
                     <Copy size={18} />
                     {copiedCode === selectedClass.code ? t.copiedShort : t.copyCode}
                   </button>
                   <button
                     onClick={shareViaWhatsApp}
-                    className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 transition-all flex items-center justify-center gap-2"
                   >
                     <Share2 size={18} />
                     {t.whatsAppLabel}
@@ -373,13 +370,13 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
             >
               <button
                 onClick={handleCreateAnother}
-                className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all"
+                className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all"
               >
                 {t.createAnother}
               </button>
               <button
                 onClick={onBack}
-                className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-2xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all"
+                className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-surface-alt)] transition-all"
               >
                 {t.backToDashboard}
               </button>

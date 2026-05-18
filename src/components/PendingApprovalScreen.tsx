@@ -181,7 +181,7 @@ export default function PendingApprovalScreen({
 
   return (
     <div dir={dir} className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
         <div className="text-6xl mb-4">
           <span className="inline-block animate-bounce">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
@@ -197,7 +197,7 @@ export default function PendingApprovalScreen({
           {t.bodyLead} <strong>"{pendingApprovalInfo.name}"</strong> {t.inClass(pendingApprovalInfo.classCode)} {t.beforeYouCanPlay}
         </p>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-left">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
           <p className="text-sm font-bold text-amber-800 mb-2">{t.whatToDoLabel}</p>
           <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
             <li>{t.step1}</li>
@@ -211,7 +211,7 @@ export default function PendingApprovalScreen({
           disabled={checking}
           type="button"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className="w-full py-4 signature-gradient text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50 mb-3"
+          className="w-full py-4 signature-gradient text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50 mb-3"
         >
           {checking ? t.checking : t.checkNow}
         </button>

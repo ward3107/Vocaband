@@ -213,9 +213,24 @@ export default function WordChainsGame({
     <div className="flex flex-col items-center px-4 py-6 sm:py-10 w-full" dir="ltr">
       {/* Score chip */}
       <div
-        className={`mb-4 px-4 py-2 rounded-full font-black text-sm ${theme.pillBg} ${theme.pillText} shadow-md`}
+        className={`mb-2 px-4 py-2 rounded-full font-black text-sm ${theme.pillBg} ${theme.pillText} shadow-md`}
       >
         🔗 {language === "he" ? "שרשרת" : language === "ar" ? "السلسلة" : "Chain"}: {score}
+      </div>
+
+      {/* Pool size chip — telegraphs that the chain is built from the
+          teacher's word list, not free English.  Without this students
+          guess random words and bounce off the "not in your word list"
+          error before they understand the rule. */}
+      <div
+        className="mb-4 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-bold"
+        dir={dir}
+      >
+        {language === "he"
+          ? `מתוך רשימת הכיתה שלך · ${gameWords.length} מילים`
+          : language === "ar"
+          ? `من قائمة كلمات صفّك · ${gameWords.length} كلمة`
+          : `From your class word list · ${gameWords.length} words`}
       </div>
 
       {/* "Previous word" — small contextual label so students don't mistake
@@ -262,7 +277,7 @@ export default function WordChainsGame({
             : "Your turn — type any word that starts with:"}
         </p>
         <div
-          className={`inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-3xl ${theme.pillBg} ${theme.pillText} shadow-lg`}
+          className={`inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-2xl ${theme.pillBg} ${theme.pillText} shadow-lg`}
         >
           <span className="text-5xl sm:text-6xl font-black uppercase">{tail}</span>
         </div>
@@ -291,12 +306,12 @@ export default function WordChainsGame({
               : "Next word..."
           }
           dir="ltr"
-          className="flex-1 px-4 py-3 rounded-xl border-2 border-stone-200 focus:border-stone-400 outline-none text-lg font-bold text-stone-900 bg-white"
+          className="flex-1 px-4 py-3 rounded-lg border-2 border-stone-200 focus:border-stone-400 outline-none text-lg font-bold text-stone-900 bg-white"
         />
         <button
           type="submit"
           disabled={!input.trim()}
-          className={`px-4 py-3 rounded-xl font-black text-white shadow-md disabled:opacity-50 ${theme.fill}`}
+          className={`px-4 py-3 rounded-lg font-black text-white shadow-md disabled:opacity-50 ${theme.fill}`}
           aria-label={tAria.submitWord}
         >
           <Send size={18} />
@@ -325,7 +340,7 @@ export default function WordChainsGame({
         <button
           type="button"
           onClick={handleSkip}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-bold transition"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-bold transition"
         >
           <SkipForward size={16} />
           {language === "he" ? "רמז" : language === "ar" ? "تلميح" : "Hint"}
@@ -333,7 +348,7 @@ export default function WordChainsGame({
         <button
           type="button"
           onClick={() => onFinish(score)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-bold transition"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-bold transition"
         >
           <X size={16} />
           {language === "he" ? "סיים" : language === "ar" ? "إنهاء" : "End round"}

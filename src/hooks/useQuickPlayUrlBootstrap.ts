@@ -372,7 +372,27 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
         setView("quick-play-student");
       };
 
-      loadQuickPlaySession();
+      // Wrap with timeout + catch so a stalled async path (auth refresh
+      // hanging on a backgrounded tab, vocabulary chunk failing to load
+      // on a flaky connection, etc.) can't leave the student on the
+      // "Loading Quick Play session…" spinner forever.  On any failure
+      // we bounce to the public landing — they can re-scan the QR.
+      const QP_BOOTSTRAP_TIMEOUT_MS = 15000;
+      const bootstrapFailed = (reason: string) => {
+        console.error('[Quick Play Bootstrap] failed, bouncing to landing:', reason);
+        showToast(
+          "Couldn't load the Quick Play session. Please scan the QR code again.",
+          "error",
+        );
+        window.history.replaceState({}, '', window.location.pathname);
+        setView("public-landing");
+      };
+      Promise.race([
+        loadQuickPlaySession(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('bootstrap timeout')), QP_BOOTSTRAP_TIMEOUT_MS),
+        ),
+      ]).catch((err: unknown) => bootstrapFailed(err instanceof Error ? err.message : String(err)));
     } else {
       // No URL param — try recovering a saved guest session from localStorage
       try {
@@ -485,7 +505,20 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
               // Session ended or invalid — clear saved data
               localStorage.removeItem('vocaband_qp_guest');
             };
-            loadSaved();
+            // Same timeout guard as the QR-scan path so a stalled
+            // localStorage-recovery can't render an endless loader
+            // (the spinner appears once the bootstrap sets view to
+            // 'quick-play-student' on an unrelated path).
+            const QP_RESUME_TIMEOUT_MS = 15000;
+            Promise.race([
+              loadSaved(),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('resume timeout')), QP_RESUME_TIMEOUT_MS),
+              ),
+            ]).catch((err: unknown) => {
+              console.error('[Quick Play Resume] failed:', err);
+              try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* storage unavailable */ }
+            });
           }
         }
       } catch {}

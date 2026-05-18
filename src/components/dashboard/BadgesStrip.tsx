@@ -54,7 +54,7 @@ export default function BadgesStrip({ earned }: BadgesStripProps) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 sm:p-5 mb-6">
+    <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 sm:p-5 mb-6">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Trophy size={16} className="text-amber-500 fill-amber-200" />
@@ -79,7 +79,7 @@ export default function BadgesStrip({ earned }: BadgesStripProps) {
                 unlocked ? '' : 'opacity-40'
               }`}
             >
-              <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl ${
+              <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-2xl sm:text-3xl ${
                 unlocked
                   ? 'bg-gradient-to-br from-amber-100 to-orange-100 border border-amber-200 shadow-sm'
                   : 'bg-stone-50 border border-stone-200'

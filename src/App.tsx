@@ -1086,7 +1086,7 @@ export default function App() {
       showTopicPacks, setShowTopicPacks,
       showAssignmentWelcome, setShowAssignmentWelcome,
       editingAssignment, setEditingAssignment,
-      setActivityNavOrigin, setClassShowAssignment, setWorksheetAssignment,
+      setActivityNavOrigin, setClassShowAssignment,
       setView, onSaveTemplate: savedTasks.save, showToast, showPaywallToast, speakWord,
     });
   }

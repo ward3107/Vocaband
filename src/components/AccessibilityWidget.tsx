@@ -597,7 +597,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 left-6 z-[120] w-[min(320px,calc(100vw-3rem))] max-h-[75vh] bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/15 overflow-hidden flex flex-col text-white"
+            className="fixed bottom-24 left-6 z-[120] w-[min(320px,calc(100vw-3rem))] max-h-[75vh] bg-slate-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/15 overflow-hidden flex flex-col text-white"
           >
             <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
               <h2 className="text-lg font-bold text-white" id="a11y-title">{t.title}</h2>
@@ -620,7 +620,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
                   <button
                     key={p.key}
                     onClick={() => applyProfile(p.key)}
-                    className="flex items-center gap-2 p-2.5 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/15 hover:from-violet-500/35 hover:to-fuchsia-500/25 border border-white/10 hover:border-white/25 text-white text-sm font-bold transition-all"
+                    className="flex items-center gap-2 p-2.5 rounded-lg bg-gradient-to-br from-violet-500/20 to-fuchsia-500/15 hover:from-violet-500/35 hover:to-fuchsia-500/25 border border-white/10 hover:border-white/25 text-white text-sm font-bold transition-all"
                   >
                     <span className="text-base" aria-hidden="true">{p.emoji}</span>
                     <span className="text-xs">{p.label}</span>
@@ -634,14 +634,14 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={readSelection}
-                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/30 text-white text-xs font-bold transition-all"
+                  className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/30 text-white text-xs font-bold transition-all"
                 >
                   <BookOpen size={14} />
                   {t.readSelection}
                 </button>
                 <button
                   onClick={stopReading}
-                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/85 text-xs font-bold transition-all"
+                  className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/85 text-xs font-bold transition-all"
                 >
                   <ZapOff size={14} />
                   {t.stopReading}
@@ -653,7 +653,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
               {/* ── Sliders (font size / line height / spacing) ─── */}
               {sliderFeatures.map(f => (
                 <div key={f.key} className="flex items-center gap-2">
-                  <div className="flex-1 flex items-center gap-2 p-2.5 rounded-xl bg-white/5">
+                  <div className="flex-1 flex items-center gap-2 p-2.5 rounded-lg bg-white/5">
                     <span className="text-white/60">{f.icon}</span>
                     <span className="text-sm font-medium text-white/90">{f.label}</span>
                   </div>
@@ -681,7 +681,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
                   onClick={() => toggle(f.key)}
                   role="button"
                   aria-pressed={settings[f.key] ? 'true' : 'false'}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg text-sm font-medium transition-all ${
                     settings[f.key]
                       ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30'
                       : 'bg-white/5 text-white/85 hover:bg-white/10'
@@ -697,7 +697,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
 
               <button
                 onClick={resetAll}
-                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-sm font-bold text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 transition-colors"
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg text-sm font-bold text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 transition-colors"
               >
                 <RotateCcw size={16} />
                 {t.reset}

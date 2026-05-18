@@ -61,7 +61,7 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
           backgroundColor: 'var(--vb-surface)',
           borderColor: 'var(--vb-border)',
         }}
-        className="rounded-3xl p-6 max-w-2xl w-full shadow-2xl border"
+        className="rounded-2xl p-6 max-w-2xl w-full shadow-2xl border"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -96,7 +96,7 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
                 type="button"
                 onClick={() => pick(theme.id)}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className={`relative ${theme.swatch} rounded-xl p-2 h-20 flex flex-col items-center justify-center gap-1 ring-2 transition-all
+                className={`relative ${theme.swatch} rounded-lg p-2 h-20 flex flex-col items-center justify-center gap-1 ring-2 transition-all
                   ${selected ? 'ring-stone-900 shadow-lg scale-[1.02]' : 'ring-transparent hover:ring-stone-300 hover:scale-[1.02]'}`}
               >
                 <span className="text-2xl">{theme.emoji}</span>
@@ -124,7 +124,7 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
                 type="button"
                 onClick={() => pick(theme.id)}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className={`relative ${theme.swatch} rounded-xl p-2 h-20 flex flex-col items-center justify-center gap-1 ring-2 transition-all
+                className={`relative ${theme.swatch} rounded-lg p-2 h-20 flex flex-col items-center justify-center gap-1 ring-2 transition-all
                   ${selected ? 'ring-stone-900 shadow-lg scale-[1.02]' : 'ring-transparent hover:ring-stone-300 hover:scale-[1.02]'}`}
               >
                 <span className="text-2xl">{theme.emoji}</span>

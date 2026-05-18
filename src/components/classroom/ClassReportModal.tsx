@@ -232,7 +232,7 @@ export default function ClassReportModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="relative w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden bg-white"
+            className="relative w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden bg-white"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -371,7 +371,7 @@ export default function ClassReportModal({
                     </ChartCard>
 
                     {/* Status table */}
-                    <div className="rounded-2xl border border-stone-200 overflow-hidden mt-6 vb-print-avoid-break">
+                    <div className="rounded-xl border border-stone-200 overflow-hidden mt-6 vb-print-avoid-break">
                       <div className="px-4 py-3 bg-stone-50 border-b border-stone-200">
                         <h3 className="font-black text-sm text-stone-800">{t.reportStatusTableHeading}</h3>
                       </div>
@@ -420,7 +420,7 @@ export default function ClassReportModal({
                 onClick={handleDownload}
                 disabled={busy !== null || empty}
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-black text-sm shadow-md hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-black text-sm shadow-md hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {busy === 'pdf' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                 {t.reportDownloadPdf}
@@ -430,7 +430,7 @@ export default function ClassReportModal({
                 onClick={handlePrint}
                 disabled={empty}
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-black text-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-black text-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <Printer size={16} />
                 {t.reportPrintBtn}
@@ -459,7 +459,7 @@ const ACCENT_RING: Record<StatCardProps['accent'], string> = {
 
 function StatCard({ label, value, accent }: StatCardProps) {
   return (
-    <div className={`rounded-2xl p-3 sm:p-4 bg-gradient-to-br ${ACCENT_RING[accent]} text-white shadow-md`}>
+    <div className={`rounded-xl p-3 sm:p-4 bg-gradient-to-br ${ACCENT_RING[accent]} text-white shadow-md`}>
       <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-white/80">{label}</p>
       <p className="text-2xl sm:text-3xl font-black tabular-nums mt-1">{value}</p>
     </div>
@@ -474,7 +474,7 @@ interface ChartCardProps {
 
 function ChartCard({ title, subtitle, children }: ChartCardProps) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-4 mt-4 vb-print-avoid-break">
+    <div className="rounded-xl border border-stone-200 bg-white p-4 mt-4 vb-print-avoid-break">
       <h3 className="font-black text-sm text-stone-800">{title}</h3>
       {subtitle && <p className="text-xs text-stone-500 mt-0.5">{subtitle}</p>}
       <div className="mt-3">{children}</div>

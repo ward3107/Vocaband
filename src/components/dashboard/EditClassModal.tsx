@@ -107,7 +107,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             style={{ backgroundColor: 'var(--vb-surface)' }}
-            className="rounded-[32px] p-6 sm:p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="rounded-2xl p-6 sm:p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="mb-5">
               <h2 className="text-2xl font-black" style={{ color: 'var(--vb-text-primary)' }}>
@@ -141,7 +141,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 color: 'var(--vb-text-primary)',
                 backgroundColor: 'var(--vb-surface)',
               }}
-              className="w-full px-4 py-3 rounded-2xl border-2 outline-none mb-1 font-bold focus:border-[var(--vb-accent)]"
+              className="w-full px-4 py-3 rounded-xl border-2 outline-none mb-1 font-bold focus:border-[var(--vb-accent)]"
             />
             <div className="flex justify-between mb-5">
               <span className="text-[11px]" style={{ color: 'var(--vb-text-muted)' }}>
@@ -161,7 +161,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 wide deployments: each school appears white-labelled
                 without any infra work. */}
             <div
-              className="mb-5 p-4 rounded-2xl"
+              className="mb-5 p-4 rounded-xl"
               style={{
                 backgroundColor: 'var(--vb-surface-elevated, rgba(0,0,0,0.03))',
                 border: '1px solid var(--vb-border)',
@@ -198,7 +198,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                   color: 'var(--vb-text-primary)',
                   backgroundColor: 'var(--vb-surface)',
                 }}
-                className="w-full px-3 py-2 rounded-xl border-2 outline-none mb-3 text-sm focus:border-[var(--vb-accent)]"
+                className="w-full px-3 py-2 rounded-lg border-2 outline-none mb-3 text-sm focus:border-[var(--vb-accent)]"
               />
 
               <label
@@ -222,7 +222,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                   color: 'var(--vb-text-primary)',
                   backgroundColor: 'var(--vb-surface)',
                 }}
-                className="w-full px-3 py-2 rounded-xl border-2 outline-none text-sm focus:border-[var(--vb-accent)]"
+                className="w-full px-3 py-2 rounded-lg border-2 outline-none text-sm focus:border-[var(--vb-accent)]"
               />
               {!logoUrlValid && (
                 <p className="text-[11px] mt-1" style={{ color: '#e11d48' }}>
@@ -233,7 +233,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               {/* Live preview — confirms the URL works before saving */}
               {safeLogoUrl && !logoBroken && (
                 <div
-                  className="mt-3 flex items-center gap-3 p-2 rounded-xl"
+                  className="mt-3 flex items-center gap-3 p-2 rounded-lg"
                   style={{ backgroundColor: 'var(--vb-surface)' }}
                 >
                   <img
@@ -277,7 +277,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                   borderColor: avatar === null ? 'var(--vb-accent)' : 'var(--vb-border)',
                 }}
                 title={t.useDefaultIconTitle}
-                className="aspect-square rounded-xl flex items-center justify-center transition-all border-2"
+                className="aspect-square rounded-lg flex items-center justify-center transition-all border-2"
               >
                 <GraduationCap size={18} style={{ color: 'var(--vb-text-secondary)' }} />
               </button>
@@ -318,7 +318,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                             backgroundColor: selected ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
                             borderColor: selected ? 'var(--vb-accent)' : 'var(--vb-border)',
                           }}
-                          className={`relative aspect-square rounded-xl flex items-center justify-center text-2xl transition-all border-2 ${selected ? 'scale-105' : 'hover:scale-105'}`}
+                          className={`relative aspect-square rounded-lg flex items-center justify-center text-2xl transition-all border-2 ${selected ? 'scale-105' : 'hover:scale-105'}`}
                         >
                           {em}
                           {selected && (
@@ -353,7 +353,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                   color: 'var(--vb-text-secondary)',
                   backgroundColor: 'var(--vb-surface)',
                 }}
-                className="flex-1 py-3 rounded-2xl font-bold transition-colors border-2 disabled:opacity-50 hover:opacity-90"
+                className="flex-1 py-3 rounded-xl font-bold transition-colors border-2 disabled:opacity-50 hover:opacity-90"
               >
                 {t.cancel}
               </button>
@@ -366,7 +366,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                   backgroundColor: 'var(--vb-accent)',
                   color: 'var(--vb-accent-text)',
                 }}
-                className="flex-1 py-3 rounded-2xl font-black hover:opacity-90 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-3 rounded-xl font-black hover:opacity-90 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? t.saving : t.saveChanges}
               </button>

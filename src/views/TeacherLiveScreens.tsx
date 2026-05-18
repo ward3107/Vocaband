@@ -25,14 +25,14 @@ function reconnectingFallback(
 ): ReactNode {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900 px-6">
-      <div className="max-w-md w-full text-center bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
+      <div className="max-w-md w-full text-center bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 shadow-2xl">
         <div className="text-5xl mb-4">⚡</div>
         <h2 className="text-2xl font-black text-white mb-3">Reconnecting…</h2>
         <p className="text-white/80 mb-6">{bodyText}</p>
         <button
           type="button"
           onClick={onReturn}
-          className="w-full px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+          className="w-full px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white font-black rounded-lg shadow-lg hover:shadow-xl transition-shadow"
         >
           Return to Dashboard
         </button>

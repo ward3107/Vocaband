@@ -138,7 +138,7 @@ export const SentenceBuildingExercise: ExerciseComponent<ExerciseOf<"sentence_bu
   const isRight = complete && builtTokens.join(" ").toLowerCase() === targetTokens.join(" ").toLowerCase();
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
         <span className="text-xs font-bold text-stone-500">
           {idx + 1} / {items.length}
@@ -153,7 +153,7 @@ export const SentenceBuildingExercise: ExerciseComponent<ExerciseOf<"sentence_bu
       <motion.div
         animate={shake ? { x: [0, -8, 8, -8, 8, 0] } : { x: 0 }}
         transition={{ duration: 0.4 }}
-        className={`min-h-[80px] flex flex-wrap items-center justify-center gap-2 px-3 py-4 mb-3 rounded-2xl border-2 transition-colors ${
+        className={`min-h-[80px] flex flex-wrap items-center justify-center gap-2 px-3 py-4 mb-3 rounded-xl border-2 transition-colors ${
           complete
             ? isRight
               ? "border-emerald-500 bg-emerald-50"

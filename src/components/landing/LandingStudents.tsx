@@ -84,10 +84,10 @@ const LandingStudents: React.FC = () => {
                 className="h-full"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                <div onMouseMove={handleSpotlight} className="h-full p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
+                <div onMouseMove={handleSpotlight} className="h-full p-6 md:p-8 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.4)] transition-all duration-300 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                   <div
-                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
@@ -122,7 +122,7 @@ const LandingStudents: React.FC = () => {
                           key={mode.nameKey}
                           whileHover={{ scale: 1.15, rotate: [0, -5, 5, 0] }}
                           transition={{ duration: 0.3 }}
-                          className="aspect-square rounded-xl bg-white/10 backdrop-blur-sm flex flex-col items-center justify-center gap-1 cursor-help"
+                          className="aspect-square rounded-lg bg-white/10 backdrop-blur-sm flex flex-col items-center justify-center gap-1 cursor-help"
                           title={t.modeNames[mode.nameKey as keyof typeof t.modeNames]}
                         >
                           <span className="text-2xl md:text-3xl">{mode.emoji}</span>
@@ -165,14 +165,14 @@ const LandingStudents: React.FC = () => {
                 className="h-full"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
+                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-[0_20px_60px_rgba(251,146,60,0.3)] hover:shadow-[0_30px_80px_rgba(251,146,60,0.4)] transition-all duration-300 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                   <div
-                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Trophy size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.liveChallengesTitle}</h3>
@@ -240,14 +240,14 @@ const LandingStudents: React.FC = () => {
                 className="h-full"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
+                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.3)] hover:shadow-[0_30px_80px_rgba(16,185,129,0.4)] transition-all duration-300 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                   <div
-                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Coins size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.xpShopTitle}</h3>
@@ -316,14 +316,14 @@ const LandingStudents: React.FC = () => {
                 className="h-full"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(244,114,182,0.3)] hover:shadow-[0_30px_80px_rgba(244,114,182,0.4)] transition-all duration-300 overflow-hidden">
+                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-2xl bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-500 text-white shadow-[0_20px_60px_rgba(244,114,182,0.3)] hover:shadow-[0_30px_80px_rgba(244,114,182,0.4)] transition-all duration-300 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                   <div
-                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Gift size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.mysteryEggsTitle}</h3>
@@ -394,14 +394,14 @@ const LandingStudents: React.FC = () => {
                 className="h-full"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-blue-400 via-indigo-500 to-violet-500 text-white shadow-[0_20px_60px_rgba(99,102,241,0.3)] hover:shadow-[0_30px_80px_rgba(99,102,241,0.4)] transition-all duration-300 overflow-hidden">
+                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-2xl bg-gradient-to-br from-blue-400 via-indigo-500 to-violet-500 text-white shadow-[0_20px_60px_rgba(99,102,241,0.3)] hover:shadow-[0_30px_80px_rgba(99,102,241,0.4)] transition-all duration-300 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                   <div
-                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Zap size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.powerBoostersTitle}</h3>
@@ -471,14 +471,14 @@ const LandingStudents: React.FC = () => {
                 className="h-full"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 text-white shadow-[0_20px_60px_rgba(250,204,21,0.3)] hover:shadow-[0_30px_80px_rgba(250,204,21,0.4)] transition-all duration-300 overflow-hidden">
+                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-2xl bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 text-white shadow-[0_20px_60px_rgba(250,204,21,0.3)] hover:shadow-[0_30px_80px_rgba(250,204,21,0.4)] transition-all duration-300 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                   <div
-                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Crown size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.petFriendsTitle}</h3>
@@ -544,14 +544,14 @@ const LandingStudents: React.FC = () => {
                 className="h-full"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-[2rem] bg-gradient-to-br from-red-500 via-rose-500 to-pink-500 text-white shadow-[0_20px_60px_rgba(239,68,68,0.3)] hover:shadow-[0_30px_80px_rgba(239,68,68,0.4)] transition-all duration-300 overflow-hidden">
+                <div onMouseMove={handleSpotlight} className="h-full p-6 rounded-2xl bg-gradient-to-br from-red-500 via-rose-500 to-pink-500 text-white shadow-[0_20px_60px_rgba(239,68,68,0.3)] hover:shadow-[0_30px_80px_rgba(239,68,68,0.4)] transition-all duration-300 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
                   <div
-                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"
+                    className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"
                     style={{ background: 'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.3), transparent 60%)' }}
                   />
                   <div className="relative z-10" style={{ transformStyle: 'preserve-3d' }}>
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
+                    <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 shadow-inner" style={{ transform: 'translateZ(40px)' }}>
                       <Flame size={28} />
                     </div>
                     <h3 className="text-2xl font-black mb-2" style={{ transform: 'translateZ(30px)' }}>{t.dailyStreaksTitle}</h3>

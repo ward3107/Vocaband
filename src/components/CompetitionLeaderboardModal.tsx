@@ -73,7 +73,7 @@ export default function CompetitionLeaderboardModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.92, opacity: 0, y: 12 }}
           transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-          className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+          className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -131,7 +131,7 @@ export default function CompetitionLeaderboardModal({
                   return (
                     <li
                       key={entry.studentUid}
-                      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 border-2 ${
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 border-2 ${
                         isYou
                           ? 'border-amber-400 bg-amber-50 shadow-sm'
                           : 'border-stone-100 bg-white'
@@ -177,7 +177,7 @@ export default function CompetitionLeaderboardModal({
                 type="button"
                 onClick={handleEndNow}
                 disabled={ending}
-                className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-sm font-bold transition-colors"
+                className="w-full py-2.5 rounded-lg bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-sm font-bold transition-colors"
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 {t.endNow}
@@ -186,7 +186,7 @@ export default function CompetitionLeaderboardModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-bold transition-colors"
+              className="w-full py-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-bold transition-colors"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
               {t.modalCloseButton}

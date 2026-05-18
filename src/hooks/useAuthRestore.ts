@@ -34,6 +34,7 @@ import {
   type AssignmentData,
   type ProgressData,
 } from '../core/supabase';
+import { bootstrapStudentSession } from '../core/bootstrap';
 import { freshTrialEndsAt } from '../core/plan';
 import { clearAllReadCache } from '../core/readCache';
 import { getCachedVocabulary } from './useVocabularyLazy';
@@ -364,16 +365,27 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               clearIntendedClassCode();
             }
 
-            const { data: classRows } = await supabase
-              .from('classes').select(CLASS_COLUMNS).eq('code', code);
-            if (classRows && classRows.length > 0) {
-              const classData = mapClass(classRows[0]);
-              const [assignResult, progressResult] = await Promise.all([
-                supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
-                supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', supabaseUser.id),
-              ]);
-              setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
-              setStudentProgress((progressResult.data ?? []).map(mapProgress));
+            // Try the bootstrap RPC first — one round trip for class +
+            // assignments + progress instead of three. Falls back to the
+            // legacy parallel-queries block on any RPC failure so a server
+            // regression can't lock students out of the dashboard.
+            // See supabase/migrations/20260517105307_bootstrap_student_session.sql
+            const boot = await bootstrapStudentSession({ classCode: code }).catch(() => null);
+            if (boot?.status === 'ok') {
+              setStudentAssignments(boot.assignments);
+              setStudentProgress(boot.progress);
+            } else {
+              const { data: classRows } = await supabase
+                .from('classes').select(CLASS_COLUMNS).eq('code', code);
+              if (classRows && classRows.length > 0) {
+                const classData = mapClass(classRows[0]);
+                const [assignResult, progressResult] = await Promise.all([
+                  supabase.rpc('get_assignments_for_class', { p_class_id: classData.id }),
+                  supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', supabaseUser.id),
+                ]);
+                setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
+                setStudentProgress((progressResult.data ?? []).map(mapProgress));
+              }
             }
             setBadges(userData.badges || []);
             setXp(userData.xp ?? 0);
@@ -384,6 +396,38 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
           } else {
             // Broken users row — most commonly an OAuth student whose
             // previous sign-in didn't complete class-code entry.
+            //
+            // The bootstrap RPC handles the entire mint-from-profile +
+            // dashboard-load flow server-side in one round trip (the
+            // legacy block below does 4 sequential queries worst case).
+            // Falls back to the legacy path on RPC failure so a server
+            // regression can't lock students out.
+            const boot = await bootstrapStudentSession().catch(() => null);
+            if (boot?.status === 'ok' && boot.user) {
+              setUser(boot.user);
+              setStudentAssignments(boot.assignments);
+              setStudentProgress(boot.progress);
+              if (!shouldPreserveView("student", currentViewRef.current)) {
+                setView("student-dashboard");
+              }
+              return;
+            }
+            if (boot?.status === 'pending-approval' && boot.pendingProfile) {
+              showPendingApproval({
+                name:      boot.pendingProfile.displayName,
+                classCode: boot.pendingProfile.classCode,
+                profileId: boot.pendingProfile.id,
+              });
+              return;
+            }
+            if (boot?.status === 'needs-class-code') {
+              setOauthEmail(supabaseUser.email || "");
+              setOauthAuthUid(supabaseUser.id);
+              setShowOAuthClassCode(true);
+              setView("student-account-login");
+              return;
+            }
+
             const { data: studentProfile } = await supabase
               .from('student_profiles')
               .select('id, email, status, display_name, class_code, xp, avatar')
@@ -447,6 +491,34 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                   await supabase.from('users')
                     .update({ uid: supabaseUser.id })
                     .eq('uid', savedUid);
+
+                  // Try the bootstrap RPC. After the UID rewrite above,
+                  // auth.uid() now points to the rewritten users row,
+                  // so the RPC's Step 1 (users lookup) succeeds and
+                  // returns the full dashboard payload in one round
+                  // trip. Saves the separate fetchUserProfile +
+                  // classes.select + Promise.all(assignments, progress)
+                  // queries below.
+                  const boot = await bootstrapStudentSession().catch(() => null);
+                  if (boot?.status === 'ok' && boot.user) {
+                    setUser(boot.user);
+                    checkConsent(boot.user);
+                    if (boot.user.role === "student") {
+                      setStudentAssignments(boot.assignments);
+                      setStudentProgress(boot.progress);
+                    }
+                    setBadges(boot.user.badges || []);
+                    setXp(boot.user.xp ?? 0);
+                    setStreak(boot.user.streak ?? 0);
+                    setView(hasTeacherAccess(boot.user) ? "teacher-dashboard" : "student-dashboard");
+                    localStorage.setItem('vocaband_student_login', JSON.stringify({
+                      classCode:   boot.user.classCode || savedCode,
+                      displayName: boot.user.displayName || savedName,
+                      uid:         supabaseUser.id,
+                    }));
+                    return;
+                  }
+
                   const restored = await fetchUserProfile(supabaseUser.id);
                   if (restored) {
                     setUser(restored);
@@ -484,6 +556,32 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
           const oauthProvider = supabaseUser.app_metadata?.provider;
           const isOAuthSignIn = oauthProvider === 'google' || oauthProvider === 'azure';
           if (isOAuthSignIn) {
+            // Try the bootstrap RPC first — Step 2 server-side covers
+            // the student_profile-by-email lookup + mint + dashboard load.
+            // On status:'needs-class-code' we must STILL fall through to
+            // the legacy block below because the teacher-allowlist check
+            // (is_teacher_allowed) disambiguates teacher vs student
+            // signups, and the RPC has no notion of teacher intent.
+            const boot = await bootstrapStudentSession().catch(() => null);
+            if (boot?.status === 'ok' && boot.user) {
+              setUser(boot.user);
+              setStudentAssignments(boot.assignments);
+              setStudentProgress(boot.progress);
+              if (!shouldPreserveView("student", currentViewRef.current)) {
+                setView("student-dashboard");
+              }
+              return;
+            }
+            if (boot?.status === 'pending-approval' && boot.pendingProfile) {
+              showPendingApproval({
+                name:      boot.pendingProfile.displayName,
+                classCode: boot.pendingProfile.classCode,
+                profileId: boot.pendingProfile.id,
+              });
+              setLoading(false);
+              return;
+            }
+
             const { data: studentProfile } = await supabase
               .from('student_profiles')
               .select('id, email, status, display_name, class_code, xp, avatar')

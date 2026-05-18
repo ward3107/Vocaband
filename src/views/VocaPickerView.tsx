@@ -29,7 +29,7 @@ const VOCA_CARDS: readonly VocaCard[] = [
     id: "english",
     name: "VocaEnglish",
     tag: "Build vocabulary in English",
-    emoji: "🇬🇧",
+    emoji: "🔤",
     gradient: "from-indigo-500 via-violet-500 to-fuchsia-600",
   },
   {
@@ -96,7 +96,7 @@ export default function VocaPickerView({ user, onPickVoca }: VocaPickerViewProps
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
               }}
-              className={`relative overflow-hidden rounded-3xl p-8 sm:p-10 text-left bg-gradient-to-br ${card.gradient} text-white shadow-lg shadow-indigo-500/20`}
+              className={`relative overflow-hidden rounded-2xl p-8 sm:p-10 text-left bg-gradient-to-br ${card.gradient} text-white shadow-lg shadow-indigo-500/20`}
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
               <div className="relative z-10">

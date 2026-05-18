@@ -143,7 +143,7 @@ export default function StudentAssignmentCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: assignmentIdx * 0.06 }}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-      className={`${isLocked ? 'bg-stone-100 grayscale-[0.5]' : accent.bg} p-4 sm:p-5 rounded-3xl border border-white/80 shadow-sm ${isLocked ? 'cursor-not-allowed opacity-75' : 'hover:shadow-md cursor-pointer active:scale-[0.99]'} transition-all relative overflow-hidden`}
+      className={`${isLocked ? 'bg-stone-100 grayscale-[0.5]' : accent.bg} p-4 sm:p-5 rounded-2xl border border-white/80 shadow-sm ${isLocked ? 'cursor-not-allowed opacity-75' : 'hover:shadow-md cursor-pointer active:scale-[0.99]'} transition-all relative overflow-hidden`}
     >
       {/* Colored left strip */}
       <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${isLocked ? 'from-stone-400 to-stone-500' : accent.strip}`} />
@@ -247,7 +247,7 @@ export default function StudentAssignmentCard({
             onClick={(e) => { e.stopPropagation(); handleStart(); }}
             type="button"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            className={`hidden sm:inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 ${accent.cta} text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all`}
+            className={`hidden sm:inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 ${accent.cta} text-white rounded-lg font-bold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all`}
           >
             {isComplete ? t.playAgain : t.startAssignment} →
           </button>
@@ -260,13 +260,13 @@ export default function StudentAssignmentCard({
           onClick={(e) => { e.stopPropagation(); handleStart(); }}
           type="button"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className={`sm:hidden w-full mt-3 py-2.5 ${accent.cta} text-white rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-all`}
+          className={`sm:hidden w-full mt-3 py-2.5 ${accent.cta} text-white rounded-lg font-bold text-sm shadow-sm active:scale-95 transition-all`}
         >
           {isComplete ? t.playAgain : t.startLearning} →
         </button>
       )}
       {isLocked && (
-        <div className="mt-3 text-[11px] font-bold text-stone-500 bg-white/60 border border-stone-200 rounded-xl px-3 py-2 flex items-center gap-2">
+        <div className="mt-3 text-[11px] font-bold text-stone-500 bg-white/60 border border-stone-200 rounded-lg px-3 py-2 flex items-center gap-2">
           <Lock size={12} />
           You've completed all {MAX_ASSIGNMENT_ROUNDS} rounds of this assignment. Great practice! Check your other assignments.
         </div>

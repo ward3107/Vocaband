@@ -197,6 +197,15 @@ export default function GameActiveView({
   const modeTheme: GameThemeColor | undefined = MODE_THEME[gameMode];
   const modeLabel = MODE_LABEL[gameMode] ?? gameMode;
 
+  // Modes that own their entire question pool + UI chrome.  When one
+  // of these is active we skip the global WordPromptCard / PowerUp
+  // toolbar / per-word progress bar above the mode component — those
+  // chrome pieces show stale data from the fallback `gameWords` pool
+  // and push the mode's own UI below the fold on mobile.
+  const isSelfContainedMode =
+    gameMode === 'idiom' || gameMode === 'word-chains' ||
+    gameMode === 'speed-round' || gameMode === 'class-minute';
+
   const renderModeContent = () => {
     if (gameMode === "classic" || gameMode === "listening" || gameMode === "reverse") {
       return (
@@ -470,7 +479,7 @@ export default function GameActiveView({
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
-                className={`bg-white rounded-2xl sm:rounded-[32px] shadow-2xl p-2 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-3 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-3 border-red-500" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-transparent"}`}
+                className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-2 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-blue-50 border-3 border-blue-600" : feedback === "wrong" ? "bg-red-50 border-3 border-red-500" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-transparent"}`}
               >
                 {/* Progress Bar */}
                 <progress
@@ -498,7 +507,7 @@ export default function GameActiveView({
                     when the mode has a theme assigned in MODE_THEME.
                     Modes without a theme (yet) don't render the pill
                     so the legacy layout for them stays unchanged. */}
-                {modeTheme && (
+                {!isSelfContainedMode && modeTheme && (
                   <div className="flex justify-center mb-3 sm:mb-4">
                     <span
                       className={`inline-block ${getThemeColors(modeTheme).pillBg} ${getThemeColors(modeTheme).pillText} font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-sm`}
@@ -515,7 +524,7 @@ export default function GameActiveView({
                     interactive TILES inside ScrambleGame, plus its
                     own translation prompt — WordPromptCard would
                     show the scramble as static text alongside).  */}
-                {gameMode !== "fill-blank" && gameMode !== "flashcards" && gameMode !== "scramble" && (
+                {!isSelfContainedMode && gameMode !== "fill-blank" && gameMode !== "flashcards" && gameMode !== "scramble" && (
                   <WordPromptCard
                     currentIndex={currentIndex}
                     gameWordsLength={gameWords.length}
@@ -530,7 +539,7 @@ export default function GameActiveView({
                   />
                 )}
 
-                {user?.role === "student" && gameMode !== "flashcards" && gameMode !== "sentence-builder" && gameMode !== "fill-blank" && !isFinished && (
+                {!isSelfContainedMode && user?.role === "student" && gameMode !== "flashcards" && gameMode !== "sentence-builder" && gameMode !== "fill-blank" && !isFinished && (
                   <PowerUpToolbar
                     user={user}
                     gameMode={gameMode}
@@ -555,7 +564,7 @@ export default function GameActiveView({
         </div>
       </div>
 
-      {gameMode !== "matching" && gameMode !== "memory-flip" && (
+      {!isSelfContainedMode && gameMode !== "matching" && gameMode !== "memory-flip" && (
         <div className="w-full max-w-5xl mt-12 flex justify-center">
           <div className="w-full max-w-md">
             <progress

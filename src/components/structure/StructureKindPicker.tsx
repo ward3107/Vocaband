@@ -46,7 +46,7 @@ export const StructureKindPicker: React.FC<StructureKindPickerProps> = ({ open, 
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.95, y: 20 }}
             transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-            className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-5 sm:p-8"
+            className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-5 sm:p-8"
           >
             <div className="text-center mb-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-[11px] font-black uppercase tracking-widest mb-3">
@@ -68,7 +68,7 @@ export const StructureKindPicker: React.FC<StructureKindPickerProps> = ({ open, 
                   onClick={() => onPick(kind.kind)}
                   type="button"
                   style={{ touchAction: 'manipulation' }}
-                  className={`group relative overflow-hidden rounded-2xl p-4 text-white text-left transition-all shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-95 bg-gradient-to-br ${GRADIENTS[kind.kind]}`}
+                  className={`group relative overflow-hidden rounded-xl p-4 text-white text-left transition-all shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-95 bg-gradient-to-br ${GRADIENTS[kind.kind]}`}
                 >
                   <div className="text-4xl sm:text-5xl mb-2 drop-shadow-sm" aria-hidden="true">{kind.emoji}</div>
                   <div className="text-lg font-black drop-shadow-sm">{kind.label}</div>

@@ -16,18 +16,18 @@ export default function GameHeader({
   return (
     <div className="w-full max-w-4xl flex flex-wrap justify-between items-center gap-1 mb-1.5 sm:mb-6">
       <div className="flex items-center gap-1.5 sm:gap-4 flex-wrap">
-        <div className="bg-white px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm flex items-center gap-1.5">
+        <div className="bg-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl shadow-sm flex items-center gap-1.5">
           <Trophy className="text-amber-500" size={16} />
           <span className="font-black text-stone-800 text-sm sm:text-base">{score}</span>
         </div>
-        <div className="bg-blue-50 px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl flex items-center gap-1.5">
+        <div className="bg-blue-50 px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5">
           <span className="text-blue-700 font-bold text-[10px] sm:text-xs uppercase tracking-widest">XP: {xp}</span>
         </div>
         {streak > 0 && (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="bg-orange-100 px-3 sm:px-4 py-2 rounded-2xl flex items-center gap-2"
+            className="bg-orange-100 px-3 sm:px-4 py-2 rounded-xl flex items-center gap-2"
           >
             <span className="text-orange-600 font-bold text-xs uppercase tracking-widest">🔥 {streak}</span>
           </motion.div>

@@ -345,7 +345,7 @@ export default function CertificateModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="relative w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden bg-white"
+            className="relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden bg-white"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header — navy/gold to match the diploma palette */}
@@ -609,7 +609,7 @@ export default function CertificateModal({
                 onClick={handleDownload}
                 disabled={busy !== null}
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 text-amber-200 font-black text-sm shadow-md hover:from-slate-800 hover:to-slate-700 active:scale-[0.98] disabled:opacity-60 transition-all"
+                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gradient-to-br from-slate-900 to-slate-700 text-amber-200 font-black text-sm shadow-md hover:from-slate-800 hover:to-slate-700 active:scale-[0.98] disabled:opacity-60 transition-all"
               >
                 <Download size={16} />
                 {busy === 'download' ? t.exporting : t.download}
@@ -622,7 +622,7 @@ export default function CertificateModal({
                   touchAction: 'manipulation',
                   background: 'linear-gradient(135deg, #c08719 0%, #f5c97a 50%, #c08719 100%)',
                 }}
-                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-white font-black text-sm shadow-md active:scale-[0.98] disabled:opacity-60 transition-all"
+                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg text-white font-black text-sm shadow-md active:scale-[0.98] disabled:opacity-60 transition-all"
                 aria-label={t.share}
               >
                 <Share2 size={16} />
@@ -633,7 +633,7 @@ export default function CertificateModal({
                 onClick={handlePrint}
                 disabled={busy !== null}
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm active:scale-[0.98] disabled:opacity-60 transition-all"
+                className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm active:scale-[0.98] disabled:opacity-60 transition-all"
               >
                 <Printer size={16} />
                 {t.print}

@@ -13,7 +13,7 @@
 > excerpts) which a lawyer needs to provide; those are marked
 > **TODO LAWYER**.
 
-> Last updated 2026-05-04.  Update this doc whenever the answer to
+> Last updated 2026-05-18. Update this doc whenever the answer to
 > any question changes (new sub-processor, new feature, etc.) so a
 > future fill is just copy-paste.
 
@@ -50,7 +50,7 @@
 | 2.1 | מספר רישום מאגר (Database registration number with Privacy Protection Authority) | **TODO operator — register first; takes 30-90 days** |
 | 2.2 | Database security level under Reg 2017 | רמה גבוהה (High) — because subjects include minors |
 | 2.3 | Approximate number of data subjects | **TODO operator — fill exact (teachers + students)** |
-| 2.4 | Date of last formal risk assessment | **TODO** — pending DPIA completion (`docs/DPIA-TECHNICAL.md`) |
+| 2.4 | Date of last formal risk assessment | 2026-05-18 (draft pending lawyer ratification — see `docs/RISK-REGISTER.md`). Engineering completed the 15-row סקר סיכונים with 5×5 severity-likelihood scoring and heat map; lawyer ratifies residual scores + R13 at the next consult. |
 
 ---
 
@@ -113,7 +113,7 @@
 |---|---|---|
 | 7.1 | What is logged? | Every protected action: login, data access, account changes, data export, account deletion, admin operations.  Schema: actor, action, data_category, target, timestamp. |
 | 7.2 | Log retention | 730 days (2 years) — meets Reg 2017 minimum. |
-| 7.3 | Log immutability | Read-only for all roles except admin (admin retained for cleanup-by-retention only).  Future: rotate to append-only partitions. |
+| 7.3 | Log immutability | Append-only enforced at the database level by migration `20260518120000_audit_log_immutability.sql` (BEFORE UPDATE trigger raises unconditionally; BEFORE DELETE trigger raises except via the controlled retention purge inside `cleanup_expired_data`, which toggles a transaction-scoped GUC `app.allow_audit_purge`). UPDATE/DELETE explicitly REVOKEd from `anon` + `authenticated`. Verified by pen-test script checks 17+18. |
 | 7.4 | Log monitoring / alerting | Cloudflare Insights for client-side errors; Fly.io stdout logs streamed; Supabase dashboard for auth events.  Anomaly detection — manual review at quarterly checkpoint. |
 | 7.5 | Time synchronisation | NTP — managed by Supabase / Fly.io / Cloudflare infrastructure. |
 
@@ -163,8 +163,9 @@
 | 11.2 | Backup retention | 30 days rolling. |
 | 11.3 | Point-in-time recovery | Yes (Supabase Pro tier). |
 | 11.4 | Backup encryption | AES-256 (same as primary DB). |
-| 11.5 | Disaster recovery RTO / RPO | RTO ~4 hours (re-deploy to fresh Supabase project from backup); RPO ~24 hours (daily snapshots). **TODO**: formal DR runbook in `docs/DISASTER-RECOVERY.md` planned. |
-| 11.6 | Business continuity plan | Cloudflare absorbs DDoS; Fly.io auto-scales; PWA offline cache lets users finish in-progress games during brief outages. |
+| 11.5 | Disaster recovery RTO / RPO | RPO ≤ 24 h (daily Supabase snapshots + weekly off-Supabase pg_dump to Cloudflare R2 via GitHub Actions cron — `.github/workflows/backup-supabase-weekly.yml`). RTO Tier A (read-only restore) ≤ 4 h; Tier B (full service back) ≤ 24 h; Tier C (full feature parity including AI) ≤ 72 h. Full DR runbook with 5 scenarios + quarterly tabletop schedule: `docs/DISASTER-RECOVERY.md`. |
+| 11.6 | Off-site backup independent of Supabase | Yes — weekly `pg_dump` (custom format, gzipped) of `public` + `auth` schemas pushed to Cloudflare R2 bucket `vocaband-backups`, ≥365 day retention. Closes the "Supabase total loss" scenario. Restore-test runbook: `scripts/restore-from-r2-backup.sh`; bi-annual restore drill cadence. |
+| 11.7 | Business continuity plan | Cloudflare absorbs DDoS; Fly.io auto-scales; PWA offline cache lets users finish in-progress games during brief outages. |
 
 ---
 
@@ -186,7 +187,8 @@
 | 13.2 | Most recent pen-test | **TODO operator — pen-test not yet contracted; see `MOE-REQUIREMENTS.md` Phase 3** |
 | 13.3 | Pen-test firm | **TODO** |
 | 13.4 | Findings + remediation summary | **TODO** — once first pen-test completes, attach summary here. |
-| 13.5 | Internal RLS pen-test | Yes — `scripts/security-pen-test.sh` runs targeted RLS checks against the live DB.  Last green: 2026-04-28. |
+| 13.5 | Internal RLS pen-test | Yes — `scripts/security-pen-test.sh` runs 19 targeted gate checks against the live DB and `/api/*` (RLS policies, anon enumeration, OCR/version/bagrut auth gates, security headers, CSP hardening, audit-log immutability). Last green: 2026-04-28. Re-run on every quarterly audit per `docs/quarterly-audit-TEMPLATE.md`. |
+| 13.6 | Statement of Work for external pen-test | `docs/PENTEST-SOW.md` — full scope, threat model (25 attacker scenarios), methodology requirements, deliverables, rules of engagement, Israeli firm shortlist. Hand to firms for quote. |
 
 ---
 
@@ -197,9 +199,12 @@
 | 14.1 | Compliance with Privacy Protection Law (1981) | Yes — see `docs/PRIVACY_CHECKLIST.md` for control-by-control mapping. |
 | 14.2 | Compliance with Privacy Protection Regulations (2017) | Yes for all technical controls; database registration with PPA pending (`MOE-REQUIREMENTS.md` Phase 1). |
 | 14.3 | Compliance with Amendment 13 (2025) | Yes — see `docs/PRIVACY_CHECKLIST.md` (the doc was specifically built around Amendment 13). |
-| 14.4 | GDPR? | Vocaband processes EU data via Supabase Frankfurt; GDPR compliance applies.  Technical controls overlap heavily with PPA Amendment 13.  Formal certification not pursued. |
-| 14.5 | COPPA? | Vocaband is not currently marketed in the US.  Class-code model would need parent-consent-on-file extension if US users were targeted. |
-| 14.6 | Bug-bounty program? | No formal program.  Responsible disclosure email: `security@vocaband.com`. |
+| 14.4 | Information Security Policy (מדיניות אבטחת מידע) | Yes — `docs/INFORMATION-SECURITY-POLICY.md` v1.0, scope-classified as High Security Level per Reg 2017, with DPO signoff block. |
+| 14.5 | Risk register (סקר סיכונים) | Yes — `docs/RISK-REGISTER.md` v1.0 covering 15 risks across data, access, integrity, availability, sub-processor, regulatory dimensions. Pending lawyer ratification of residual scores. |
+| 14.6 | DPIA (תיק"מ) | Yes — `docs/DPIA-TECHNICAL.md` technical sections complete (data categories, sources, sub-processors, cross-border, mitigations). Risk-rating columns + legal-basis paragraphs pending the lawyer consult. |
+| 14.7 | GDPR? | Vocaband processes EU data via Supabase Frankfurt; GDPR compliance applies. Technical controls overlap heavily with PPA Amendment 13. Formal certification not pursued. |
+| 14.8 | COPPA? | Vocaband is not currently marketed in the US. Class-code model would need parent-consent-on-file extension if US users were targeted. |
+| 14.9 | Bug-bounty program? | No formal program. Responsible disclosure email: `security@vocaband.com`. |
 
 ---
 

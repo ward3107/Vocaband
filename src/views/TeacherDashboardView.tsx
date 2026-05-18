@@ -4,6 +4,7 @@ import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
 import TeacherOnboardingWizard from "../components/onboarding/TeacherOnboardingWizard";
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
+import PageHero from "../components/PageHero";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import RatingPrompt from "../components/RatingPrompt";
 import { performUserLogout } from "../core/supabase";
@@ -270,31 +271,17 @@ export default function TeacherDashboardView({
           extraTrailing={headerExtra}
         />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Welcome hero — sets a calm, personal tone.
-              Text colours flip with `dashboardTheme.dark` so the
-              "Midnight" theme (slate-900 background) doesn't hide
-              the headline behind near-black text. */}
-          <div className="mb-8 sm:mb-10 pt-2 sm:pt-4">
-            <p
-              className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-2"
-              style={{ color: 'var(--vb-accent)' }}
-            >
-              {greeting}
-            </p>
-            <h1
-              className="text-2xl sm:text-4xl font-bold tracking-tight"
-              style={{ color: 'var(--vb-text-primary)' }}
-            >
-              {t.heroLine(firstName)}
-            </h1>
-            <p
-              className="text-sm sm:text-base mt-2"
-              style={{ color: 'var(--vb-text-secondary)' }}
-            >
-              {t.heroSubtitle}
-            </p>
-          </div>
+        {/* Vocabagrut-style hero — full-bleed gradient block keeps
+            the welcome screen visually consistent with the assignment
+            and Vocabagrut creation flows. */}
+        <PageHero
+          icon={<Sparkles size={32} className="text-white" />}
+          eyebrow={greeting}
+          title={t.heroLine(firstName)}
+          subtitle={t.heroSubtitle}
+        />
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
 
           {/* Pro trial / upgrade banner.
               - Trialing free teacher: amber gradient, "X days left" + Upgrade CTA.
@@ -313,8 +300,8 @@ export default function TeacherDashboardView({
             // never trialing in the first place.
             if (trialing && daysLeft !== null) {
               return (
-                <div className="mb-6 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-amber-500/20 p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap">
-                  <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                <div className="mb-6 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-amber-500/20 p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap">
+                  <div className="w-11 h-11 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
                     <Sparkles size={20} className="text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -324,7 +311,7 @@ export default function TeacherDashboardView({
                   </div>
                   <a
                     href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
-                    className="px-4 py-2 rounded-xl bg-white text-orange-600 font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
+                    className="px-4 py-2 rounded-lg bg-white text-orange-600 font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
                   >
                     <Crown size={16} />
                     {t.trialBannerActiveCta}
@@ -333,8 +320,8 @@ export default function TeacherDashboardView({
               );
             }
             return (
-              <div className="mb-6 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 shadow-lg p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap border border-white/10">
-                <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+              <div className="mb-6 rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 shadow-lg p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap border border-white/10">
+                <div className="w-11 h-11 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
                   <Crown size={20} className="text-amber-400" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -344,7 +331,7 @@ export default function TeacherDashboardView({
                 </div>
                 <a
                   href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
                 >
                   <Crown size={16} />
                   {t.trialBannerExpiredCta}

@@ -10,7 +10,7 @@
 > by an Israeli privacy lawyer before any DPA or vendor questionnaire
 > is signed.  See the legend below.
 
-> Last updated 2026-05-04.
+> Last updated 2026-05-18.
 
 ---
 
@@ -86,9 +86,9 @@ falls under **רמת אבטחה גבוהה (High level)**.
 | Requirement | Status | What we have | Gap | Owner |
 |---|---|---|---|---|
 | Inventory of every database + data flow | ✅ | `docs/DATA_FLOW.md`, `src/config/privacy-config.ts → DATA_COLLECTION_POINTS` | None — already comprehensive | Code |
-| Information Security Policy (מדיניות אבטחת מידע) | 🟡 | `docs/SECURITY-OVERVIEW.md` + `docs/SECURITY.md` | Add explicit "Policy" doc with version + signoff field for the DPO | ⏳ This branch |
-| DPIA / תיק"מ document | ⏳ | None | `docs/DPIA-TECHNICAL.md` template on this branch — fill technical parts now, legal/risk-rating sections marked TODO for lawyer | ⏳ This branch + 🚫 Lawyer |
-| Risk assessment (סקר סיכונים) | 🟡 | Implicit in security audits | Formal risk register doc with severity x likelihood matrix | 🚫 Lawyer / consultant signoff |
+| Information Security Policy (מדיניות אבטחת מידע) | ✅ | `docs/INFORMATION-SECURITY-POLICY.md` v1.0 with DPO signoff field | DPO appointment to sign | 🚫 Operator signoff |
+| DPIA / תיק"מ document | ✅ | `docs/DPIA-TECHNICAL.md` template — technical sections filled | Lawyer fills risk-rating + legal-basis paragraphs | 🚫 Lawyer |
+| Risk assessment (סקר סיכונים) | ✅ | `docs/RISK-REGISTER.md` v1.0 with full 15-row register + heat map | Lawyer ratifies residual scores + fills R13 | 🚫 Lawyer ratification |
 
 ### A3 — Access control + identity
 
@@ -106,7 +106,7 @@ falls under **רמת אבטחה גבוהה (High level)**.
 |---|---|---|---|---|
 | Audit log of access to personal data | ✅ | `public.audit_log` table; `logAudit()` helper | — | Code |
 | Retention ≥ 24 months | ✅ | `RETENTION_PERIODS.auditLogDays = 730` | — | Code |
-| Logs immutable (no UPDATE / DELETE) | 🟡 | Currently table allows admin DELETE for cleanup | Add explicit RLS forbidding non-admin write/delete; cleanup via partition rotation instead of DELETE | ❌ Future engineering |
+| Logs immutable (no UPDATE / DELETE) | ✅ | Migration `20260518120000_audit_log_immutability.sql` adds BEFORE UPDATE/DELETE triggers; UPDATE forbidden outright; DELETE forbidden except via the controlled `cleanup_expired_data` retention purge (txn-scoped GUC `app.allow_audit_purge`). REVOKEs UPDATE/DELETE from anon + authenticated explicitly. Pen-test checks 17+18 added. | Operator: paste migration into Supabase SQL Editor + re-run `scripts/security-pen-test.sh` | ⏳ Operator (5 min) |
 | Logs include actor + action + target + timestamp | ✅ | Schema enforces all four | — | Code |
 
 ### A5 — Encryption + transport
@@ -124,7 +124,7 @@ falls under **רמת אבטחה גבוהה (High level)**.
 | Automated backups | ✅ | Supabase auto-backups daily, point-in-time recovery on Pro tier | — | Operator (verify Supabase plan) |
 | Backup retention documented | ✅ | "Up to 30 days" in privacy policy | — | Code |
 | Backup encryption | ✅ | Supabase encrypts backups | — | Supabase |
-| Disaster recovery procedure | ❌ | Not documented | Add `docs/DISASTER-RECOVERY.md` — RTO / RPO targets, restore procedure | ❌ Future engineering |
+| Disaster recovery procedure | ✅ | `docs/DISASTER-RECOVERY.md` — 5 scenarios (DB corruption / Fly outage / Cloudflare compromise / key leak / Supabase loss), RTO+RPO targets, quarterly tabletop schedule | Off-Supabase backup (Scenario E mitigation) is the one remaining gap — flagged in operator playbook §6 | ⏳ Operator follow-up |
 
 ### A7 — Vulnerability management
 
@@ -140,7 +140,7 @@ falls under **רמת אבטחה גבוהה (High level)**.
 |---|---|---|---|---|
 | Documented incident response procedure | ⏳ | None | Adding `docs/INCIDENT-RESPONSE.md` on this branch | ⏳ This branch |
 | Notification timeline (24-72h to PPA) | ⏳ | Implicit, not formalised | Codified in incident-response doc | ⏳ This branch |
-| User notification template | ❌ | None | Email template draft post-DPO appointment | ❌ Future |
+| User notification template | ✅ | `docs/INCIDENT-RESPONSE.md` § "Hours 12-24" — Templates A (teacher HE+EN), B (school principal HE), C (holding statement bilingual), D (QP guest path) | DPO name + privacy email need to be filled in once DPO is appointed | ⏳ Operator |
 | Incident log retained ≥ 24 months | ✅ | `audit_log` retention 730 days | — | Code |
 
 ### A9 — Sub-processors + cross-border transfers

@@ -91,7 +91,7 @@ export default function AdaptiveDrawer({
                 type="button"
                 onClick={onClose}
                 aria-label={t.closeDetailsAria}
-                className="w-10 h-10 rounded-xl hover:bg-[var(--vb-surface-alt)] flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-lg hover:bg-[var(--vb-surface-alt)] flex items-center justify-center shrink-0"
                 style={{
                   color: 'var(--vb-text-secondary)',
                   touchAction: "manipulation",

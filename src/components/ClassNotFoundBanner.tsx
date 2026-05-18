@@ -32,9 +32,9 @@ export const ClassNotFoundBanner: React.FC<ClassNotFoundBannerProps> = ({
   if (!classCode) return null;
   return (
     <div dir={dir} className="max-w-4xl mx-auto mb-4">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose-500 via-rose-500 to-pink-500 text-white shadow-lg p-4 sm:p-5">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-rose-500 via-rose-500 to-pink-500 text-white shadow-lg p-4 sm:p-5">
         <div className="flex items-start gap-3">
-          <div className="shrink-0 w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl">⚠️</div>
+          <div className="shrink-0 w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl">⚠️</div>
           <div className="flex-1 min-w-0">
             <p className="font-black text-sm sm:text-base">{t.classNotFoundTitle(classCode)}</p>
             <p className="text-xs sm:text-sm text-white/90 mt-0.5 leading-relaxed">
@@ -56,7 +56,7 @@ export const ClassNotFoundBanner: React.FC<ClassNotFoundBannerProps> = ({
             onClick={onSignOutAndLogin}
             type="button"
             style={{ touchAction: 'manipulation' }}
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-black text-rose-700 bg-white hover:bg-rose-50 px-4 py-2 rounded-xl shadow-md transition-all"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-black text-rose-700 bg-white hover:bg-rose-50 px-4 py-2 rounded-lg shadow-md transition-all"
           >
             {t.signOutAndTryAgain}
           </button>
@@ -64,7 +64,7 @@ export const ClassNotFoundBanner: React.FC<ClassNotFoundBannerProps> = ({
             onClick={onDismiss}
             type="button"
             style={{ touchAction: 'manipulation' }}
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-black text-white bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl transition-all"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-black text-white bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all"
           >
             {t.stayHere}
           </button>

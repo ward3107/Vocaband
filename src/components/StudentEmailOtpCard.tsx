@@ -158,7 +158,7 @@ export default function StudentEmailOtpCard({
             value={emailInput}
             onChange={(e) => setEmailInput(e.target.value)}
             disabled={otp.stage === "sending"}
-            className="w-full px-4 py-3 rounded-xl border-2 border-stone-200 focus:border-indigo-500 focus:outline-none text-base font-medium disabled:bg-stone-50 disabled:opacity-60"
+            className="w-full px-4 py-3 rounded-lg border-2 border-stone-200 focus:border-indigo-500 focus:outline-none text-base font-medium disabled:bg-stone-50 disabled:opacity-60"
           />
           {validationError && (
             <p className="mt-2 text-xs font-bold text-rose-600 flex items-start gap-1.5">
@@ -175,7 +175,7 @@ export default function StudentEmailOtpCard({
           <button
             type="submit"
             disabled={otp.stage === "sending" || emailInput.trim().length === 0}
-            className="w-full mt-4 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white font-black text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-60"
+            className="w-full mt-4 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white font-black text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-60"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
           >
             {otp.stage === "sending" ? (
@@ -215,7 +215,7 @@ export default function StudentEmailOtpCard({
             onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
             disabled={otp.stage === "verifying" || otp.stage === "done"}
             placeholder="000000"
-            className="w-full px-4 py-3 rounded-xl border-2 border-stone-200 focus:border-indigo-500 focus:outline-none text-2xl font-black tracking-[0.5em] text-center font-mono tabular-nums disabled:bg-stone-50 disabled:opacity-60"
+            className="w-full px-4 py-3 rounded-lg border-2 border-stone-200 focus:border-indigo-500 focus:outline-none text-2xl font-black tracking-[0.5em] text-center font-mono tabular-nums disabled:bg-stone-50 disabled:opacity-60"
           />
           {otp.stage === "error-verify" && otp.error && (
             <p className="mt-2 text-xs font-bold text-rose-600 flex items-start gap-1.5">
@@ -226,7 +226,7 @@ export default function StudentEmailOtpCard({
           <button
             type="submit"
             disabled={otp.stage === "verifying" || otp.stage === "done" || codeInput.length !== 6}
-            className="w-full mt-4 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white font-black text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-60"
+            className="w-full mt-4 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white font-black text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-60"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
           >
             {otp.stage === "verifying" ? (

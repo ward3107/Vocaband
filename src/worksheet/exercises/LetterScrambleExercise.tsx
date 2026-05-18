@@ -120,7 +120,7 @@ export const LetterScrambleExercise: ExerciseComponent<ExerciseOf<"letter_scramb
   const isRight = complete && built === target;
 
   return (
-    <div className="bg-white rounded-3xl p-4 sm:p-8 shadow-2xl">
+    <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
         <span className="text-xs font-bold text-stone-500">
           {idx + 1} / {order.length}
@@ -151,7 +151,7 @@ export const LetterScrambleExercise: ExerciseComponent<ExerciseOf<"letter_scramb
       <motion.div
         animate={shake ? { x: [0, -8, 8, -8, 8, 0] } : { x: 0 }}
         transition={{ duration: 0.4 }}
-        className={`flex items-center justify-center gap-1.5 sm:gap-2 mb-2 px-2 py-4 rounded-2xl border-2 transition-colors ${
+        className={`flex items-center justify-center gap-1.5 sm:gap-2 mb-2 px-2 py-4 rounded-xl border-2 transition-colors ${
           complete
             ? isRight
               ? "border-emerald-500 bg-emerald-50"

@@ -80,8 +80,8 @@ export default function LiveChallengeView({
   };
 
   return (
-    <div dir={dir} className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4 sm:p-6 text-white">
-      <div className="max-w-5xl mx-auto">
+    <div dir={dir} className="min-h-screen bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-4 sm:p-6 text-white">
+      <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-8">
           <button onClick={exitChallenge} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">{t.backToClassSelection}</button>
           <div className="flex items-center gap-3">
@@ -139,7 +139,7 @@ export default function LiveChallengeView({
           >
             {t.liveChallengeFor(selectedClass.name)}
           </motion.h1>
-          <p className="text-white/90 font-bold text-sm sm:text-base 2xl:text-lg">{t.classCodeLabel} <span className="bg-white text-purple-600 px-4 py-2 rounded-xl font-mono font-black ml-2 shadow-lg 2xl:text-xl">{selectedClass.code}</span></p>
+          <p className="text-white/90 font-bold text-sm sm:text-base 2xl:text-lg">{t.classCodeLabel} <span className="bg-white text-violet-600 px-4 py-2 rounded-lg font-mono font-black ml-2 shadow-lg 2xl:text-xl">{selectedClass.code}</span></p>
         </div>
 
         {/* Socket-offline warning — if the live socket never connects,
@@ -151,9 +151,9 @@ export default function LiveChallengeView({
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl p-4 sm:p-5 shadow-lg flex items-start gap-3"
+            className="mb-6 bg-amber-100 text-amber-900 border border-amber-300 rounded-xl p-4 sm:p-5 shadow-lg flex items-start gap-3"
           >
-            <div className="shrink-0 w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xl">⚠️</div>
+            <div className="shrink-0 w-10 h-10 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xl">⚠️</div>
             <div className="flex-1 min-w-0">
               <p className="font-black text-base">{t.podiumNotConnected}</p>
               <p className="text-sm mt-1 leading-relaxed">
@@ -181,7 +181,7 @@ export default function LiveChallengeView({
                     </div>
                     <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-500 text-white text-xs px-2 py-0.5 rounded-full font-black">{t.rankBadge2}</div>
                   </div>
-                  <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-40">
+                  <div className="bg-white/20 backdrop-blur-md rounded-xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-40">
                     <p className="font-bold text-sm sm:text-base 2xl:text-lg truncate">{top3[1].name}{top3[1].isGuest && <span className="ml-1">🎭</span>}</p>
                     <p className="text-2xl sm:text-3xl 2xl:text-4xl font-black">{top3[1].totalScore}</p>
                     <p className="text-[10px] 2xl:text-xs text-white/70 font-bold">{t.pointsLabel}</p>
@@ -214,7 +214,7 @@ export default function LiveChallengeView({
                     <div className="absolute -top-1 -right-1 text-yellow-300 animate-bounce">✨</div>
                     <div className="absolute -top-1 -left-1 text-yellow-300 animate-bounce [animation-delay:0.5s]">✨</div>
                   </div>
-                  <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-600/30 backdrop-blur-md rounded-2xl p-4 sm:p-5 mt-4 text-center border-2 border-yellow-300/50 w-32 sm:w-40 2xl:w-44 shadow-2xl shadow-yellow-400/20">
+                  <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-600/30 backdrop-blur-md rounded-xl p-4 sm:p-5 mt-4 text-center border-2 border-yellow-300/50 w-32 sm:w-40 2xl:w-44 shadow-2xl shadow-yellow-400/20">
                     <p className="font-bold text-base sm:text-lg 2xl:text-xl truncate">{top3[0].name}{top3[0].isGuest && <span className="ml-1">🎭</span>}</p>
                     <p className="text-3xl sm:text-4xl 2xl:text-5xl font-black">{top3[0].totalScore}</p>
                     <p className="text-[10px] 2xl:text-xs text-white/80 font-bold">{t.pointsLabel}</p>
@@ -237,7 +237,7 @@ export default function LiveChallengeView({
                     </div>
                     <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full font-black">{t.rankBadge3}</div>
                   </div>
-                  <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-40">
+                  <div className="bg-white/20 backdrop-blur-md rounded-xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-40">
                     <p className="font-bold text-sm sm:text-base 2xl:text-lg truncate">{top3[2].name}{top3[2].isGuest && <span className="ml-1">🎭</span>}</p>
                     <p className="text-2xl sm:text-3xl 2xl:text-4xl font-black">{top3[2].totalScore}</p>
                     <p className="text-[10px] 2xl:text-xs text-white/70 font-bold">{t.pointsLabel}</p>
@@ -250,7 +250,7 @@ export default function LiveChallengeView({
         )}
 
         {/* Rest of Leaderboard */}
-        <div className="bg-white/10 backdrop-blur-md rounded-[40px] p-6 sm:p-8 border border-white/20 shadow-2xl">
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-white/20 shadow-2xl">
           <h2 className="text-xl sm:text-2xl 2xl:text-3xl font-black mb-4 sm:mb-6 flex items-center gap-2">
             <span className="text-2xl 2xl:text-3xl">📊</span> {t.fullLeaderboard}
             {sortedLeaderboard.length > 0 && (
@@ -266,7 +266,7 @@ export default function LiveChallengeView({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: (idx + 3) * 0.05 }}
-                className="flex justify-between items-center p-3 sm:p-4 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 hover:scale-[1.02] transition-all"
+                className="flex justify-between items-center p-3 sm:p-4 bg-white/10 rounded-xl border border-white/10 hover:bg-white/20 hover:scale-[1.02] transition-all"
               >
                 <div className="flex items-center gap-3 sm:gap-4">
                   <span className="w-8 h-8 sm:w-10 sm:h-10 2xl:w-12 2xl:h-12 rounded-full bg-white/20 flex items-center justify-center font-black text-sm sm:text-base 2xl:text-lg">{idx + 4}</span>
@@ -310,7 +310,7 @@ export default function LiveChallengeView({
               exit={{ scale: 0.8, opacity: 0, y: 20 }}
               transition={{ type: 'spring', stiffness: 200, damping: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white text-stone-900 rounded-3xl p-6 sm:p-10 max-w-md w-full shadow-2xl"
+              className="bg-white text-stone-900 rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-2xl"
             >
               <div className="text-center mb-6">
                 <div className="text-5xl sm:text-6xl mb-3">🏁</div>
@@ -333,7 +333,7 @@ export default function LiveChallengeView({
                       initial={{ x: -20, opacity: 0 }}
                       animate={{ x: 0, opacity: 1 }}
                       transition={{ delay: 0.1 + idx * 0.1 }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 ${bg}`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${bg}`}
                     >
                       <div className="text-3xl">{medal}</div>
                       <div className="flex-1 min-w-0">
@@ -356,7 +356,7 @@ export default function LiveChallengeView({
                 onClick={() => { setShowResultsModal(false); exitChallenge(); }}
                 type="button"
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl transition-all"
+                className="w-full py-4 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white rounded-xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl transition-all"
               >
                 {t.close}
               </button>

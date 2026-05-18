@@ -84,7 +84,7 @@ export default function FirstTimeGuide({
             exit={{ y: 24, opacity: 0, scale: 0.97 }}
             transition={{ type: "spring", damping: 22, stiffness: 220 }}
             style={{ backgroundColor: "var(--vb-surface)", borderColor: "var(--vb-border)" }}
-            className="relative w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden"
           >
             {/* Skip — corner X.  Calls onDone (writes seen + closes). */}
             <button
@@ -129,7 +129,7 @@ export default function FirstTimeGuide({
                 >
                   {step.icon && (
                     <div
-                      className="shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center text-2xl"
+                      className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-2xl"
                       style={{ backgroundColor: "var(--vb-surface-alt)" }}
                       aria-hidden
                     >
@@ -196,7 +196,7 @@ export default function FirstTimeGuide({
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="px-4 py-2 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-colors active:scale-95"
+                  className="px-4 py-2 rounded-lg font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-colors active:scale-95"
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                 >
                   {isLast ? t.gotIt : t.next}

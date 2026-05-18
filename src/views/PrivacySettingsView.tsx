@@ -192,7 +192,7 @@ export default function PrivacySettingsView({
         </div>
 
         {/* Profile Info (editable name) */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
           <h2 className="font-bold text-stone-800 mb-3">{t.profileTitle}</h2>
           <div className="space-y-2 text-sm text-stone-600">
             <p><strong>{t.role}</strong> {user.role}</p>
@@ -228,7 +228,7 @@ export default function PrivacySettingsView({
 
         {/* Parent Weekly Digest opt-in (feature-flagged, students only). */}
         {showParentDigest && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+          <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
             <h2 className="font-bold text-stone-800 mb-1">{t.parentDigestTitle}</h2>
             <p className="text-sm text-stone-500 mb-4">{t.parentDigestSubtitle}</p>
             {user.parentEmail ? (
@@ -287,7 +287,7 @@ export default function PrivacySettingsView({
         )}
 
         {/* What data we store */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
           <h2 className="font-bold text-stone-800 mb-3">{t.whatDataTitle}</h2>
           <div className="space-y-3">
             {DATA_COLLECTION_POINTS
@@ -304,7 +304,7 @@ export default function PrivacySettingsView({
         </div>
 
         {/* Third-party services */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
           <h2 className="font-bold text-stone-800 mb-3">{t.thirdPartyTitle}</h2>
           <div className="space-y-3">
             {THIRD_PARTY_REGISTRY.map((tp, i) => (
@@ -318,7 +318,7 @@ export default function PrivacySettingsView({
         </div>
 
         {/* Consent status */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
           <h2 className="font-bold text-stone-800 mb-3">{t.consentStatusTitle}</h2>
           <div className="text-sm text-stone-600 space-y-1">
             <p><strong>{t.currentPolicyVersion}</strong> {PRIVACY_POLICY_VERSION}</p>
@@ -359,19 +359,19 @@ export default function PrivacySettingsView({
         </div>
 
         {/* Data export & deletion */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
           <h2 className="font-bold text-stone-800 mb-3">{t.rightsTitle}</h2>
           <p className="text-sm text-stone-500 mb-4">{t.rightsIntro}</p>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={handleExportData}
-              className="px-4 py-2 bg-blue-100 text-blue-700 font-bold rounded-xl text-sm hover:bg-blue-200 transition-all"
+              className="px-4 py-2 bg-blue-100 text-blue-700 font-bold rounded-lg text-sm hover:bg-blue-200 transition-all"
             >
               {t.downloadMyData}
             </button>
             <button
               onClick={handleDeleteAccount}
-              className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-xl text-sm hover:bg-red-200 transition-all"
+              className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg text-sm hover:bg-red-200 transition-all"
             >
               {t.deleteMyAccount}
             </button>

@@ -176,10 +176,19 @@ export function useGameFinish(params: UseGameFinishParams) {
     setSentenceFeedback(null);
     setHiddenOptions([]);
 
+    // Modes that are launched directly from the dashboard (no
+    // assignment + mode-picker leading in) should exit back to the
+    // dashboard, not to a stale per-assignment mode picker.  Without
+    // this, finishing an Idiom / Review / Class Minute round bounced
+    // the student to GameModeSelectionView for whatever activeAssignment
+    // happened to still be set — usually empty or unrelated.
+    const isDirectLaunchMode =
+      gameMode === 'idiom' || gameMode === 'review' || gameMode === 'class-minute';
+
     if (hasTeacherAccess(user)) {
       setView("teacher-dashboard");
     } else if (user?.role === "student") {
-      if (showModeSelection) {
+      if (showModeSelection || isDirectLaunchMode) {
         setView("student-dashboard");
       } else {
         setShowModeSelection(true);

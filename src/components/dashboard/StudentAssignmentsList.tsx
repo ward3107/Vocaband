@@ -32,14 +32,14 @@ export default function StudentAssignmentsList({
   const { language } = useLanguage();
   const t = studentDashboardT[language];
   return (
-    <div className="bg-white p-5 sm:p-8 rounded-[28px] sm:rounded-[40px] shadow-xl">
+    <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-2xl shadow-xl">
       <h2 className="text-xl sm:text-2xl font-black mb-5 sm:mb-6 flex items-center gap-2">
         <BookOpen className="text-blue-700" size={22} /> {t.yourAssignments}
       </h2>
 
       {/* Background loading indicator */}
       {studentDataLoading && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-xl flex items-center gap-2 animate-pulse">
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center gap-2 animate-pulse">
           <RefreshCw className="text-blue-700 animate-spin" size={16} />
           <span className="text-blue-800 font-bold text-sm">{t.loadingAssignments}</span>
         </div>

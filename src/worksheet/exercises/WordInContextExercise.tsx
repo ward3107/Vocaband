@@ -119,7 +119,7 @@ export const WordInContextExercise: ExerciseComponent<ExerciseOf<"word_in_contex
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
         <span className="text-xs font-bold text-stone-500">
           {idx + 1} / {items.length}
@@ -135,7 +135,7 @@ export const WordInContextExercise: ExerciseComponent<ExerciseOf<"word_in_contex
         key={idx}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-100 px-5 py-6 mb-6 text-center"
+        className="rounded-xl bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-100 px-5 py-6 mb-6 text-center"
       >
         <p className="text-lg sm:text-xl font-bold text-stone-800 leading-relaxed" dir="ltr">
           {current.parts.before}
@@ -173,7 +173,7 @@ export const WordInContextExercise: ExerciseComponent<ExerciseOf<"word_in_contex
               whileTap={{ scale: pickedId !== null ? 1 : 0.96 }}
               disabled={pickedId !== null}
               onClick={() => handlePick(opt)}
-              className={`p-4 rounded-2xl border-2 font-bold text-lg sm:text-xl transition-colors ${style}`}
+              className={`p-4 rounded-xl border-2 font-bold text-lg sm:text-xl transition-colors ${style}`}
               dir="auto"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >

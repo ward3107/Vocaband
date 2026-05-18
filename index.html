@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="cf-2fa-verify" value="QdN3uneCbyfauspl" />
+    <meta name="cf-2fa-verify" content="09b6385cce994af" />
     <meta name="theme-color" content="#059669" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -44,6 +44,7 @@
     <link rel="alternate" hreflang="en" href="https://www.vocaband.com/?lang=en" />
     <link rel="alternate" hreflang="he" href="https://www.vocaband.com/?lang=he" />
     <link rel="alternate" hreflang="ar" href="https://www.vocaband.com/?lang=ar" />
+    <link rel="alternate" hreflang="ru" href="https://www.vocaband.com/?lang=ru" />
     <link rel="alternate" hreflang="x-default" href="https://www.vocaband.com/" />
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -101,6 +102,131 @@
       "inLanguage": ["en", "he", "ar"],
       "educationalLevel": "CEFR A1 to B2 (elementary through upper-intermediate)",
       "about": "English vocabulary learning aligned with CEFR A1-B2 levels"
+    }
+    </script>
+    <!-- FAQPage schema — opts the landing-page FAQ section into
+         Google's rich-result FAQ snippet. When Google trusts the
+         schema, the search-result card expands to show the Q&As
+         inline (each question collapsible), which dramatically
+         increases CTR + the result's vertical real estate. Content
+         here MUST match the visible FAQ on the page (LandingFAQ.tsx
+         + src/locales/student/faq.ts EN copy) — Google penalizes
+         pages where the schema lies about content. Strings kept in
+         English: rich-result snippets render in the searcher's
+         result-page language, so the English snippet ships with
+         English content; Hebrew/Arabic/Russian visitors searching
+         in their own language still get the localized title +
+         description from the Worker edge rewrite. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I create a class?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Click 'Teacher Login', sign in with Google, then click 'Create Class'. Share the 6-digit code with your students — they're in!"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Vocaband free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! Teachers can create unlimited classes and assignments for free. Premium features coming soon for schools wanting advanced analytics."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What vocabulary sets are available?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We offer three CEFR-aligned sets: Set 1 (Foundation, ~2000 words), Set 2 (Intermediate, ~2500 words), and Set 3 (Academic, ~3000 words). You can also upload custom word lists."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I add my own vocabulary words?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Absolutely! Type your list, snap a photo of any wordlist, or paste content — we'll extract the words automatically. AI generates example sentences for each word."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does auto-grading work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Every practice session is graded instantly. Students get immediate feedback, and you see a summary of class performance in your dashboard. No worksheets to collect!"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Vocaband work offline?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Students can practice in offline mode — progress syncs when they reconnect. Great for classrooms with unreliable internet!"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I join a class?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Get your class code from your teacher, open Vocaband, click 'Start Learning', and enter the 6-digit code. You're in!"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are XP and streaks?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "XP points show your progress — earn them by playing games and getting answers right. Streaks reward daily practice — keep the flame burning for bonus rewards!"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What game modes can I play?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We have 11 different game modes: Classic, Listen, Spell, Match, True/False, Flashcards, Scramble, Reverse, Letters, Sentence Builder, and Fill-in-the-Blank. Find your favorite!"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I play alone without a class?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! Use Quick Play to join live games without signing up, or create your own account to practice solo and track your progress."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What devices work with Vocaband?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Any device with a web browser — phones, tablets, laptops, or desktops. Works on iOS, Android, Mac, Windows, and Chromebook."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Vocaband available in Hebrew and Arabic?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! The entire app is translated into Hebrew and Arabic. Every word includes native translations, and RTL layouts work perfectly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does it cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For individual teachers: completely free. School plans with advanced features and priority support are coming soon. Contact us for details!"
+          }
+        }
+      ]
     }
     </script>
     <!-- Favicon — multiple sizes for Google search, browser tabs, and home-screen installs.

@@ -39,9 +39,9 @@ export default function LiveChallengeClassSelectView({
         onLogout={() => performUserLogout()}
       />
 
-      <main id="main-content" className="pt-24 px-6 max-w-2xl mx-auto">
+      <main id="main-content" className="pt-24 px-6 max-w-5xl mx-auto">
         {/* Header Card */}
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 rounded-2xl p-6 mb-8 text-center shadow-xl">
+        <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 rounded-xl p-6 mb-8 text-center shadow-xl">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -71,7 +71,7 @@ export default function LiveChallengeClassSelectView({
                   socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: cls.code });
                 }
               }}
-              className="bg-surface-container-lowest rounded-xl p-6 border-2 border-surface-container hover:border-primary/50 hover:shadow-xl transition-all text-left group"
+              className="bg-surface-container-lowest rounded-lg p-6 border-2 border-surface-container hover:border-primary/50 hover:shadow-xl transition-all text-left group"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">

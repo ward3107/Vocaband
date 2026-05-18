@@ -264,6 +264,47 @@ if [[ -n "${APP_URL:-}" ]]; then
   fi
 fi
 
+# ─── Audit-log immutability (Reg 2017 § 8) ────────────────────────────
+# Verifies the 20260518120000 migration is live. anon should be rejected
+# at the RLS layer (SELECT denied without auth.uid()), and the explicit
+# UPDATE/DELETE attempts should fail even when called via PostgREST.
+echo
+echo "[17] Anon UPDATE public.audit_log should be rejected"
+body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/audit_log?id=eq.00000000-0000-0000-0000-000000000000" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=minimal" \
+  -d '{"action":"tampered"}')
+# PostgREST returns either {"message":...} or empty body; either way it
+# must not be a 2xx success. Easiest stable check: an error payload OR
+# nothing changed. Use HTTP status:
+status=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
+  "$SUPABASE_URL/rest/v1/audit_log?id=eq.00000000-0000-0000-0000-000000000000" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=minimal" \
+  -d '{"action":"tampered"}')
+if [[ "$status" =~ ^(401|403|404)$ ]]; then
+  echo "  PASS  anon UPDATE audit_log → $status"; PASS=$((PASS+1))
+else
+  echo "  FAIL  anon UPDATE audit_log returned $status (expected 401/403/404)"
+  FAIL=$((FAIL+1))
+fi
+
+echo "[18] Anon DELETE public.audit_log should be rejected"
+status=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+  "$SUPABASE_URL/rest/v1/audit_log?id=eq.00000000-0000-0000-0000-000000000000" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY")
+if [[ "$status" =~ ^(401|403|404)$ ]]; then
+  echo "  PASS  anon DELETE audit_log → $status"; PASS=$((PASS+1))
+else
+  echo "  FAIL  anon DELETE audit_log returned $status (expected 401/403/404)"
+  FAIL=$((FAIL+1))
+fi
+
 echo
 echo "Results: $PASS passed, $FAIL failed."
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1

@@ -22,12 +22,23 @@ import {
   ListChecks,
   Layers,
   Sparkles,
+  Trash2,
+  Link as LinkIcon,
+  Check,
 } from "lucide-react";
 import PublicNav from "../components/PublicNav";
+import PageHero from "../components/PageHero";
 import html2pdf from "html2pdf.js";
 import qrcode from "qrcode-generator";
 import { Share2 } from "lucide-react";
 import { ShareWorksheetDialog, type ShareSource, type WorksheetLang } from "../components/ShareWorksheetDialog";
+import { supabase } from "../core/supabase";
+import {
+  listMyWorksheets,
+  forgetMyWorksheet,
+  getOrCreateMinterFingerprint,
+  type MyWorksheetEntry,
+} from "../utils/myWorksheets";
 
 type Word = (typeof ALL_WORDS)[number];
 type TopicPack = (typeof TOPIC_PACKS)[number];
@@ -2209,7 +2220,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       aria-label={`${label} — ${title}`}
-      className={`py-2.5 rounded-xl bg-gradient-to-r ${gradient} ${textClass} font-bold transition-all flex items-center justify-center gap-1.5 border ${borderClass} text-sm ${fullWidth ? "col-span-2" : ""}`}
+      className={`py-2.5 rounded-lg bg-gradient-to-r ${gradient} ${textClass} font-bold transition-all flex items-center justify-center gap-1.5 border ${borderClass} text-sm ${fullWidth ? "col-span-2" : ""}`}
       type="button"
     >
       {icon}
@@ -2222,10 +2233,10 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
-      className="bg-white/10 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/20 overflow-hidden group hover:border-white/30 transition-all"
+      className="bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl border border-white/20 overflow-hidden group hover:border-white/30 transition-all"
     >
       <div className={`bg-gradient-to-r ${gradient} p-3 sm:p-5 flex items-center gap-3`}>
-        <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white/20 flex items-center justify-center shrink-0 text-lg sm:text-2xl">
+        <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-lg sm:text-2xl">
           {icon}
         </div>
         <div className="flex-1 min-w-0">
@@ -2250,7 +2261,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             onClick={onDownload}
             disabled={isDownloading}
             aria-label={`${downloadLabel} — ${title}`}
-            className={`w-full py-2 sm:py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all flex items-center justify-center gap-2 text-sm sm:text-base ${
+            className={`w-full py-2 sm:py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold transition-all flex items-center justify-center gap-2 text-sm sm:text-base ${
               isDownloading ? "cursor-wait" : "cursor-pointer"
             }`}
             type="button"
@@ -2278,7 +2289,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             whileTap={{ scale: 0.98 }}
             onClick={onShareInteractive}
             aria-label={`Share online worksheet — ${title}`}
-            className="w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 transition-all text-sm sm:text-base"
+            className="w-full py-2 sm:py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 transition-all text-sm sm:text-base"
             type="button"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >
@@ -2296,7 +2307,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             type="button"
             onClick={() => setFormatsOpen((o) => !o)}
             aria-expanded={formatsOpen}
-            className="w-full py-2 sm:py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white font-semibold transition-all flex items-center justify-center gap-2 text-xs sm:text-sm"
+            className="w-full py-2 sm:py-2.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white font-semibold transition-all flex items-center justify-center gap-2 text-xs sm:text-sm"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >
             <Layers size={14} />
@@ -2540,7 +2551,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
-        className={`bg-white shadow-2xl w-full h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden flex flex-col ${containerWidth}`}
+        className={`bg-white shadow-2xl w-full h-full sm:h-[90vh] sm:rounded-xl overflow-hidden flex flex-col ${containerWidth}`}
       >
         <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 sm:px-6 py-3 sm:py-4 flex items-center gap-2 sm:gap-3">
           <h3 className="text-base sm:text-xl font-bold text-white truncate flex-1 min-w-0">{previewTitle}</h3>
@@ -2737,7 +2748,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
           <button
             onClick={onClose}
             type="button"
-            className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold transition-all text-sm sm:text-base"
+            className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold transition-all text-sm sm:text-base"
           >
             {cancelLabel}
           </button>
@@ -2745,7 +2756,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
             onClick={handlePrint}
             type="button"
             disabled={!preview}
-            className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-white border-2 border-violet-300 hover:border-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-violet-700 font-bold transition-all flex items-center gap-2 text-sm sm:text-base"
+            className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg bg-white border-2 border-violet-300 hover:border-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-violet-700 font-bold transition-all flex items-center gap-2 text-sm sm:text-base"
           >
             <Printer size={16} />
             {printLabel}
@@ -2754,7 +2765,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
             onClick={onDownload}
             type="button"
             disabled={isDownloading || !preview}
-            className="px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 disabled:opacity-60 text-white font-bold transition-all flex items-center gap-2 text-sm sm:text-base"
+            className="px-4 sm:px-8 py-2.5 sm:py-3 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 disabled:opacity-60 text-white font-bold transition-all flex items-center gap-2 text-sm sm:text-base"
           >
             {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             {downloadLabel}
@@ -3190,40 +3201,22 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900" dir={dir}>
       <PublicNav currentPage="resources" onNavigate={onNavigate} onGetStarted={onGetStarted} onTeacherLogin={onTeacherLogin} />
 
-      <main id="main-content" className="pt-24 pb-16 px-4 md:px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-4 mb-8">
-            <button
-              onClick={onBack}
-              type="button"
-              className="flex items-center gap-2 text-violet-300 font-bold hover:text-violet-200 transition-all group"
-            >
-              <ArrowLeft
-                size={20}
-                className={`transition-transform group-hover:-translate-x-1 ${isRTL ? "rotate-180" : ""}`}
-              />
-              <span>{t.backButton}</span>
-            </button>
-          </div>
+      {/* Vocabagrut-style hero — unifies the resources tab with the
+          teacher dashboard and assignment-creation flows. Sits above the
+          main content padding so it goes edge-to-edge. */}
+      <div className="pt-20">
+        <PageHero
+          icon={<FileText size={32} className="text-white" />}
+          eyebrow={t.freeResourcesPill}
+          title={t.title}
+          subtitle={t.subtitle}
+          onBack={onBack}
+          backLabel={t.backButton}
+        />
+      </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12 md:mb-16"
-          >
-            <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-violet-500/20 border border-violet-400/30 mb-6">
-              <FileText size={20} className="text-violet-300" />
-              <span className="text-violet-200 font-bold text-sm">{t.freeResourcesPill}</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 font-headline">{t.title}</h1>
-            <p
-              className="text-base md:text-lg text-white/70 max-w-2xl mx-auto"
-              dir={dir}
-              style={{ textAlign: isRTL ? "right" : "left" }}
-            >
-              {t.subtitle}
-            </p>
-          </motion.div>
+      <main id="main-content" className="pt-8 pb-16 px-4 md:px-6">
+        <div className="max-w-6xl mx-auto">
 
           {/* Theme bundles — multi-topic curated packs.  Each bundle is
               a virtual TopicPack (see THEMED_BUNDLES at module scope)
@@ -3237,7 +3230,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             className="mb-12"
           >
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
                 <Sparkles size={20} className="text-white" />
               </div>
               <div>
@@ -3263,7 +3256,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                 return (
                   <div
                     key={bundle.lookup}
-                    className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden hover:border-white/30 transition-all"
+                    className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden hover:border-white/30 transition-all"
                   >
                     <div className={`bg-gradient-to-br ${bundle.gradient} p-5 flex items-center gap-3`}>
                       <span className="text-3xl">{bundle.emoji}</span>
@@ -3323,7 +3316,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             className="mb-12"
           >
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
                 <FileText size={20} className="text-white" />
               </div>
               <div>
@@ -3332,7 +3325,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
               </div>
             </div>
 
-            <div className="sticky top-20 z-20 mb-6 -mx-2 px-2 py-3 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-white/10">
+            <div className="sticky top-20 z-20 mb-6 -mx-2 px-2 py-3 bg-slate-900/80 backdrop-blur-md rounded-xl border border-white/10">
               <div className="relative">
                 <Search
                   size={18}
@@ -3345,7 +3338,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
                   placeholder={t.searchPlaceholder}
                   aria-label={t.searchPlaceholder}
                   dir={dir}
-                  className={`w-full ${isRTL ? "pr-10 pl-10" : "pl-10 pr-10"} py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 font-semibold focus:outline-none focus:border-violet-400 focus:bg-white/15 transition-all`}
+                  className={`w-full ${isRTL ? "pr-10 pl-10" : "pl-10 pr-10"} py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 font-semibold focus:outline-none focus:border-violet-400 focus:bg-white/15 transition-all`}
                 />
                 {topicSearch && (
                   <button
@@ -3368,7 +3361,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             </div>
 
             {filteredPacks.length === 0 ? (
-              <div className="text-center py-16 px-4 rounded-2xl bg-white/5 border border-white/10">
+              <div className="text-center py-16 px-4 rounded-xl bg-white/5 border border-white/10">
                 <Search size={40} className="mx-auto mb-3 text-violet-400/60" />
                 <p className="text-white/70 font-semibold">{t.searchEmpty}</p>
               </div>
@@ -3411,11 +3404,13 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             )}
           </motion.div>
 
+          <MySharedWorksheetsSection t={t} dir={dir} isRTL={isRTL} />
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="text-center p-8 md:p-12 lg:p-16 rounded-3xl bg-white/5 backdrop-blur-md border border-white/10"
+            className="text-center p-8 md:p-12 lg:p-16 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10"
           >
             <Rocket size={40} className="mx-auto mb-4 text-violet-400" />
             <h3 className="text-2xl font-bold text-white mb-3">{t.ctaTitle}</h3>
@@ -3430,7 +3425,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={onGetStarted}
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold hover:shadow-lg hover:shadow-violet-500/30 transition-all"
+              className="px-8 py-4 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold hover:shadow-lg hover:shadow-violet-500/30 transition-all"
               type="button"
             >
               {t.ctaButton}
@@ -3446,7 +3441,7 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
             <button
               onClick={onBack}
               type="button"
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-violet-200 font-bold transition-all border border-white/20 hover:border-white/30"
+              className="flex items-center gap-2 px-6 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-violet-200 font-bold transition-all border border-white/20 hover:border-white/30"
             >
               <ArrowLeft size={20} className={`transition-transform ${isRTL ? "rotate-180" : ""}`} />
               <span>{t.backButton}</span>
@@ -3522,5 +3517,140 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     </div>
   );
 };
+
+// "My Shared Worksheets" — per-device list of interactive worksheets
+// this browser minted. Hidden entirely when the list is empty so the
+// section doesn't clutter the page for first-time visitors. Delete
+// calls revoke_my_worksheet() which checks the stored
+// minter_fingerprint server-side; on success the entry is dropped
+// from localStorage.
+const MySharedWorksheetsSection: React.FC<{
+  t: ReturnType<typeof getResourcesTranslator>;
+  dir: "ltr" | "rtl";
+  isRTL: boolean;
+}> = ({ t, dir, isRTL }) => {
+  const [items, setItems] = useState<MyWorksheetEntry[]>(() => listMyWorksheets());
+  const [revoking, setRevoking] = useState<string | null>(null);
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [errorSlug, setErrorSlug] = useState<string | null>(null);
+
+  // Re-read from localStorage when the tab regains focus so a teacher
+  // who minted a new worksheet in another tab sees it appear here
+  // without a hard refresh.
+  useEffect(() => {
+    const refresh = () => setItems(listMyWorksheets());
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  if (items.length === 0) return null;
+
+  const handleCopy = async (slug: string) => {
+    const url = `${window.location.origin}/w/${slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedSlug(slug);
+      setTimeout(() => setCopiedSlug((s) => (s === slug ? null : s)), 1800);
+    } catch {
+      /* clipboard blocked — silent */
+    }
+  };
+
+  const handleRevoke = async (slug: string) => {
+    if (!window.confirm(t.myWorksheetsConfirmRevoke)) return;
+    setRevoking(slug);
+    setErrorSlug(null);
+    const fp = getOrCreateMinterFingerprint();
+    const { data, error } = await supabase.rpc("revoke_my_worksheet", {
+      p_slug: slug,
+      p_fingerprint: fp,
+    });
+    setRevoking(null);
+    if (error || data === false) {
+      setErrorSlug(slug);
+      return;
+    }
+    forgetMyWorksheet(slug);
+    setItems(listMyWorksheets());
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.25 }}
+      className="mb-12 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-6 md:p-8"
+    >
+      <div className="flex items-center gap-3 mb-1" dir={dir}>
+        <Share2 size={22} className="text-violet-300" />
+        <h2 className="text-2xl font-bold text-white">{t.myWorksheetsTitle}</h2>
+      </div>
+      <p
+        className="text-white/60 text-sm mb-5"
+        dir={dir}
+        style={{ textAlign: isRTL ? "right" : "left" }}
+      >
+        {t.myWorksheetsSubtitle}
+      </p>
+      <ul className="space-y-2">
+        {items.map((entry) => {
+          const isRevoking = revoking === entry.slug;
+          const isCopied = copiedSlug === entry.slug;
+          const hasError = errorSlug === entry.slug;
+          return (
+            <li
+              key={entry.slug}
+              className="rounded-xl bg-white/5 border border-white/10 px-4 py-3 flex flex-wrap items-center gap-3"
+              dir={dir}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-bold truncate">{entry.topicName}</p>
+                <p className="text-white/50 text-xs font-mono truncate">
+                  /w/{entry.slug}
+                </p>
+                {hasError && (
+                  <p className="text-rose-300 text-xs mt-1 font-bold">
+                    {t.myWorksheetsRevokeError}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopy(entry.slug)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-bold transition-all"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              >
+                {isCopied ? <Check size={14} /> : <LinkIcon size={14} />}
+                {isCopied ? t.myWorksheetsCopied : t.myWorksheetsCopyLink}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRevoke(entry.slug)}
+                disabled={isRevoking}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 text-sm font-bold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              >
+                {isRevoking ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Trash2 size={14} />
+                )}
+                {isRevoking ? t.myWorksheetsRevoking : t.myWorksheetsRevoke}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </motion.div>
+  );
+};
+
+// Tiny helper so the section component can type its `t` prop without
+// pulling in the whole FreeResourcesT interface from the locale file.
+const getResourcesTranslator = (): typeof freeResourcesT["en"] => freeResourcesT.en;
 
 export default FreeResourcesView;

@@ -179,7 +179,7 @@ export default function ReviewGame({
         <button
           type="button"
           onClick={() => onFinish(0, 0)}
-          className={`px-5 py-2.5 rounded-xl font-black text-white shadow-md hover:opacity-90 ${theme.fill}`}
+          className={`px-5 py-2.5 rounded-lg font-black text-white shadow-md hover:opacity-90 ${theme.fill}`}
         >
           {language === 'he' ? 'חזרה' : language === 'ar' ? 'العودة' : 'Back'}
         </button>
@@ -299,7 +299,7 @@ export default function ReviewGame({
               type="button"
               dir={targetLanguage === 'hebrew' || targetLanguage === 'arabic' ? 'rtl' : 'ltr'}
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-              className={`px-4 py-4 sm:py-5 rounded-2xl text-center font-black text-lg sm:text-xl transition-all shadow-sm ${stateClasses}`}
+              className={`px-4 py-4 sm:py-5 rounded-xl text-center font-black text-lg sm:text-xl transition-all shadow-sm ${stateClasses}`}
             >
               {translationOf(opt, targetLanguage) || opt.english}
             </motion.button>
@@ -312,7 +312,7 @@ export default function ReviewGame({
         <button
           type="button"
           onClick={handleEnd}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-bold transition"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-bold transition"
         >
           <X size={16} />
           {language === 'he' ? 'סיים' : language === 'ar' ? 'إنهاء' : 'End review'}

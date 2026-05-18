@@ -92,7 +92,7 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
       {/* Dropdown menu */}
       {isOpen && (
           <div
-            className={`absolute top-full mt-2 py-2 rounded-2xl bg-white shadow-2xl border border-stone-200 overflow-hidden min-w-[160px] z-[200] ${dropdownPosition}`}
+            className={`absolute top-full mt-2 py-2 rounded-xl bg-white shadow-2xl border border-stone-200 overflow-hidden min-w-[160px] z-[200] ${dropdownPosition}`}
             role="menu"
           >
             {languages.map((lang) => (

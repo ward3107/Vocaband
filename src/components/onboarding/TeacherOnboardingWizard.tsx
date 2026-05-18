@@ -186,7 +186,7 @@ export default function TeacherOnboardingWizard({
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 30, opacity: 0, scale: 0.97 }}
             transition={{ type: 'spring', damping: 22, stiffness: 220 }}
-            className="bg-white rounded-3xl shadow-2xl max-w-xl w-full max-h-[92vh] overflow-hidden flex flex-col relative"
+            className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[92vh] overflow-hidden flex flex-col relative"
             role="dialog"
             aria-modal="true"
             aria-label={t.welcomeHeading}
@@ -237,7 +237,7 @@ export default function TeacherOnboardingWizard({
                     transition={{ duration: 0.18 }}
                   >
                     <div className={`flex items-center gap-3 mb-5 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30 shrink-0">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30 shrink-0">
                         <Sparkles className="w-7 h-7 text-white" />
                       </div>
                       <div className={isRTL ? 'text-right' : 'text-left'}>
@@ -256,7 +256,7 @@ export default function TeacherOnboardingWizard({
                             key={p.id}
                             type="button"
                             onClick={() => setStarterPack(p.id)}
-                            className={`${isRTL ? 'text-right' : 'text-left'} p-3.5 rounded-2xl border-2 transition-all ${
+                            className={`${isRTL ? 'text-right' : 'text-left'} p-3.5 rounded-xl border-2 transition-all ${
                               selected
                                 ? 'border-indigo-500 bg-indigo-50 shadow-sm'
                                 : 'border-stone-200 hover:border-stone-300 bg-white'
@@ -264,7 +264,7 @@ export default function TeacherOnboardingWizard({
                             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
                           >
                             <div className={`flex items-start gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                              <span className={`shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${p.accent} flex items-center justify-center text-xl shadow-sm`}>
+                              <span className={`shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br ${p.accent} flex items-center justify-center text-xl shadow-sm`}>
                                 {p.emoji}
                               </span>
                               <div className="min-w-0 flex-1">
@@ -297,7 +297,7 @@ export default function TeacherOnboardingWizard({
                     transition={{ duration: 0.18 }}
                   >
                     <div className={`flex items-center gap-3 mb-5 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0">
                         <GraduationCap className="w-7 h-7 text-white" />
                       </div>
                       <div className={isRTL ? 'text-right' : 'text-left'}>
@@ -313,7 +313,7 @@ export default function TeacherOnboardingWizard({
                       maxLength={60}
                       autoFocus
                       dir={dir}
-                      className={`w-full px-4 py-3.5 rounded-2xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-base font-bold text-stone-900 ${isRTL ? 'text-right' : 'text-left'}`}
+                      className={`w-full px-4 py-3.5 rounded-xl border-2 border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-base font-bold text-stone-900 ${isRTL ? 'text-right' : 'text-left'}`}
                     />
                     <p className={`text-xs text-stone-400 mt-2 ${isRTL ? 'text-right' : 'text-left'}`}>
                       {t.classNameHelp}
@@ -330,7 +330,7 @@ export default function TeacherOnboardingWizard({
                     transition={{ duration: 0.18 }}
                   >
                     <div className={`flex items-center gap-3 mb-5 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 shrink-0">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 shrink-0">
                         <BookOpen className="w-7 h-7 text-white" />
                       </div>
                       <div className={isRTL ? 'text-right' : 'text-left'}>
@@ -346,7 +346,7 @@ export default function TeacherOnboardingWizard({
                             key={m.id}
                             type="button"
                             onClick={() => toggleMode(m.id)}
-                            className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all ${isRTL ? 'flex-row-reverse text-right' : 'text-left'} ${
+                            className={`flex items-center gap-2 p-2.5 rounded-lg border-2 transition-all ${isRTL ? 'flex-row-reverse text-right' : 'text-left'} ${
                               checked
                                 ? 'border-indigo-500 bg-indigo-50'
                                 : 'border-stone-200 hover:border-stone-300'
@@ -392,7 +392,7 @@ export default function TeacherOnboardingWizard({
                     </div>
 
                     {/* Class code — big, copyable, gradient frame */}
-                    <div className="bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 rounded-2xl p-5 mb-5 border border-indigo-100/60">
+                    <div className="bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 rounded-xl p-5 mb-5 border border-indigo-100/60">
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2 text-center">
                         {t.yourClassCodeLabel}
                       </p>
@@ -406,7 +406,7 @@ export default function TeacherOnboardingWizard({
 
                     {/* "What next" — three numbered steps so the teacher
                         knows exactly what to do with the code */}
-                    <div className="bg-stone-50 rounded-2xl p-4 mb-5">
+                    <div className="bg-stone-50 rounded-xl p-4 mb-5">
                       <p className={`text-xs font-black uppercase tracking-widest text-stone-500 mb-3 ${isRTL ? 'text-right' : 'text-left'}`}>
                         {t.whatNextHeading}
                       </p>
@@ -427,7 +427,7 @@ export default function TeacherOnboardingWizard({
                       <button
                         type="button"
                         onClick={handleCopy}
-                        className={`flex-1 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-sm flex items-center justify-center gap-1.5 transition ${isRTL ? 'flex-row-reverse' : ''}`}
+                        className={`flex-1 py-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-sm flex items-center justify-center gap-1.5 transition ${isRTL ? 'flex-row-reverse' : ''}`}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
                       >
                         {copied ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
@@ -436,7 +436,7 @@ export default function TeacherOnboardingWizard({
                       <button
                         type="button"
                         onClick={handleWhatsApp}
-                        className={`flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-1.5 transition ${isRTL ? 'flex-row-reverse' : ''}`}
+                        className={`flex-1 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-1.5 transition ${isRTL ? 'flex-row-reverse' : ''}`}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
                       >
                         <MessageCircle size={16} />
@@ -454,7 +454,7 @@ export default function TeacherOnboardingWizard({
                 <button
                   type="button"
                   onClick={handleBack}
-                  className={`px-4 py-3 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-sm flex items-center justify-center gap-1.5 transition ${isRTL ? 'flex-row-reverse' : ''}`}
+                  className={`px-4 py-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-sm flex items-center justify-center gap-1.5 transition ${isRTL ? 'flex-row-reverse' : ''}`}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
                 >
                   <BackArrow size={16} />
@@ -465,7 +465,7 @@ export default function TeacherOnboardingWizard({
                 type="button"
                 onClick={handleAdvance}
                 disabled={!canAdvance || isSubmitting}
-                className={`flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 hover:from-indigo-600 hover:to-fuchsia-700 text-white font-black text-base shadow-lg shadow-violet-500/30 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all ${isRTL ? 'flex-row-reverse' : ''}`}
+                className={`flex-1 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 hover:from-indigo-600 hover:to-fuchsia-700 text-white font-black text-base shadow-lg shadow-violet-500/30 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all ${isRTL ? 'flex-row-reverse' : ''}`}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
               >
                 {step === 3

@@ -28,10 +28,10 @@ export default function GlobalLeaderboardView({
   return (
     <div className="min-h-screen bg-stone-100 p-6" dir={dir}>
       <div className="max-w-2xl mx-auto">
-        <button onClick={() => setView((userRole === "teacher" || userRole === "admin") ? "teacher-dashboard" : "student-dashboard")} className="mb-6 signature-gradient text-white px-6 py-3 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg">{backLabel}</button>
-        <div className="bg-white rounded-[40px] shadow-xl p-6 sm:p-10">
+        <button onClick={() => setView((userRole === "teacher" || userRole === "admin") ? "teacher-dashboard" : "student-dashboard")} className="mb-6 signature-gradient text-white px-6 py-3 rounded-lg font-bold hover:scale-105 active:scale-95 transition-all shadow-lg">{backLabel}</button>
+        <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-10">
           <div className="flex items-center gap-4 mb-8">
-            <div className="p-4 bg-yellow-100 rounded-3xl">
+            <div className="p-4 bg-yellow-100 rounded-2xl">
               <Trophy size={40} className="text-yellow-600" />
             </div>
             <div>
@@ -47,7 +47,7 @@ export default function GlobalLeaderboardView({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                className="flex justify-between items-center p-5 bg-stone-50 rounded-2xl border border-stone-100"
+                className="flex justify-between items-center p-5 bg-stone-50 rounded-xl border border-stone-100"
               >
                 <div className="flex items-center gap-4">
                   <span className={`w-8 h-8 flex items-center justify-center rounded-full font-black text-sm ${idx === 0 ? "bg-yellow-400 text-white" : idx === 1 ? "bg-stone-300 text-white" : idx === 2 ? "bg-orange-300 text-white" : "bg-stone-200 text-stone-500"}`}>

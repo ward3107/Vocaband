@@ -167,10 +167,9 @@ export function useTeacherData(params: UseTeacherDataParams) {
           ttlMs: 2 * 60 * 1000,
           onCacheHit: (cached) => setStudentAssignments(cached),
         },
-      ).then<{ kind: 'ok'; data: AssignmentData[] } | { kind: 'kept-cache' }>(
-        fresh => ({ kind: 'ok', data: fresh }),
-        () => ({ kind: 'kept-cache' }),
-      ),
+      )
+        .then(fresh => ({ kind: 'ok' as const, data: fresh }))
+        .catch(() => ({ kind: 'kept-cache' as const })),
       supabase.from('progress').select(PROGRESS_COLUMNS).eq('class_code', code).eq('student_uid', studentUid),
     ]);
 

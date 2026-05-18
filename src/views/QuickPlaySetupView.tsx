@@ -107,7 +107,7 @@ export default function QuickPlaySetupView({
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', duration: 0.6 }}
-            className="bg-surface-container-lowest rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-primary/20 text-center space-y-6"
+            className="bg-surface-container-lowest rounded-2xl p-6 sm:p-8 shadow-2xl border-2 border-primary/20 text-center space-y-6"
           >
             <motion.div
               initial={{ rotate: -180, opacity: 0 }}
@@ -137,7 +137,7 @@ export default function QuickPlaySetupView({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="bg-surface-container rounded-2xl p-4 space-y-1"
+                className="bg-surface-container rounded-xl p-4 space-y-1"
               >
                 <div className="text-sm font-bold text-on-surface">{title}</div>
                 <div className="flex items-center justify-center gap-3 text-sm text-on-surface-variant">
@@ -159,7 +159,7 @@ export default function QuickPlaySetupView({
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border-2 border-blue-100"
+              className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-100"
             >
               <div className="text-sm text-blue-700 mb-2 font-bold">{t.sessionCodeLabel}</div>
               <div className="text-3xl font-black text-blue-900 mb-4 tracking-wider">
@@ -168,7 +168,7 @@ export default function QuickPlaySetupView({
               <div className="flex gap-2">
                 <button
                   onClick={handleCopy}
-                  className="flex-1 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-all flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-stone-100 text-stone-700 rounded-lg font-bold hover:bg-stone-200 transition-all flex items-center justify-center gap-2"
                   type="button"
                 >
                   <Copy size={18} />
@@ -176,7 +176,7 @@ export default function QuickPlaySetupView({
                 </button>
                 <button
                   onClick={handleWhatsApp}
-                  className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 transition-all flex items-center justify-center gap-2"
                   type="button"
                 >
                   <Share2 size={18} />
@@ -194,7 +194,7 @@ export default function QuickPlaySetupView({
             >
               <button
                 onClick={onOpenMonitor}
-                className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
                 type="button"
               >
                 <QrCode size={18} />
@@ -202,7 +202,7 @@ export default function QuickPlaySetupView({
               </button>
               <button
                 onClick={handlePlayAnother}
-                className="flex-1 py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all"
+                className="flex-1 py-4 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-all"
                 type="button"
               >
                 {t.playAnother}

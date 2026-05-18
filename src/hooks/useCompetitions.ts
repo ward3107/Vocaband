@@ -49,22 +49,10 @@ export function useCompetitionsForClass(classCode: string | null | undefined) {
       setCompetitions([]);
       return;
     }
-    // Best-effort close: flips any overdue competitions to 'ended' so
-    // the badge accurately reflects state without a cron job.
-    await supabase.rpc('auto_end_due_competitions').then(() => undefined, () => undefined);
-
-    const { data: classRows } = await supabase
-      .from('classes').select('id').eq('code', code).limit(1);
-    const classId = classRows?.[0]?.id;
-    if (!classId) {
-      setCompetitions([]);
-      return;
-    }
+    // Single bundled RPC: auto-close overdue + class lookup + read in one
+    // round-trip. Previously 3 separate calls per refresh.
     const { data, error } = await supabase
-      .from('competitions')
-      .select('*')
-      .eq('class_id', classId)
-      .order('created_at', { ascending: false });
+      .rpc('competitions_for_class', { p_class_code: code });
     if (error) return;
     setCompetitions((data ?? []).map(mapCompetition));
   }, []);
@@ -138,13 +126,18 @@ export function useCompetitionsForClassIds(classIds: string[]) {
       setCompetitions([]);
       return;
     }
-    await supabase.rpc('auto_end_due_competitions').then(() => undefined, () => undefined);
-    const { data } = await supabase
-      .from('competitions')
-      .select('*')
-      .in('class_id', ids)
-      .order('created_at', { ascending: false });
-    setCompetitions((data ?? []).map(mapCompetition));
+    // Bundled RPC: auto-close + return all of this teacher's competitions
+    // in one round-trip. Server-side authorization mirrors the
+    // competitions_select RLS predicate. Client-side filter narrows to
+    // the requested ids as a defence in depth (matches the prior
+    // .in('class_id', ids) scoping).
+    const allowed = new Set(ids);
+    const { data } = await supabase.rpc('competitions_for_teacher');
+    setCompetitions(
+      (data ?? [])
+        .filter((row: { class_id: string }) => allowed.has(row.class_id))
+        .map(mapCompetition),
+    );
   }, []);
 
   useEffect(() => {

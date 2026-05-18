@@ -124,7 +124,7 @@ export default function QuickPlaySessionEndScreen({
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-        className="bg-white rounded-3xl p-6 sm:p-10 max-w-md w-full shadow-2xl text-center"
+        className="bg-white rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-2xl text-center"
       >
         <motion.div
           initial={{ scale: 0 }}
@@ -158,7 +158,7 @@ export default function QuickPlaySessionEndScreen({
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.4, type: 'spring', stiffness: 200 }}
-          className={`rounded-2xl p-5 mb-5 border-2 ${
+          className={`rounded-xl p-5 mb-5 border-2 ${
             isTop3
               ? 'bg-gradient-to-br from-yellow-50 to-amber-50 border-amber-200'
               : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100'
@@ -197,7 +197,7 @@ export default function QuickPlaySessionEndScreen({
                 return (
                   <div
                     key={entry.studentUid || entry.name}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-xl ${
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg ${
                       isMe
                         ? 'bg-indigo-100 ring-2 ring-indigo-400'
                         : 'bg-gray-50'
@@ -224,7 +224,7 @@ export default function QuickPlaySessionEndScreen({
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.55 }}
-          className="bg-amber-50 rounded-2xl p-3 mb-5 border-2 border-amber-200"
+          className="bg-amber-50 rounded-xl p-3 mb-5 border-2 border-amber-200"
         >
           <p className="text-amber-700 text-xs sm:text-sm font-medium">
             {"⭐"} Sign up to save your progress, earn XP, and climb the leaderboard!
@@ -240,7 +240,7 @@ export default function QuickPlaySessionEndScreen({
           onClick={onGoHome}
           type="button"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg shadow-lg shadow-indigo-200 hover:shadow-xl transition-all"
+          className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg shadow-lg shadow-indigo-200 hover:shadow-xl transition-all"
         >
           Back to Home Page
         </motion.button>

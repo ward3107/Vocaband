@@ -108,7 +108,7 @@ export default function HebrewModeSelectionView({
                 whileHover={{ y: -4, scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`relative overflow-hidden rounded-3xl p-6 sm:p-7 text-start bg-gradient-to-br ${tile.gradient} text-white shadow-lg ${tile.shadow}`}
+                className={`relative overflow-hidden rounded-2xl p-6 sm:p-7 text-start bg-gradient-to-br ${tile.gradient} text-white shadow-lg ${tile.shadow}`}
               >
                 <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
                 <div className="relative z-10">

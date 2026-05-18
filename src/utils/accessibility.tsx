@@ -44,7 +44,7 @@ export const SkipLinks: React.FC = () => (
 export const focusVisibleStyles = `
   /* Focus visible indicator for keyboard navigation */
   *:focus-visible {
-    outline: 3px solid #0050d4;
+    outline: 3px solid #6366f1;
     outline-offset: 3px;
   }
 
@@ -61,7 +61,7 @@ export const focusVisibleStyles = `
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
-    outline: 3px solid #0050d4;
+    outline: 3px solid #6366f1;
     outline-offset: 3px;
   }
 `;

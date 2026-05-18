@@ -30,26 +30,42 @@ describe('IDIOMS dataset', () => {
     }
   });
 
-  it('every entry has exactly 3 distractors', () => {
+  it('every entry has exactly 3 distractors in EN, HE, and AR', () => {
+    // IdiomGame renders the option text in the student's UI language,
+    // so a missing translation would surface as a blank option.
     for (const idiom of IDIOMS) {
-      expect(idiom.distractorsEn, `${idiom.english} distractors`).toHaveLength(3);
-      for (const d of idiom.distractorsEn) {
-        expect(d, `${idiom.english} has empty distractor`).toBeTypeOf('string');
-        expect(d.length, `${idiom.english} has zero-length distractor`).toBeGreaterThan(0);
+      for (const [lang, distractors] of [
+        ['en', idiom.distractorsEn],
+        ['he', idiom.distractorsHe],
+        ['ar', idiom.distractorsAr],
+      ] as const) {
+        expect(distractors, `${idiom.english} ${lang} distractors`).toHaveLength(3);
+        for (const d of distractors) {
+          expect(d, `${idiom.english} has empty ${lang} distractor`).toBeTypeOf('string');
+          expect(d.length, `${idiom.english} has zero-length ${lang} distractor`).toBeGreaterThan(0);
+        }
       }
     }
   });
 
-  it('no distractor accidentally matches the correct English meaning', () => {
-    // Common content-curation slip — copy-paste a distractor from
-    // meaningEn would silently make the question impossible.
+  it('no distractor accidentally matches the correct meaning in the same language', () => {
+    // Common content-curation slip — copy-paste a distractor from the
+    // meaning field would silently make the question impossible in that
+    // language.  Check each language pairing independently.
     for (const idiom of IDIOMS) {
-      const correct = idiom.meaningEn.trim().toLowerCase();
-      for (const d of idiom.distractorsEn) {
-        expect(
-          d.trim().toLowerCase(),
-          `${idiom.english}: distractor "${d}" matches the correct answer`,
-        ).not.toBe(correct);
+      const pairs = [
+        { meaning: idiom.meaningEn, distractors: idiom.distractorsEn, lang: 'en' },
+        { meaning: idiom.meaningHe, distractors: idiom.distractorsHe, lang: 'he' },
+        { meaning: idiom.meaningAr, distractors: idiom.distractorsAr, lang: 'ar' },
+      ] as const;
+      for (const { meaning, distractors, lang } of pairs) {
+        const correct = meaning.trim().toLowerCase();
+        for (const d of distractors) {
+          expect(
+            d.trim().toLowerCase(),
+            `${idiom.english} (${lang}): distractor "${d}" matches the correct answer`,
+          ).not.toBe(correct);
+        }
       }
     }
   });

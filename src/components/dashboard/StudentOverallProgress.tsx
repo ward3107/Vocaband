@@ -67,7 +67,7 @@ export default function StudentOverallProgress({ studentAssignments, studentProg
   const { donePct } = partialModeProgress(studentAssignments, studentProgress);
 
   return (
-    <div className="bg-white p-5 sm:p-6 rounded-[24px] sm:rounded-[32px] shadow-sm mb-6 sm:mb-8">
+    <div className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-2xl shadow-sm mb-6 sm:mb-8">
       <h3 className="text-lg sm:text-lg font-bold text-stone-800 mb-3 sm:mb-2">{t.overallProgress}</h3>
       <div className="flex items-center gap-3 sm:gap-4">
         <progress

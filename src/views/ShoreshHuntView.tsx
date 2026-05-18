@@ -133,7 +133,7 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 p-8 text-white text-center shadow-lg shadow-emerald-500/20"
+          className="max-w-md w-full rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-8 text-white text-center shadow-lg shadow-emerald-500/20"
         >
           <div className="text-7xl mb-4 drop-shadow-lg">
             {pct >= 80 ? "🏆" : pct >= 50 ? "🎯" : "💪"}
@@ -149,7 +149,7 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
               type="button"
               onClick={restart}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="px-5 py-3 rounded-xl bg-white text-emerald-700 font-black text-sm tracking-wide shadow-sm hover:bg-amber-100"
+              className="px-5 py-3 rounded-lg bg-white text-emerald-700 font-black text-sm tracking-wide shadow-sm hover:bg-amber-100"
             >
               {t.playAgain}
             </button>
@@ -157,7 +157,7 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
               type="button"
               onClick={onExit}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
+              className="px-5 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/30 font-black text-sm tracking-wide hover:bg-white/15"
             >
               {t.done}
             </button>
@@ -221,7 +221,7 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
               [...round.shoresh].sort().join("") ===
                 [...picked].sort().join("");
             let cls =
-              "w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl font-black text-white shadow-lg transition-all";
+              "w-16 h-16 sm:w-20 sm:h-20 rounded-xl flex items-center justify-center text-3xl sm:text-4xl font-black text-white shadow-lg transition-all";
             if (showResult) {
               cls += slotIsCorrect
                 ? " bg-gradient-to-br from-emerald-500 to-teal-600 ring-2 ring-emerald-300"
@@ -256,7 +256,7 @@ export default function ShoreshHuntView({ onExit, gradeBand, lemmaIds, onComplet
                 whileHover={!disabled && !isPicked ? { scale: 1.05, y: -2 } : undefined}
                 whileTap={!disabled ? { scale: 0.95 } : undefined}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`aspect-square rounded-xl text-2xl sm:text-3xl font-black shadow-md transition-all ${
+                className={`aspect-square rounded-lg text-2xl sm:text-3xl font-black shadow-md transition-all ${
                   isPicked
                     ? "bg-gradient-to-br from-indigo-500 to-violet-700 text-white ring-2 ring-indigo-300"
                     : "bg-white/10 backdrop-blur-sm text-white hover:bg-white/15"

@@ -144,7 +144,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-surface rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" dir={dir}>
+        <div className="bg-surface rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" dir={dir}>
           {/* Header */}
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
             <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
@@ -217,7 +217,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                     return (
                       <div
                         key={`${mw.word.id}-${index}`}
-                        className={`p-3 rounded-xl border-2 transition-all flex gap-3 ${
+                        className={`p-3 rounded-lg border-2 transition-all flex gap-3 ${
                           corrected.isCorrected
                             ? 'bg-indigo-50 border-indigo-200'
                             : 'bg-green-50 border-green-200'
@@ -411,7 +411,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                     return (
                       <div
                         key={`${term.term}-${index}`}
-                        className="p-3 bg-orange-50 rounded-xl border-2 border-orange-200"
+                        className="p-3 bg-orange-50 rounded-lg border-2 border-orange-200"
                       >
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div className="flex-1 min-w-0">
@@ -495,7 +495,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                   <Sparkles className="text-purple-600" size={16} />
                   {t.relatedWordsHeading(analysis.wordFamilySuggestions.reduce((s, f) => s + f.familyMembers.length, 0))}
                 </h3>
-                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-3 space-y-2">
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-3 space-y-2">
                   {analysis.wordFamilySuggestions.map((family) => (
                     <div key={family.rootWord} className="flex flex-wrap items-center gap-1.5">
                       <span className="text-xs text-purple-600 font-bold mr-1">root: {family.rootWord}</span>
@@ -539,7 +539,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
 
             {/* Warning about duplicates */}
             {stats.duplicateCount > 0 && (
-              <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-3">
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-3">
                 <p className="text-sm text-amber-900 flex items-center gap-2">
                   <Zap size={16} />
                   <strong>Duplicates detected:</strong> {stats.duplicateCount} duplicate{" "}
@@ -549,7 +549,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
             )}
 
             {/* Info about translations */}
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3">
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-900 flex items-center gap-2">
                 <Edit3 size={16} />
                 <strong>Edit Translations:</strong> Click the edit button next to any word to correct its Hebrew or Arabic translation inline.
@@ -562,7 +562,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
           <div className="bg-surface-container-low px-6 py-4 border-t border-surface-container-highest flex justify-between gap-3">
             <button
               onClick={onCancel}
-              className="px-6 py-3 bg-surface-container text-on-surface font-bold rounded-xl hover:bg-surface-container-high border-2 border-outline transition-all"
+              className="px-6 py-3 bg-surface-container text-on-surface font-bold rounded-lg hover:bg-surface-container-high border-2 border-outline transition-all"
             >
               {t.cancel}
             </button>
@@ -571,7 +571,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                 <button
                   onClick={handleTranslateAll}
                   disabled={isTranslating}
-                  className="px-4 py-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-sm font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 transition-colors"
+                  className="px-4 py-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-sm font-bold rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors"
                 >
                   {isTranslating ? (
                     <>
@@ -589,7 +589,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
               <button
                 onClick={handleQuickSave}
                 disabled={matchedWords.length === 0 && unmatchedTerms.length === 0}
-                className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center gap-2"
+                className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl transition-all flex items-center gap-2"
               >
                 <Check size={18} />
                 {t.saveAndAssign}

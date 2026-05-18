@@ -181,7 +181,9 @@ export const teacherModalsT: Record<Language, TeacherModalsT> = {
     copyShort: "העתק",
     whatsAppShort: "וואטסאפ",
     doneBtn: "סיום",
-    classCardCopyMsg: (className, code) => `${className} - קוד כיתה: ${code}`,
+    // English on purpose — the copied text goes to a student/parent
+    // message, not back to the teacher's UI.
+    classCardCopyMsg: (className, code) => `${className} - Class Code: ${code}`,
 
     editTitle: "עריכת כיתה",
     editBlurb: "שנה את שם הכיתה או בחר אווטאר חדש — התלמידים, המשימות וההתקדמות יישארו ללא שינוי. קוד הכיתה יישאר זהה.",
@@ -246,7 +248,9 @@ export const teacherModalsT: Record<Language, TeacherModalsT> = {
     copyShort: "نسخ",
     whatsAppShort: "واتساب",
     doneBtn: "تم",
-    classCardCopyMsg: (className, code) => `${className} - رمز الفصل: ${code}`,
+    // English on purpose — the copied text goes to a student/parent
+    // message, not back to the teacher's UI.
+    classCardCopyMsg: (className, code) => `${className} - Class Code: ${code}`,
 
     editTitle: "تعديل الفصل",
     editBlurb: "أعد تسمية هذا الفصل أو اختر صورة جديدة — يبقى الطلاب والواجبات والتقدم سليمًا. يبقى رمز الفصل كما هو.",

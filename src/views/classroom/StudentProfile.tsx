@@ -193,7 +193,7 @@ export default function StudentProfile({
           <button
             type="button"
             onClick={onReward}
-            className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold text-sm flex items-center gap-1.5 shrink-0"
+            className="px-3 py-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold text-sm flex items-center gap-1.5 shrink-0"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
             aria-label={t.rewardAria(student.name)}
           >
@@ -256,7 +256,7 @@ export default function StudentProfile({
           {/* ─── Two-column body ───────────────────────────────────────
               Left = Performance (per-mode + word mastery).
               Right = Activity (struggled-with chips + recent plays).
-              Drops the rounded-2xl border chrome on each section so the
+              Drops the rounded-xl border chrome on each section so the
               eye doesn't have to re-anchor four times — section titles
               with a small coloured icon do the job instead.  Bottom
               padding leaves room for the sticky action bar. */}
@@ -354,7 +354,7 @@ export default function StudentProfile({
                   {recentAttempts.map(s => (
                     <div
                       key={s.id}
-                      className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg"
                       style={{ backgroundColor: 'var(--vb-surface-alt)' }}
                     >
                       <span className="text-lg shrink-0" aria-hidden>
@@ -416,7 +416,7 @@ export default function StudentProfile({
               <button
                 type="button"
                 onClick={() => onReteach!(topMisses.map(m => m.display.id))}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-sm shrink-0"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-sm shrink-0"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
               >
                 <Sparkles size={14} />

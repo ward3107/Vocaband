@@ -204,7 +204,7 @@ export default function ReportsDashboard({
 function KpiChip({ label, value }: { label: string; value: number }) {
   return (
     <div
-      className="rounded-2xl p-3 border-2 shadow-sm"
+      className="rounded-xl p-3 border-2 shadow-sm"
       style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
     >
       <div className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--vb-text-muted)' }}>{label}</div>
@@ -218,7 +218,7 @@ function Section({
 }: { icon: React.ReactNode; title: string; sub: string; children: React.ReactNode }) {
   return (
     <section
-      className="rounded-2xl border-2 shadow-sm p-4 sm:p-5"
+      className="rounded-xl border-2 shadow-sm p-4 sm:p-5"
       style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
     >
       <header className="flex items-start gap-2 mb-3">

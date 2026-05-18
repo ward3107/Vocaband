@@ -49,6 +49,27 @@ type Stage = "name-entry" | "in-progress" | "submitting" | "done" | "submit-erro
 // the teacher (when they type the same name).
 const FINGERPRINT_KEY = "vocaband:worksheet:fingerprint";
 
+// Mirrors the server-side check in submit_worksheet_attempt() so the
+// student sees an inline error before round-tripping. Trimmed length
+// 1..40, must contain at least one letter (any script), no C0 control
+// chars. Keep the regex in sync with the migration.
+const MAX_NAME_LEN = 40;
+const HAS_LETTER = /\p{L}/u;
+const CONTROL_CHARS = /[\x00-\x1f\x7f]/g;
+
+const sanitiseStudentName = (raw: string): string =>
+  raw.replace(CONTROL_CHARS, "").replace(/\s+/g, " ").trim();
+
+const validateStudentName = (
+  raw: string,
+): { ok: true; clean: string } | { ok: false; reason: "empty" | "long" | "no-letter" } => {
+  const clean = sanitiseStudentName(raw);
+  if (clean.length === 0) return { ok: false, reason: "empty" };
+  if (clean.length > MAX_NAME_LEN) return { ok: false, reason: "long" };
+  if (!HAS_LETTER.test(clean)) return { ok: false, reason: "no-letter" };
+  return { ok: true, clean };
+};
+
 const getOrCreateFingerprint = (): string | null => {
   try {
     let fp = localStorage.getItem(FINGERPRINT_KEY);
@@ -208,7 +229,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
     if (!row) return [];
     if (Array.isArray(row.exercises) && row.exercises.length > 0) return row.exercises;
     if (row.format && Array.isArray(row.word_ids) && row.word_ids.length > 0) {
-      return [{ type: row.format as Exercise["type"], word_ids: row.word_ids }];
+      return [{ type: row.format, word_ids: row.word_ids } as Exercise];
     }
     return [];
   }, [row]);
@@ -216,11 +237,11 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   const targetLang: Language = (row?.settings?.language as Language) ?? "he";
 
   const handleStart = (name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setStudentName(trimmed);
+    const v = validateStudentName(name);
+    if (!v.ok) return;
+    setStudentName(v.clean);
     try {
-      localStorage.setItem(nameKey(slug), trimmed);
+      localStorage.setItem(nameKey(slug), v.clean);
     } catch {
       /* storage blocked — non-fatal */
     }
@@ -317,7 +338,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   if (loadError) {
     return (
       <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
-        <div className="text-center max-w-md mx-auto p-8 rounded-3xl bg-white/10 border border-white/15 text-white">
+        <div className="text-center max-w-md mx-auto p-8 rounded-2xl bg-white/10 border border-white/15 text-white">
           <XCircle size={40} className="mx-auto mb-4 text-rose-300" />
           <p className="font-bold text-lg mb-2">Worksheet not found</p>
           <p className="text-white/70 text-sm">{loadError}</p>
@@ -371,7 +392,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   if (stage === "submitting") {
     return (
       <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
-        <div className="bg-white rounded-3xl p-8 sm:p-12 shadow-2xl text-center max-w-md mx-auto">
+        <div className="bg-white rounded-2xl p-8 sm:p-12 shadow-2xl text-center max-w-md mx-auto">
           <Loader2 size={40} className="mx-auto mb-4 animate-spin text-violet-500" />
           <p className="text-stone-700 font-bold text-lg">Submitting your answers…</p>
           <p className="text-stone-500 text-sm mt-1">Your teacher will see this in a moment.</p>
@@ -453,21 +474,42 @@ const NameEntryCard: React.FC<{
 }> = ({ topicName, exerciseCount, firstType, initialName, onStart, resume }) => {
   const { language: iwvLang } = useLanguage();
   const [name, setName] = useState(initialName);
-  const trimmed = name.trim();
+  const [touched, setTouched] = useState(false);
+  const validation = validateStudentName(name);
+  const showError = touched && !validation.ok;
+  const errorMessage = !validation.ok
+    ? validation.reason === "long"
+      ? iwvLang === "he"
+        ? `שם ארוך מדי (עד ${MAX_NAME_LEN} תווים)`
+        : iwvLang === "ar"
+          ? `الاسم طويل جداً (حتى ${MAX_NAME_LEN} حرفاً)`
+          : `Name too long (max ${MAX_NAME_LEN} characters)`
+      : validation.reason === "no-letter"
+        ? iwvLang === "he"
+          ? "השם חייב לכלול לפחות אות אחת"
+          : iwvLang === "ar"
+            ? "يجب أن يحتوي الاسم على حرف واحد على الأقل"
+            : "Please use a real name (at least one letter)"
+        : iwvLang === "he"
+          ? "אנא הקלידו את שמכם"
+          : iwvLang === "ar"
+            ? "الرجاء كتابة اسمك"
+            : "Please type your name"
+    : "";
   const subtitle =
     exerciseCount === 1
       ? formatLabel(firstType)
       : `${exerciseCount} exercises`;
 
   return (
-    <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md mx-auto">
+    <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-md mx-auto">
       <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-6 text-center text-white">
         <p className="text-xs uppercase tracking-widest font-bold opacity-90">{subtitle}</p>
         <h1 className="text-2xl sm:text-3xl font-black mt-1">{topicName}</h1>
       </div>
       <div className="p-6 sm:p-8">
         {resume && (
-          <div className="mb-5 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4">
+          <div className="mb-5 rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4">
             <p className="text-xs uppercase tracking-widest font-bold text-emerald-700 mb-1">
               Continue where you left off
             </p>
@@ -478,7 +520,7 @@ const NameEntryCard: React.FC<{
             <button
               type="button"
               onClick={resume.onResume}
-              className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all"
+              className="w-full py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >
               Resume
@@ -488,7 +530,8 @@ const NameEntryCard: React.FC<{
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (trimmed) onStart(trimmed);
+            setTouched(true);
+            if (validation.ok) onStart(validation.clean);
           }}
         >
           <label htmlFor="student-name" className="block text-sm font-bold text-stone-700 mb-2">
@@ -500,17 +543,27 @@ const NameEntryCard: React.FC<{
             autoFocus={!resume}
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => setTouched(true)}
             placeholder={iwvLang === 'he' ? 'הקלידו את שמכם' : iwvLang === 'ar' ? 'اكتب اسمك' : 'Type your name'}
-            maxLength={60}
-            className="w-full px-4 py-3 rounded-xl border-2 border-stone-200 focus:border-violet-500 focus:outline-none font-bold text-stone-900 text-lg"
+            maxLength={MAX_NAME_LEN}
+            aria-invalid={showError}
+            className={`w-full px-4 py-3 rounded-lg border-2 focus:outline-none font-bold text-stone-900 text-lg ${
+              showError
+                ? "border-rose-400 focus:border-rose-500"
+                : "border-stone-200 focus:border-violet-500"
+            }`}
           />
-          <p className="text-xs text-stone-500 mt-2">
-            Your teacher will see your name and your score.
-          </p>
+          {showError ? (
+            <p className="text-xs text-rose-600 mt-2 font-bold">{errorMessage}</p>
+          ) : (
+            <p className="text-xs text-stone-500 mt-2">
+              Your teacher will see your name and your score.
+            </p>
+          )}
           <button
             type="submit"
-            disabled={!trimmed}
-            className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition-all flex items-center justify-center gap-2"
+            disabled={!validation.ok}
+            className="mt-6 w-full py-3 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition-all flex items-center justify-center gap-2"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >
             {resume ? "Start over" : "Start worksheet"}
@@ -572,7 +625,7 @@ const ResultsCard: React.FC<{
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-2xl text-center">
+    <div className="bg-white rounded-2xl p-6 sm:p-10 shadow-2xl text-center">
       <CheckCircle2 size={56} className="mx-auto mb-4 text-emerald-500" />
       <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-2">
         Worksheet complete
@@ -601,7 +654,7 @@ const ResultsCard: React.FC<{
       )}
 
       {score.perExercise.length > 1 && (
-        <div className="text-start max-w-sm mx-auto rounded-2xl border border-stone-200 bg-stone-50 p-4 mb-6">
+        <div className="text-start max-w-sm mx-auto rounded-xl border border-stone-200 bg-stone-50 p-4 mb-6">
           <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-3">
             Section breakdown
           </p>
@@ -620,7 +673,7 @@ const ResultsCard: React.FC<{
       )}
 
       {misses.length > 0 && (
-        <details className="text-start max-w-sm mx-auto rounded-2xl border border-rose-200 bg-rose-50 p-4 mb-6">
+        <details className="text-start max-w-sm mx-auto rounded-xl border border-rose-200 bg-rose-50 p-4 mb-6">
           <summary className="text-xs uppercase tracking-widest font-bold text-rose-700 cursor-pointer">
             Words to study ({misses.length})
           </summary>
@@ -650,7 +703,7 @@ const ResultsCard: React.FC<{
       )}
 
       {submitError ? (
-        <div className="mb-6 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm text-left">
+        <div className="mb-6 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm text-left">
           <p className="font-bold mb-1">Couldn't reach your teacher's dashboard</p>
           <p className="text-amber-800/80 text-xs">
             Your score is shown above — show this screen to your teacher.
@@ -667,7 +720,7 @@ const ResultsCard: React.FC<{
       <button
         type="button"
         onClick={onRestart}
-        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-violet-500 hover:bg-violet-600 text-white font-bold transition-all"
+        className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-violet-500 hover:bg-violet-600 text-white font-bold transition-all"
       >
         <RotateCcw size={16} />
         Try again
@@ -689,12 +742,12 @@ const ProgressFromParent: React.FC<{
   const nowPct = nowTotal > 0 ? Math.round((nowScore / nowTotal) * 100) : 0;
   const delta = nowPct - parentPct;
   return (
-    <div className="max-w-sm mx-auto rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-4 mb-6">
+    <div className="max-w-sm mx-auto rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-4 mb-6">
       <p className="text-xs uppercase tracking-widest font-bold text-fuchsia-700 mb-3 text-center">
         Your progress
       </p>
       <div className="flex items-center justify-center gap-2">
-        <div className="text-center min-w-[80px] rounded-xl bg-white border border-fuchsia-200 px-3 py-2">
+        <div className="text-center min-w-[80px] rounded-lg bg-white border border-fuchsia-200 px-3 py-2">
           <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400">
             First time
           </p>
@@ -704,7 +757,7 @@ const ProgressFromParent: React.FC<{
           </p>
         </div>
         <span className="text-fuchsia-400 text-lg font-black">→</span>
-        <div className="text-center min-w-[80px] rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 px-3 py-2">
+        <div className="text-center min-w-[80px] rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 px-3 py-2">
           <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-700">
             Now
           </p>

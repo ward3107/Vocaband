@@ -15,7 +15,7 @@ export default function QuickPlayKickedScreen({
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-        className="bg-white rounded-3xl p-8 sm:p-10 max-w-md w-full shadow-2xl text-center"
+        className="bg-white rounded-2xl p-8 sm:p-10 max-w-md w-full shadow-2xl text-center"
       >
         <motion.div
           initial={{ rotate: -10 }}
@@ -57,7 +57,7 @@ export default function QuickPlayKickedScreen({
             onClick={onRejoin}
             type="button"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg shadow-lg shadow-indigo-200 hover:shadow-xl transition-all mb-3"
+            className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg shadow-lg shadow-indigo-200 hover:shadow-xl transition-all mb-3"
           >
             Rejoin with a different name
           </motion.button>
@@ -74,8 +74,8 @@ export default function QuickPlayKickedScreen({
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           className={
             onRejoin
-              ? 'w-full py-3 bg-slate-100 text-slate-700 rounded-2xl font-bold text-sm sm:text-base hover:bg-slate-200 transition-all'
-              : 'w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-black text-base sm:text-lg shadow-lg shadow-indigo-200 hover:shadow-xl transition-all'
+              ? 'w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm sm:text-base hover:bg-slate-200 transition-all'
+              : 'w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg shadow-lg shadow-indigo-200 hover:shadow-xl transition-all'
           }
         >
           {onRejoin ? 'Leave Quick Play' : 'Back to Home Page'}

@@ -191,8 +191,10 @@ export const onboardingWizardT: Record<Language, OnboardingWizardT> = {
     copyCode: "העתק קוד",
     copied: "הועתק!",
     shareWhatsApp: "שתף בוואטסאפ",
+    // English on purpose — the WhatsApp text gets sent to students or
+    // parents, not back to the teacher.
     whatsAppMessage: (code) =>
-      `הצטרפו לכיתה שלי ב-Vocaband!\n\nקוד הכיתה: ${code}\n\nכנסו ל-https://vocaband.com ולחצו על "הצטרף לכיתה".`,
+      `Join my Vocaband class!\n\nClass code: ${code}\n\nGo to https://vocaband.com and tap "Join class".`,
 
     next: "הבא",
     back: "חזור",
@@ -253,8 +255,10 @@ export const onboardingWizardT: Record<Language, OnboardingWizardT> = {
     copyCode: "نسخ الرمز",
     copied: "تم النسخ!",
     shareWhatsApp: "مشاركة عبر واتساب",
+    // English on purpose — the WhatsApp text gets sent to students or
+    // parents, not back to the teacher.
     whatsAppMessage: (code) =>
-      `انضم إلى صفّي على Vocaband!\n\nرمز الصف: ${code}\n\nادخل إلى https://vocaband.com واضغط "انضم للصف".`,
+      `Join my Vocaband class!\n\nClass code: ${code}\n\nGo to https://vocaband.com and tap "Join class".`,
 
     next: "التالي",
     back: "رجوع",

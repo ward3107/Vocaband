@@ -136,7 +136,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
   return (
     <div
       dir={dir}
-      className="w-full max-w-4xl mx-auto rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2 bg-white border border-stone-200 relative"
+      className="w-full max-w-4xl mx-auto rounded-2xl shadow-2xl overflow-hidden grid md:grid-cols-2 bg-white border border-stone-200 relative"
     >
       {onCancel && (
         <button
@@ -170,7 +170,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
             animate={{ rotateY: [0, 12, 0, -12, 0] }}
             transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
             style={{ transformStyle: "preserve-3d" }}
-            className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-2xl shadow-black/20 mb-6"
+            className="w-20 h-20 rounded-xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-2xl shadow-black/20 mb-6"
           >
             <span className="text-white text-5xl font-black font-headline italic drop-shadow-lg">V</span>
           </motion.div>
@@ -190,7 +190,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
               key={i}
               animate={{ y: [0, -8, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: c.delay }}
-              className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${c.color} flex items-center justify-center text-white shadow-xl shadow-black/30 border border-white/20`}
+              className={`w-14 h-14 rounded-xl bg-gradient-to-br ${c.color} flex items-center justify-center text-white shadow-xl shadow-black/30 border border-white/20`}
             >
               {c.icon}
             </motion.div>
@@ -222,7 +222,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
             animate={{ rotateY: [0, 12, 0, -12, 0] }}
             transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
             style={{ transformStyle: "preserve-3d" }}
-            className="w-12 h-12 rounded-xl signature-gradient flex items-center justify-center shadow-lg shadow-primary/20"
+            className="w-12 h-12 rounded-lg signature-gradient flex items-center justify-center shadow-lg shadow-primary/20"
           >
             <span className="text-white text-2xl font-black font-headline italic">V</span>
           </motion.div>
@@ -253,7 +253,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                 type="button"
                 onClick={handleGoogle}
                 disabled={googleSubmitting}
-                className="w-full inline-flex items-center justify-center gap-3 px-5 py-4 rounded-2xl bg-white border-2 border-stone-300 hover:border-primary hover:bg-stone-50 text-stone-900 font-black text-base transition-all shadow-md hover:shadow-lg disabled:opacity-60"
+                className="w-full inline-flex items-center justify-center gap-3 px-5 py-4 rounded-xl bg-white border-2 border-stone-300 hover:border-primary hover:bg-stone-50 text-stone-900 font-black text-base transition-all shadow-md hover:shadow-lg disabled:opacity-60"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
               >
                 {googleSubmitting ? (
@@ -277,7 +277,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                 type="button"
                 onClick={handleMicrosoft}
                 disabled={microsoftSubmitting}
-                className="w-full mt-3 inline-flex items-center justify-center gap-3 px-5 py-4 rounded-2xl bg-white border-2 border-stone-300 hover:border-primary hover:bg-stone-50 text-stone-900 font-black text-base transition-all shadow-md hover:shadow-lg disabled:opacity-60"
+                className="w-full mt-3 inline-flex items-center justify-center gap-3 px-5 py-4 rounded-xl bg-white border-2 border-stone-300 hover:border-primary hover:bg-stone-50 text-stone-900 font-black text-base transition-all shadow-md hover:shadow-lg disabled:opacity-60"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
               >
                 {microsoftSubmitting ? (
@@ -324,7 +324,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                   onChange={(e) => setEmailInput(e.target.value)}
                   disabled={otp.stage === "sending"}
                   required
-                  className="w-full px-4 py-3 rounded-xl border-2 border-stone-200 focus:border-primary focus:outline-none text-base font-medium disabled:bg-stone-50 disabled:opacity-60"
+                  className="w-full px-4 py-3 rounded-lg border-2 border-stone-200 focus:border-primary focus:outline-none text-base font-medium disabled:bg-stone-50 disabled:opacity-60"
                   style={{ touchAction: "manipulation" }}
                 />
 
@@ -361,7 +361,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                     otp.stage === "sending" ||
                     emailInput.trim().length === 0
                   }
-                  className="w-full mt-4 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white font-black text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-60"
+                  className="w-full mt-4 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white font-black text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-60"
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                 >
                   {otp.stage === "sending" ? (
@@ -411,7 +411,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                   onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   disabled={otp.stage === "verifying" || otp.stage === "done"}
                   required
-                  className="w-full px-4 py-3 rounded-xl border-2 border-stone-200 focus:border-primary focus:outline-none text-2xl font-black tracking-[0.5em] text-center font-mono tabular-nums disabled:bg-stone-50 disabled:opacity-60"
+                  className="w-full px-4 py-3 rounded-lg border-2 border-stone-200 focus:border-primary focus:outline-none text-2xl font-black tracking-[0.5em] text-center font-mono tabular-nums disabled:bg-stone-50 disabled:opacity-60"
                   style={{ touchAction: "manipulation" }}
                 />
 
@@ -425,7 +425,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                 <button
                   type="submit"
                   disabled={otp.stage === "verifying" || otp.stage === "done" || codeInput.length !== 6}
-                  className="w-full mt-4 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white font-black text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-60"
+                  className="w-full mt-4 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white font-black text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-60"
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
                 >
                   {otp.stage === "verifying" ? (
