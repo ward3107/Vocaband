@@ -193,6 +193,13 @@ const App = lazy(() => import('./App.tsx'));
 const AccessibilityWidget = lazy(() =>
   import('./components/AccessibilityWidget').then(m => ({ default: m.AccessibilityWidget })),
 );
+// Mounted as a sibling to <App /> (not inside it) so the install gate +
+// in-app-browser warning are present in the DOM regardless of which view
+// App.tsx returns. Previously they lived inside useAppPreOverlays'
+// cookieBannerOverlay, which is only wired into the public + auth-flow
+// view sections — post-login dashboards never rendered it, so the gate
+// never reached real users.
+const GlobalOverlays = lazy(() => import('./components/GlobalOverlays'));
 
 const Loading = () => (
   <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',color:'#666'}}>
@@ -276,6 +283,9 @@ async function bootstrap() {
         <App />
         <Suspense fallback={null}>
           <AccessibilityWidget />
+        </Suspense>
+        <Suspense fallback={null}>
+          <GlobalOverlays />
         </Suspense>
       </Suspense>
     </ErrorBoundary>,

@@ -21,8 +21,11 @@ import type { AppUser } from '../core/supabase';
 const CookieBanner = lazy(() => import('../components/CookieBanner'));
 const QuickPlayResumeBanner = lazy(() => import('../components/QuickPlayResumeBanner'));
 const ImageCropModal = lazy(() => import('../components/ImageCropModal'));
-const PwaInstallGate = lazy(() => import('../components/PwaInstallGate'));
-const InAppBrowserWarning = lazy(() => import('../components/InAppBrowserWarning'));
+// PwaInstallGate + InAppBrowserWarning intentionally NOT mounted here:
+// cookieBannerOverlay is only rendered by public + auth-flow view branches
+// in App.tsx, so housing them here meant they never appeared on the
+// dashboards where real users spend their time. They now mount once as a
+// sibling of <App /> in main.tsx — see src/components/GlobalOverlays.tsx.
 
 export interface UseAppPreOverlaysDeps {
   user: AppUser | null;
@@ -60,23 +63,6 @@ export function useAppPreOverlays(deps: UseAppPreOverlaysDeps): AppPreOverlays {
       {/* Global amber pill when the browser reports the network is down.
           See OfflineIndicator + useOnlineStatus for the implementation. */}
       <OfflineIndicator />
-      {/* Force-install gate — first-visit full-screen modal + persistent
-          per-session banner on iOS/Android. Gated on `user` so prospective
-          teachers landing on the marketing pages don't get nagged before
-          they've engaged. Once installed (display-mode standalone), the
-          gate self-suppresses. */}
-      {deps.user && (
-        <Suspense fallback={null}>
-          <PwaInstallGate />
-        </Suspense>
-      )}
-      {/* In-app browser warning — shown to ALL users (not gated on auth)
-          because the WebView's broken SW + tiny IDB quota would silently
-          erase progress for anyone, including landing-page visitors who
-          tap "play demo." */}
-      <Suspense fallback={null}>
-        <InAppBrowserWarning />
-      </Suspense>
     </>
   );
 
