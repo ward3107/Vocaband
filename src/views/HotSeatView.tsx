@@ -767,7 +767,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
           gradient="from-orange-500 via-amber-500 to-rose-500"
         />
 
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
           <div className="rounded-2xl bg-white shadow-lg border border-orange-100 overflow-hidden">
             <div className="px-6 py-6 space-y-5">
               <div>
@@ -1348,7 +1348,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
     .sort((a, b) => b.correct - a.correct || a.originalIdx - b.originalIdx);
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-rose-50 p-4 sm:p-6" dir={dir}>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="rounded-2xl bg-white shadow-lg border border-amber-100 overflow-hidden">
           <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 py-6 text-white text-center">
             <div className="w-16 h-16 mx-auto rounded-xl bg-white/20 backdrop-blur flex items-center justify-center mb-3">
