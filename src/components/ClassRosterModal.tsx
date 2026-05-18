@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   KeyRound,
+  Lightbulb,
   Link2,
   Plus,
   Printer,
@@ -414,6 +415,10 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
               </div>
               <p className="text-xs text-stone-500 mt-2">
                 {t.addHelp}
+              </p>
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md mt-2 px-3 py-2 flex items-start gap-2">
+                <Lightbulb size={14} className="mt-0.5 flex-shrink-0 text-amber-600" />
+                <span className="font-medium leading-snug">{t.privacyTip}</span>
               </p>
             </div>
 
