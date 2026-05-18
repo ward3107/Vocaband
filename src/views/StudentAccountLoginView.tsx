@@ -197,43 +197,7 @@ export default function StudentAccountLoginView({
         <div className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-fuchsia-500/20 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl" aria-hidden />
 
-        {/* OAuth callback — shown when Google redirected us back while the
-            login view was still mounted. */}
-        {isOAuthCallback && (
-          <OAuthCallback
-            onTeacherDetected={handleOAuthTeacherDetected}
-            onStudentDetected={handleOAuthStudentDetected}
-            onNewUser={handleOAuthNewUser}
-          />
-        )}
-
-        {/* OAuth new-user class-code screen — shown when Google succeeded
-            but there's no student profile yet for this email. */}
-        {showOAuthClassCode && oauthEmail && oauthAuthUid && (
-          <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-6">
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl w-full max-w-md">
-              <OAuthClassCode
-                email={oauthEmail}
-                authUid={oauthAuthUid}
-                onSuccess={() => {
-                  setShowOAuthClassCode(false);
-                  setOauthEmail(null);
-                  setOauthAuthUid(null);
-                }}
-                onError={(msg) => {
-                  setError(msg);
-                  // Stay on the class-code screen so the student can fix + retry.
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Primary login screen — class code + Google. Google is the only
-            login path: one path students can always trust, works on every
-            device, no per-browser session state to lose. */}
-        {!isOAuthCallback && !showOAuthClassCode && (
-          <div className="relative z-10 h-screen flex flex-col overflow-hidden">
+        <div className="relative z-10 h-screen flex flex-col overflow-hidden">
             <header className="flex items-center justify-between px-4 sm:px-6 py-4">
               <button
                 onClick={() => {
