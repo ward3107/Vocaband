@@ -2,26 +2,24 @@ import { Users, Plus } from "lucide-react";
 import ClassCard from "../ClassCard";
 import type { ClassData, AssignmentData, CompetitionData } from "../../core/supabase";
 import type { VocaId } from "../../core/subject";
-import { useLanguage, type Language } from "../../hooks/useLanguage";
+import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
 
-// Build a WhatsApp share message that includes the full /student?class=
-// join URL — clicking it lands the student on the join screen with the
-// code prefilled, so no copy/paste from the parent's phone.
-function buildWhatsAppShareText(code: string, language: Language): string {
+// The share text goes to STUDENTS, not the teacher — so for the
+// English-learning product (Vocaband) it's always English regardless
+// of the teacher's UI-language preference.  VocaHebrew classes keep
+// their Hebrew share text because that side teaches Hebrew and the
+// students reading the message are Hebrew-readers by design.  The
+// /student?class= deep link lands them on the join screen with the
+// code prefilled.
+function buildWhatsAppShareText(code: string, isVocaHebrew: boolean): string {
   const origin =
     typeof window !== "undefined" && window.location?.origin
       ? window.location.origin
       : "https://www.vocaband.com";
   const url = `${origin}/student?class=${encodeURIComponent(code)}`;
-  if (language === "he") {
+  if (isVocaHebrew) {
     return `הצטרפו לכיתה שלי בווקבנד 🎓\n${url}\n(קוד כיתה: ${code})`;
-  }
-  if (language === "ar") {
-    return `انضموا إلى صفي في فوكاباند 🎓\n${url}\n(رمز الصف: ${code})`;
-  }
-  if (language === "ru") {
-    return `Присоединяйтесь к моему классу в Vocaband 🎓\n${url}\n(код класса: ${code})`;
   }
   return `Join my class on Vocaband 🎓\n${url}\n(class code: ${code})`;
 }
@@ -184,10 +182,8 @@ export default function TeacherClassesSection({
                   setTimeout(() => setCopiedCode(null), 2000);
                 }}
                 onWhatsApp={() => {
-                  // VocaHebrew classes force Hebrew copy regardless of the
-                  // teacher's UI language, matching the ClassCard pattern.
-                  const shareLang = (c.subject ?? subject) === "hebrew" ? "he" : language;
-                  const text = buildWhatsAppShareText(c.code, shareLang);
+                  const isVocaHebrew = (c.subject ?? subject) === "hebrew";
+                  const text = buildWhatsAppShareText(c.code, isVocaHebrew);
                   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                 }}
                 onDelete={() => onDeleteClass(c.id)}

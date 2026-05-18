@@ -277,10 +277,12 @@ export const teacherDrilldownsT: Record<Language, TeacherDrilldownsT> = {
     openLivePodium: "פתח פודיום חי",
     playAnother: "שחק שוב",
     backToDashboardSmall: "חזרה ללוח הבקרה",
+    // English on purpose — the WhatsApp text goes to students, not back
+    // to the teacher's UI.
     qpJoinMessage: (title, joinUrl) =>
       title
-        ? `הצטרף ל-"${title}" ב-Vocaband! ${joinUrl}`
-        : `הצטרף למפגש המשחק המהיר שלי ב-Vocaband: ${joinUrl}`,
+        ? `Join "${title}" on Vocaband! ${joinUrl}`
+        : `Join my Vocaband Quick Play session: ${joinUrl}`,
   },
 
   ar: {
@@ -364,10 +366,12 @@ export const teacherDrilldownsT: Record<Language, TeacherDrilldownsT> = {
     openLivePodium: "افتح المنصة المباشرة",
     playAnother: "العب أخرى",
     backToDashboardSmall: "العودة إلى لوحة التحكم",
+    // English on purpose — the WhatsApp text goes to students, not back
+    // to the teacher's UI.
     qpJoinMessage: (title, joinUrl) =>
       title
-        ? `انضم إلى "${title}" على Vocaband! ${joinUrl}`
-        : `انضم إلى جلسة اللعب السريع على Vocaband: ${joinUrl}`,
+        ? `Join "${title}" on Vocaband! ${joinUrl}`
+        : `Join my Vocaband Quick Play session: ${joinUrl}`,
   },
 
   ru: {
