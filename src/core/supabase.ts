@@ -185,18 +185,9 @@ export interface AppUser {
    *  array (the DB default) means no guides have been dismissed yet —
    *  every guide will auto-show once.  Students ignore this field. */
   guidesSeen?: string[];
-  /** Parent contact email for the Friday weekly progress digest.  NULL
-   *  when the student hasn't opted in.  Owner-writable (no F2 game-
-   *  state lock); set + cleared via the opt-in card on PrivacySettings.
-   *  See migration 20260612000000_parent_digest_optin.sql. */
-  parentEmail?: string | null;
-  /** Locale code (en|he|ar) captured at parent-email opt-in time so
-   *  the digest renders in the same language even if the student
-   *  later toggles their UI language. */
-  parentEmailLocale?: Language | null;
-  /** Timestamp the student set parentEmail.  Surfaced if a parent
-   *  ever asks when their kid signed them up. */
-  parentEmailOptInAt?: string | null;
+  // (Parent Weekly Digest fields lived here until 2026-05-18 — removed
+  // alongside the schema in migration
+  // 20260618000000_drop_parent_digest_stub.sql.)
 }
 
 /** Treat `admin` as a superset of `teacher` for UI access.  Admins keep
@@ -338,9 +329,6 @@ export function mapUser(row: any): AppUser {
     trialEndsAt: row.trial_ends_at ?? null,
     subject: row.subject === 'hebrew' ? 'hebrew' : 'english',
     guidesSeen: row.guides_seen ?? [],
-    parentEmail: row.parent_email ?? null,
-    parentEmailLocale: (row.parent_email_locale ?? null) as AppUser['parentEmailLocale'],
-    parentEmailOptInAt: row.parent_email_opt_in_at ?? null,
   };
 }
 
@@ -392,9 +380,6 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
     ...(u.trialEndsAt !== undefined && { trial_ends_at: u.trialEndsAt }),
     ...(u.subject !== undefined && { subject: u.subject }),
     ...(u.guidesSeen !== undefined && { guides_seen: u.guidesSeen }),
-    ...(u.parentEmail !== undefined && { parent_email: u.parentEmail }),
-    ...(u.parentEmailLocale !== undefined && { parent_email_locale: u.parentEmailLocale }),
-    ...(u.parentEmailOptInAt !== undefined && { parent_email_opt_in_at: u.parentEmailOptInAt }),
   };
 }
 

@@ -33,22 +33,13 @@ export interface StudentAuthRoutesDeps {
   >;
   handleLoginAsStudent: Anyish;
 
-  // Student account login
+  // Student account login.  OAuth / Microsoft / OTP state props were
+  // removed in the 2026-05-18 privacy review — students authenticate
+  // only via class code + roster-issued PIN now.
   error: string | null;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   studentLoginClassCode: string;
   setStudentLoginClassCode: React.Dispatch<React.SetStateAction<string>>;
-  isOAuthCallback: boolean;
-  setIsOAuthCallback: React.Dispatch<React.SetStateAction<boolean>>;
-  showOAuthClassCode: boolean;
-  setShowOAuthClassCode: React.Dispatch<React.SetStateAction<boolean>>;
-  oauthEmail: string | null;
-  setOauthEmail: React.Dispatch<React.SetStateAction<string | null>>;
-  oauthAuthUid: string | null;
-  setOauthAuthUid: React.Dispatch<React.SetStateAction<string | null>>;
-  handleOAuthTeacherDetected: Anyish;
-  handleOAuthStudentDetected: Anyish;
-  handleOAuthNewUser: Anyish;
 
   // Quick Play student join
   quickPlayActiveSession: {
@@ -90,12 +81,8 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     view, user, setView, setUser, showToast,
     cookieBannerOverlay,
     pendingApprovalInfo, setPendingApprovalInfo, handleLoginAsStudent,
-    error, setError,
+    error,
     studentLoginClassCode, setStudentLoginClassCode,
-    isOAuthCallback, setIsOAuthCallback,
-    showOAuthClassCode, setShowOAuthClassCode,
-    oauthEmail, setOauthEmail, oauthAuthUid, setOauthAuthUid,
-    handleOAuthTeacherDetected, handleOAuthStudentDetected, handleOAuthNewUser,
     quickPlayActiveSession, setQuickPlayActiveSession,
     quickPlayStudentName, setQuickPlayStudentName,
     quickPlayAvatar, setQuickPlayAvatar,
@@ -122,20 +109,8 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
         <StudentAccountLoginView
           setView={setView}
           error={error}
-          setError={setError}
           studentLoginClassCode={studentLoginClassCode}
           setStudentLoginClassCode={setStudentLoginClassCode}
-          isOAuthCallback={isOAuthCallback}
-          setIsOAuthCallback={setIsOAuthCallback}
-          showOAuthClassCode={showOAuthClassCode}
-          setShowOAuthClassCode={setShowOAuthClassCode}
-          oauthEmail={oauthEmail}
-          setOauthEmail={setOauthEmail}
-          oauthAuthUid={oauthAuthUid}
-          setOauthAuthUid={setOauthAuthUid}
-          handleOAuthTeacherDetected={handleOAuthTeacherDetected}
-          handleOAuthStudentDetected={handleOAuthStudentDetected}
-          handleOAuthNewUser={handleOAuthNewUser}
           cookieBannerOverlay={cookieBannerOverlay}
         />
       </LazyWrapper>

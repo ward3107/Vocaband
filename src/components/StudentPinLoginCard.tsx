@@ -24,9 +24,6 @@ interface Props {
   /** Called after successful signInWithPassword.  App.tsx's auth listener
    *  then hydrates the AppUser from public.users. */
   onSuccess: () => void;
-  /** Called when the student doesn't see their name and wants to fall
-   *  back to Google/Microsoft/email-OTP. */
-  onUseDifferentMethod: () => void;
 }
 
 const PIN_LENGTH = 6;
@@ -34,7 +31,7 @@ const PIN_LENGTH = 6;
 // (no I/L/O, no 0/1).
 const PIN_REGEX = /^[A-HJ-KM-NP-Z2-9]{6}$/;
 
-const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSuccess, onUseDifferentMethod }) => {
+const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSuccess }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = studentPinLoginT[language];
   const [step, setStep] = useState<"pick" | "pin">("pick");
@@ -329,14 +326,6 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
         </>
       )}
 
-      <button
-        type="button"
-        onClick={onUseDifferentMethod}
-        className="w-full text-xs font-bold text-stone-500 hover:text-stone-900 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg hover:bg-stone-100 transition-colors"
-        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as unknown as string }}
-      >
-        {t.useDifferentMethod}
-      </button>
     </motion.div>
   );
 };

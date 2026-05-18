@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   KeyRound,
+  Lightbulb,
   Link2,
   Plus,
   Printer,
@@ -17,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "../core/supabase";
+import { logAudit } from "../utils/audit";
 import { useLanguage } from "../hooks/useLanguage";
 import { classRosterT } from "../locales/teacher/roster";
 
@@ -189,6 +191,12 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
         p_profile_id: s.id,
       });
       if (rpcError) throw rpcError;
+      // The RPC erases the student's auth row + profile + progress as a
+      // cascade — record one Amendment-13 audit entry tying the actor
+      // (the teacher) to the affected profile_id for forensic lookup.
+      void logAudit('remove_student', 'users', {
+        metadata: { profile_id: s.id, class_code: classCode },
+      });
       setStudents(prev => prev.filter(r => r.id !== s.id));
     } catch (e) {
       setError(e instanceof Error ? e.message : t.errorDeleteFailed);
@@ -414,6 +422,10 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
               </div>
               <p className="text-xs text-stone-500 mt-2">
                 {t.addHelp}
+              </p>
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md mt-2 px-3 py-2 flex items-start gap-2">
+                <Lightbulb size={14} className="mt-0.5 flex-shrink-0 text-amber-600" />
+                <span className="font-medium leading-snug">{t.privacyTip}</span>
               </p>
             </div>
 

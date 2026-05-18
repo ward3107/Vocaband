@@ -556,6 +556,28 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
           const oauthProvider = supabaseUser.app_metadata?.provider;
           const isOAuthSignIn = oauthProvider === 'google' || oauthProvider === 'azure';
           if (isOAuthSignIn) {
+            // Student OAuth was removed in the 2026-05-18 privacy review.
+            // Sessions from before the cut still restore here — gate the
+            // student bootstrap on the teacher allowlist so non-teacher
+            // OAuth sessions get signed out and routed to PIN login
+            // instead of silently entering the student dashboard.
+            const teacherIntentEarly = readIntendedRole();
+            const wantsTeacherEarly = teacherIntentEarly?.role === 'teacher' && teacherIntentEarly.fresh;
+            const { data: isAllowedEarly } = await supabase.rpc('is_teacher_allowed', {
+              check_email: supabaseUser.email ?? "",
+            });
+            if (!isAllowedEarly && !wantsTeacherEarly) {
+              try { await supabase.auth.signOut(); } catch { /* best-effort */ }
+              setUser(null);
+              setError(
+                'Students now sign in with a class code and PIN, not Google. Ask your teacher for your PIN.',
+              );
+              if (!shouldPreserveView("student", currentViewRef.current)) {
+                setView('student-account-login');
+              }
+              setLoading(false);
+              return;
+            }
             // Try the bootstrap RPC first — Step 2 server-side covers
             // the student_profile-by-email lookup + mint + dashboard load.
             // On status:'needs-class-code' we must STILL fall through to

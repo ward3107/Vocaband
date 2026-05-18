@@ -249,6 +249,19 @@ export const RETENTION_PERIODS = {
   auditLogDays: 730, // 2 years
   /** Days to keep consent log entries (keep indefinitely — set very high) */
   consentLogDays: 3650, // 10 years
+  /**
+   * Conservative upper bound for our database provider's (Supabase) platform
+   * backups (PITR / daily snapshots).  Actual retention varies by plan tier
+   * (Free 7d, Pro 14d, Team 28d).  Setting 30 to safely bound the disclosure.
+   */
+  backupSupabasePlatformDays: 30,
+  /**
+   * Off-site disaster-recovery archive in Cloudflare R2 (weekly pg_dump).
+   * Must match the lifecycle rule on the `vocaband-backups` R2 bucket
+   * (`delete at 365 days`) — see .github/workflows/backup-supabase-weekly.yml.
+   * Update both when changing.
+   */
+  backupOffsiteR2Days: 365,
 } as const;
 
 // ---------------------------------------------------------------------------

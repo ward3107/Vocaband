@@ -61,7 +61,6 @@ src/
   components/
     DemoMode.tsx               — standalone demo for prospective teachers
     ClassCard.tsx              — teacher dashboard per-class card
-    OAuthButton.tsx            — Google sign-in
     FloatingButtons.tsx        — share-my-level + optional back-to-top
     InPageCamera.tsx           — getUserMedia camera modal for OCR
     PwaInstallBanner.tsx       — mobile install nudge

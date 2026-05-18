@@ -51,7 +51,7 @@ export interface PrivacySettingsStrings {
   downloadMyData: string;
   deleteMyAccount: string;
   deleteConfirm: string;
-  retentionNote: (email: string) => string;
+  retentionNote: (email: string, platformDays: number, offsiteDays: number) => string;
 
   // Toasts
   toastDataExported: string;
@@ -60,22 +60,9 @@ export interface PrivacySettingsStrings {
   toastDeleteFailed: string;
   toastNameUpdated: string;
   toastNameFailed: string;
-
-  // Parent Weekly Digest opt-in (only rendered for students when the
-  // VITE_PARENT_DIGEST flag is on — the worker + cron + email template
-  // ship in later phases; this card just collects the email).
-  parentDigestTitle: string;
-  parentDigestSubtitle: string;
-  parentDigestEmailLabel: string;
-  parentDigestEmailPlaceholder: string;
-  parentDigestSave: string;
-  parentDigestRemove: string;
-  parentDigestRemoveConfirm: string;
-  parentDigestCurrentLabel: string;
-  parentDigestSavedToast: string;
-  parentDigestRemovedToast: string;
-  parentDigestSaveFailed: string;
-  parentDigestInvalidEmail: string;
+  // (Parent Weekly Digest opt-in keys lived here until 2026-05-18 —
+  // removed alongside the schema in migration
+  // 20260618000000_drop_parent_digest_stub.sql.)
 }
 
 export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
@@ -110,25 +97,14 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     downloadMyData: "Download My Data (JSON)",
     deleteMyAccount: "Delete My Account",
     deleteConfirm: "This will permanently delete your account and all associated data. This action cannot be undone. Are you sure?",
-    retentionNote: (email) => `Note: Data in encrypted backups may be retained for up to 30 days after deletion. Contact ${email} for questions.`,
+    retentionNote: (email, platformDays, offsiteDays) =>
+      `Note: Data in encrypted backups may persist after deletion — up to ${platformDays} days in our database provider's platform backups, and up to ${offsiteDays} days (about ${Math.round(offsiteDays / 30)} months) in our off-site disaster-recovery archive. After those windows, the backups are overwritten or deleted automatically. Contact ${email} for questions.`,
     toastDataExported: "Data exported successfully!",
     toastExportFailed: "Failed to export data.",
     toastAccountDeleted: "Account deleted successfully.",
     toastDeleteFailed: "Failed to delete account.",
     toastNameUpdated: "Name updated!",
     toastNameFailed: "Failed to update name.",
-    parentDigestTitle: "Send my parent a weekly progress email",
-    parentDigestSubtitle: "Every Friday afternoon, your parent gets a short email about what you learned that week.",
-    parentDigestEmailLabel: "Parent's email",
-    parentDigestEmailPlaceholder: "parent@example.com",
-    parentDigestSave: "Save",
-    parentDigestRemove: "Stop sending emails",
-    parentDigestRemoveConfirm: "Stop sending the Friday update to this email?",
-    parentDigestCurrentLabel: "Currently sending to:",
-    parentDigestSavedToast: "Parent email saved. The next update sends Friday.",
-    parentDigestRemovedToast: "Parent email removed.",
-    parentDigestSaveFailed: "Couldn't save right now. Try again in a moment.",
-    parentDigestInvalidEmail: "That doesn't look like an email address.",
   },
   he: {
     back: "חזרה",
@@ -161,25 +137,14 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     downloadMyData: "הורד את המידע שלי (JSON)",
     deleteMyAccount: "מחיקת החשבון שלי",
     deleteConfirm: "זה ימחק לצמיתות את החשבון שלכם ואת כל הנתונים הקשורים. הפעולה אינה הפיכה. בטוחים?",
-    retentionNote: (email) => `שימו לב: נתונים בגיבויים מוצפנים עשויים להישמר עד 30 ימים לאחר המחיקה. שאלות? כתבו ל-${email}.`,
+    retentionNote: (email, platformDays, offsiteDays) =>
+      `שימו לב: נתונים בגיבויים מוצפנים עשויים להישמר לאחר המחיקה — עד ${platformDays} ימים בגיבויי הפלטפורמה של ספק מסד הנתונים שלנו, ועד ${offsiteDays} ימים (כ-${Math.round(offsiteDays / 30)} חודשים) בארכיון השחזור החיצוני שלנו. לאחר תקופות אלו, הגיבויים נמחקים או נדרסים אוטומטית. שאלות? כתבו ל-${email}.`,
     toastDataExported: "הנתונים יוצאו בהצלחה!",
     toastExportFailed: "ייצוא הנתונים נכשל.",
     toastAccountDeleted: "החשבון נמחק בהצלחה.",
     toastDeleteFailed: "מחיקת החשבון נכשלה.",
     toastNameUpdated: "השם עודכן!",
     toastNameFailed: "עדכון השם נכשל.",
-    parentDigestTitle: "שלחו להורה שלי מייל שבועי על ההתקדמות",
-    parentDigestSubtitle: "כל יום שישי אחר הצהריים, ההורה שלכם מקבל מייל קצר על מה שלמדתם השבוע.",
-    parentDigestEmailLabel: 'דוא"ל של הורה',
-    parentDigestEmailPlaceholder: "parent@example.com",
-    parentDigestSave: "שמירה",
-    parentDigestRemove: "הפסקת שליחת מיילים",
-    parentDigestRemoveConfirm: 'להפסיק לשלוח את העדכון של יום שישי לדוא"ל הזה?',
-    parentDigestCurrentLabel: "שולח כרגע אל:",
-    parentDigestSavedToast: 'דוא"ל הורה נשמר. העדכון הבא יישלח ביום שישי.',
-    parentDigestRemovedToast: 'דוא"ל הורה הוסר.',
-    parentDigestSaveFailed: "לא הצלחנו לשמור כרגע. נסו שוב בעוד רגע.",
-    parentDigestInvalidEmail: 'זה לא נראה כמו כתובת דוא"ל.',
   },
   ar: {
     back: "رجوع",
@@ -212,25 +177,14 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     downloadMyData: "تنزيل بياناتي (JSON)",
     deleteMyAccount: "حذف حسابي",
     deleteConfirm: "سيتم حذف حسابك وجميع بياناتك بشكل نهائي. لا يمكن التراجع. هل أنت متأكد؟",
-    retentionNote: (email) => `ملاحظة: قد تُحتفظ النسخ الاحتياطية المشفّرة لمدة تصل إلى 30 يوماً بعد الحذف. للاستفسارات راسل ${email}.`,
+    retentionNote: (email, platformDays, offsiteDays) =>
+      `ملاحظة: قد تستمر البيانات في النسخ الاحتياطية المشفّرة بعد الحذف — حتى ${platformDays} يوماً في النسخ الاحتياطية لمنصّة قاعدة البيانات لدينا، وحتى ${offsiteDays} يوماً (حوالي ${Math.round(offsiteDays / 30)} شهراً) في أرشيف التعافي من الكوارث خارج الموقع. بعد هذه الفترات، تُستبدل النسخ الاحتياطية أو تُحذف تلقائياً. للاستفسارات راسل ${email}.`,
     toastDataExported: "تم تصدير البيانات بنجاح!",
     toastExportFailed: "فشل تصدير البيانات.",
     toastAccountDeleted: "تم حذف الحساب بنجاح.",
     toastDeleteFailed: "فشل حذف الحساب.",
     toastNameUpdated: "تم تحديث الاسم!",
     toastNameFailed: "فشل تحديث الاسم.",
-    parentDigestTitle: "أرسل لوالدي بريداً أسبوعياً عن تقدمي",
-    parentDigestSubtitle: "كل يوم جمعة بعد الظهر، يحصل والدك على بريد قصير عما تعلمته هذا الأسبوع.",
-    parentDigestEmailLabel: "بريد الوالد",
-    parentDigestEmailPlaceholder: "parent@example.com",
-    parentDigestSave: "حفظ",
-    parentDigestRemove: "إيقاف إرسال البريد",
-    parentDigestRemoveConfirm: "إيقاف إرسال تحديث الجمعة إلى هذا البريد؟",
-    parentDigestCurrentLabel: "يُرسل حالياً إلى:",
-    parentDigestSavedToast: "تم حفظ بريد الوالد. سيُرسل التحديث التالي يوم الجمعة.",
-    parentDigestRemovedToast: "تم حذف بريد الوالد.",
-    parentDigestSaveFailed: "تعذر الحفظ الآن. حاول مرة أخرى بعد لحظة.",
-    parentDigestInvalidEmail: "هذا لا يبدو كعنوان بريد إلكتروني.",
   },
   ru: {
     back: "Back",
@@ -263,24 +217,13 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     downloadMyData: "Download My Data (JSON)",
     deleteMyAccount: "Delete My Account",
     deleteConfirm: "This will permanently delete your account and all associated data. This action cannot be undone. Are you sure?",
-    retentionNote: (email) => `Note: Data in encrypted backups may be retained for up to 30 days after deletion. Contact ${email} for questions.`,
+    retentionNote: (email, platformDays, offsiteDays) =>
+      `Note: Data in encrypted backups may persist after deletion — up to ${platformDays} days in our database provider's platform backups, and up to ${offsiteDays} days (about ${Math.round(offsiteDays / 30)} months) in our off-site disaster-recovery archive. After those windows, the backups are overwritten or deleted automatically. Contact ${email} for questions.`,
     toastDataExported: "Data exported successfully!",
     toastExportFailed: "Failed to export data.",
     toastAccountDeleted: "Account deleted successfully.",
     toastDeleteFailed: "Failed to delete account.",
     toastNameUpdated: "Name updated!",
     toastNameFailed: "Failed to update name.",
-    parentDigestTitle: "Send my parent a weekly progress email",
-    parentDigestSubtitle: "Every Friday afternoon, your parent gets a short email about what you learned that week.",
-    parentDigestEmailLabel: "Parent's email",
-    parentDigestEmailPlaceholder: "parent@example.com",
-    parentDigestSave: "Save",
-    parentDigestRemove: "Stop sending emails",
-    parentDigestRemoveConfirm: "Stop sending the Friday update to this email?",
-    parentDigestCurrentLabel: "Currently sending to:",
-    parentDigestSavedToast: "Parent email saved. The next update sends Friday.",
-    parentDigestRemovedToast: "Parent email removed.",
-    parentDigestSaveFailed: "Couldn't save right now. Try again in a moment.",
-    parentDigestInvalidEmail: "That doesn't look like an email address.",
   },
 };

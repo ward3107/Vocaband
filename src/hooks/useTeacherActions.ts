@@ -618,6 +618,9 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
           .eq('id', editingAssignment.id);
 
         if (error) throw error;
+        void logAudit('edit_assignment', 'assignments', {
+          metadata: { assignment_id: editingAssignment.id },
+        });
         showToast("Assignment updated successfully!", "success");
 
         // Update the assignment in the list

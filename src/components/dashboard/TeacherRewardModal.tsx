@@ -20,6 +20,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Gift, X, Sparkles, Wand2 } from "lucide-react";
 import { supabase } from "../../core/supabase";
+import { logAudit } from "../../utils/audit";
 import { TEACHER_XP_PRESETS } from "../../constants/game";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
@@ -60,6 +61,16 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
       });
 
       if (error) throw error;
+
+      // Central audit_log row in addition to the reward-specific
+      // teacher_rewards table — so a privacy reviewer can pull one
+      // table for "everything this teacher did".  XP amount is logged
+      // as metadata; the reason field is intentionally NOT included
+      // because teachers occasionally type student names there.
+      void logAudit('award_reward', 'rewards', {
+        targetUid: student.uid,
+        metadata: { xp: selectedXp },
+      });
 
       showToast?.(t.sentXpToast(selectedXp, student.name), 'success');
       onRewardGiven?.();
