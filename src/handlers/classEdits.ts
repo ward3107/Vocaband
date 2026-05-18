@@ -28,6 +28,8 @@ export interface ClassEditFields {
   avatar: string | null;
   schoolName?: string | null;
   schoolLogoUrl?: string | null;
+  /** Hex string (e.g. '#fde68a') or null to clear. */
+  backgroundColor?: string | null;
 }
 
 export async function saveClassEdit(
@@ -39,6 +41,11 @@ export async function saveClassEdit(
   // trimmed string or NULL, never an empty string.
   const schoolName = next.schoolName?.trim() || null;
   const schoolLogoUrl = next.schoolLogoUrl?.trim() || null;
+  // Background color — DB CHECK constraint enforces `#rrggbb[aa]`, so
+  // we only forward values that match.  Empty/null clears the tint.
+  const backgroundColor = next.backgroundColor && /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(next.backgroundColor)
+    ? next.backgroundColor
+    : null;
 
   const { error } = await supabase
     .from('classes')
@@ -47,6 +54,7 @@ export async function saveClassEdit(
       avatar: next.avatar,
       school_name: schoolName,
       school_logo_url: schoolLogoUrl,
+      background_color: backgroundColor,
     })
     .eq('id', classId);
   if (error) {
@@ -56,7 +64,7 @@ export async function saveClassEdit(
   deps.setClasses((prev) =>
     prev.map((c) =>
       c.id === classId
-        ? { ...c, name: next.name, avatar: next.avatar, schoolName, schoolLogoUrl }
+        ? { ...c, name: next.name, avatar: next.avatar, schoolName, schoolLogoUrl, backgroundColor }
         : c,
     ),
   );

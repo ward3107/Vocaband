@@ -33,6 +33,9 @@ interface ClassCardProps {
    *  surface as a small strip above the class name. */
   schoolName?: string | null;
   schoolLogoUrl?: string | null;
+  /** Per-class background tint hex (e.g. '#fde68a').  Null → use the
+   *  theme surface color (legacy behaviour). */
+  backgroundColor?: string | null;
   studentCount?: number;
   onAssign: () => void;
   onCopyCode: () => void;
@@ -73,6 +76,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   avatar,
   schoolName,
   schoolLogoUrl,
+  backgroundColor,
   studentCount,
   onAssign,
   onCopyCode,
@@ -230,7 +234,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
     <>
     <div
       style={{
-        backgroundColor: 'var(--vb-surface)',
+        backgroundColor: backgroundColor || 'var(--vb-surface)',
         borderColor: 'var(--vb-border)',
       }}
       className="rounded-xl border shadow-sm hover:shadow-md transition-shadow"
