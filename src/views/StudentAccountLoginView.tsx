@@ -1,40 +1,23 @@
 import { type ReactNode, useRef, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, KeyRound } from "lucide-react";
-import OAuthCallback from "../components/OAuthCallback";
-import OAuthClassCode from "../components/OAuthClassCode";
-import OAuthButton from "../components/OAuthButton";
-import StudentEmailOtpCard from "../components/StudentEmailOtpCard";
 import StudentPinLoginCard from "../components/StudentPinLoginCard";
 import type { View } from "../core/views";
-import { writeIntendedClassCode } from "../utils/oauthIntent";
 import { useLanguage, languageNames, ALL_LANGUAGES, type Language } from "../hooks/useLanguage";
 import { studentLoginT } from "../locales/student/student-login";
 import { Globe } from "lucide-react";
 
 interface StudentAccountLoginViewProps {
   setView: React.Dispatch<React.SetStateAction<View>>;
+  /** Error banner text owned by App.tsx — typically the OAuth-reject
+   *  notice routed here by useAuthRestore when a stale OAuth student
+   *  session is restored, or any auth-restore failure that surfaces
+   *  on this screen.  PIN flow has its own inline errors. */
   error: string | null;
-  setError: (err: string | null) => void;
 
   // Class code the student is joining (or returning to).
   studentLoginClassCode: string;
   setStudentLoginClassCode: (v: string) => void;
-
-  // OAuth flow state
-  isOAuthCallback: boolean;
-  setIsOAuthCallback: (v: boolean) => void;
-  showOAuthClassCode: boolean;
-  setShowOAuthClassCode: (v: boolean) => void;
-  oauthEmail: string | null;
-  setOauthEmail: (v: string | null) => void;
-  oauthAuthUid: string | null;
-  setOauthAuthUid: (v: string | null) => void;
-
-  // Handlers
-  handleOAuthTeacherDetected: (email: string) => Promise<void>;
-  handleOAuthStudentDetected: (email: string) => Promise<void>;
-  handleOAuthNewUser: (email: string, authUid: string) => void;
 
   // Global cookie banner passthrough
   cookieBannerOverlay: ReactNode;
@@ -64,20 +47,8 @@ const CODE_LENGTH = 8;
 export default function StudentAccountLoginView({
   setView,
   error,
-  setError,
   studentLoginClassCode,
   setStudentLoginClassCode,
-  isOAuthCallback,
-  setIsOAuthCallback,
-  showOAuthClassCode,
-  setShowOAuthClassCode,
-  oauthEmail,
-  setOauthEmail,
-  oauthAuthUid,
-  setOauthAuthUid,
-  handleOAuthTeacherDetected,
-  handleOAuthStudentDetected,
-  handleOAuthNewUser,
   cookieBannerOverlay,
 }: StudentAccountLoginViewProps) {
   const codeInputRef = useRef<HTMLInputElement | null>(null);
@@ -104,14 +75,12 @@ export default function StudentAccountLoginView({
     } catch { return null; }
   });
 
-  // Auto-focus the (hidden) code input when the primary screen is up.
-  // On mobile this cues the soft keyboard; on desktop, first keystroke
-  // lands in the right place without the student hunting for a field.
+  // Auto-focus the (hidden) code input on mount.  On mobile this cues
+  // the soft keyboard; on desktop, first keystroke lands in the right
+  // place without the student hunting for a field.
   useEffect(() => {
-    if (!isOAuthCallback && !showOAuthClassCode) {
-      codeInputRef.current?.focus();
-    }
-  }, [isOAuthCallback, showOAuthClassCode]);
+    codeInputRef.current?.focus();
+  }, []);
 
   // QR-code / teacher-shared-link pre-fill.
   //
@@ -214,17 +183,12 @@ export default function StudentAccountLoginView({
   const t = studentLoginT[language];
   const [langOpen, setLangOpen] = useState(false);
   const langs: Language[] = ALL_LANGUAGES;
-  // Three login paths, in order of preference for the Israeli market:
-  //   - "pin"   : teacher pre-creates a roster row + PIN; the student
-  //               picks their name and types the PIN.  Default — no
-  //               Google account needed (matches MoE-issued devices).
-  //   - "oauth" : Google + Microsoft + a link to email-OTP.  Backup
-  //               for students who aren't on the roster yet or who
-  //               attend a school where OAuth is preferred.
-  //   - "otp"   : email magic-code.  Reached via a button inside the
-  //               OAuth panel; identity ends up in the same session
-  //               either way.
-  const [authMode, setAuthMode] = useState<"pin" | "oauth" | "otp">("pin");
+  // Single login path: class code + roster-issued PIN.  Google /
+  // Microsoft OAuth and email-OTP were removed in the 2026-05-18
+  // privacy review (see PR #787 and PRIVACY_CHECKLIST §3) to align
+  // with the privacy policy's claim that students never share a real
+  // email address.  Teacher OAuth is unaffected — that flow lives in
+  // TeacherLoginCard, not here.
 
   return (
     <>
@@ -233,43 +197,13 @@ export default function StudentAccountLoginView({
         <div className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-fuchsia-500/20 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl" aria-hidden />
 
-        {/* OAuth callback — shown when Google redirected us back while the
-            login view was still mounted. */}
-        {isOAuthCallback && (
-          <OAuthCallback
-            onTeacherDetected={handleOAuthTeacherDetected}
-            onStudentDetected={handleOAuthStudentDetected}
-            onNewUser={handleOAuthNewUser}
-          />
-        )}
-
-        {/* OAuth new-user class-code screen — shown when Google succeeded
-            but there's no student profile yet for this email. */}
-        {showOAuthClassCode && oauthEmail && oauthAuthUid && (
-          <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-6">
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl w-full max-w-md">
-              <OAuthClassCode
-                email={oauthEmail}
-                authUid={oauthAuthUid}
-                onSuccess={() => {
-                  setShowOAuthClassCode(false);
-                  setOauthEmail(null);
-                  setOauthAuthUid(null);
-                }}
-                onError={(msg) => {
-                  setError(msg);
-                  // Stay on the class-code screen so the student can fix + retry.
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Primary login screen — class code + Google. Google is the only
-            login path: one path students can always trust, works on every
-            device, no per-browser session state to lose. */}
-        {!isOAuthCallback && !showOAuthClassCode && (
-          <div className="relative z-10 min-h-screen flex flex-col">
+        {/* Primary login screen — class code + roster-issued PIN.  The
+            previous OAuthCallback + OAuthClassCode renderings (used for
+            student Google OAuth + new-user class-code modal) were
+            removed alongside the student-side OAuth UI in the 2026-05-18
+            privacy review.  Teacher OAuth has its own callback path in
+            TeacherLoginCard and is unaffected. */}
+        <div className="relative z-10 min-h-screen flex flex-col">
             <header className="flex items-center justify-between px-4 sm:px-6 py-4">
               <button
                 onClick={() => {
@@ -418,81 +352,27 @@ export default function StudentAccountLoginView({
                     )}
                   </div>
 
-                  {/* Auth panel — picks one of three paths:
-                      - "pin"  : teacher-issued PIN (primary; default)
-                      - "oauth": Google + Microsoft
-                      - "otp"  : email magic-code (reached from inside oauth)
-                      The PIN path doesn't need a Google/Microsoft account,
-                      which matches most Israeli classrooms and lets a
-                      4th-grader join without parental email setup. */}
-                  {authMode === "pin" ? (
-                    hasEnoughCode ? (
-                      <StudentPinLoginCard
-                        classCode={studentLoginClassCode.trim().toUpperCase()}
-                        prefilledStudentId={prefilledStudentId}
-                        onSuccess={() => {
-                          // Supabase session is live; App.tsx's
-                          // onAuthStateChange listener will hydrate the
-                          // AppUser from public.users on its own.
-                        }}
-                        onUseDifferentMethod={() => setAuthMode("oauth")}
-                      />
-                    ) : (
-                      <div className="text-center py-4">
-                        <KeyRound size={22} className="text-stone-400 mx-auto mb-2" />
-                        <p className="text-sm font-bold text-stone-600">Enter your class code above</p>
-                        <p className="text-xs text-stone-500 mt-1">Then pick your name and type your PIN.</p>
-                      </div>
-                    )
-                  ) : authMode === "otp" ? (
-                    <StudentEmailOtpCard
-                      classCode={studentLoginClassCode}
-                      onVerified={() => setIsOAuthCallback(true)}
-                      onUseGoogle={() => setAuthMode("oauth")}
+                  {/* PIN-only auth.  The previous toggle to Google /
+                      Microsoft OAuth + email-OTP was removed in the
+                      2026-05-18 privacy review to align the student
+                      experience with the privacy policy's claim that
+                      students share no real email address. */}
+                  {hasEnoughCode ? (
+                    <StudentPinLoginCard
+                      classCode={studentLoginClassCode.trim().toUpperCase()}
+                      prefilledStudentId={prefilledStudentId}
+                      onSuccess={() => {
+                        // Supabase session is live; App.tsx's
+                        // onAuthStateChange listener will hydrate the
+                        // AppUser from public.users on its own.
+                      }}
                     />
                   ) : (
-                    <>
-                      <OAuthButton
-                        onSuccess={() => {
-                          setIsOAuthCallback(true);
-                        }}
-                        onError={(errorMessage) => {
-                          setError(errorMessage);
-                        }}
-                        beforeSignIn={() => {
-                          writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
-                        }}
-                      />
-                      <OAuthButton
-                        provider="azure"
-                        label={t.signInWithMicrosoft}
-                        onSuccess={() => {
-                          setIsOAuthCallback(true);
-                        }}
-                        onError={(errorMessage) => {
-                          setError(errorMessage);
-                        }}
-                        beforeSignIn={() => {
-                          writeIntendedClassCode(studentLoginClassCode.trim().toUpperCase());
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setAuthMode("otp")}
-                        className="w-full mt-3 text-xs font-bold text-stone-500 hover:text-stone-900 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg hover:bg-stone-100 transition-colors"
-                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as unknown as string }}
-                      >
-                        Or use email instead
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAuthMode("pin")}
-                        className="w-full mt-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg hover:bg-indigo-50 transition-colors"
-                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as unknown as string }}
-                      >
-                        <KeyRound size={12} /> I have a PIN from my teacher
-                      </button>
-                    </>
+                    <div className="text-center py-4">
+                      <KeyRound size={22} className="text-stone-400 mx-auto mb-2" />
+                      <p className="text-sm font-bold text-stone-600">Enter your class code above</p>
+                      <p className="text-xs text-stone-500 mt-1">Then pick your name and type your PIN.</p>
+                    </div>
                   )}
 
                   <p className="mt-4 text-xs text-stone-500 text-center leading-relaxed">
@@ -519,7 +399,6 @@ export default function StudentAccountLoginView({
               vocaband.com
             </footer>
           </div>
-        )}
         {cookieBannerOverlay}
       </div>
     </>

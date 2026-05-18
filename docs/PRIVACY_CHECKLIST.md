@@ -80,6 +80,7 @@ Tracks all privacy features required for Israeli PPA Amendment 13 compliance. Us
 | Data categories per third party | Done | `dataCategories` field on each entry |
 | Hosting region per third party | Done | `hostingRegion` field on each entry |
 | Cross-border transfers documented | Done | `HOSTING_REGIONS` in privacy-config.ts, `DATA_FLOW.md` |
+| Student-side Google / Microsoft OAuth removed | Done (2026-05-18) | Visible UI stripped from `StudentAccountLoginView.tsx`; stale OAuth student sessions are rejected in `useAuthRestore.ts` (signed out + routed to PIN login with an explanatory error).  Orphan files deleted: `OAuthButton.tsx`, `OAuthCallback.tsx`, `OAuthClassCode.tsx`, `StudentEmailOtpCard.tsx`, `useOAuthFlow.ts`.  Teacher OAuth (`TeacherLoginCard.tsx` → `signInWithOAuth`) is unaffected.  Aligns code with the policy's "students share no real email" claim. |
 
 ## 7. Documentation
 

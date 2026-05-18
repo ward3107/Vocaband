@@ -21,10 +21,7 @@ import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
 import { createGuestUser } from "./utils/createGuestUser";
 import { readQpResumeScore } from "./utils/qpResumeHint";
-import {
-  readIntendedClassCode,
-  clearIntendedClassCode,
-} from "./utils/oauthIntent";
+import { clearIntendedClassCode } from "./utils/oauthIntent";
 import { useTeacherGuidesSync } from "./hooks/useTeacherGuidesSync";
 import { useVocaRouting } from "./hooks/useVocaRouting";
 import { useApplyTeacherTheme } from "./hooks/useApplyTeacherTheme";
@@ -72,7 +69,6 @@ import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
 import { useViewGuards } from "./hooks/useViewGuards";
 import { useGameRoundOptions } from "./hooks/useGameRoundOptions";
 import { useStudentLogin } from "./hooks/useStudentLogin";
-import { useOAuthFlow } from "./hooks/useOAuthFlow";
 import { useClassSwitch } from "./hooks/useClassSwitch";
 import { useConsent } from "./hooks/useConsent";
 import { useOcrUpload } from "./hooks/useOcrUpload";
@@ -634,20 +630,12 @@ export default function App() {
     loadAssignmentsForClass,
   });
 
-  // Google-OAuth post-callback handlers — class-switch detection +
-  // upsert-then-hydrate sequence.  See useOAuthFlow.
-  const {
-    handleOAuthTeacherDetected,
-    handleOAuthStudentDetected,
-    handleOAuthNewUser,
-  } = useOAuthFlow({
-    setUser, setError, setLoading, setView, setIsOAuthCallback,
-    setBadges, setXp, setStreak,
-    setStudentAssignments, setStudentProgress,
-    setClassNotFoundIntent, setPendingClassSwitch,
-    setOauthEmail, setOauthAuthUid, setShowOAuthClassCode,
-    showPendingApproval, readIntendedClassCode, clearIntendedClassCode,
-  });
+  // Google-OAuth post-callback handlers were removed in the 2026-05-18
+  // privacy review along with student-side OAuth.  Teacher OAuth now
+  // restores its session entirely through useAuthRestore's
+  // onAuthStateChange listener (which auto-creates the public.users row
+  // for allowed Google sign-ins).  Stale OAuth student sessions are
+  // rejected in the same hook so existing users get routed back to PIN.
 
   // Class-switch modal confirm/cancel — both branches hydrate after.
   const { handleConfirmClassSwitch, handleCancelClassSwitch } = useClassSwitch({
@@ -962,10 +950,6 @@ export default function App() {
     pendingApprovalInfo, setPendingApprovalInfo, handleLoginAsStudent,
     error, setError,
     studentLoginClassCode, setStudentLoginClassCode,
-    isOAuthCallback, setIsOAuthCallback,
-    showOAuthClassCode, setShowOAuthClassCode,
-    oauthEmail, setOauthEmail, oauthAuthUid, setOauthAuthUid,
-    handleOAuthTeacherDetected, handleOAuthStudentDetected, handleOAuthNewUser,
     quickPlayActiveSession, setQuickPlayActiveSession,
     quickPlayStudentName, setQuickPlayStudentName,
     quickPlayAvatar, setQuickPlayAvatar,
