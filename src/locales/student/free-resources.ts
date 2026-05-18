@@ -134,6 +134,11 @@ export interface FreeResourcesT {
   myWorksheetsRevoking: string;
   myWorksheetsConfirmRevoke: string;
   myWorksheetsRevokeError: string;
+  myWorksheetsArchive: string;
+  myWorksheetsArchiving: string;
+  myWorksheetsArchived: string;
+  myWorksheetsArchiveError: string;
+  myWorksheetsUnarchive: string;
 
   // CTA
   ctaTitle: string;
@@ -250,6 +255,11 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     myWorksheetsRevoking: "Deleting…",
     myWorksheetsConfirmRevoke: "Delete this shared worksheet? Anyone with the link will no longer be able to open it.",
     myWorksheetsRevokeError: "Couldn't delete this worksheet. Please try again.",
+    myWorksheetsArchive: "Archive",
+    myWorksheetsArchiving: "Archiving…",
+    myWorksheetsArchived: "Archived",
+    myWorksheetsArchiveError: "Couldn't archive this worksheet. Please try again.",
+    myWorksheetsUnarchive: "Unarchive",
 
     ctaTitle: "Want more?",
     ctaText: "Join thousands of teachers using Vocaband to make vocabulary practice engaging and effective.",
@@ -364,6 +374,11 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     myWorksheetsRevoking: "מוחק…",
     myWorksheetsConfirmRevoke: "למחוק את דף העבודה ששותף? אף אחד עם הקישור לא יוכל לפתוח אותו יותר.",
     myWorksheetsRevokeError: "לא הצלחנו למחוק את דף העבודה. נסו שוב.",
+    myWorksheetsArchive: "הוסף לארכיון",
+    myWorksheetsArchiving: "מעביר לארכיון…",
+    myWorksheetsArchived: "בארכיון",
+    myWorksheetsArchiveError: "לא הצלחנו להעביר את דף העבודה לארכיון. נסו שוב.",
+    myWorksheetsUnarchive: "הוצא מהארכיון",
 
     ctaTitle: "רוצים עוד?",
     ctaText: "הצטרפו לאלפי המורים שמשתמשים ב-Vocaband כדי להפוך את תרגול אוצר המילים למהנה ואפקטיבי.",
@@ -478,6 +493,11 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     myWorksheetsRevoking: "جارٍ الحذف…",
     myWorksheetsConfirmRevoke: "هل تريد حذف ورقة العمل المشاركة؟ لن يتمكن أحد من فتحها برابطها بعد الآن.",
     myWorksheetsRevokeError: "تعذر حذف ورقة العمل. حاول مرة أخرى.",
+    myWorksheetsArchive: "أرشفة",
+    myWorksheetsArchiving: "جارٍ الأرشفة…",
+    myWorksheetsArchived: "مؤرشف",
+    myWorksheetsArchiveError: "تعذرت أرشفة ورقة العمل. حاول مرة أخرى.",
+    myWorksheetsUnarchive: "إلغاء الأرشفة",
 
     ctaTitle: "تريد المزيد؟",
     ctaText: "انضم إلى آلاف المعلمين الذين يستخدمون Vocaband لجعل ممارسة المفردات ممتعة وفعالة.",
@@ -592,6 +612,11 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     myWorksheetsRevoking: "Deleting…",
     myWorksheetsConfirmRevoke: "Delete this shared worksheet? Anyone with the link will no longer be able to open it.",
     myWorksheetsRevokeError: "Couldn't delete this worksheet. Please try again.",
+    myWorksheetsArchive: "Archive",
+    myWorksheetsArchiving: "Archiving…",
+    myWorksheetsArchived: "Archived",
+    myWorksheetsArchiveError: "Couldn't archive this worksheet. Please try again.",
+    myWorksheetsUnarchive: "Unarchive",
 
     ctaTitle: "Want more?",
     ctaText: "Join thousands of teachers using Vocaband to make vocabulary practice engaging and effective.",

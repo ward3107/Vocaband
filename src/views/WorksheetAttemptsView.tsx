@@ -16,6 +16,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
+  Archive,
+  ArchiveRestore,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -26,6 +28,7 @@ import {
   QrCode,
   Send,
   Target,
+  Trash2,
   Users,
 } from "lucide-react";
 import { supabase } from "../core/supabase";
@@ -55,6 +58,10 @@ interface Worksheet {
   // children from the top-level list and surfaces them under the
   // parent's per-student row instead.
   parent_slug: string | null;
+  // Archive timestamp. NULL = active. Archived rows are hidden from
+  // students (link returns "expired") but the teacher can still browse
+  // their submissions here.
+  archived_at: string | null;
 }
 
 // One row in worksheet_attempts.answers — discriminated union mirrors
@@ -125,6 +132,11 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"active" | "archived">("active");
+  // Bumped by archive/delete actions to force a refetch without making
+  // useEffect depend on the worksheets array (which would loop).
+  const [refreshTick, setRefreshTick] = useState(0);
+  const refresh = () => setRefreshTick((t) => t + 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,7 +146,7 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
       const { data: wData, error: wErr } = await supabase
         .from("interactive_worksheets")
         .select(
-          "slug, topic_name, format, word_ids, expires_at, created_at, settings, parent_slug",
+          "slug, topic_name, format, word_ids, expires_at, created_at, settings, parent_slug, archived_at",
         )
         .eq("teacher_uid", user.uid)
         .order("created_at", { ascending: false });
@@ -173,7 +185,7 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [user.uid]);
+  }, [user.uid, refreshTick]);
 
   // Group attempts by slug + count.  Memoised so flipping selectedSlug
   // doesn't re-walk the whole array.
@@ -205,9 +217,23 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
 
   // Top-level cards only — children appear nested inside the parent's
   // detail view so the dashboard doesn't double-count practice rounds
-  // as standalone worksheets.
+  // as standalone worksheets. Filter respects the active/archived toggle.
   const topLevelWorksheets = useMemo(
-    () => worksheets.filter((w) => !w.parent_slug),
+    () =>
+      worksheets.filter(
+        (w) =>
+          !w.parent_slug &&
+          (filter === "active" ? !w.archived_at : !!w.archived_at),
+      ),
+    [worksheets, filter],
+  );
+
+  const activeCount = useMemo(
+    () => worksheets.filter((w) => !w.parent_slug && !w.archived_at).length,
+    [worksheets],
+  );
+  const archivedCount = useMemo(
+    () => worksheets.filter((w) => !w.parent_slug && !!w.archived_at).length,
     [worksheets],
   );
 
@@ -223,6 +249,44 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
     () => (selectedSlug ? childrenByParent.get(selectedSlug) ?? [] : []),
     [selectedSlug, childrenByParent],
   );
+
+  // Track in-flight mutation so the action buttons can disable themselves
+  // and not double-fire on impatient taps.
+  const [mutatingSlug, setMutatingSlug] = useState<string | null>(null);
+
+  const handleArchive = async (slug: string, archived: boolean) => {
+    setMutatingSlug(slug);
+    const { data, error: rpcErr } = await supabase.rpc("set_worksheet_archived", {
+      p_slug: slug,
+      p_archived: archived,
+    });
+    setMutatingSlug(null);
+    if (rpcErr || data === false) {
+      setError(rpcErr?.message ?? "Couldn't update worksheet.");
+      return;
+    }
+    if (selectedSlug === slug) setSelectedSlug(null);
+    refresh();
+  };
+
+  const handleDelete = async (slug: string) => {
+    const ok = window.confirm(
+      "Delete this worksheet forever? All submitted attempts will be removed and the link will stop working. This can't be undone.",
+    );
+    if (!ok) return;
+    setMutatingSlug(slug);
+    const { data, error: rpcErr } = await supabase.rpc("revoke_my_worksheet", {
+      p_slug: slug,
+      p_fingerprint: null,
+    });
+    setMutatingSlug(null);
+    if (rpcErr || data === false) {
+      setError(rpcErr?.message ?? "Couldn't delete worksheet.");
+      return;
+    }
+    if (selectedSlug === slug) setSelectedSlug(null);
+    refresh();
+  };
 
   return (
     <div className="min-h-screen bg-[var(--vb-bg)]">
@@ -248,6 +312,10 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
             attemptsBySlug={attemptsBySlug}
             childrenByParent={childrenByParent}
             onSelect={setSelectedSlug}
+            filter={filter}
+            onFilterChange={setFilter}
+            activeCount={activeCount}
+            archivedCount={archivedCount}
           />
         ) : (
           <WorksheetDetail
@@ -255,6 +323,9 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
             attempts={selectedAttempts}
             childWorksheets={selectedChildren}
             attemptsBySlug={attemptsBySlug}
+            onArchive={(archived) => handleArchive(selectedWorksheet.slug, archived)}
+            onDelete={() => handleDelete(selectedWorksheet.slug)}
+            mutating={mutatingSlug === selectedWorksheet.slug}
           />
         )}
       </div>
@@ -270,24 +341,55 @@ const WorksheetList: React.FC<{
   attemptsBySlug: Map<string, Attempt[]>;
   childrenByParent: Map<string, Worksheet[]>;
   onSelect: (slug: string) => void;
-}> = ({ worksheets, attemptsBySlug, childrenByParent, onSelect }) => {
-  if (worksheets.length === 0) {
-    return (
-      <div className="text-center max-w-md mx-auto p-10 rounded-2xl bg-[var(--vb-surface)] border border-[var(--vb-border)]">
-        <Inbox size={40} className="mx-auto mb-4 text-[var(--vb-text-muted)]" />
-        <h2 className="text-xl font-black text-[var(--vb-text-primary)] mb-2">
-          No shared worksheets yet
-        </h2>
-        <p className="text-sm text-[var(--vb-text-secondary)]">
-          Share a worksheet from the Free Resources page or from a custom word list, and student
-          results will show up here.
-        </p>
-      </div>
-    );
-  }
+  filter: "active" | "archived";
+  onFilterChange: (f: "active" | "archived") => void;
+  activeCount: number;
+  archivedCount: number;
+}> = ({
+  worksheets,
+  attemptsBySlug,
+  childrenByParent,
+  onSelect,
+  filter,
+  onFilterChange,
+  activeCount,
+  archivedCount,
+}) => {
+  // Filter chips render whenever the teacher has at least one archived
+  // worksheet — until then there's nothing to switch between.
+  const showFilter = archivedCount > 0 || filter === "archived";
+  const isArchivedTab = filter === "archived";
 
   return (
     <>
+      {showFilter && (
+        <div className="mb-4 flex items-center gap-2">
+          <FilterChip
+            label={`Active · ${activeCount}`}
+            active={filter === "active"}
+            onClick={() => onFilterChange("active")}
+          />
+          <FilterChip
+            label={`Archived · ${archivedCount}`}
+            active={filter === "archived"}
+            onClick={() => onFilterChange("archived")}
+          />
+        </div>
+      )}
+
+      {worksheets.length === 0 ? (
+        <div className="text-center max-w-md mx-auto p-10 rounded-2xl bg-[var(--vb-surface)] border border-[var(--vb-border)]">
+          <Inbox size={40} className="mx-auto mb-4 text-[var(--vb-text-muted)]" />
+          <h2 className="text-xl font-black text-[var(--vb-text-primary)] mb-2">
+            {isArchivedTab ? "No archived worksheets" : "No shared worksheets yet"}
+          </h2>
+          <p className="text-sm text-[var(--vb-text-secondary)]">
+            {isArchivedTab
+              ? "Archive a worksheet from its results page and it'll show up here. Student attempts are kept so you can still review them."
+              : "Share a worksheet from the Free Resources page or from a custom word list, and student results will show up here."}
+          </p>
+        </div>
+      ) : (
       <div className="space-y-3">
         {worksheets.map((w) => {
           const att = attemptsBySlug.get(w.slug) ?? [];
@@ -320,8 +422,13 @@ const WorksheetList: React.FC<{
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs uppercase tracking-widest font-bold text-violet-500 mb-1">
-                    {w.format}
+                  <p className="text-xs uppercase tracking-widest font-bold text-violet-500 mb-1 flex items-center gap-2">
+                    <span>{w.format}</span>
+                    {w.archived_at && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-stone-200 text-stone-700 text-[10px] normal-case tracking-normal">
+                        <Archive size={10} /> Archived
+                      </span>
+                    )}
                   </p>
                   <h3 className="text-lg font-black text-[var(--vb-text-primary)] truncate mb-1">
                     {w.topic_name}
@@ -356,9 +463,29 @@ const WorksheetList: React.FC<{
           );
         })}
       </div>
+      )}
     </>
   );
 };
+
+const FilterChip: React.FC<{
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}> = ({ label, active, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+      active
+        ? "bg-violet-600 text-white shadow-sm"
+        : "bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] border border-[var(--vb-border)] hover:bg-[var(--vb-surface-alt)]"
+    }`}
+  >
+    {label}
+  </button>
+);
 
 // ─────────────────────────────────────────────────────────────────────
 // Screen 2: per-worksheet attempts list with expandable rows.
@@ -368,7 +495,19 @@ const WorksheetDetail: React.FC<{
   attempts: Attempt[];
   childWorksheets: Worksheet[];
   attemptsBySlug: Map<string, Attempt[]>;
-}> = ({ worksheet, attempts, childWorksheets, attemptsBySlug }) => {
+  onArchive: (archived: boolean) => void;
+  onDelete: () => void;
+  mutating: boolean;
+}> = ({
+  worksheet,
+  attempts,
+  childWorksheets,
+  attemptsBySlug,
+  onArchive,
+  onDelete,
+  mutating,
+}) => {
+  const isArchived = !!worksheet.archived_at;
   const { language } = useLanguage();
   const shareT = shareWorksheetT[language];
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -443,9 +582,57 @@ const WorksheetDetail: React.FC<{
         </div>
         <p className="text-xs font-mono uppercase tracking-widest text-[var(--vb-text-muted)] mt-2">
           /w/{worksheet.slug}
+          {isArchived && (
+            <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-stone-200 text-stone-700 normal-case tracking-normal">
+              <Archive size={10} /> Archived
+            </span>
+          )}
         </p>
       </div>
 
+      {/* Archive / Delete row — always above the share panel so a teacher
+          who's cleaning up doesn't have to scroll past results to find it.
+          Archive is reversible (link dies, attempts kept); Delete is final
+          and cascades to all attempts. */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <motion.button
+          type="button"
+          onClick={() => onArchive(!isArchived)}
+          disabled={mutating}
+          whileHover={!mutating ? { scale: 1.02 } : undefined}
+          whileTap={!mutating ? { scale: 0.97 } : undefined}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--vb-surface)] border border-[var(--vb-border)] text-[var(--vb-text-primary)] text-sm font-bold hover:bg-[var(--vb-surface-alt)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {mutating ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : isArchived ? (
+            <ArchiveRestore size={14} />
+          ) : (
+            <Archive size={14} />
+          )}
+          {isArchived ? "Unarchive" : "Archive"}
+        </motion.button>
+        <motion.button
+          type="button"
+          onClick={onDelete}
+          disabled={mutating}
+          whileHover={!mutating ? { scale: 1.02 } : undefined}
+          whileTap={!mutating ? { scale: 0.97 } : undefined}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold hover:bg-rose-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {mutating ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+          Delete forever
+        </motion.button>
+      </div>
+
+      {isArchived ? (
+        <div className="mb-6 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+          The share link is disabled while this worksheet is archived.
+          Unarchive to let students open it again.
+        </div>
+      ) : (
       <div className="mb-6 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] overflow-hidden">
         <button
           type="button"
@@ -490,12 +677,15 @@ const WorksheetDetail: React.FC<{
           )}
         </AnimatePresence>
       </div>
+      )}
 
       {completed.length === 0 ? (
         <div className="text-center p-10 rounded-2xl bg-[var(--vb-surface)] border border-[var(--vb-border)]">
           <Inbox size={36} className="mx-auto mb-3 text-[var(--vb-text-muted)]" />
           <p className="text-sm text-[var(--vb-text-secondary)]">
-            No submissions yet. Share the QR or link above with your students.
+            {isArchived
+              ? "No submissions were recorded before this worksheet was archived."
+              : "No submissions yet. Share the QR or link above with your students."}
           </p>
         </div>
       ) : (
