@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowDown, Check, Share, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Menu, MoreVertical, Share, X } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
 import { usePwaInstall, type PwaPlatform } from '../hooks/usePwaInstall';
 import { pwaInstallT, type PwaInstallStrings } from '../locales/pwa-install';
@@ -43,6 +43,10 @@ export default function PwaInstallGate() {
   useEffect(() => {
     if (isInstalled) { setView('hidden'); return; }
     if (platform === 'desktop-or-other') { setView('hidden'); return; }
+    // Bail on non-Safari iOS browsers too — they get the modal but the
+    // banner would be pointless (no action they can take in this browser).
+    // We still render the modal once because it's actionable: copy the
+    // link and reopen in Safari. See InstallModal branch below.
 
     const firstVisitDone = safeGetItem(window.localStorage, FIRST_VISIT_KEY) === '1';
     const sessionDismissed = safeGetItem(window.sessionStorage, SESSION_DISMISSED_KEY) === '1';
@@ -80,13 +84,16 @@ export default function PwaInstallGate() {
     setView('hidden');
   };
 
-  // Banner CTA on iOS can't trigger an install — pop the instructions modal.
+  // Banner CTA on iOS / Samsung / Firefox-Android / iOS-non-Safari can't
+  // trigger an install — pop the instructions modal so the user can read
+  // the right gesture. Only Chromium-family browsers with a captured
+  // beforeinstallprompt event can install in one tap.
   const handleBannerCta = () => {
-    if (platform === 'ios') {
-      setView('modal');
+    if (promptInstall) {
+      void handleNativeInstall();
       return;
     }
-    void handleNativeInstall();
+    setView('modal');
   };
 
   if (view === 'modal') {
@@ -159,9 +166,11 @@ function InstallModal({ platform, t, dir, isRTL, hasNativePrompt, onInstall, onD
             ))}
           </ul>
 
-          {platform === 'ios' ? (
-            <IosSteps t={t} isRTL={isRTL} />
-          ) : hasNativePrompt ? (
+          {/* Branch on the detected browser. Native install button takes
+              priority whenever a Chromium-family browser has fired
+              beforeinstallprompt; otherwise we show manual steps with the
+              correct gesture for that browser. */}
+          {hasNativePrompt ? (
             <button
               type="button"
               onClick={onInstall}
@@ -170,11 +179,17 @@ function InstallModal({ platform, t, dir, isRTL, hasNativePrompt, onInstall, onD
             >
               {t.androidInstallCta}
             </button>
-          ) : (
-            // Chromium hasn't fired beforeinstallprompt yet (engagement
-            // heuristic not met, or browser is Firefox/in-app). Fall
-            // back to the same generic instructions the iOS path uses.
+          ) : platform === 'ios-safari' ? (
             <IosSteps t={t} isRTL={isRTL} />
+          ) : platform === 'ios-non-safari' ? (
+            <IosNonSafariNotice t={t} isRTL={isRTL} />
+          ) : platform === 'android-samsung' ? (
+            <SamsungSteps t={t} isRTL={isRTL} />
+          ) : platform === 'android-firefox' ? (
+            <FirefoxAndroidSteps t={t} isRTL={isRTL} />
+          ) : (
+            // android-chromium without a captured prompt yet, or android-other.
+            <AndroidSteps t={t} isRTL={isRTL} />
           )}
 
           <button
@@ -228,6 +243,134 @@ function IosSteps({ t, isRTL }: { t: PwaInstallStrings; isRTL: boolean }) {
           iPad users will spot the Share icon either way. */}
       <div className="mt-2 flex justify-center text-indigo-500" aria-hidden="true">
         <ArrowDown size={22} className="animate-bounce" />
+      </div>
+    </div>
+  );
+}
+
+function IosNonSafariNotice({ t, isRTL }: { t: PwaInstallStrings; isRTL: boolean }) {
+  return (
+    <div className={`mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 ${isRTL ? 'text-right' : ''}`}>
+      <h3 className="mb-1 text-sm font-semibold text-amber-900">
+        {t.iosNonSafariHeading}
+      </h3>
+      <p className="text-sm text-amber-900/85">{t.iosNonSafariBody}</p>
+    </div>
+  );
+}
+
+function StepsList({
+  heading,
+  steps,
+  arrowDirection,
+  isRTL,
+}: {
+  heading: string;
+  steps: Array<React.ReactNode>;
+  arrowDirection: 'up' | 'down';
+  isRTL: boolean;
+}) {
+  const Arrow = arrowDirection === 'up' ? ArrowUp : ArrowDown;
+  return (
+    <div className="mb-3">
+      <h3 className={`mb-2 text-sm font-semibold text-slate-900 ${isRTL ? 'text-right' : ''}`}>
+        {heading}
+      </h3>
+      <ol className="space-y-2">
+        {steps.map((step, i) => (
+          <li
+            key={i}
+            className={`flex items-start gap-3 rounded-lg bg-slate-50 px-3 py-2.5 ${isRTL ? 'flex-row-reverse text-right' : ''}`}
+          >
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-xs font-bold text-white">
+              {i + 1}
+            </span>
+            <span className="text-sm text-slate-800">{step}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-2 flex justify-center text-indigo-500" aria-hidden="true">
+        <Arrow size={22} className="animate-bounce" />
+      </div>
+    </div>
+  );
+}
+
+function SamsungSteps({ t, isRTL }: { t: PwaInstallStrings; isRTL: boolean }) {
+  return (
+    <StepsList
+      heading={t.samsungHeading}
+      arrowDirection="down"
+      isRTL={isRTL}
+      steps={[
+        <>
+          {t.samsungStep1Before}{' '}
+          <span className="mx-1 inline-flex items-center gap-1 rounded-md bg-indigo-100 px-1.5 py-0.5 align-middle text-xs font-semibold text-indigo-700">
+            <Menu size={13} />
+            {t.samsungStep1MenuLabel}
+          </span>
+        </>,
+        t.samsungStep2,
+        t.samsungStep3,
+      ]}
+    />
+  );
+}
+
+function FirefoxAndroidSteps({ t, isRTL }: { t: PwaInstallStrings; isRTL: boolean }) {
+  return (
+    <StepsList
+      heading={t.firefoxAndroidHeading}
+      arrowDirection="up"
+      isRTL={isRTL}
+      steps={[
+        <>
+          {t.firefoxAndroidStep1Before}{' '}
+          <span className="mx-1 inline-flex items-center gap-1 rounded-md bg-indigo-100 px-1.5 py-0.5 align-middle text-xs font-semibold text-indigo-700">
+            <MoreVertical size={13} />
+            {t.firefoxAndroidStep1MenuLabel}
+          </span>
+        </>,
+        t.firefoxAndroidStep2,
+      ]}
+    />
+  );
+}
+
+function AndroidSteps({ t, isRTL }: { t: PwaInstallStrings; isRTL: boolean }) {
+  // Chrome's three-dot menu lives in the top-right on Android, so the
+  // visual cue points up — opposite of the iPhone Share-button arrow.
+  const steps: Array<React.ReactNode> = [
+    <>
+      {t.androidStep1Before}{' '}
+      <span className="mx-1 inline-flex items-center gap-1 rounded-md bg-indigo-100 px-1.5 py-0.5 align-middle text-xs font-semibold text-indigo-700">
+        <MoreVertical size={13} />
+        {t.androidStep1MenuLabel}
+      </span>
+    </>,
+    t.androidStep2,
+  ];
+
+  return (
+    <div className="mb-3">
+      <h3 className={`mb-2 text-sm font-semibold text-slate-900 ${isRTL ? 'text-right' : ''}`}>
+        {t.androidHeading}
+      </h3>
+      <ol className="space-y-2">
+        {steps.map((step, i) => (
+          <li
+            key={i}
+            className={`flex items-start gap-3 rounded-lg bg-slate-50 px-3 py-2.5 ${isRTL ? 'flex-row-reverse text-right' : ''}`}
+          >
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-xs font-bold text-white">
+              {i + 1}
+            </span>
+            <span className="text-sm text-slate-800">{step}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-2 flex justify-center text-indigo-500" aria-hidden="true">
+        <ArrowUp size={22} className="animate-bounce" />
       </div>
     </div>
   );
