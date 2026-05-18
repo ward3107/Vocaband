@@ -273,12 +273,16 @@ export default function TeacherDashboardView({
 
         {/* Vocabagrut-style hero — full-bleed gradient block keeps
             the welcome screen visually consistent with the assignment
-            and Vocabagrut creation flows. */}
+            and Vocabagrut creation flows.  Emerald→teal here (not the
+            default indigo→violet→fuchsia) so the welcome banner reads
+            as a different surface from the violet Quick Play CTA card
+            directly below it — teachers were confusing the two. */}
         <PageHero
           icon={<Sparkles size={32} className="text-white" />}
           eyebrow={greeting}
           title={t.heroLine(firstName)}
           subtitle={t.heroSubtitle}
+          gradient="from-emerald-500 via-teal-500 to-cyan-500"
         />
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
