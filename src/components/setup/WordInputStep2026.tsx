@@ -2295,8 +2295,9 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         <div className="flex-1 h-px bg-[var(--vb-border)]" />
       </div>
 
-      {/* Option Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 max-w-4xl mx-auto justify-items-center">
+      {/* Option Cards Grid — centered 3-up layout (Browse Library removed
+          per teacher feedback so we go from 4 columns to 3). */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto justify-items-center">
         <OptionCard
           emoji="🧩"
           title={TEXT.topicPacks}

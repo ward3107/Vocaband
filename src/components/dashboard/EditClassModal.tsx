@@ -1,23 +1,40 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CheckCircle2, GraduationCap, School } from "lucide-react";
+import { CheckCircle2, GraduationCap, Palette, School } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../../constants/game";
 import type { ClassData } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
 
+// Curated palette of pastel/soft tints that look good behind the class
+// card chrome (subtle, age-appropriate, friendly).  Teachers pick one
+// per class; the picker also includes a "default" reset tile.
+const CLASS_BG_COLORS: Array<{ label: string; value: string }> = [
+  { label: 'Sand',     value: '#fef3c7' },
+  { label: 'Peach',    value: '#fed7aa' },
+  { label: 'Rose',     value: '#fecdd3' },
+  { label: 'Pink',     value: '#fbcfe8' },
+  { label: 'Lavender', value: '#e9d5ff' },
+  { label: 'Sky',      value: '#bae6fd' },
+  { label: 'Mint',     value: '#a7f3d0' },
+  { label: 'Lime',     value: '#d9f99d' },
+  { label: 'Teal',     value: '#99f6e4' },
+  { label: 'Stone',    value: '#e7e5e4' },
+];
+
 interface EditClassModalProps {
   /** The class being edited; null = modal hidden. */
   klass: ClassData | null;
   onClose: () => void;
-  /** Persist the new name + avatar + (optional) school branding.
-   *  Caller is responsible for the actual UPDATE — this modal just
-   *  collects the values. */
+  /** Persist the new name + avatar + (optional) school branding +
+   *  background color.  Caller is responsible for the actual UPDATE —
+   *  this modal just collects the values. */
   onSave: (next: {
     name: string;
     avatar: string | null;
     schoolName: string | null;
     schoolLogoUrl: string | null;
+    backgroundColor: string | null;
   }) => Promise<void> | void;
 }
 
@@ -39,6 +56,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
   const [avatar, setAvatar] = useState<string | null>(klass?.avatar ?? null);
   const [schoolName, setSchoolName] = useState(klass?.schoolName ?? "");
   const [schoolLogoUrl, setSchoolLogoUrl] = useState(klass?.schoolLogoUrl ?? "");
+  const [backgroundColor, setBackgroundColor] = useState<string | null>(klass?.backgroundColor ?? null);
   const [logoBroken, setLogoBroken] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -49,6 +67,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
       setAvatar(klass.avatar ?? null);
       setSchoolName(klass.schoolName ?? "");
       setSchoolLogoUrl(klass.schoolLogoUrl ?? "");
+      setBackgroundColor(klass.backgroundColor ?? null);
       setLogoBroken(false);
       setSaving(false);
     }
@@ -74,11 +93,13 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
   const logoUrlValid = trimmedLogoUrl === "" || safeLogoUrl !== null;
   const schoolNameDirty = trimmedSchoolName !== (klass?.schoolName ?? "");
   const logoDirty = trimmedLogoUrl !== (klass?.schoolLogoUrl ?? "");
+  const colorDirty = (backgroundColor ?? null) !== (klass?.backgroundColor ?? null);
   const dirty = !!klass && (
     trimmed !== klass.name ||
     (avatar ?? null) !== (klass.avatar ?? null) ||
     schoolNameDirty ||
-    logoDirty
+    logoDirty ||
+    colorDirty
   );
   const valid = trimmed.length > 0 && trimmed.length <= 60 && trimmedSchoolName.length <= 100 && logoUrlValid;
 
@@ -91,6 +112,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
         avatar,
         schoolName: trimmedSchoolName || null,
         schoolLogoUrl: trimmedLogoUrl || null,
+        backgroundColor,
       });
     } finally {
       setSaving(false);
@@ -256,6 +278,69 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                     : 'Logo failed to load. Check the URL is correct and public.'}
                 </p>
               )}
+            </div>
+
+            {/* Background color — optional tint applied to the class
+                card on the teacher dashboard.  Helps teachers visually
+                distinguish multiple classes at a glance.  "Default"
+                clears the tint back to the theme surface color. */}
+            <div className="flex items-center gap-2 mb-2">
+              <Palette size={16} style={{ color: 'var(--vb-text-secondary)' }} />
+              <label
+                className="block text-xs font-bold uppercase tracking-widest"
+                style={{ color: 'var(--vb-text-muted)' }}
+              >
+                {language === 'he' ? 'צבע רקע לכרטיס' : language === 'ar' ? 'لون خلفية البطاقة' : 'Card background'}
+              </label>
+            </div>
+            <div className="grid grid-cols-6 sm:grid-cols-11 gap-2 mb-5">
+              <button
+                onClick={() => setBackgroundColor(null)}
+                type="button"
+                title={language === 'he' ? 'ברירת מחדל' : language === 'ar' ? 'افتراضي' : 'Default'}
+                style={{
+                  touchAction: 'manipulation',
+                  backgroundColor: 'var(--vb-surface)',
+                  borderColor: backgroundColor === null ? 'var(--vb-accent)' : 'var(--vb-border)',
+                }}
+                className={`relative aspect-square rounded-lg flex items-center justify-center transition-all border-2 ${backgroundColor === null ? 'scale-105' : 'hover:scale-105'}`}
+              >
+                <span style={{ color: 'var(--vb-text-muted)' }} className="text-[10px] font-black uppercase">—</span>
+                {backgroundColor === null && (
+                  <span
+                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center shadow-sm"
+                    style={{ backgroundColor: 'var(--vb-accent)' }}
+                  >
+                    <CheckCircle2 size={10} style={{ color: 'var(--vb-accent-text)' }} />
+                  </span>
+                )}
+              </button>
+              {CLASS_BG_COLORS.map(c => {
+                const selected = backgroundColor?.toLowerCase() === c.value.toLowerCase();
+                return (
+                  <button
+                    key={c.value}
+                    onClick={() => setBackgroundColor(c.value)}
+                    type="button"
+                    title={c.label}
+                    style={{
+                      touchAction: 'manipulation',
+                      backgroundColor: c.value,
+                      borderColor: selected ? 'var(--vb-accent)' : 'var(--vb-border)',
+                    }}
+                    className={`relative aspect-square rounded-lg transition-all border-2 ${selected ? 'scale-105' : 'hover:scale-105'}`}
+                  >
+                    {selected && (
+                      <span
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center shadow-sm"
+                        style={{ backgroundColor: 'var(--vb-accent)' }}
+                      >
+                        <CheckCircle2 size={10} style={{ color: 'var(--vb-accent-text)' }} />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Avatar picker — grouped by theme so it stays scannable */}
