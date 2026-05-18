@@ -225,6 +225,10 @@ export interface ClassData {
    *  on the teacher class card and the student class-join screen. */
   schoolName?: string | null;
   schoolLogoUrl?: string | null;
+  /** Per-class background tint (added 20260618_class_background_color).
+   *  Hex string like '#fde68a' or null for the default theme surface.
+   *  Lets teachers visually distinguish multiple classes at a glance. */
+  backgroundColor?: string | null;
 }
 
 export interface AssignmentData {
@@ -390,6 +394,7 @@ export function mapClass(row: any): ClassData {
     subject: row.subject === 'hebrew' ? 'hebrew' : 'english',
     schoolName: row.school_name ?? null,
     schoolLogoUrl: row.school_logo_url ?? null,
+    backgroundColor: row.background_color ?? null,
   };
 }
 

@@ -215,7 +215,7 @@ export default function GameFinishedView({
       {gameWords.length > 0 && (
         <div className={`${t.card} rounded-xl shadow-sm px-6 py-3 mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
           {tt.correctOf(gameWords.length - mistakes.length, gameWords.length)}
-          {mistakes.length > 0 && <span className="ml-2 text-rose-500 font-bold">{tt.toReview(mistakes.length)}</span>}
+          {mistakes.length > 0 && <span className="ms-2 text-rose-500 font-bold">{tt.toReview(mistakes.length)}</span>}
         </div>
       )}
       {badges.length > 0 && (
@@ -411,7 +411,7 @@ export default function GameFinishedView({
               {toast.type === 'info' && <Info size={24} />}
               <span className="flex-1">{toast.message}</span>
               {toast.action && (
-                <button onClick={toast.action.onClick} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
+                <button onClick={toast.action.onClick} className="ms-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-colors">
                   {toast.action.label}
                 </button>
               )}

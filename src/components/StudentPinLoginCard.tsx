@@ -289,17 +289,17 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
         <>
           {roster.length > 8 && (
             <div className="relative">
-              <Search size={14} className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-stone-400`} />
+              <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
                 type="search"
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
                 placeholder={t.findYourName}
-                className={`w-full ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2 rounded-lg border-2 border-stone-200 focus:border-indigo-500 outline-none text-sm font-medium`}
+                className="w-full ps-9 pe-3 py-2 rounded-lg border-2 border-stone-200 focus:border-indigo-500 outline-none text-sm font-medium"
               />
             </div>
           )}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-72 overflow-y-auto pe-1">
             <AnimatePresence initial={false}>
               {filtered.map(s => (
                 <motion.button
@@ -312,7 +312,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
                   exit={{ opacity: 0, scale: 0.95 }}
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  className={`flex items-center gap-2 p-2.5 rounded-lg border border-stone-200 hover:border-indigo-400 hover:bg-indigo-50 transition-colors ${isRTL ? 'text-right' : 'text-left'}`}
+                  className="flex items-center gap-2 p-2.5 rounded-lg border border-stone-200 hover:border-indigo-400 hover:bg-indigo-50 transition-colors text-start"
                   style={{ touchAction: "manipulation" }}
                 >
                   <span className="text-2xl shrink-0">{s.avatar}</span>

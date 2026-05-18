@@ -411,7 +411,7 @@ export default function StudentDashboardView({
               backgroundColor: 'var(--vb-surface)',
               borderColor: 'var(--vb-border)',
             }}
-            className="group relative w-full rounded-xl p-4 text-left border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
+            className="group relative w-full rounded-xl p-4 text-start border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
           >
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0">

@@ -33,6 +33,9 @@ interface ClassCardProps {
    *  surface as a small strip above the class name. */
   schoolName?: string | null;
   schoolLogoUrl?: string | null;
+  /** Per-class background tint hex (e.g. '#fde68a').  Null → use the
+   *  theme surface color (legacy behaviour). */
+  backgroundColor?: string | null;
   studentCount?: number;
   onAssign: () => void;
   onCopyCode: () => void;
@@ -73,6 +76,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   avatar,
   schoolName,
   schoolLogoUrl,
+  backgroundColor,
   studentCount,
   onAssign,
   onCopyCode,
@@ -233,8 +237,16 @@ const ClassCard: React.FC<ClassCardProps> = ({
         backgroundColor: 'var(--vb-surface)',
         borderColor: 'var(--vb-border)',
       }}
-      className="rounded-xl border shadow-sm hover:shadow-md transition-shadow"
+      className="rounded-xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden"
     >
+      {/* Header band — wraps the school strip + class-name row so the
+          per-class tint (backgroundColor prop) sits behind those two
+          elements only.  Rest of the card stays neutral so the
+          assignment-list dropdown keeps its alt-surface contrast and
+          long classroom names stay readable on bright tints. */}
+      <div
+        style={backgroundColor ? { backgroundColor } : undefined}
+      >
       {/* School branding strip — only rendered when set, so legacy
           classes (no school configured yet) keep their existing
           compact header.  Logo is a small 24px square so the strip
@@ -568,6 +580,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
           )}
         </div>
       </div>
+      </div>{/* /header-band */}
 
       {/* Assignments dropdown. The wrapper ref lets us auto-scroll the
           list into view when the teacher expands it — on a dashboard

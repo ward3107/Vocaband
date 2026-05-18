@@ -289,7 +289,7 @@ const STRINGS: Record<Language, {
     loadingWords: 'טוען מילים…',
     passTo: 'העבר ל',
     passToTurn: (n, total) => `שאלה ${n} מתוך ${total}`,
-    readyBtn: 'אני מוכן →',
+    readyBtn: 'אני מוכן ←',
     questionOf: (n, total) => `${n}/${total}`,
     pickHebrew: 'בחר את התרגום לעברית',
     pickArabic: 'בחר את התרגום לערבית',
@@ -352,7 +352,7 @@ const STRINGS: Record<Language, {
     loadingWords: 'جارٍ تحميل الكلمات…',
     passTo: 'مرّر إلى',
     passToTurn: (n, total) => `السؤال ${n} من ${total}`,
-    readyBtn: 'أنا جاهز →',
+    readyBtn: 'أنا جاهز ←',
     questionOf: (n, total) => `${n}/${total}`,
     pickHebrew: 'اختر الترجمة العبرية',
     pickArabic: 'اختر الترجمة العربية',
@@ -1194,7 +1194,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
           type="button"
           onClick={handleCancel}
           style={{ touchAction: 'manipulation' }}
-          className={`absolute top-4 ${isRTL ? 'right-4' : 'left-4'} inline-flex items-center gap-1.5 text-sm font-bold text-stone-700 hover:text-stone-900 bg-white/70 backdrop-blur px-3 py-1.5 rounded-full shadow-sm`}
+          className={`absolute top-4 start-4 inline-flex items-center gap-1.5 text-sm font-bold text-stone-700 hover:text-stone-900 bg-white/70 backdrop-blur px-3 py-1.5 rounded-full shadow-sm`}
         >
           <X size={16} />
           {t.exitBtn}
@@ -1333,7 +1333,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
               {picked.id === question.word.id
                 ? t.correct
                 : `${t.wrong} ${t.correctAnswer} ${translationOf(question.word, targetLang)}`}
-              <ArrowRight size={16} className="inline ml-1" />
+              <ArrowRight size={16} className={`inline ms-1 ${isRTL ? 'rotate-180' : ''}`} />
             </motion.p>
           )}
         </AnimatePresence>

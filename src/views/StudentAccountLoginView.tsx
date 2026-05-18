@@ -179,7 +179,7 @@ export default function StudentAccountLoginView({
   };
 
   const hasEnoughCode = studentLoginClassCode.trim().length >= 3;
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, isRTL } = useLanguage();
   const t = studentLoginT[language];
   const [langOpen, setLangOpen] = useState(false);
   const langs: Language[] = ALL_LANGUAGES;
@@ -192,18 +192,48 @@ export default function StudentAccountLoginView({
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-violet-900 to-fuchsia-900 relative overflow-hidden">
+      <div className="h-screen overflow-hidden bg-gradient-to-br from-indigo-900 via-violet-900 to-fuchsia-900 relative">
         {/* Soft decorative glow */}
         <div className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-fuchsia-500/20 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl" aria-hidden />
 
-        {/* Primary login screen — class code + roster-issued PIN.  The
-            previous OAuthCallback + OAuthClassCode renderings (used for
-            student Google OAuth + new-user class-code modal) were
-            removed alongside the student-side OAuth UI in the 2026-05-18
-            privacy review.  Teacher OAuth has its own callback path in
-            TeacherLoginCard and is unaffected. */}
-        <div className="relative z-10 min-h-screen flex flex-col">
+        {/* OAuth callback — shown when Google redirected us back while the
+            login view was still mounted. */}
+        {isOAuthCallback && (
+          <OAuthCallback
+            onTeacherDetected={handleOAuthTeacherDetected}
+            onStudentDetected={handleOAuthStudentDetected}
+            onNewUser={handleOAuthNewUser}
+          />
+        )}
+
+        {/* OAuth new-user class-code screen — shown when Google succeeded
+            but there's no student profile yet for this email. */}
+        {showOAuthClassCode && oauthEmail && oauthAuthUid && (
+          <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-6">
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl w-full max-w-md">
+              <OAuthClassCode
+                email={oauthEmail}
+                authUid={oauthAuthUid}
+                onSuccess={() => {
+                  setShowOAuthClassCode(false);
+                  setOauthEmail(null);
+                  setOauthAuthUid(null);
+                }}
+                onError={(msg) => {
+                  setError(msg);
+                  // Stay on the class-code screen so the student can fix + retry.
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Primary login screen — class code + Google. Google is the only
+            login path: one path students can always trust, works on every
+            device, no per-browser session state to lose. */}
+        {!isOAuthCallback && !showOAuthClassCode && (
+          <div className="relative z-10 h-screen flex flex-col overflow-hidden">
             <header className="flex items-center justify-between px-4 sm:px-6 py-4">
               <button
                 onClick={() => {
@@ -213,7 +243,7 @@ export default function StudentAccountLoginView({
                 type="button"
                 className="flex items-center gap-2 text-white/80 hover:text-white transition-colors font-bold text-sm px-3 py-2 rounded-full bg-white/10 backdrop-blur-sm"
               >
-                <ArrowLeft size={16} />
+                <ArrowLeft size={16} className={isRTL ? 'rotate-180' : ''} />
                 {t.back}
               </button>
               <div className="flex items-center gap-3">
@@ -243,7 +273,7 @@ export default function StudentAccountLoginView({
                   {langOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setLangOpen(false)} />
-                      <div className="absolute top-full mt-2 right-0 z-50 bg-white rounded-lg shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
+                      <div className="absolute top-full mt-2 end-0 z-50 bg-white rounded-lg shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
                         {langs.map(lng => (
                           <button
                             key={lng}
@@ -265,19 +295,22 @@ export default function StudentAccountLoginView({
               </div>
             </header>
 
-            <main id="main-content" className="flex-1 flex items-center justify-center px-4 py-6 sm:py-10">
+            <main id="main-content" className="flex-1 min-h-0 flex items-center justify-center px-4 py-2 sm:py-4">
               <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 120, damping: 18 }}
                 className="w-full max-w-xl"
               >
-                {/* Hero */}
-                <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-10">
+                {/* Hero — compact so the whole login fits in one screen
+                    without scrolling.  Icon shrinks on phones; the title
+                    block tightens its leading; the wrapper margin
+                    collapses on shorter viewports. */}
+                <div className="flex items-center gap-3 sm:gap-5 mb-4 sm:mb-6">
                   <motion.img
                     src="/icon.svg"
                     alt="Vocaband"
-                    className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 drop-shadow-[0_8px_24px_rgba(236,72,153,0.35)]"
+                    className="w-14 h-14 sm:w-20 sm:h-20 shrink-0 drop-shadow-[0_8px_24px_rgba(236,72,153,0.35)]"
                     initial={{ rotate: -15, scale: 0.7 }}
                     animate={{ rotate: [0, -3, 3, 0], scale: 1 }}
                     transition={{
@@ -286,16 +319,16 @@ export default function StudentAccountLoginView({
                     }}
                   />
                   <div>
-                    <h1 className="text-3xl sm:text-5xl font-black text-white leading-[0.95] tracking-tight">
+                    <h1 className="text-2xl sm:text-4xl font-black text-white leading-[0.95] tracking-tight">
                       {t.heroLine1}<br />{t.heroLine2}
                     </h1>
-                    <p className="mt-2 text-base sm:text-lg font-bold text-white/80">
+                    <p className="mt-1 text-sm sm:text-base font-bold text-white/80">
                       {t.heroSubtitle}
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 sm:p-8">
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-4 sm:p-6">
                   {/* Class-code entry */}
                   <div className="mb-5">
                     <label
@@ -381,13 +414,13 @@ export default function StudentAccountLoginView({
                 </div>
 
                 {/* Feature chips — subtle reminder of what students get */}
-                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                <div className="mt-3 sm:mt-4 flex flex-wrap justify-center gap-2">
                   {t.features.map(f => (
                     <span
                       key={f.text}
                       className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs font-bold text-white/90 border border-white/10"
                     >
-                      <span className="mr-1">{f.emoji}</span>
+                      <span className="me-1">{f.emoji}</span>
                       {f.text}
                     </span>
                   ))}
@@ -395,7 +428,7 @@ export default function StudentAccountLoginView({
               </motion.div>
             </main>
 
-            <footer className="py-5 text-center text-white/40 text-xs font-bold">
+            <footer className="py-2 sm:py-3 text-center text-white/40 text-xs font-bold">
               vocaband.com
             </footer>
           </div>
