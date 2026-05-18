@@ -7,7 +7,19 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-export type PwaPlatform = 'ios' | 'android-chromium' | 'desktop-or-other';
+// Fine-grained platform/browser combos so the modal can show the right
+// gesture for each. Apple restricts non-Safari iOS browsers from real PWA
+// install (those that report iOS but aren't Safari can only add a
+// shortcut), so we surface a distinct status to nudge those users to
+// reopen in Safari rather than walking them through a doomed gesture.
+export type PwaPlatform =
+  | 'ios-safari'           // proper PWA install via Share → Add to Home Screen
+  | 'ios-non-safari'       // Chrome-iOS / Firefox-iOS / Edge-iOS — must reopen in Safari
+  | 'android-chromium'     // Chrome / Edge / Brave / Opera / Vivaldi / Huawei — beforeinstallprompt
+  | 'android-samsung'      // Samsung Internet — beforeinstallprompt OR ≡ menu → Add page to → Home screen
+  | 'android-firefox'      // Firefox Android — ⋮ menu → Install
+  | 'android-other'        // unknown Android browser — generic ⋮ menu guidance
+  | 'desktop-or-other';    // never shown
 
 export interface PwaInstallState {
   platform: PwaPlatform;
@@ -24,13 +36,37 @@ export interface PwaInstallState {
 function detectPlatform(): PwaPlatform {
   if (typeof navigator === 'undefined') return 'desktop-or-other';
   const ua = navigator.userAgent;
-  // iPadOS 13+ reports as MacIntel; the touch-points check distinguishes it
-  // from a real Mac. Without this iPads silently fall through to desktop.
+
+  // iPadOS 13+ reports as MacIntel; the touch-points check distinguishes
+  // it from a real Mac. Without this iPads fall through to desktop.
   const isIOS =
     /iPad|iPhone|iPod/.test(ua) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (isIOS) return 'ios';
-  if (/Android/.test(ua)) return 'android-chromium';
+  if (isIOS) {
+    // CriOS = Chrome on iOS, FxiOS = Firefox on iOS, EdgiOS = Edge on iOS.
+    // All three use WebKit under the hood (Apple's rule) but don't expose
+    // the real "Add to Home Screen" gesture — the resulting icon is just
+    // a bookmark, not a PWA. Send these users to Safari.
+    if (/CriOS|FxiOS|EdgiOS|YaBrowser/i.test(ua)) return 'ios-non-safari';
+    return 'ios-safari';
+  }
+
+  if (/Android/.test(ua)) {
+    // Specific Android browser detection. Order matters — Samsung Internet
+    // and Firefox include "Chrome/" or "Mobile" markers but should match
+    // their specific signatures first.
+    if (/SamsungBrowser/.test(ua)) return 'android-samsung';
+    if (/Firefox\//i.test(ua) && !/CriOS|FxiOS/.test(ua)) return 'android-firefox';
+    // Chromium family: Chrome, Edge (EdgA), Brave (no specific token but
+    // Chrome/), Opera (OPR), Vivaldi, Huawei (HuaweiBrowser), Xiaomi
+    // (MiuiBrowser). All fire beforeinstallprompt — treat as chromium.
+    if (/Chrome\/|EdgA\/|OPR\/|Vivaldi\/|HuaweiBrowser|MiuiBrowser|XiaoMi\/|HeyTapBrowser/i.test(ua)) {
+      return 'android-chromium';
+    }
+    // Unknown Android browser — best-effort generic instructions.
+    return 'android-other';
+  }
+
   return 'desktop-or-other';
 }
 
