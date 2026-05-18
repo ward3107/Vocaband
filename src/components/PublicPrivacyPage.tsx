@@ -168,6 +168,25 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                    language === 'he' ? 'איננו אוספים: דוא"ל, טלפון, כתובת, תמונות, תעודות זהות' :
                    'لا نجمع: البريد الإلكتروني، الهاتف، العنوان، الصور، الهويات'}
                 </p>
+                {/* Synthetic placeholder email disclosure — required so a reviewer
+                    reading the auth schema (which shows a student-*@class-*.vocaband.local
+                    address) understands it's a non-deliverable internal identifier,
+                    not a real student inbox. */}
+                <p className={`text-xs text-slate-500 mt-2 leading-relaxed`}>
+                  {language === 'en' ? (
+                    <>
+                      <strong>Note:</strong> For class-code login, the auth system creates an internal placeholder address like <code className="bg-slate-100 px-1 rounded text-[10px]">student-&lt;id&gt;@class-&lt;code&gt;.vocaband.local</code>. It is never delivered to a real inbox — it exists only to satisfy the authentication system's unique-identifier requirement.
+                    </>
+                  ) : language === 'he' ? (
+                    <>
+                      <strong>הערה:</strong> בכניסה עם קוד כיתה, מערכת האימות יוצרת כתובת מציין מקום פנימית כמו <code className="bg-slate-100 px-1 rounded text-[10px]">student-&lt;id&gt;@class-&lt;code&gt;.vocaband.local</code>. היא לעולם לא נשלחת לתיבת דואר אמיתית — היא משמשת רק כדי לעמוד בדרישת המזהה הייחודי של מערכת האימות.
+                    </>
+                  ) : (
+                    <>
+                      <strong>ملاحظة:</strong> لتسجيل الدخول برمز الفصل، ينشئ نظام المصادقة عنوانًا مؤقتًا داخليًا مثل <code className="bg-slate-100 px-1 rounded text-[10px]">student-&lt;id&gt;@class-&lt;code&gt;.vocaband.local</code>. لا يُرسل أبدًا إلى صندوق بريد حقيقي — يُستخدم فقط لتلبية متطلب المعرف الفريد لنظام المصادقة.
+                    </>
+                  )}
+                </p>
               </div>
 
               <div className="bg-surface-container-low p-5 rounded-lg">
