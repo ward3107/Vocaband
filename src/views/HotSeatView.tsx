@@ -757,14 +757,14 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
   if (phase === 'setup') {
     const canStart = parsedNameCount >= 2 && wordPool.length >= 4;
     return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50" dir={dir}>
+      <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-violet-50 to-fuchsia-50" dir={dir}>
         <PageHero
           icon={<Users size={32} className="text-white" />}
           title={t.title}
           subtitle={t.subtitle}
           onBack={onExit}
           backLabel={t.exitBtn}
-          gradient="from-orange-500 via-amber-500 to-rose-500"
+          gradient="from-indigo-500 via-violet-500 to-fuchsia-500"
         />
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
@@ -975,7 +975,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                 onClick={() => setShowReview(true)}
                 disabled={!canStart}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="w-full py-3.5 rounded-lg bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                className="w-full py-3.5 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
               >
                 <Eye size={18} />
                 {!vocab ? t.loadingWords : t.reviewBtn(wordPool.length)}
@@ -1189,7 +1189,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
   if (phase === 'interstitial') {
     const player = players[currentPlayerIdx];
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-100 via-amber-100 to-rose-100 flex items-center justify-center p-4 relative" dir={dir}>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-violet-100 to-fuchsia-100 flex items-center justify-center p-4 relative" dir={dir}>
         <button
           type="button"
           onClick={handleCancel}
@@ -1217,7 +1217,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
             type="button"
             onClick={handleReady}
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-lg shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-black text-lg shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             {t.readyBtn}
           </button>
@@ -1235,7 +1235,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
     const player = players[currentPlayerIdx];
     const optionDir = targetLang === 'hebrew' || targetLang === 'arabic' ? 'rtl' : 'ltr';
     return (
-      <div className="h-screen bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50 px-4 py-4 sm:px-8 sm:py-6 flex flex-col" dir="ltr">
+      <div className="h-screen bg-gradient-to-b from-indigo-50 via-violet-50 to-fuchsia-50 px-4 py-4 sm:px-8 sm:py-6 flex flex-col" dir="ltr">
         {/* Cancel row — kept from main's cancel-button patch so the
             teacher can bail out mid-question, sized small so it doesn't
             steal vertical room from the full-screen prompt layout. */}
@@ -1347,10 +1347,10 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
     .map((p, originalIdx) => ({ ...p, originalIdx }))
     .sort((a, b) => b.correct - a.correct || a.originalIdx - b.originalIdx);
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-rose-50 p-4 sm:p-6" dir={dir}>
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-violet-50 to-fuchsia-50 p-4 sm:p-6" dir={dir}>
       <div className="max-w-5xl mx-auto">
         <div className="rounded-2xl bg-white shadow-lg border border-amber-100 overflow-hidden">
-          <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 py-6 text-white text-center">
+          <div className="bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 px-6 py-6 text-white text-center">
             <div className="w-16 h-16 mx-auto rounded-xl bg-white/20 backdrop-blur flex items-center justify-center mb-3">
               <Trophy size={32} className="text-white" />
             </div>
@@ -1390,7 +1390,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
               type="button"
               onClick={handlePlayAgain}
               style={{ touchAction: 'manipulation' }}
-              className="py-3 rounded-lg bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-sm shadow-md active:scale-[0.98] transition-all"
+              className="py-3 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-black text-sm shadow-md active:scale-[0.98] transition-all"
             >
               {t.playAgain}
             </button>
