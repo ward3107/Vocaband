@@ -192,9 +192,11 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
     downloadPngBtn: "שמירה כתמונה",
     downloadPdfBtn: "שמירה כ-PDF",
     copyPromptTitle: "העתיקו את הקישור",
-    whatsappText: (topic, url) => `פתרו את דף העבודה הזה בטלפון: ${topic}\n${url}`,
-    nativeShareTitle: (topic) => `דף עבודה: ${topic}`,
-    nativeShareText: "פתרו את דף העבודה הזה בטלפון:",
+    // English on purpose — the share text reaches students, not back
+    // to the teacher's UI.
+    whatsappText: (topic, url) => `Solve this worksheet on your phone: ${topic}\n${url}`,
+    nativeShareTitle: (topic) => `Worksheet: ${topic}`,
+    nativeShareText: "Solve this worksheet on your phone:",
     matchingLabel: "התאמה",
     matchingDesc: "התאימו זוגות אנגלית ↔ תרגום",
     quizLabel: "שאלה רבת-ברירה",
@@ -249,9 +251,11 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
     downloadPngBtn: "حفظ كصورة",
     downloadPdfBtn: "حفظ كـ PDF",
     copyPromptTitle: "انسخ هذا الرابط",
-    whatsappText: (topic, url) => `حلّ ورقة العمل هذه على هاتفك: ${topic}\n${url}`,
-    nativeShareTitle: (topic) => `ورقة عمل: ${topic}`,
-    nativeShareText: "حلّ ورقة العمل هذه على هاتفك:",
+    // English on purpose — the share text reaches students, not back
+    // to the teacher's UI.
+    whatsappText: (topic, url) => `Solve this worksheet on your phone: ${topic}\n${url}`,
+    nativeShareTitle: (topic) => `Worksheet: ${topic}`,
+    nativeShareText: "Solve this worksheet on your phone:",
     matchingLabel: "مطابقة",
     matchingDesc: "اضغط على أزواج إنجليزي ↔ ترجمة",
     quizLabel: "اختيار من متعدّد",
