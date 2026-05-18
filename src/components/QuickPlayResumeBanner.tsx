@@ -127,7 +127,7 @@ export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBanne
 
   return (
     <div
-      className="fixed top-3 inset-x-3 sm:top-4 sm:left-auto sm:right-4 sm:max-w-md z-[9985]"
+      className="fixed top-3 inset-x-3 sm:top-4 sm:start-auto sm:end-4 sm:max-w-md z-[9985]"
       role="alert"
       aria-live="polite"
     >

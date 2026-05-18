@@ -664,7 +664,7 @@ const ResultsCard: React.FC<{
                 <span className="font-bold text-stone-700">{formatLabel(row.type)}</span>
                 <span className="font-mono text-stone-500">
                   {row.score}/{row.total}
-                  <span className="ml-2 text-emerald-600 font-bold">{row.percent}%</span>
+                  <span className="ms-2 text-emerald-600 font-bold">{row.percent}%</span>
                 </span>
               </li>
             ))}
@@ -703,7 +703,7 @@ const ResultsCard: React.FC<{
       )}
 
       {submitError ? (
-        <div className="mb-6 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm text-left">
+        <div className="mb-6 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm text-start">
           <p className="font-bold mb-1">Couldn't reach your teacher's dashboard</p>
           <p className="text-amber-800/80 text-xs">
             Your score is shown above — show this screen to your teacher.

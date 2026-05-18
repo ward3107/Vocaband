@@ -20,8 +20,9 @@ export default function GlobalLeaderboardView({
   setView,
   globalLeaderboard,
 }: GlobalLeaderboardViewProps) {
-  const { language, dir } = useLanguage();
-  const backLabel = language === 'he' ? '← חזרה לדאשבורד' : language === 'ar' ? '← العودة للوحة' : '← Back to Dashboard';
+  const { language, dir, isRTL } = useLanguage();
+  const backArrow = isRTL ? '→' : '←';
+  const backLabel = language === 'he' ? `${backArrow} חזרה לדאשבורד` : language === 'ar' ? `${backArrow} العودة للوحة` : `${backArrow} Back to Dashboard`;
   const headingLabel = language === 'he' ? '10 המובילים בעולם' : language === 'ar' ? 'أفضل 10 في العالم' : 'Global Top 10';
   const blurbLabel = language === 'he' ? 'התלמידים הטובים ביותר בכל הכיתות!' : language === 'ar' ? 'أفضل الطلاب في جميع الفصول!' : 'The best students across all classes!';
   const pointsLabel = language === 'he' ? 'נקודות' : language === 'ar' ? 'نقاط' : 'Points';
@@ -56,7 +57,7 @@ export default function GlobalLeaderboardView({
                   <span className="text-3xl">{entry.avatar}</span>
                   <span className="font-black text-stone-800 text-lg">{entry.name}</span>
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <p className="text-2xl font-black text-blue-700">{entry.score}</p>
                   <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{pointsLabel}</p>
                 </div>

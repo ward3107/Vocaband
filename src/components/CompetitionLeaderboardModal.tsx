@@ -153,7 +153,7 @@ export default function CompetitionLeaderboardModal({
                             {entry.studentName}
                           </span>
                           {isYou && (
-                            <span className="ml-1 text-[10px] font-black text-amber-700 bg-amber-200/70 rounded-full px-1.5 py-0.5">
+                            <span className="ms-1 text-[10px] font-black text-amber-700 bg-amber-200/70 rounded-full px-1.5 py-0.5">
                               {t.youLabel}
                             </span>
                           )}
