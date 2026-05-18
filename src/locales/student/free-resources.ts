@@ -123,6 +123,18 @@ export interface FreeResourcesT {
   matchingPracticeArabic: string;
   matchingPracticeDescription: string;
 
+  // My Worksheets — per-device list of interactive worksheets minted
+  // from this browser. Populated by ShareWorksheetDialog at mint time;
+  // revoke flow calls revoke_my_worksheet() on the server.
+  myWorksheetsTitle: string;
+  myWorksheetsSubtitle: string;
+  myWorksheetsCopyLink: string;
+  myWorksheetsCopied: string;
+  myWorksheetsRevoke: string;
+  myWorksheetsRevoking: string;
+  myWorksheetsConfirmRevoke: string;
+  myWorksheetsRevokeError: string;
+
   // CTA
   ctaTitle: string;
   ctaText: string;
@@ -230,6 +242,15 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     matchingPracticeArabic: "English ↔ Arabic",
     matchingPracticeDescription: "Play an interactive matching game to test your vocabulary skills.",
 
+    myWorksheetsTitle: "My Shared Worksheets",
+    myWorksheetsSubtitle: "Worksheets you shared from this device. Delete one any time to revoke the link.",
+    myWorksheetsCopyLink: "Copy link",
+    myWorksheetsCopied: "Copied",
+    myWorksheetsRevoke: "Delete",
+    myWorksheetsRevoking: "Deleting…",
+    myWorksheetsConfirmRevoke: "Delete this shared worksheet? Anyone with the link will no longer be able to open it.",
+    myWorksheetsRevokeError: "Couldn't delete this worksheet. Please try again.",
+
     ctaTitle: "Want more?",
     ctaText: "Join thousands of teachers using Vocaband to make vocabulary practice engaging and effective.",
     ctaButton: "Get Started Free",
@@ -334,6 +355,15 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     matchingPracticeHebrew: "אנגלית ↔ עברית",
     matchingPracticeArabic: "אנגלית ↔ ערבית",
     matchingPracticeDescription: "שחקו משחק התאמה אינטראקטיבי לבדיקת הידע שלכם.",
+
+    myWorksheetsTitle: "הדפים ששיתפתי",
+    myWorksheetsSubtitle: "דפי עבודה ששיתפתם מהמכשיר הזה. אפשר למחוק כל דף ולבטל את הקישור בכל עת.",
+    myWorksheetsCopyLink: "העתק קישור",
+    myWorksheetsCopied: "הועתק",
+    myWorksheetsRevoke: "מחק",
+    myWorksheetsRevoking: "מוחק…",
+    myWorksheetsConfirmRevoke: "למחוק את דף העבודה ששותף? אף אחד עם הקישור לא יוכל לפתוח אותו יותר.",
+    myWorksheetsRevokeError: "לא הצלחנו למחוק את דף העבודה. נסו שוב.",
 
     ctaTitle: "רוצים עוד?",
     ctaText: "הצטרפו לאלפי המורים שמשתמשים ב-Vocaband כדי להפוך את תרגול אוצר המילים למהנה ואפקטיבי.",
@@ -440,6 +470,15 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     matchingPracticeArabic: "الإنجليزية ↔ العربية",
     matchingPracticeDescription: "العب لعبة المطابقة التفاعلية لاختبار مهاراتك في المفردات.",
 
+    myWorksheetsTitle: "أوراق العمل التي شاركتها",
+    myWorksheetsSubtitle: "أوراق العمل التي شاركتها من هذا الجهاز. احذف أيًا منها في أي وقت لإلغاء الرابط.",
+    myWorksheetsCopyLink: "نسخ الرابط",
+    myWorksheetsCopied: "تم النسخ",
+    myWorksheetsRevoke: "حذف",
+    myWorksheetsRevoking: "جارٍ الحذف…",
+    myWorksheetsConfirmRevoke: "هل تريد حذف ورقة العمل المشاركة؟ لن يتمكن أحد من فتحها برابطها بعد الآن.",
+    myWorksheetsRevokeError: "تعذر حذف ورقة العمل. حاول مرة أخرى.",
+
     ctaTitle: "تريد المزيد؟",
     ctaText: "انضم إلى آلاف المعلمين الذين يستخدمون Vocaband لجعل ممارسة المفردات ممتعة وفعالة.",
     ctaButton: "ابدأ مجانًا",
@@ -544,6 +583,15 @@ export const freeResourcesT: Record<Language, FreeResourcesT> = {
     matchingPracticeHebrew: "English ↔ Hebrew",
     matchingPracticeArabic: "English ↔ Arabic",
     matchingPracticeDescription: "Play an interactive matching game to test your vocabulary skills.",
+
+    myWorksheetsTitle: "My Shared Worksheets",
+    myWorksheetsSubtitle: "Worksheets you shared from this device. Delete one any time to revoke the link.",
+    myWorksheetsCopyLink: "Copy link",
+    myWorksheetsCopied: "Copied",
+    myWorksheetsRevoke: "Delete",
+    myWorksheetsRevoking: "Deleting…",
+    myWorksheetsConfirmRevoke: "Delete this shared worksheet? Anyone with the link will no longer be able to open it.",
+    myWorksheetsRevokeError: "Couldn't delete this worksheet. Please try again.",
 
     ctaTitle: "Want more?",
     ctaText: "Join thousands of teachers using Vocaband to make vocabulary practice engaging and effective.",
