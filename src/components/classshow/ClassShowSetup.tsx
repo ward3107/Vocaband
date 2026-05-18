@@ -20,9 +20,10 @@ import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Layers, Headphones, ArrowLeftRight, FileText, CheckCircle, Sparkles, Play,
-  Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle, Wand2, ArrowLeft,
-  MessageCircle, Zap, Link,
+  Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle, Wand2,
+  MessageCircle, Zap, Link, Tv2,
 } from 'lucide-react';
+import PageHero from '../PageHero';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings, type ClassShowStrings } from '../../locales/student/class-show';
 import type { Word } from '../../data/vocabulary';
@@ -172,146 +173,120 @@ export default function ClassShowSetup({
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-        className="w-full max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
-      >
-        {/* Header with back button */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
-              {t.classShow}
-            </h1>
-            <p className="text-sm sm:text-base" style={{ color: 'var(--vb-text-secondary)' }}>
-              {t.projectToClass}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <GuideTriggerButton onClick={guide.open} />
+    <div className="min-h-screen bg-gradient-to-b from-fuchsia-50 via-pink-50 to-rose-50">
+      <PageHero
+        icon={<Tv2 size={32} className="text-white" />}
+        title={t.classShow}
+        subtitle={t.projectToClass}
+        onBack={onCancel}
+        gradient="from-fuchsia-500 via-pink-500 to-rose-500"
+        trailing={<GuideTriggerButton onClick={guide.open} />}
+      />
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl bg-white shadow-lg border border-fuchsia-100 overflow-hidden"
+        >
+          <div className="px-6 py-6 space-y-6">
+            {/* Word source picker */}
+            <div>
+              <h2 className="text-sm font-bold text-stone-700 mb-2">{t.pickWordSource}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {effectiveSources.map((s, idx) => {
+                  const selected = idx === sourceIdx;
+                  const isCustom = customWords.length > 0 && idx === 0;
+                  return (
+                    <button
+                      key={`${s.label}-${idx}`}
+                      type="button"
+                      onClick={() => setSourceIdx(idx)}
+                      style={{ touchAction: 'manipulation' }}
+                      className={`text-left px-4 py-3 rounded-lg border-2 transition-all ${
+                        selected
+                          ? 'bg-fuchsia-50 border-fuchsia-400 shadow-sm'
+                          : 'bg-white border-stone-200 hover:border-fuchsia-200'
+                      }`}
+                    >
+                      <div className="font-bold text-sm flex items-center gap-2 text-stone-900">
+                        {isCustom && <Wand2 size={14} className="text-fuchsia-500" />}
+                        {s.label}
+                      </div>
+                      {s.description && (
+                        <div className="text-xs mt-0.5 text-stone-500">
+                          {s.description} · {s.words.length} word{s.words.length === 1 ? '' : 's'}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Build custom list — embedded WordPicker.  Rendered inline with
+                  spacing only (no nested bordered card) so the setup feels like
+                  one continuous form, matching Hot Seat's pattern. */}
+              {pickerWiring && (
+                <div className="mt-4">
+                  <WordPicker
+                    allWords={pickerWiring.allWords}
+                    selectedWords={customWords}
+                    onSelectedWordsChange={handleCustomWordsChange}
+                    onTranslateWord={pickerWiring.onTranslateWord}
+                    onTranslateBatch={pickerWiring.onTranslateBatch}
+                    onOcrUpload={pickerWiring.onOcrUpload}
+                    showToast={pickerWiring.showToast}
+                    topicPacks={pickerWiring.topicPacks}
+                    savedGroups={pickerWiring.savedGroups}
+                    onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
+                    onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
+                    customWords={customWordsCustomTier}
+                    onCustomWordsChange={handleCustomWordsCustomTierChange}
+                    translationLang={translationLang}
+                    onTranslationLangChange={onTranslationLangChange}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Mode picker */}
+            <div>
+              <h2 className="text-sm font-bold text-stone-700 mb-2">{t.pickMode}</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {MODES.map(m => {
+                  const selected = mode === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setMode(m.id)}
+                      style={{ touchAction: 'manipulation' }}
+                      className={`relative bg-gradient-to-br ${m.gradient} text-white rounded-xl p-4 flex flex-col items-center gap-2 border-2 transition-transform ${
+                        selected ? 'border-fuchsia-600 scale-[1.03] shadow-lg' : 'border-transparent hover:scale-[1.02]'
+                      }`}
+                    >
+                      {m.icon}
+                      <span className="text-sm font-black">{t[m.nameKey] as string}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Start — full-width gradient CTA, same shape as Hot Seat */}
             <button
               type="button"
-              onClick={onCancel}
-              style={{
-                borderColor: 'var(--vb-border)',
-                color: 'var(--vb-text-secondary)',
-                backgroundColor: 'var(--vb-surface)',
-              }}
-              className="px-4 py-2 rounded-lg border-2 inline-flex items-center gap-2 hover:opacity-90"
+              onClick={() => canStart && realSelectedSource && onStart({ mode, source: realSelectedSource, questionCount: realSelectedSource.words.length })}
+              disabled={!canStart}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              className="w-full py-3.5 rounded-lg bg-gradient-to-r from-fuchsia-500 to-rose-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
             >
-              <ArrowLeft size={16} />
-              <span className="hidden sm:inline">Back</span>
+              <Play size={18} />
+              {t.startShow}
             </button>
           </div>
-        </div>
-
-        {/* Word source picker */}
-        <div className="mb-8">
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            {t.pickWordSource}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {effectiveSources.map((s, idx) => {
-              const selected = idx === sourceIdx;
-              const isCustom = customWords.length > 0 && idx === 0;
-              return (
-                <button
-                  key={`${s.label}-${idx}`}
-                  type="button"
-                  onClick={() => setSourceIdx(idx)}
-                  style={{
-                    touchAction: 'manipulation',
-                    backgroundColor: selected ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
-                    borderColor: selected ? 'var(--vb-accent)' : 'var(--vb-border)',
-                    color: 'var(--vb-text-primary)',
-                  }}
-                  className="text-left px-4 py-3 rounded-lg border-2 transition-colors"
-                >
-                  <div className="font-bold text-sm flex items-center gap-2">
-                    {isCustom && <Wand2 size={14} style={{ color: 'var(--vb-accent)' }} />}
-                    {s.label}
-                  </div>
-                  {s.description && (
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--vb-text-muted)' }}>
-                      {s.description} · {s.words.length} word{s.words.length === 1 ? '' : 's'}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Build custom list — embedded WordPicker.  Only available
-              when the parent provided picker wiring (allWords + callbacks). */}
-          {pickerWiring && (
-            <div className="mt-4 p-4 rounded-lg border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
-              <WordPicker
-                allWords={pickerWiring.allWords}
-                selectedWords={customWords}
-                onSelectedWordsChange={handleCustomWordsChange}
-                onTranslateWord={pickerWiring.onTranslateWord}
-                onTranslateBatch={pickerWiring.onTranslateBatch}
-                onOcrUpload={pickerWiring.onOcrUpload}
-                showToast={pickerWiring.showToast}
-                topicPacks={pickerWiring.topicPacks}
-                savedGroups={pickerWiring.savedGroups}
-                onRenameSavedGroup={pickerWiring.onRenameSavedGroup}
-                onDeleteSavedGroup={pickerWiring.onDeleteSavedGroup}
-                customWords={customWordsCustomTier}
-                onCustomWordsChange={handleCustomWordsCustomTierChange}
-                translationLang={translationLang}
-                onTranslationLangChange={onTranslationLangChange}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Mode picker */}
-        <div className="mb-8">
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
-            {t.pickMode}
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {MODES.map(m => {
-              const selected = mode === m.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setMode(m.id)}
-                  style={{
-                    touchAction: 'manipulation',
-                    borderColor: selected ? 'var(--vb-accent)' : 'transparent',
-                  }}
-                  className={`relative bg-gradient-to-br ${m.gradient} text-white rounded-xl p-4 flex flex-col items-center gap-2 border-2 transition-transform ${selected ? 'scale-[1.03] shadow-lg' : 'hover:scale-[1.02]'}`}
-                >
-                  {m.icon}
-                  <span className="text-sm font-black">{t[m.nameKey] as string}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => canStart && realSelectedSource && onStart({ mode, source: realSelectedSource, questionCount: realSelectedSource.words.length })}
-            disabled={!canStart}
-            style={{
-              backgroundColor: canStart ? 'var(--vb-accent)' : 'var(--vb-surface-alt)',
-              color: canStart ? 'var(--vb-accent-text)' : 'var(--vb-text-muted)',
-            }}
-            className="px-8 py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-lg disabled:cursor-not-allowed"
-          >
-            <Play size={20} />
-            {t.startShow}
-          </button>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
 
       <FirstTimeGuide
         isOpen={guide.isOpen}

@@ -27,6 +27,7 @@ import {
   Check,
 } from "lucide-react";
 import PublicNav from "../components/PublicNav";
+import PageHero from "../components/PageHero";
 import html2pdf from "html2pdf.js";
 import qrcode from "qrcode-generator";
 import { Share2 } from "lucide-react";
@@ -3200,40 +3201,22 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900" dir={dir}>
       <PublicNav currentPage="resources" onNavigate={onNavigate} onGetStarted={onGetStarted} onTeacherLogin={onTeacherLogin} />
 
-      <main id="main-content" className="pt-24 pb-16 px-4 md:px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-4 mb-8">
-            <button
-              onClick={onBack}
-              type="button"
-              className="flex items-center gap-2 text-violet-300 font-bold hover:text-violet-200 transition-all group"
-            >
-              <ArrowLeft
-                size={20}
-                className={`transition-transform group-hover:-translate-x-1 ${isRTL ? "rotate-180" : ""}`}
-              />
-              <span>{t.backButton}</span>
-            </button>
-          </div>
+      {/* Vocabagrut-style hero — unifies the resources tab with the
+          teacher dashboard and assignment-creation flows. Sits above the
+          main content padding so it goes edge-to-edge. */}
+      <div className="pt-20">
+        <PageHero
+          icon={<FileText size={32} className="text-white" />}
+          eyebrow={t.freeResourcesPill}
+          title={t.title}
+          subtitle={t.subtitle}
+          onBack={onBack}
+          backLabel={t.backButton}
+        />
+      </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12 md:mb-16"
-          >
-            <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-violet-500/20 border border-violet-400/30 mb-6">
-              <FileText size={20} className="text-violet-300" />
-              <span className="text-violet-200 font-bold text-sm">{t.freeResourcesPill}</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 font-headline">{t.title}</h1>
-            <p
-              className="text-base md:text-lg text-white/70 max-w-2xl mx-auto"
-              dir={dir}
-              style={{ textAlign: isRTL ? "right" : "left" }}
-            >
-              {t.subtitle}
-            </p>
-          </motion.div>
+      <main id="main-content" className="pt-8 pb-16 px-4 md:px-6">
+        <div className="max-w-6xl mx-auto">
 
           {/* Theme bundles — multi-topic curated packs.  Each bundle is
               a virtual TopicPack (see THEMED_BUNDLES at module scope)

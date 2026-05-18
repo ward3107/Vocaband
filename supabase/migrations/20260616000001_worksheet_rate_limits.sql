@@ -209,7 +209,7 @@ BEGIN
     RAISE EXCEPTION 'student_name is required' USING ERRCODE = '22023';
   END IF;
 
-  v_name := regexp_replace(p_student_name, '[[:cntrl:]]', '', 'g');
+  v_name := regexp_replace(p_student_name, '[ -]', '', 'g');
   v_name := trim(regexp_replace(v_name, '\s+', ' ', 'g'));
 
   IF length(v_name) = 0 THEN

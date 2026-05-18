@@ -69,25 +69,162 @@ DELETE FROM auth.sessions WHERE created_at < NOW();
 - [ ] **Audit log entry** for the remediation action so it shows up in future incident timelines.
 
 ### Hours 12-24 — User notification (if SEV-1 or SEV-2 with affected users)
-Email template (Hebrew + English) sent from `privacy@vocaband.com`:
+
+All templates below sent from `privacy@vocaband.com`. Pick the right
+one for the audience.
+
+#### Template A — Teacher (full notification, English)
 
 ```
-נושא: עדכון בנושא אבטחת מידע — Vocaband
-Subject: Security update — Vocaband
+Subject: Security update — Vocaband — action may be required
 
-שלום,
+Hello [teacher name],
 
-ב-<date> ב-<time> נרשם אירוע אבטחת מידע ב-Vocaband.
-מה קרה: <one factual sentence>
-איזה מידע מושפע: <data categories>
-מה עשינו: <containment + permanent fix, factually>
-מה אתם צריכים לעשות: <usually nothing; sometimes "change password">
+We are writing to inform you of a security incident affecting Vocaband.
 
-אם יש לכם שאלות, פנו אלינו ב-privacy@vocaband.com.
-דיווח לרשות להגנת הפרטיות בוצע ב-<date>.
+What happened:
+   [one factual sentence — e.g. "Between 14:00 and 14:30 IL time on
+    2026-05-04, a configuration error allowed students in another class
+    to view your class's word-list assignments — but not student names
+    or progress."]
+
+Whose data was affected:
+   [data categories — e.g. "Your class's word-list assignment titles
+    and instructions. No student names, emails, or progress data were
+    accessed."]
+
+What we did:
+   [containment + permanent fix — e.g. "We closed the exposure at
+    14:32 IL by reverting the configuration change, then shipped a
+    permanent fix in version 2026.05.04a deployed at 16:00 IL the
+    same day."]
+
+What you need to do:
+   [usually nothing; sometimes "change your Vocaband password" or
+    "review your class roster for any unfamiliar entries"]
+
+How we are following up:
+   • Internal post-mortem completed on [date].
+   • Notification to the Israeli Privacy Protection Authority filed
+     on [date], reference number [if assigned].
+   • [Notification to the MoE Information Security desk on [date],
+      if applicable.]
+
+Questions: reply to this email or write to privacy@vocaband.com.
+
+[DPO name]
+Data Protection Officer
+Vocaband Educational Technologies
 ```
 
-Delivery channel: email to the affected user's registered email.  For students who joined via Quick Play (no email), notify the teacher of their class.
+#### Template A — Teacher (full notification, Hebrew)
+
+```
+נושא: עדכון בנושא אבטחת מידע — Vocaband — ייתכן ונדרשת פעולה
+
+שלום [שם המורה],
+
+אנו פונים אליך כדי לעדכן על אירוע אבטחת מידע שאירע ב-Vocaband.
+
+מה קרה:
+   [משפט עובדתי אחד — לדוגמה: "בין השעות 14:00 ל-14:30 ב-04/05/2026,
+    שגיאת תצורה אפשרה לתלמידים בכיתה אחרת לצפות במטלות אוצר המילים
+    שיצרת — אך לא בשמות תלמידים או בנתוני התקדמות."]
+
+איזה מידע הושפע:
+   [קטגוריות — לדוגמה: "כותרות והוראות של מטלות אוצר המילים שלך.
+    שמות תלמידים, כתובות אימייל ונתוני התקדמות לא נחשפו."]
+
+מה עשינו:
+   [פעולת חסימה + תיקון קבוע — לדוגמה: "סגרנו את החשיפה בשעה 14:32
+    על ידי החזרת התצורה למצב קודם, ואז שחררנו תיקון קבוע בגרסה
+    2026.05.04a שעלתה לאוויר בשעה 16:00 באותו היום."]
+
+מה עליך לעשות:
+   [בדרך כלל כלום; לעיתים: "החליפי סיסמה" או "בדקי את רשימת
+    התלמידים בכיתתך"]
+
+איך אנו ממשיכים:
+   • דו"ח פנימי הושלם בתאריך [תאריך].
+   • דיווח לרשות להגנת הפרטיות בוצע בתאריך [תאריך],
+     מספר הפניה [אם הוקצה].
+   • [דיווח לאגף אבטחת מידע במשרד החינוך בתאריך [תאריך],
+      אם רלוונטי.]
+
+שאלות: ניתן להשיב לאימייל זה או לפנות אל privacy@vocaband.com.
+
+[שם הממונה על הגנת הפרטיות]
+ממונה הגנת הפרטיות
+Vocaband Educational Technologies
+```
+
+#### Template B — School principal / IT (escalation, Hebrew)
+
+```
+לכבוד מנהל/ת בית הספר [שם],
+לידיעת רכז/ת המחשוב,
+
+נושא: עדכון בנושא אבטחת מידע ב-Vocaband — דיווח לפי תקנות הגנת
+       הפרטיות (אבטחת מידע) התשע"ז-2017 § 11
+
+ביום [תאריך] בשעה [שעה] נרשם אירוע אבטחת מידע במערכת Vocaband
+המשרתת את בית ספרכם.
+
+סיכום עובדתי: [פסקה אחת]
+היקף ההשפעה: [מספר משתמשים, סוגי נתונים]
+פעולות חסימה: [מה נעשה מיידית]
+תיקון קבוע: [מה נעשה במשך 24 השעות הראשונות]
+דיווח לרשות: [תאריך + מספר פניה אם הוקצה]
+דיווח למשרד החינוך: [תאריך, אם רלוונטי]
+
+נציגנו לכל שאלה: [שם הממונה], privacy@vocaband.com, [טלפון].
+
+אנו מציעים שיחה טלפונית עם הצוות הטכני בבית הספר במהלך 48 השעות
+הקרובות. ניתן לקבוע במייל חוזר.
+
+בכבוד רב,
+[שם הממונה]
+ממונה הגנת הפרטיות, Vocaband
+```
+
+#### Template C — Holding statement (initial, when full facts not yet known)
+
+Use when you've confirmed an incident is real but you're still
+within the first hour of containment and don't yet have full facts.
+Buys time without being silent.
+
+```
+Subject: Vocaband — service notice
+נושא: Vocaband — הודעת שירות
+
+Hello — we are investigating a possible issue affecting some Vocaband
+accounts as of [time]. We will follow up with a detailed update within
+24 hours. If you have urgent questions, write to
+privacy@vocaband.com.
+
+שלום, אנו בודקים כעת אירוע אפשרי המשפיע על חלק מחשבונות Vocaband
+החל מ-[שעה]. נעדכן בפרטים מלאים במהלך 24 השעות הקרובות. לשאלות
+דחופות: privacy@vocaband.com.
+
+— Vocaband Privacy Team / צוות פרטיות Vocaband
+```
+
+#### Template D — Quick Play guest (no email — notify teacher instead)
+
+Quick Play guests have no registered email. The teacher of the
+affected QP session is notified using Template A above, with an
+explicit ask to relay to students who joined.
+
+#### Delivery channels
+
+| Audience | Channel | Notes |
+|---|---|---|
+| Teachers | Direct email to registered address | Sent via Supabase Auth's mailer or Resend (`docs/RESEND-SMTP-SETUP.md`) |
+| Students with email | Same | Rare — students mostly join via class code only |
+| Students without email | Notified through their teacher (Template A relay) | Teacher confirms relay back to `privacy@vocaband.com` |
+| School principal / IT | Template B sent to school's published address | Phone follow-up offered |
+| Privacy Protection Authority | Form ר"ה — see § "PPA notification" | Different from user notification |
+| MoE Information Security desk | Email `security@education.gov.il` — see § "MoE notification" | Only if MoE-school affected |
 
 ---
 

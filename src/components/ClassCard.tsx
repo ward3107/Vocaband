@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, MessageCircle, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Users, Trophy } from "lucide-react";
+import { Check, Copy, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Users, Trophy } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
@@ -502,51 +502,6 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 >
                   <Timer size={14} className="text-amber-600" />
                   Send Class Minute
-                </button>
-                <button
-                  onClick={() => { onWhatsApp(); setMenuOpen(false); }}
-                  type="button"
-                  style={{ color: 'var(--vb-text-secondary)' }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
-                >
-                  <MessageCircle size={14} className="text-emerald-600" />
-                  {t.shareWhatsApp}
-                </button>
-                <button
-                  onClick={() => { onCopyCode(); setMenuOpen(false); }}
-                  type="button"
-                  style={{ color: 'var(--vb-text-secondary)' }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
-                >
-                  <Copy size={14} style={{ color: 'var(--vb-text-muted)' }} />
-                  Copy class code
-                </button>
-                <button
-                  onClick={() => {
-                    // Open the printable poster in a new tab. Includes the
-                    // class code in the QR so when students scan, they
-                    // land on the join flow already pre-filled. The page
-                    // itself uses window.print() — teacher chooses Print
-                    // or Save as PDF in the browser dialog.
-                    //
-                    // Link to /poster (no .html) because Cloudflare
-                    // Workers Assets defaults to `auto-trailing-slash`,
-                    // which 301-redirects /poster.html → /poster.  That
-                    // redirect was getting cached by the Service Worker
-                    // and then rejected by the browser on subsequent
-                    // navigations ("a redirected response was used for
-                    // a request whose redirect mode is not 'follow'").
-                    // Hitting /poster directly skips the redirect hop.
-                    const url = `/poster?class=${encodeURIComponent(code)}&ref=teacher-${encodeURIComponent(code)}`;
-                    window.open(url, '_blank', 'noopener');
-                    setMenuOpen(false);
-                  }}
-                  type="button"
-                  style={{ color: 'var(--vb-text-secondary)' }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
-                >
-                  <Printer size={14} className="text-indigo-600" />
-                  {t.printPoster}
                 </button>
                 <div className="h-px my-1" style={{ backgroundColor: 'var(--vb-border)' }} />
                 <button

@@ -50,6 +50,7 @@ import type { Word } from "../data/vocabulary";
 import InPageCamera from "../components/InPageCamera";
 import { postOcrImage, isPostOcrImageError } from "../utils/postOcrImage";
 import type { Language } from "../hooks/useLanguage";
+import PageHero from "../components/PageHero";
 
 export interface HotSeatAssignment {
   id: string;
@@ -756,31 +757,18 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
   if (phase === 'setup') {
     const canStart = parsedNameCount >= 2 && wordPool.length >= 4;
     return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50 p-4 sm:p-6" dir={dir}>
-        <div className="max-w-3xl mx-auto">
-          <button
-            type="button"
-            onClick={onExit}
-            style={{ touchAction: 'manipulation' }}
-            className="mb-4 inline-flex items-center gap-1.5 text-sm font-bold text-stone-600 hover:text-stone-900"
-          >
-            <X size={16} />
-            {t.exitBtn}
-          </button>
+      <div className="min-h-screen bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50" dir={dir}>
+        <PageHero
+          icon={<Users size={32} className="text-white" />}
+          title={t.title}
+          subtitle={t.subtitle}
+          onBack={onExit}
+          backLabel={t.exitBtn}
+          gradient="from-orange-500 via-amber-500 to-rose-500"
+        />
 
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
           <div className="rounded-2xl bg-white shadow-lg border border-orange-100 overflow-hidden">
-            <div className="bg-gradient-to-br from-orange-500 via-amber-500 to-rose-500 px-6 py-6 text-white">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-                  <Users size={26} className="text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black">{t.title}</h1>
-                  <p className="text-white/85 text-sm">{t.subtitle}</p>
-                </div>
-              </div>
-            </div>
-
             <div className="px-6 py-6 space-y-5">
               <div>
                 <label className="block text-sm font-bold text-stone-700 mb-2">

@@ -207,6 +207,43 @@ if ($AppUrl) {
     }
 }
 
+# ─── Audit-log immutability (Reg 2017 § 8) ────────────────────────────
+# Verifies migration 20260518120000 is live. Mirrors checks 17+18 in
+# the bash version. Even an anonymous PATCH/DELETE on audit_log should
+# be rejected at PostgREST / RLS, returning a 4xx status.
+Write-Host "[17] Anon PATCH (UPDATE) public.audit_log should be rejected"
+try {
+    $resp = Invoke-WebRequest -Method PATCH `
+        -Uri "$SupabaseUrl/rest/v1/audit_log?id=eq.00000000-0000-0000-0000-000000000000" `
+        -Headers @{
+            "apikey"        = $AnonKey
+            "Authorization" = "Bearer $AnonKey"
+            "Content-Type"  = "application/json"
+            "Prefer"        = "return=minimal"
+        } `
+        -Body '{"action":"tampered"}' `
+        -SkipHttpErrorCheck
+    $status = [string]$resp.StatusCode
+} catch {
+    $status = "ERR"
+}
+Check "anon UPDATE audit_log → 401/403/404" "^(401|403|404)$" $status
+
+Write-Host "[18] Anon DELETE public.audit_log should be rejected"
+try {
+    $resp = Invoke-WebRequest -Method DELETE `
+        -Uri "$SupabaseUrl/rest/v1/audit_log?id=eq.00000000-0000-0000-0000-000000000000" `
+        -Headers @{
+            "apikey"        = $AnonKey
+            "Authorization" = "Bearer $AnonKey"
+        } `
+        -SkipHttpErrorCheck
+    $status = [string]$resp.StatusCode
+} catch {
+    $status = "ERR"
+}
+Check "anon DELETE audit_log → 401/403/404" "^(401|403|404)$" $status
+
 Write-Host ""
 Write-Host "Results: $($script:Pass) passed, $($script:Fail) failed."
 if ($script:Fail -eq 0) { exit 0 } else { exit 1 }

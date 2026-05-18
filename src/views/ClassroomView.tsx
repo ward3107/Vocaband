@@ -43,6 +43,8 @@ import { useFirstTimeGuide } from "../hooks/useFirstTimeGuide";
 import FirstTimeGuide from "../components/onboarding/FirstTimeGuide";
 import GuideTriggerButton from "../components/onboarding/GuideTriggerButton";
 import { teacherGuidesT } from "../locales/teacher/guides";
+import { GraduationCap } from "lucide-react";
+import PageHero from "../components/PageHero";
 
 const AnalyticsView = lazy(() => import("./AnalyticsView"));
 const GradebookView = lazy(() => import("./GradebookView"));
@@ -224,35 +226,15 @@ export default function ClassroomView(props: ClassroomViewProps) {
     setView("teacher-dashboard");
   }, [setView]);
 
-  const cardHeader = (subtitle: string) => (
-    <div className="flex items-center justify-between mb-6 sm:mb-8 gap-3">
-      <div className="min-w-0">
-        <h1 className="text-3xl sm:text-4xl font-black mb-1" style={{ color: 'var(--vb-text-primary)' }}>
-          {t.classroomTitle}
-        </h1>
-        <p className="text-sm sm:text-base truncate" style={{ color: 'var(--vb-text-secondary)' }}>
-          {subtitle}
-        </p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <GuideTriggerButton onClick={guide.open} />
-        <button
-          type="button"
-          onClick={handleBack}
-          style={{
-            borderColor: 'var(--vb-border)',
-            color: 'var(--vb-text-secondary)',
-            backgroundColor: 'var(--vb-surface)',
-            touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent' as never,
-          }}
-          className="px-4 py-2 rounded-lg border-2 inline-flex items-center gap-2 hover:opacity-90"
-        >
-          <ArrowLeft size={16} />
-          <span className="hidden sm:inline">{tViews.backToDashboard}</span>
-        </button>
-      </div>
-    </div>
+  const pageHero = (subtitle: string) => (
+    <PageHero
+      icon={<GraduationCap size={32} className="text-white" />}
+      title={t.classroomTitle}
+      subtitle={subtitle}
+      onBack={handleBack}
+      backLabel={tViews.backToDashboard}
+      trailing={<GuideTriggerButton onClick={guide.open} />}
+    />
   );
 
   if (CLASSROOM_V2) {
@@ -260,16 +242,17 @@ export default function ClassroomView(props: ClassroomViewProps) {
     return (
       <div
         dir={dir}
-        className="min-h-screen p-4 sm:p-8 pb-28 sm:pb-12"
+        className="min-h-screen pb-28 sm:pb-12"
         style={{ backgroundColor: 'var(--vb-surface-alt)' }}
       >
+        {pageHero(activeTabMeta?.blurb ?? "")}
+        <div className="px-4 sm:px-8 pt-6 sm:pt-8">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
           className="max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
         >
-          {cardHeader(activeTabMeta?.blurb ?? "")}
 
           {/* Tab pills — sit inside the card just under the header.
               Hidden on mobile where the fixed bottom-nav (outside the
@@ -498,6 +481,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
             </Suspense>
           </motion.div>
         </motion.div>
+        </div>
 
         {/* Mobile-only bottom nav — fixed, four emoji tabs, finger-sized
             targets (≥44 px). Lives outside the card by design so the
@@ -550,16 +534,17 @@ export default function ClassroomView(props: ClassroomViewProps) {
   return (
     <div
       dir={dir}
-      className="min-h-screen p-4 sm:p-8 pb-12"
+      className="min-h-screen pb-12"
       style={{ backgroundColor: 'var(--vb-surface-alt)' }}
     >
+      {pageHero(t.legacySubtitle)}
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
         className="max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
       >
-        {cardHeader(t.legacySubtitle)}
 
         {/* Tab pills inside the card. */}
         <div className="mb-6">
@@ -633,6 +618,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
           </Suspense>
         </motion.div>
       </motion.div>
+      </div>
 
       <FirstTimeGuide
         isOpen={guide.isOpen}

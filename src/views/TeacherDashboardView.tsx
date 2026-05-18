@@ -4,6 +4,7 @@ import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
 import TeacherOnboardingWizard from "../components/onboarding/TeacherOnboardingWizard";
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
+import PageHero from "../components/PageHero";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import RatingPrompt from "../components/RatingPrompt";
 import { performUserLogout } from "../core/supabase";
@@ -270,31 +271,17 @@ export default function TeacherDashboardView({
           extraTrailing={headerExtra}
         />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Welcome hero — sets a calm, personal tone.
-              Text colours flip with `dashboardTheme.dark` so the
-              "Midnight" theme (slate-900 background) doesn't hide
-              the headline behind near-black text. */}
-          <div className="mb-8 sm:mb-10 pt-2 sm:pt-4">
-            <p
-              className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-2"
-              style={{ color: 'var(--vb-accent)' }}
-            >
-              {greeting}
-            </p>
-            <h1
-              className="text-2xl sm:text-4xl font-bold tracking-tight"
-              style={{ color: 'var(--vb-text-primary)' }}
-            >
-              {t.heroLine(firstName)}
-            </h1>
-            <p
-              className="text-sm sm:text-base mt-2"
-              style={{ color: 'var(--vb-text-secondary)' }}
-            >
-              {t.heroSubtitle}
-            </p>
-          </div>
+        {/* Vocabagrut-style hero — full-bleed gradient block keeps
+            the welcome screen visually consistent with the assignment
+            and Vocabagrut creation flows. */}
+        <PageHero
+          icon={<Sparkles size={32} className="text-white" />}
+          eyebrow={greeting}
+          title={t.heroLine(firstName)}
+          subtitle={t.heroSubtitle}
+        />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
 
           {/* Pro trial / upgrade banner.
               - Trialing free teacher: amber gradient, "X days left" + Upgrade CTA.

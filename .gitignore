@@ -13,6 +13,7 @@ firestore.rules
 # firebase-applet-config.json is tracked — client config is not a secret
 
 # Dev tool artifacts
+.claude/worktrees/
 .playwright-mcp/
 .superpowers/
 .wrangler/
