@@ -281,7 +281,7 @@ export default function TeacherDashboardView({
           subtitle={t.heroSubtitle}
         />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
 
           {/* Pro trial / upgrade banner.
               - Trialing free teacher: amber gradient, "X days left" + Upgrade CTA.
