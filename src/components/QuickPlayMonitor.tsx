@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, QrCode, LogOut, Volume2, VolumeX,
   ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause,
-  Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap
+  Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap, ZapOff
 } from 'lucide-react';
 import { getXpTitle } from '../constants/game';
 import { Howl } from 'howler';
@@ -321,13 +321,112 @@ function ScoreFloater({ uid, floaters }: { uid: string; floaters: ScoreFloaterEn
   );
 }
 
+// Centered overlay that pumps a single student up to full-screen size
+// for a few seconds — used when the teacher clicks any tile on the
+// projector. Shows a big avatar, name, XP title, current score, and
+// streak badge. Auto-dismisses after 5s; backdrop click dismisses
+// immediately. Caller owns the open/close state.
+function SpotlightModal({
+  student,
+  onClose,
+  themeAccent,
+}: {
+  student: { name: string; score: number; avatar: string; streak?: number; studentUid: string } | null;
+  onClose: () => void;
+  themeAccent: string;
+}) {
+  // Auto-dismiss timer — restarts every time a new student is spotlighted.
+  useEffect(() => {
+    if (!student) return;
+    const t = setTimeout(onClose, 5000);
+    return () => clearTimeout(t);
+  }, [student, onClose]);
+
+  return (
+    <AnimatePresence>
+      {student && (
+        <motion.div
+          key="spotlight-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          onClick={onClose}
+          className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center cursor-pointer px-4"
+          aria-label="Student spotlight — click to dismiss"
+        >
+          <motion.div
+            key="spotlight-card"
+            initial={{ scale: 0.7, opacity: 0, y: 30 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.8, opacity: 0, y: 20 }}
+            transition={{ type: "spring", stiffness: 280, damping: 24 }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl shadow-2xl px-8 py-10 sm:px-12 sm:py-14 max-w-[90vw] flex flex-col items-center gap-4 border border-white/10 cursor-default"
+          >
+            <button
+              onClick={onClose}
+              aria-label="Close spotlight"
+              className="absolute top-3 right-3 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <X size={18} />
+            </button>
+            <div
+              className="rounded-full bg-white/10 flex items-center justify-center border-4 border-amber-300 shadow-2xl"
+              style={{
+                width: "min(40vh, 220px)",
+                height: "min(40vh, 220px)",
+                boxShadow: "0 0 80px rgba(251,191,36,0.35), 0 20px 50px rgba(0,0,0,0.4)",
+              }}
+            >
+              <QPAvatar value={student.avatar || "🦊"} iconSize={120} className="text-7xl sm:text-8xl" />
+            </div>
+            <p className="font-headline text-3xl sm:text-5xl font-black text-center px-2 break-words max-w-[70vw]">
+              {student.name}
+            </p>
+            {(() => { const tt = getXpTitle(student.score); return (
+              <p className="font-label text-base sm:text-xl italic opacity-80">
+                {tt.emoji} {tt.title}
+              </p>
+            ); })()}
+            <p className={`font-label text-3xl sm:text-5xl font-black tabular-nums flex items-center gap-3 ${themeAccent}`}>
+              <span>{student.score} pts</span>
+              {student.streak !== undefined && <StreakBadge streak={student.streak} size={28} />}
+            </p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // Tier C reaction particle layer. Each accepted reaction floats an
-// emoji from the bottom of the projector up over ~2.6s with a slight
-// horizontal drift so a burst from one student doesn't render as a
-// straight line. Capped at 30 concurrent particles to keep the
-// projector from melting if a class spams in unison.
-type ReactionParticle = { id: string; emoji: string; x: number; drift: number };
-function ReactionParticleLayer({ lastReaction }: { lastReaction: QpReactionPayload | null }) {
+// emoji upward over ~2.4s. Origin is the sender's avatar on the
+// projector (looked up via data-qp-uid) so the projector visibly
+// "tells you who reacted" rather than launching everything from a
+// random spot at the bottom. If the sender isn't currently on screen
+// (off-screen rank-4+ in compact scroll, or pre-render race), we
+// fall back to a random column near the bottom.
+//
+// Cap of 30 concurrent particles to keep the projector from melting if
+// a class spams in unison. `disabled` short-circuits everything when
+// reduced-motion is on.
+type ReactionParticle = {
+  id: string;
+  emoji: string;
+  /** Origin in viewport-relative pixels (fixed positioning). */
+  originX: number;
+  originY: number;
+  /** Slight horizontal drift mid-flight so consecutive particles fan out. */
+  drift: number;
+};
+function ReactionParticleLayer({
+  lastReaction,
+  disabled,
+}: {
+  lastReaction: QpReactionPayload | null;
+  disabled?: boolean;
+}) {
   const [particles, setParticles] = useState<ReactionParticle[]>([]);
   // Dedupe ring — same (clientId, serverTs) can re-fire on a React
   // strict-mode double-effect or a brief reconnection replay. Bounded
@@ -335,23 +434,43 @@ function ReactionParticleLayer({ lastReaction }: { lastReaction: QpReactionPaylo
   const seenRef = useRef<string[]>([]);
 
   useEffect(() => {
+    if (disabled) return;
     if (!lastReaction || !lastReaction.emoji) return;
     const key = `${lastReaction.clientId}:${lastReaction.serverTs}`;
     if (seenRef.current.includes(key)) return;
     seenRef.current.push(key);
     if (seenRef.current.length > 200) seenRef.current.shift();
 
+    // Look up the sender's avatar by data-qp-uid. document is safe to
+    // touch here — this runs inside a useEffect (browser only). When
+    // the sender is rendered (top 3 or rank 4+) we get a real origin;
+    // otherwise we fall back to a random column at the bottom edge.
+    let originX: number;
+    let originY: number;
+    const el = typeof document !== 'undefined'
+      ? document.querySelector(`[data-qp-uid="${CSS.escape(lastReaction.clientId)}"]`) as HTMLElement | null
+      : null;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      originX = rect.left + rect.width / 2;
+      originY = rect.top + rect.height / 2;
+    } else {
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+      const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+      originX = vw * (0.05 + Math.random() * 0.9);
+      originY = vh - 40;
+    }
+
     const id = `${key}:${Math.random().toString(36).slice(2, 8)}`;
-    // x is the starting column as a percentage of viewport width; drift
-    // is a small horizontal shift so adjacent particles fan out.
-    const x = 5 + Math.random() * 90;
     const drift = (Math.random() - 0.5) * 80;
 
-    setParticles(prev => [...prev, { id, emoji: lastReaction.emoji, x, drift }].slice(-30));
+    setParticles(prev => [...prev, { id, emoji: lastReaction.emoji, originX, originY, drift }].slice(-30));
     setTimeout(() => {
       setParticles(prev => prev.filter(p => p.id !== id));
-    }, 2800);
-  }, [lastReaction]);
+    }, 2400);
+  }, [lastReaction, disabled]);
+
+  if (disabled) return null;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[55] overflow-hidden">
@@ -361,15 +480,22 @@ function ReactionParticleLayer({ lastReaction }: { lastReaction: QpReactionPaylo
             key={p.id}
             initial={{ y: 0, x: 0, opacity: 0, scale: 0.5 }}
             animate={{
-              y: "-90vh",
+              // Float roughly 220px upward — enough to read against the
+              // background, short enough that the source avatar is still
+              // visually connected to the particle.
+              y: -220,
               x: p.drift,
               opacity: [0, 1, 1, 0],
-              scale: [0.5, 1.15, 1, 0.85],
+              scale: [0.5, 1.2, 1, 0.85],
               rotate: p.drift > 0 ? 8 : -8,
             }}
-            transition={{ duration: 2.6, ease: "easeOut", times: [0, 0.1, 0.85, 1] }}
-            className="absolute bottom-2 text-4xl sm:text-5xl 2xl:text-7xl select-none drop-shadow-2xl"
-            style={{ left: `${p.x}%`, transform: "translateX(-50%)" }}
+            transition={{ duration: 2.4, ease: "easeOut", times: [0, 0.1, 0.85, 1] }}
+            className="fixed text-3xl sm:text-4xl 2xl:text-6xl select-none drop-shadow-2xl"
+            style={{
+              left: `${p.originX}px`,
+              top: `${p.originY}px`,
+              transform: "translate(-50%, -50%)",
+            }}
           >
             {p.emoji}
           </motion.div>
@@ -414,6 +540,23 @@ export default function QuickPlayMonitor({
   const [showWordsModal, setShowWordsModal] = useState(false);
   const [theme, setTheme] = useState<ThemeKey>('classic');
   const [showThemePicker, setShowThemePicker] = useState(false);
+  // Reduced-motion toggle for sensory-sensitive classrooms — disables
+  // particles, +N floaters, sparkles, and the gentle ambient bobs.
+  // Persisted to localStorage so the teacher's preference sticks
+  // across sessions.
+  const [reducedMotion, setReducedMotion] = useState<boolean>(() => {
+    try { return localStorage.getItem('vocaband-qp-reduced-motion') === '1'; } catch { return false; }
+  });
+  const toggleReducedMotion = useCallback(() => {
+    setReducedMotion(prev => {
+      const next = !prev;
+      try { localStorage.setItem('vocaband-qp-reduced-motion', next ? '1' : '0'); } catch {}
+      return next;
+    });
+  }, []);
+  // Click-to-spotlight: teacher taps any tile, the player gets pumped
+  // up to a full-screen card for ~5s. Null means no current spotlight.
+  const [spotlightStudent, setSpotlightStudent] = useState<Student | null>(null);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [showMusicPicker, setShowMusicPicker] = useState(false);
   const [confirmKick, setConfirmKick] = useState<string | null>(null);
@@ -636,12 +779,14 @@ export default function QuickPlayMonitor({
   const prevScoresRef = useRef<Map<string, number>>(new Map());
   const [scoreFloaters, setScoreFloaters] = useState<ScoreFloaterEntry[]>([]);
   useEffect(() => {
+    // Always update the prev-score baseline so toggling reduced-motion
+    // back on doesn't replay a backlog of deltas from while it was off.
     const additions: ScoreFloaterEntry[] = [];
     for (const s of effectiveStudents) {
       const uid = s.studentUid;
       if (!uid) continue;
       const prev = prevScoresRef.current.get(uid);
-      if (prev !== undefined && s.score > prev) {
+      if (!reducedMotion && prev !== undefined && s.score > prev) {
         additions.push({
           id: `${uid}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           uid,
@@ -660,7 +805,7 @@ export default function QuickPlayMonitor({
         }, 800);
       });
     }
-  }, [effectiveStudents]);
+  }, [effectiveStudents, reducedMotion]);
 
   // ─── Background music ──────────────────────────────────────────────────────
   const toggleMusic = () => {
@@ -898,10 +1043,23 @@ export default function QuickPlayMonitor({
     @keyframes qp-score-pop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
     @keyframes qp-crowd-wave{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-2px) scaleY(1.02)}}
     @keyframes qp-sparkle-orbit{0%{transform:rotate(0deg) translateX(var(--qp-orbit,70px)) rotate(0deg);opacity:0}10%,90%{opacity:.9}100%{transform:rotate(360deg) translateX(var(--qp-orbit,70px)) rotate(-360deg);opacity:0}}
+    /* Reduced-motion override — flips off every qp-* keyframe by setting
+       a negligible duration. Pixel-perfect identical to "no animation"
+       without re-classing every element. Particles + score floaters are
+       additionally short-circuited in JS. */
+    [data-qp-reduced-motion="true"] [style*="qp-float"],
+    [data-qp-reduced-motion="true"] [style*="qp-crown-bob"],
+    [data-qp-reduced-motion="true"] [style*="qp-spotlight"],
+    [data-qp-reduced-motion="true"] [style*="qp-score-pop"],
+    [data-qp-reduced-motion="true"] [style*="qp-crowd-wave"],
+    [data-qp-reduced-motion="true"] [style*="qp-sparkle-orbit"]{animation:none !important}
   `;
 
   return (
-    <div className={`min-h-screen ${t.bg} ${t.text} flex flex-col overflow-x-hidden overflow-y-auto transition-colors duration-500`}>
+    <div
+      data-qp-reduced-motion={reducedMotion ? "true" : "false"}
+      className={`min-h-screen ${t.bg} ${t.text} flex flex-col overflow-x-hidden overflow-y-auto transition-colors duration-500`}
+    >
       <style>{floatStyle}</style>
 
       {/* ─── Recent-joiner toasts ─────────────────────────────────────────────
@@ -965,12 +1123,19 @@ export default function QuickPlayMonitor({
         </AnimatePresence>
       </div>
 
+      {/* Student spotlight modal — teacher-triggered close-up. */}
+      <SpotlightModal
+        student={spotlightStudent}
+        onClose={() => setSpotlightStudent(null)}
+        themeAccent={t.accent}
+      />
+
       {/* ─── Reaction particles (Tier C) ─────────────────────────────────────
           Emojis tapped by students on their phones float up the
           projector. The layer is full-screen + pointer-events:none, so
           it doesn't interfere with teacher controls. Bounded to 30
           concurrent particles inside the component. */}
-      <ReactionParticleLayer lastReaction={socket.lastReaction} />
+      <ReactionParticleLayer lastReaction={socket.lastReaction} disabled={reducedMotion} />
 
       {/* ─── TopAppBar (glass header) ─────────────────────────────────────── */}
       <header className={`${t.headerBg} backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full sticky top-0 z-50 px-3 sm:px-8 py-2 sm:py-4 transition-colors duration-500`}>
@@ -1016,6 +1181,23 @@ export default function QuickPlayMonitor({
               {realtimeStatus === 'live' ? 'Live' : realtimeStatus === 'polling' ? 'Polling' : 'Connecting'}
             </span>
           </div>
+          {/* Reduced-motion toggle for sensory-sensitive classrooms.
+              Disables particles, +N floaters, sparkle orbits, and the
+              ambient bobs / spotlight sway. Preference is persisted. */}
+          <button
+            type="button"
+            onClick={toggleReducedMotion}
+            aria-pressed={reducedMotion}
+            title={reducedMotion ? "Animations off — tap to enable" : "Animations on — tap for reduced motion"}
+            className={`flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-colors ${
+              reducedMotion
+                ? 'bg-white/5 text-current opacity-60'
+                : 'bg-white/10 text-current'
+            } hover:bg-white/20`}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          >
+            {reducedMotion ? <ZapOff size={16} /> : <Zap size={16} />}
+          </button>
           </div>
 
           {/* Theme color dots */}
@@ -1259,7 +1441,7 @@ export default function QuickPlayMonitor({
                 <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3 relative z-10">
                   {top3[1] ? (
                     <>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
+                      <motion.div data-qp-uid={top3[1].studentUid} onClick={() => setSpotlightStudent(top3[1])} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative group cursor-pointer" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
                         {/* Silver medal floating above the avatar — replaces
                             the small "2nd" text pill so kids can read the
                             rank from across the room. Silver shade is fixed
@@ -1280,7 +1462,7 @@ export default function QuickPlayMonitor({
                             behaviour warrants it (per teacher request
                             2026-04-30). */}
                         <button
-                          onClick={() => setConfirmKick(top3[1].name)}
+                          onClick={(e) => { e.stopPropagation(); setConfirmKick(top3[1].name); }}
                           aria-label={tT.qpRemovePlayerAria(top3[1].name)}
                           title={tT.qpRemovePlayerAria(top3[1].name)}
                           className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
@@ -1309,7 +1491,7 @@ export default function QuickPlayMonitor({
                 <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3 relative z-10">
                   {top3[0] && (
                     <>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
+                      <motion.div data-qp-uid={top3[0].studentUid} onClick={() => setSpotlightStudent(top3[0])} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative group cursor-pointer" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
                         {/* Gold radial glow behind the avatar — fixed amber
                             so the winner reads as "winner" regardless of
                             which theme the teacher picked. Sits below the
@@ -1357,7 +1539,7 @@ export default function QuickPlayMonitor({
                         />
                         <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-amber-400 shadow-2xl scale-110 relative`} style={{ boxShadow: '0 0 30px rgba(251,191,36,0.45), 0 10px 20px rgba(0,0,0,0.25)' }}><QPAvatar value={getStudentAvatar(top3[0])} iconSize={56} className="text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl" /></div>
                         <button
-                          onClick={() => setConfirmKick(top3[0].name)}
+                          onClick={(e) => { e.stopPropagation(); setConfirmKick(top3[0].name); }}
                           aria-label={tT.qpRemovePlayerAria(top3[0].name)}
                           title={tT.qpRemovePlayerAria(top3[0].name)}
                           className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
@@ -1387,7 +1569,7 @@ export default function QuickPlayMonitor({
                 <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3 relative z-10">
                   {top3[2] ? (
                     <>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
+                      <motion.div data-qp-uid={top3[2].studentUid} onClick={() => setSpotlightStudent(top3[2])} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative group cursor-pointer" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
                         {/* Bronze medal above the avatar (matches the 2nd
                             place silver pattern). Fixed orange-amber so the
                             podium hierarchy is theme-independent. */}
@@ -1401,7 +1583,7 @@ export default function QuickPlayMonitor({
                         />
                         <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-orange-400 shadow-lg"><QPAvatar value={getStudentAvatar(top3[2])} iconSize={48} className="text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl" /></div>
                         <button
-                          onClick={() => setConfirmKick(top3[2].name)}
+                          onClick={(e) => { e.stopPropagation(); setConfirmKick(top3[2].name); }}
                           aria-label={tT.qpRemovePlayerAria(top3[2].name)}
                           title={tT.qpRemovePlayerAria(top3[2].name)}
                           className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
@@ -1497,13 +1679,14 @@ export default function QuickPlayMonitor({
                     <motion.div
                       key={student.name}
                       layout
+                      onClick={() => setSpotlightStudent(student)}
                       initial={justJoined
                         ? { scale: 0.6, opacity: 0, y: 20 }
                         : { x: -20, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1, x: 0, y: 0 }}
                       exit={{ scale: 0.9, opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 280, damping: 24 }}
-                      className={`${t.card} rounded-lg flex items-center shadow-sm hover:shadow-md transition-all border group relative ${
+                      className={`${t.card} rounded-lg flex items-center shadow-sm hover:shadow-md transition-all border group relative cursor-pointer ${
                         compactMode
                           ? 'px-2 py-1.5 gap-2'
                           : 'px-3 sm:px-4 py-3 2xl:py-4 gap-3 2xl:gap-4'
@@ -1513,7 +1696,7 @@ export default function QuickPlayMonitor({
                     >
                       {/* Kick on hover */}
                       <button
-                        onClick={() => setConfirmKick(student.name)}
+                        onClick={(e) => { e.stopPropagation(); setConfirmKick(student.name); }}
                         className="absolute top-1 right-1 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/80 text-on-error transition-all z-10"
                         title={tT.qpRemovePlayerAria(student.name)}
                       >
@@ -1526,7 +1709,7 @@ export default function QuickPlayMonitor({
                       }`}>
                         {rank}
                       </span>
-                      <div className="relative shrink-0">
+                      <div data-qp-uid={student.studentUid} className="relative shrink-0">
                         <div className={`rounded-full bg-surface-container-high flex items-center justify-center border-2 border-surface-container-highest ${
                           compactMode
                             ? 'w-8 h-8 2xl:w-10 2xl:h-10 text-lg 2xl:text-xl'
