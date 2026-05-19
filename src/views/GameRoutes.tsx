@@ -7,7 +7,8 @@
  * (GameActiveView) is rendered when none of the other game-flow gates
  * match — same as the bare return in App.tsx used to be.
  */
-import { lazy, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import type { AppUser, AssignmentData, ProgressData } from '../core/supabase';
@@ -16,11 +17,11 @@ import type { View } from '../core/views';
 import type { GameMode } from '../constants/game';
 import type { LeaderboardEntry } from '../core/types';
 
-const HebrewModeSelectionView = lazy(() => import('./HebrewModeSelectionView'));
-const GameModeSelectionView = lazy(() => import('./GameModeSelectionView'));
-const GameModeIntroView = lazy(() => import('./GameModeIntroView'));
-const GameFinishedView = lazy(() => import('./GameFinishedView'));
-const GameActiveView = lazy(() => import('./GameActiveView'));
+const HebrewModeSelectionView = lazyWithRetry(() => import('./HebrewModeSelectionView'));
+const GameModeSelectionView = lazyWithRetry(() => import('./GameModeSelectionView'));
+const GameModeIntroView = lazyWithRetry(() => import('./GameModeIntroView'));
+const GameFinishedView = lazyWithRetry(() => import('./GameFinishedView'));
+const GameActiveView = lazyWithRetry(() => import('./GameActiveView'));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Anyish = any;

@@ -16,7 +16,8 @@
  *   - live-challenge without class (redirect placeholder)
  *   - students (legacy alias — redirected to gradebook elsewhere)
  */
-import { lazy, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import SvgSpinner from '../components/svg/SvgSpinner';
@@ -24,16 +25,16 @@ import { hasTeacherAccess, type AppUser, type ClassData, type AssignmentData } f
 import type { VocaId } from '../core/subject';
 import type { View } from '../core/views';
 
-const ShopView = lazy(() => import('./ShopMarketplaceView'));
-const VocaPickerView = lazy(() => import('./VocaPickerView'));
-const HotSeatView = lazy(() => import('./HotSeatView'));
-const VocabagrutShell = lazy(() => import('../features/vocabagrut/VocabagrutShell'));
-const HebrewComingSoonView = lazy(() => import('./HebrewComingSoonView'));
-const GlobalLeaderboardView = lazy(() => import('./GlobalLeaderboardView'));
-const TeacherApprovalsView = lazy(() => import('./TeacherApprovalsView'));
-const WorksheetAttemptsView = lazy(() => import('./WorksheetAttemptsView'));
-const ClassroomView = lazy(() => import('./ClassroomView'));
-const LiveChallengeClassSelectView = lazy(() => import('./LiveChallengeClassSelectView'));
+const ShopView = lazyWithRetry(() => import('./ShopMarketplaceView'));
+const VocaPickerView = lazyWithRetry(() => import('./VocaPickerView'));
+const HotSeatView = lazyWithRetry(() => import('./HotSeatView'));
+const VocabagrutShell = lazyWithRetry(() => import('../features/vocabagrut/VocabagrutShell'));
+const HebrewComingSoonView = lazyWithRetry(() => import('./HebrewComingSoonView'));
+const GlobalLeaderboardView = lazyWithRetry(() => import('./GlobalLeaderboardView'));
+const TeacherApprovalsView = lazyWithRetry(() => import('./TeacherApprovalsView'));
+const WorksheetAttemptsView = lazyWithRetry(() => import('./WorksheetAttemptsView'));
+const ClassroomView = lazyWithRetry(() => import('./ClassroomView'));
+const LiveChallengeClassSelectView = lazyWithRetry(() => import('./LiveChallengeClassSelectView'));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Anyish = any;

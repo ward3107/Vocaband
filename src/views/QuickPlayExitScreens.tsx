@@ -4,14 +4,15 @@
  * single helper so App.tsx doesn't carry two near-identical view
  * branches plus the shared cleanup helper.
  */
-import { Suspense, lazy, type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { supabase, type AppUser, type AssignmentData } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 
-const QuickPlayKickedScreen = lazy(() => import('../components/QuickPlayKickedScreen'));
-const QuickPlaySessionEndScreen = lazy(() => import('../components/QuickPlaySessionEndScreen'));
+const QuickPlayKickedScreen = lazyWithRetry(() => import('../components/QuickPlayKickedScreen'));
+const QuickPlaySessionEndScreen = lazyWithRetry(() => import('../components/QuickPlaySessionEndScreen'));
 
 export interface RenderQpExitScreensDeps {
   quickPlayKicked: boolean;

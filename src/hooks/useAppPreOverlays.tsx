@@ -11,16 +11,17 @@
  *   - configErrorBanner    — red banner when Supabase env vars are
  *                            missing
  */
-import { Suspense, lazy, type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import type React from 'react';
 import { OfflineIndicator } from '../components/OfflineIndicator';
 import SvgAlertTriangle from '../components/svg/SvgAlertTriangle';
 import { isSupabaseConfigured } from '../core/supabase';
 import type { AppUser } from '../core/supabase';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 
-const CookieBanner = lazy(() => import('../components/CookieBanner'));
-const QuickPlayResumeBanner = lazy(() => import('../components/QuickPlayResumeBanner'));
-const ImageCropModal = lazy(() => import('../components/ImageCropModal'));
+const CookieBanner = lazyWithRetry(() => import('../components/CookieBanner'));
+const QuickPlayResumeBanner = lazyWithRetry(() => import('../components/QuickPlayResumeBanner'));
+const ImageCropModal = lazyWithRetry(() => import('../components/ImageCropModal'));
 // PwaInstallGate + InAppBrowserWarning intentionally NOT mounted here:
 // cookieBannerOverlay is only rendered by public + auth-flow view branches
 // in App.tsx, so housing them here meant they never appeared on the

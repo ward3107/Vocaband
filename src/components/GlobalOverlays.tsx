@@ -1,4 +1,5 @@
-import { Suspense, lazy } from 'react';
+import { Suspense } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 
 // Mounted as a sibling to <App /> rather than inside any of App.tsx's
 // view branches, because App.tsx has dozens of early-return view splits
@@ -14,7 +15,7 @@ import { Suspense, lazy } from 'react';
 // still surface their own native install entry points; we just no
 // longer show a custom modal/banner about it.
 
-const InAppBrowserWarning = lazy(() => import('./InAppBrowserWarning'));
+const InAppBrowserWarning = lazyWithRetry(() => import('./InAppBrowserWarning'));
 
 export default function GlobalOverlays() {
   return (

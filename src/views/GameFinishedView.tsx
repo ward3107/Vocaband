@@ -1,4 +1,5 @@
-import React, { useState, lazy, Suspense } from "react";
+import React, { useState, Suspense } from "react";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut, RefreshCw, Printer } from "lucide-react";
 import type { AppUser } from "../core/supabase";
@@ -13,7 +14,7 @@ import type { View } from "../core/views";
 
 // Lazy — html2pdf + the certificate render chain is heavy (200+ kB)
 // and only loads when a student actually taps "Get my certificate".
-const CertificateModal = lazy(() => import("../components/CertificateModal"));
+const CertificateModal = lazyWithRetry(() => import("../components/CertificateModal"));
 
 // Unbiased secure random integer in [0, max).
 function secureRandomInt(max: number): number {

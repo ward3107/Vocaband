@@ -1,4 +1,5 @@
-import React, { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import React, { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 // motion/react was removed from this file (was ~43 kB gz / 133 kB raw).
 // The hero used motion.div / motion.h1 / motion.button for entry +
 // hover animations; replaced with static layout so the landing page
@@ -28,9 +29,9 @@ import TeacherResourcesSection from "./TeacherResourcesSection";
 // code that 99% of visitors never trigger.  Conditional render (not
 // just <Suspense>) so the chunks don't even start downloading until
 // the user opens the modal the first time.
-const SubjectRequestModal = lazy(() => import("./SubjectRequestModal"));
-const FeatureRequestModal = lazy(() => import("./FeatureRequestModal"));
-const SchoolInquiryModal = lazy(() => import("./SchoolInquiryModal"));
+const SubjectRequestModal = lazyWithRetry(() => import("./SubjectRequestModal"));
+const FeatureRequestModal = lazyWithRetry(() => import("./FeatureRequestModal"));
+const SchoolInquiryModal = lazyWithRetry(() => import("./SchoolInquiryModal"));
 
 // Below-the-fold sections — lazy so they don't enter the initial
 // landing-page chunk.  Each becomes its own JS file, gated by the
@@ -39,14 +40,14 @@ const SchoolInquiryModal = lazy(() => import("./SchoolInquiryModal"));
 // mounts. Without the gate, a post-logout reload sees ~87 background
 // requests / ~20 s of network activity even though the user usually
 // only ever sees the hero before clicking "Sign in" again.
-const LandingStudents = lazy(() => import("./landing/LandingStudents"));
-const LandingAI = lazy(() => import("./landing/LandingAI"));
-const LandingTeachers = lazy(() => import("./landing/LandingTeachers"));
-const LandingJourney = lazy(() => import("./landing/LandingJourney"));
-const LandingVocas = lazy(() => import("./landing/LandingVocas"));
-const LandingFinalCTA = lazy(() => import("./landing/LandingFinalCTA"));
-const LandingFAQ = lazy(() => import("./landing/LandingFAQ"));
-const LandingFooter = lazy(() => import("./landing/LandingFooter"));
+const LandingStudents = lazyWithRetry(() => import("./landing/LandingStudents"));
+const LandingAI = lazyWithRetry(() => import("./landing/LandingAI"));
+const LandingTeachers = lazyWithRetry(() => import("./landing/LandingTeachers"));
+const LandingJourney = lazyWithRetry(() => import("./landing/LandingJourney"));
+const LandingVocas = lazyWithRetry(() => import("./landing/LandingVocas"));
+const LandingFinalCTA = lazyWithRetry(() => import("./landing/LandingFinalCTA"));
+const LandingFAQ = lazyWithRetry(() => import("./landing/LandingFAQ"));
+const LandingFooter = lazyWithRetry(() => import("./landing/LandingFooter"));
 
 // Render `children` only once the placeholder scrolls within `rootMargin`
 // of the viewport. Lazy-loaded children won't fetch their JS chunk until

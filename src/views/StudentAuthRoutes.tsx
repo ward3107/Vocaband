@@ -3,7 +3,8 @@
  * login, quick-play-student join, plus privacy-settings.  All four
  * are bundled here so App.tsx doesn't carry their prop-forwarding.
  */
-import { lazy, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import PendingApprovalScreen from '../components/PendingApprovalScreen';
@@ -12,8 +13,8 @@ import type { AppUser, AssignmentData } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 
-const StudentAccountLoginView = lazy(() => import('./StudentAccountLoginView'));
-const QuickPlayStudentView = lazy(() => import('./QuickPlayStudentView'));
+const StudentAccountLoginView = lazyWithRetry(() => import('./StudentAccountLoginView'));
+const QuickPlayStudentView = lazyWithRetry(() => import('./QuickPlayStudentView'));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Anyish = any;

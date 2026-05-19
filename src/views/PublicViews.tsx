@@ -15,7 +15,7 @@
  * views.  App.tsx keeps its early-return pattern — the helper just
  * moves the JSX out of the main render body.
  */
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
 import type { View } from "../core/views";
 import type { AppUser } from "../core/supabase";
 import {
@@ -28,13 +28,17 @@ import {
   DemoModeWrapper,
   AccessibilityStatementWrapper,
 } from "../components/LazyComponents";
+import { LazyErrorBoundary } from "../components/LazyErrorBoundary";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 // TeacherLoginView, FloatingButtons, InteractiveWorksheetView are
 // only used on specific routes — lazy-loading keeps them out of the
 // App.tsx chunk so the landing page first-paint isn't paying for
-// teacher-login / worksheet code it doesn't need.
-const TeacherLoginView = lazy(() => import("./TeacherLoginView"));
-const FloatingButtons = lazy(() => import("../components/FloatingButtons"));
-const InteractiveWorksheetView = lazy(() => import("./InteractiveWorksheetView"));
+// teacher-login / worksheet code it doesn't need. lazyWithRetry adds
+// a single retry + a hard chunk-reload recovery so stale-deploy hash
+// failures self-heal instead of bubbling to the root ErrorBoundary.
+const TeacherLoginView = lazyWithRetry(() => import("./TeacherLoginView"));
+const FloatingButtons = lazyWithRetry(() => import("../components/FloatingButtons"));
+const InteractiveWorksheetView = lazyWithRetry(() => import("./InteractiveWorksheetView"));
 
 type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status";
 
@@ -146,9 +150,11 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     // up the resulting session and routes to the dashboard.
     return (
       <>
-        <Suspense fallback={null}>
-          <TeacherLoginView onBack={goBack} />
-        </Suspense>
+        <LazyErrorBoundary>
+          <Suspense fallback={null}>
+            <TeacherLoginView onBack={goBack} />
+          </Suspense>
+        </LazyErrorBoundary>
         {cookieBannerOverlay}
       </>
     );
@@ -199,9 +205,11 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     };
     return (
       <>
-        <Suspense fallback={null}>
-          <InteractiveWorksheetView slug={slug} onBack={handleBack} />
-        </Suspense>
+        <LazyErrorBoundary>
+          <Suspense fallback={null}>
+            <InteractiveWorksheetView slug={slug} onBack={handleBack} />
+          </Suspense>
+        </LazyErrorBoundary>
         {cookieBannerOverlay}
       </>
     );
@@ -276,9 +284,11 @@ function LandingPageWithScrollRestore({
         />
       )}
       {cookieBannerOverlay}
-      <Suspense fallback={null}>
-        <FloatingButtons showBackToTop={true} />
-      </Suspense>
+      <LazyErrorBoundary fallback={null}>
+        <Suspense fallback={null}>
+          <FloatingButtons showBackToTop={true} />
+        </Suspense>
+      </LazyErrorBoundary>
     </>
   );
 }

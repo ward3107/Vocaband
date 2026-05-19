@@ -2,7 +2,8 @@
  * The student-dashboard view branch — StudentDashboardView with its
  * full prop bag (retention, boosters, reward grant handlers).
  */
-import { lazy, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import {
@@ -14,7 +15,7 @@ import type { AppUser, AssignmentData, ProgressData } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 
-const StudentDashboardView = lazy(() => import('./StudentDashboardView'));
+const StudentDashboardView = lazyWithRetry(() => import('./StudentDashboardView'));
 
 // Generic typing for the retention / boosters / structure props —
 // the StudentDashboardView types these tightly, but we don't need
