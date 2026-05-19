@@ -92,7 +92,7 @@ What landed:
 
 Known follow-ups, none blocking:
 - No tests yet for the submission RPC or the dashboard read path.
-- Bagrut share drops words not present in `ALL_WORDS`; the button surfaces an "X of Y" caption but a more graceful fallback (e.g. plain-text drill) would beat silent omission.
+- ✅ Bagrut share — graceful fallback closed 2026-05-19. `BagrutEditorView` now (a) surfaces the actual list of dropped words inline above the editor (amber banner, capped at 20 with "+ N more"), so the omission is visible on mobile where the share button's tooltip wouldn't fire, and (b) adds a "Copy as text" button next to "Share online" that emits a numbered plain-text drill of the full source list (mapped + unmapped) for paste-into-WhatsApp / Google Classroom use, including the fully-custom-list case where the interactive solver is unavailable.
 - ✅ Cold-load lag on first navigation closed 2026-05-19 — `TeacherDashboardView` now idle-prefetches the `WorksheetAttemptsView` chunk on mount (gated on `onWorksheetResultsClick`, so Hebrew teachers without the tile don't pay the bytes). Vite dedups the dynamic import with `MiscViewSections`' `lazyWithRetry` mount, so the second call resolves instantly.
 
 ---
