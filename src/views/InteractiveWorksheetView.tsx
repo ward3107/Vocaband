@@ -254,15 +254,6 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
     setStage("in-progress");
   };
 
-  const handleResume = () => {
-    if (!savedProgress) return;
-    setStudentName(savedProgress.studentName);
-    setResults(savedProgress.results);
-    setResumeIdx(savedProgress.exerciseIdx);
-    setStartedAt(savedProgress.startedAt);
-    setStage("in-progress");
-  };
-
   const handleProgress = (currentResults: ExerciseResult[]) => {
     setResults(currentResults);
     if (currentResults.length < exercises.length) {
@@ -275,15 +266,28 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
     }
   };
 
-  const handleFinish = async (allResults: ExerciseResult[]) => {
+  const submitResults = async (allResults: ExerciseResult[]) => {
     setResults(allResults);
     setStage("submitting");
     setSubmitError(null);
 
+    // Persist the finished state to localStorage BEFORE hitting the
+    // server. If the RPC fails, the tab is closed mid-flight, or the
+    // network drops, the student can reopen the link and resend
+    // without redoing the final exercise. We only clear after a
+    // confirmed successful submit below.
+    const startTs = startedAt ?? Date.now();
+    saveProgress(slug, {
+      studentName,
+      startedAt: startTs,
+      exerciseIdx: exercises.length,
+      results: allResults,
+    });
+
     const aggregateAnswers: Answer[] = allResults.flatMap((r) => r.answers);
     const totalScore = allResults.reduce((sum, r) => sum + r.score, 0);
     const totalQuestions = allResults.reduce((sum, r) => sum + r.total, 0);
-    const duration_ms = startedAt ? Date.now() - startedAt : null;
+    const duration_ms = Date.now() - startTs;
     const fingerprint = getOrCreateFingerprint();
 
     try {
@@ -324,6 +328,29 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
     }
   };
 
+  const handleFinish = (allResults: ExerciseResult[]) => {
+    void submitResults(allResults);
+  };
+
+  const handleResume = () => {
+    if (!savedProgress) return;
+    setStudentName(savedProgress.studentName);
+    setResults(savedProgress.results);
+    setStartedAt(savedProgress.startedAt);
+    // exerciseIdx === exercises.length means the student finished the
+    // worksheet but the submit failed (or the tab was closed before it
+    // returned). Skip the runner and retry the RPC straight away.
+    if (
+      savedProgress.exerciseIdx >= exercises.length &&
+      savedProgress.results.length >= exercises.length
+    ) {
+      void submitResults(savedProgress.results);
+      return;
+    }
+    setResumeIdx(savedProgress.exerciseIdx);
+    setStage("in-progress");
+  };
+
   const handleRestart = () => {
     clearProgress(slug);
     setResults([]);
@@ -359,13 +386,17 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   }
 
   if (stage === "name-entry") {
-    // Only offer to resume if the saved plan is still applicable —
-    // exercises.length must cover the saved index, otherwise we'd
-    // try to start past the end of a re-edited worksheet.
+    // Two valid resume states:
+    //   * mid-worksheet: 0 < exerciseIdx < exercises.length — replay the
+    //     remaining exercises.
+    //   * finished but unsent: exerciseIdx === exercises.length — last
+    //     submit failed or the tab was closed mid-RPC; just resend.
     const canResume =
       savedProgress !== null &&
       savedProgress.exerciseIdx > 0 &&
-      savedProgress.exerciseIdx < exercises.length;
+      savedProgress.exerciseIdx <= exercises.length;
+    const pendingResubmit =
+      savedProgress !== null && savedProgress.exerciseIdx >= exercises.length;
     return (
       <Shell onBack={onBack} isRTL={isRTL} language={iwvLang}>
         <NameEntryCard
@@ -380,6 +411,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
                   studentName: savedProgress.studentName,
                   exerciseIdx: savedProgress.exerciseIdx,
                   total: exercises.length,
+                  pendingResubmit,
                   onResume: handleResume,
                 }
               : null
@@ -413,6 +445,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
           submitError={stage === "submit-error" ? submitError : null}
           parentAttempt={parentAttempt}
           onRestart={handleRestart}
+          onRetrySubmit={() => submitResults(results)}
         />
       </Shell>
     );
@@ -469,6 +502,9 @@ const NameEntryCard: React.FC<{
     studentName: string;
     exerciseIdx: number;
     total: number;
+    // True when the worksheet was finished but the submit failed —
+    // clicking Resume retries the RPC instead of replaying exercises.
+    pendingResubmit: boolean;
     onResume: () => void;
   } | null;
 }> = ({ topicName, exerciseCount, firstType, initialName, onStart, resume }) => {
@@ -511,11 +547,27 @@ const NameEntryCard: React.FC<{
         {resume && (
           <div className="mb-5 rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4">
             <p className="text-xs uppercase tracking-widest font-bold text-emerald-700 mb-1">
-              Continue where you left off
+              {resume.pendingResubmit
+                ? iwvLang === "he"
+                  ? "התשובות שלך מוכנות לשליחה"
+                  : iwvLang === "ar"
+                    ? "إجاباتك جاهزة للإرسال"
+                    : "Your answers are ready to send"
+                : iwvLang === "he"
+                  ? "המשך מאיפה שעצרת"
+                  : iwvLang === "ar"
+                    ? "تابع من حيث توقفت"
+                    : "Continue where you left off"}
             </p>
             <p className="text-sm text-emerald-900 mb-3">
-              <span className="font-bold">{resume.studentName}</span> · exercise{" "}
-              {resume.exerciseIdx + 1} of {resume.total}
+              <span className="font-bold">{resume.studentName}</span>
+              {resume.pendingResubmit
+                ? iwvLang === "he"
+                  ? " · השליחה האחרונה לא הצליחה"
+                  : iwvLang === "ar"
+                    ? " · لم يصل الإرسال السابق"
+                    : " · last submit didn't reach the teacher"
+                : ` · exercise ${resume.exerciseIdx + 1} of ${resume.total}`}
             </p>
             <button
               type="button"
@@ -523,7 +575,17 @@ const NameEntryCard: React.FC<{
               className="w-full py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >
-              Resume
+              {resume.pendingResubmit
+                ? iwvLang === "he"
+                  ? "שלח למורה"
+                  : iwvLang === "ar"
+                    ? "أرسل إلى المعلم"
+                    : "Send to teacher"
+                : iwvLang === "he"
+                  ? "המשך"
+                  : iwvLang === "ar"
+                    ? "تابع"
+                    : "Resume"}
             </button>
           </div>
         )}
@@ -604,7 +666,9 @@ const ResultsCard: React.FC<{
   submitError: string | null;
   parentAttempt: ParentAttempt | null;
   onRestart: () => void;
-}> = ({ exercises, results, topicName, slug, studentName, submitError, parentAttempt, onRestart }) => {
+  onRetrySubmit: () => void;
+}> = ({ exercises, results, topicName, slug, studentName, submitError, parentAttempt, onRestart, onRetrySubmit }) => {
+  const { language: iwvLang } = useLanguage();
   const score = computeWorksheetScore(exercises, results);
   const allAnswers = results.flatMap((r) => r.answers);
   const misses = extractMisses(allAnswers);
@@ -704,10 +768,32 @@ const ResultsCard: React.FC<{
 
       {submitError ? (
         <div className="mb-6 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm text-start">
-          <p className="font-bold mb-1">Couldn't reach your teacher's dashboard</p>
-          <p className="text-amber-800/80 text-xs">
-            Your score is shown above — show this screen to your teacher.
+          <p className="font-bold mb-1">
+            {iwvLang === "he"
+              ? "השליחה למורה לא הצליחה"
+              : iwvLang === "ar"
+                ? "تعذّر إرسال النتيجة إلى المعلم"
+                : "Couldn't reach your teacher's dashboard"}
           </p>
+          <p className="text-amber-800/80 text-xs mb-3">
+            {iwvLang === "he"
+              ? "התשובות שלך נשמרו במכשיר — נסה לשלוח שוב."
+              : iwvLang === "ar"
+                ? "إجاباتك محفوظة على الجهاز — حاول الإرسال مرة أخرى."
+                : "Your answers are saved on this device — try sending again."}
+          </p>
+          <button
+            type="button"
+            onClick={onRetrySubmit}
+            className="w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          >
+            {iwvLang === "he"
+              ? "שלח למורה שוב"
+              : iwvLang === "ar"
+                ? "أرسل إلى المعلم مرة أخرى"
+                : "Send to teacher again"}
+          </button>
         </div>
       ) : (
         <p className="text-xs font-bold text-emerald-600 mb-6">✓ Sent to your teacher</p>
