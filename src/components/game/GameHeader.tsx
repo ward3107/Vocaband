@@ -10,9 +10,29 @@ interface GameHeaderProps {
   onExit: () => void;
 }
 
+// Streak tier styling — each tier brightens the chip so the player can feel
+// the run getting hotter without us having to explain anything in text.
+// Glow + pulse only switch on at tier 'warm' (streak >= 3) so casual
+// 1-2-correct runs don't read as a celebration.
+const streakTier = (streak: number): 'normal' | 'warm' | 'hot' | 'blazing' => {
+  if (streak >= 10) return 'blazing';
+  if (streak >= 5) return 'hot';
+  if (streak >= 3) return 'warm';
+  return 'normal';
+};
+
+const STREAK_STYLES = {
+  normal:  { chip: 'bg-orange-100',                                                       text: 'text-orange-600', glow: '',                                emoji: '🔥',  pulse: false, pulseDur: 0 },
+  warm:    { chip: 'bg-gradient-to-r from-amber-100 to-orange-200',                       text: 'text-orange-700', glow: 'shadow-md shadow-orange-400/40',  emoji: '🔥',  pulse: true,  pulseDur: 1.4 },
+  hot:     { chip: 'bg-gradient-to-r from-orange-200 via-orange-300 to-red-200',          text: 'text-red-700',    glow: 'shadow-lg shadow-orange-500/60',  emoji: '🔥🔥', pulse: true,  pulseDur: 1.0 },
+  blazing: { chip: 'bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 text-white',text: 'text-white',      glow: 'shadow-xl shadow-red-500/70',     emoji: '🔥⚡', pulse: true,  pulseDur: 0.7 },
+} as const;
+
 export default function GameHeader({
   score, xp, streak, targetLanguage, setTargetLanguage, onExit,
 }: GameHeaderProps) {
+  const tier = streakTier(streak);
+  const s = STREAK_STYLES[tier];
   return (
     <div className="w-full max-w-4xl flex flex-wrap justify-between items-center gap-1 mb-1.5 sm:mb-6">
       <div className="flex items-center gap-1.5 sm:gap-4 flex-wrap">
@@ -25,11 +45,24 @@ export default function GameHeader({
         </div>
         {streak > 0 && (
           <motion.div
+            key={tier} /* remount on tier change so scale-in re-fires */
             initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="bg-orange-100 px-3 sm:px-4 py-2 rounded-xl flex items-center gap-2"
+            animate={s.pulse ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+            transition={s.pulse
+              ? { scale: { repeat: Infinity, duration: s.pulseDur, ease: 'easeInOut' } }
+              : { type: 'spring', stiffness: 280, damping: 18 }}
+            style={{ transformOrigin: 'center' }}
+            className={`relative px-3 sm:px-4 py-2 rounded-xl flex items-center gap-2 ${s.chip} ${s.glow}`}
           >
-            <span className="text-orange-600 font-bold text-xs uppercase tracking-widest">🔥 {streak}</span>
+            <span className={`font-bold text-xs uppercase tracking-widest ${s.text}`}>{s.emoji} {streak}</span>
+            {tier === 'blazing' && (
+              <motion.span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-r from-amber-200/0 via-amber-100/40 to-amber-200/0"
+                animate={{ opacity: [0, 0.7, 0] }}
+                transition={{ repeat: Infinity, duration: 1.3, ease: 'easeInOut' }}
+              />
+            )}
           </motion.div>
         )}
       </div>
