@@ -2,7 +2,6 @@
 
 > Live status doc. Update as items move. Keep it lean.
 > Last updated: 2026-05-17.
-> Supersedes `docs/scaling-5000-users.md` (5k plan).
 
 ---
 
@@ -140,7 +139,7 @@ At 30k students, that's **$6,000/year in infra** — well within any reasonable 
 
 ## Decision log
 
-- **2026-05-17:** Raised target from 5k → 30k. Operator confirmed 3 VMs already running. Promoted from `scaling-5000-users.md`. Ship in 2-3 weeks, prioritizing cheap+safe first.
+- **2026-05-17:** Raised target from 5k → 30k. Operator confirmed 3 VMs already running. Ship in 2-3 weeks, prioritizing cheap+safe first.
 
 ---
 

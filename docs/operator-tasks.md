@@ -196,8 +196,9 @@ Not an operator task — engineering. The DONE block above closes the
 
 Add a `student_pin_attempts` table with success/fail rows so teachers
 can later see "Sara had 7 failed attempts today" without any automatic
-lockout (we deliberately rejected per-account lockout — see
-`docs/teacher-share-invites-plan.md` §6 for why).
+lockout. Per-account lockout was deliberately rejected because students
+behind a shared school NAT would lock each other out (see
+`docs/auth-rate-limits.md` for the NAT-sharing constraint).
 
 ---
 

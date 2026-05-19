@@ -130,6 +130,26 @@ If forced to pick the next 7 things to ship in priority order:
 
 ---
 
+## 9. Selected for next wave (locked-in May 2026)
+
+Five items picked from this doc as the next build wave (~4–5 weeks of engineering). Listed in suggested build order — smallest first, builds on prior pattern.
+
+| # | Item | Effort | Why this order |
+|---|---|---|---|
+| 1 | **Word Chains** — type a word starting with the previous word's last letter | ~3 days | Smallest, no dependencies, validates the new-mode pattern |
+| 2 | **Speed Round** — 60-second timer, max words answered, no skip penalty | ~3 days | Reuses Classic question generator — fastest second mode |
+| 3 | **Daily Missions** — "Master 5 new words today" + 50 XP bonus | ~3–5 days | Adds retention hook before more game-mode complexity. Schema migration done early so it bakes before features depend on it. RPCs already shipped — needs UI. |
+| 4 | **Idiom mode** — match an English idiom to its meaning | ~1 week | Hand-curating ~50 starter idioms in EN/HE/AR takes calendar time; can run in parallel with #3 dev |
+| 5 | **Pet Evolution** — egg → baby → child → teen → adult, decays on inactivity | ~1 week | Most complex — schema migration + decay logic + new graphics. Saved for last when foundation is solid. RPCs already shipped — needs UI. |
+
+**Out of this wave (still in this doc for later):** Friends + duels, achievement badges, personal-best tracker, word of the day.
+
+**Operator dependencies:**
+- Idiom mode: ~50 idioms need native HE + AR translation review before shipping
+- Daily Missions + Pet Evolution: schema migrations already applied; just needs UI work
+
+---
+
 ## How to use this doc
 
 When ready to build something from this list:

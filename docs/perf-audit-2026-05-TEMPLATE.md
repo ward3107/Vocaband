@@ -9,7 +9,7 @@
 This audit follows the **school-Wi-Fi survival** sprint shipped in PR #698
 (R1 read cache, R2 offline UI, R4 edge cache + Supabase preconnect) and
 the R5 follow-up commit `2bf3831` (Sentry web-vitals + lazy replay +
-CSP unblock). The plan is in `docs/SCHOOL-PERFORMANCE-PLAN.md`.
+CSP unblock).
 
 Replace the placeholders below once a real measurement is captured.
 
@@ -97,9 +97,9 @@ lazy-load without missing the most valuable transaction). Replay's
 sentry-cdn at idle.
 
 Plan target was ≤ 70 kB gz on the entry chunk. We're at 111 kB.
-The gap is mostly React + ReactDOM + Sentry; see R3 in
-`docs/SCHOOL-PERFORMANCE-PLAN.md` for the deferred entry-trim work
-(skipped because it's polish, not a school-demo unblocker).
+The gap is mostly React + ReactDOM + Sentry; the entry-trim work
+(defer Sentry init, lazy a11y widget) is deferred as polish, not a
+school-demo unblocker. Tracked in Notion master roadmap as "R3".
 
 ## How to measure (procedure for the operator)
 
