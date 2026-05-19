@@ -375,7 +375,8 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
                     {suggestions.map(s => (
                       <div
                         key={s.typo}
-                        className="inline-flex items-center gap-1 rounded-full bg-white border border-amber-200 pl-3 pr-1 py-1 shadow-sm"
+                        style={{ backgroundColor: 'var(--vb-surface)' }}
+                        className="inline-flex items-center gap-1 rounded-full border border-amber-200 pl-3 pr-1 py-1 shadow-sm"
                       >
                         <button
                           type="button"

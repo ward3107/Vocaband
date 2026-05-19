@@ -133,7 +133,12 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
             type="button"
             onClick={onExit}
             aria-label={effectiveExitLabel}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 active:scale-95 transition-colors border-2 border-stone-200"
+            style={{
+              backgroundColor: 'var(--vb-surface-alt)',
+              color: 'var(--vb-text-secondary)',
+              borderColor: 'var(--vb-border)',
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-bold hover:opacity-90 active:scale-95 transition-colors border-2"
           >
             <X size={14} />
             <span>{effectiveExitLabel}</span>

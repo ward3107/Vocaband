@@ -173,7 +173,7 @@ export default function ClassShowSetup({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-fuchsia-50 via-pink-50 to-rose-50">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <PageHero
         icon={<Tv2 size={32} className="text-white" />}
         title={t.classShow}
@@ -187,12 +187,13 @@ export default function ClassShowSetup({
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl bg-white shadow-lg border border-fuchsia-100 overflow-hidden"
+          style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+          className="rounded-2xl shadow-lg border overflow-hidden"
         >
           <div className="px-6 py-6 space-y-6">
             {/* Word source picker */}
             <div>
-              <h2 className="text-sm font-bold text-stone-700 mb-2">{t.pickWordSource}</h2>
+              <h2 className="text-sm font-bold mb-2" style={{ color: 'var(--vb-text-secondary)' }}>{t.pickWordSource}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {effectiveSources.map((s, idx) => {
                   const selected = idx === sourceIdx;
@@ -202,19 +203,21 @@ export default function ClassShowSetup({
                       key={`${s.label}-${idx}`}
                       type="button"
                       onClick={() => setSourceIdx(idx)}
-                      style={{ touchAction: 'manipulation' }}
-                      className={`text-left px-4 py-3 rounded-lg border-2 transition-all ${
-                        selected
-                          ? 'bg-fuchsia-50 border-fuchsia-400 shadow-sm'
-                          : 'bg-white border-stone-200 hover:border-fuchsia-200'
-                      }`}
+                      style={{
+                        touchAction: 'manipulation',
+                        backgroundColor: selected
+                          ? 'color-mix(in srgb, #d946ef 12%, var(--vb-surface))'
+                          : 'var(--vb-surface)',
+                        borderColor: selected ? '#e879f9' : 'var(--vb-border)',
+                      }}
+                      className="text-left px-4 py-3 rounded-lg border-2 transition-all hover:opacity-95"
                     >
-                      <div className="font-bold text-sm flex items-center gap-2 text-stone-900">
+                      <div className="font-bold text-sm flex items-center gap-2" style={{ color: 'var(--vb-text-primary)' }}>
                         {isCustom && <Wand2 size={14} className="text-fuchsia-500" />}
                         {s.label}
                       </div>
                       {s.description && (
-                        <div className="text-xs mt-0.5 text-stone-500">
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--vb-text-muted)' }}>
                           {s.description} · {s.words.length} word{s.words.length === 1 ? '' : 's'}
                         </div>
                       )}
@@ -251,7 +254,7 @@ export default function ClassShowSetup({
 
             {/* Mode picker */}
             <div>
-              <h2 className="text-sm font-bold text-stone-700 mb-2">{t.pickMode}</h2>
+              <h2 className="text-sm font-bold mb-2" style={{ color: 'var(--vb-text-secondary)' }}>{t.pickMode}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {MODES.map(m => {
                   const selected = mode === m.id;

@@ -348,6 +348,47 @@ body {
   color: var(--color-on-surface);
 }
 
+/* =============================================================================
+   Dark-theme browser chrome — when the teacher picks a dark dashboard
+   theme, surface the dark intent to the user agent so native widgets
+   (form controls, scrollbars, autofill, etc.) flip to their dark
+   variant instead of glaring white against the dark page.
+
+   The `data-theme-dark="true"` attribute is set on <html> by
+   useApplyTeacherTheme whenever a dark theme is active.
+   ============================================================================= */
+:root[data-theme-dark="true"] {
+  color-scheme: dark;
+}
+:root[data-theme-dark="false"],
+:root:not([data-theme-dark]) {
+  color-scheme: light;
+}
+
+/* Scrollbar treatment for dark themes — Firefox + WebKit.  Without
+   these, the OS-default light scrollbar punches a bright vertical
+   stripe down the right of every modal/list on the dark dashboard. */
+:root[data-theme-dark="true"] {
+  scrollbar-color: var(--vb-border) transparent;
+}
+:root[data-theme-dark="true"] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+:root[data-theme-dark="true"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+:root[data-theme-dark="true"] ::-webkit-scrollbar-thumb {
+  background-color: var(--vb-border);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+:root[data-theme-dark="true"] ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--vb-text-muted);
+  background-clip: padding-box;
+}
+
 /* Headline font for headings */
 h1, h2, h3, h4, h5, h6, .font-headline {
   font-family: var(--font-headline);

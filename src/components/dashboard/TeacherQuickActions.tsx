@@ -70,7 +70,10 @@ export default function TeacherQuickActions({
 
             {/* CTA Button */}
             <div className="shrink-0 self-center sm:self-auto">
-              <div className="flex items-center gap-2 px-6 py-3 bg-[var(--vb-surface)] text-violet-600 rounded-lg font-bold shadow-lg group-hover:shadow-xl group-hover:bg-white/95 transition-all">
+              <div
+                style={{ backgroundColor: 'var(--vb-surface)', color: 'var(--vb-accent)' }}
+                className="flex items-center gap-2 px-6 py-3 rounded-lg font-bold shadow-lg group-hover:shadow-xl group-hover:opacity-95 transition-all"
+              >
                 <span>{t.qpStartBtn}</span>
                 <svg className={`w-5 h-5 ${isHebrew ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
