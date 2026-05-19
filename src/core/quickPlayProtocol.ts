@@ -37,6 +37,10 @@ export const QP_EVENTS = {
   STUDENT_JOIN:   "qp:student:join",
   // A student updating their current game score.
   SCORE_UPDATE:   "qp:score:update",
+  // A student tapping an emoji reaction in their game UI. Tier C —
+  // broadcast to the session room so the teacher's monitor can render
+  // a particle floating up from the projector.
+  REACTION_SEND:  "qp:reaction:send",
   // A student explicitly leaving (tab close triggers disconnect, this
   // is for "Return to home" button which wants an immediate removal).
   STUDENT_LEAVE:  "qp:student:leave",
@@ -59,6 +63,9 @@ export const QP_SERVER_EVENTS = {
   KICKED:          "qp:kicked",
   // Sent to everyone: teacher ended the session.
   SESSION_ENDED:   "qp:session:ended",
+  // Tier C: broadcast a single emoji reaction to everyone in the room.
+  // Fire-and-forget — server holds no state for these, it just relays.
+  REACTION:        "qp:reaction",
   // Error signal (rate limit, bad payload, session not found, etc.).
   ERROR:           "qp:error",
 } as const;
@@ -117,6 +124,18 @@ export interface QpScoreUpdatePayload {
 export interface QpStudentLeavePayload {
   sessionCode: string;
   clientId: string;
+}
+
+/**
+ * Tier C — student emoji reaction. Allow-listed set of positive
+ * emojis only; anything outside QP_REACTION_EMOJIS gets dropped
+ * server-side so a custom client can't spam arbitrary glyphs (or
+ * worse, payload-as-text) onto the projector.
+ */
+export interface QpReactionSendPayload {
+  sessionCode: string;
+  clientId: string;
+  emoji: string;
 }
 
 export interface QpTeacherObservePayload {
@@ -185,6 +204,20 @@ export interface QpKickedPayload {
 
 export interface QpSessionEndedPayload {
   sessionCode: string;
+}
+
+/**
+ * Server → room broadcast of a single emoji reaction. The server adds
+ * the nickname so the teacher monitor can show "Ahmed sent a 🔥" if it
+ * wants to, and a serverTs so receivers can dedupe / order if a burst
+ * arrives within the same frame.
+ */
+export interface QpReactionPayload {
+  sessionCode: string;
+  clientId: string;
+  nickname: string;
+  emoji: string;
+  serverTs: number;
 }
 
 /** Error codes the server emits. Client maps to friendly copy. */
@@ -261,6 +294,26 @@ export const QP_MAX_SESSION_SCORE = 100_000;
  */
 export const QP_MAX_STREAK = 100;          // Realistic ceiling — modes top out around 20 questions
 export const QP_MAX_ROUND_TOTAL = 200;     // Custom assignments can be long; 200 is plenty
+
+/**
+ * Tier C — allow-listed reactions. Positive set only so the projector
+ * doesn't surface anything a teacher would have to moderate mid-class.
+ * Order here is the order they appear in the student's reaction bar.
+ */
+export const QP_REACTION_EMOJIS = ["👏", "🔥", "⭐", "❤️", "😂", "👍"] as const;
+export type QpReactionEmoji = typeof QP_REACTION_EMOJIS[number];
+
+/**
+ * Per-student rate limit on reaction sends — minimum gap (ms) between
+ * accepted reactions from the same clientId. A burst inside this window
+ * is silently dropped rather than rejected with an error, so a tap-happy
+ * kid doesn't see error toasts.
+ */
+export const QP_REACTION_MIN_INTERVAL_MS = 750;
+
+export function isValidReactionEmoji(v: unknown): v is QpReactionEmoji {
+  return typeof v === "string" && (QP_REACTION_EMOJIS as readonly string[]).includes(v);
+}
 
 
 /**

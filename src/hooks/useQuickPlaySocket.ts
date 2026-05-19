@@ -34,6 +34,7 @@ import {
   type QpLeaderboardPayload,
   type QpKickedPayload,
   type QpSessionEndedPayload,
+  type QpReactionPayload,
   type QpErrorPayload,
   type QpErrorCode,
 } from "../core/quickPlayProtocol";
@@ -140,6 +141,11 @@ export interface QuickPlaySocketApi {
   /** Live leaderboard snapshot for the session. Empty array until the
    *  first LEADERBOARD broadcast arrives. */
   leaderboard: QpStudentEntry[];
+  /** Tier C — most recent reaction broadcast that landed on this
+   *  socket. New object on every receive (even if the same emoji
+   *  arrives twice), so consumers can key a useEffect on `serverTs` to
+   *  trigger the particle. Null until the first reaction lands. */
+  lastReaction: QpReactionPayload | null;
   /** Last protocol-level error the server emitted to us (or null). */
   lastError: { code: QpErrorCode; message: string; event: string } | null;
   /** Session code we've been confirmed in via the server's JOINED reply,
@@ -160,6 +166,10 @@ export interface QuickPlaySocketApi {
       perfectRound?: boolean;
     },
   ) => void;
+  /** Tier C — fire-and-forget emoji reaction. Server validates against
+   *  the allow-list and rate-limits per clientId, so a spammy caller
+   *  just gets silently throttled. */
+  sendReaction: (emoji: string) => void;
   leaveAsStudent: () => void;
 
   // ─── Teacher actions ────────────────────────────────────────────────
@@ -254,6 +264,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
 
   const [status, setStatus] = useState<QuickPlaySocketStatus>("idle");
   const [leaderboard, setLeaderboard] = useState<QpStudentEntry[]>([]);
+  const [lastReaction, setLastReaction] = useState<QpReactionPayload | null>(null);
   const [lastError, setLastError] = useState<QuickPlaySocketApi["lastError"]>(null);
   const [joinedSessionCode, setJoinedSessionCode] = useState<string | null>(null);
 
@@ -370,6 +381,12 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         if (p.event === QP_EVENTS.STUDENT_JOIN) setJoinedSessionCode(null);
       };
 
+      const onReaction = (p: QpReactionPayload) => {
+        if (p?.sessionCode === sessionCode && p.emoji && p.clientId) {
+          setLastReaction(p);
+        }
+      };
+
       socket.on("connect", onConnect);
       socket.on("disconnect", onDisconnect);
       socket.on("connect_error", onConnectError);
@@ -377,6 +394,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.LEADERBOARD,   onLeaderboard);
       socket.on(QP_SERVER_EVENTS.KICKED,        onKicked);
       socket.on(QP_SERVER_EVENTS.SESSION_ENDED, onSessionEnded);
+      socket.on(QP_SERVER_EVENTS.REACTION,      onReaction);
       socket.on(QP_SERVER_EVENTS.ERROR,         onErr);
 
       if (socket.connected) onConnect();
@@ -389,6 +407,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.LEADERBOARD,   onLeaderboard);
         socket.off(QP_SERVER_EVENTS.KICKED,        onKicked);
         socket.off(QP_SERVER_EVENTS.SESSION_ENDED, onSessionEnded);
+        socket.off(QP_SERVER_EVENTS.REACTION,      onReaction);
         socket.off(QP_SERVER_EVENTS.ERROR,         onErr);
       };
     });
@@ -487,6 +506,18 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     });
   }, [sessionCode]);
 
+  // Tier C — emoji reaction. The server enforces the allow-list and
+  // per-clientId rate limit, so this is a thin pass-through. Reads
+  // clientId from sessionStorage for the same dual-instance reason as
+  // updateScore.
+  const sendReaction = useCallback((emoji: string) => {
+    if (!sessionCode || !socketRef.current) return;
+    const id = readStoredClientId() ?? clientIdRef.current;
+    socketRef.current.emit(QP_EVENTS.REACTION_SEND, {
+      sessionCode, clientId: id, emoji,
+    });
+  }, [sessionCode]);
+
   const leaveAsStudent = useCallback(() => {
     if (!sessionCode || !socketRef.current) return;
     socketRef.current.emit(QP_EVENTS.STUDENT_LEAVE, {
@@ -526,10 +557,12 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     status,
     clientId,
     leaderboard,
+    lastReaction,
     lastError,
     joinedSessionCode,
     joinAsStudent,
     updateScore,
+    sendReaction,
     leaveAsStudent,
     observeAsTeacher,
     kickStudent,

@@ -53,11 +53,14 @@ import {
   QP_IDLE_SWEEP_MS,
   QP_MAX_STREAK,
   QP_MAX_ROUND_TOTAL,
+  QP_REACTION_MIN_INTERVAL_MS,
+  isValidReactionEmoji,
   isValidSessionCode,
   isValidClientId,
   isValidNickname,
   type QpStudentJoinPayload,
   type QpScoreUpdatePayload,
+  type QpReactionSendPayload,
   type QpStudentLeavePayload,
   type QpTeacherObservePayload,
   type QpTeacherKickPayload,
@@ -1160,6 +1163,44 @@ async function startServer() {
       state.socketToClient.delete(socket.id);
       socket.leave(sessionCode);
       qpScheduleBroadcast(sessionCode);
+    });
+
+    // Tier C — student emoji reaction. Fire-and-forget broadcast to
+    // every client in the session room (teacher monitor + other
+    // students). No persistence, no leaderboard side-effect; it's purely
+    // ephemeral atmosphere. Rate-limited per-clientId at the protocol
+    // floor (QP_REACTION_MIN_INTERVAL_MS) — spam is silently dropped so
+    // the kid doesn't get an error toast every other tap.
+    socket.on(QP_EVENTS.REACTION_SEND, (payload: QpReactionSendPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, clientId, emoji } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
+      if (!isValidReactionEmoji(emoji)) return;
+
+      const state = qpSessions.get(sessionCode);
+      if (!state) return;
+      const owned = state.socketToClient.get(socket.id);
+      if (owned !== clientId) return;
+
+      const entry = state.students.get(clientId);
+      if (!entry) return;
+
+      // Per-clientId throttle. lastReactionAt is stamped lazily on the
+      // entry rather than carving out a parallel map — it stays
+      // alongside the rest of the per-student state and dies with the
+      // entry on disconnect.
+      const now = Date.now();
+      const last = (entry as { lastReactionAt?: number }).lastReactionAt ?? 0;
+      if (now - last < QP_REACTION_MIN_INTERVAL_MS) return;
+      (entry as { lastReactionAt?: number }).lastReactionAt = now;
+
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.REACTION, {
+        sessionCode,
+        clientId,
+        nickname: entry.nickname,
+        emoji,
+        serverTs: now,
+      });
     });
 
     // Teacher observe — grants receipt of leaderboard broadcasts + kick
