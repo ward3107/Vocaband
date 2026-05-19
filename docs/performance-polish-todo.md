@@ -22,12 +22,14 @@
 - ✅ Delete orphaned `google-oauth-logo.{png,svg}`
 - ✅ WebP/AVIF — confirmed moot (only favicons + OG image remain; both must stay PNG)
 
-**Still pending:**
-1. 🔴 Skeleton screens replacing spinners on dashboards — ~1-2 days
-2. 🟡 Pre-render next question card while current is on screen — ~half day
-3. 🟡 Dedicated streak combo trail effect (fire/lightning on rapid streaks) — ~1 day
-4. 🟡 Optimistic UI verification across all 15 game modes — ~1 day audit
-5. 🔴 Music ducking — lower BG music in `QuickPlayMonitor` when TTS plays — ~2 hours
+**Done in this session:**
+- ✅ Adaptive next-word audio preload (commit `46791c9`)
+- ✅ Tiered streak combo glow on game header (commit `181b822`)
+- ✅ Optimistic UI verified — all 15 game modes already pass through hooks that update state synchronously before `saveScore` writes
+- ✅ Skeleton screens — re-audit found 23 `animate-pulse` skeleton states already inlined across dashboard cards (`PetEvolutionCard`, `ReviewQueueCard`, `DailyMissionsCard`, `ClassMinuteCard`, etc.). Initial audit missed them because they're per-card, not a shared `<Skeleton>` primitive
+- ⛔ Music ducking — moot. Background music lives only in `QuickPlayMonitor.tsx` (teacher projector); all `speak()`/TTS calls live in student game views. Two audio streams never coexist on the same device
+
+**Nothing material left in the original list.** Re-audit before the next big release using "audit performance against `docs/performance-polish-todo.md`".
 
 ---
 
@@ -50,7 +52,7 @@
 | 2.1 | `touchAction: 'manipulation'` on buttons | ✅ DONE | `AnswerOptionButton.tsx:67` + multiple components | — |
 | 2.2 | 44px+ touch targets | ✅ DONE | Answer buttons 88px min-height | — |
 | 2.3 | Double-tap protection | ✅ DONE | `AnswerOptionButton.tsx:33` — disabled on `feedback` state | — |
-| 2.4 | Optimistic UI on answer | 🟡 PARTIAL | Callback pattern looks immediate, but not verified across all 15 modes | 1 day audit |
+| 2.4 | Optimistic UI on answer | ✅ DONE | Audited 2026-05-19. `useGameState.ts` lines 778/851/891/657/739/922 all set feedback + score before any Supabase write. Self-contained modes (Listening, SpeedRound, Review, Idiom, WordChains) report via onFinish callbacks — no blocking awaits anywhere | — |
 | 2.5 | Haptic feedback (`navigator.vibrate`) | ⛔ REJECTED | Battery drain on long study sessions. Many students share/borrow phones, vibration kills perceived battery life | — |
 
 ## 3. Animations
@@ -62,8 +64,8 @@
 | 3.3 | XP bar smooth fill | ✅ DONE | `PetCompanion.tsx` — `width` with 0.6s ease-out | — |
 | 3.4 | Confetti on level-up | ✅ DONE | `useGameState.ts` — canvas-confetti lazy-loaded, 80-150 particles | — |
 | 3.5 | 60fps (transform-only) | 🟡 PARTIAL | 4 dashboard progress bars now use `scaleX` (commit `1c42645`). Podium reveals in `QuickPlayMonitor.tsx:1225/1302/1346` left as-is — fire once, tiny elements, "rise from floor" effect is intentional | — |
-| 3.6 | Skeleton screens (vs spinners) | 🔴 MISSING | No skeleton pattern in codebase | 1-2 days |
-| 3.7 | Streak combo fire/lightning | 🟡 PARTIAL | `ReactionParticle` emoji float exists but no dedicated combo trail | 1 day |
+| 3.6 | Skeleton screens (vs spinners) | ✅ DONE | Re-audit 2026-05-19: 23 `animate-pulse` skeletons inlined across `PetEvolutionCard:90-103`, `ReviewQueueCard:79-87`, `DailyMissionsCard:118-130`, `ClassMinuteCard:88-98`, plus others. No shared primitive but each card's bespoke layout matches its loaded shape — better than a generic `<Skeleton>` | — |
+| 3.7 | Streak combo fire/lightning | ✅ DONE | `GameHeader.tsx:30-43` four-tier glow (normal/warm/hot/blazing) with pulse and sweeping shine at tier 10+ (commit `181b822`) | — |
 
 ## 4. Network & backend
 
@@ -73,7 +75,7 @@
 | 4.2 | Service worker / PWA / offline | ✅ DONE | `vite.config.ts` VitePWA + Workbox; `src/main.tsx` registers `/sw.js`; manifest configured | — |
 | 4.3 | CDN audio (R2) | ✅ DONE | `useAudio.ts` — Cloudflare R2 with Supabase fallback | — |
 | 4.4 | Realtime subscriptions with cleanup | ✅ DONE | `useDashboardPolling.ts` — `.channel().on().subscribe()` + unsubscribe on unmount | — |
-| 4.5 | Pre-render next question | 🟡 PARTIAL | Audio preloaded but next question's UI/images not prefetched | half day |
+| 4.5 | Pre-render next question | ✅ DONE | `useAppMiscEffects.ts` effect #12 (commit `46791c9`) preloads the next two upcoming word MP3s as `currentIndex` advances. No images to prefetch — game UI is emoji-based and word data sits in-memory after the vocabulary chunk lands | — |
 
 ## 5. Visual polish
 
@@ -90,30 +92,24 @@
 | 6.1 | TTS word audio | ✅ DONE | `useAudio.ts` | — |
 | 6.2 | Wrong-answer buzzer | ✅ DONE | `useAudio.ts:587-603` — oscillator | — |
 | 6.3 | Tap / correct / level-up SFX | ⛔ REJECTED | Multiple `new Audio()` channels drain battery and stress audio context on cheap Android. Only the wrong-answer buzzer stays | — |
-| 6.4 | Music ducking on TTS | 🔴 MISSING | No volume reduction logic. Music exists in `QuickPlayMonitor.tsx` via Howler.fade. Worth doing — doesn't add new audio, just balances existing | 2 hours |
+| 6.4 | Music ducking on TTS | ⛔ N/A | Re-checked 2026-05-19: music only renders in `QuickPlayMonitor.tsx` (teacher projector view), every `speak()` call lives in student game views. Music and TTS never play on the same device — nothing to duck | — |
 
 ---
 
-## Recommended order of attack
+## Next time you re-audit
 
-If you have **one day** this week:
-1. Add `loading="lazy"` to all `<img>` (#1.6) — 1 hour
-2. Add haptic feedback on correct/level-up (#2.5) — 2 hours
-3. Add music ducking (#6.4) — 2 hours
-4. Add tap/correct/level-up SFX (#6.3) — 3 hours
-
-If you have **a week**:
-5. Skeleton screens for dashboards (#3.6) — 1-2 days
-6. Convert layout-thrash animations to transforms (#3.5) — half day
-7. WebP/AVIF conversion + audit unused images (#1.7) — half day
-8. Pre-render next question (#4.5) — half day
-9. Verify optimistic UI across all modes (#2.4) — 1 day
+Likely fresh gaps to look for (they aren't problems today, but they show up as the app grows):
+- Bundle size creep — re-check `dist/` after big features land
+- New images added without `loading="lazy"` or in PNG instead of WebP
+- New views that fetch data but don't render a skeleton state
+- New animations that touch `width`/`height` instead of `transform`
+- Realtime subscriptions added without cleanup on unmount
 
 ## What NOT to do (anti-patterns to avoid)
 - Don't add a JS animation library on top of `motion/react` — it's already optimal
 - Don't switch from React 19 / Vite — already top-tier
 - Don't make a native iOS/Android app — PWA + service worker already covers offline
-- Don't add 3D avatars until skeleton screens + haptics ship — those move the needle more
+- Don't add haptic feedback or extra SFX channels — rejected for battery reasons (see TL;DR)
 
 ---
 
