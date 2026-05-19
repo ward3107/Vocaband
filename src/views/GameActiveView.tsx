@@ -409,7 +409,14 @@ export default function GameActiveView({
   };
 
   return (
-    <div className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 font-sans max-w-7xl mx-auto`}>
+    // Bottom padding accounts for two stacked floaters that overlay the
+    // page in Quick Play: the device's safe-area inset (home indicator
+    // / iOS browser chrome) plus the QpReactionBar pill that docks at
+    // bottom-3/4. Without the reserve, the last row of game UI (e.g.
+    // Spelling's Check button, Word Chains' input row) sits under the
+    // reaction bar and is unreachable on phones.
+    <div
+      className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] font-sans max-w-7xl mx-auto`}>
       {saveError && (
         <div className="fixed bottom-4 end-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />

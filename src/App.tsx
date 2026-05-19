@@ -1166,17 +1166,29 @@ export default function App() {
   // broadcasts to the teacher's projector without leaving the game.
   // The bar is `fixed` + `pointer-events-auto` only on the pill itself,
   // so it never blocks the game UI underneath.
+  // Reaction bar lives only on the in-game canvas — not the mode
+  // selection / mode intro screens. On those screens it floated above
+  // the mode-grid CTAs and the difficulty legend, hiding the buttons
+  // and text under it for everyone who didn't think to scroll past.
+  // Once the student is actually answering questions, the prompt
+  // sits high on the screen with comfortable space underneath, so
+  // the bar can dock at the bottom without colliding.
   const showQpReactionBar = QUICKPLAY_V2
     && !!quickPlayActiveSession
     && view === "game"
-    && !isFinished;
+    && !isFinished
+    && !showModeSelection
+    && !showModeIntro;
   // Floating help button mirrors the reaction bar's gating: visible
   // only mid-Quick-Play game so unauthenticated kids who are stuck
   // have a one-tap escape hatch without being able to invoke it from
-  // unrelated views.
+  // unrelated views. Same overlap concern — hide it on mode selection
+  // / intro so it doesn't sit on top of the mode tiles.
   const showQpHelpButton = !!quickPlayActiveSession
     && view === "game"
-    && !isFinished;
+    && !isFinished
+    && !showModeSelection
+    && !showModeIntro;
   return (
     <>
       {renderGameRoute({

@@ -147,7 +147,7 @@ export default function LetterSoundsGame({
           )}
           <button
             type="submit"
-            disabled={!!feedback}
+            disabled={!!feedback || !spellingInput.trim()}
             className={`w-full py-4 sm:py-5 rounded-xl font-black text-lg sm:text-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
               themed
                 ? "bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white hover:shadow-xl"

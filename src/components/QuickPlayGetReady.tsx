@@ -97,7 +97,11 @@ export default function QuickPlayGetReady({ name, avatar, joining, onStart, join
         transition={{ delay: 0.1 }}
         className="text-2xl sm:text-3xl font-black text-on-surface mb-1"
       >
-        {c.hi}, {name}! 👋
+        {/* <bdi> isolates the user's nickname from the surrounding RTL
+            run so the trailing "!" anchors to the visual end of the
+            name, not the start. Without it, Hebrew/Arabic greetings
+            render as "!ward" instead of "ward!". */}
+        {c.hi}, <bdi>{name}</bdi>! 👋
       </motion.h1>
       <motion.p
         initial={{ y: 10, opacity: 0 }}

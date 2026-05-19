@@ -24,6 +24,10 @@ export interface GameActiveStrings {
   /** "Translation:" label inline above the target-language word in
    *  Spelling mode. Includes trailing punctuation. */
   translationLabel: string;
+  /** Pedagogical hint shown when the student typed every letter
+   *  correctly but ran a multi-word phrase together (e.g. "allover"
+   *  for "all over"). Helps them learn it's a phrase, not one word. */
+  missingSpaceHint: string;
 
   // FlashcardsGame
   stillLearning: string;
@@ -65,6 +69,7 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     typeTheWord: "Type the word...",
     checkAnswer: "Check Answer",
     translationLabel: "Translation:",
+    missingSpaceHint: "💡 Almost! Don't forget the space — it's more than one word.",
     stillLearning: "Still Learning",
     gotIt: "Got It!",
     showEnglish: "Show English",
@@ -93,6 +98,7 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     typeTheWord: "הקלד את המילה...",
     checkAnswer: "בדוק תשובה",
     translationLabel: "תרגום:",
+    missingSpaceHint: "💡 כמעט! אל תשכחו את הרווח — זה יותר ממילה אחת.",
     stillLearning: "עדיין לומד",
     gotIt: "הבנתי!",
     showEnglish: "הצג באנגלית",
@@ -121,6 +127,7 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     typeTheWord: "اكتب الكلمة...",
     checkAnswer: "تحقق من الإجابة",
     translationLabel: "الترجمة:",
+    missingSpaceHint: "💡 تقريبًا! لا تنسَ المسافة — إنها أكثر من كلمة واحدة.",
     stillLearning: "ما زلت أتعلم",
     gotIt: "فهمت!",
     showEnglish: "إظهار بالإنجليزية",
@@ -149,6 +156,7 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     typeTheWord: "Type the word...",
     checkAnswer: "Check Answer",
     translationLabel: "Translation:",
+    missingSpaceHint: "💡 Almost! Don't forget the space — it's more than one word.",
     stillLearning: "Still Learning",
     gotIt: "Got It!",
     showEnglish: "Show English",

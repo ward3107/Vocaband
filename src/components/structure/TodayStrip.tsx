@@ -64,7 +64,9 @@ export const TodayStrip: React.FC<TodayStripProps> = ({
         {/* Left: greeting + streak */}
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-black uppercase tracking-widest opacity-80">
-            {greeting}, {user.displayName?.split(' ')[0] ?? t.greetingFriendFallback}
+            {/* <bdi> keeps the LTR student name from inverting the
+                punctuation in Hebrew/Arabic greetings. */}
+            {greeting}, <bdi>{user.displayName?.split(' ')[0] ?? t.greetingFriendFallback}</bdi>
           </p>
           <div className="mt-1 flex items-center gap-3 flex-wrap">
             <span className="inline-flex items-center gap-1 bg-white/15 rounded-full px-2.5 py-1 text-xs font-bold">
