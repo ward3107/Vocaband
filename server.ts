@@ -1179,8 +1179,23 @@ async function startServer() {
 
       const state = qpSessions.get(sessionCode);
       if (!state) return;
+
+      // Self-heal the socket→client mapping if it isn't there yet —
+      // App.tsx and QuickPlayStudentView each open their own socket,
+      // and only the StudentView one called STUDENT_JOIN. Reactions
+      // emit from App.tsx's socket once the student is in the game
+      // view, so without this rebind the server would see an
+      // owner-mismatch and silently drop every reaction. Same pattern
+      // SCORE_UPDATE uses just above.
       const owned = state.socketToClient.get(socket.id);
-      if (owned !== clientId) return;
+      if (owned !== clientId) {
+        if (state.students.has(clientId)) {
+          state.socketToClient.set(socket.id, clientId);
+          socket.join(sessionCode);
+        } else {
+          return;
+        }
+      }
 
       const entry = state.students.get(clientId);
       if (!entry) return;
