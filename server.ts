@@ -54,6 +54,7 @@ import {
   QP_MAX_STREAK,
   QP_MAX_ROUND_TOTAL,
   QP_REACTION_MIN_INTERVAL_MS,
+  QP_MAX_BONUS_AMOUNT,
   isValidReactionEmoji,
   isValidSessionCode,
   isValidClientId,
@@ -64,6 +65,7 @@ import {
   type QpStudentLeavePayload,
   type QpTeacherObservePayload,
   type QpTeacherKickPayload,
+  type QpTeacherBonusPayload,
   type QpTeacherEndPayload,
   type QpStudentEntry,
   type QpErrorCode,
@@ -1270,6 +1272,43 @@ async function startServer() {
           }
         }
       }
+      qpScheduleBroadcast(sessionCode);
+    });
+
+    // Manual bonus points — teacher-authoritative, bypasses the
+    // student-side delta cap. Bounded by QP_MAX_BONUS_AMOUNT to keep a
+    // stuck key or runaway client from writing pathological values, and
+    // the absolute QP_MAX_SESSION_SCORE ceiling still applies so the
+    // total can never go above 100k.
+    socket.on(QP_EVENTS.TEACHER_BONUS, async (payload: QpTeacherBonusPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, clientId, amount, token } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_BONUS, "invalid_payload", "bad payload");
+      }
+      if (typeof amount !== "number" || !isFinite(amount) || amount <= 0 || amount > QP_MAX_BONUS_AMOUNT) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_BONUS, "invalid_payload", "bad amount");
+      }
+      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_BONUS, "rate_limited", "too many teacher actions");
+      }
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_BONUS, verify.reason, "access denied");
+
+      const state = qpSessions.get(sessionCode);
+      if (!state) return;
+      const entry = state.students.get(clientId);
+      if (!entry) return;
+
+      const next = Math.min(QP_MAX_SESSION_SCORE, entry.score + Math.floor(amount));
+      const delta = next - entry.score;
+      if (delta <= 0) return;
+      entry.score = next;
+      entry.lastSeen = Date.now();
+      console.log(
+        `[QP TEACHER_BONUS] session=${sessionCode} client=${clientId} ` +
+        `+${delta} → ${next}`,
+      );
       qpScheduleBroadcast(sessionCode);
     });
 
