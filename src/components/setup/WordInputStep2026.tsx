@@ -340,7 +340,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
                     >
                       <span>{m.word}</span>
                       {i === 0 && (
-                        <span className="hidden sm:inline text-[10px] uppercase tracking-wide text-gray-400 ml-1">
+                        <span className="hidden sm:inline text-[10px] uppercase tracking-wide text-[var(--vb-text-muted)] ml-1">
                           {TEXT.autocompleteTabHint}
                         </span>
                       )}
@@ -381,18 +381,18 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
                         <button
                           type="button"
                           onClick={() => acceptSuggestion(s)}
-                          className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-amber-700"
+                          className="flex items-center gap-1.5 text-sm font-medium text-[var(--vb-text-secondary)] hover:text-amber-700"
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                           title={TEXT.suggestionAcceptTitle(s.typo, s.suggestion)}
                         >
-                          <span className="line-through text-gray-400">{s.typo}</span>
+                          <span className="line-through text-[var(--vb-text-muted)]">{s.typo}</span>
                           <ChevronRight className="w-3 h-3 text-amber-500" />
                           <span className="font-semibold text-emerald-700">{s.suggestion}</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => dismissSuggestion(s.typo)}
-                          className="ml-1 w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                          className="ml-1 w-6 h-6 rounded-full flex items-center justify-center text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)]"
                           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                           aria-label={TEXT.suggestionDismissAria(s.typo)}
                         >
@@ -1941,19 +1941,51 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
     try {
       const result = analyzePastedText(text, allWords);
 
-      // Add matched words to selection
+      // Tier 1: curriculum matches → canonical Word rows.
       const existingIds = new Set(selectedWords.map(w => w.id));
-      const newWords = result.matchedWords
+      const existingEnglish = new Set(selectedWords.map(w => w.english.toLowerCase()));
+      const newCurriculumWords = result.matchedWords
         .map(m => m.word)
         .filter(w => !existingIds.has(w.id));
 
-      if (newWords.length > 0) {
-        onSelectedWordsChange([...selectedWords, ...newWords]);
-        showToast?.(`Added ${newWords.length} words`, 'success');
-        // Same flag-based scroll as handleConfirmOcr / handleAddWords.
-        setShouldScrollToSelected(true);
+      // Tier 2: unmatched terms → synthesised Custom Word rows. Without
+      // this, English vocab the curriculum doesn't carry was silently
+      // dropped — teachers saw "No new words found" and had no way to
+      // teach off-curriculum vocab. Mirrors handleConfirmOcr so paste
+      // and OCR behave the same way for terms outside the DB.
+      const now = Date.now();
+      const seenLower = new Set<string>();
+      const customWords: Word[] = [];
+      for (const t of result.unmatchedTerms) {
+        const term = t.term.trim();
+        if (!term) continue;
+        const lower = term.toLowerCase();
+        if (existingEnglish.has(lower) || seenLower.has(lower)) continue;
+        seenLower.add(lower);
+        customWords.push({
+          id: -(now + customWords.length),
+          english: term,
+          hebrew: '',
+          arabic: '',
+          level: 'Custom' as const,
+        });
+      }
+
+      const totalAdded = newCurriculumWords.length + customWords.length;
+      if (totalAdded === 0) {
+        showToast?.('No new words to add — all items already selected.', 'info');
+        return;
+      }
+
+      onSelectedWordsChange([...selectedWords, ...newCurriculumWords, ...customWords]);
+      setShouldScrollToSelected(true);
+
+      if (customWords.length === 0) {
+        showToast?.(`Added ${newCurriculumWords.length} curriculum words`, 'success');
+      } else if (newCurriculumWords.length === 0) {
+        showToast?.(`Added ${customWords.length} custom words / phrases`, 'success');
       } else {
-        showToast?.('No new words found', 'info');
+        showToast?.(`Added ${newCurriculumWords.length} curriculum + ${customWords.length} custom`, 'success');
       }
     } catch (error) {
       console.error('[WordInputStep2026] handleAnalyze ERROR', error);
