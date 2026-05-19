@@ -36,6 +36,21 @@ Applied to production via MCP, in order:
 
 Verified via DB introspection that the 3 local June files (`20260609_vocabagrut`, `20260610_school_inquiries`, `20260611_teacher_plan_and_trial`) were pure duplicates of earlier-applied versions (`20260506130131_vocabagrut`, `20260507104138_school_inquiries`, `20260507121937_teacher_plan_and_trial`). Deleted the duplicates from local repo (commit `f07b76d`).
 
+## ✅ DONE 2026-05-19 — `vocaband-audio` Worker deletion (no-op)
+
+Earlier task notes referred to deleting a standalone `vocaband-audio`
+Cloudflare Worker. Audited the account via MCP (`workers_list`,
+2026-05-19): only one Worker exists — `vocaband`
+(id `9df30ae2047d4c739c38850b8f7da1ba`, the SPA + `/api/*` proxy
+configured in `wrangler.jsonc`). There is no `vocaband-audio` Worker
+to delete; the note was stale.
+
+⚠️ Do **not** run `npx wrangler delete --name vocaband` — that would
+take down the production site. The R2 *bucket* named `vocaband-audio`
+is separate and should stay (see §6).
+
+---
+
 ## ✅ DONE 2026-05-16 — Supabase GoTrue auth rate-limits verified
 
 Walked the operator through every Auth → Rate Limits, Auth → Sessions,
@@ -194,6 +209,31 @@ The 5 Russian PDFs in `public/docs/*-ru.pdf` were authored without a native revi
 - `privacy-sheet-ru.pdf` — goes to school administrators
 
 The teacher / student / quick-start docs are lower-stakes and can wait. Source text lives in `scripts/teacher-pdfs/content/*.mjs` under the `ru` key; rebuild with `node scripts/teacher-pdfs/build.mjs --ru` after edits.
+
+---
+
+## 6. Connect `audio.vocaband.com` to the R2 bucket (finishes the CDN migration)
+
+**Status as of 2026-05-19 (verified via MCP `r2_buckets_list` and direct fetch):**
+
+- ✅ R2 bucket `vocaband-audio` exists (account `df686d8a898f1c25a378952aa4c99350`, ENAM, Standard class).
+- ✅ Mirror is complete — bucket holds **9.13k objects / 62.11 MB**, matching the 9,130 English MP3s `scripts/mirror-supabase-to-r2.ts` targets. No re-run needed.
+- ❌ Bucket is not yet exposed at `audio.vocaband.com` (`ECONNREFUSED`).
+- ❌ `VITE_CLOUDFLARE_URL` is not yet on the deploy. App still serves audio from Supabase Storage via `src/utils/audioUrl.ts:32`.
+
+### Remaining steps (operator)
+
+1. **Connect the custom domain.** Cloudflare dashboard → R2 → `vocaband-audio` → **Settings** → **Public access** → **Connect Domain** → `audio.vocaband.com`. Don't use the R2.dev subdomain — Cloudflare rate-limits it and warns against production use. Since `vocaband.com` is already on Cloudflare DNS, the CNAME + TLS cert provision in ~1 minute.
+
+2. **Smoke-test in a browser** — `https://audio.vocaband.com/sound/1.mp3` should download/play. If 404, click into the bucket and verify keys live under a `sound/` prefix (the mirror script writes `${srcBucket}/${name}` — see `scripts/mirror-supabase-to-r2.ts:99`).
+
+3. **Merge the CI PR** that sets `VITE_CLOUDFLARE_URL=https://audio.vocaband.com` on the build step in `.github/workflows/cloudflare-deploy.yml`. Once merged to main, the next deploy will flip all word-audio fetches from Supabase Storage to the CDN.
+
+4. **Post-deploy verification.** Hard-refresh `vocaband.com`, play a word, confirm DevTools → Network shows the MP3 loading from `audio.vocaband.com` (not `auth.vocaband.com/storage/v1/object/public/sound/...`). Egress on Supabase Storage should drop to near-zero within the day.
+
+### Rollback
+
+If audio breaks after the flip, revert the workflow commit (or unset `VITE_CLOUDFLARE_URL` in the next workflow run). `audioUrl.ts:32` will fall back to Supabase Storage automatically — no data migration is needed in reverse.
 
 ---
 
