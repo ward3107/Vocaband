@@ -176,6 +176,9 @@ export interface QuickPlaySocketApi {
   /** Starts observing. Token = Supabase access token (verified server-side). */
   observeAsTeacher: (token: string) => void;
   kickStudent: (clientId: string, token: string) => void;
+  /** Manual teacher bonus — adds `amount` points to a student's score
+   *  on the server, bounded by QP_MAX_BONUS_AMOUNT. */
+  bonusStudent: (clientId: string, amount: number, token: string) => void;
   endSession: (token: string) => void;
 
   // ─── Events ─────────────────────────────────────────────────────────
@@ -538,6 +541,15 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     });
   }, [sessionCode]);
 
+  // Teacher-issued bonus — fire-and-forget. Server validates token and
+  // amount bounds, then broadcasts a new leaderboard tick.
+  const bonusStudent = useCallback((targetClientId: string, amount: number, token: string) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.TEACHER_BONUS, {
+      sessionCode, clientId: targetClientId, amount, token,
+    });
+  }, [sessionCode]);
+
   const endSession = useCallback((token: string) => {
     if (!sessionCode || !socketRef.current) return;
     socketRef.current.emit(QP_EVENTS.TEACHER_END, { sessionCode, token });
@@ -566,6 +578,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     leaveAsStudent,
     observeAsTeacher,
     kickStudent,
+    bonusStudent,
     endSession,
     onKicked,
     onSessionEnded,
