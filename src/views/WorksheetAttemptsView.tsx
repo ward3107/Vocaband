@@ -390,7 +390,7 @@ const WorksheetList: React.FC<{
           </p>
         </div>
       ) : (
-      <div className="space-y-3">
+      <div className="space-y-1.5">
         {worksheets.map((w) => {
           const att = attemptsBySlug.get(w.slug) ?? [];
           const children = childrenByParent.get(w.slug) ?? [];
@@ -409,8 +409,8 @@ const WorksheetList: React.FC<{
             <motion.button
               key={w.slug}
               type="button"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
+              whileHover={{ scale: 1.005 }}
+              whileTap={{ scale: 0.995 }}
               onClick={() => onSelect(w.slug)}
               style={{
                 touchAction: "manipulation",
@@ -418,48 +418,51 @@ const WorksheetList: React.FC<{
                 backgroundColor: "var(--vb-surface)",
                 borderColor: "var(--vb-border)",
               }}
-              className="w-full text-left rounded-xl p-5 border shadow-sm hover:shadow-md transition-all"
+              className="w-full text-left rounded-lg px-3 py-2.5 sm:px-4 border shadow-sm hover:shadow-md transition-all"
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs uppercase tracking-widest font-bold text-violet-500 mb-1 flex items-center gap-2">
-                    <span>{w.format}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h3 className="text-sm sm:text-base font-bold text-[var(--vb-text-primary)] truncate">
+                      {w.topic_name}
+                    </h3>
                     {w.archived_at && (
                       <span
                         style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] normal-case tracking-normal"
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] uppercase tracking-wide font-bold shrink-0"
                       >
-                        <Archive size={10} /> Archived
+                        <Archive size={9} /> Archived
                       </span>
                     )}
-                  </p>
-                  <h3 className="text-lg font-black text-[var(--vb-text-primary)] truncate mb-1">
-                    {w.topic_name}
-                  </h3>
-                  <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-[var(--vb-text-muted)]">
-                    <span className="flex items-center gap-1">
-                      <Users size={12} />
-                      {completedCount} {completedCount === 1 ? "submission" : "submissions"}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-x-2 flex-wrap text-[11px] text-[var(--vb-text-muted)]">
+                    <span className="uppercase tracking-wider font-bold text-violet-500">
+                      {w.format}
+                    </span>
+                    <span aria-hidden>·</span>
+                    <span className="inline-flex items-center gap-0.5" title={`${completedCount} ${completedCount === 1 ? "submission" : "submissions"}`}>
+                      <Users size={11} />
+                      {completedCount}
                     </span>
                     {practiceCount > 0 && (
-                      <span className="flex items-center gap-1 text-fuchsia-600 font-bold">
-                        <Target size={12} />
-                        {practiceCount} {practiceCount === 1 ? "practice round" : "practice rounds"}
+                      <span className="inline-flex items-center gap-0.5 text-fuchsia-600 font-bold" title={`${practiceCount} ${practiceCount === 1 ? "practice round" : "practice rounds"}`}>
+                        <Target size={11} />
+                        {practiceCount}
                       </span>
                     )}
                     {latest && (
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} />
-                        Last: {formatRelative(latest)}
+                      <span className="inline-flex items-center gap-0.5">
+                        <Clock size={11} />
+                        {formatRelative(latest)}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-3xl font-black text-violet-600 tabular-nums">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-lg sm:text-xl font-black text-violet-600 tabular-nums leading-none">
                     {completedCount}
                   </span>
-                  <ChevronRight size={18} className="text-[var(--vb-text-muted)]" />
+                  <ChevronRight size={16} className="text-[var(--vb-text-muted)]" />
                 </div>
               </div>
             </motion.button>
