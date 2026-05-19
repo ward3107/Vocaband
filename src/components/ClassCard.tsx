@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, Copy, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Users, Trophy } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
@@ -108,6 +109,15 @@ const ClassCard: React.FC<ClassCardProps> = ({
   const tComp = competitionsT[effectiveLanguage];
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  // Trigger + portaled menu node refs.  The menu is rendered in a portal
+  // (see render below) so it escapes the card's overflow-hidden clip;
+  // these refs let the click-outside handler tell taps on the trigger
+  // apart from taps on the portaled menu vs taps anywhere else.
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const menuPortalRef = useRef<HTMLDivElement>(null);
+  // Viewport-relative position for the portaled menu.  Computed from the
+  // trigger's bounding rect when the menu opens; reset to null on close.
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const showAssignments = openDropdownClassId === code;
 
   // Inline name editing state
@@ -211,14 +221,28 @@ const ClassCard: React.FC<ClassCardProps> = ({
     await onAvatarChange?.(newAvatar);
   };
 
-  // Close the "more" menu on outside click
+  // Close the "more" menu on outside click.  The menu is portaled so
+  // menuRef alone wouldn't contain the dropdown — also check the
+  // portaled menu node and the trigger itself.  Scrolling or resizing
+  // the viewport detaches the fixed-position menu from its trigger, so
+  // close it then too rather than rendering a stranded dropdown.
   useEffect(() => {
     if (!menuOpen) return;
+    const isInsideMenu = (target: Node) =>
+      (menuRef.current?.contains(target) ?? false) ||
+      (menuPortalRef.current?.contains(target) ?? false);
     const onDoc = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      if (!isInsideMenu(e.target as Node)) setMenuOpen(false);
     };
+    const onDismiss = () => setMenuOpen(false);
     document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    window.addEventListener('scroll', onDismiss, true);
+    window.addEventListener('resize', onDismiss);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('scroll', onDismiss, true);
+      window.removeEventListener('resize', onDismiss);
+    };
   }, [menuOpen]);
 
   const handleToggleAssignments = (e: React.MouseEvent | undefined) => {
@@ -451,9 +475,29 @@ const ClassCard: React.FC<ClassCardProps> = ({
           </div>
           {/* More menu (Delete lives here — kept out of the primary action row to
               reduce visual weight on the destructive action) */}
-          <div className="relative shrink-0" ref={menuRef}>
+          <div className="shrink-0" ref={menuRef}>
             <button
-              onClick={() => setMenuOpen(v => !v)}
+              ref={menuTriggerRef}
+              onClick={() => {
+                setMenuOpen(prev => {
+                  const next = !prev;
+                  if (next && menuTriggerRef.current) {
+                    // Anchor the portaled menu to the trigger's
+                    // right edge so the dropdown still aligns with
+                    // the ⋮ button after escaping the card's
+                    // overflow-hidden clip.  `mt-1` (4 px) matches
+                    // the pre-portal spacing.
+                    const rect = menuTriggerRef.current.getBoundingClientRect();
+                    setMenuPos({
+                      top: rect.bottom + 4,
+                      right: window.innerWidth - rect.right,
+                    });
+                  } else {
+                    setMenuPos(null);
+                  }
+                  return next;
+                });
+              }}
               type="button"
               style={{ touchAction: 'manipulation', color: 'var(--vb-text-muted)' }}
               className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--vb-surface-alt)] hover:text-[var(--vb-text-primary)]"
@@ -461,13 +505,18 @@ const ClassCard: React.FC<ClassCardProps> = ({
             >
               <MoreVertical size={18} />
             </button>
-            {menuOpen && (
+            {menuOpen && menuPos && createPortal(
               <div
+                ref={menuPortalRef}
                 style={{
                   backgroundColor: 'var(--vb-surface)',
                   borderColor: 'var(--vb-border)',
+                  position: 'fixed',
+                  top: menuPos.top,
+                  right: menuPos.right,
+                  zIndex: 1000,
                 }}
-                className="absolute right-0 top-full mt-1 w-48 rounded-lg border shadow-lg py-1 z-20"
+                className="w-48 rounded-lg border shadow-lg py-1"
               >
                 {/* Edit class — opens the full EditClassModal (name,
                     avatar, school branding).  Placed at the top of the
@@ -524,7 +573,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <Trash2 size={14} />
                   {t.deleteClass}
                 </button>
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
         </div>
