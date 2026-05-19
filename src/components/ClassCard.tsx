@@ -284,6 +284,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
             <img
               src={schoolLogoUrl}
               alt=""
+              loading="lazy"
+              decoding="async"
               className="w-6 h-6 rounded object-contain bg-white"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />

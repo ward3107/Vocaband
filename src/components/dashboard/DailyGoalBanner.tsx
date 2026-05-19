@@ -92,10 +92,11 @@ export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoal
               {/* Bar */}
               <div className="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden">
                 <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${pct}%` }}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: pct / 100 }}
                   transition={{ duration: 0.7, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-orange-400 to-rose-500 rounded-full"
+                  style={{ transformOrigin: 'left' }}
+                  className="h-full w-full bg-gradient-to-r from-orange-400 to-rose-500 rounded-full"
                 />
               </div>
               <p className="text-xs sm:text-sm font-semibold text-stone-700 mt-1.5">

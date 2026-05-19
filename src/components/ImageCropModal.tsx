@@ -286,6 +286,7 @@ export default function ImageCropModal({ file, onConfirm, onCancel }: ImageCropM
             <img
               src={imgSrc}
               alt={labels.preview}
+              decoding="async"
               className="absolute pointer-events-none select-none"
               style={{
                 left: imgDisplay.x,
