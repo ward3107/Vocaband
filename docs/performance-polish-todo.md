@@ -1,31 +1,33 @@
 # Performance & Polish — Living TODO
 
-> **Purpose:** A reusable checklist for keeping Vocaband fast, smooth, and polished. Re-audit before any big release. Last audit: 2026-05-19.
+> **Purpose:** A reusable checklist for keeping Vocaband fast, smooth, and polished. Re-audit before any big release. Last audit: 2026-05-19. Last edit: 2026-05-19.
 
 ## Status legend
 - ✅ **DONE** — verified in code
 - 🟡 **PARTIAL** — works but has gaps worth closing
 - 🔴 **MISSING** — not implemented yet
+- ⛔ **REJECTED** — decided against (with reason)
 
 ---
 
 ## TL;DR — what's still pending
 
-**Quick wins (do first, ~1 day total):**
-1. 🔴 Add `loading="lazy"` to `<img>` tags
-2. 🔴 Haptic feedback on correct answer / level-up (`navigator.vibrate`)
-3. 🔴 Music ducking — lower BG music when TTS plays
-4. 🟡 Convert remaining `height`/`width` animations to `transform: scaleY/X` (layout thrash)
+**Rejected (battery-conscious decision):**
+- ⛔ Haptic feedback (`navigator.vibrate`) — vibration motor drains battery on long sessions
+- ⛔ Tap / correct / level-up SFX palette — multiple `new Audio()` instances drain battery and risk audio-context exhaustion on cheap Android
 
-**Medium effort (~1 week total):**
-5. 🟡 Sound palette — tap, correct, wrong, level-up SFX (only wrong buzzer exists)
-6. 🔴 Skeleton screens replacing spinners on dashboards
-7. 🟡 Convert remaining PNG/JPG assets to WebP/AVIF
-8. 🟡 Pre-render next question card while current is on screen
+**Quick wins done in commit `1c42645`:**
+- ✅ Lazy-load images in card lists + modals (ClassCard, LiveChallenge chip, EditClassModal); `decoding="async"` on crop-modal image
+- ✅ Convert 4 dashboard progress bars from `width: %` to GPU `scaleX`
+- ✅ Delete orphaned `google-oauth-logo.{png,svg}`
+- ✅ WebP/AVIF — confirmed moot (only favicons + OG image remain; both must stay PNG)
 
-**Bigger / nice-to-have:**
-9. 🟡 Optimistic UI verification across all 15 game modes
-10. 🟡 Dedicated streak combo trail effect (fire/lightning on rapid streaks)
+**Still pending:**
+1. 🔴 Skeleton screens replacing spinners on dashboards — ~1-2 days
+2. 🟡 Pre-render next question card while current is on screen — ~half day
+3. 🟡 Dedicated streak combo trail effect (fire/lightning on rapid streaks) — ~1 day
+4. 🟡 Optimistic UI verification across all 15 game modes — ~1 day audit
+5. 🔴 Music ducking — lower BG music in `QuickPlayMonitor` when TTS plays — ~2 hours
 
 ---
 
@@ -38,8 +40,8 @@
 | 1.3 | Audio preloading | ✅ DONE | `useAudio.ts` Howler.js lazy-loaded, `preloadMany()` batches, LRU cache (100 words) | — |
 | 1.4 | Cloudflare Worker caching | ✅ DONE | `worker/index.ts:277` — `public, s-maxage=60, stale-while-revalidate=300`; HTML never aggressively cached | — |
 | 1.5 | Vite manual chunks | ✅ DONE | `vite.config.ts:519-549` — vocab/sentry/react/motion/supabase chunks split | — |
-| 1.6 | Image lazy-loading attribute | 🔴 MISSING | No `loading="lazy"` on `<img>` tags anywhere | 1 hour |
-| 1.7 | WebP/AVIF image conversion | 🟡 PARTIAL | No conversion plugin in `vite.config.ts`. Some assets may still be PNG | half day |
+| 1.6 | Image lazy-loading attribute | ✅ DONE | `ClassCard.tsx:286`, `LiveChallengeView.tsx:122`, `EditClassModal.tsx:264` + `decoding="async"` on `ImageCropModal.tsx:289`. TopAppBar avatar + PWA install icons kept eager (above-fold / precached) | — |
+| 1.7 | WebP/AVIF image conversion | ⛔ N/A | Only 6 raster assets: favicons (must be PNG), OG image (PNG for social compat), and now-deleted Google OAuth logo. Nothing else to convert | — |
 
 ## 2. Tap response & feel
 
@@ -49,7 +51,7 @@
 | 2.2 | 44px+ touch targets | ✅ DONE | Answer buttons 88px min-height | — |
 | 2.3 | Double-tap protection | ✅ DONE | `AnswerOptionButton.tsx:33` — disabled on `feedback` state | — |
 | 2.4 | Optimistic UI on answer | 🟡 PARTIAL | Callback pattern looks immediate, but not verified across all 15 modes | 1 day audit |
-| 2.5 | Haptic feedback (`navigator.vibrate`) | 🔴 MISSING | Zero usage in codebase. Big "feel" win | 2 hours |
+| 2.5 | Haptic feedback (`navigator.vibrate`) | ⛔ REJECTED | Battery drain on long study sessions. Many students share/borrow phones, vibration kills perceived battery life | — |
 
 ## 3. Animations
 
@@ -59,7 +61,7 @@
 | 3.2 | Page transitions with `AnimatePresence` | ✅ DONE | Exit/enter animations on route change | — |
 | 3.3 | XP bar smooth fill | ✅ DONE | `PetCompanion.tsx` — `width` with 0.6s ease-out | — |
 | 3.4 | Confetti on level-up | ✅ DONE | `useGameState.ts` — canvas-confetti lazy-loaded, 80-150 particles | — |
-| 3.5 | 60fps (transform-only) | 🟡 PARTIAL | Layout thrash found in: `QuickPlayMonitor.tsx:1225/1302/1346` (height animations), `DailyGoalBanner.tsx:96`, `StudentGreetingCard.tsx:312`, `DailyMissionsCard.tsx:208`, `PetCompanion.tsx:171` | half day |
+| 3.5 | 60fps (transform-only) | 🟡 PARTIAL | 4 dashboard progress bars now use `scaleX` (commit `1c42645`). Podium reveals in `QuickPlayMonitor.tsx:1225/1302/1346` left as-is — fire once, tiny elements, "rise from floor" effect is intentional | — |
 | 3.6 | Skeleton screens (vs spinners) | 🔴 MISSING | No skeleton pattern in codebase | 1-2 days |
 | 3.7 | Streak combo fire/lightning | 🟡 PARTIAL | `ReactionParticle` emoji float exists but no dedicated combo trail | 1 day |
 
@@ -87,8 +89,8 @@
 |---|------|--------|----------|--------|
 | 6.1 | TTS word audio | ✅ DONE | `useAudio.ts` | — |
 | 6.2 | Wrong-answer buzzer | ✅ DONE | `useAudio.ts:587-603` — oscillator | — |
-| 6.3 | Tap / correct / level-up SFX | 🔴 MISSING | Only buzzer exists. Need: tap pop, correct ding, level-up fanfare | 1 day |
-| 6.4 | Music ducking on TTS | 🔴 MISSING | No volume reduction logic | 2 hours |
+| 6.3 | Tap / correct / level-up SFX | ⛔ REJECTED | Multiple `new Audio()` channels drain battery and stress audio context on cheap Android. Only the wrong-answer buzzer stays | — |
+| 6.4 | Music ducking on TTS | 🔴 MISSING | No volume reduction logic. Music exists in `QuickPlayMonitor.tsx` via Howler.fade. Worth doing — doesn't add new audio, just balances existing | 2 hours |
 
 ---
 
