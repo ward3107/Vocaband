@@ -71,6 +71,8 @@ export interface TeacherViewsT {
   qpPlayersJoined: (n: number) => string;
   qpWaitingForPlayers: string;
   qpShareQrToStart: string;
+  /** Ghost call-to-action shown on the empty 3rd-place podium block. */
+  qpPodiumCtaShort: string;
   qpDragToMove: string;
   qpScanToJoin: string;
   qpEndSessionTitle: string;
@@ -146,6 +148,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpPlayersJoined: (n) => `${n} ${n === 1 ? "player" : "players"} joined`,
     qpWaitingForPlayers: "Waiting for players...",
     qpShareQrToStart: "Share the QR code to get started",
+    qpPodiumCtaShort: "You could be here!",
     qpDragToMove: "Drag to move",
     qpScanToJoin: "Scan to join",
     qpEndSessionTitle: "End Quick Play Session?",
@@ -217,6 +220,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpPlayersJoined: (n) => `${n} ${n === 1 ? "שחקן הצטרף" : "שחקנים הצטרפו"}`,
     qpWaitingForPlayers: "מחכים לשחקנים...",
     qpShareQrToStart: "שתפו את קוד ה-QR כדי להתחיל",
+    qpPodiumCtaShort: "אתם יכולים להיות כאן!",
     qpDragToMove: "גררו להזזה",
     qpScanToJoin: "סרקו כדי להצטרף",
     qpEndSessionTitle: "לסיים את משחק המהיר?",
@@ -288,6 +292,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpPlayersJoined: (n) => `${n} ${n === 1 ? "لاعب انضم" : "لاعبين انضموا"}`,
     qpWaitingForPlayers: "في انتظار اللاعبين...",
     qpShareQrToStart: "شارك رمز QR للبدء",
+    qpPodiumCtaShort: "يمكنك أن تكون هنا!",
     qpDragToMove: "اسحب للتحريك",
     qpScanToJoin: "امسح للانضمام",
     qpEndSessionTitle: "إنهاء جلسة اللعب السريع؟",
@@ -359,6 +364,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpPlayersJoined: (n) => `${n} ${n === 1 ? "player" : "players"} joined`,
     qpWaitingForPlayers: "Waiting for players...",
     qpShareQrToStart: "Share the QR code to get started",
+    qpPodiumCtaShort: "You could be here!",
     qpDragToMove: "Drag to move",
     qpScanToJoin: "Scan to join",
     qpEndSessionTitle: "End Quick Play Session?",
