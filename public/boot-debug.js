@@ -6,37 +6,11 @@
 // Lives as an external file so the page CSP can drop `unsafe-inline` from
 // `script-src` — the SPA only needs `'self'` to load this.
 (function () {
-  // Promote a preload-as-style link to a render-applied stylesheet.
-  // index.html ships the Latin Google Fonts <link> with media="print" so
-  // it downloads at low priority WITHOUT blocking first paint. We swap
-  // media back to "all" here (after this script has loaded) so the fonts
-  // apply to the rendered page. With font-display:swap already in the URL,
-  // fallback text renders immediately and the web fonts swap in when ready.
-  // CSP blocks inline onload handlers; this external swap is the workaround.
-  function applyDeferredStylesheet(link) {
-    if (!link) return;
-    if (link.media === 'print') link.media = 'all';
-  }
-  var latinFontLink = document.querySelector(
-    'link[data-vocaband-defer-style="latin-fonts"]'
-  );
-  if (latinFontLink) {
-    // If the link already finished downloading, apply immediately
-    // (link.sheet is the CSSStyleSheet object, populated on load).
-    // Otherwise wait for the load event. Crucially we do NOT bump the
-    // media swap onto an early setTimeout — that would re-promote the
-    // link to a high-priority fetch right after parse, defeating the
-    // whole point of using media="print" to keep the font CSS off the
-    // critical-bandwidth path during the initial render. font-display:
-    // swap already handles the visual hand-off when the bytes land.
-    if (latinFontLink.sheet) {
-      applyDeferredStylesheet(latinFontLink);
-    } else {
-      latinFontLink.addEventListener('load', function () {
-        applyDeferredStylesheet(latinFontLink);
-      }, { once: true });
-    }
-  }
+  // (Latin Google-Fonts deferred-stylesheet promotion lived here until
+  // PR #787 follow-up.  Latin fonts are now self-hosted from /fonts/
+  // via @font-face in src/index.css — no external CSS round-trip to
+  // promote.  font-display:swap on the local @font-face keeps the
+  // first-paint behaviour identical.)
 
   // RTL font loader.
   //

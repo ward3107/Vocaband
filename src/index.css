@@ -1,6 +1,59 @@
 @import "tailwindcss";
 
 /* =============================================================================
+   Self-hosted Latin web fonts — Plus Jakarta Sans (variable) + Be Vietnam Pro
+   (4 static weights).  Files live in /public/fonts/ so they ship from the
+   same origin as the app; no request ever reaches fonts.googleapis.com or
+   fonts.gstatic.com for these families.  RTL fonts (Heebo + Fredoka) are
+   still lazy-loaded from Google Fonts via boot-debug.js when the visitor's
+   language is HE/AR — see THIRD_PARTY_REGISTRY for the narrower scope.
+
+   `font-display: swap` keeps first paint instant: fallback (system-ui)
+   renders while the woff2 streams, then swaps in.  No FOIT.
+
+   Subset: `latin` only (U+0000-00FF = ASCII + Latin-1 Supplement).  If a
+   teacher/school name ever surfaces a Polish/Czech/Vietnamese glyph the
+   font won't have it — falls back to system-ui for that character only.
+   Add `latin-ext` woff2 + a second @font-face if that becomes a problem.
+   ============================================================================= */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  /* Variable font covers the full 200-800 axis in one file (~27 KB). */
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/plus-jakarta-sans-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/be-vietnam-pro-400-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/be-vietnam-pro-500-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/be-vietnam-pro-700-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("/fonts/be-vietnam-pro-900-latin.woff2") format("woff2");
+}
+
+/* =============================================================================
    Accessibility: root font size custom property
    Applied by the11y features (font size, high contrast, etc.)
    ============================================================================= */
