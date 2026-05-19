@@ -70,6 +70,14 @@ jobs:
         run: npm test
 
       - name: Build (vite + @cloudflare/vite-plugin)
+        # VITE_CLOUDFLARE_URL is read at build time by src/utils/audioUrl.ts.
+        # When set, every word-audio fetch goes to the R2-backed CDN instead
+        # of Supabase Storage (cheaper egress + lower latency for IL users).
+        # The R2 bucket `vocaband-audio` is already populated (mirrored via
+        # scripts/mirror-supabase-to-r2.ts) and exposed at audio.vocaband.com
+        # — see docs/operator-tasks.md §6 for the connect-domain step.
+        env:
+          VITE_CLOUDFLARE_URL: https://audio.vocaband.com
         run: npm run build
 
       - name: Deploy to Cloudflare Workers
