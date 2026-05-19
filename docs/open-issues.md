@@ -93,7 +93,7 @@ What landed:
 Known follow-ups, none blocking:
 - No tests yet for the submission RPC or the dashboard read path.
 - Bagrut share drops words not present in `ALL_WORDS`; the button surfaces an "X of Y" caption but a more graceful fallback (e.g. plain-text drill) would beat silent omission.
-- `WorksheetAttemptsView` isn't in the lazy-prefetch list at `App.tsx:143`; first navigation has a small lag.
+- ✅ Cold-load lag on first navigation closed 2026-05-19 — `TeacherDashboardView` now idle-prefetches the `WorksheetAttemptsView` chunk on mount (gated on `onWorksheetResultsClick`, so Hebrew teachers without the tile don't pay the bytes). Vite dedups the dynamic import with `MiscViewSections`' `lazyWithRetry` mount, so the second call resolves instantly.
 
 ---
 
@@ -206,7 +206,7 @@ Strategic roadmap for making Vocaband structurally beat Kahoot in Israeli school
 - **Spaced repetition** — `supabase/migrations/20260507205628_spaced_repetition.sql` provides `review_schedule`, `count_due_reviews`, `get_due_reviews`, `record_review_result`, `schedule_review_words`. Wired through `useDueReviews.ts` → `ReviewQueueCard.tsx` → `ReviewGame.tsx`. Full SRS already live.
 - **QR / nickname join** — Quick Play already exists.
 - **Curriculum labelling structure** — `Set 1 / Set 2 / Set 3 / Custom` type already in place across the codebase.
-- **Class Minute — daily 60-second drill** (PR #587, follow-up class-switch race fix #588, shipped 2026-05-12) — `ClassMinuteCard.tsx` dashboard tile + `?play=class-minute` teacher share link via `ShareClassLinkModal`. SRS-first word source, falls back to assignments then `SET_2_WORDS`. Saves with `mode='class-minute'`; dashboard derives `doneToday` + streak from `studentProgress` with no extra round-trip. KNOWN GAP: only renders on the STRUCTURE_UX dashboard branch (which is feature-flagged OFF) — needs porting to the legacy branch for production visibility. Same gap applies to `ReviewQueueCard`.
+- **Class Minute — daily 60-second drill** (PR #587, follow-up class-switch race fix #588, shipped 2026-05-12; tile re-enabled in prod 2026-05-19) — `ClassMinuteCard.tsx` dashboard tile + `?play=class-minute` teacher share link via `ShareClassLinkModal`. SRS-first word source, falls back to assignments then `SET_2_WORDS`. Saves with `mode='class-minute'`; dashboard derives `doneToday` + streak from `studentProgress` with no extra round-trip. The card now renders unflagged on both the legacy and STRUCTURE_UX render branches of `StudentDashboardView.tsx`, gated only on the `onStartClassMinute` callback (wired from `StudentDashboardSection.tsx`). `ReviewQueueCard` is also unflagged on the same wiring.
 - **Hot Seat — single-device pass-around mode** (PR #589, shipped 2026-05-12) — `HotSeatView.tsx` owns setup → interstitial → question → podium phases. Reuses Classic-style multi-choice mechanics, in-memory scoring (no DB writes — players aren't logged-in students). v1 uses `SET_2_WORDS` only; per-assignment word picker is a deferred v2. Tile is gated `!isHebrew` (mirrors Vocabagrut precedent).
 
 These items are DONE. Don't rebuild them — surface and market them.
@@ -312,7 +312,7 @@ These items are DONE. Don't rebuild them — surface and market them.
 
 ### Suggested next move (post-Hot-Seat ship)
 
-1. **Smoke-test the three features that just shipped on production** — Class Minute card + teacher share link + Hot Seat. None have been seen running by a human. The legacy-branch bug for the Class Minute card (rendered on STRUCTURE_UX branch only) is the most likely real-world breakage.
+1. **Smoke-test the three features that just shipped on production** — Class Minute student tile + teacher share link + Hot Seat. None have been seen running by a human end-to-end.
 2. **Printable PDF Certificate** — smallest remaining Tier-1, A4 layout, reuses the html2pdf pipeline. 1 evening.
 
 ---

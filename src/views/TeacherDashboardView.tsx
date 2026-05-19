@@ -210,6 +210,19 @@ export default function TeacherDashboardView({
     const id = window.setTimeout(() => setRatingDelayElapsed(true), 45_000);
     return () => window.clearTimeout(id);
   }, []);
+
+  // Prefetch the Worksheet Results chunk on idle so teachers who tap
+  // the tile don't pay a cold-load round-trip.  Vite dedups the dynamic
+  // import with MiscViewSections' lazyWithRetry mount.  Gated on the
+  // click handler being wired so Hebrew teachers (no tile) don't pull
+  // bytes they won't use.
+  useEffect(() => {
+    if (!onWorksheetResultsClick) return;
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    const warm = () => { void import('./WorksheetAttemptsView'); };
+    if (typeof ric === 'function') ric(warm, { timeout: 3000 });
+    else window.setTimeout(warm, 1500);
+  }, [onWorksheetResultsClick]);
   const showRatingPrompt = useMemo(() => {
     if (!ratingDelayElapsed) return false;
     if (ratingDismissedThisSession) return false;
