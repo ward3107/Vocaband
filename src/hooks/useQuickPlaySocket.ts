@@ -152,7 +152,14 @@ export interface QuickPlaySocketApi {
 
   // ─── Student actions ────────────────────────────────────────────────
   joinAsStudent: (nickname: string, avatar?: string) => void;
-  updateScore: (score: number) => void;
+  updateScore: (
+    score: number,
+    extras?: {
+      streak?: number;
+      roundProgress?: { done: number; total: number };
+      perfectRound?: boolean;
+    },
+  ) => void;
   leaveAsStudent: () => void;
 
   // ─── Teacher actions ────────────────────────────────────────────────
@@ -440,7 +447,14 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     });
   }, [sessionCode, clientId]);
 
-  const updateScore = useCallback((score: number) => {
+  const updateScore = useCallback((
+    score: number,
+    extras?: {
+      streak?: number;
+      roundProgress?: { done: number; total: number };
+      perfectRound?: boolean;
+    },
+  ) => {
     if (!sessionCode || !socketRef.current) {
       console.warn('[QP updateScore] bail', {
         score,
@@ -462,9 +476,14 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     // sessionStorage here closes the gap — both instances see the same
     // current value because there's only one tab-scoped storage.
     const id = readStoredClientId() ?? clientIdRef.current;
-    console.log('[QP updateScore] emit', { sessionCode, clientId: id, score });
+    console.log('[QP updateScore] emit', { sessionCode, clientId: id, score, extras });
     socketRef.current.emit(QP_EVENTS.SCORE_UPDATE, {
-      sessionCode, clientId: id, score,
+      sessionCode,
+      clientId: id,
+      score,
+      ...(extras?.streak !== undefined ? { streak: extras.streak } : {}),
+      ...(extras?.roundProgress ? { roundProgress: extras.roundProgress } : {}),
+      ...(extras?.perfectRound ? { perfectRound: true } : {}),
     });
   }, [sessionCode]);
 

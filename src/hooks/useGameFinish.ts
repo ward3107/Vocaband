@@ -89,7 +89,14 @@ export interface UseGameFinishParams {
   quickPlayV2: boolean;
   /** updateScore on the /quick-play socket. Wired through so the hook
    *  doesn't need to import the socket hook directly. */
-  quickPlaySocketUpdateScore: (score: number) => void;
+  quickPlaySocketUpdateScore: (
+    score: number,
+    extras?: {
+      streak?: number;
+      roundProgress?: { done: number; total: number };
+      perfectRound?: boolean;
+    },
+  ) => void;
 
   // ─── Per-student progression ────────────────────────────────────
   xp: number;
@@ -231,7 +238,14 @@ export function useGameFinish(params: UseGameFinishParams) {
       // SCORE_UPDATE so the teacher sees the end-of-game total,
       // update the completed-modes set, and skip the Supabase insert.
       if (quickPlayV2) {
-        quickPlaySocketUpdateScore(Math.max(0, finalScore));
+        // Tier B: signal PERFECT ROUND to the monitor when the student
+        // finished the mode without a single recorded mistake. The
+        // server clears this flag after one broadcast tick so the
+        // achievement toast fires exactly once.
+        quickPlaySocketUpdateScore(Math.max(0, finalScore), {
+          perfectRound: mistakes.length === 0 && gameWords.length > 0,
+          roundProgress: { done: gameWords.length, total: gameWords.length },
+        });
         setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
         setIsSaving(false);
         return;

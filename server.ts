@@ -51,6 +51,8 @@ import {
   QP_MAX_SESSION_SCORE,
   QP_BROADCAST_INTERVAL_MS,
   QP_IDLE_SWEEP_MS,
+  QP_MAX_STREAK,
+  QP_MAX_ROUND_TOTAL,
   isValidSessionCode,
   isValidClientId,
   isValidNickname,
@@ -841,6 +843,12 @@ async function startServer() {
             sessionCode: code,
             students: Array.from(s.students.values()),
           });
+          // Clear the one-shot perfectRound flag after each broadcast so
+          // the next leaderboard tick doesn't re-fire the achievement
+          // toast for the same round.
+          for (const entry of s.students.values()) {
+            if (entry.perfectRound) entry.perfectRound = false;
+          }
         }
       }
       qpPendingBroadcasts.clear();
@@ -1111,6 +1119,29 @@ async function startServer() {
       const prevScore = entry.score;
       entry.score = score;
       entry.lastSeen = Date.now();
+
+      // Tier B optional fields. Each is validated independently so a
+      // malformed value just drops that one field rather than rejecting
+      // the whole score update (which would silently lose points).
+      if (typeof payload.streak === "number" && isFinite(payload.streak)
+          && payload.streak >= 0 && payload.streak <= QP_MAX_STREAK) {
+        entry.streak = Math.floor(payload.streak);
+      }
+      if (payload.roundProgress && typeof payload.roundProgress === "object") {
+        const { done, total } = payload.roundProgress;
+        if (typeof done === "number" && typeof total === "number"
+            && isFinite(done) && isFinite(total)
+            && done >= 0 && total > 0 && done <= total && total <= QP_MAX_ROUND_TOTAL) {
+          entry.roundProgress = { done: Math.floor(done), total: Math.floor(total) };
+        }
+      }
+      // perfectRound is intentionally write-once: cleared in
+      // qpScheduleBroadcast after the next leaderboard tick so the
+      // monitor sees it for exactly one broadcast.
+      if (payload.perfectRound === true) {
+        entry.perfectRound = true;
+      }
+
       console.log(`[QP SCORE accept] session=${sessionCode} client=${clientId} ${prevScore}→${score}`);
       qpScheduleBroadcast(sessionCode);
     });

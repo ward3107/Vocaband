@@ -94,6 +94,24 @@ export interface QpScoreUpdatePayload {
    *  validates it can only increase (and by a bounded delta) to guard
    *  against a pasted 999 999. */
   score: number;
+  /** Tier B: live signals so the teacher monitor can show streak fire +
+   *  per-round progress bars without polling. Both optional so older
+   *  clients (or the live-challenge path that funnels through here)
+   *  still work — the server treats missing fields as "no update."
+   *
+   *  streak        — consecutive correct answers since the last miss in
+   *                  the current game mode. Resets on a wrong answer
+   *                  and on mode start.
+   *  roundProgress — words attempted / total in the current mode. Used
+   *                  to draw the under-name progress bar.
+   *  perfectRound  — one-shot flag set by the mode-finish emit when the
+   *                  student completed the round without a single
+   *                  mistake. Server forwards it on the next leaderboard
+   *                  broadcast and then clears it so the monitor only
+   *                  fires the toast once per perfect round. */
+  streak?: number;
+  roundProgress?: { done: number; total: number };
+  perfectRound?: boolean;
 }
 
 export interface QpStudentLeavePayload {
@@ -130,6 +148,15 @@ export interface QpStudentEntry {
    *  teacher UI to grey-out idle students without waiting for a
    *  disconnect event. */
   lastSeen: number;
+  /** Tier B fields — see QpScoreUpdatePayload. Re-broadcast verbatim so
+   *  the teacher monitor can render flames + progress bars + achievement
+   *  toasts from the leaderboard snapshot alone. */
+  streak?: number;
+  roundProgress?: { done: number; total: number };
+  /** True for exactly one leaderboard tick — set when the last score
+   *  update was a mode-finish with zero mistakes, cleared by the server
+   *  immediately after the next broadcast. */
+  perfectRound?: boolean;
   /** Supabase auth user id when known.  Server-private — never
    *  broadcast back to other clients (the LEADERBOARD payload omits
    *  it).  Used only for the persist-on-end progress writes. */
@@ -226,6 +253,15 @@ export const QP_MAX_SCORE_DELTA = 1_500;
  * Max absolute score in a single session (caps pathological cases).
  */
 export const QP_MAX_SESSION_SCORE = 100_000;
+
+/**
+ * Tier B clamps. Both fields are optional in QpScoreUpdatePayload so a
+ * malformed value just makes the server drop the field rather than reject
+ * the whole emit — kids keep scoring even if their client ships nonsense.
+ */
+export const QP_MAX_STREAK = 100;          // Realistic ceiling — modes top out around 20 questions
+export const QP_MAX_ROUND_TOTAL = 200;     // Custom assignments can be long; 200 is plenty
+
 
 /**
  * Throttle window (ms) between leaderboard broadcasts per session.

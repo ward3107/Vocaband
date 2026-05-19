@@ -14,7 +14,7 @@
  * useGameState hook that owns the state itself) is a bigger refactor;
  * we save that for when these handlers grow further.
  */
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { addUnique, removeKey, shuffle } from "../utils";
 import { celebrate } from "../utils/celebrate";
 import { isAnswerCorrect } from "../utils/answerMatch";
@@ -90,8 +90,16 @@ export interface UseGameModeActionsParams {
   isProcessingRef: React.MutableRefObject<boolean>;
 
   // ─── External callbacks (owned by App.tsx) ────────────────────────
-  /** Throttled socket emit — passes the new score to the live monitor. */
-  emitScoreUpdate: (newScore: number) => void;
+  /** Throttled socket emit — passes the new score plus optional Tier B
+   *  side-channel (streak / progress / perfectRound) to the QP monitor. */
+  emitScoreUpdate: (
+    newScore: number,
+    extras?: {
+      streak?: number;
+      roundProgress?: { done: number; total: number };
+      perfectRound?: boolean;
+    },
+  ) => void;
   /** Persist the score / final progress row. */
   saveScore: (scoreOverride?: number, maxScoreOverride?: number) => void | Promise<void>;
   /** TTS for full-text speech (window.speechSynthesis path). */
@@ -125,6 +133,30 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
 
   const gameDebug = getGameDebugger();
 
+  // ─── Tier B: per-round streak tracking ────────────────────────────
+  // Held in a ref so bumping doesn't trigger a re-render — the value is
+  // only read inside the synchronous score-emit path. Resets whenever
+  // the active mode changes or the round restarts (currentIndex drops
+  // back to 0 from a higher value).
+  const streakRef = useRef(0);
+  const prevIndexRef = useRef(currentIndex);
+  useEffect(() => {
+    streakRef.current = 0;
+  }, [gameMode]);
+  useEffect(() => {
+    if (currentIndex < prevIndexRef.current) streakRef.current = 0;
+    prevIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  /** Build the Tier B side-channel payload for the QP monitor. Reads the
+   *  latest streak from the ref + derives progress from the live counters.
+   *  Modes that don't use the gameWords array (sentence builder) pass an
+   *  override so the right denominator lands on the projector. */
+  const scoreExtras = (override?: { done: number; total: number }) => ({
+    streak: streakRef.current,
+    roundProgress: override ?? { done: currentIndex + 1, total: gameWords.length },
+  });
+
   // ─── Sentence builder ─────────────────────────────────────────────
   const handleSentenceWordTap = (word: string, fromAvailable: boolean) => {
     if (fromAvailable) {
@@ -147,7 +179,11 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
       speak(validSentences[sentenceIndex]);
       const newScore = score + 20;
       setScore(newScore);
-      emitScoreUpdate(newScore);
+      streakRef.current += 1;
+      emitScoreUpdate(newScore, scoreExtras({
+        done: sentenceIndex + 1,
+        total: validSentences.length,
+      }));
 
       // Use feedbackTimeoutRef for consistent auto-advance
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
@@ -167,6 +203,7 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
       }, 1800);
     } else {
       setSentenceFeedback("wrong");
+      streakRef.current = 0;
 
       // Use feedbackTimeoutRef for consistent feedback clearing
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
@@ -215,7 +252,14 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
         const newScore = score + 15;
         setScore(newScore);
 
-        emitScoreUpdate(newScore);
+        streakRef.current += 1;
+        // Matching uses matchedIds.length as the natural "done" count
+        // (each correct pair adds one id). Total is the number of words
+        // in the matching set.
+        emitScoreUpdate(newScore, scoreExtras({
+          done: matchedIds.length + 1,
+          total: matchingPairs.length,
+        }));
 
         setSelectedMatch(null);
 
@@ -270,7 +314,8 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
       // Record the correct attempt for per-word mastery tracking.
       setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: true }]);
 
-      emitScoreUpdate(newScore);
+      streakRef.current += 1;
+      emitScoreUpdate(newScore, scoreExtras());
 
       // Auto-skip quickly after correct answer (clear any pending timeout first)
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
@@ -293,6 +338,7 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
         // Show the right answer after max attempts
         setFeedback("show-answer");
         setMistakes(prev => addUnique(prev, currentWord.id));
+        streakRef.current = 0;
         // Final incorrect attempt on this word — record for mastery tracking.
         setWordAttemptBatch(prev => [...prev, { word_id: currentWord.id, is_correct: false }]);
 
@@ -376,7 +422,8 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
       const newScore = score + 15;
       setScore(newScore);
 
-      emitScoreUpdate(newScore);
+      streakRef.current += 1;
+      emitScoreUpdate(newScore, scoreExtras());
 
       // Auto-skip after correct answer (clear any pending timeout first)
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
@@ -397,6 +444,7 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
     } else {
       setFeedback("wrong");
       playWrong();
+      streakRef.current = 0;
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
@@ -437,8 +485,10 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
     if (knewIt) {
       currentScore = score + 5;
       setScore(currentScore);
-      emitScoreUpdate(currentScore);
+      streakRef.current += 1;
+      emitScoreUpdate(currentScore, scoreExtras());
     } else {
+      streakRef.current = 0;
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
@@ -495,7 +545,8 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
       const newScore = score + 20;
       setScore(newScore);
 
-      emitScoreUpdate(newScore);
+      streakRef.current += 1;
+      emitScoreUpdate(newScore, scoreExtras());
 
       gameDebug.logAutoSkip({
         triggered: true,
@@ -517,6 +568,7 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
       }, AUTO_SKIP_DELAY_MS);
     } else {
       setFeedback("wrong");
+      streakRef.current = 0;
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }

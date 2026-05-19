@@ -844,9 +844,13 @@ export default function App() {
     // Accumulate mode score into the session-wide cumulative BEFORE
     // emitting, so the QP socket sees a monotonically-increasing
     // total across modes (server rejects regresses).
-    quickPlaySocketUpdateScore: (finalScore: number) => {
+    quickPlaySocketUpdateScore: (finalScore: number, extras?: {
+      streak?: number;
+      roundProgress?: { done: number; total: number };
+      perfectRound?: boolean;
+    }) => {
       qpCumulativeScoreRef.current += Math.max(0, finalScore);
-      quickPlaySocket.updateScore(qpCumulativeScoreRef.current);
+      quickPlaySocket.updateScore(qpCumulativeScoreRef.current, extras);
     },
     xp, setXp, streak, setStreak, badges, studentProgress, setStudentProgress,
     setIsSaving, setSaveError, setQuickPlayCompletedModes,
