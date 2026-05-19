@@ -121,16 +121,6 @@ interface StudentDashboardViewProps {
 // legacy dashboard is what production ships until we're ready.
 const STRUCTURE_UX_ENABLED = import.meta.env.VITE_STRUCTURE_UX === 'true';
 
-// Temporarily hidden — the daily-drill ritual hasn't been validated
-// with real teachers yet, so the dashboard tile is suppressed on both
-// the legacy and STRUCTURE_UX render paths.  Keeping the prop, the
-// onStartClassMinute callback, the `?play=class-minute` deep-link
-// bootstrap, the GameMode entry, and the teacher's "Send Class
-// Minute" share link untouched — flipping this flag back to true
-// re-enables the student-facing entry point in one line, and any
-// pre-shared teacher links keep working in the meantime.
-const SHOW_CLASS_MINUTE_CARD = false;
-
 export default function StudentDashboardView({
   user, xp, streak, badges,
   copiedCode, setCopiedCode,
@@ -313,12 +303,8 @@ export default function StudentDashboardView({
             <ShopSquare xp={xp} onOpen={() => setView('shop')} />
           </div>
 
-          {/* ── Class Minute — daily 60-second drill ──────────────
-              Habit-forming daily ritual.  Currently hidden behind
-              SHOW_CLASS_MINUTE_CARD pending real-teacher validation;
-              code path stays intact for an easy re-enable.  See the
-              flag declaration above this component for context. */}
-          {SHOW_CLASS_MINUTE_CARD && onStartClassMinute && (
+          {/* ── Class Minute — daily 60-second drill ────────────── */}
+          {onStartClassMinute && (
             <div className="mb-4">
               <ClassMinuteCard
                 doneToday={classMinuteDoneToday}
@@ -541,12 +527,10 @@ export default function StudentDashboardView({
           />
         )}
         {/* ── Class Minute — daily 60-second drill ──────────────
-            Habit-forming daily ritual.  Same card the STRUCTURE_UX
-            branch renders; this duplicate lives here because the
-            legacy branch is the production-default render path
-            (STRUCTURE_UX is feature-flagged off).  When the flag
-            flips on for everyone, drop one of the two. */}
-        {SHOW_CLASS_MINUTE_CARD && onStartClassMinute && (
+            Same card the STRUCTURE_UX branch renders; legacy is
+            the production-default render path. Drop one of the
+            two when STRUCTURE_UX flips on for everyone. */}
+        {onStartClassMinute && (
           <ClassMinuteCard
             doneToday={classMinuteDoneToday}
             streak={classMinuteStreak}
