@@ -132,7 +132,7 @@ Strategic roadmap for making Vocaband structurally beat Kahoot in Israeli school
 - **Spaced repetition** — `supabase/migrations/20260507205628_spaced_repetition.sql` provides `review_schedule`, `count_due_reviews`, `get_due_reviews`, `record_review_result`, `schedule_review_words`. Wired through `useDueReviews.ts` → `ReviewQueueCard.tsx` → `ReviewGame.tsx`. Full SRS already live.
 - **QR / nickname join** — Quick Play already exists.
 - **Curriculum labelling structure** — `Set 1 / Set 2 / Set 3 / Custom` type already in place across the codebase.
-- **Class Minute — daily 60-second drill** (PR #587, follow-up class-switch race fix #588, shipped 2026-05-12) — `ClassMinuteCard.tsx` dashboard tile + `?play=class-minute` teacher share link via `ShareClassLinkModal`. SRS-first word source, falls back to assignments then `SET_2_WORDS`. Saves with `mode='class-minute'`; dashboard derives `doneToday` + streak from `studentProgress` with no extra round-trip. KNOWN GAP: only renders on the STRUCTURE_UX dashboard branch (which is feature-flagged OFF) — needs porting to the legacy branch for production visibility. Same gap applies to `ReviewQueueCard`.
+- **Class Minute — daily 60-second drill** (PR #587, follow-up class-switch race fix #588, shipped 2026-05-12) — `ClassMinuteCard.tsx` dashboard tile + `?play=class-minute` teacher share link via `ShareClassLinkModal`. SRS-first word source, falls back to assignments then `SET_2_WORDS`. Saves with `mode='class-minute'`; dashboard derives `doneToday` + streak from `studentProgress` with no extra round-trip. CURRENT STATE (verified 2026-05-19): `ClassMinuteCard` JSX lives in **both** the legacy and STRUCTURE_UX render branches of `StudentDashboardView.tsx`, and is gated by `SHOW_CLASS_MINUTE_CARD` at line 132 — set to `false` pending real-teacher validation of the daily-drill ritual (see the in-file comment). The prop, callback, `?play=class-minute` deep-link, GameMode entry, and teacher share-link surface are all intact; flipping the flag re-enables the student tile in one line. `ReviewQueueCard` is **not** flagged — already renders today via `StudentDashboardSection.tsx` wiring `onStartReview` through.
 - **Hot Seat — single-device pass-around mode** (PR #589, shipped 2026-05-12) — `HotSeatView.tsx` owns setup → interstitial → question → podium phases. Reuses Classic-style multi-choice mechanics, in-memory scoring (no DB writes — players aren't logged-in students). v1 uses `SET_2_WORDS` only; per-assignment word picker is a deferred v2. Tile is gated `!isHebrew` (mirrors Vocabagrut precedent).
 
 These items are DONE. Don't rebuild them — surface and market them.
@@ -238,7 +238,7 @@ These items are DONE. Don't rebuild them — surface and market them.
 
 ### Suggested next move (post-Hot-Seat ship)
 
-1. **Smoke-test the three features that just shipped on production** — Class Minute card + teacher share link + Hot Seat. None have been seen running by a human. The legacy-branch bug for the Class Minute card (rendered on STRUCTURE_UX branch only) is the most likely real-world breakage.
+1. **Smoke-test the three features that just shipped on production** — Class Minute teacher share link + Hot Seat (Class Minute student tile itself is currently flag-suppressed, see the "Already shipped" entry above). None have been seen running by a human.
 2. **Printable PDF Certificate** — smallest remaining Tier-1, A4 layout, reuses the html2pdf pipeline. 1 evening.
 
 ---
