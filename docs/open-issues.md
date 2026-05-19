@@ -93,7 +93,7 @@ What landed:
 Known follow-ups, none blocking:
 - No tests yet for the submission RPC or the dashboard read path.
 - Bagrut share drops words not present in `ALL_WORDS`; the button surfaces an "X of Y" caption but a more graceful fallback (e.g. plain-text drill) would beat silent omission.
-- `WorksheetAttemptsView` isn't in the lazy-prefetch list at `App.tsx:143`; first navigation has a small lag.
+- ✅ Cold-load lag on first navigation closed 2026-05-19 — `TeacherDashboardView` now idle-prefetches the `WorksheetAttemptsView` chunk on mount (gated on `onWorksheetResultsClick`, so Hebrew teachers without the tile don't pay the bytes). Vite dedups the dynamic import with `MiscViewSections`' `lazyWithRetry` mount, so the second call resolves instantly.
 
 ---
 
