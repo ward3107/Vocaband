@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, QrCode, LogOut, Volume2, VolumeX,
   ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause,
-  Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap, ZapOff
+  Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap, ZapOff, Plus, Trophy
 } from 'lucide-react';
 import { getXpTitle } from '../constants/game';
 import { Howl } from 'howler';
@@ -318,6 +318,140 @@ function ScoreFloater({ uid, floaters }: { uid: string; floaters: ScoreFloaterEn
         ))}
       </AnimatePresence>
     </span>
+  );
+}
+
+// End-of-session results screen. Shown after the teacher confirms
+// "End Session" but BEFORE we actually tear down the socket — gives
+// the class a celebratory recap of the top 3, their final scores, and
+// some class-wide stats. The "Close Session" button triggers the real
+// end-session work (socket emit + parent onEndSession).
+//
+// Top 3 reveal in the standard podium order: 2nd from the left, 1st in
+// the middle and taller, 3rd on the right. Each enters with a brief
+// spring delay so the projector feels cinematic.
+type SessionStudent = {
+  name: string;
+  avatar: string;
+  score: number;
+  streak?: number;
+};
+function SessionResultsModal({
+  topStudents,
+  totalStudents,
+  classTotal,
+  onDone,
+}: {
+  topStudents: SessionStudent[];
+  totalStudents: number;
+  classTotal: number;
+  onDone: () => void;
+}) {
+  const order: Array<{ idx: number; height: string; emphasis: string; medal: React.ReactNode }> = [
+    { idx: 1, height: "h-32", emphasis: "scale-95",  medal: <Medal className="text-slate-300" size={26} fill="currentColor" /> },
+    { idx: 0, height: "h-44", emphasis: "scale-110", medal: <Crown  className="text-amber-300" size={32} fill="currentColor" /> },
+    { idx: 2, height: "h-24", emphasis: "scale-90",  medal: <Medal className="text-orange-400" size={22} fill="currentColor" /> },
+  ];
+  const colors = ['from-amber-300 to-amber-600', 'from-slate-200 to-slate-500', 'from-orange-300 to-orange-600'];
+  const average = totalStudents > 0 ? Math.round(classTotal / totalStudents) : 0;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-center justify-center px-4 py-6 overflow-y-auto"
+    >
+      <motion.div
+        initial={{ scale: 0.85, opacity: 0, y: 30 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 220, damping: 22 }}
+        className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl shadow-2xl px-6 py-8 sm:px-10 sm:py-12 max-w-3xl w-full border border-white/10 flex flex-col items-center gap-6"
+      >
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+          className="flex flex-col items-center gap-2"
+        >
+          <Trophy size={56} className="text-amber-300 drop-shadow-lg" />
+          <h2 className="font-headline font-black text-3xl sm:text-5xl text-center tracking-tight">Game Over!</h2>
+          {topStudents[0] && (
+            <p className="font-label text-base sm:text-xl text-amber-200 italic">
+              🥇 Winner — <span className="font-black">{topStudents[0].name}</span>
+            </p>
+          )}
+        </motion.div>
+
+        {/* Podium row */}
+        <div className="flex items-end justify-center gap-4 sm:gap-8 w-full">
+          {order.map(({ idx, height, emphasis, medal }, i) => {
+            const s = topStudents[idx];
+            if (!s) return <div key={idx} className={`w-20 ${height}`} />;
+            return (
+              <motion.div
+                key={idx}
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 + i * 0.25, type: "spring", stiffness: 240, damping: 22 }}
+                className="flex flex-col items-center gap-2 flex-1 max-w-[140px]"
+              >
+                <div className="relative">
+                  {medal && <div className="absolute -top-7 left-1/2 -translate-x-1/2 drop-shadow">{medal}</div>}
+                  <div className={`rounded-full bg-white/10 flex items-center justify-center text-4xl sm:text-5xl border-4 border-white/30 shadow-2xl ${emphasis} w-16 h-16 sm:w-20 sm:h-20`}>
+                    <QPAvatar value={s.avatar || "🦊"} iconSize={44} className="text-3xl sm:text-4xl" />
+                  </div>
+                </div>
+                <p className="font-headline font-black text-sm sm:text-base truncate max-w-full text-center">{s.name}</p>
+                <p className="font-label tabular-nums text-lg sm:text-2xl font-black text-amber-200">{s.score}</p>
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: "100%" }}
+                  transition={{ delay: 0.5 + i * 0.25, type: "spring", stiffness: 200, damping: 18 }}
+                  className={`w-full bg-gradient-to-b ${colors[idx]} rounded-t-lg shadow-xl ${height} flex items-start justify-center pt-2`}
+                >
+                  <span className="text-white/30 text-3xl sm:text-4xl font-black">{idx + 1}</span>
+                </motion.div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Class stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2, duration: 0.4 }}
+          className="grid grid-cols-3 gap-3 sm:gap-6 w-full max-w-md text-center"
+        >
+          <div className="rounded-xl bg-white/5 px-3 py-2 sm:py-3 border border-white/5">
+            <p className="font-label text-[10px] sm:text-xs uppercase tracking-widest opacity-60">Players</p>
+            <p className="font-headline font-black text-xl sm:text-3xl tabular-nums">{totalStudents}</p>
+          </div>
+          <div className="rounded-xl bg-white/5 px-3 py-2 sm:py-3 border border-white/5">
+            <p className="font-label text-[10px] sm:text-xs uppercase tracking-widest opacity-60">Class total</p>
+            <p className="font-headline font-black text-xl sm:text-3xl tabular-nums text-amber-200">{classTotal}</p>
+          </div>
+          <div className="rounded-xl bg-white/5 px-3 py-2 sm:py-3 border border-white/5">
+            <p className="font-label text-[10px] sm:text-xs uppercase tracking-widest opacity-60">Average</p>
+            <p className="font-headline font-black text-xl sm:text-3xl tabular-nums">{average}</p>
+          </div>
+        </motion.div>
+
+        <motion.button
+          type="button"
+          onClick={onDone}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.5, duration: 0.4 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          className="mt-2 inline-flex items-center justify-center gap-2 px-8 py-3 sm:px-10 sm:py-4 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-headline font-black text-base sm:text-xl shadow-lg shadow-emerald-500/40 hover:shadow-emerald-500/60 transition-shadow"
+        >
+          Close Session
+        </motion.button>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -898,6 +1032,25 @@ export default function QuickPlayMonitor({
   }, [musicPlaying, currentTrack]);
 
   // ─── Remove student ───────────────────────────────────────────────────────
+  // Teacher manual bonus — fire-and-forget. Server validates the
+  // teacher's access_token and amount bounds, then broadcasts the new
+  // leaderboard. Default is +5 per tap; a teacher can tap multiple
+  // times for bigger rewards. Includes optimistic UI: nothing renders
+  // until the broadcast lands, but the score-floater system already
+  // shows a +N when the broadcast does land so the teacher gets quick
+  // visual confirmation.
+  const giveBonus = useCallback(async (studentUid: string, amount: number = 5) => {
+    if (!QUICKPLAY_V2) return;
+    if (!studentUid) return;
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const token = authSession?.access_token;
+    if (!token) {
+      showToast('Your session expired. Please refresh and log in again.', 'error');
+      return;
+    }
+    socket.bonusStudent(studentUid, amount, token);
+  }, [QUICKPLAY_V2, socket, showToast]);
+
   const removeStudent = async (name: string) => {
     if (QUICKPLAY_V2) {
       // v2 path: kick via socket. The server finds the clientId, removes
@@ -952,17 +1105,41 @@ export default function QuickPlayMonitor({
     setConfirmKick(null);
   };
 
-  // v2: additionally emit TEACHER_END on the socket so all connected
-  // students get notified immediately. The parent still handles the
-  // Supabase is_active=false flip via onEndSession().
-  const handleEndSession = async () => {
+  // End-of-session results overlay. When the teacher confirms End
+  // Session we don't tear down right away — we freeze the current
+  // leaderboard into resultsSnapshot and show a celebration recap.
+  // Only after the teacher clicks "Close Session" do we actually
+  // emit TEACHER_END + onEndSession.
+  const [resultsSnapshot, setResultsSnapshot] = useState<{
+    top: SessionStudent[];
+    totalStudents: number;
+    classTotal: number;
+  } | null>(null);
+
+  const beginEndSession = useCallback(() => {
+    const all = (QUICKPLAY_V2 ? socketStudents : students);
+    const sortedAll = [...all].sort((a, b) => b.score - a.score);
+    const top: SessionStudent[] = sortedAll.slice(0, 3).map(s => ({
+      name: s.name,
+      avatar: s.avatar || '🦊',
+      score: s.score,
+      streak: (s as { streak?: number }).streak,
+    }));
+    const classTotal = sortedAll.reduce((sum, s) => sum + s.score, 0);
+    setResultsSnapshot({ top, totalStudents: sortedAll.length, classTotal });
+  }, [QUICKPLAY_V2, socketStudents, students]);
+
+  // Final teardown — called from the results modal's "Close Session"
+  // button. Mirrors the v2 socket emit + parent callback pattern.
+  const finishEndSession = useCallback(async () => {
     if (QUICKPLAY_V2) {
       const { data: { session: authSession } } = await supabase.auth.getSession();
       const token = authSession?.access_token;
       if (token) socket.endSession(token);
     }
+    setResultsSnapshot(null);
     onEndSession();
-  };
+  }, [QUICKPLAY_V2, socket, onEndSession]);
 
   // ─── Sorted students ──────────────────────────────────────────────────────
   const sorted = useMemo(() =>
@@ -1129,6 +1306,19 @@ export default function QuickPlayMonitor({
         onClose={() => setSpotlightStudent(null)}
         themeAccent={t.accent}
       />
+
+      {/* End-of-session results screen — shown between "Confirm End" and
+          the actual socket teardown so the class gets a recap. */}
+      <AnimatePresence>
+        {resultsSnapshot && (
+          <SessionResultsModal
+            topStudents={resultsSnapshot.top}
+            totalStudents={resultsSnapshot.totalStudents}
+            classTotal={resultsSnapshot.classTotal}
+            onDone={finishEndSession}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ─── Reaction particles (Tier C) ─────────────────────────────────────
           Emojis tapped by students on their phones float up the
@@ -1469,6 +1659,14 @@ export default function QuickPlayMonitor({
                         >
                           <X size={12} />
                         </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); void giveBonus(top3[1].studentUid); }}
+                          aria-label={`Give ${top3[1].name} +5 bonus`}
+                          title="Give +5 bonus"
+                          className="absolute -top-2 -right-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-emerald-500 hover:bg-emerald-600 text-white transition-opacity z-20 shadow-md"
+                        >
+                          <Plus size={12} strokeWidth={3} />
+                        </button>
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[1].name}</p>
                       {(() => { const tt = getXpTitle(top3[1].score); return (
@@ -1546,6 +1744,14 @@ export default function QuickPlayMonitor({
                         >
                           <X size={14} />
                         </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); void giveBonus(top3[0].studentUid); }}
+                          aria-label={`Give ${top3[0].name} +5 bonus`}
+                          title="Give +5 bonus"
+                          className="absolute -top-2 -right-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-emerald-500 hover:bg-emerald-600 text-white transition-opacity z-20 shadow-md"
+                        >
+                          <Plus size={14} strokeWidth={3} />
+                        </button>
                       </motion.div>
                       <p className={`font-headline text-sm sm:text-lg 2xl:text-xl min-[1700px]:text-3xl font-black truncate max-w-[100px] 2xl:max-w-[140px] min-[1700px]:max-w-[220px] text-center ${t.text}`}>{top3[0].name}</p>
                       {(() => { const tt = getXpTitle(top3[0].score); return (
@@ -1589,6 +1795,14 @@ export default function QuickPlayMonitor({
                           className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
                         >
                           <X size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); void giveBonus(top3[2].studentUid); }}
+                          aria-label={`Give ${top3[2].name} +5 bonus`}
+                          title="Give +5 bonus"
+                          className="absolute -top-2 -right-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-emerald-500 hover:bg-emerald-600 text-white transition-opacity z-20 shadow-md"
+                        >
+                          <Plus size={12} strokeWidth={3} />
                         </button>
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[2].name}</p>
@@ -1694,6 +1908,18 @@ export default function QuickPlayMonitor({
                         justJoined ? 'ring-4 ring-emerald-400/60 ring-offset-2 ring-offset-transparent' : ''
                       }`}
                     >
+                      {/* Bonus on hover — opposite the kick button so the
+                          "good job" and "remove" actions don't crowd each
+                          other. Default +5 per tap; tap multiple times for
+                          more. */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); void giveBonus(student.studentUid); }}
+                        className="absolute top-1 left-1 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-emerald-500 hover:bg-emerald-600 text-white transition-all z-10 shadow-md"
+                        title="Give +5 bonus"
+                        aria-label={`Give ${student.name} +5 bonus`}
+                      >
+                        <Plus size={10} strokeWidth={3} />
+                      </button>
                       {/* Kick on hover */}
                       <button
                         onClick={(e) => { e.stopPropagation(); setConfirmKick(student.name); }}
@@ -1952,7 +2178,7 @@ export default function QuickPlayMonitor({
                     if (musicRef.current) { musicRef.current.stop(); musicRef.current.unload(); musicRef.current = null; }
                     setMusicPlaying(false);
                     setEndModal(false);
-                    handleEndSession();
+                    beginEndSession();
                   }}
                   className="flex-1 py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
                 >

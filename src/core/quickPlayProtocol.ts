@@ -49,6 +49,10 @@ export const QP_EVENTS = {
   TEACHER_OBSERVE: "qp:teacher:observe",
   // A teacher removing a specific student by clientId.
   TEACHER_KICK:    "qp:teacher:kick",
+  // A teacher giving a manual bonus (e.g., "+5 for great answer") to
+  // a specific student. Server-authoritative — bypasses the student
+  // score-delta cap because the teacher is trusted.
+  TEACHER_BONUS:   "qp:teacher:bonus",
   // A teacher ending the session — everyone in the room gets notified.
   TEACHER_END:     "qp:teacher:end",
 } as const;
@@ -148,6 +152,19 @@ export interface QpTeacherObservePayload {
 export interface QpTeacherKickPayload {
   sessionCode: string;
   clientId: string;
+  token: string;
+}
+
+/**
+ * Teacher-issued manual bonus points — for the "good answer!"
+ * recognition lever during play. amount is bounded server-side
+ * (QP_MAX_BONUS_AMOUNT) to keep accidental long-press spam from
+ * skewing the leaderboard.
+ */
+export interface QpTeacherBonusPayload {
+  sessionCode: string;
+  clientId: string;
+  amount: number;
   token: string;
 }
 
@@ -310,6 +327,14 @@ export type QpReactionEmoji = typeof QP_REACTION_EMOJIS[number];
  * kid doesn't see error toasts.
  */
 export const QP_REACTION_MIN_INTERVAL_MS = 750;
+
+/**
+ * Tier-B-ish: teacher manual bonus. Max per single bonus emit so a
+ * stuck-key or runaway client can't write 9999. Real teachers will
+ * grant +5 / +10; we allow up to 50 for the rare "wow, that was
+ * incredible" case.
+ */
+export const QP_MAX_BONUS_AMOUNT = 50;
 
 export function isValidReactionEmoji(v: unknown): v is QpReactionEmoji {
   return typeof v === "string" && (QP_REACTION_EMOJIS as readonly string[]).includes(v);
