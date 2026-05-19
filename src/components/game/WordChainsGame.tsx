@@ -80,9 +80,22 @@ export default function WordChainsGame({
     return s;
   }, []);
 
-  // Seed the chain with a random word from the pool.
+  // Seed the chain with a random word from the pool — but bias toward
+  // seeds whose last letter HAS at least one continuation in the same
+  // pool. Without this, a round could start with e.g. "good" → kid
+  // needs a "d" word → no pool word starts with "d" → every real
+  // English guess gets the confusing "not in your word list" message,
+  // and the round is dead on arrival. Falls back to a plain random
+  // pick when the pool is so constrained that no seed has a follow-up
+  // (e.g. teacher uploaded only one word, or letters don't loop).
   const [chain, setChain] = useState<ChainStep[]>(() => {
-    const seed = randomPick(gameWords);
+    const seedablePicks = gameWords.filter(seed => {
+      const last = seed.english.slice(-1).toLowerCase();
+      return gameWords.some(
+        w => w.id !== seed.id && w.english.toLowerCase().startsWith(last),
+      );
+    });
+    const seed = randomPick(seedablePicks.length > 0 ? seedablePicks : gameWords);
     return seed ? [{ word: seed, isSeed: true }] : [];
   });
   const [input, setInput] = useState("");
@@ -94,6 +107,19 @@ export default function WordChainsGame({
   const lastLetter = currentWord ? currentWord.english.slice(-1).toLowerCase() : "";
   // Score = chain length minus the seed word.
   const score = Math.max(0, chain.length - 1);
+
+  // Dead-end detection: are there any unused pool words that start
+  // with the required letter? When this is false the kid literally
+  // cannot continue — every real-English word they try (even one that
+  // starts with the right letter) gets "not in your word list" because
+  // the pool just doesn't have a follow-up. Surface a clear end-of-
+  // round prompt instead of letting them keep guessing into a trap.
+  const noMoreCandidates = useMemo(() => {
+    if (!currentWord || !lastLetter) return false;
+    return !gameWords.some(
+      w => !usedIds.has(w.id) && w.english.toLowerCase().startsWith(lastLetter),
+    );
+  }, [currentWord, lastLetter, usedIds, gameWords]);
 
   // Auto-focus the input on mount + after every accepted word.
   useEffect(() => {
@@ -325,6 +351,24 @@ export default function WordChainsGame({
         </div>
       </div>
 
+      {/* Dead-end banner — the pool has no word starting with the
+          required letter, so the kid can't continue no matter what
+          real-English word they try. Surface this BEFORE they guess
+          into the trap, with a one-tap End round CTA. */}
+      {noMoreCandidates && (
+        <div
+          className="mt-4 w-full max-w-md px-4 py-3 rounded-xl bg-amber-50 border-2 border-amber-300 text-amber-900 text-sm font-bold text-center"
+          role="status"
+          dir={dir}
+        >
+          {language === "he"
+            ? `אין מילים נוספות ברשימה שמתחילות ב-"${tail.toUpperCase()}" — הקש "סיים" כדי לסיים`
+            : language === "ar"
+            ? `لا توجد كلمات أخرى في القائمة تبدأ بـ "${tail.toUpperCase()}" — اضغط "إنهاء" لإنهاء الجولة`
+            : `No more words in your list start with "${tail.toUpperCase()}" — tap End round to finish`}
+        </div>
+      )}
+
       {/* Input form */}
       <form
         onSubmit={handleSubmit}
@@ -352,7 +396,7 @@ export default function WordChainsGame({
         />
         <button
           type="submit"
-          disabled={!input.trim()}
+          disabled={!input.trim() || noMoreCandidates}
           className={`px-4 py-3 rounded-lg font-black text-white shadow-md disabled:opacity-50 ${theme.fill}`}
           aria-label={tAria.submitWord}
         >
@@ -377,12 +421,15 @@ export default function WordChainsGame({
         )}
       </AnimatePresence>
 
-      {/* Action row */}
+      {/* Action row — Hint disables on dead-end (no pool word starts
+          with the required letter, so there's nothing to hint). End
+          round gets emphasised so the kid sees the way out. */}
       <div className="mt-6 flex items-center gap-3">
         <button
           type="button"
           onClick={handleSkip}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-bold transition"
+          disabled={noMoreCandidates}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <SkipForward size={16} />
           {language === "he" ? "רמז" : language === "ar" ? "تلميح" : "Hint"}
@@ -390,7 +437,11 @@ export default function WordChainsGame({
         <button
           type="button"
           onClick={() => onFinish(score)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-bold transition"
+          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition ${
+            noMoreCandidates
+              ? "bg-amber-500 hover:bg-amber-600 text-white shadow-md"
+              : "bg-rose-50 hover:bg-rose-100 text-rose-600"
+          }`}
         >
           <X size={16} />
           {language === "he" ? "סיים" : language === "ar" ? "إنهاء" : "End round"}
