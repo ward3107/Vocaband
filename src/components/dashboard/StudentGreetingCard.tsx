@@ -308,10 +308,11 @@ export default function StudentGreetingCard({
               <span className="text-base sm:text-lg leading-none" aria-hidden>{xpTitle.emoji}</span>
               <div className="relative flex-1 h-2 rounded-full bg-white/20 overflow-hidden">
                 <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPct}%` }}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: progressPct / 100 }}
                   transition={{ duration: 0.9, ease: 'easeOut', delay: 0.2 }}
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-200 rounded-full shadow-[0_0_8px_rgba(253,224,71,0.7)]"
+                  style={{ transformOrigin: 'left' }}
+                  className="absolute inset-0 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-200 rounded-full shadow-[0_0_8px_rgba(253,224,71,0.7)]"
                 />
               </div>
               {nextTier && (
