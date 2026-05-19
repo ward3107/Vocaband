@@ -292,6 +292,35 @@ function RoundProgressBar({ progress, accent }: { progress?: { done: number; tot
   );
 }
 
+// Brief "+N" green floater that rises out of a score number whenever
+// the underlying total ticks up. Lives in an absolutely-positioned
+// span so it doesn't push the surrounding layout — just floats up and
+// fades over ~700ms. Multiple deltas for the same student stack
+// because they each get a unique key.
+type ScoreFloaterEntry = { id: string; uid: string; delta: number };
+function ScoreFloater({ uid, floaters }: { uid: string; floaters: ScoreFloaterEntry[] }) {
+  const mine = floaters.filter(f => f.uid === uid);
+  if (mine.length === 0) return null;
+  return (
+    <span className="relative inline-block w-0 h-0 align-baseline pointer-events-none">
+      <AnimatePresence>
+        {mine.map(f => (
+          <motion.span
+            key={f.id}
+            initial={{ y: 0, opacity: 0, scale: 0.6 }}
+            animate={{ y: -32, opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="absolute left-1 -top-1 font-headline font-black text-emerald-400 text-sm sm:text-base drop-shadow whitespace-nowrap"
+          >
+            +{f.delta}
+          </motion.span>
+        ))}
+      </AnimatePresence>
+    </span>
+  );
+}
+
 // Tier C reaction particle layer. Each accepted reaction floats an
 // emoji from the bottom of the projector up over ~2.6s with a slight
 // horizontal drift so a burst from one student doesn't render as a
@@ -598,6 +627,41 @@ export default function QuickPlayMonitor({
     }
   }, [effectiveStudents]);
 
+  // ─── Score floaters ──────────────────────────────────────────────────────
+  // Track previous score per-student so we can render a brief "+N"
+  // green floater out of the score number each time it ticks up. The
+  // leaderboard broadcast is throttled (QP_BROADCAST_INTERVAL_MS), so
+  // a kid answering quickly may have several points combined into one
+  // delta — that's fine, the floater shows the actual change.
+  const prevScoresRef = useRef<Map<string, number>>(new Map());
+  const [scoreFloaters, setScoreFloaters] = useState<ScoreFloaterEntry[]>([]);
+  useEffect(() => {
+    const additions: ScoreFloaterEntry[] = [];
+    for (const s of effectiveStudents) {
+      const uid = s.studentUid;
+      if (!uid) continue;
+      const prev = prevScoresRef.current.get(uid);
+      if (prev !== undefined && s.score > prev) {
+        additions.push({
+          id: `${uid}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          uid,
+          delta: s.score - prev,
+        });
+      }
+      prevScoresRef.current.set(uid, s.score);
+    }
+    if (additions.length > 0) {
+      // Cap at 20 in-flight floaters across the whole board so a class
+      // hammering correct answers doesn't queue up endlessly.
+      setScoreFloaters(prev => [...prev, ...additions].slice(-20));
+      additions.forEach(f => {
+        setTimeout(() => {
+          setScoreFloaters(prev => prev.filter(x => x.id !== f.id));
+        }, 800);
+      });
+    }
+  }, [effectiveStudents]);
+
   // ─── Background music ──────────────────────────────────────────────────────
   const toggleMusic = () => {
     if (musicPlaying && musicRef.current) {
@@ -762,6 +826,18 @@ export default function QuickPlayMonitor({
   );
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
+
+  // Compact mode kicks in once the rank-4+ list is big enough that the
+  // default 4-column grid would overflow a 1080p projector. Below the
+  // threshold the layout stays roomy; above it we densify so every
+  // student's name stays visible without scrolling. Teacher feedback
+  // from the live class: "students need to see their names."
+  const compactMode = rest.length > 12;
+
+  // Fixed gold / silver / bronze classes for the top-3 score numbers
+  // so the hierarchy reads at a glance regardless of which theme is
+  // active. Falls back to the theme accent for rank 4+.
+  const topScoreColors = ['text-amber-300', 'text-slate-200', 'text-orange-300'] as const;
 
   // ─── Celebration SFX when the #1 spot changes ────────────────────────────
   //
@@ -1218,8 +1294,8 @@ export default function QuickPlayMonitor({
                           {tt.emoji} {tt.title}
                         </p>
                       ); })()}
-                      <p className={`font-label text-sm sm:text-base 2xl:text-lg min-[1700px]:text-2xl ${t.accent} font-black tabular-nums flex items-center gap-1.5`}>
-                        <span><TickingScore value={top3[1].score} /> pts</span>
+                      <p className={`font-label text-sm sm:text-base 2xl:text-lg min-[1700px]:text-2xl ${topScoreColors[1]} font-black tabular-nums flex items-center gap-1.5 relative`}>
+                        <span><TickingScore value={top3[1].score} /> pts<ScoreFloater uid={top3[1].studentUid} floaters={scoreFloaters} /></span>
                         {top3[1].streak !== undefined && <StreakBadge streak={top3[1].streak} />}
                       </p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 80 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-32 bg-gradient-to-b ${t.podium2} rounded-t-lg flex items-center justify-center shadow-xl overflow-hidden`}>
@@ -1295,8 +1371,8 @@ export default function QuickPlayMonitor({
                           {tt.emoji} {tt.title}
                         </p>
                       ); })()}
-                      <p className={`font-label text-base sm:text-lg 2xl:text-xl min-[1700px]:text-3xl ${t.accent} font-black tabular-nums flex items-center gap-2`}>
-                        <span><TickingScore value={top3[0].score} /> pts</span>
+                      <p className={`font-label text-base sm:text-lg 2xl:text-xl min-[1700px]:text-3xl ${topScoreColors[0]} font-black tabular-nums flex items-center gap-2 relative`}>
+                        <span><TickingScore value={top3[0].score} /> pts<ScoreFloater uid={top3[0].studentUid} floaters={scoreFloaters} /></span>
                         {top3[0].streak !== undefined && <StreakBadge streak={top3[0].streak} size={20} />}
                       </p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 2xl:w-32 min-[1700px]:w-48 min-[1700px]:!h-52 bg-gradient-to-b ${t.podium1} rounded-t-lg flex items-center justify-center shadow-2xl overflow-hidden relative`}>
@@ -1339,8 +1415,8 @@ export default function QuickPlayMonitor({
                           {tt.emoji} {tt.title}
                         </p>
                       ); })()}
-                      <p className={`font-label text-sm sm:text-base 2xl:text-lg min-[1700px]:text-2xl ${t.accent} font-black tabular-nums flex items-center gap-1.5`}>
-                        <span><TickingScore value={top3[2].score} /> pts</span>
+                      <p className={`font-label text-sm sm:text-base 2xl:text-lg min-[1700px]:text-2xl ${topScoreColors[2]} font-black tabular-nums flex items-center gap-1.5 relative`}>
+                        <span><TickingScore value={top3[2].score} /> pts<ScoreFloater uid={top3[2].studentUid} floaters={scoreFloaters} /></span>
                         {top3[2].streak !== undefined && <StreakBadge streak={top3[2].streak} />}
                       </p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 64 }} transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-24 bg-gradient-to-b ${t.podium3} rounded-t-lg flex items-center justify-center shadow-xl overflow-hidden`}>
@@ -1391,16 +1467,24 @@ export default function QuickPlayMonitor({
         */}
         {sorted.length > 3 && (
           <section>
-            <h3 className={`font-label text-[10px] 2xl:text-xs uppercase tracking-[0.2em] opacity-50 font-black mb-3 ${t.text}`}>
-              Players · rank 4+
+            <h3 className={`font-label text-[10px] 2xl:text-xs uppercase tracking-[0.2em] opacity-50 font-black mb-3 ${t.text} flex items-center gap-2`}>
+              <span>Players · rank 4+</span>
+              {compactMode && <span className="opacity-70 normal-case tracking-normal">({rest.length})</span>}
             </h3>
-            {/* Responsive grid: 1 col on phones, 2 on tablets, 3 on
-                desktops, 4 on classroom projectors / 4K screens.
-                Replaces the previous full-width single-row layout
-                that wasted ~70% of horizontal space and made each
-                avatar+name tiny when projected.  Tiles are now bigger
-                and easier to read across the room. */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
+            {/* Responsive grid with two density modes:
+                  - Default (<= 12 in rank 4+): roomy tiles, 1-4 cols,
+                    progress bars visible, generous padding.
+                  - Compact (> 12 in rank 4+): denser grid (up to 6
+                    cols on classroom projectors), smaller avatars,
+                    no progress bar, single-row name + score so every
+                    student's name stays visible without page scroll.
+                Teacher request from the live session: "students need
+                to see their names". */}
+            <div className={
+              compactMode
+                ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1700px]:grid-cols-6 gap-1.5 max-h-[70vh] overflow-y-auto pr-1"
+                : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3"
+            }>
               <AnimatePresence mode="popLayout">
                 {sorted.slice(3).map((student, idx) => {
                   const rank = idx + 4;
@@ -1419,7 +1503,11 @@ export default function QuickPlayMonitor({
                       animate={{ scale: 1, opacity: 1, x: 0, y: 0 }}
                       exit={{ scale: 0.9, opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 280, damping: 24 }}
-                      className={`${t.card} rounded-lg px-3 sm:px-4 py-3 2xl:py-4 flex items-center gap-3 2xl:gap-4 shadow-sm hover:shadow-md transition-all border group relative ${
+                      className={`${t.card} rounded-lg flex items-center shadow-sm hover:shadow-md transition-all border group relative ${
+                        compactMode
+                          ? 'px-2 py-1.5 gap-2'
+                          : 'px-3 sm:px-4 py-3 2xl:py-4 gap-3 2xl:gap-4'
+                      } ${
                         justJoined ? 'ring-4 ring-emerald-400/60 ring-offset-2 ring-offset-transparent' : ''
                       }`}
                     >
@@ -1431,24 +1519,46 @@ export default function QuickPlayMonitor({
                       >
                         <X size={10} />
                       </button>
-                      <span className={`font-headline text-base sm:text-lg 2xl:text-2xl font-black tabular-nums w-8 2xl:w-12 text-center shrink-0 ${t.accent}`}>
+                      <span className={`font-headline font-black tabular-nums text-center shrink-0 ${t.accent} ${
+                        compactMode
+                          ? 'text-xs 2xl:text-base w-5 2xl:w-7'
+                          : 'text-base sm:text-lg 2xl:text-2xl w-8 2xl:w-12'
+                      }`}>
                         {rank}
                       </span>
                       <div className="relative shrink-0">
-                        <div className="w-11 h-11 sm:w-12 sm:h-12 2xl:w-16 2xl:h-16 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-2xl 2xl:text-3xl border-2 border-surface-container-highest">
-                          <QPAvatar value={getStudentAvatar(student)} iconSize={28} className="text-2xl sm:text-2xl 2xl:text-3xl" />
+                        <div className={`rounded-full bg-surface-container-high flex items-center justify-center border-2 border-surface-container-highest ${
+                          compactMode
+                            ? 'w-8 h-8 2xl:w-10 2xl:h-10 text-lg 2xl:text-xl'
+                            : 'w-11 h-11 sm:w-12 sm:h-12 2xl:w-16 2xl:h-16 text-2xl sm:text-2xl 2xl:text-3xl'
+                        }`}>
+                          <QPAvatar
+                            value={getStudentAvatar(student)}
+                            iconSize={compactMode ? 20 : 28}
+                            className={compactMode
+                              ? "text-lg 2xl:text-xl"
+                              : "text-2xl sm:text-2xl 2xl:text-3xl"}
+                          />
                         </div>
                         <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="font-headline text-sm sm:text-base 2xl:text-xl font-bold truncate block">
+                        <span className={`font-headline font-bold truncate block ${
+                          compactMode
+                            ? 'text-xs sm:text-sm 2xl:text-base'
+                            : 'text-sm sm:text-base 2xl:text-xl'
+                        }`}>
                           {student.name}
                         </span>
-                        <span className={`font-label text-xs sm:text-sm 2xl:text-base font-black tabular-nums ${t.accent} flex items-center gap-2`}>
-                          <span>{student.score} pts</span>
-                          {student.streak !== undefined && <StreakBadge streak={student.streak} />}
+                        <span className={`font-label font-black tabular-nums ${t.accent} flex items-center gap-1.5 relative ${
+                          compactMode
+                            ? 'text-[11px] 2xl:text-xs'
+                            : 'text-xs sm:text-sm 2xl:text-base gap-2'
+                        }`}>
+                          <span>{student.score} pts<ScoreFloater uid={student.studentUid} floaters={scoreFloaters} /></span>
+                          {student.streak !== undefined && <StreakBadge streak={student.streak} size={compactMode ? 12 : 16} />}
                         </span>
-                        <RoundProgressBar progress={student.roundProgress} accent={t.accentBg} />
+                        {!compactMode && <RoundProgressBar progress={student.roundProgress} accent={t.accentBg} />}
                       </div>
                     </motion.div>
                   );
