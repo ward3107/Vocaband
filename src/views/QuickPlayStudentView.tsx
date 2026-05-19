@@ -803,6 +803,12 @@ export default function QuickPlayStudentView({
                         inputMode="text"
                         autoCapitalize="words"
                         autoComplete="off"
+                        // Keep auto-correct + spellcheck off so the
+                        // phone keyboard doesn't "fix" the kid's
+                        // nickname into something else mid-type
+                        // (Marwa → Marwha, Eitan → Eaten, etc.).
+                        autoCorrect="off"
+                        spellCheck={false}
                         maxLength={30}
                         defaultValue={quickPlayStudentName}
                         placeholder={qpLanguage === 'he' ? 'הכניסו כינוי...' : qpLanguage === 'ar' ? 'أدخل اسمك المستعار...' : 'Enter your nickname...'}

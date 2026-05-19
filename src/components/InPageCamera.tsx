@@ -41,11 +41,68 @@ export interface InPageCameraProps {
 
 export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPageCameraProps) {
   const { language } = useLanguage();
-  const camLabels = language === "he"
-    ? { camera: "מצלמה", close: "סגור מצלמה", switch: "החלפת מצלמה", capture: "צילום" }
-    : language === "ar"
-    ? { camera: "الكاميرا", close: "إغلاق الكاميرا", switch: "تبديل الكاميرا", capture: "التقاط صورة" }
-    : { camera: "Camera", close: "Close camera", switch: "Switch camera", capture: "Capture photo" };
+  // Per-OS recovery instructions for when permission has already been
+  // denied — the browser default ("Click the lock icon") is useless to
+  // a 4th-grader holding a phone. iOS Safari hides camera permission
+  // under Settings → Safari → Camera; Android Chrome under the lock
+  // icon next to the URL. We detect once at mount time so the error
+  // copy is ready by the time getUserMedia rejects.
+  const platform: "ios" | "android" | "other" = (() => {
+    if (typeof navigator === "undefined") return "other";
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (isIOS) return "ios";
+    if (/Android/.test(ua)) return "android";
+    return "other";
+  })();
+  const L = (en: string, he: string, ar: string): string =>
+    language === "he" ? he : language === "ar" ? ar : en;
+  const camLabels = {
+    camera: L("Camera", "מצלמה", "الكاميرا"),
+    close: L("Close camera", "סגור מצלמה", "إغلاق الكاميرا"),
+    switch: L("Switch camera", "החלפת מצלמה", "تبديل الكاميرا"),
+    capture: L("Capture photo", "צילום", "التقاط صورة"),
+    starting: L("Starting camera…", "מפעיל מצלמה…", "يتم تشغيل الكاميرا…"),
+    positionFrame: L("Position the words inside the frame", "מקמו את המילים בתוך המסגרת", "ضع الكلمات داخل الإطار"),
+    unavailable: L("Camera unavailable", "המצלמה לא זמינה", "الكاميرا غير متاحة"),
+    couldNotOpen: L("Couldn't open the camera", "לא הצלחנו לפתוח את המצלמה", "تعذّر فتح الكاميرا"),
+    pickGallery: L("Pick from gallery instead", "בחרו מהגלריה במקום", "اختر من المعرض بدلاً من ذلك"),
+    closeBtn: L("Close", "סגור", "إغلاق"),
+  };
+  // Per-platform recovery message shown when permission is denied —
+  // matches the actual OS menu path so the teacher / kid can find it.
+  const PERMISSION_DENIED_MESSAGE = (() => {
+    if (platform === "ios") {
+      return L(
+        "Camera is blocked. Open Settings → Safari → Camera and tap Allow, then come back and try again.",
+        "המצלמה חסומה. פתחו הגדרות → Safari → מצלמה ולחצו לאשר, ואז חזרו ונסו שוב.",
+        "الكاميرا محظورة. افتح الإعدادات ← Safari ← الكاميرا ثم اختر السماح، وارجع وحاول مرة أخرى.",
+      );
+    }
+    if (platform === "android") {
+      return L(
+        "Camera is blocked. Tap the lock icon next to the address bar, choose Permissions → Camera → Allow, then reload this page.",
+        "המצלמה חסומה. הקישו על סמל המנעול ליד כתובת הדף, בחרו הרשאות → מצלמה → אפשר, ואז רעננו את הדף.",
+        "الكاميرا محظورة. اضغط على رمز القفل بجانب شريط العنوان، اختر الأذونات ← الكاميرا ← السماح، ثم أعد تحميل الصفحة.",
+      );
+    }
+    return L(
+      "Camera permission denied. Allow camera access in your browser settings, then reload this page.",
+      "הרשאת מצלמה נדחתה. אפשרו גישה למצלמה בהגדרות הדפדפן ואז רעננו את הדף.",
+      "تم رفض إذن الكاميرا. اسمح بالوصول إلى الكاميرا من إعدادات المتصفح، ثم أعد تحميل الصفحة.",
+    );
+  })();
+  const NO_CAMERA_MESSAGE = L(
+    "No camera found on this device.",
+    "לא נמצאה מצלמה במכשיר.",
+    "لا توجد كاميرا في هذا الجهاز.",
+  );
+  const UNSUPPORTED_MESSAGE = L(
+    "This browser doesn't support in-page camera. Use the Gallery option instead — take a photo with your phone's Camera app first, then come back and choose it from your gallery.",
+    "הדפדפן הזה אינו תומך במצלמה בתוך הדף. השתמשו באפשרות הגלריה — צלמו תחילה במצלמה הרגילה, ואז חזרו ובחרו את התמונה מהגלריה.",
+    "هذا المتصفح لا يدعم الكاميرا داخل الصفحة. استخدم خيار المعرض — التقط الصورة بكاميرا الجهاز أولًا ثم ارجع واختر الصورة من المعرض.",
+  );
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -70,9 +127,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError(
-        "This browser doesn't support in-page camera access. Use the Gallery option instead — take a photo with your phone's Camera app first, then come back and choose it from your gallery."
-      );
+      setError(UNSUPPORTED_MESSAGE);
       return;
     }
 
@@ -103,9 +158,9 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
         const name = err.name || "Error";
         const msg = err.message || "Camera access failed.";
         if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-          setError("Camera permission denied. Tap the lock icon in your browser's address bar and allow Camera, then try again.");
+          setError(PERMISSION_DENIED_MESSAGE);
         } else if (name === "NotFoundError") {
-          setError("No camera found on this device.");
+          setError(NO_CAMERA_MESSAGE);
         } else {
           setError(`${name}: ${msg}`);
         }
@@ -184,7 +239,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
           <X className="w-6 h-6" />
         </button>
         <span className="text-white/90 text-sm font-bold">
-          {ready ? "Position the words inside the frame" : error ? "Camera unavailable" : "Starting camera…"}
+          {ready ? camLabels.positionFrame : error ? camLabels.unavailable : camLabels.starting}
         </span>
         <button
           type="button"
@@ -218,7 +273,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-500/20 flex items-center justify-center">
               <AlertTriangle className="w-8 h-8 text-rose-400" />
             </div>
-            <p className="text-base font-semibold mb-3">Couldn't open the camera</p>
+            <p className="text-base font-semibold mb-3">{camLabels.couldNotOpen}</p>
             <p className="text-sm text-white/80 mb-6 leading-relaxed">{error}</p>
             {/* Gallery fallback — when camera is blocked, the teacher
                 shouldn't have to back out of the modal and tap Gallery
@@ -235,7 +290,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
               >
                 <ImageIcon className="w-5 h-5" />
-                Pick from gallery instead
+                {camLabels.pickGallery}
               </button>
             )}
             <button
@@ -244,7 +299,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
               className="px-6 py-3 rounded-lg bg-white/10 text-white font-bold text-sm border border-white/20"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
             >
-              Close
+              {camLabels.closeBtn}
             </button>
           </div>
         </div>
