@@ -1,5 +1,5 @@
 /**
- * Collects the eleven small side-effect useEffects that were scattered
+ * Collects the twelve small side-effect useEffects that were scattered
  * through App.tsx's render-prep section.  None are independently large
  * enough to warrant their own hook, but as a group they were costing
  * App.tsx ~70 lines.
@@ -17,8 +17,7 @@
  *   9. Save-queue depth → "Saved locally"/"All synced" toasts
  *  10. Quick Play guest audio preload at session join time
  *  11. isFlipped reset on word advance (matching-card flip back)
- *
- * Behaviour is preserved exactly — each effect body is copied verbatim.
+ *  12. Adaptive next-word audio preload during regular game play
  */
 import { useEffect } from 'react';
 import type React from 'react';
@@ -63,6 +62,9 @@ export interface UseAppMiscEffectsDeps {
   quickPlayActiveSession: { id: string; words: Word[] } | null;
   preloadMany: (ids: number[]) => void;
 
+  // Adaptive next-word preload during game play
+  gameWords: Word[];
+
   // Word-flip reset
   currentWord: Word | undefined;
   currentIndex: number;
@@ -78,6 +80,7 @@ export function useAppMiscEffects(deps: UseAppMiscEffectsDeps): void {
     setView, fetchScores,
     showToast, appToasts, queueDepthRef,
     quickPlayActiveSession, preloadMany,
+    gameWords,
     currentWord, currentIndex, setIsFlipped,
   } = deps;
 
@@ -177,4 +180,19 @@ export function useAppMiscEffects(deps: UseAppMiscEffectsDeps): void {
   useEffect(() => {
     if (currentWord) setIsFlipped(false);
   }, [currentIndex, currentWord, setIsFlipped]);
+
+  // 12. Adaptive next-word audio preload during game play.  The QP-guest
+  // path (#10) preloads the whole session up-front, but logged-in students
+  // running through a regular assignment list never had any look-ahead —
+  // each tap on the speaker icon paid a 50-200 ms cold-fetch.  Once the
+  // index advances we eagerly fetch the next two upcoming MP3s so the
+  // student's next speak() is instant.
+  useEffect(() => {
+    if (view !== 'game' || !gameWords?.length) return;
+    const nextIds = [
+      gameWords[currentIndex + 1]?.id,
+      gameWords[currentIndex + 2]?.id,
+    ].filter((id): id is number => typeof id === 'number' && id > 0);
+    if (nextIds.length) preloadMany(nextIds);
+  }, [view, currentIndex, gameWords, preloadMany]);
 }

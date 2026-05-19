@@ -783,6 +783,7 @@ export default function App() {
     setView, fetchScores,
     showToast, appToasts, queueDepthRef,
     quickPlayActiveSession, preloadMany,
+    gameWords,
     currentWord, currentIndex, setIsFlipped,
   });
 
