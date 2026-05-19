@@ -133,9 +133,17 @@ const ClassCard: React.FC<ClassCardProps> = ({
   const [savingName, setSavingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Avatar picker popover state
+  // Avatar picker popover state.  The popover is portaled to body
+  // (same pattern as the ⋮ menu) so it escapes the card's
+  // overflow-hidden clip and the dashboard's stacking context — the
+  // in-flow `absolute` version got buried behind the sticky TopAppBar
+  // (z-50) and clipped by the card body, which is why teachers
+  // couldn't reach the emoji grid.
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const [avatarPickerPos, setAvatarPickerPos] = useState<{ top: number; left: number } | null>(null);
   const avatarPickerRef = useRef<HTMLDivElement>(null);
+  const avatarPickerTriggerRef = useRef<HTMLButtonElement>(null);
+  const avatarPickerPortalRef = useRef<HTMLDivElement>(null);
   // Share-class-link modal: digital share with on-screen QR + copyable
   // /student?class= URL.  Distinct from the printable poster (which
   // opens /poster.html) because teachers usually want to drop a link
@@ -175,27 +183,29 @@ const ClassCard: React.FC<ClassCardProps> = ({
     return () => cancelAnimationFrame(id);
   }, [showAssignments]);
 
-  // Same treatment for the avatar picker popover — without it the grid
-  // opens below the fold on taller class cards and teachers don't
-  // realise the picker is there until they scroll.
+  // Close the avatar picker on outside click.  Same dual-ref check
+  // as the ⋮ menu — the picker is portaled, so we need to test both
+  // the trigger wrapper and the portaled node before treating a
+  // click as "outside".  Dismiss on scroll / resize so the
+  // fixed-position popover doesn't strand itself when the page
+  // moves under it.
   useEffect(() => {
     if (!avatarPickerOpen) return;
-    const id = requestAnimationFrame(() => {
-      avatarPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [avatarPickerOpen]);
-
-  // Close avatar picker on outside click
-  useEffect(() => {
-    if (!avatarPickerOpen) return;
+    const isInsidePicker = (target: Node) =>
+      (avatarPickerRef.current?.contains(target) ?? false) ||
+      (avatarPickerPortalRef.current?.contains(target) ?? false);
     const onDoc = (e: MouseEvent) => {
-      if (avatarPickerRef.current && !avatarPickerRef.current.contains(e.target as Node)) {
-        setAvatarPickerOpen(false);
-      }
+      if (!isInsidePicker(e.target as Node)) setAvatarPickerOpen(false);
     };
+    const onDismiss = () => setAvatarPickerOpen(false);
     document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    window.addEventListener('scroll', onDismiss, true);
+    window.addEventListener('resize', onDismiss);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('scroll', onDismiss, true);
+      window.removeEventListener('resize', onDismiss);
+    };
   }, [avatarPickerOpen]);
 
   const handleNameSave = async () => {
@@ -312,7 +322,39 @@ const ClassCard: React.FC<ClassCardProps> = ({
             {/* Class avatar — now clickable! Opens popover picker. */}
             <div className="relative" ref={avatarPickerRef}>
               <button
-                onClick={() => setAvatarPickerOpen(v => !v)}
+                ref={avatarPickerTriggerRef}
+                onClick={() => {
+                  setAvatarPickerOpen(prev => {
+                    const next = !prev;
+                    if (next && avatarPickerTriggerRef.current) {
+                      // Anchor the portaled picker to the trigger's
+                      // bottom-left, flipping above when the bottom of
+                      // the viewport doesn't leave room.  Estimate the
+                      // popover at ~420 px (header + default tile +
+                      // capped emoji grid `max-h-48` + padding) — same
+                      // strategy as the ⋮ menu.  Clamp `left` so the
+                      // 288 px popover never overflows on narrow
+                      // phones.
+                      const rect = avatarPickerTriggerRef.current.getBoundingClientRect();
+                      const ESTIMATED_HEIGHT = 420;
+                      const POPOVER_WIDTH = 288;
+                      const VIEWPORT_MARGIN = 12;
+                      const fitsBelow =
+                        rect.bottom + 8 + ESTIMATED_HEIGHT <= window.innerHeight - VIEWPORT_MARGIN;
+                      const top = fitsBelow
+                        ? rect.bottom + 8
+                        : Math.max(VIEWPORT_MARGIN, rect.top - ESTIMATED_HEIGHT - 8);
+                      const left = Math.max(
+                        VIEWPORT_MARGIN,
+                        Math.min(rect.left, window.innerWidth - POPOVER_WIDTH - VIEWPORT_MARGIN),
+                      );
+                      setAvatarPickerPos({ top, left });
+                    } else {
+                      setAvatarPickerPos(null);
+                    }
+                    return next;
+                  });
+                }}
                 type="button"
                 style={{
                   touchAction: 'manipulation',
@@ -328,11 +370,21 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 )}
               </button>
 
-              {/* Avatar picker popover */}
-              {avatarPickerOpen && onAvatarChange && (
+              {/* Avatar picker popover — portaled so it escapes the
+                  card's overflow-hidden clip + the dashboard stacking
+                  context. */}
+              {avatarPickerOpen && avatarPickerPos && onAvatarChange && createPortal(
                 <div
-                  className="absolute left-0 top-full mt-2 w-72 rounded-xl border shadow-2xl z-30 p-4"
-                  style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
+                  ref={avatarPickerPortalRef}
+                  style={{
+                    backgroundColor: 'var(--vb-surface)',
+                    borderColor: 'var(--vb-border)',
+                    position: 'fixed',
+                    top: avatarPickerPos.top,
+                    left: avatarPickerPos.left,
+                    zIndex: 1000,
+                  }}
+                  className="w-72 rounded-xl border shadow-2xl p-4"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-muted)' }}>Pick avatar</span>
@@ -410,7 +462,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                       </div>
                     ))}
                   </div>
-                </div>
+                </div>,
+                document.body,
               )}
             </div>
 
@@ -497,8 +550,22 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     // overflow-hidden clip.  `mt-1` (4 px) matches
                     // the pre-portal spacing.
                     const rect = menuTriggerRef.current.getBoundingClientRect();
+                    // Flip the menu above the trigger when the
+                    // class card sits near the viewport bottom and
+                    // the default below-anchored position would
+                    // truncate the dropdown.  Estimate menu height
+                    // generously (5 items × ~36 px + padding); the
+                    // exact measure isn't worth a second render
+                    // pass for a one-off layout decision.
+                    const ESTIMATED_HEIGHT = 280;
+                    const VIEWPORT_MARGIN = 12;
+                    const fitsBelow =
+                      rect.bottom + 4 + ESTIMATED_HEIGHT <= window.innerHeight - VIEWPORT_MARGIN;
+                    const top = fitsBelow
+                      ? rect.bottom + 4
+                      : Math.max(VIEWPORT_MARGIN, rect.top - ESTIMATED_HEIGHT - 4);
                     setMenuPos({
-                      top: rect.bottom + 4,
+                      top,
                       right: window.innerWidth - rect.right,
                     });
                   } else {
