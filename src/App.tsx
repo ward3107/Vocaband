@@ -62,6 +62,7 @@ import { useQuickPlayEvents } from "./hooks/useQuickPlayEvents";
 import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useGameModeSetup } from "./hooks/useGameModeSetup";
 import QpReactionBar from "./components/QpReactionBar";
+import QuickPlayHelpButton from "./components/QuickPlayHelpButton";
 import { useDashboardPolling } from "./hooks/useDashboardPolling";
 import { useAssignmentAutoPopulate } from "./hooks/useAssignmentAutoPopulate";
 import { useSaveQueueResilience } from "./hooks/useSaveQueueResilience";
@@ -1169,6 +1170,13 @@ export default function App() {
     && !!quickPlayActiveSession
     && view === "game"
     && !isFinished;
+  // Floating help button mirrors the reaction bar's gating: visible
+  // only mid-Quick-Play game so unauthenticated kids who are stuck
+  // have a one-tap escape hatch without being able to invoke it from
+  // unrelated views.
+  const showQpHelpButton = !!quickPlayActiveSession
+    && view === "game"
+    && !isFinished;
   return (
     <>
       {renderGameRoute({
@@ -1193,6 +1201,15 @@ export default function App() {
         speakWord, speak, shuffle,
       })}
       {showQpReactionBar && <QpReactionBar sendReaction={quickPlaySocket.sendReaction} />}
+      {showQpHelpButton && (
+        <QuickPlayHelpButton
+          onAlertTeacher={QUICKPLAY_V2 ? () => quickPlaySocket.sendReaction('🙋') : undefined}
+          onLeave={() => {
+            cleanupQuickPlayGuest();
+            setView('public-landing');
+          }}
+        />
+      )}
     </>
   );
 };

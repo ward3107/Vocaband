@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, QrCode, Globe } from "lucide-react";
 import AvatarPicker from "../components/QPAvatarPicker";
+import QuickPlayErrorScreen, { type QuickPlayErrorKind } from "../components/QuickPlayErrorScreen";
+import QuickPlayGetReady from "../components/QuickPlayGetReady";
+import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
 import { shuffle } from "../utils";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { ALL_GAME_MODES } from "../constants/game";
@@ -9,7 +12,7 @@ import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
-import { useLanguage, type Language, languageNames, ALL_LANGUAGES } from "../hooks/useLanguage";
+import { useLanguage, languageNames, ALL_LANGUAGES } from "../hooks/useLanguage";
 
 // ─── Feature flag ──────────────────────────────────────────────────────
 // When `VITE_QUICKPLAY_V2=true`, the join flow skips Supabase entirely —
@@ -100,25 +103,42 @@ export default function QuickPlayStudentView({
     enabled: QUICKPLAY_V2,
   });
 
-  // Two-step join flow:
-  //   "form"     — student enters name + picks avatar
-  //   "language" — student picks the in-game UI language so mode
-  //                labels + buttons render in EN/HE/AR.  This step
-  //                runs after name validation passes but before
-  //                we hit the server JOIN (or the legacy progress
-  //                insert), so the language picked here is the one
-  //                the student sees the moment the game loads.
-  const [joinStep, setJoinStep] = useState<"form" | "language">("form");
+  // Three-step join flow:
+  //   "form"      — student enters name + picks avatar
+  //   "language"  — student picks the in-game UI language so mode
+  //                 labels + buttons render in EN/HE/AR.  This step
+  //                 runs after name validation passes but before
+  //                 we hit the server JOIN, so the language picked
+  //                 here is the one the student sees the moment the
+  //                 game loads.
+  //   "get-ready" — friendly handshake that doubles as the iOS
+  //                 audio-unlock gesture. The "Start playing" tap
+  //                 calls primeAudio() inside the gesture context
+  //                 BEFORE the actual STUDENT_JOIN emit, so the
+  //                 first word the game speaks isn't swallowed by
+  //                 iOS Safari's autoplay block.
+  const [joinStep, setJoinStep] = useState<"form" | "language" | "get-ready">("form");
+  // Fatal-error gate. When set, the join body is replaced by a
+  // friendly full-page error screen instead of a stale form + toast.
+  const [fatalError, setFatalError] = useState<QuickPlayErrorKind | null>(null);
   // "Resuming" — true while the student is attempting to re-join an
   // active session via the Continue Playing card.  Drives the button's
   // disabled + loading-spinner state and the lastError-handler reset.
   // State was missing — introduced in the v2 socket-only flow but
   // never declared here, leaving 5 references dangling.
   const [resuming, setResuming] = useState<boolean>(false);
+  // "Joining" — true after the student taps Start on the Get Ready
+  // screen, until either the server's JOINED reply lands (component
+  // unmounts on view change) or an error bounces us elsewhere. Keeps
+  // the Start button locked + spinning so impatient kids don't tap
+  // five times and queue five join emits.
+  const [joining, setJoining] = useState<boolean>(false);
   // Validated name captured at form-submit time so the language
   // picker can fire the join with it.  Defaults to empty string
   // and is overwritten when the student clicks Continue on the form.
-  const stagedNameRef = useRef<string>("");
+  // Stored as state (not a ref) because QuickPlayGetReady renders
+  // the name in its greeting — refs aren't safe to read during render.
+  const [stagedName, setStagedName] = useState<string>("");
   const { language: qpLanguage, setLanguage: setAppLanguage, isRTL: qpIsRTL } = useLanguage();
 
   // Pending-join intent: when the student clicks Join in V2, we emit
@@ -163,13 +183,14 @@ export default function QuickPlayStudentView({
   // its toast after the view is already gone.
   useEffect(() => () => disarmJoinWatchdog(), []);
 
-  // Surface server-side join errors as toasts so the student isn't
-  // stuck staring at the join screen. "nickname_taken" has its own
-  // friendly copy to match the legacy behavior.  "kicked" is silenced
-  // here because the server pairs it with a KICKED event that flips
-  // the app into the proper "You've been removed" screen via the
-  // onKicked handler below — a generic toast on top of that screen is
-  // confusing.
+  // Surface server-side join errors. Recoverable errors (taken name,
+  // rate-limited) show as toasts so the student can fix and retry on
+  // the same screen. Fatal errors (session gone) take over the whole
+  // page with a friendly full-page error screen — a small toast over
+  // an empty form was the #1 "is it broken?" report from the field.
+  // "kicked" is silenced here because the server pairs it with a
+  // KICKED event that flips the app into the dedicated "You've been
+  // removed" screen via the onKicked handler below.
   useEffect(() => {
     if (!QUICKPLAY_V2 || !quickPlaySocket.lastError) return;
     const { code, message } = quickPlaySocket.lastError;
@@ -179,8 +200,12 @@ export default function QuickPlayStudentView({
       // name" button.  A toast would just shout the same thing.
     } else if (code === "nickname_taken") {
       showToast("This name is already taken. Please choose a different one.", "error");
-    } else if (code === "session_inactive" || code === "session_not_found") {
-      showToast("This Quick Play session is no longer active.", "error");
+      // Bounce back to the name form so they can fix and retry.
+      setJoinStep("form");
+    } else if (code === "session_inactive") {
+      setFatalError("session-ended");
+    } else if (code === "session_not_found") {
+      setFatalError("session-not-found");
     } else if (code === "rate_limited") {
       showToast("Too many people joining at once — wait a moment and try again.", "error");
     } else {
@@ -191,9 +216,10 @@ export default function QuickPlayStudentView({
     // with the same callback baked into the closure.
     pendingJoinRef.current = null;
     disarmJoinWatchdog();
-    // Also reset the "Continue Playing" button out of its
-    // "Reconnecting…" state so the student can retry.
+    // Also reset the "Continue Playing" + "Start playing" buttons
+    // out of their loading states so the student can retry.
     setResuming(false);
+    setJoining(false);
   }, [quickPlaySocket.lastError, showToast]);
 
   useEffect(() => {
@@ -444,7 +470,24 @@ export default function QuickPlayStudentView({
       )}
 
       <main id="main-content" className="flex-grow flex flex-col items-center px-4 py-3 sm:py-6 max-w-4xl mx-auto w-full">
-          {!quickPlayActiveSession ? (
+          {fatalError ? (
+            // Fatal-error short-circuit. Replaces the entire join body
+            // so the student isn't staring at a stale form behind a
+            // toast that just told them the session is gone.
+            <QuickPlayErrorScreen
+              kind={fatalError}
+              onPrimary={() => {
+                cleanupSessionData();
+                try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* storage unavailable */ }
+                setQuickPlayActiveSession(null);
+                setQuickPlayStudentName('');
+                setUser(null);
+                window.history.replaceState({}, '', window.location.pathname);
+                setFatalError(null);
+                setView('public-landing');
+              }}
+            />
+          ) : !quickPlayActiveSession ? (
             <div className="text-center py-12 sm:py-20">
               <Loader2 className="mx-auto animate-spin text-primary mb-4 w-9 h-9 sm:w-12 sm:h-12" />
               <p className="text-on-surface-variant font-bold text-sm sm:text-base">Loading Quick Play session...</p>
@@ -561,15 +604,15 @@ export default function QuickPlayStudentView({
                     key={lang}
                     onClick={() => {
                       setAppLanguage(lang);
-                      // Run the staged join.  stagedNameRef was set
-                      // by the form-button click.  If somehow it's
-                      // empty (refresh edge-case), bounce back.
-                      const name = stagedNameRef.current;
-                      if (!name) {
+                      if (!stagedName) {
                         setJoinStep("form");
                         return;
                       }
-                      runJoin(name);
+                      // Move to the Get Ready screen instead of firing
+                      // the join immediately. The next tap (Start
+                      // playing) primes iOS audio inside the gesture
+                      // context and THEN calls runJoin.
+                      setJoinStep("get-ready");
                     }}
                     className="w-full py-4 sm:py-5 bg-surface-container hover:bg-surface-container-high active:scale-[0.98] rounded-xl font-black text-lg sm:text-xl transition-all shadow-md flex items-center justify-center gap-3 border-2 border-surface-container-highest"
                     style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
@@ -587,6 +630,27 @@ export default function QuickPlayStudentView({
                 {qpIsRTL ? '→' : '←'} Back
               </button>
             </div>
+          ) : !quickPlayStudentName && joinStep === "get-ready" ? (
+            // ─── Get Ready handshake ──────────────────────────────────
+            // The "Start playing" tap inside QuickPlayGetReady primes
+            // iOS audio (speechSynthesis + Web Audio) inside the user
+            // gesture context, THEN we fire the staged join. Without
+            // the prime, the first word the game speaks on iOS Safari
+            // is silently swallowed by the autoplay block.
+            <QuickPlayGetReady
+              name={stagedName}
+              avatar={quickPlayAvatar}
+              joining={joining}
+              joinedCount={quickPlaySocket.leaderboard.length}
+              onStart={() => {
+                if (!stagedName) {
+                  setJoinStep("form");
+                  return;
+                }
+                setJoining(true);
+                runJoin(stagedName);
+              }}
+            />
           ) : !quickPlayStudentName ? (
             <div className="w-full max-w-md">
               <div className="text-center mb-6 sm:mb-8">
@@ -695,7 +759,7 @@ export default function QuickPlayStudentView({
                     // The actual server JOIN + UI advance fires only
                     // when the language picker button is tapped, so
                     // the language is set BEFORE the game loads.
-                    stagedNameRef.current = trimmedName;
+                    setStagedName(trimmedName);
                     setJoinStep("language");
                   }}
                   className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
@@ -712,6 +776,26 @@ export default function QuickPlayStudentView({
             </div>
           ) : null}
       </main>
+
+      {/* Floating help button — visible across every join step + the
+          resume card so a stuck student always has a one-tap escape
+          hatch. Hidden once we've left the join surface (the in-game
+          mount lives in App.tsx alongside QpReactionBar). The teacher
+          alert path uses sendReaction so kids on the join screen who
+          can't figure out the name field can ping the projector. */}
+      {quickPlayActiveSession && !fatalError && (
+        <QuickPlayHelpButton
+          onAlertTeacher={QUICKPLAY_V2 ? () => quickPlaySocket.sendReaction('🙋') : undefined}
+          onLeave={() => {
+            cleanupSessionData();
+            try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* storage unavailable */ }
+            setQuickPlayActiveSession(null);
+            setQuickPlayStudentName('');
+            setUser(null);
+            setView('public-landing');
+          }}
+        />
+      )}
     </div>
   );
 }

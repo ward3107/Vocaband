@@ -4,6 +4,80 @@ Tracking known issues with their diagnosis status.
 
 ---
 
+## Quick Play — student-side UX findings (2026-05-19)
+
+**Status:** Logged from a session-long walkthrough with the operator. Several pain points were observed in real classrooms over the last 2 weeks. Top 5 items shipping in the same session that logged this; the rest are queued.
+
+Items marked **(top-5)** are landing on `claude/quick-play-game-flow-2rpPk`. Everything else is a backlog candidate.
+
+### A. Before the student is in the game
+
+- **Friendly error screens for dead sessions** **(top-5)** — `session_not_found` / `session_inactive` today surface as a toast over an empty join form; students see the toast briefly and then a blank page. Need a full-page friendly screen: "🎮 This game already ended. Ask your teacher for a new code." + back button. Path: `src/views/QuickPlayStudentView.tsx:120-139`.
+- **Camera permission denied flow** — Browser default error after they decline. Need a screen showing how to re-grant camera permission, per OS (iOS Safari vs Android Chrome).
+- **In-app browser detection (Facebook/Instagram/TikTok WebView)** — Already exists for the main app via `InAppBrowserWarning.tsx`. Verify it fires on Quick Play join URL too; localStorage isolation in those browsers silently breaks resume + clientId persistence.
+- **Two QR codes on the board** — A student scanning the wrong one joins the wrong leaderboard with no indication. The join screen should show the **class name + teacher avatar**, not just the session code.
+- **Keyboard covers the input on small Android screens** — `quick-play-name-input` should `scrollIntoView` on focus + the Continue button should be sticky.
+- **Autocorrect changes their name** — Add `autoCorrect="off" spellCheck="false"` to the input. `autoCapitalize="words"` is already set.
+- **Same-name collision** — Today's check is server-confirm-after-tap. Add a live "✅ Available / ⚠️ Taken" check while typing. Tradeoff: extra socket roundtrips; could debounce.
+- **Avatar grid has no "more below" indicator** — Kids think there are only 6 avatars because the grid scrolls inside the card.
+- **Avatar selected-state is too subtle** — Add a thicker ring + checkmark + small bounce so they know which one is picked.
+- **No "edit name" link on later steps** — Once they tap Continue from the name form, they can't go back to fix a typo without losing avatar/language selection.
+
+### B. The "join → game" gap
+
+- **No "Get Ready" / "You're In" confirmation** **(top-5)** — Today: tap language → tiny network round-trip → game suddenly appears. Kids panic in that gap. Need a 1-screen handshake: name + avatar + "Tap to start playing" CTA. The tap doubles as the iOS audio unlock gesture.
+- **iOS Safari audio autoplay gate** **(top-5)** — `useAudio.ts` has no explicit "tap to unlock" path. First word doesn't speak on iOS until the student has tapped something audio-related, but our first audio call can fire from a setTimeout. Add `primeAudio()` exported from `useAudio.ts` and call it from the Get Ready button.
+- **Volume off / silent mode** — Show a "🔇 Can't hear anything? Turn off silent mode" tip on the Get Ready screen.
+- **Headphones unplug mid-game** — Audio routes to phone speaker; classroom hears the question through the device. Detect device-change with the Audio API + show "🎧 Plug headphones back in?".
+- **Real waiting room (when a teacher-start gate exists)** — Current Quick Play has no "teacher must press start" — kids who join can play immediately. If we add teacher-controlled-start later (good idea for live classroom), a waiting room becomes necessary: my avatar + name + "12 students joined, waiting for teacher to start the game 🎮".
+
+### C. During gameplay
+
+- **No in-game help button** **(top-5)** — Many kids freeze when stuck and don't know how to ask. Add a floating 🆘 button bottom-right that opens: "I can't hear the word" (replays audio + volume tip), "The game looks frozen" (forces reconnect), "I can't read this" (toggles translation), "Show my teacher" (raises flag on teacher dashboard).
+- **Visible correct/wrong feedback boost** — Today's feedback in `GameActiveView.tsx` is a border colour change + framer animation. For 9–13yo, kids need bigger payoff: confetti on correct + a floating "+10 XP!" particle. On wrong: red shake + correct answer highlighted + word re-spoken. Touches every game mode component, so it's a multi-day sweep — not for this session.
+- **Drag-and-drop fights with page scroll** — Sentence Builder + matching modes on mobile. Add `touch-action: none` to draggables + lock body scroll during gameplay.
+- **Double-tap zoom + long-press context menu** — Disable for game surfaces via `touch-action: manipulation` + `user-select: none` + `-webkit-touch-callout: none`. Already partially done; audit every game mode.
+- **No progress visibility** — "Question 3 of 10" + a progress bar at the top of every mode. Some modes have it, some don't.
+- **No streak indicator** — Add 🔥 streak counter that grows visually at 3/5/10 in a row.
+- **Mid-game phone-call / notification interruption** — On `visibilitychange`, pause timers + show a "Paused — tap to resume" overlay.
+- **Battery saver throttles animation** — Detect via Battery API where available; reduce animation budget gracefully.
+- **Screen rotation mid-question** — Lock to portrait via `screen.orientation.lock('portrait')` where supported (Android Chrome).
+
+### D. After the game / re-entry
+
+- **End-of-game "what now?" gap** — Today: final scoreboard. Need: "🎉 You scored 240 XP — 3rd of 24 students" + "Play again" + "Back to home" + an optional **Words to practice 📚** list of 3-5 misses with translations.
+- **Resume card behaves badly when session has ended** — `userIsActiveGuest` branch in `QuickPlayStudentView.tsx:406-473` shows "Welcome back" + Continue Playing button even when the session no longer exists; the rejoin attempt fails silently. Should detect session-dead from the socket's `lastError` and offer "Scan a new QR" instead.
+- **Sharing scores** — Generate a result image (avatar + score, no name) the kid can save / share. Privacy-conscious: never include the real name.
+
+### E. Always-on safety nets
+
+- **Replace tech-speak errors with kid-speak** — Audit every `showToast(...)` call in the quick-play path. WebSocket 1006 → "📡 The internet went away. Tap to try again." `Failed to fetch` → "🤔 Couldn't reach the game. Are you on Wi-Fi?"
+- **Locale gaps** — Several quick-play strings in `QuickPlayStudentView.tsx` are hard-coded English ("Reconnecting…", "Couldn't join the session", placeholder texts). Audit and add to `src/locales/student/`. 9yo Hebrew or Arabic speaker who sees "Connecting…" is lost.
+- **First-time onboarding card** — 1-screen tutorial the very first time a kid plays (localStorage flag) — "Tap the word that matches", "Listen with 🔊", "Drag tiles to build a sentence" + a "Got it!" button.
+- **Accessibility** — OpenDyslexic font option, never colour-alone for right/wrong (we use ✓/✗ today — good), respect `prefers-reduced-motion`, `rem`/`em` for body text so OS text-size settings work, aria-labels on every emoji-only button.
+
+### F. Device / school edge cases
+
+- **iPad landscape layout** — Designed for portrait phones; landscape iPad wastes space. Add `min-width: 768px` layout with bigger cards + side-by-side leaderboard.
+- **Old Android (Chrome ≤ 90)** — Some CSS / JS features fail silently. Add a "Please update your browser" detection.
+- **Chromebook keyboard/trackpad** — Schools love them. Add 1/2/3/4 keyboard shortcuts for answer choices, Enter to continue, Space to replay audio.
+- **iPhone low-power mode** — Animations throttled. Detect via `prefers-reduced-motion` (which low-power triggers on iOS).
+- **Safari private mode** — localStorage wiped on tab close. Detect via `storage` API and warn.
+- **School Wi-Fi WebSocket block** — Some school networks block WS or specific domains. Add a "Network Diagnostic" button on the teacher dashboard that reports whether students can reach `api.vocaband.com` + which exact endpoint fails.
+- **Shared device (siblings, classroom Chromebook)** — A "Switch player" button on the join screen that clears the name + avatar but keeps the session URL.
+- **Late joiners** — Today they get the same shuffled word list. Decide: do they start from the beginning (everyone ahead of them) or jump to the current word? Make it a teacher option.
+- **Teacher leaves device unattended** — After 15 min of no teacher activity, students see "Your teacher seems to be away. The game will pause until they come back."
+
+### Engineering top-5 shipping in this branch
+
+1. **Friendly full-page error screens** for dead sessions.
+2. **iOS audio unlock + "Get Ready" intro screen** between language pick and game.
+3. **Floating "🆘 Help" button** during Quick Play (join flow + during gameplay).
+4. **Better "right/wrong" feedback + score animation** — deferred (touches every game mode component; multi-day).
+5. **Real waiting room** — deferred (current Quick Play has no teacher-start gate; would land alongside that feature).
+
+---
+
 ## Feature — Interactive worksheet attempts (Phase 2)
 
 **Status:** ✅ SHIPPED 2026-05-13. End-to-end loop: mint → solve → submit → teacher reads results.
