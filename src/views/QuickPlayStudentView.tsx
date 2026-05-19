@@ -61,6 +61,12 @@ interface QuickPlayStudentViewProps {
    * render empty if the popstate back button sent them here from view=game
    * (session + name both set, but no join-form body to show). */
   userIsActiveGuest?: boolean;
+  /** Flips the app into the proper "You've been removed" KICKED screen
+   *  when the server rejects a join with `kicked` (sticky kickedClientIds
+   *  inherited via nickname adoption).  Without it, a misclick from the
+   *  teacher would silently bounce the student to the public landing
+   *  with no path back into the session. */
+  setQuickPlayKicked: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export default function QuickPlayStudentView({
@@ -84,6 +90,7 @@ export default function QuickPlayStudentView({
   cleanupSessionData,
   showToast,
   userIsActiveGuest,
+  setQuickPlayKicked,
 }: QuickPlayStudentViewProps) {
   // Socket hook for v2 flow. Safe to call unconditionally — when V2
   // flag is off or there's no active session, the hook stays idle and
@@ -114,13 +121,63 @@ export default function QuickPlayStudentView({
   const stagedNameRef = useRef<string>("");
   const { language: qpLanguage, setLanguage: setAppLanguage, isRTL: qpIsRTL } = useLanguage();
 
+  // Pending-join intent: when the student clicks Join in V2, we emit
+  // STUDENT_JOIN and stash a callback here.  If the server confirms
+  // (joinedSessionCode flips), the effect below fires the callback —
+  // game UI advance only happens AFTER the server says we're in.
+  // If the server rejects (lastError fires above), the ref is cleared
+  // and the callback never runs, so the student stays on the join form.
+  const pendingJoinRef = useRef<(() => void) | null>(null);
+
+  // Watchdog for the rejoin emit.  Without this, a STUDENT_JOIN that
+  // reaches the server but whose JOINED reply never lands (Cloudflare
+  // edge dropping the WS frame mid-handshake, Fly VM swap during
+  // auto-stop, school firewall buffering — the gotchas behind the
+  // teacher's "one student stuck reconnecting while the other nine play
+  // fine" report) leaves the student on the language picker or
+  // "Reconnecting…" button forever, since `lastError` only fires on
+  // protocol-level rejections.  After 8s with no JOINED or error, reset
+  // the UI and surface a retry-friendly toast.
+  const joinWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const disarmJoinWatchdog = () => {
+    if (joinWatchdogRef.current) {
+      clearTimeout(joinWatchdogRef.current);
+      joinWatchdogRef.current = null;
+    }
+  };
+  const armJoinWatchdog = () => {
+    disarmJoinWatchdog();
+    joinWatchdogRef.current = setTimeout(() => {
+      joinWatchdogRef.current = null;
+      if (pendingJoinRef.current === null) return;
+      pendingJoinRef.current = null;
+      setResuming(false);
+      setJoinStep("form");
+      showToast(
+        "Couldn't reach the session. Check your connection and try again.",
+        "error",
+      );
+    }, 8000);
+  };
+  // Clear the watchdog on unmount so a slow rejoin attempt doesn't fire
+  // its toast after the view is already gone.
+  useEffect(() => () => disarmJoinWatchdog(), []);
+
   // Surface server-side join errors as toasts so the student isn't
   // stuck staring at the join screen. "nickname_taken" has its own
-  // friendly copy to match the legacy behavior.
+  // friendly copy to match the legacy behavior.  "kicked" is silenced
+  // here because the server pairs it with a KICKED event that flips
+  // the app into the proper "You've been removed" screen via the
+  // onKicked handler below — a generic toast on top of that screen is
+  // confusing.
   useEffect(() => {
     if (!QUICKPLAY_V2 || !quickPlaySocket.lastError) return;
     const { code, message } = quickPlaySocket.lastError;
-    if (code === "nickname_taken") {
+    if (code === "kicked") {
+      // Intentionally silent: onKicked → setQuickPlayKicked(true) shows
+      // the dedicated KICKED screen with a "Rejoin with a different
+      // name" button.  A toast would just shout the same thing.
+    } else if (code === "nickname_taken") {
       showToast("This name is already taken. Please choose a different one.", "error");
     } else if (code === "session_inactive" || code === "session_not_found") {
       showToast("This Quick Play session is no longer active.", "error");
@@ -133,18 +190,11 @@ export default function QuickPlayStudentView({
     // useEffect doesn't fire when a LATER (successful) join arrives
     // with the same callback baked into the closure.
     pendingJoinRef.current = null;
+    disarmJoinWatchdog();
     // Also reset the "Continue Playing" button out of its
     // "Reconnecting…" state so the student can retry.
     setResuming(false);
   }, [quickPlaySocket.lastError, showToast]);
-
-  // Pending-join intent: when the student clicks Join in V2, we emit
-  // STUDENT_JOIN and stash a callback here.  If the server confirms
-  // (joinedSessionCode flips), the effect below fires the callback —
-  // game UI advance only happens AFTER the server says we're in.
-  // If the server rejects (lastError fires above), the ref is cleared
-  // and the callback never runs, so the student stays on the join form.
-  const pendingJoinRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!QUICKPLAY_V2) return;
@@ -152,6 +202,7 @@ export default function QuickPlayStudentView({
     const pending = pendingJoinRef.current;
     if (!pending) return;
     pendingJoinRef.current = null;
+    disarmJoinWatchdog();
     pending();
   }, [quickPlaySocket.joinedSessionCode]);
 
@@ -272,6 +323,7 @@ export default function QuickPlayStudentView({
         // inactive, kicked) and the student "played" a session they
         // were never in.
         pendingJoinRef.current = applyJoinedState;
+        armJoinWatchdog();
         quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
       } else {
         // Legacy doesn't have a server-confirmation flow — fire the
@@ -316,15 +368,29 @@ export default function QuickPlayStudentView({
   // KICKED + SESSION_ENDED — without these listeners the server emits
   // the events but the student's tab keeps the game running.  Symptom
   // teachers reported: "I kick a student and they vanish from my
-  // podium but their phone keeps playing."  Subscribe both events to
-  // cleanly tear down the local session and bounce back to landing.
+  // podium but their phone keeps playing."
+  //
+  // KICKED flips into the dedicated "You've been removed" screen via
+  // setQuickPlayKicked(true) — that screen offers a "Rejoin with a
+  // different name" path (sticky kickedClientIds only blocks the same
+  // nickname).  The previous behaviour silently bounced the student to
+  // the public landing, which trapped them: no rejoin option, just a
+  // confusing toast and the QR they'd already scanned out of view.
+  // App.tsx now renders the kicked screen BEFORE the studentAuthRoute
+  // so this works whether the student was on the join form, the resume
+  // card, or mid-game when the kick arrived.
+  //
+  // SESSION_ENDED keeps the bounce-to-landing flow — there's no
+  // recovery action so a toast + landing is the right answer.
   useEffect(() => {
     if (!QUICKPLAY_V2) return;
     const offKicked = quickPlaySocket.onKicked(() => {
-      showToast("Your teacher removed you from the session.", "info");
-      cleanupSessionData();
-      setQuickPlayActiveSession(null);
-      setView("public-landing");
+      // Cancel any in-flight rejoin watchdog — the kicked screen
+      // supersedes the language picker / resume card.
+      disarmJoinWatchdog();
+      pendingJoinRef.current = null;
+      setResuming(false);
+      setQuickPlayKicked(true);
     });
     const offEnded = quickPlaySocket.onSessionEnded(() => {
       showToast("The teacher ended the session.", "info");
@@ -336,7 +402,7 @@ export default function QuickPlayStudentView({
       offKicked();
       offEnded();
     };
-  }, [quickPlaySocket, cleanupSessionData, setQuickPlayActiveSession, setView, showToast]);
+  }, [quickPlaySocket, cleanupSessionData, setQuickPlayActiveSession, setView, showToast, setQuickPlayKicked]);
 
   return (
     <div className="min-h-screen flex flex-col bg-surface">
@@ -441,6 +507,7 @@ export default function QuickPlayStudentView({
                   if (QUICKPLAY_V2 && quickPlayActiveSession && quickPlayStudentName) {
                     setResuming(true);
                     pendingJoinRef.current = advance;
+                    armJoinWatchdog();
                     quickPlaySocket.joinAsStudent(quickPlayStudentName, quickPlayAvatar);
                   } else {
                     advance();
