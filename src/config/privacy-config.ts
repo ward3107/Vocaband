@@ -142,12 +142,12 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
   },
   {
     name: "Google Fonts",
-    purpose: "Web font delivery (Plus Jakarta Sans, Heebo, Be Vietnam Pro, Fredoka)",
+    purpose: "Web font delivery (Heebo + Fredoka — Hebrew/Arabic only)",
     dataCategories: ["HTTP request metadata (IP, User-Agent, Referer) when the browser fetches font files"],
     processorOnly: false,
     hostingRegion: HOSTING_REGIONS.googleFonts,
     endpoint: "fonts.googleapis.com, fonts.gstatic.com",
-    notes: "Per Google's privacy doc, font request data is logged but not used for advertising or correlated to other Google services.  Self-hosted fonts are a future option to remove this.",
+    notes: "Latin fonts (Plus Jakarta Sans + Be Vietnam Pro) were self-hosted in the 2026-05-19 follow-up to PR #787 — they no longer touch Google.  Heebo + Fredoka are still loaded from Google Fonts but only when the visitor's language is HE or AR (lazy-injected by boot-debug.js).  Per Google's privacy doc, font request data is logged but not used for advertising or correlated to other Google services.  Self-hosting the RTL fonts is the next step.",
   },
 ];
 
