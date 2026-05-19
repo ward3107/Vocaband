@@ -525,6 +525,13 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
       return;
     }
 
+    // Empty / whitespace-only input — keyboard "enter" can still fire
+    // the submit even when the button is visually disabled. Bail
+    // before grading so we don't count it as a wrong attempt.
+    if (!spellingInput.trim()) {
+      return;
+    }
+
     const isCorrect = isAnswerCorrect(spellingInput, currentWord.english);
 
     gameDebug.logAnswer({

@@ -522,7 +522,10 @@ export default function QuickPlayStudentView({
             <div className="w-full max-w-md text-center py-8">
               <div className="text-6xl mb-4">{quickPlayAvatar}</div>
               <h1 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">
-                Welcome back, {quickPlayStudentName}!
+                {/* <bdi> isolates the LTR nickname inside the RTL
+                    layout so the trailing "!" lands at the visual end
+                    of the name, not the start. */}
+                Welcome back, <bdi>{quickPlayStudentName}</bdi>!
               </h1>
               <p className="text-sm sm:text-base text-on-surface-variant font-bold mb-6">
                 Your Quick Play session is still active.

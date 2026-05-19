@@ -26,6 +26,7 @@ import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
 import { gameAriasT } from "../../locales/student/game-arias";
 import { type GameThemeColor, getThemeColors } from "./GameShell";
+import { getCachedVocabulary } from "../../hooks/useVocabularyLazy";
 
 interface WordChainsGameProps {
   gameWords: Word[];
@@ -66,6 +67,19 @@ export default function WordChainsGame({
     return m;
   }, [gameWords]);
 
+  // Real-English-word check — built once from the cached full
+  // vocabulary so keyboard mashing ("hfrtuj") gets a clearer rejection
+  // than "not in your word list". The vocab chunk has always loaded by
+  // the time this game mounts (the chain pool comes from it), so the
+  // cached accessor is safe to call synchronously here.
+  const dictionarySet = useMemo(() => {
+    const cached = getCachedVocabulary();
+    if (!cached) return null;
+    const s = new Set<string>();
+    for (const w of cached.ALL_WORDS) s.add(w.english.toLowerCase());
+    return s;
+  }, []);
+
   // Seed the chain with a random word from the pool.
   const [chain, setChain] = useState<ChainStep[]>(() => {
     const seed = randomPick(gameWords);
@@ -99,6 +113,24 @@ export default function WordChainsGame({
     const guess = input.trim().toLowerCase();
     if (!guess) return;
 
+    // Validation 0: alphabet-only. Stops keyboard mashing with digits
+    // or symbols from making it to the dictionary lookup, which the
+    // pool check used to silently absorb with a confusing "not in your
+    // word list" message. Allow spaces / apostrophes / hyphens so
+    // multi-word entries like "ice cream" or "don't" still validate.
+    if (!/^[a-z][a-z\s'-]*$/.test(guess)) {
+      setFeedback("wrong");
+      setFeedbackMessage(
+        language === "he"
+          ? "אותיות אנגליות בלבד"
+          : language === "ar"
+          ? "أحرف إنجليزية فقط"
+          : "Use English letters only",
+      );
+      flashFeedback();
+      return;
+    }
+
     // Validation 1: must start with the required letter.
     if (lastLetter && !guess.startsWith(lastLetter)) {
       setFeedback("wrong");
@@ -116,13 +148,23 @@ export default function WordChainsGame({
     // Validation 2: must exist in the pool.
     const matched = lookup.get(guess);
     if (!matched) {
+      // Differentiate "real word, just not in your list" from
+      // "gibberish, not a real word at all" so the kid knows
+      // whether to try a different real word vs. stop mashing keys.
+      const isRealEnglishWord = dictionarySet?.has(guess) ?? false;
       setFeedback("wrong");
       setFeedbackMessage(
-        language === "he"
-          ? "המילה לא נמצאת ברשימה — נסה אחרת"
+        isRealEnglishWord
+          ? language === "he"
+            ? "המילה לא נמצאת ברשימה — נסה אחרת"
+            : language === "ar"
+            ? "الكلمة ليست في القائمة — جرّب أخرى"
+            : "Not in your word list — try another"
+          : language === "he"
+          ? "זו לא מילה אמיתית — נסה שוב"
           : language === "ar"
-          ? "الكلمة ليست في القائمة — جرّب أخرى"
-          : "Not in your word list — try another",
+          ? "هذه ليست كلمة حقيقية — حاول مرة أخرى"
+          : "That's not a real word — try again",
       );
       flashFeedback();
       return;

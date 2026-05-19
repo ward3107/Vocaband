@@ -73,6 +73,37 @@ export function isAnswerCorrect(studentInput: string, expectedWord: string): boo
 }
 
 /**
+ * Detects "missing space" mistakes — student typed all letters correctly but
+ * ran the words together (e.g. "allover" instead of "all over", "allyeararound"
+ * instead of "all year round"). Returns true ONLY when the expected answer is
+ * multi-word AND the student's input matches it perfectly modulo whitespace.
+ *
+ * Used by Spelling Mode to give a pedagogical hint instead of a flat "wrong":
+ * the kid sees "💡 Don't forget the space!" so they learn that this is a
+ * phrase, not one word.
+ */
+export function isMissingSpace(studentInput: string, expectedWord: string): boolean {
+  // Already correct → not a missing-space mistake.
+  if (isAnswerCorrect(studentInput, expectedWord)) return false;
+
+  const stripSpaces = (s: string) => s.replace(/\s+/g, "");
+  const student = stripSpaces(normalizeAnswer(studentInput));
+  if (!student) return false;
+
+  const formA = stripSpaces(normalizeAnswer(expectedWord.replace(/\([^)]*\)/g, " ")));
+  const formB = stripSpaces(normalizeAnswer(expectedWord.replace(/\(([^)]*)\)/g, "$1")));
+
+  // Only flag if the EXPECTED answer was actually multi-word — otherwise
+  // any single-word typo would falsely trip "missing space".
+  const expectedHasSpace =
+    normalizeAnswer(expectedWord.replace(/\([^)]*\)/g, " ")).includes(" ") ||
+    normalizeAnswer(expectedWord.replace(/\(([^)]*)\)/g, "$1")).includes(" ");
+  if (!expectedHasSpace) return false;
+
+  return student === formA || student === formB;
+}
+
+/**
  * Clean an English vocabulary entry for ON-SCREEN DISPLAY.
  *
  * The Ministry of Education curriculum carries parenthetical context like

@@ -3,7 +3,7 @@ import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
 import { gameActiveT } from "../../locales/student/game-active";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
-import { cleanWordForDisplay } from "../../utils/answerMatch";
+import { cleanWordForDisplay, isMissingSpace } from "../../utils/answerMatch";
 
 interface SpellingGameProps {
   currentWord: Word | undefined;
@@ -58,6 +58,15 @@ export default function SpellingGame({
   const isSpelling = gameMode === "spelling";
   const cleanAnswer = cleanWordForDisplay(currentWord?.english || "");
   const isInputDisabled = feedback === "show-answer" || feedback === "correct";
+  const isInputEmpty = !spellingInput.trim();
+  // When the kid typed every letter right but ran the words together
+  // (e.g. "allover" for "all over"), surface a pedagogical hint instead
+  // of just "wrong" — they need to learn that this is a phrase. Only
+  // computed on the "wrong" feedback tick so we don't pre-empt grading.
+  const showMissingSpaceHint =
+    feedback === "wrong" &&
+    !!currentWord?.english &&
+    isMissingSpace(spellingInput, currentWord.english);
 
   /** Build the per-letter slot rendering.  Shape: a 2D array where
    *  each inner array is a "word group" (split on spaces in the
@@ -177,9 +186,18 @@ export default function SpellingGame({
         <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-4" />
       )}
 
+      {showMissingSpaceHint && (
+        <p
+          className="mb-3 sm:mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm sm:text-base font-bold text-center"
+          role="status"
+        >
+          {t.missingSpaceHint}
+        </p>
+      )}
+
       <button
         type="submit"
-        disabled={!!feedback}
+        disabled={!!feedback || isInputEmpty}
         className={`w-full py-4 sm:py-5 rounded-xl font-black text-lg sm:text-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
           themed
             ? "bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white hover:shadow-xl"
