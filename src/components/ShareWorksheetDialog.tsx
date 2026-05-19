@@ -328,7 +328,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white w-full sm:max-w-lg sm:rounded-xl rounded-t-xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+        className="bg-[var(--vb-surface)] w-full sm:max-w-lg sm:rounded-xl rounded-t-xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
         dir={dir}
       >
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-4 flex items-center gap-3">
@@ -346,11 +346,11 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
 
         <div className="p-5 space-y-4 overflow-y-auto">
           <div>
-            <p className="text-xs uppercase tracking-widest font-bold text-stone-400">
+            <p className="text-xs uppercase tracking-widest font-bold text-[var(--vb-text-muted)]">
               {t.topicLabel}
             </p>
-            <p className="font-bold text-stone-900 text-lg">{source.topicName}</p>
-            <p className="text-xs text-stone-500">{t.wordsCount(uniqueIds.length)}</p>
+            <p className="font-bold text-[var(--vb-text-primary)] text-lg">{source.topicName}</p>
+            <p className="text-xs text-[var(--vb-text-muted)]">{t.wordsCount(uniqueIds.length)}</p>
           </div>
 
           {!slug && (
@@ -368,10 +368,10 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
               />
 
               <div>
-                <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-2">
+                <p className="text-xs uppercase tracking-widest font-bold text-[var(--vb-text-muted)] mb-2">
                   {t.translationLabel}
                 </p>
-                <div className="inline-flex rounded-lg bg-stone-100 p-1 w-full">
+                <div className="inline-flex rounded-lg bg-[var(--vb-surface-alt)] p-1 w-full">
                   {([
                     { v: "he", l: "עברית" },
                     { v: "ar", l: "العربية" },
@@ -383,7 +383,7 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
                         type="button"
                         onClick={() => handleLangChange(opt.v)}
                         className={`flex-1 px-3 py-2 rounded-md text-sm font-bold transition-all ${
-                          active ? "bg-white text-emerald-700 shadow-sm" : "text-stone-500"
+                          active ? "bg-[var(--vb-surface)] text-emerald-700 shadow-sm" : "text-[var(--vb-text-muted)]"
                         }`}
                       >
                         {opt.l}
@@ -471,7 +471,7 @@ const ExercisePicker: React.FC<{
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs uppercase tracking-widest font-bold text-stone-400">
+        <p className="text-xs uppercase tracking-widest font-bold text-[var(--vb-text-muted)]">
           {t.exerciseLabel}
         </p>
         <p className="text-xs font-bold text-emerald-700">{plan.length} picked</p>
@@ -492,7 +492,7 @@ const ExercisePicker: React.FC<{
             <div
               key={type}
               className={`rounded-lg border-2 transition-all ${
-                active ? "bg-emerald-50 border-emerald-500" : "bg-white border-stone-200"
+                active ? "bg-emerald-50 border-emerald-500" : "bg-[var(--vb-surface)] border-[var(--vb-border)]"
               }`}
             >
               <button
@@ -502,24 +502,24 @@ const ExercisePicker: React.FC<{
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 <div className="flex-1 min-w-0">
-                  <div className={`font-bold ${active ? "text-emerald-900" : "text-stone-700"}`}>
+                  <div className={`font-bold ${active ? "text-emerald-900" : "text-[var(--vb-text-secondary)]"}`}>
                     {meta?.label ?? type}
                   </div>
-                  <div className="text-xs text-stone-500 truncate">{meta?.desc ?? ""}</div>
+                  <div className="text-xs text-[var(--vb-text-muted)] truncate">{meta?.desc ?? ""}</div>
                   {showStatus && (
                     <AiStatusPill phase={aiPhase} t={t} />
                   )}
                 </div>
                 <div
                   className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                    active ? "bg-emerald-500 border-emerald-500" : "border-stone-300"
+                    active ? "bg-emerald-500 border-emerald-500" : "border-[var(--vb-border)]"
                   }`}
                   aria-hidden
                 >
                   {active ? (
                     <Check size={14} className="text-white" />
                   ) : (
-                    <Plus size={14} className="text-stone-300" />
+                    <Plus size={14} className="text-[var(--vb-text-muted)]" />
                   )}
                 </div>
               </button>
@@ -552,15 +552,15 @@ const AiConfirmPanel: React.FC<{
     <div className="flex items-start gap-2 mb-2">
       <Sparkles size={16} className="text-violet-600 mt-0.5 shrink-0" />
       <div>
-        <p className="text-sm font-bold text-stone-900">{t.aiConfirmTitle(wordCount)}</p>
-        <p className="text-xs text-stone-600 mt-1">{t.aiConfirmBody}</p>
+        <p className="text-sm font-bold text-[var(--vb-text-primary)]">{t.aiConfirmTitle(wordCount)}</p>
+        <p className="text-xs text-[var(--vb-text-secondary)] mt-1">{t.aiConfirmBody}</p>
       </div>
     </div>
     <div className="grid grid-cols-2 gap-2 mt-3">
       <button
         type="button"
         onClick={onSkip}
-        className="py-2 rounded-lg bg-white text-stone-700 border border-stone-200 font-bold text-sm hover:bg-stone-50 transition-all"
+        className="py-2 rounded-lg bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] border border-[var(--vb-border)] font-bold text-sm hover:bg-[var(--vb-surface-alt)] transition-all"
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       >
         {t.aiConfirmSkip}
@@ -626,7 +626,7 @@ const ExerciseConfigRow: React.FC<{
     ];
     return (
       <div className="px-4 pb-3 -mt-1">
-        <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-1">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--vb-text-muted)] mb-1">
           {t.translationDirectionLabel}
         </p>
         <div className="grid grid-cols-4 gap-1">
@@ -638,7 +638,7 @@ const ExerciseConfigRow: React.FC<{
               className={`py-1.5 rounded-md text-xs font-bold transition-all ${
                 exercise.direction === d.v
                   ? "bg-emerald-600 text-white"
-                  : "bg-white text-stone-600 hover:bg-stone-50 border border-stone-200"
+                  : "bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)] border border-[var(--vb-border)]"
               }`}
             >
               {d.l}
@@ -651,10 +651,10 @@ const ExerciseConfigRow: React.FC<{
   if (exercise.type === "synonym_antonym") {
     return (
       <div className="px-4 pb-3 -mt-1">
-        <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-1">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--vb-text-muted)] mb-1">
           {t.synonymModeLabel}
         </p>
-        <div className="inline-flex rounded-lg bg-white border border-stone-200 p-0.5 w-full">
+        <div className="inline-flex rounded-lg bg-[var(--vb-surface)] border border-[var(--vb-border)] p-0.5 w-full">
           {(["synonym", "antonym"] as const).map((mode) => (
             <button
               key={mode}
@@ -663,7 +663,7 @@ const ExerciseConfigRow: React.FC<{
               className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all ${
                 exercise.mode === mode
                   ? "bg-emerald-600 text-white"
-                  : "text-stone-500 hover:text-stone-700"
+                  : "text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)]"
               }`}
             >
               {mode === "synonym" ? t.synonymOption : t.antonymOption}

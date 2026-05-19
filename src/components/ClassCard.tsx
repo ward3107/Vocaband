@@ -6,6 +6,7 @@ import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
 import type { CompetitionData } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
+import { readableTextOn } from "../utils/contrast";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import { competitionsT } from "../locales/competitions";
 import ShareClassLinkModal from "./ShareClassLinkModal";
@@ -107,6 +108,12 @@ const ClassCard: React.FC<ClassCardProps> = ({
   const effectiveLanguage = subject === "hebrew" ? "he" : language;
   const t = teacherDashboardT[effectiveLanguage];
   const tComp = competitionsT[effectiveLanguage];
+  // When a class has a custom tint, the default --vb-text-* vars are
+  // wrong (e.g. white text on pale yellow). Compute a readable text
+  // triple from the tint's luminance once and use it for every label
+  // sitting on the tinted band. Untinted cards keep using CSS vars
+  // so dark mode + theme switches still work.
+  const tintText = backgroundColor ? readableTextOn(backgroundColor) : null;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   // Trigger + portaled menu node refs.  The menu is rendered in a portal
@@ -278,7 +285,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
       {(schoolName || schoolLogoUrl) && (
         <div
           className="flex items-center gap-2 px-5 pt-4"
-          style={{ color: 'var(--vb-text-secondary)' }}
+          style={{ color: tintText?.secondary ?? 'var(--vb-text-secondary)' }}
         >
           {schoolLogoUrl && (
             <img
@@ -438,7 +445,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   title={onNameChange ? t.clickToEditNameTitle : undefined}
                 >
                   <h3
-                    style={{ color: 'var(--vb-text-primary)' }}
+                    style={{ color: tintText?.primary ?? 'var(--vb-text-primary)' }}
                     className="text-lg sm:text-xl font-bold leading-tight truncate transition-colors flex items-center gap-2 group-hover:text-[var(--vb-accent)]"
                   >
                     <span className="truncate">{name}</span>
@@ -453,7 +460,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 <button
                   onClick={onCopyCode}
                   type="button"
-                  style={{ touchAction: 'manipulation', color: 'var(--vb-text-secondary)' }}
+                  style={{ touchAction: 'manipulation', color: tintText?.secondary ?? 'var(--vb-text-secondary)' }}
                   className="group inline-flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wider transition-colors hover:text-[var(--vb-accent)]"
                   title={t.copyClassCodeTitle}
                 >
@@ -466,7 +473,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 </button>
                 {studentCount !== undefined && (
                   <span
-                    style={{ color: 'var(--vb-text-muted)' }}
+                    style={{ color: tintText?.muted ?? 'var(--vb-text-muted)' }}
                     className="text-xs flex items-center gap-1"
                   >
                     · 👥 {studentCount}
@@ -501,7 +508,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 });
               }}
               type="button"
-              style={{ touchAction: 'manipulation', color: 'var(--vb-text-muted)' }}
+              style={{ touchAction: 'manipulation', color: tintText?.muted ?? 'var(--vb-text-muted)' }}
               className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--vb-surface-alt)] hover:text-[var(--vb-text-primary)]"
               aria-label={t.classOptionsAria}
             >

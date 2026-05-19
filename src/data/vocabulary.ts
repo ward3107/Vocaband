@@ -6749,23 +6749,46 @@ export const SET_2_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 2");
 export const SET_3_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 3");
 
 // Topic Packs — curated word groups by category (max 20 words per pack)
+// Packs split 2026-05-19 to enforce 20-ID cap. Dedupe notes from the split:
+// Pack "Kitchen Items" deduped from 20 -> 16 IDs.
+// Pack "Birds" deduped from 21 -> 17 IDs.
+// Pack "Farm Animals" deduped from 26 -> 23 IDs.
+// Pack "Holidays & Celebrations" deduped from 24 -> 19 IDs.
 export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   // ── Bagrut Module E supplement (advanced/academic, B2-C1 CEFR) ──
   // Grade 11-12 prep pack covering critical-thinking, abstract,
   // environment, technology, society, economics, ethics and law
   // vocabulary commonly tested in the higher Bagrut module.
   {
-    name: "Academic English 🎓",
+    name: "Academic English · Part 1 🎓",
     icon: "🎓",
     ids: [
       9200,9201,9202,9203,9204,9205,9206,9207,9208,9209,
-      9210,9211,9212,9213,9214,9215,9216,9217,9218,9219,
-      9220,9221,9222,9223,9224,9225,9226,9227,9228,9229,
-      9230,9231,9232,9233,9234,9235,9236,9237,9238,9239,
-      9240,9241,9242,9243,9244,9245,9246,9247,9248,9249,
-      9250,9251,9252,9253,9254,9255,9256,9257,9258,9259,
-      9260,9261,9262,9263,9264,9265,9266,9267,9268,9269,
-      9270,
+      9210,9211,9212,9213,9214,9215,9216,9217,
+    ],
+  },
+  {
+    name: "Academic English · Part 2 🎓",
+    icon: "🎓",
+    ids: [
+      9218,9219,9220,9221,9222,9223,9224,9225,9226,9227,
+      9228,9229,9230,9231,9232,9233,9234,9235,
+    ],
+  },
+  {
+    name: "Academic English · Part 3 🎓",
+    icon: "🎓",
+    ids: [
+      9236,9237,9238,9239,9240,9241,9242,9243,9244,9245,
+      9246,9247,9248,9249,9250,9251,9252,9253,
+    ],
+  },
+  {
+    name: "Academic English · Part 4 🎓",
+    icon: "🎓",
+    ids: [
+      9254,9255,9256,9257,9258,9259,9260,9261,9262,9263,
+      9264,9265,9266,9267,9268,9269,9270,
     ],
   },
   // ── Phrasal verbs (existing + 2026-05-11 supplement) ─────────────
@@ -6774,42 +6797,100 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   // adds the most common Bagrut-cited misses (look into, come across,
   // put up with, back up, catch up, etc.).
   {
-    name: "Phrasal Verbs ↪️",
+    name: "Phrasal Verbs · Part 1 ↪️",
     icon: "↪️",
     ids: [
-      // Existing (scattered across Set 1-3)
       5,65,558,560,572,693,694,825,904,907,
-      1029,1096,1157,1404,1613,1625,1678,1802,1810,1820,
-      1823,1824,1829,1830,1832,1833,1840,1845,1858,1860,
-      1861,1863,1864,1882,1890,1982,2026,2027,2037,2160,
-      2702,2705,2707,2710,2713,3346,3395,3584,3586,3587,
-      3588,3820,3821,3823,3956,3957,4070,4388,4397,4578,
-      4739,4740,4742,4744,4745,4898,4933,5483,6389,7466,
-      7831,8772,8776,9083,
-      // Supplement added 2026-05-11
-      9400,9401,9402,9403,9404,9405,9406,9407,9408,9409,
-      9410,9411,9412,9413,9414,9415,9416,9417,9418,9419,
-      9420,9421,9422,9423,9424,9425,9426,9427,9428,9429,
-      9430,9431,9432,9433,9434,9435,9436,9437,9438,9439,
-      9440,9441,9442,9443,9444,9445,9446,9447,9448,
+      1029,1096,1157,1404,1613,1625,1678,1802,
+    ],
+  },
+  {
+    name: "Phrasal Verbs · Part 2 ↪️",
+    icon: "↪️",
+    ids: [
+      1810,1820,1823,1824,1829,1830,1832,1833,1840,1845,
+      1858,1860,1861,1863,1864,1882,1890,1982,
+    ],
+  },
+  {
+    name: "Phrasal Verbs · Part 3 ↪️",
+    icon: "↪️",
+    ids: [
+      2026,2027,2037,2160,2702,2705,2707,2710,2713,3346,
+      3395,3584,3586,3587,3588,3820,3821,3823,
+    ],
+  },
+  {
+    name: "Phrasal Verbs · Part 4 ↪️",
+    icon: "↪️",
+    ids: [
+      3956,3957,4070,4388,4397,4578,4739,4740,4742,4744,
+      4745,4898,4933,5483,6389,7466,7831,8772,
+    ],
+  },
+  {
+    name: "Phrasal Verbs · Part 5 ↪️",
+    icon: "↪️",
+    ids: [
+      8776,9083,9400,9401,9402,9403,9404,9405,9406,9407,
+      9408,9409,9410,9411,9412,9413,9414,
+    ],
+  },
+  {
+    name: "Phrasal Verbs · Part 6 ↪️",
+    icon: "↪️",
+    ids: [
+      9415,9416,9417,9418,9419,9420,9421,9422,9423,9424,
+      9425,9426,9427,9428,9429,9430,9431,
+    ],
+  },
+  {
+    name: "Phrasal Verbs · Part 7 ↪️",
+    icon: "↪️",
+    ids: [
+      9432,9433,9434,9435,9436,9437,9438,9439,9440,9441,
+      9442,9443,9444,9445,9446,9447,9448,
     ],
   },
   // ── Idioms & fixed expressions ───────────────────────────────────
   // Bagrut reading-comprehension passages lean heavily on idioms;
   // strong academic vocab + zero idiom knowledge = points lost.
   {
-    name: "Idioms & Expressions 💬",
+    name: "Idioms & Expressions · Part 1 💬",
     icon: "💬",
     ids: [
-      // Pre-existing idiom IDs from the former "Common Idioms" pack
-      9, 13, 280, 2316, 2335, 3048, 3079, 3094, 3186, 3770,
-      3771, 4100, 5188, 5292, 5625, 5780, 6231, 6814,
-      // Bagrut idioms + fixed expressions added 2026-05-11
-      9300,9301,9302,9303,9304,9305,9306,9307,9308,9309,
-      9310,9311,9312,9313,9314,9315,9316,9317,9318,9319,
-      9320,9321,9322,9323,9324,9325,9326,9327,9328,9329,
-      9330,9331,9332,9333,9334,9335,9336,9337,9338,9339,
-      9340,9341,9342,9343,9344,9345,9346,9347,9348,9349,
+      9,13,280,2316,2335,3048,3079,3094,3186,3770,
+      3771,4100,5188,5292,5625,5780,6231,
+    ],
+  },
+  {
+    name: "Idioms & Expressions · Part 2 💬",
+    icon: "💬",
+    ids: [
+      6814,9300,9301,9302,9303,9304,9305,9306,9307,9308,
+      9309,9310,9311,9312,9313,9314,9315,
+    ],
+  },
+  {
+    name: "Idioms & Expressions · Part 3 💬",
+    icon: "💬",
+    ids: [
+      9316,9317,9318,9319,9320,9321,9322,9323,9324,9325,
+      9326,9327,9328,9329,9330,9331,9332,
+    ],
+  },
+  {
+    name: "Idioms & Expressions · Part 4 💬",
+    icon: "💬",
+    ids: [
+      9333,9334,9335,9336,9337,9338,9339,9340,9341,9342,
+      9343,9344,9345,9346,9347,9348,9349,
+    ],
+  },
+  {
+    name: "Idioms & Expressions · Part 5 💬",
+    icon: "💬",
+    ids: [
       9350,9351,9352,9353,9354,9355,9356,9357,9358,9359,
       9360,9361,9362,9363,9364,9365,
     ],
@@ -6819,240 +6900,369 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
   //    per teacher request — every pack should give enough vocabulary
   //    to be a useful classroom unit, not just a sampler.) ──────────
   {
-    name: "Animals 🐾",
+    name: "Animals · Part 1 🐾",
     icon: "🐾",
     ids: [
-      // Original core
-      180, 476, 702, 1272, 1643, 2666, 3372, 4593, 6275, 782, 1043, 1322, 1384, 1853, 2184, 2945, 3401, 3613,
-      // Wild animals added 2026-05-18
-      610, 774, 1067, 1143, 1724, 1748, 2557, 3297, 3354, 3971, 4091, 4985, 5066, 5151, 6748,
+      180,476,702,1272,1643,2666,3372,4593,6275,782,
+      1043,1322,1384,1853,2184,2945,3401,
+    ],
+  },
+  {
+    name: "Animals · Part 2 🐾",
+    icon: "🐾",
+    ids: [
+      3613,610,774,1067,1143,1724,1748,2557,3297,3354,
+      3971,4091,4985,5066,5151,6748,
     ],
   },
   {
     name: "Food & Drinks 🍕",
     icon: "🍕",
-    ids: [208, 349, 554, 562, 782, 1212, 1308, 1356, 1689, 1751, 2757, 2849, 2858, 2903, 3216, 3759, 4859, 601, 629, 690],
+    ids: [
+      208,349,554,562,782,1212,1308,1356,1689,1751,
+      2757,2849,2858,2903,3216,3759,4859,601,629,690,
+    ],
   },
   {
-    name: "School 📚",
+    name: "School · Part 1 📚",
     icon: "📚",
     ids: [
-      507, 817, 1172, 2173, 2174, 2605, 2628, 3892, 4271, 4275, 4433, 4480,
-      // Expanded 2026-05-18 with classroom objects + school vocab
-      500, 509, 511, 822, 1439, 1476, 1948, 3100, 3893, 3896, 3897, 4272, 6300, 6304,
+      507,817,1172,2173,2174,2605,2628,3892,4271,4275,
+      4433,4480,500,
     ],
   },
   {
-    name: "Family 👨‍👩‍👧",
+    name: "School · Part 2 📚",
+    icon: "📚",
+    ids: [
+      509,511,822,1439,1476,1948,3100,3893,3896,3897,
+      4272,6300,6304,
+    ],
+  },
+  {
+    name: "Family · Part 1 👨‍👩‍👧",
     icon: "👨‍👩‍👧",
     ids: [
-      582, 785, 1103, 1557, 1580, 1956, 2167, 2198, 2940, 2961, 4037,
-      // Expanded 2026-05-18 with extended relatives
-      305, 1038, 1122, 1558, 1954, 1955, 1957, 2244, 3306, 4129, 4760, 4778, 5038,
+      582,785,1103,1557,1580,1956,2167,2198,2940,2961,
+      4037,305,
     ],
   },
   {
-    name: "Weather 🌤️",
+    name: "Family · Part 2 👨‍👩‍👧",
+    icon: "👨‍👩‍👧",
+    ids: [
+      1038,1122,1558,1954,1955,1957,2244,3306,4129,4760,
+      4778,5038,
+    ],
+  },
+  {
+    name: "Weather · Part 1 🌤️",
     icon: "🌤️",
     ids: [
-      859, 879, 2190, 3625, 3631, 4095, 4245, 4313, 4319, 4914, 4956, 5048,
-      // Expanded 2026-05-18 with seasonal/storm words
-      860, 1679, 2653, 3627, 4097, 4246, 4461, 4580, 4581, 5051, 8013,
+      859,879,2190,3625,3631,4095,4245,4313,4319,4914,
+      4956,5048,
     ],
   },
   {
-    name: "Sports & Games ⚽",
+    name: "Weather · Part 2 🌤️",
+    icon: "🌤️",
+    ids: [
+      860,1679,2653,3627,4097,4246,4461,4580,4581,5051,
+      8013,
+    ],
+  },
+  {
+    name: "Sports & Games · Part 1 ⚽",
     icon: "⚽",
     ids: [
-      344, 371, 1109, 1694, 1777, 2566, 2931, 2932, 2938, 3818, 4179, 4361, 4438, 5045,
-      // Expanded 2026-05-18 from hobbies + instruments
-      6, 10, 1778, 2237, 4180, 4366, 4367, 5841,
+      344,371,1109,1694,1777,2566,2931,2932,2938,3818,
+      4179,
+    ],
+  },
+  {
+    name: "Sports & Games · Part 2 ⚽",
+    icon: "⚽",
+    ids: [
+      4361,4438,5045,6,10,1778,2237,4180,4366,4367,
+      5841,
     ],
   },
 
   // ── Additional Curriculum Packs ───────────────────────────────────────────────────
   {
-    name: "Colors 🎨",
+    name: "Colors · Part 1 🎨",
     icon: "🎨",
     ids: [
-      481, 498, 532, 1962, 1969, 1974, 3216, 3404, 3577, 3676, 5026, 5126,
-      // Expanded 2026-05-18 with more colors + shade descriptors
-      584, 887, 1051, 1921, 4026, 7626, 567, 1141, 7670, 6453,
+      481,498,532,1962,1969,1974,3216,3404,3577,3676,
+      5026,
     ],
   },
   {
-    name: "Numbers 🔢",
+    name: "Colors · Part 2 🎨",
+    icon: "🎨",
+    ids: [
+      5126,584,887,1051,1921,4026,7626,567,1141,7670,
+      6453,
+    ],
+  },
+  {
+    name: "Numbers · Part 1 🔢",
     icon: "🔢",
     ids: [
-      1371, 1384, 1396, 1452, 1654, 3069, 3876, 3889, 3960, 4043, 4463, 4555, 4763, 6817, 6956,
-      // Expanded 2026-05-18 with more digits + quantity words
-      1723, 2018, 2230, 2906, 3070, 3071, 3961, 4044, 4558, 4566, 4756, 5152, 7349,
+      1371,1384,1396,1452,1654,3069,3876,3889,3960,4043,
+      4463,4555,4763,6817,
+    ],
+  },
+  {
+    name: "Numbers · Part 2 🔢",
+    icon: "🔢",
+    ids: [
+      6956,1723,2018,2230,2906,3070,3071,3961,4044,4558,
+      4566,4756,5152,7349,
     ],
   },
   {
     name: "Days & Months 📅",
     icon: "📅",
     ids: [
-      1587, 1739, 2450, 2943, 3871, 4315, 4582, 4730, 4963,
-      // Expanded 2026-05-18 with remaining months + weekend
-      213, 304, 1134, 2483, 2487, 2844, 3108, 3125, 3949, 4965,
+      1587,1739,2450,2943,3871,4315,4582,4730,4963,213,
+      304,1134,2483,2487,2844,3108,3125,3949,4965,
     ],
   },
   {
-    name: "Body Parts 👂",
+    name: "Body Parts · Part 1 👂",
     icon: "👂",
     ids: [
-      232, 1339, 1528, 1532, 1629, 1693, 2014, 2025, 2054, 2082, 2619, 2972,
-      // Expanded 2026-05-18 with more body vocabulary
-      327, 1345, 1529, 2030, 2549, 3029, 3030, 4005, 4056, 4236, 6082, 6370,
+      232,1339,1528,1532,1629,1693,2014,2025,2054,2082,
+      2619,2972,
     ],
   },
   {
-    name: "Clothes 👔",
+    name: "Body Parts · Part 2 👂",
+    icon: "👂",
+    ids: [
+      327,1345,1529,2030,2549,3029,3030,4005,4056,4236,
+      6082,6370,
+    ],
+  },
+  {
+    name: "Clothes · Part 1 👔",
     icon: "👔",
     ids: [
-      869, 1305, 1748, 2054, 2444, 2454, 3299, 3987, 3992, 4058, 4373,
-      // Expanded 2026-05-18 with shoes/accessories
-      445, 513, 871, 1306, 1307, 1873, 1874, 3886, 4108, 4351, 4590,
+      869,1305,1748,2054,2444,2454,3299,3987,3992,4058,
+      4373,
     ],
   },
   {
-    name: "Feelings & Emotions 😊",
+    name: "Clothes · Part 2 👔",
+    icon: "👔",
+    ids: [
+      445,513,871,1306,1307,1873,1874,3886,4108,4351,
+      4590,
+    ],
+  },
+  {
+    name: "Feelings & Emotions · Part 1 😊",
     icon: "😊",
     ids: [
-      87, 179, 516, 1485, 2045, 3556, 3832, 3884, 4340, 4604, 5093,
-      // Expanded 2026-05-18 with more emotions
-      638, 1389, 1486, 1768, 2046, 2693, 3040, 3833, 3834, 7125,
+      87,179,516,1485,2045,3556,3832,3884,4340,4604,
+      5093,
     ],
   },
   {
-    name: "Transportation 🚗",
+    name: "Feelings & Emotions · Part 2 😊",
+    icon: "😊",
+    ids: [
+      638,1389,1486,1768,2046,2693,3040,3833,3834,7125,
+    ],
+  },
+  {
+    name: "Transportation · Part 1 🚗",
     icon: "🚗",
     ids: [
-      468, 502, 605, 675, 1312, 3414, 3985, 4289, 4429, 4715, 248,
-      // Expanded 2026-05-18 with more vehicles
-      463, 606, 676, 2107, 2966, 3415, 3986, 4430, 5932, 7996,
+      468,502,605,675,1312,3414,3985,4289,4429,4715,
+      248,
+    ],
+  },
+  {
+    name: "Transportation · Part 2 🚗",
+    icon: "🚗",
+    ids: [
+      463,606,676,2107,2966,3415,3986,4430,5932,7996,
     ],
   },
   {
     name: "Professions & Jobs 👷",
     icon: "👷",
     ids: [
-      248, 775, 1270, 1312, 1568, 3113, 3403, 3452, 4033, 4433, 5111,
-      // Expanded 2026-05-18 with more careers
-      57, 342, 1153, 1413, 2861, 2994, 3902, 4114, 5679,
+      248,775,1270,1312,1568,3113,3403,3452,4033,4433,
+      5111,57,342,1153,1413,2861,2994,3902,4114,5679,
     ],
   },
   {
-    name: "Nature 🌳",
+    name: "Nature · Part 1 🌳",
     icon: "🌳",
     ids: [
-      405, 1669, 1960, 2948, 2970, 3123, 3226, 3780, 3860, 3915, 4208, 4313, 4698,
-      // Expanded 2026-05-18 with more outdoor vocabulary
-      610, 1748, 1977, 2653, 3417, 3625, 3627, 4095, 4313, 5048, 8013,
+      405,1669,1960,2948,2970,3123,3226,3780,3860,3915,
+      4208,4313,
+    ],
+  },
+  {
+    name: "Nature · Part 2 🌳",
+    icon: "🌳",
+    ids: [
+      4698,610,1748,1977,2653,3417,3625,3627,4095,5048,
+      8013,
     ],
   },
   {
     name: "Furniture 🛋️",
     icon: "🛋️",
     ids: [
-      418, 737, 1085, 1172, 2568, 2922, 3979, 4110, 4376,
-      // Expanded 2026-05-18 with more home items
-      420, 624, 688, 1023, 5256, 6472, 1869, 1085, 3030, 4373, 2444,
+      418,737,1085,1172,2568,2922,3979,4110,4376,420,
+      624,688,1023,5256,6472,1869,3030,4373,2444,
     ],
   },
   {
     name: "Kitchen Items 🍽️",
     icon: "🍽️",
     ids: [
-      532, 1082, 1711, 1868, 2188, 2552, 3423, 4178, 6838,
-      // Expanded 2026-05-18 with cookware + tableware
-      1084, 1248, 1869, 6842, 6888, 7050, 1085, 1711, 2188, 4178, 532,
+      532,1082,1711,1868,2188,2552,3423,4178,6838,1084,
+      1248,1869,6842,6888,7050,1085,
     ],
   },
   {
-    name: "Music & Arts 🎵",
+    name: "Music & Arts · Part 1 🎵",
     icon: "🎵",
     ids: [
-      1109, 1318, 1671, 1991, 2566, 2992, 3432, 4032, 5836,
-      // Expanded 2026-05-18 with more instruments + art words
-      244, 245, 1111, 1295, 1296, 1297, 1319, 1992, 3283, 3285, 3287, 4033, 4130, 4523,
+      1109,1318,1671,1991,2566,2992,3432,4032,5836,244,
+      245,1111,
     ],
   },
   {
-    name: "Fruits 🍎",
+    name: "Music & Arts · Part 2 🎵",
+    icon: "🎵",
+    ids: [
+      1295,1296,1297,1319,1992,3283,3285,3287,4033,4130,
+      4523,
+    ],
+  },
+  {
+    name: "Fruits · Part 1 🍎",
     icon: "🍎",
-    // Expanded 2026-05-18 with more food IDs from Food & Drinks pack.
     ids: [
-      208, 349, 1120, 1751, 1959, 2548, 2818, 2873, 3216, 3350, 3440, 4257, 4859, 4940, 5686, 5827,
-      // Additional citrus / berry / tropical fruit IDs (from Food pack)
-      554, 562, 1212, 1308, 1689, 2849,
+      208,349,1120,1751,1959,2548,2818,2873,3216,3350,
+      3440,
     ],
   },
   {
-    name: "Vegetables 🥕",
+    name: "Fruits · Part 2 🍎",
+    icon: "🍎",
+    ids: [
+      4257,4859,4940,5686,5827,554,562,1212,1308,1689,
+      2849,
+    ],
+  },
+  {
+    name: "Vegetables · Part 1 🥕",
     icon: "🥕",
-    // Expanded 2026-05-18 with more produce IDs.
     ids: [
-      407, 577, 623, 624, 690, 1009, 1078, 1368, 2638, 2858, 3192, 3357, 3481, 3931, 4619, 6274,
-      // Additional root + leafy vegetable IDs
-      601, 629, 782, 3759, 4859,
+      407,577,623,624,690,1009,1078,1368,2638,2858,
+      3192,
     ],
   },
   {
-    name: "Desserts & Sweets 🍰",
+    name: "Vegetables · Part 2 🥕",
+    icon: "🥕",
+    ids: [
+      3357,3481,3931,4619,6274,601,629,782,3759,4859,
+    ],
+  },
+  {
+    name: "Desserts & Sweets · Part 1 🍰",
     icon: "🍰",
-    // Expanded 2026-05-18 with more sweet treats from Food pack.
     ids: [
-      573, 629, 662, 701, 793, 855, 995, 1174, 1944, 2176, 2271, 2457, 3398, 4302, 4358,
-      // Additional dessert vocabulary
-      208, 349, 562, 2757, 2849, 4859, 4940,
+      573,629,662,701,793,855,995,1174,1944,2176,
+      2271,
     ],
   },
   {
-    name: "Beach & Sea 🏖️",
+    name: "Desserts & Sweets · Part 2 🍰",
+    icon: "🍰",
+    ids: [
+      2457,3398,4302,4358,208,349,562,2757,2849,4859,
+      4940,
+    ],
+  },
+  {
+    name: "Beach & Sea · Part 1 🏖️",
     icon: "🏖️",
-    // Expanded 2026-05-18 with marine animals + summer outdoor words.
     ids: [
-      405, 868, 1275, 1643, 2419, 3123, 3226, 3860, 3915, 3971, 4208, 4587, 6133, 7828,
-      // Marine animals + beach activity vocabulary
-      610, 1322, 3401, 4985, 5048, 5051, 4319,
+      405,868,1275,1643,2419,3123,3226,3860,3915,3971,
+      4208,
     ],
   },
   {
-    name: "Hobbies & Free Time 🎯",
+    name: "Beach & Sea · Part 2 🏖️",
+    icon: "🏖️",
+    ids: [
+      4587,6133,7828,610,1322,3401,4985,5048,5051,4319,
+    ],
+  },
+  {
+    name: "Hobbies & Free Time · Part 1 🎯",
     icon: "🎯",
     ids: [
-      1109, 1777, 2931, 2566, 2992, 3432,
-      // Expanded 2026-05-18 with games, sports & creative hobbies
-      6, 997, 1297, 1647, 1649, 1778, 2155, 2237, 3287, 3424, 3655, 4179, 4366, 4367, 5841, 5836, 1991, 1318, 1671,
+      1109,1777,2931,2566,2992,3432,6,997,1297,1647,
+      1649,1778,2155,
+    ],
+  },
+  {
+    name: "Hobbies & Free Time · Part 2 🎯",
+    icon: "🎯",
+    ids: [
+      2237,3287,3424,3655,4179,4366,4367,5841,5836,1991,
+      1318,1671,
     ],
   },
   {
     name: "Birds 🐦",
     icon: "🐦",
     ids: [
-      476, 782, 1322, 2118, 3266, 3310, 3351, 3354, 7111, 8323,
-      // Expanded 2026-05-18 by merging Animals + Farm bird IDs
-      1043, 892, 1280, 1567, 2118, 3266, 3310, 3351, 7235, 8600, 5753,
+      476,782,1322,2118,3266,3310,3351,3354,7111,8323,
+      1043,892,1280,1567,7235,8600,5753,
     ],
   },
   {
-    name: "Farm Animals 🐄",
+    name: "Farm Animals · Part 1 🐄",
     icon: "🐄",
     ids: [
-      702, 782, 892, 1043, 1272, 1280, 1322, 1567, 1911, 2184, 2945, 3401, 3613, 7235, 8600,
-      // Expanded 2026-05-18 with more pasture animals
-      180, 476, 1043, 1322, 1384, 1853, 1911, 5066, 5151, 6275, 8323,
+      702,782,892,1043,1272,1280,1322,1567,1911,2184,
+      2945,3401,
     ],
   },
   {
-    name: "Time Expressions ⏰",
+    name: "Farm Animals · Part 2 🐄",
+    icon: "🐄",
+    ids: [
+      3613,7235,8600,180,476,1384,1853,5066,5151,6275,
+      8323,
+    ],
+  },
+  {
+    name: "Time Expressions · Part 1 ⏰",
     icon: "⏰",
     ids: [
-      101, 141, 148, 3702, 3871,
-      // Expanded 2026-05-18 with days/parts of day + duration
-      1455, 2197, 2899, 2920, 2956, 3066, 3089, 4596, 4598, 4614, 4623, 4964, 4965, 5128, 6075, 6956, 8261,
+      101,141,148,3702,3871,1455,2197,2899,2920,2956,
+      3066,
+    ],
+  },
+  {
+    name: "Time Expressions · Part 2 ⏰",
+    icon: "⏰",
+    ids: [
+      3089,4596,4598,4614,4623,4964,4965,5128,6075,6956,
+      8261,
     ],
   },
   {
@@ -7060,285 +7270,495 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     icon: "📐",
     ids: [465, 809, 1077, 1421, 2097, 2223, 2576, 2679, 2694, 2868, 4000, 4075, 4195, 4414, 4542, 4545, 4602, 5036, 7966, 8286],
   },
+  // Merged from "Greetings & Phrases", "Hello & Goodbye", and the original
+  // "Greetings & Polite Words" (2026-05-07): bye, goodbye, hi, hello, please,
+  // sorry, sure, thank/thanks, yes/no, maybe, excuse, plus the 5 phrases.
+  // Expanded 2026-05-18 with everyday polite phrases.
   {
-    name: "Greetings & Polite Words 👋",
+    name: "Greetings & Polite Words · Part 1 👋",
     icon: "👋",
-    // Merged from "Greetings & Phrases", "Hello & Goodbye", and the original
-    // "Greetings & Polite Words" (2026-05-07): bye, goodbye, hi, hello, please,
-    // sorry, sure, thank/thanks, yes/no, maybe, excuse, plus the 5 phrases.
-    // Expanded 2026-05-18 with everyday polite phrases.
     ids: [
-      102, 122, 126, 130, 132, 141, 622, 1937, 2130, 2845, 3073, 3436, 4135, 4334, 4490, 5127, 6041, 6541,
-      // Additional polite + small-talk vocabulary
-      1986, 4596, 4614, 4623, 5128,
+      102,122,126,130,132,141,622,1937,2130,2845,
+      3073,3436,
     ],
   },
   {
-    name: "Bathroom 🚽",
+    name: "Greetings & Polite Words · Part 2 👋",
+    icon: "👋",
+    ids: [
+      4135,4334,4490,5127,6041,6541,1986,4596,4614,4623,
+      5128,
+    ],
+  },
+  // Expanded 2026-05-18 with daily-routine + body-care vocabulary.
+  {
+    name: "Bathroom · Part 1 🚽",
     icon: "🚽",
-    // Expanded 2026-05-18 with daily-routine + body-care vocabulary.
     ids: [
-      184, 185, 373, 895, 2203, 2922, 4010, 4616, 4636, 4637, 4658, 6314, 7842, 7929,
-      // Hygiene + bathing routine vocabulary
-      562, 991, 1305, 1308, 1339, 1356, 2671, 4922, 6314,
+      184,185,373,895,2203,2922,4010,4616,4636,4637,
+      4658,
     ],
   },
   {
-    name: "Common Verbs 🏃",
+    name: "Bathroom · Part 2 🚽",
+    icon: "🚽",
+    ids: [
+      6314,7842,7929,562,991,1305,1308,1339,1356,2671,
+      4922,
+    ],
+  },
+  // Merged from "Common Verbs" + "Action Words" (2026-05-07); expanded
+  // 2026-05-18 with more high-frequency action verbs.
+  {
+    name: "Common Verbs · Part 1 🏃",
     icon: "🏃",
-    // Merged from "Common Verbs" + "Action Words" (2026-05-07); expanded
-    // 2026-05-18 with more high-frequency action verbs.
     ids: [
-      203, 205, 1143, 1356, 2605, 2628, 2931, 3256, 3432, 3818,
-      // Additional verbs from other packs (verified IDs)
-      33, 45, 51, 286, 528, 583, 640, 804, 1294, 1316, 1597, 2671, 2757,
-      3424, 3503, 4032, 4900, 4922, 5110,
+      203,205,1143,1356,2605,2628,2931,3256,3432,3818,
+      33,45,51,286,528,
     ],
   },
   {
-    name: "House & Rooms 🏠",
+    name: "Common Verbs · Part 2 🏃",
+    icon: "🏃",
+    ids: [
+      583,640,804,1294,1316,1597,2671,2757,3424,3503,
+      4032,4900,4922,5110,
+    ],
+  },
+  // Merged from "Places & Rooms" + "House & Rooms" (2026-05-07): bath,
+  // bathroom, bedroom, ceiling, door, fence, floor, garage, garden, gate,
+  // hall, home, house, kitchen, roof, shower, stairs, toilet, wall, window,
+  // basement, plus the 5 places (school, etc.).
+  {
+    name: "House & Rooms · Part 1 🏠",
     icon: "🏠",
-    // Merged from "Places & Rooms" + "House & Rooms" (2026-05-07): bath,
-    // bathroom, bedroom, ceiling, door, fence, floor, garage, garden, gate,
-    // hall, home, house, kitchen, roof, shower, stairs, toilet, wall, window,
-    // basement, plus the 5 places (school, etc.).
-    ids: [373, 376, 420, 715, 1281, 1599, 1667, 1780, 1782, 1786, 1874, 2021, 2167, 2188, 2198, 2544, 3798, 3892, 4010, 4201, 4616, 4907, 5050, 8082],
-  },
-  {
-    name: "Sky & Space ✨",
-    icon: "✨",
-    // Expanded 2026-05-18 with more weather + atmospheric words.
     ids: [
-      275, 859, 1346, 2525, 2948, 3417, 3584, 3625, 3627, 3666, 4060, 4152, 4208, 4313, 7986, 8907, 8922, 8962,
-      // Atmosphere / weather phenomena (verified)
-      860, 1679, 2653, 4095, 4097, 4245, 4319, 4580, 4956, 5048,
+      373,376,420,715,1281,1599,1667,1780,1782,1786,
+      1874,2021,
     ],
   },
   {
-    name: "Hot & Cold 🌡️",
-    icon: "🌡️",
-    // Expanded 2026-05-18 by merging weather + temperature + comfort
-    // words (the 3-word version was unusably small).
+    name: "House & Rooms · Part 2 🏠",
+    icon: "🏠",
     ids: [
-      879, 2190, 4914,
-      // Additional temperature / climate vocabulary
-      859, 860, 880, 1679, 2191, 2195, 2196, 3625, 3627, 3631, 4095, 4097, 4098,
-      4245, 4319, 4461, 4914, 4956, 5048, 5051,
+      2167,2188,2198,2544,3798,3892,4010,4201,4616,4907,
+      5050,8082,
+    ],
+  },
+  // Expanded 2026-05-18 with more weather + atmospheric words.
+  {
+    name: "Sky & Space · Part 1 ✨",
+    icon: "✨",
+    ids: [
+      275,859,1346,2525,2948,3417,3584,3625,3627,3666,
+      4060,4152,4208,4313,
+    ],
+  },
+  {
+    name: "Sky & Space · Part 2 ✨",
+    icon: "✨",
+    ids: [
+      7986,8907,8922,8962,860,1679,2653,4095,4097,4245,
+      4319,4580,4956,5048,
+    ],
+  },
+  // Expanded 2026-05-18 by merging weather + temperature + comfort
+  // words (the 3-word version was unusably small).
+  {
+    name: "Hot & Cold · Part 1 🌡️",
+    icon: "🌡️",
+    ids: [
+      879,2190,4914,859,860,880,1679,2191,2195,2196,
+      3625,
+    ],
+  },
+  {
+    name: "Hot & Cold · Part 2 🌡️",
+    icon: "🌡️",
+    ids: [
+      3627,3631,4095,4097,4098,4245,4319,4461,4956,5048,
+      5051,
     ],
   },
   // ── 2026-04-26 — additional topic packs (teacher request) ─────────
+  // big↔small, tall↔short, fast↔slow, hot↔cold, happy↔sad,
+  // hard↔soft, heavy↔light, easy↔difficult, new↔old, clean↔dirty,
+  // empty↔full, near↔far, strong↔weak, good↔bad, right↔wrong,
+  // early↔late, dry↔wet, loud↔quiet, dark↔light, expensive↔cheap
   {
-    name: "Opposites ⚖️",
+    name: "Opposites · Part 1 ⚖️",
     icon: "⚖️",
-    // big↔small, tall↔short, fast↔slow, hot↔cold, happy↔sad,
-    // hard↔soft, heavy↔light, easy↔difficult, new↔old, clean↔dirty,
-    // empty↔full, near↔far, strong↔weak, good↔bad, right↔wrong,
-    // early↔late, dry↔wet, loud↔quiet, dark↔light, expensive↔cheap
-    ids: [465, 4075, 4414, 4000, 1575, 4069, 2190, 879, 2045, 3832, 2047, 4111, 2102, 2649, 1355, 1203, 3049, 3150, 824, 1223, 1398, 1757, 3020, 1564, 4266, 4948, 1930, 333, 3767, 5113, 1341, 2585, 1321, 4983, 2741, 3606, 6453, 5471, 762],
+    ids: [
+      465,4075,4414,4000,1575,4069,2190,879,2045,3832,
+      2047,4111,2102,2649,1355,1203,3049,3150,824,1223,
+    ],
   },
   {
-    name: "At the Doctor 🏥",
+    name: "Opposites · Part 2 ⚖️",
+    icon: "⚖️",
+    ids: [
+      1398,1757,3020,1564,4266,4948,1930,333,3767,5113,
+      1341,2585,1321,4983,2741,3606,6453,5471,762,
+    ],
+  },
+  // ambulance, cough, dentist, doctor, ear, eye, heal, hospital,
+  // hurt, illness, medicine, nurse, pain, sick, stomach, teeth,
+  // temperature, throat, tooth, headache, fever, cure, flu
+  {
+    name: "At the Doctor · Part 1 🏥",
     icon: "🏥",
-    // ambulance, cough, dentist, doctor, ear, eye, heal, hospital,
-    // hurt, illness, medicine, nurse, pain, sick, stomach, teeth,
-    // temperature, throat, tooth, headache, fever, cure, flu
-    ids: [158, 1024, 1153, 1270, 1339, 1528, 2089, 2189, 2243, 2289, 2866, 3113, 3281, 4015, 4236, 4449, 4461, 4572, 4634, 5571, 6572, 7293, 7416],
+    ids: [
+      158,1024,1153,1270,1339,1528,2089,2189,2243,2289,
+      2866,3113,
+    ],
   },
   {
-    name: "Money & Shopping 💰",
+    name: "At the Doctor · Part 2 🏥",
+    icon: "🏥",
+    ids: [
+      3281,4015,4236,4449,4461,4572,4634,5571,6572,7293,
+      7416,
+    ],
+  },
+  // bank, bill, buy, change, cheap, coin, cost, customer, dollar,
+  // euro, free, mall, market, money, owe, pay, price, sale, sell,
+  // shekel, spend, store, cash, credit, expensive
+  {
+    name: "Money & Shopping · Part 1 💰",
     icon: "💰",
-    // bank, bill, buy, change, cheap, coin, cost, customer, dollar,
-    // euro, free, mall, market, money, owe, pay, price, sale, sell,
-    // shekel, spend, store, cash, credit, expensive
-    ids: [354, 471, 611, 745, 762, 876, 1018, 1092, 1274, 1450, 1728, 2814, 2831, 2944, 3265, 3342, 3515, 3852, 3940, 3975, 4170, 4242, 5316, 5385, 5471],
+    ids: [
+      354,471,611,745,762,876,1018,1092,1274,1450,
+      1728,2814,2831,
+    ],
   },
   {
-    name: "Daily Routine ⏰",
+    name: "Money & Shopping · Part 2 💰",
+    icon: "💰",
+    ids: [
+      2944,3265,3342,3515,3852,3940,3975,4170,4242,5316,
+      5385,5471,
+    ],
+  },
+  // bath, breakfast, cook, dinner, dress, drink, eat, exercise,
+  // homework, leave, listen, lunch, play, prepare, read, relax,
+  // return, shower, sleep, study, supper, walk, wash, watch, write,
+  // brush
+  {
+    name: "Daily Routine · Part 1 ⏰",
     icon: "⏰",
-    // bath, breakfast, cook, dinner, dress, drink, eat, exercise,
-    // homework, leave, listen, lunch, play, prepare, read, relax,
-    // return, shower, sleep, study, supper, walk, wash, watch, write,
-    // brush
-    ids: [373, 562, 991, 1212, 1305, 1308, 1356, 1493, 2173, 2612, 2671, 2757, 3424, 3503, 3652, 3696, 3750, 4010, 4063, 4275, 4329, 4900, 4922, 4931, 5110, 6314],
+    ids: [
+      373,562,991,1212,1305,1308,1356,1493,2173,2612,
+      2671,2757,3424,
+    ],
   },
   {
-    name: "In the City 🏙️",
-    icon: "🏙️",
-    // airport, building, bus, cinema, city, factory, fire (station),
-    // hotel, library, museum, office, park, police, restaurant, road,
-    // school, stadium, station, street, town, train, village, church,
-    // mosque, temple
-    ids: [114, 594, 605, 806, 813, 1537, 1632, 2194, 2641, 2989, 3136, 3308, 3452, 3746, 3782, 3892, 4198, 4217, 4258, 4661, 4678, 4878, 5342, 5750, 7931],
+    name: "Daily Routine · Part 2 ⏰",
+    icon: "⏰",
+    ids: [
+      3503,3652,3696,3750,4010,4063,4275,4329,4900,4922,
+      4931,5110,6314,
+    ],
   },
+  // airport, building, bus, cinema, city, factory, fire (station),
+  // hotel, library, museum, office, park, police, restaurant, road,
+  // school, stadium, station, street, town, train, village, church,
+  // mosque, temple
+  {
+    name: "In the City · Part 1 🏙️",
+    icon: "🏙️",
+    ids: [
+      114,594,605,806,813,1537,1632,2194,2641,2989,
+      3136,3308,3452,
+    ],
+  },
+  {
+    name: "In the City · Part 2 🏙️",
+    icon: "🏙️",
+    ids: [
+      3746,3782,3892,4198,4217,4258,4661,4678,4878,5342,
+      5750,7931,
+    ],
+  },
+  // birthday, cake, celebrate, festival, gift, holiday, invite,
+  // present, surprise, wedding, candle, guest, wish, party.
+  // Expanded 2026-05-18 with more celebration vocabulary.
   {
     name: "Holidays & Celebrations 🎉",
     icon: "🎉",
-    // birthday, cake, celebrate, festival, gift, holiday, invite,
-    // present, surprise, wedding, candle, guest, wish, party.
-    // Expanded 2026-05-18 with more celebration vocabulary.
     ids: [
-      478, 629, 716, 1600, 1850, 2162, 2409, 3505, 4339, 4962, 5301, 5552, 6155, 6848,
-      // Additional ceremony / celebration words
-      479, 717, 731, 3301, 6206, 1850, 5552, 2162, 717, 6848,
+      478,629,716,1600,1850,2162,2409,3505,4339,4962,
+      5301,5552,6155,6848,479,717,731,3301,6206,
     ],
   },
+  // battery, camera, computer, fork, knife, microwave, phone,
+  // refrigerator, remote, spoon, television, laptop, oven, cable,
+  // nail.  Expanded 2026-05-18 with workshop + utility tools.
   {
-    name: "Tools & Gadgets 🔧",
+    name: "Tools & Gadgets · Part 1 🔧",
     icon: "🔧",
-    // battery, camera, computer, fork, knife, microwave, phone,
-    // refrigerator, remote, spoon, television, laptop, oven, cable,
-    // nail.  Expanded 2026-05-18 with workshop + utility tools.
     ids: [
-      377, 642, 946, 1711, 2552, 2896, 3376, 3684, 3710, 4178, 4457, 5674, 6838, 8153, 8690,
-      // Hand tools + utilities
-      2779, 4456, 4633, 5060, 6726, 7046, 7047,
+      377,642,946,1711,2552,2896,3376,3684,3710,4178,
+      4457,
     ],
   },
   {
-    name: "Question Words ❓",
-    icon: "❓",
-    // how, what, when, where, who, why, whose, which.  Expanded
-    // 2026-05-18 with quantifiers + indefinite pronouns (any, some,
-    // every, all, none, both, neither) — these answer "how many?" /
-    // "which one?" so they belong in the same teaching unit.
+    name: "Tools & Gadgets · Part 2 🔧",
+    icon: "🔧",
     ids: [
-      2202, 4986, 5013, 5016, 5028, 5031, 6147, 9112,
-      121, 122, 123, 191, 195, 196, 200, 522, 523, 1336, 1373, 1461, 1466, 1468,
-      1470, 3038, 3088, 4120, 4123, 4125, 4127, 4128, 5440, 5769,
+      5674,6838,8153,8690,2779,4456,4633,5060,6726,7046,
+      7047,
+    ],
+  },
+  // how, what, when, where, who, why, whose, which.  Expanded
+  // 2026-05-18 with quantifiers + indefinite pronouns (any, some,
+  // every, all, none, both, neither) — these answer "how many?" /
+  // "which one?" so they belong in the same teaching unit.
+  {
+    name: "Question Words · Part 1 ❓",
+    icon: "❓",
+    ids: [
+      2202,4986,5013,5016,5028,5031,6147,9112,121,122,
+      123,191,195,196,200,522,
+    ],
+  },
+  {
+    name: "Question Words · Part 2 ❓",
+    icon: "❓",
+    ids: [
+      523,1336,1373,1461,1466,1468,1470,3038,3088,4120,
+      4123,4125,4127,4128,5440,5769,
     ],
   },
 
   // ── 2026-05-07 — language-structure packs (grammar focus, not topic) ──────
+  // above, across, along, around, at, behind, below, beside, between,
+  // by, far, in front of, inside, into, near, next to, on, outside,
+  // through, under, in, out of, over
   {
-    name: "Prepositions 📍",
+    name: "Prepositions · Part 1 📍",
     icon: "📍",
-    // above, across, along, around, at, behind, below, beside, between,
-    // by, far, in front of, inside, into, near, next to, on, outside,
-    // through, under, in, out of, over
-    ids: [29, 49, 137, 236, 276, 430, 444, 452, 458, 612, 1564, 2318, 2374, 2401, 3020, 3061, 3163, 3247, 4573, 4784, 5617, 6834, 6839],
+    ids: [
+      29,49,137,236,276,430,444,452,458,612,
+      1564,2318,
+    ],
   },
   {
-    name: "Modal Verbs 🤔",
+    name: "Prepositions · Part 2 📍",
+    icon: "📍",
+    ids: [
+      2374,2401,3020,3061,3163,3247,4573,4784,5617,6834,
+      6839,
+    ],
+  },
+  // can, cannot, have to, might, must, should, could, ought to,
+  // shall, will.  Expanded 2026-05-18 with negative + compound modal
+  // forms (can't, couldn't, mustn't, would, etc.) — students need to
+  // see the inflected forms next to the bare modals.
+  {
+    name: "Modal Verbs · Part 1 🤔",
     icon: "🤔",
-    // can, cannot, have to, might, must, should, could, ought to,
-    // shall, will.  Expanded 2026-05-18 with negative + compound modal
-    // forms (can't, couldn't, mustn't, would, etc.) — students need to
-    // see the inflected forms next to the bare modals.
     ids: [
-      652, 664, 2078, 2900, 2995, 4004, 5379, 6831, 6974, 8024,
-      657, 658, 659, 1026, 1027, 1028, 2996, 3032, 3236, 5102, 5104, 9137,
+      652,664,2078,2900,2995,4004,5379,6831,6974,8024,
+      657,
     ],
   },
   {
-    name: "Irregular Past Tense ⏪",
+    name: "Modal Verbs · Part 2 🤔",
+    icon: "🤔",
+    ids: [
+      658,659,1026,1027,1028,2996,3032,3236,5102,5104,
+      9137,
+    ],
+  },
+  // ate, bought, broke, brought, came, chose, did, drank, drove, fell,
+  // gave, got, knew, lost, met, paid, put, read, said, sang, slept,
+  // thought, told, took, found
+  {
+    name: "Irregular Past Tense · Part 1 ⏪",
     icon: "⏪",
-    // ate, bought, broke, brought, came, chose, did, drank, drove, fell,
-    // gave, got, knew, lost, met, paid, put, read, said, sang, slept,
-    // thought, told, took, found
-    ids: [286, 528, 579, 583, 640, 804, 1189, 1294, 1316, 1597, 1788, 1943, 2551, 2732, 2885, 3279, 3583, 3652, 3843, 3867, 4065, 4564, 4618, 4632, 8421],
+    ids: [
+      286,528,579,583,640,804,1189,1294,1316,1597,
+      1788,1943,2551,
+    ],
   },
   {
-    name: "Comparatives & Superlatives 📊",
+    name: "Irregular Past Tense · Part 2 ⏪",
+    icon: "⏪",
+    ids: [
+      2732,2885,3279,3583,3652,3843,3867,4065,4564,4618,
+      4632,8421,
+    ],
+  },
+  // best, better, bigger, cleaner, darker, easier, faster, harder,
+  // heavier, least, less, more, most, newer, older, slower, smaller,
+  // stronger, taller, the best, the worst, warmer, worse, worst,
+  // younger
+  {
+    name: "Comparatives & Superlatives · Part 1 📊",
     icon: "📊",
-    // best, better, bigger, cleaner, darker, easier, faster, harder,
-    // heavier, least, less, more, most, newer, older, slower, smaller,
-    // stronger, taller, the best, the worst, warmer, worse, worst,
-    // younger
-    ids: [454, 457, 466, 826, 1117, 1350, 1577, 2049, 2099, 2611, 2626, 2951, 2959, 3053, 3153, 4071, 4076, 4267, 4415, 4506, 4521, 4916, 5098, 5099, 5139],
+    ids: [
+      454,457,466,826,1117,1350,1577,2049,2099,2611,
+      2626,2951,2959,
+    ],
   },
   {
-    name: "Conjunctions & Connectors 🔗",
+    name: "Comparatives & Superlatives · Part 2 📊",
+    icon: "📊",
+    ids: [
+      3053,3153,4071,4076,4267,4415,4506,4521,4916,5098,
+      5099,5139,
+    ],
+  },
+  // also, although, and, because, both, but, either, however, if, or,
+  // otherwise, since, therefore, unless, when, while, neither, until,
+  // whether, despite, nor, so, then, yet, even though
+  {
+    name: "Conjunctions & Connectors · Part 1 🔗",
     icon: "🔗",
-    // also, although, and, because, both, but, either, however, if, or,
-    // otherwise, since, therefore, unless, when, while, neither, until,
-    // whether, despite, nor, so, then, yet, even though
-    ids: [143, 146, 173, 415, 522, 609, 1373, 2221, 2282, 3215, 3235, 4031, 4538, 4817, 5013, 5025, 5769, 6119, 6144, 6473, 6797, 6993, 7081, 7170, 7382],
+    ids: [
+      143,146,173,415,522,609,1373,2221,2282,3215,
+      3235,4031,4538,
+    ],
   },
   {
-    name: "Common Collocations 🧩",
+    name: "Conjunctions & Connectors · Part 2 🔗",
+    icon: "🔗",
+    ids: [
+      4817,5013,5025,5769,6119,6144,6473,6797,6993,7081,
+      7170,7382,
+    ],
+  },
+  // catch a cold, do homework, do the dishes, get ready, have
+  // breakfast, have fun, have lunch, make a mistake, make friends,
+  // make money, take a break, take a shower, pay attention.
+  // Expanded 2026-05-18 with more "do/have/take/make" combos.
+  {
+    name: "Common Collocations · Part 1 🧩",
     icon: "🧩",
-    // catch a cold, do homework, do the dishes, get ready, have
-    // breakfast, have fun, have lunch, make a mistake, make friends,
-    // make money, take a break, take a shower, pay attention.
-    // Expanded 2026-05-18 with more "do/have/take/make" combos.
     ids: [
-      706, 1263, 1264, 1834, 2069, 2070, 2072, 2798, 2801, 2805, 4382, 4383, 6853,
-      // Daily-routine collocations (verified from Daily Routine pack)
-      562, 991, 1212, 1356, 1493, 2173, 2671, 2757, 3424, 3503, 4063, 4922, 4931,
+      706,1263,1264,1834,2069,2070,2072,2798,2801,2805,
+      4382,4383,6853,
     ],
   },
   {
-    name: "Classroom Language 🏫",
+    name: "Common Collocations · Part 2 🧩",
+    icon: "🧩",
+    ids: [
+      562,991,1212,1356,1493,2173,2671,2757,3424,3503,
+      4063,4922,4931,
+    ],
+  },
+  // answer, attention, behave, carefully, listen, loud, question,
+  // quietly, repeat, silence, raise, whisper.  Expanded 2026-05-18
+  // with classroom objects + lesson-related vocabulary.
+  {
+    name: "Classroom Language · Part 1 🏫",
     icon: "🏫",
-    // answer, attention, behave, carefully, listen, loud, question,
-    // quietly, repeat, silence, raise, whisper.  Expanded 2026-05-18
-    // with classroom objects + lesson-related vocabulary.
     ids: [
-      185, 297, 428, 682, 2671, 2741, 3600, 3609, 3713, 5960, 6910, 9114,
-      // Classroom objects + roles
-      507, 822, 1172, 1439, 1476, 1948, 2173, 2628, 3100, 4271, 4433, 6300, 6304,
+      185,297,428,682,2671,2741,3600,3609,3713,5960,
+      6910,9114,507,
     ],
   },
   {
-    name: "Linking Words ✒️",
-    icon: "✒️",
-    // as a result, finally, for example, however, in fact, in the end,
-    // on the other hand, therefore, in addition, nevertheless,
-    // furthermore, in brief, in conclusion, moreover, on the contrary.
-    // Expanded 2026-05-18 with more discourse markers + conjunctions.
+    name: "Classroom Language · Part 2 🏫",
+    icon: "🏫",
     ids: [
-      252, 1622, 1698, 2221, 2316, 2328, 3176, 4538, 5622, 7630, 8432, 8513, 8515, 8684, 8734,
-      // Pulled from Conjunctions & Connectors pack (verified IDs)
-      143, 146, 415, 522, 609, 1373, 2282, 3215, 3235, 4031,
+      822,1172,1439,1476,1948,2173,2628,3100,4271,4433,
+      6300,6304,
     ],
   },
+  // as a result, finally, for example, however, in fact, in the end,
+  // on the other hand, therefore, in addition, nevertheless,
+  // furthermore, in brief, in conclusion, moreover, on the contrary.
+  // Expanded 2026-05-18 with more discourse markers + conjunctions.
+  {
+    name: "Linking Words · Part 1 ✒️",
+    icon: "✒️",
+    ids: [
+      252,1622,1698,2221,2316,2328,3176,4538,5622,7630,
+      8432,8513,8515,
+    ],
+  },
+  {
+    name: "Linking Words · Part 2 ✒️",
+    icon: "✒️",
+    ids: [
+      8684,8734,143,146,415,522,609,1373,2282,3215,
+      3235,4031,
+    ],
+  },
+  // brave, calm, clever, friendly, funny, generous, honest, kind,
+  // lazy, nice, patient, polite, proud, rude, serious, shy, silly,
+  // smart, strict, stupid
   {
     name: "Describing People 👥",
     icon: "👥",
-    // brave, calm, clever, friendly, funny, generous, honest, kind,
-    // lazy, nice, patient, polite, proud, rude, serious, shy, silly,
-    // smart, strict, stupid
     ids: [546, 638, 831, 1742, 1766, 1792, 2174, 2532, 2598, 3064, 3336, 3456, 3556, 3813, 3952, 4013, 4025, 4080, 4263, 4279],
   },
+  // click, computer, download, email, file, message, online, phone,
+  // screen, upload, laptop, mouse, software, website, password,
+  // cable.  Expanded 2026-05-18 with consumer-tech gadgets.
   {
-    name: "Technology & Internet 💻",
+    name: "Technology & Internet · Part 1 💻",
     icon: "💻",
-    // click, computer, download, email, file, message, online, phone,
-    // screen, upload, laptop, mouse, software, website, password,
-    // cable.  Expanded 2026-05-18 with consumer-tech gadgets.
     ids: [
-      833, 946, 1288, 1387, 1614, 2882, 3193, 3376, 3911, 4834, 5674, 5753, 5983, 6135, 6851, 8153,
-      // Tools & gadgets that fit the tech theme (verified IDs)
-      377, 642, 1614, 2552, 2896, 3684, 3710, 4457,
+      833,946,1288,1387,1614,2882,3193,3376,3911,4834,
+      5674,5753,
     ],
   },
   {
-    name: "Travel & Directions 🧭",
+    name: "Technology & Internet · Part 2 💻",
+    icon: "💻",
+    ids: [
+      5983,6135,6851,8153,377,642,2552,2896,3684,3710,
+      4457,
+    ],
+  },
+  // airport, east, highway, hotel, journey, left, map, north,
+  // passport, right, road, south, station, straight, suitcase,
+  // ticket, travel, trip, west, abroad, turn, route, destination
+  {
+    name: "Travel & Directions · Part 1 🧭",
     icon: "🧭",
-    // airport, east, highway, hotel, journey, left, map, north,
-    // passport, right, road, south, station, straight, suitcase,
-    // ticket, travel, trip, west, abroad, turn, route, destination
-    ids: [114, 1353, 2139, 2194, 2475, 2617, 2823, 3091, 3330, 3767, 3782, 4147, 4217, 4249, 4308, 4585, 4691, 4709, 4981, 5161, 6110, 6943, 7319],
-  },
-  {
-    name: "Environment & Sustainability 🌍",
-    icon: "🌍",
-    // climate, energy, environment, forest, garbage, nature, ocean,
-    // planet, pollution, protect, recycle, reduce, river, save, waste,
-    // global, trash, wildlife.  Expanded 2026-05-18 with more
-    // nature + climate vocabulary.
     ids: [
-      837, 1410, 1431, 1706, 1781, 3017, 3123, 3417, 3459, 3553, 3674, 3678, 3780, 3875, 4928, 6622, 7963, 8023,
-      // From Nature pack (verified IDs)
-      405, 1669, 1960, 2948, 2970, 3226, 3860, 3915, 4208, 4313, 4698,
+      114,1353,2139,2194,2475,2617,2823,3091,3330,3767,
+      3782,4147,
     ],
   },
+  {
+    name: "Travel & Directions · Part 2 🧭",
+    icon: "🧭",
+    ids: [
+      4217,4249,4308,4585,4691,4709,4981,5161,6110,6943,
+      7319,
+    ],
+  },
+  // climate, energy, environment, forest, garbage, nature, ocean,
+  // planet, pollution, protect, recycle, reduce, river, save, waste,
+  // global, trash, wildlife.  Expanded 2026-05-18 with more
+  // nature + climate vocabulary.
+  {
+    name: "Environment & Sustainability · Part 1 🌍",
+    icon: "🌍",
+    ids: [
+      837,1410,1431,1706,1781,3017,3123,3417,3459,3553,
+      3674,3678,3780,3875,4928,
+    ],
+  },
+  {
+    name: "Environment & Sustainability · Part 2 🌍",
+    icon: "🌍",
+    ids: [
+      6622,7963,8023,405,1669,1960,2948,2970,3226,3860,
+      3915,4208,4313,4698,
+    ],
+  },
+  // admit, agree, believe, claim, consider, convince, decide,
+  // disagree, opinion, prefer, suggest, think, debate, deny, insist,
+  // persuade, support, argue, protest, recommend
   {
     name: "Opinions & Arguments 💬",
     icon: "💬",
-    // admit, agree, believe, claim, consider, convince, decide,
-    // disagree, opinion, prefer, suggest, think, debate, deny, insist,
-    // persuade, support, argue, protest, recommend
     ids: [72, 102, 441, 815, 969, 989, 1135, 1227, 3206, 3499, 4303, 4549, 6458, 6467, 6699, 6862, 7043, 7177, 7728, 7753],
   },
 ];

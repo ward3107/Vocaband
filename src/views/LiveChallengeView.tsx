@@ -122,6 +122,7 @@ export default function LiveChallengeView({
                   alt=""
                   loading="lazy"
                   decoding="async"
+                  // projector-bright on purpose — logo chip stays opaque white for contrast on classroom display
                   className="w-8 h-8 rounded object-contain bg-white"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
@@ -312,12 +313,12 @@ export default function LiveChallengeView({
               exit={{ scale: 0.8, opacity: 0, y: 20 }}
               transition={{ type: 'spring', stiffness: 200, damping: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white text-stone-900 rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-2xl"
+              className="bg-[var(--vb-surface)] text-[var(--vb-text-primary)] rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-2xl"
             >
               <div className="text-center mb-6">
                 <div className="text-5xl sm:text-6xl mb-3">🏁</div>
                 <h2 className="text-2xl sm:text-3xl font-black mb-1">{t.challengeComplete}</h2>
-                <p className="text-stone-500 font-bold text-sm">{selectedClass.name}</p>
+                <p className="text-[var(--vb-text-muted)] font-bold text-sm">{selectedClass.name}</p>
               </div>
 
               {/* Top 3 medal rows */}
@@ -342,7 +343,7 @@ export default function LiveChallengeView({
                         <p className="font-black text-base truncate">
                           {entry.name}{entry.isGuest && <span className="ms-1">🎭</span>}
                         </p>
-                        <p className="text-xs font-bold text-stone-500">{t.placeSuffix(idx + 1)}</p>
+                        <p className="text-xs font-bold text-[var(--vb-text-muted)]">{t.placeSuffix(idx + 1)}</p>
                       </div>
                       <div className="text-2xl font-black text-indigo-600">{entry.totalScore}</div>
                     </motion.div>
@@ -350,7 +351,7 @@ export default function LiveChallengeView({
                 })}
               </div>
 
-              <div className="text-center text-sm font-bold text-stone-500 mb-6">
+              <div className="text-center text-sm font-bold text-[var(--vb-text-muted)] mb-6">
                 {t.studentsPlayedSummary(sortedLeaderboard.length)}
               </div>
 

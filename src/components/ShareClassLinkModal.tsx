@@ -208,8 +208,8 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
             </div>
 
             <div className="px-6 pt-6 pb-6 -mt-4">
-              <div className="rounded-xl bg-white p-5 shadow-lg shadow-indigo-500/10 border border-stone-200 flex flex-col items-center gap-4">
-                <div className="rounded-lg bg-white p-3 ring-1 ring-stone-200">
+              <div className="rounded-xl bg-[var(--vb-surface)] p-5 shadow-lg shadow-indigo-500/10 border border-[var(--vb-border)] flex flex-col items-center gap-4">
+                <div className="rounded-lg bg-[var(--vb-surface)] p-3 ring-1 ring-[var(--vb-border)]">
                   <QRCodeSVG
                     value={url}
                     size={192}
@@ -220,10 +220,10 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                   />
                 </div>
                 <div className="text-center">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-500">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-[var(--vb-text-muted)]">
                     {t.shareClassLinkCodeLabel}
                   </p>
-                  <p className="mt-1 font-mono font-black text-3xl tracking-[0.25em] text-stone-900">
+                  <p className="mt-1 font-mono font-black text-3xl tracking-[0.25em] text-[var(--vb-text-primary)]">
                     {code}
                   </p>
                 </div>

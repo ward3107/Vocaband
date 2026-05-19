@@ -235,7 +235,7 @@ export default function HebrewClassShowView({
                 type="button"
                 onClick={() => setGradePackId(null)}
                 className={`px-3 py-1.5 rounded-full text-xs font-black transition ${
-                  gradePackId === null ? "bg-white text-indigo-700 shadow" : "bg-white/10 text-white hover:bg-white/15"
+                  gradePackId === null ? "bg-[var(--vb-surface)] text-indigo-700 shadow" : "bg-white/10 text-white hover:bg-white/15"
                 }`}
               >
                 כל הכיתות
@@ -246,7 +246,7 @@ export default function HebrewClassShowView({
                   type="button"
                   onClick={() => setGradePackId(pack.id)}
                   className={`px-3 py-1.5 rounded-full text-xs font-black transition ${
-                    gradePackId === pack.id ? "bg-white text-indigo-700 shadow" : "bg-white/10 text-white hover:bg-white/15"
+                    gradePackId === pack.id ? "bg-[var(--vb-surface)] text-indigo-700 shadow" : "bg-white/10 text-white hover:bg-white/15"
                   }`}
                 >
                   {pack.labelHe}

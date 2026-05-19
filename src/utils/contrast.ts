@@ -80,6 +80,32 @@ export function meetsContrast(fg: string, bg: string, target: WCAGTarget = 4.5):
 }
 
 /**
+ * Pick a 3-tier text-colour set that reads well on top of `bgHex`.
+ * Returns concrete hex values (not CSS vars) so the result survives
+ * theme switches — a class card with a yellow tint should keep dark
+ * text in BOTH light and dark mode, otherwise the tinted band ends
+ * up with white text on pale yellow (the bug this fixes).
+ *
+ * Threshold 0.55 biases slightly toward dark text on pastels, which
+ * are the common "class colour" picks (lavender, mint, peach, etc.).
+ */
+export function readableTextOn(bgHex: string): {
+  primary: string;
+  secondary: string;
+  muted: string;
+} {
+  let lum: number;
+  try {
+    lum = luminance(hexToRgb(bgHex));
+  } catch {
+    return { primary: "#0f172a", secondary: "#475569", muted: "#64748b" };
+  }
+  return lum > 0.55
+    ? { primary: "#0f172a", secondary: "#475569", muted: "#64748b" }
+    : { primary: "#ffffff", secondary: "#e2e8f0", muted: "#cbd5e1" };
+}
+
+/**
  * Auto-correct a foreground colour against a background until they
  * meet `target` contrast.  Steps the foreground's luminance in HSL
  * space until the ratio passes, or `maxIterations` is reached.
