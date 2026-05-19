@@ -73,6 +73,11 @@ export interface TeacherViewsT {
   qpShareQrToStart: string;
   /** Ghost call-to-action shown on the empty 3rd-place podium block. */
   qpPodiumCtaShort: string;
+  /** Tier B achievement toasts that float over the podium. The kicker
+   *  comes first (big bold line), then the student-name subline. */
+  qpAchievementFirst100Kicker: string;
+  qpAchievementStreak5Kicker: string;
+  qpAchievementPerfectKicker: string;
   qpDragToMove: string;
   qpScanToJoin: string;
   qpEndSessionTitle: string;
@@ -149,6 +154,9 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpWaitingForPlayers: "Waiting for players...",
     qpShareQrToStart: "Share the QR code to get started",
     qpPodiumCtaShort: "You could be here!",
+    qpAchievementFirst100Kicker: "First to 100!",
+    qpAchievementStreak5Kicker: "5 in a row!",
+    qpAchievementPerfectKicker: "Perfect round!",
     qpDragToMove: "Drag to move",
     qpScanToJoin: "Scan to join",
     qpEndSessionTitle: "End Quick Play Session?",
@@ -221,6 +229,9 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpWaitingForPlayers: "מחכים לשחקנים...",
     qpShareQrToStart: "שתפו את קוד ה-QR כדי להתחיל",
     qpPodiumCtaShort: "אתם יכולים להיות כאן!",
+    qpAchievementFirst100Kicker: "הראשון ל-100!",
+    qpAchievementStreak5Kicker: "5 ברצף!",
+    qpAchievementPerfectKicker: "סבב מושלם!",
     qpDragToMove: "גררו להזזה",
     qpScanToJoin: "סרקו כדי להצטרף",
     qpEndSessionTitle: "לסיים את משחק המהיר?",
@@ -293,6 +304,9 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpWaitingForPlayers: "في انتظار اللاعبين...",
     qpShareQrToStart: "شارك رمز QR للبدء",
     qpPodiumCtaShort: "يمكنك أن تكون هنا!",
+    qpAchievementFirst100Kicker: "الأول إلى 100!",
+    qpAchievementStreak5Kicker: "5 متتاليات!",
+    qpAchievementPerfectKicker: "جولة مثالية!",
     qpDragToMove: "اسحب للتحريك",
     qpScanToJoin: "امسح للانضمام",
     qpEndSessionTitle: "إنهاء جلسة اللعب السريع؟",
@@ -365,6 +379,9 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpWaitingForPlayers: "Waiting for players...",
     qpShareQrToStart: "Share the QR code to get started",
     qpPodiumCtaShort: "You could be here!",
+    qpAchievementFirst100Kicker: "First to 100!",
+    qpAchievementStreak5Kicker: "5 in a row!",
+    qpAchievementPerfectKicker: "Perfect round!",
     qpDragToMove: "Drag to move",
     qpScanToJoin: "Scan to join",
     qpEndSessionTitle: "End Quick Play Session?",

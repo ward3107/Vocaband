@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, QrCode, LogOut, Volume2, VolumeX,
   ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause,
-  Share2, Check, ShieldAlert, Crown, Medal, Sparkles
+  Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap
 } from 'lucide-react';
+import { getXpTitle } from '../constants/game';
 import { Howl } from 'howler';
 import { QRCodeSVG } from 'qrcode.react';
 import { Word } from '../data/vocabulary';
@@ -33,6 +34,11 @@ interface Student {
   lastSeen: string;
   mode: string;
   studentUid: string;
+  /** Tier B fields — present only on the v2 QP socket path. Absent on
+   *  the legacy Supabase-realtime fallback. */
+  streak?: number;
+  roundProgress?: { done: number; total: number };
+  perfectRound?: boolean;
 }
 
 interface QuickPlaySession {
@@ -234,6 +240,57 @@ function StadiumBackdrop() {
   );
 }
 
+// Streak fire indicator. Three tiers so the projector can read it at a
+// glance — orange spark on first warm-up, red flame on a real streak,
+// blue lightning when the student is on a tear. Returns null below 3
+// because anything lower feels like normal play, not a streak.
+function StreakBadge({ streak, size = 16 }: { streak: number; size?: number }) {
+  if (streak < 3) return null;
+  if (streak >= 10) {
+    return (
+      <span title={`${streak} in a row`} className="inline-flex items-center gap-0.5 text-sky-400">
+        <Zap size={size} fill="currentColor" className="drop-shadow" />
+        <span className="font-headline font-black tabular-nums text-xs">×{streak}</span>
+      </span>
+    );
+  }
+  if (streak >= 5) {
+    return (
+      <span title={`${streak} in a row`} className="inline-flex items-center gap-0.5 text-red-500">
+        <Flame size={size} fill="currentColor" className="drop-shadow" />
+        <span className="font-headline font-black tabular-nums text-xs">×{streak}</span>
+      </span>
+    );
+  }
+  return (
+    <span title={`${streak} in a row`} className="inline-flex items-center gap-0.5 text-orange-400">
+      <Flame size={size} fill="currentColor" className="drop-shadow" />
+      <span className="font-headline font-black tabular-nums text-xs">×{streak}</span>
+    </span>
+  );
+}
+
+// Slim progress bar for the rank 4+ tiles. Shows current-mode completion
+// (done/total). Omitted entirely on the legacy v1 path where the data
+// doesn't flow through the protocol.
+function RoundProgressBar({ progress, accent }: { progress?: { done: number; total: number }; accent: string }) {
+  if (!progress || progress.total === 0) return null;
+  const pct = Math.min(100, Math.round((progress.done / progress.total) * 100));
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <div className="flex-1 h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${accent} rounded-full transition-all duration-500`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="font-label text-[10px] tabular-nums opacity-70 shrink-0">
+        {progress.done}/{progress.total}
+      </span>
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function QuickPlayMonitor({
   session,
@@ -337,6 +394,9 @@ export default function QuickPlayMonitor({
       lastSeen: new Date(s.lastSeen).toISOString(),
       mode: '',               // mode lives client-side in v2; not reported
       studentUid: s.clientId, // reuse the field so removeStudent can find clientId by name
+      streak: s.streak,
+      roundProgress: s.roundProgress,
+      perfectRound: s.perfectRound,
     }));
   }, [socket.leaderboard]);
 
@@ -422,6 +482,61 @@ export default function QuickPlayMonitor({
       });
     }
     prevStudentNamesRef.current = currentNames;
+  }, [effectiveStudents]);
+
+  // ─── Tier B: achievement toasts ────────────────────────────────────────────
+  // Each (studentUid, achievementId) pair fires at most once per session so
+  // the projector doesn't spam the same toast every leaderboard tick.
+  // perfectRound is the exception — the server clears its own flag after one
+  // broadcast, so we react to its presence directly without bookkeeping.
+  const firedAchievementsRef = useRef<Set<string>>(new Set());
+  type Achievement = {
+    id: string;            // unique key: `${kind}:${studentUid}:${ts}`
+    kind: 'first100' | 'streak5' | 'perfect';
+    name: string;          // student display name
+    avatar: string;
+    ts: number;
+  };
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+
+  useEffect(() => {
+    const newToasts: Achievement[] = [];
+    for (const s of effectiveStudents) {
+      const uid = s.studentUid;
+      if (!uid) continue;
+      const avatar = s.avatar || '🦊';
+
+      // FIRST TO 100 — fires for the *first* student in the session to
+      // cross 100 pts, exactly once per student.
+      const first100Key = `first100:${uid}`;
+      if (s.score >= 100 && !firedAchievementsRef.current.has(first100Key)) {
+        firedAchievementsRef.current.add(first100Key);
+        newToasts.push({ id: `${first100Key}:${Date.now()}`, kind: 'first100', name: s.name, avatar, ts: Date.now() });
+      }
+
+      // 5-IN-A-ROW — fires the first time a student's streak hits 5.
+      // We deliberately don't re-fire at 10/15/etc — the flame icon
+      // tier on the avatar carries that information visually.
+      const streak5Key = `streak5:${uid}`;
+      if ((s.streak ?? 0) >= 5 && !firedAchievementsRef.current.has(streak5Key)) {
+        firedAchievementsRef.current.add(streak5Key);
+        newToasts.push({ id: `${streak5Key}:${Date.now()}`, kind: 'streak5', name: s.name, avatar, ts: Date.now() });
+      }
+
+      // PERFECT ROUND — server-flagged one-shot, no need to dedupe; the
+      // server clears the flag itself after broadcasting.
+      if (s.perfectRound) {
+        newToasts.push({ id: `perfect:${uid}:${Date.now()}`, kind: 'perfect', name: s.name, avatar, ts: Date.now() });
+      }
+    }
+    if (newToasts.length > 0) {
+      setAchievements(prev => [...prev, ...newToasts].slice(-3));
+      newToasts.forEach(t => {
+        setTimeout(() => {
+          setAchievements(prev => prev.filter(a => a.id !== t.id));
+        }, 4500);
+      });
+    }
   }, [effectiveStudents]);
 
   // ─── Background music ──────────────────────────────────────────────────────
@@ -678,6 +793,40 @@ export default function QuickPlayMonitor({
               <span className="text-xl sm:text-2xl 2xl:text-3xl ml-1">✨</span>
             </motion.div>
           ))}
+        </AnimatePresence>
+      </div>
+
+      {/* ─── Achievement toasts (Tier B) ─────────────────────────────────────
+          Pop-card style banners that slide in from the right whenever a
+          student hits a milestone (FIRST TO 100, 5-IN-A-ROW, PERFECT
+          ROUND). Distinct from joiners — gold theme, on the opposite
+          side of the screen, longer dwell time. */}
+      <div className="fixed top-24 sm:top-32 right-3 sm:right-6 z-[60] flex flex-col items-end gap-2 pointer-events-none">
+        <AnimatePresence>
+          {achievements.map(a => {
+            const style = a.kind === 'first100'
+              ? { bg: 'from-amber-400 via-yellow-500 to-orange-500', icon: '🥇', kicker: tT.qpAchievementFirst100Kicker }
+              : a.kind === 'streak5'
+              ? { bg: 'from-orange-500 via-red-500 to-pink-500',   icon: '⚡', kicker: tT.qpAchievementStreak5Kicker }
+              : { bg: 'from-violet-500 via-fuchsia-500 to-pink-500', icon: '🎯', kicker: tT.qpAchievementPerfectKicker };
+            return (
+              <motion.div
+                key={a.id}
+                initial={{ x: 120, opacity: 0, scale: 0.85 }}
+                animate={{ x: 0, opacity: 1, scale: 1 }}
+                exit={{ x: 60, opacity: 0, scale: 0.9 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+                className={`bg-gradient-to-r ${style.bg} text-white px-4 py-3 sm:px-5 sm:py-3.5 2xl:px-7 2xl:py-5 rounded-2xl shadow-2xl flex items-center gap-3 max-w-[85vw]`}
+              >
+                <span className="text-2xl sm:text-3xl 2xl:text-4xl drop-shadow-md">{style.icon}</span>
+                <div className="min-w-0">
+                  <p className="font-headline text-xs sm:text-sm 2xl:text-base font-black uppercase tracking-widest opacity-95">{style.kicker}</p>
+                  <p className="font-headline text-base sm:text-lg 2xl:text-2xl font-black truncate max-w-[55vw]">{a.name}</p>
+                </div>
+                <QPAvatar value={a.avatar} iconSize={32} className="text-2xl sm:text-3xl 2xl:text-4xl ml-1" />
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </div>
 
@@ -998,8 +1147,14 @@ export default function QuickPlayMonitor({
                         </button>
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[1].name}</p>
-                      <p className={`font-label text-sm sm:text-base 2xl:text-lg min-[1700px]:text-2xl ${t.accent} font-black tabular-nums`}>
-                        <TickingScore value={top3[1].score} /> pts
+                      {(() => { const tt = getXpTitle(top3[1].score); return (
+                        <p className={`font-label text-[10px] sm:text-xs min-[1700px]:text-base italic opacity-70 ${t.text}`}>
+                          {tt.emoji} {tt.title}
+                        </p>
+                      ); })()}
+                      <p className={`font-label text-sm sm:text-base 2xl:text-lg min-[1700px]:text-2xl ${t.accent} font-black tabular-nums flex items-center gap-1.5`}>
+                        <span><TickingScore value={top3[1].score} /> pts</span>
+                        {top3[1].streak !== undefined && <StreakBadge streak={top3[1].streak} />}
                       </p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 80 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-32 bg-gradient-to-b ${t.podium2} rounded-t-lg flex items-center justify-center shadow-xl overflow-hidden`}>
                         <span className="text-white/20 text-4xl 2xl:text-5xl min-[1700px]:text-7xl font-black">2</span>
@@ -1069,8 +1224,14 @@ export default function QuickPlayMonitor({
                         </button>
                       </motion.div>
                       <p className={`font-headline text-sm sm:text-lg 2xl:text-xl min-[1700px]:text-3xl font-black truncate max-w-[100px] 2xl:max-w-[140px] min-[1700px]:max-w-[220px] text-center ${t.text}`}>{top3[0].name}</p>
-                      <p className={`font-label text-base sm:text-lg 2xl:text-xl min-[1700px]:text-3xl ${t.accent} font-black tabular-nums`}>
-                        <TickingScore value={top3[0].score} /> pts
+                      {(() => { const tt = getXpTitle(top3[0].score); return (
+                        <p className={`font-label text-xs sm:text-sm min-[1700px]:text-lg italic opacity-80 ${t.text}`}>
+                          {tt.emoji} {tt.title}
+                        </p>
+                      ); })()}
+                      <p className={`font-label text-base sm:text-lg 2xl:text-xl min-[1700px]:text-3xl ${t.accent} font-black tabular-nums flex items-center gap-2`}>
+                        <span><TickingScore value={top3[0].score} /> pts</span>
+                        {top3[0].streak !== undefined && <StreakBadge streak={top3[0].streak} size={20} />}
                       </p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 2xl:w-32 min-[1700px]:w-48 min-[1700px]:!h-52 bg-gradient-to-b ${t.podium1} rounded-t-lg flex items-center justify-center shadow-2xl overflow-hidden relative`}>
                         <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
@@ -1107,8 +1268,14 @@ export default function QuickPlayMonitor({
                         </button>
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[2].name}</p>
-                      <p className={`font-label text-sm sm:text-base 2xl:text-lg min-[1700px]:text-2xl ${t.accent} font-black tabular-nums`}>
-                        <TickingScore value={top3[2].score} /> pts
+                      {(() => { const tt = getXpTitle(top3[2].score); return (
+                        <p className={`font-label text-[10px] sm:text-xs min-[1700px]:text-base italic opacity-70 ${t.text}`}>
+                          {tt.emoji} {tt.title}
+                        </p>
+                      ); })()}
+                      <p className={`font-label text-sm sm:text-base 2xl:text-lg min-[1700px]:text-2xl ${t.accent} font-black tabular-nums flex items-center gap-1.5`}>
+                        <span><TickingScore value={top3[2].score} /> pts</span>
+                        {top3[2].streak !== undefined && <StreakBadge streak={top3[2].streak} />}
                       </p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 64 }} transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-24 bg-gradient-to-b ${t.podium3} rounded-t-lg flex items-center justify-center shadow-xl overflow-hidden`}>
                         <span className="text-white/20 text-4xl 2xl:text-5xl min-[1700px]:text-7xl font-black">3</span>
@@ -1211,9 +1378,11 @@ export default function QuickPlayMonitor({
                         <span className="font-headline text-sm sm:text-base 2xl:text-xl font-bold truncate block">
                           {student.name}
                         </span>
-                        <span className={`font-label text-xs sm:text-sm 2xl:text-base font-black tabular-nums ${t.accent}`}>
-                          {student.score} pts
+                        <span className={`font-label text-xs sm:text-sm 2xl:text-base font-black tabular-nums ${t.accent} flex items-center gap-2`}>
+                          <span>{student.score} pts</span>
+                          {student.streak !== undefined && <StreakBadge streak={student.streak} />}
                         </span>
+                        <RoundProgressBar progress={student.roundProgress} accent={t.accentBg} />
                       </div>
                     </motion.div>
                   );
