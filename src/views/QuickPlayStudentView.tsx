@@ -13,6 +13,7 @@ import type { View } from "../core/views";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
 import { useLanguage, languageNames, ALL_LANGUAGES } from "../hooks/useLanguage";
+import { quickPlayT } from "../locales/student/quick-play";
 
 // ─── Feature flag ──────────────────────────────────────────────────────
 // When `VITE_QUICKPLAY_V2=true`, the join flow skips Supabase entirely —
@@ -127,6 +128,13 @@ export default function QuickPlayStudentView({
   // State was missing — introduced in the v2 socket-only flow but
   // never declared here, leaving 5 references dangling.
   const [resuming, setResuming] = useState<boolean>(false);
+  // True after a resume-card "Continue Playing" tap times out — the
+  // server never confirmed adoption back into the existing slot.
+  // Drives the resume card into a "Couldn't reconnect" mode with a
+  // "Scan a new QR" CTA instead of leaving the kid staring at the
+  // optimistic "still active" copy + a Continue button that just
+  // failed silently.
+  const [resumeFailed, setResumeFailed] = useState<boolean>(false);
   // "Joining" — true after the student taps Start on the Get Ready
   // screen, until either the server's JOINED reply lands (component
   // unmounts on view change) or an error bounces us elsewhere. Keeps
@@ -140,6 +148,7 @@ export default function QuickPlayStudentView({
   // the name in its greeting — refs aren't safe to read during render.
   const [stagedName, setStagedName] = useState<string>("");
   const { language: qpLanguage, setLanguage: setAppLanguage, isRTL: qpIsRTL } = useLanguage();
+  const qpT = quickPlayT[qpLanguage] ?? quickPlayT.en;
 
   // Pending-join intent: when the student clicks Join in V2, we emit
   // STUDENT_JOIN and stash a callback here.  If the server confirms
@@ -171,14 +180,27 @@ export default function QuickPlayStudentView({
       joinWatchdogRef.current = null;
       if (pendingJoinRef.current === null) return;
       pendingJoinRef.current = null;
+      const wasResuming = resumingRef.current;
       setResuming(false);
       setJoinStep("form");
-      showToast(
-        "Couldn't reach the session. Check your connection and try again.",
-        "error",
-      );
+      // When the failed attempt came from the resume card (kid tapped
+      // "Continue Playing"), pivot the resume card into a "Couldn't
+      // reconnect — scan a new QR" state instead of leaving the
+      // optimistic Continue button visible behind a fleeting toast.
+      // First-time joins still get the same form bounce + toast they
+      // had before — no change there.
+      if (wasResuming) {
+        setResumeFailed(true);
+      } else {
+        showToast(quickPlayT[qpLanguage]?.toastCantReachGame ?? quickPlayT.en.toastCantReachGame, "error");
+      }
     }, 8000);
   };
+  // Mirror `resuming` into a ref so the watchdog (closed over at arm
+  // time) reads the live value rather than the value at the moment
+  // the setTimeout was scheduled.
+  const resumingRef = useRef(false);
+  useEffect(() => { resumingRef.current = resuming; }, [resuming]);
   // Clear the watchdog on unmount so a slow rejoin attempt doesn't fire
   // its toast after the view is already gone.
   useEffect(() => () => disarmJoinWatchdog(), []);
@@ -199,7 +221,7 @@ export default function QuickPlayStudentView({
       // the dedicated KICKED screen with a "Rejoin with a different
       // name" button.  A toast would just shout the same thing.
     } else if (code === "nickname_taken") {
-      showToast("This name is already taken. Please choose a different one.", "error");
+      showToast(qpT.toastNameTaken, "error");
       // Bounce back to the name form so they can fix and retry.
       setJoinStep("form");
     } else if (code === "session_inactive") {
@@ -207,9 +229,11 @@ export default function QuickPlayStudentView({
     } else if (code === "session_not_found") {
       setFatalError("session-not-found");
     } else if (code === "rate_limited") {
-      showToast("Too many people joining at once — wait a moment and try again.", "error");
+      showToast(qpT.toastTooManyJoining, "error");
     } else {
-      showToast(message || "Couldn't join the session. Please try again.", "error");
+      // `message` from the server is plain English; prefer the kid-
+      // friendly localized fallback for the generic case.
+      showToast(message || qpT.toastGenericJoinFail, "error");
     }
     // A failed join must clear any pending setup so the deferred
     // useEffect doesn't fire when a LATER (successful) join arrives
@@ -239,7 +263,7 @@ export default function QuickPlayStudentView({
   // that check to the server via STUDENT_JOIN.
   const runJoin = async (trimmedName: string) => {
     if (!quickPlayActiveSession) {
-      showToast("Session expired. Please scan QR code again.", "error");
+      showToast(qpT.toastSessionExpired, "error");
       return;
     }
     if (!QUICKPLAY_V2) {
@@ -269,7 +293,7 @@ export default function QuickPlayStudentView({
         .eq('student_name', trimmedName)
         .limit(1);
       if (existingProgress && existingProgress.length > 0) {
-        showToast("This name is already taken. Please choose a different one.", "error");
+        showToast(qpT.toastNameTaken, "error");
         // Bounce back to form so they can fix the name.
         setJoinStep("form");
         return;
@@ -368,7 +392,7 @@ export default function QuickPlayStudentView({
           }
           if (!authUid) {
             console.error('[Quick Play] No auth session after retries — cannot record join');
-            showToast('Could not connect to the session. Please refresh and try again.', 'error');
+            showToast(qpT.toastConnectionLost, 'error');
             return;
           }
           const { error } = await supabase.from('progress').insert({
@@ -384,7 +408,7 @@ export default function QuickPlayStudentView({
           });
           if (error) {
             console.error('[Quick Play] Failed to record join:', error);
-            showToast(`Couldn't join the leaderboard: ${error.message}`, 'error');
+            showToast(qpT.toastCantJoinLeaderboard, 'error');
           }
         })();
       }
@@ -419,7 +443,7 @@ export default function QuickPlayStudentView({
       setQuickPlayKicked(true);
     });
     const offEnded = quickPlaySocket.onSessionEnded(() => {
-      showToast("The teacher ended the session.", "info");
+      showToast(qpT.toastTeacherEnded, "info");
       cleanupSessionData();
       setQuickPlayActiveSession(null);
       setView("public-landing");
@@ -450,7 +474,7 @@ export default function QuickPlayStudentView({
           }}
           className="text-on-surface-variant font-bold text-sm hover:text-on-surface flex items-center gap-1"
         >
-          {qpIsRTL ? '→' : '←'} Back
+          {qpIsRTL ? '→' : '←'} {qpT.back}
         </button>
       </header>
 
@@ -465,7 +489,7 @@ export default function QuickPlayStudentView({
           className="fixed top-16 left-1/2 -translate-x-1/2 z-50 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-amber-950 font-bold text-sm shadow-lg animate-pulse"
         >
           <span className="w-2 h-2 rounded-full bg-amber-900" />
-          Reconnecting…
+          {qpT.reconnecting}
         </div>
       )}
 
@@ -490,7 +514,7 @@ export default function QuickPlayStudentView({
           ) : !quickPlayActiveSession ? (
             <div className="text-center py-12 sm:py-20">
               <Loader2 className="mx-auto animate-spin text-primary mb-4 w-9 h-9 sm:w-12 sm:h-12" />
-              <p className="text-on-surface-variant font-bold text-sm sm:text-base">Loading Quick Play session...</p>
+              <p className="text-on-surface-variant font-bold text-sm sm:text-base">{qpT.loadingSession}</p>
               {/* Manual escape — the bootstrap has a 15s timeout that
                   auto-bounces to landing, but on a phone holding the
                   loader for 15s feels broken.  A visible escape link
@@ -509,7 +533,7 @@ export default function QuickPlayStudentView({
                 }}
                 className="mt-6 text-sm font-bold text-on-surface-variant underline hover:text-on-surface"
               >
-                Cancel and go back
+                {qpT.cancelAndGoBack}
               </button>
             </div>
           ) : userIsActiveGuest && quickPlayStudentName ? (
@@ -519,57 +543,91 @@ export default function QuickPlayStudentView({
             // Before this branch the body rendered empty — students saw a
             // mysterious white page with only the "Vocaband / Back"
             // header. Give them a one-tap path back into the game.
+            //
+            // `resumeFailed` flips the optimistic "still active + Continue"
+            // copy into an honest "Couldn't reconnect — scan a new QR"
+            // state when the join watchdog timed out. Without it the
+            // Continue button would just re-fire the same dead rejoin
+            // until the kid gives up.
             <div className="w-full max-w-md text-center py-8">
               <div className="text-6xl mb-4">{quickPlayAvatar}</div>
-              <h1 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">
-                {/* <bdi> isolates the LTR nickname inside the RTL
-                    layout so the trailing "!" lands at the visual end
-                    of the name, not the start. */}
-                Welcome back, <bdi>{quickPlayStudentName}</bdi>!
-              </h1>
-              <p className="text-sm sm:text-base text-on-surface-variant font-bold mb-6">
-                Your Quick Play session is still active.
-              </p>
-              <button
-                disabled={resuming}
-                onClick={() => {
-                  // Resume = re-emit STUDENT_JOIN with the same nickname
-                  // so the server adopts this socket back into the
-                  // existing slot (server-side: same-nickname adoption,
-                  // see server.ts:810 + CLAUDE.md §12).  Without this
-                  // re-emit, the new socket has `<none>` ownership and
-                  // every subsequent score update fails with
-                  // [QP SCORE owner-mismatch socketOwnsClient=<none>].
-                  //
-                  // Defer the actual navigate until joinedSessionCode
-                  // confirms, using the same pendingJoinRef pattern as
-                  // the first-time join — otherwise we'd render the
-                  // game screen before the server knows we're back.
-                  const advance = () => {
-                    setResuming(false);
-                    setShowModeSelection(true);
-                    setView("game");
-                  };
-                  if (QUICKPLAY_V2 && quickPlayActiveSession && quickPlayStudentName) {
-                    setResuming(true);
-                    pendingJoinRef.current = advance;
-                    armJoinWatchdog();
-                    quickPlaySocket.joinAsStudent(quickPlayStudentName, quickPlayAvatar);
-                  } else {
-                    advance();
-                  }
-                }}
-                className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {resuming ? (
-                  <>
-                    <Loader2 className="animate-spin w-5 h-5" />
-                    Reconnecting…
-                  </>
-                ) : (
-                  <>Continue Playing {qpIsRTL ? '←' : '→'}</>
-                )}
-              </button>
+              {resumeFailed ? (
+                <>
+                  <h1 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">
+                    {qpT.resumeFailedTitle}
+                  </h1>
+                  <p className="text-sm sm:text-base text-on-surface-variant font-bold mb-6">
+                    {qpT.resumeFailedBody}
+                  </p>
+                  <button
+                    onClick={() => {
+                      cleanupSessionData();
+                      try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
+                      setQuickPlayActiveSession(null);
+                      setQuickPlayStudentName("");
+                      setUser(null);
+                      window.history.replaceState({}, '', window.location.pathname);
+                      setResumeFailed(false);
+                      setView("public-landing");
+                    }}
+                    className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
+                  >
+                    {qpT.scanNewQr}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">
+                    {/* <bdi> isolates the LTR nickname inside the RTL
+                        layout so the trailing "!" lands at the visual end
+                        of the name, not the start. */}
+                    {qpT.welcomeBackPrefix}<bdi>{quickPlayStudentName}</bdi>!
+                  </h1>
+                  <p className="text-sm sm:text-base text-on-surface-variant font-bold mb-6">
+                    {qpT.sessionStillActive}
+                  </p>
+                  <button
+                    disabled={resuming}
+                    onClick={() => {
+                      // Resume = re-emit STUDENT_JOIN with the same nickname
+                      // so the server adopts this socket back into the
+                      // existing slot (server-side: same-nickname adoption,
+                      // see server.ts:810 + CLAUDE.md §12).  Without this
+                      // re-emit, the new socket has `<none>` ownership and
+                      // every subsequent score update fails with
+                      // [QP SCORE owner-mismatch socketOwnsClient=<none>].
+                      //
+                      // Defer the actual navigate until joinedSessionCode
+                      // confirms, using the same pendingJoinRef pattern as
+                      // the first-time join — otherwise we'd render the
+                      // game screen before the server knows we're back.
+                      const advance = () => {
+                        setResuming(false);
+                        setShowModeSelection(true);
+                        setView("game");
+                      };
+                      if (QUICKPLAY_V2 && quickPlayActiveSession && quickPlayStudentName) {
+                        setResuming(true);
+                        pendingJoinRef.current = advance;
+                        armJoinWatchdog();
+                        quickPlaySocket.joinAsStudent(quickPlayStudentName, quickPlayAvatar);
+                      } else {
+                        advance();
+                      }
+                    }}
+                    className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {resuming ? (
+                      <>
+                        <Loader2 className="animate-spin w-5 h-5" />
+                        {qpT.reconnecting}
+                      </>
+                    ) : (
+                      <>{qpT.continuePlaying} {qpIsRTL ? '←' : '→'}</>
+                    )}
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => {
                   cleanupSessionData();
@@ -581,7 +639,7 @@ export default function QuickPlayStudentView({
                 }}
                 className="mt-3 text-sm text-on-surface-variant font-bold hover:text-on-surface"
               >
-                Leave Quick Play
+                {qpT.leaveQuickPlay}
               </button>
             </div>
           ) : !quickPlayStudentName && joinStep === "language" ? (
@@ -762,7 +820,7 @@ export default function QuickPlayStudentView({
                     const trimmedName = input?.value.trim() || "";
 
                     if (!trimmedName) {
-                      showToast("Please enter your name first", "error");
+                      showToast(qpT.toastTypeNameFirst, "error");
                       return;
                     }
                     // Profanity gate — best-effort filter for obvious
@@ -772,11 +830,11 @@ export default function QuickPlayStudentView({
                     // class.  Server-side validation catches anything
                     // the client bypasses.
                     if (containsProfanity(trimmedName)) {
-                      showToast("Please pick a different name.", "error");
+                      showToast(qpT.toastPickDifferentName, "error");
                       return;
                     }
                     if (!quickPlayActiveSession) {
-                      showToast("Session expired. Please scan QR code again.", "error");
+                      showToast(qpT.toastSessionExpired, "error");
                       return;
                     }
                     // Check if this name was kicked from this session
@@ -784,12 +842,12 @@ export default function QuickPlayStudentView({
                       const kickedKey = `vocaband_kicked_${quickPlayActiveSession.id}`;
                       const kickedNames: string[] = JSON.parse(localStorage.getItem(kickedKey) || '[]');
                       if (kickedNames.includes(trimmedName)) {
-                        showToast("This name has been removed from the session by the teacher.", "error");
+                        showToast(qpT.toastNameRemovedByTeacher, "error");
                         return;
                       }
                     } catch {}
                     if (!quickPlayActiveSession.words || quickPlayActiveSession.words.length === 0) {
-                      showToast("This session has no words. Please contact your teacher.", "error");
+                      showToast(qpT.toastNoWordsInSession, "error");
                       return;
                     }
                     // All synchronous validation passed — stage the
