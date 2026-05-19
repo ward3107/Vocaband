@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, QrCode, LogOut, Volume2, VolumeX,
   ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause,
-  Share2, Check, ShieldAlert
+  Share2, Check, ShieldAlert, Crown, Medal, Sparkles
 } from 'lucide-react';
 import { Howl } from 'howler';
 import { QRCodeSVG } from 'qrcode.react';
@@ -149,6 +149,90 @@ const getMusicUrl = (file: string): string => {
   // public/game-music/ and the Worker serves them directly.
   return `/game-music/${file}.mp3`;
 };
+
+// ─── Podium helpers ───────────────────────────────────────────────────────────
+
+// Tween a number toward a target over `duration` seconds using requestAnimationFrame.
+// Used by <TickingScore> so the projected scoreboard doesn't snap — kids watch the
+// digits roll up and feel the points landing in real time.
+function useCountUp(value: number, duration = 0.6): number {
+  const [display, setDisplay] = useState(value);
+  const fromRef = useRef(value);
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (fromRef.current === value) return;
+    const start = fromRef.current;
+    const end = value;
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - t0) / (duration * 1000));
+      const eased = 1 - Math.pow(1 - p, 3);
+      const v = Math.round(start + (end - start) * eased);
+      setDisplay(v);
+      if (p < 1) rafRef.current = requestAnimationFrame(tick);
+      else fromRef.current = end;
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [value, duration]);
+  return display;
+}
+
+function TickingScore({ value, className }: { value: number; className?: string }) {
+  const display = useCountUp(value);
+  // Key on the actual target so the pop replays each time the real score moves,
+  // not on every interim tween frame.
+  return (
+    <span
+      key={value}
+      className={className}
+      style={{ animation: 'qp-score-pop 380ms ease-out', display: 'inline-block' }}
+    >
+      {display}
+    </span>
+  );
+}
+
+// Two angled light cones converging on the 1st-place avatar. Pure CSS — no
+// extra DOM cost. Sways gently so the stage feels alive even when the
+// leaderboard hasn't shifted.
+function Spotlight() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute left-1/2 top-0 z-0"
+      style={{
+        width: 'min(60%, 520px)',
+        height: '100%',
+        transform: 'translateX(-50%)',
+        background:
+          'radial-gradient(ellipse 60% 100% at 50% 0%, rgba(253, 224, 71, 0.28) 0%, rgba(253, 224, 71, 0.10) 40%, transparent 75%)',
+        animation: 'qp-spotlight 6s ease-in-out infinite',
+        mixBlendMode: 'screen',
+      }}
+    />
+  );
+}
+
+// SVG crowd silhouette running along the bottom of the podium card. Low
+// opacity so it reads as atmosphere, not foreground. The path is a row of
+// overlapping head+shoulder humps; scaleY breathes via qp-crowd-wave.
+function StadiumBackdrop() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 1200 80"
+      preserveAspectRatio="none"
+      className="pointer-events-none absolute inset-x-0 bottom-0 w-full h-12 sm:h-14 min-[1700px]:h-20 opacity-25"
+      style={{ animation: 'qp-crowd-wave 7s ease-in-out infinite', transformOrigin: 'bottom' }}
+    >
+      <path
+        fill="currentColor"
+        d="M0,80 L0,55 C30,55 30,30 60,30 C90,30 90,55 120,55 C150,55 150,28 180,28 C210,28 210,55 240,55 C270,55 270,32 300,32 C330,32 330,55 360,55 C390,55 390,26 420,26 C450,26 450,55 480,55 C510,55 510,30 540,30 C570,30 570,55 600,55 C630,55 630,24 660,24 C690,24 690,55 720,55 C750,55 750,30 780,30 C810,30 810,55 840,55 C870,55 870,28 900,28 C930,28 930,55 960,55 C990,55 990,32 1020,32 C1050,32 1050,55 1080,55 C1110,55 1110,30 1140,30 C1170,30 1170,55 1200,55 L1200,80 Z"
+      />
+    </svg>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function QuickPlayMonitor({
@@ -550,8 +634,21 @@ export default function QuickPlayMonitor({
   // ─── Get student's chosen avatar (from DB) with fallback ───────────────────
   const getStudentAvatar = (student: Student) => student.avatar || '\uD83E\uDD8A';
 
-  // CSS for float animation (injected once)
-  const floatStyle = `@keyframes qp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}`;
+  // CSS for podium animations (injected once).
+  //   qp-float        — gentle vertical bob on the three avatars
+  //   qp-crown-bob    — slightly faster bob on the crown above 1st
+  //   qp-spotlight    — slow sway of the top-down spotlight cone
+  //   qp-score-pop    — quick scale punch when a tracked score changes
+  //   qp-crowd-wave   — barely-perceptible crowd silhouette sway
+  //   qp-sparkle-orbit — small sparkles slowly orbiting the 1st avatar
+  const floatStyle = `
+    @keyframes qp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+    @keyframes qp-crown-bob{0%,100%{transform:translate(-50%,0) rotate(-4deg)}50%{transform:translate(-50%,-6px) rotate(4deg)}}
+    @keyframes qp-spotlight{0%,100%{transform:translateX(-50%) rotate(-3deg);opacity:.55}50%{transform:translateX(-50%) rotate(3deg);opacity:.75}}
+    @keyframes qp-score-pop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+    @keyframes qp-crowd-wave{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-2px) scaleY(1.02)}}
+    @keyframes qp-sparkle-orbit{0%{transform:rotate(0deg) translateX(var(--qp-orbit,70px)) rotate(0deg);opacity:0}10%,90%{opacity:.9}100%{transform:rotate(360deg) translateX(var(--qp-orbit,70px)) rotate(-360deg);opacity:0}}
+  `;
 
   return (
     <div className={`min-h-screen ${t.bg} ${t.text} flex flex-col overflow-x-hidden overflow-y-auto transition-colors duration-500`}>
@@ -856,17 +953,36 @@ export default function QuickPlayMonitor({
                                 clearly readable from across the room.
                                 Per teacher request 2026-04-30. */}
           <div className={`${qrCollapsed ? '' : 'lg:col-span-8'} ${t.podiumCard} rounded-lg p-4 sm:p-6 min-[1700px]:p-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
-            <div className={`absolute top-3 left-4 font-label text-[10px] min-[1700px]:text-base uppercase tracking-widest opacity-30 font-black ${t.text}`}>{tT.qpCurrentLeaders}</div>
+            {/* Stage atmosphere — spotlight cone from above + a low crowd
+                silhouette along the bottom edge. Both are pointer-events:none
+                and live below the podium content (z-0), so they never block
+                hover-to-kick or the score readouts. */}
+            <Spotlight />
+            <StadiumBackdrop />
+
+            <div className={`absolute top-3 left-4 font-label text-[10px] min-[1700px]:text-base uppercase tracking-widest opacity-30 font-black ${t.text} z-10`}>{tT.qpCurrentLeaders}</div>
 
             {top3.length > 0 ? (
               <>
                 {/* 2nd place */}
-                <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
+                <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3 relative z-10">
                   {top3[1] ? (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 0.5s' }}>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg"><QPAvatar value={getStudentAvatar(top3[1])} iconSize={48} className="text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl" /></div>
-                        <div className={`absolute -top-1 -right-1 ${t.badge2} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>2nd</div>
+                        {/* Silver medal floating above the avatar — replaces
+                            the small "2nd" text pill so kids can read the
+                            rank from across the room. Silver shade is fixed
+                            regardless of theme so the hierarchy stays
+                            recognisable. */}
+                        <Medal
+                          className="absolute -top-3 sm:-top-4 min-[1700px]:-top-8 left-1/2 -translate-x-1/2 text-slate-300 drop-shadow-md"
+                          size={20}
+                          strokeWidth={2.5}
+                          aria-label="2nd place"
+                          fill="currentColor"
+                          style={{ filter: 'drop-shadow(0 1px 0 rgba(0,0,0,0.25))' }}
+                        />
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-slate-300 shadow-lg"><QPAvatar value={getStudentAvatar(top3[1])} iconSize={48} className="text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl" /></div>
                         {/* Teacher-only kick affordance — same hover-
                             reveal pattern as the rank-4+ tiles.  Top-3
                             students can be kicked too if their name /
@@ -882,7 +998,9 @@ export default function QuickPlayMonitor({
                         </button>
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[1].name}</p>
-                      <p className={`font-label text-[10px] 2xl:text-sm min-[1700px]:text-xl ${t.accent} font-bold`}>{top3[1].score} pts</p>
+                      <p className={`font-label text-sm sm:text-base 2xl:text-lg min-[1700px]:text-2xl ${t.accent} font-black tabular-nums`}>
+                        <TickingScore value={top3[1].score} /> pts
+                      </p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 80 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-32 bg-gradient-to-b ${t.podium2} rounded-t-lg flex items-center justify-center shadow-xl overflow-hidden`}>
                         <span className="text-white/20 text-4xl 2xl:text-5xl min-[1700px]:text-7xl font-black">2</span>
                       </motion.div>
@@ -891,12 +1009,56 @@ export default function QuickPlayMonitor({
                 </div>
 
                 {/* 1st place */}
-                <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
+                <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3 relative z-10">
                   {top3[0] && (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite' }}>
-                        <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-primary shadow-2xl scale-110`}><QPAvatar value={getStudentAvatar(top3[0])} iconSize={56} className="text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl" /></div>
-                        <div className={`absolute -top-1 -right-1 ${t.badge1} text-[10px] 2xl:text-xs min-[1700px]:text-lg font-black px-2 py-0.5 min-[1700px]:px-4 min-[1700px]:py-1.5 rounded-full shadow-md`}>1st</div>
+                        {/* Gold radial glow behind the avatar — fixed amber
+                            so the winner reads as "winner" regardless of
+                            which theme the teacher picked. Sits below the
+                            avatar via z-index; uses blur for a soft halo. */}
+                        <div
+                          aria-hidden
+                          className="absolute inset-0 rounded-full -z-10"
+                          style={{
+                            background: 'radial-gradient(circle, rgba(251,191,36,0.55) 0%, rgba(251,191,36,0.15) 55%, transparent 75%)',
+                            filter: 'blur(14px)',
+                            transform: 'scale(1.8)',
+                          }}
+                        />
+                        {/* Two small sparkles orbiting the crown — pure CSS
+                            via qp-sparkle-orbit. Set --qp-orbit to match the
+                            avatar radius so they trace the edge nicely. */}
+                        <Sparkles
+                          aria-hidden
+                          size={14}
+                          className="absolute left-1/2 top-1/2 -ml-[7px] -mt-[7px] text-amber-200 pointer-events-none"
+                          fill="currentColor"
+                          style={{ animation: 'qp-sparkle-orbit 5s linear infinite', ['--qp-orbit' as any]: '46px' }}
+                        />
+                        <Sparkles
+                          aria-hidden
+                          size={10}
+                          className="absolute left-1/2 top-1/2 -ml-[5px] -mt-[5px] text-amber-300 pointer-events-none hidden min-[1700px]:block"
+                          fill="currentColor"
+                          style={{ animation: 'qp-sparkle-orbit 7s linear infinite -2.5s', ['--qp-orbit' as any]: '78px' }}
+                        />
+                        {/* Crown floats above the avatar — bobs slightly out
+                            of phase with the avatar so the whole stack feels
+                            alive without being twitchy. Fixed amber so the
+                            winner is always visually unmistakable. */}
+                        <Crown
+                          className="absolute -top-5 sm:-top-6 min-[1700px]:-top-12 left-1/2 text-amber-300 drop-shadow-lg"
+                          size={28}
+                          strokeWidth={2.5}
+                          aria-label="1st place"
+                          fill="currentColor"
+                          style={{
+                            animation: 'qp-crown-bob 2.4s ease-in-out infinite',
+                            filter: 'drop-shadow(0 2px 4px rgba(251,191,36,0.6))',
+                          }}
+                        />
+                        <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-amber-400 shadow-2xl scale-110 relative`} style={{ boxShadow: '0 0 30px rgba(251,191,36,0.45), 0 10px 20px rgba(0,0,0,0.25)' }}><QPAvatar value={getStudentAvatar(top3[0])} iconSize={56} className="text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl" /></div>
                         <button
                           onClick={() => setConfirmKick(top3[0].name)}
                           aria-label={tT.qpRemovePlayerAria(top3[0].name)}
@@ -907,7 +1069,9 @@ export default function QuickPlayMonitor({
                         </button>
                       </motion.div>
                       <p className={`font-headline text-sm sm:text-lg 2xl:text-xl min-[1700px]:text-3xl font-black truncate max-w-[100px] 2xl:max-w-[140px] min-[1700px]:max-w-[220px] text-center ${t.text}`}>{top3[0].name}</p>
-                      <p className={`font-label text-xs 2xl:text-base min-[1700px]:text-2xl ${t.accent} font-black`}>{top3[0].score} pts</p>
+                      <p className={`font-label text-base sm:text-lg 2xl:text-xl min-[1700px]:text-3xl ${t.accent} font-black tabular-nums`}>
+                        <TickingScore value={top3[0].score} /> pts
+                      </p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 2xl:w-32 min-[1700px]:w-48 min-[1700px]:!h-52 bg-gradient-to-b ${t.podium1} rounded-t-lg flex items-center justify-center shadow-2xl overflow-hidden relative`}>
                         <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                         <span className="text-white/20 text-6xl 2xl:text-7xl min-[1700px]:text-9xl font-black relative z-10">1</span>
@@ -916,13 +1080,23 @@ export default function QuickPlayMonitor({
                   )}
                 </div>
 
-                {/* 3rd place */}
-                <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3">
+                {/* 3rd place — bronze medal + dashed CTA when nobody is here yet */}
+                <div className="flex flex-col items-center gap-1.5 min-[1700px]:gap-3 relative z-10">
                   {top3[2] ? (
                     <>
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="relative group" style={{ animation: 'qp-float 3s ease-in-out infinite 1s' }}>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-surface-container-highest shadow-lg"><QPAvatar value={getStudentAvatar(top3[2])} iconSize={48} className="text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl" /></div>
-                        <div className={`absolute -top-1 -right-1 ${t.badge3} text-[9px] 2xl:text-xs min-[1700px]:text-base font-black px-1.5 py-0.5 min-[1700px]:px-3 min-[1700px]:py-1 rounded-full shadow-sm`}>3rd</div>
+                        {/* Bronze medal above the avatar (matches the 2nd
+                            place silver pattern). Fixed orange-amber so the
+                            podium hierarchy is theme-independent. */}
+                        <Medal
+                          className="absolute -top-3 sm:-top-4 min-[1700px]:-top-8 left-1/2 -translate-x-1/2 text-orange-400 drop-shadow-md"
+                          size={20}
+                          strokeWidth={2.5}
+                          aria-label="3rd place"
+                          fill="currentColor"
+                          style={{ filter: 'drop-shadow(0 1px 0 rgba(0,0,0,0.25))' }}
+                        />
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-orange-400 shadow-lg"><QPAvatar value={getStudentAvatar(top3[2])} iconSize={48} className="text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl" /></div>
                         <button
                           onClick={() => setConfirmKick(top3[2].name)}
                           aria-label={tT.qpRemovePlayerAria(top3[2].name)}
@@ -933,16 +1107,33 @@ export default function QuickPlayMonitor({
                         </button>
                       </motion.div>
                       <p className={`font-headline text-xs sm:text-sm 2xl:text-base min-[1700px]:text-2xl font-bold truncate max-w-[80px] 2xl:max-w-[120px] min-[1700px]:max-w-[180px] text-center ${t.text}`}>{top3[2].name}</p>
-                      <p className={`font-label text-[10px] 2xl:text-sm min-[1700px]:text-xl ${t.accent} font-bold`}>{top3[2].score} pts</p>
+                      <p className={`font-label text-sm sm:text-base 2xl:text-lg min-[1700px]:text-2xl ${t.accent} font-black tabular-nums`}>
+                        <TickingScore value={top3[2].score} /> pts
+                      </p>
                       <motion.div initial={{ height: 0 }} animate={{ height: 64 }} transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }} className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 min-[1700px]:!h-24 bg-gradient-to-b ${t.podium3} rounded-t-lg flex items-center justify-center shadow-xl overflow-hidden`}>
                         <span className="text-white/20 text-4xl 2xl:text-5xl min-[1700px]:text-7xl font-black">3</span>
                       </motion.div>
                     </>
-                  ) : <div className="w-20" style={{ height: 120 }} />}
+                  ) : (
+                    // Empty 3rd place — dashed ghost podium with a friendly
+                    // "you could be here!" line. Turns dead space into a
+                    // join-now nudge for students still scanning the QR.
+                    <>
+                      <div className="relative" style={{ animation: 'qp-float 3.5s ease-in-out infinite 1s' }}>
+                        <div className={`w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full border-2 border-dashed flex items-center justify-center opacity-50 ${t.text}`}>
+                          <Users size={24} className="opacity-60" />
+                        </div>
+                      </div>
+                      <p className={`font-label text-[10px] sm:text-xs 2xl:text-sm min-[1700px]:text-lg italic opacity-60 text-center max-w-[80px] sm:max-w-[100px] min-[1700px]:max-w-[180px] ${t.text}`}>
+                        {tT.qpPodiumCtaShort}
+                      </p>
+                      <div className={`w-20 sm:w-24 2xl:w-28 min-[1700px]:w-40 h-12 sm:h-14 min-[1700px]:!h-20 rounded-t-lg border-2 border-dashed opacity-40 ${t.text}`} />
+                    </>
+                  )}
                 </div>
               </>
             ) : (
-              <div className="text-center py-8 2xl:py-16 w-full">
+              <div className="text-center py-8 2xl:py-16 w-full relative z-10">
                 <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
                   <Users size={48} className="mx-auto mb-3 opacity-20 2xl:scale-150" />
                 </motion.div>
