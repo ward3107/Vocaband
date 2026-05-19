@@ -10,6 +10,7 @@ import { Howl } from 'howler';
 import { QRCodeSVG } from 'qrcode.react';
 import { Word } from '../data/vocabulary';
 import { supabase } from '../core/supabase';
+import type { QpReactionPayload } from '../core/quickPlayProtocol';
 import { useQuickPlaySocket } from '../hooks/useQuickPlaySocket';
 import { useClipboardFeedback } from '../hooks/useClipboardFeedback';
 import QPAvatar from './QPAvatar';
@@ -287,6 +288,64 @@ function RoundProgressBar({ progress, accent }: { progress?: { done: number; tot
       <span className="font-label text-[10px] tabular-nums opacity-70 shrink-0">
         {progress.done}/{progress.total}
       </span>
+    </div>
+  );
+}
+
+// Tier C reaction particle layer. Each accepted reaction floats an
+// emoji from the bottom of the projector up over ~2.6s with a slight
+// horizontal drift so a burst from one student doesn't render as a
+// straight line. Capped at 30 concurrent particles to keep the
+// projector from melting if a class spams in unison.
+type ReactionParticle = { id: string; emoji: string; x: number; drift: number };
+function ReactionParticleLayer({ lastReaction }: { lastReaction: QpReactionPayload | null }) {
+  const [particles, setParticles] = useState<ReactionParticle[]>([]);
+  // Dedupe ring — same (clientId, serverTs) can re-fire on a React
+  // strict-mode double-effect or a brief reconnection replay. Bounded
+  // size so it can't leak memory across a long session.
+  const seenRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    if (!lastReaction || !lastReaction.emoji) return;
+    const key = `${lastReaction.clientId}:${lastReaction.serverTs}`;
+    if (seenRef.current.includes(key)) return;
+    seenRef.current.push(key);
+    if (seenRef.current.length > 200) seenRef.current.shift();
+
+    const id = `${key}:${Math.random().toString(36).slice(2, 8)}`;
+    // x is the starting column as a percentage of viewport width; drift
+    // is a small horizontal shift so adjacent particles fan out.
+    const x = 5 + Math.random() * 90;
+    const drift = (Math.random() - 0.5) * 80;
+
+    setParticles(prev => [...prev, { id, emoji: lastReaction.emoji, x, drift }].slice(-30));
+    setTimeout(() => {
+      setParticles(prev => prev.filter(p => p.id !== id));
+    }, 2800);
+  }, [lastReaction]);
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[55] overflow-hidden">
+      <AnimatePresence>
+        {particles.map(p => (
+          <motion.div
+            key={p.id}
+            initial={{ y: 0, x: 0, opacity: 0, scale: 0.5 }}
+            animate={{
+              y: "-90vh",
+              x: p.drift,
+              opacity: [0, 1, 1, 0],
+              scale: [0.5, 1.15, 1, 0.85],
+              rotate: p.drift > 0 ? 8 : -8,
+            }}
+            transition={{ duration: 2.6, ease: "easeOut", times: [0, 0.1, 0.85, 1] }}
+            className="absolute bottom-2 text-4xl sm:text-5xl 2xl:text-7xl select-none drop-shadow-2xl"
+            style={{ left: `${p.x}%`, transform: "translateX(-50%)" }}
+          >
+            {p.emoji}
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
@@ -829,6 +888,13 @@ export default function QuickPlayMonitor({
           })}
         </AnimatePresence>
       </div>
+
+      {/* ─── Reaction particles (Tier C) ─────────────────────────────────────
+          Emojis tapped by students on their phones float up the
+          projector. The layer is full-screen + pointer-events:none, so
+          it doesn't interfere with teacher controls. Bounded to 30
+          concurrent particles inside the component. */}
+      <ReactionParticleLayer lastReaction={socket.lastReaction} />
 
       {/* ─── TopAppBar (glass header) ─────────────────────────────────────── */}
       <header className={`${t.headerBg} backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full sticky top-0 z-50 px-3 sm:px-8 py-2 sm:py-4 transition-colors duration-500`}>

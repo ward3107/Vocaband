@@ -61,6 +61,7 @@ import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
 import { useQuickPlayEvents } from "./hooks/useQuickPlayEvents";
 import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useGameModeSetup } from "./hooks/useGameModeSetup";
+import QpReactionBar from "./components/QpReactionBar";
 import { useDashboardPolling } from "./hooks/useDashboardPolling";
 import { useAssignmentAutoPopulate } from "./hooks/useAssignmentAutoPopulate";
 import { useSaveQueueResilience } from "./hooks/useSaveQueueResilience";
@@ -1152,25 +1153,40 @@ export default function App() {
   // Game-flow views (mode selection, intro, finished, active) — see
   // views/GameRoutes for the four branches.  The active view is the
   // default if no other game-flow gate matches.
-  return renderGameRoute({
-    view, user, setUser,
-    showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
-    setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
-    showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
-    gameDebug, gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
-    score, xp, streak, badges, mistakes, gameWords, quickPlayActiveSession,
-    isSaving, saveError, toasts, confirmDialog, setConfirmDialog,
-    setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
-    setWordAttempts, setHiddenOptions, setSpellingInput, setAssignmentWords,
-    cleanupSessionData, cleanupQuickPlayGuest,
-    setQuickPlayActiveSession, setQuickPlayStudentName,
-    setSaveError, targetLanguage, options, hiddenOptions,
-    isMatchingProcessing, matchingPairs, matchedIds, selectedMatch, tfOption,
-    isFlipped, setIsFlipped, scrambledWord, revealedLetters, spellingInput,
-    sentenceIndex, sentenceFeedback, builtSentence, setBuiltSentence,
-    availableWords, setAvailableWords, leaderboard,
-    saveScore, handleAnswer, handleMatchClick, handleTFAnswer,
-    handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap, handleSentenceCheck,
-    speakWord, speak, shuffle,
-  });
+  //
+  // Tier C: when a student is mid-mode inside a v2 QP session, mount
+  // the floating reaction bar as a sibling overlay so tapping an emoji
+  // broadcasts to the teacher's projector without leaving the game.
+  // The bar is `fixed` + `pointer-events-auto` only on the pill itself,
+  // so it never blocks the game UI underneath.
+  const showQpReactionBar = QUICKPLAY_V2
+    && !!quickPlayActiveSession
+    && view === "game"
+    && !isFinished;
+  return (
+    <>
+      {renderGameRoute({
+        view, user, setUser,
+        showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
+        setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
+        showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
+        gameDebug, gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
+        score, xp, streak, badges, mistakes, gameWords, quickPlayActiveSession,
+        isSaving, saveError, toasts, confirmDialog, setConfirmDialog,
+        setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
+        setWordAttempts, setHiddenOptions, setSpellingInput, setAssignmentWords,
+        cleanupSessionData, cleanupQuickPlayGuest,
+        setQuickPlayActiveSession, setQuickPlayStudentName,
+        setSaveError, targetLanguage, options, hiddenOptions,
+        isMatchingProcessing, matchingPairs, matchedIds, selectedMatch, tfOption,
+        isFlipped, setIsFlipped, scrambledWord, revealedLetters, spellingInput,
+        sentenceIndex, sentenceFeedback, builtSentence, setBuiltSentence,
+        availableWords, setAvailableWords, leaderboard,
+        saveScore, handleAnswer, handleMatchClick, handleTFAnswer,
+        handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap, handleSentenceCheck,
+        speakWord, speak, shuffle,
+      })}
+      {showQpReactionBar && <QpReactionBar sendReaction={quickPlaySocket.sendReaction} />}
+    </>
+  );
 };
