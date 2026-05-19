@@ -167,7 +167,7 @@ Grade Level: ${getGradeLabel()}`;
               className="pointer-events-auto relative w-full max-w-lg"
               dir={dir}
             >
-              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <div className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl overflow-hidden">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-5 flex items-center justify-between">
                   <h2 className="text-2xl font-black text-white">
@@ -198,7 +198,7 @@ Grade Level: ${getGradeLabel()}`;
                       className="text-center py-8"
                     >
                       <CheckCircle2 size={64} className="mx-auto mb-4 text-emerald-500" />
-                      <p className="text-lg font-bold text-slate-700">
+                      <p className="text-lg font-bold text-[var(--vb-text-secondary)]">
                         {language === "he"
                           ? "נקלטה הבקשה שלך. נחזור אליך בהקדם!"
                           : language === "ar"
@@ -210,7 +210,7 @@ Grade Level: ${getGradeLabel()}`;
                     <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                       {/* Name - Optional */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           <User size={14} className="inline mr-1" />
                           {language === "he" ? "שם מלא" : language === "ar" ? "الاسم الكامل" : "Full Name"}
                         </label>
@@ -219,13 +219,13 @@ Grade Level: ${getGradeLabel()}`;
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           placeholder={language === "he" ? "השם שלך" : language === "ar" ? "اسمك" : "Your name"}
-                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-violet-500 focus:outline-none transition-colors text-sm"
                         />
                       </div>
 
                       {/* Email - Required */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           ✉️ {language === "he" ? "אימייל *" : language === "ar" ? "البريد الإلكتروني *" : "Email *"}
                         </label>
                         <input
@@ -234,14 +234,14 @@ Grade Level: ${getGradeLabel()}`;
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           placeholder="your@email.com"
-                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-violet-500 focus:outline-none transition-colors text-sm"
                           dir="ltr"
                         />
                       </div>
 
                       {/* Phone - Required */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           <Phone size={14} className="inline mr-1" />
                           {language === "he" ? "טלפון *" : language === "ar" ? "الهاتف *" : "Phone *"}
                         </label>
@@ -251,14 +251,14 @@ Grade Level: ${getGradeLabel()}`;
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           placeholder={language === "he" ? "050-000-0000" : language === "ar" ? "05xxxxxxxx" : "+972 50 000 0000"}
-                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-violet-500 focus:outline-none transition-colors text-sm"
                           dir="ltr"
                         />
                       </div>
 
                       {/* School Type - Required */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           <School size={14} className="inline mr-1" />
                           {language === "he" ? "סוג *" : language === "ar" ? "النوع *" : "Type *"}
                         </label>
@@ -266,7 +266,7 @@ Grade Level: ${getGradeLabel()}`;
                           required
                           value={formData.schoolType}
                           onChange={(e) => setFormData({ ...formData, schoolType: e.target.value, schoolName: e.target.value === "private" ? "" : formData.schoolName })}
-                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors bg-white text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-violet-500 focus:outline-none transition-colors bg-[var(--vb-surface)] text-sm"
                         >
                           <option value="">
                             {language === "he" ? "בחר סוג..." : language === "ar" ? "اختر النوع..." : "Select type..."}
@@ -286,7 +286,7 @@ Grade Level: ${getGradeLabel()}`;
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
                         >
-                          <label className="block text-sm font-bold text-slate-700 mb-2">
+                          <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                             {language === "he" ? "שם בית הספר *" : language === "ar" ? "اسم المدرسة *" : "School Name *"}
                           </label>
                           <input
@@ -295,24 +295,24 @@ Grade Level: ${getGradeLabel()}`;
                             value={formData.schoolName}
                             onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
                             placeholder={language === "he" ? "שם בית הספר" : language === "ar" ? "اسم المدرسة" : "School name"}
-                            className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors text-sm"
+                            className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-violet-500 focus:outline-none transition-colors text-sm"
                           />
                         </motion.div>
                       )}
 
                       {/* Subjects - Multiple Selection (Required at least one) */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           📚 {language === "he" ? "נושאים מבוקשים *" : language === "ar" ? "المواد المطلوبة *" : "Subjects *"}
                         </label>
-                        <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto border-2 border-slate-200 rounded-lg p-3">
+                        <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto border-2 border-[var(--vb-border)] rounded-lg p-3">
                           {subjects.map((subject) => (
                             <label
                               key={subject.value}
                               className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
                                 formData.subjects.includes(subject.value)
                                   ? "bg-violet-100 border border-violet-300"
-                                  : "hover:bg-slate-50"
+                                  : "hover:bg-[var(--vb-surface-alt)]"
                               }`}
                             >
                               <input
@@ -334,13 +334,13 @@ Grade Level: ${getGradeLabel()}`;
 
                       {/* Grade Level */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           🎓 {language === "he" ? "רמת כיתה" : language === "ar" ? "مستوى الصف" : "Grade Level"}
                         </label>
                         <select
                           value={formData.grade}
                           onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-violet-500 focus:outline-none transition-colors bg-white text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-violet-500 focus:outline-none transition-colors bg-[var(--vb-surface)] text-sm"
                         >
                           <option value="">
                             {language === "he" ? "בחר רמה..." : language === "ar" ? "اختر المستوى..." : "Select grade..."}

@@ -263,7 +263,7 @@ ${formData.description}`;
               className="pointer-events-auto relative w-full max-w-lg"
               dir={dir}
             >
-              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <div className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl overflow-hidden">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -293,14 +293,14 @@ ${formData.description}`;
                       className="text-center py-8"
                     >
                       <CheckCircle2 size={64} className="mx-auto mb-4 text-emerald-500" />
-                      <h3 className="text-xl font-black text-slate-800 mb-2">{t.successTitle}</h3>
-                      <p className="text-sm text-slate-600">{t.successMessage}</p>
+                      <h3 className="text-xl font-black text-[var(--vb-text-primary)] mb-2">{t.successTitle}</h3>
+                      <p className="text-sm text-[var(--vb-text-secondary)]">{t.successMessage}</p>
                     </motion.div>
                   ) : (
                     <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                       {/* Name */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           {t.nameLabel}
                         </label>
                         <input
@@ -308,13 +308,13 @@ ${formData.description}`;
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           placeholder={t.namePlaceholder}
-                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-amber-500 focus:outline-none transition-colors text-sm"
                         />
                       </div>
 
                       {/* Email */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           {t.emailLabel}
                         </label>
                         <input
@@ -322,20 +322,20 @@ ${formData.description}`;
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           placeholder={t.emailPlaceholder}
-                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-amber-500 focus:outline-none transition-colors text-sm"
                           dir="ltr"
                         />
                       </div>
 
                       {/* Category */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           {t.categoryLabel}
                         </label>
                         <select
                           value={formData.category}
                           onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors bg-white text-sm"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-amber-500 focus:outline-none transition-colors bg-[var(--vb-surface)] text-sm"
                         >
                           <option value="">{t.categoryPlaceholder}</option>
                           <option value="game">{t.categoryGame}</option>
@@ -348,7 +348,7 @@ ${formData.description}`;
 
                       {/* Description */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           {t.descriptionLabel} *
                         </label>
                         <textarea
@@ -357,14 +357,14 @@ ${formData.description}`;
                           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                           placeholder={t.descriptionPlaceholder}
                           rows={4}
-                          className="w-full px-4 py-2.5 rounded-lg border-2 border-slate-200 focus:border-amber-500 focus:outline-none transition-colors text-sm resize-none"
+                          className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-amber-500 focus:outline-none transition-colors text-sm resize-none"
                         />
-                        <p className="text-xs text-slate-500 mt-1">{t.descriptionHint}</p>
+                        <p className="text-xs text-[var(--vb-text-muted)] mt-1">{t.descriptionHint}</p>
                       </div>
 
                       {/* Priority */}
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-3">
+                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-3">
                           <Star size={14} className="inline mr-1 text-amber-500" />
                           {t.priorityLabel}
                         </label>
@@ -381,7 +381,7 @@ ${formData.description}`;
                               className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all ${
                                 formData.priority === p.value
                                   ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
-                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                  : "bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)]"
                               }`}
                             >
                               <span className="block text-lg mb-1">{p.icon}</span>

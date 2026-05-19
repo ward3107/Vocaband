@@ -360,7 +360,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
           onClick={onClose}
         >
           <motion.div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col"
+            className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col"
             initial={{ scale: 0.95, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.95, y: 20 }}
@@ -368,14 +368,14 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
             dir={dir}
           >
             {/* Header */}
-            <div className="flex items-start justify-between p-6 border-b border-stone-200">
+            <div className="flex items-start justify-between p-6 border-b border-[var(--vb-border)]">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
                   <Users size={24} className="text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-xl font-black text-stone-900 truncate">{t.title}</h2>
-                  <p className="text-xs font-bold text-stone-500 mt-0.5 truncate">
+                  <h2 className="text-xl font-black text-[var(--vb-text-primary)] truncate">{t.title}</h2>
+                  <p className="text-xs font-bold text-[var(--vb-text-muted)] mt-0.5 truncate">
                     {className} · <span className="font-mono tracking-wider">{classCode}</span>
                   </p>
                 </div>
@@ -384,7 +384,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                 onClick={onClose}
                 type="button"
                 aria-label={t.closeAria}
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-stone-500 hover:bg-stone-100 transition-colors shrink-0"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--vb-text-muted)] hover:bg-[var(--vb-surface-alt)] transition-colors shrink-0"
                 style={{ touchAction: "manipulation" }}
               >
                 <X size={18} />
@@ -393,7 +393,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
 
             {/* Add student */}
             <div className="p-6 pb-3">
-              <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2">
+              <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-[var(--vb-text-muted)] mb-2">
                 {t.addStudentLabel}
               </label>
               <div className="flex gap-2">
@@ -407,7 +407,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   placeholder={t.addStudentPlaceholder}
                   maxLength={60}
                   disabled={adding}
-                  className="flex-1 px-4 py-2.5 rounded-lg border-2 border-stone-200 focus:border-indigo-500 outline-none text-sm font-medium disabled:opacity-60"
+                  className="flex-1 px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-indigo-500 outline-none text-sm font-medium disabled:opacity-60"
                 />
                 <button
                   onClick={handleAdd}
@@ -420,7 +420,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   {t.addButton}
                 </button>
               </div>
-              <p className="text-xs text-stone-500 mt-2">
+              <p className="text-xs text-[var(--vb-text-muted)] mt-2">
                 {t.addHelp}
               </p>
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md mt-2 px-3 py-2 flex items-start gap-2">
@@ -444,12 +444,12 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
             {/* Roster list */}
             <div className="flex-1 overflow-y-auto px-6 py-4 min-h-[180px]">
               {loading ? (
-                <p className="text-center text-sm text-stone-500 py-8">{t.loading}</p>
+                <p className="text-center text-sm text-[var(--vb-text-muted)] py-8">{t.loading}</p>
               ) : students.length === 0 ? (
                 <div className="text-center py-10">
                   <p className="text-4xl mb-2">🦊</p>
-                  <p className="text-sm font-bold text-stone-700">{t.emptyTitle}</p>
-                  <p className="text-xs text-stone-500 mt-1">{t.emptyBody}</p>
+                  <p className="text-sm font-bold text-[var(--vb-text-secondary)]">{t.emptyTitle}</p>
+                  <p className="text-xs text-[var(--vb-text-muted)] mt-1">{t.emptyBody}</p>
                 </div>
               ) : (
                 <>
@@ -458,7 +458,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                       <button
                         onClick={toggleAllReveal}
                         type="button"
-                        className="text-xs font-bold text-stone-500 hover:text-stone-900 inline-flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-stone-100 transition-colors"
+                        className="text-xs font-bold text-[var(--vb-text-muted)] hover:text-[var(--vb-text-primary)] inline-flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-[var(--vb-surface-alt)] transition-colors"
                         style={{ touchAction: "manipulation" }}
                       >
                         {allRevealed ? <EyeOff size={12} /> : <Eye size={12} />}
@@ -472,12 +472,12 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                       return (
                         <div
                           key={s.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-stone-200 hover:border-stone-300 transition-colors"
+                          className="flex items-center gap-3 p-3 rounded-lg border border-[var(--vb-border)] hover:border-stone-300 transition-colors"
                         >
                           <span className="text-2xl shrink-0">{s.avatar}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm text-stone-900 truncate">{s.displayName}</p>
-                            <p className="text-xs text-stone-500 truncate">
+                            <p className="font-bold text-sm text-[var(--vb-text-primary)] truncate">{s.displayName}</p>
+                            <p className="text-xs text-[var(--vb-text-muted)] truncate">
                               {s.lastLoginAt
                                 ? t.lastSeen(new Date(s.lastLoginAt).toLocaleDateString())
                                 : t.neverLoggedIn}
@@ -494,7 +494,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                                 <button
                                   onClick={() => toggleReveal(s.id)}
                                   type="button"
-                                  className="px-3 py-1.5 text-xs font-bold text-stone-600 bg-stone-100 rounded-lg hover:bg-stone-200 inline-flex items-center gap-1.5 transition-colors"
+                                  className="px-3 py-1.5 text-xs font-bold text-[var(--vb-text-secondary)] bg-[var(--vb-surface-alt)] rounded-lg hover:bg-stone-200 inline-flex items-center gap-1.5 transition-colors"
                                   style={{ touchAction: "manipulation" }}
                                 >
                                   <Eye size={12} />
@@ -502,7 +502,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                                 </button>
                               )
                             ) : (
-                              <span className="text-xs text-stone-400 px-3 py-1.5">—</span>
+                              <span className="text-xs text-[var(--vb-text-muted)] px-3 py-1.5">—</span>
                             )}
                             {/* Channel-separation share buttons.  Distinct colours
                                 (indigo / fuchsia) so a teacher can't tap the wrong
@@ -535,7 +535,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                               type="button"
                               title={t.resetPinTitle}
                               aria-label={t.resetPinAria(s.displayName)}
-                              className="w-9 h-9 rounded-lg flex items-center justify-center text-stone-500 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--vb-text-muted)] hover:bg-amber-50 hover:text-amber-600 transition-colors"
                               style={{ touchAction: "manipulation" }}
                             >
                               <RefreshCw size={15} />
@@ -545,7 +545,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                               type="button"
                               title={t.removeTitle}
                               aria-label={t.removeAria(s.displayName)}
-                              className="w-9 h-9 rounded-lg flex items-center justify-center text-stone-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--vb-text-muted)] hover:bg-rose-50 hover:text-rose-600 transition-colors"
                               style={{ touchAction: "manipulation" }}
                             >
                               <Trash2 size={15} />
@@ -579,8 +579,8 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
             </AnimatePresence>
 
             {/* Footer */}
-            <div className="p-4 border-t border-stone-200 bg-stone-50 rounded-b-2xl flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-xs text-stone-500">
+            <div className="p-4 border-t border-[var(--vb-border)] bg-[var(--vb-surface-alt)] rounded-b-2xl flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs text-[var(--vb-text-muted)]">
                 {t.studentCount(students.length)}
               </p>
               <div className="flex items-center gap-2">
@@ -588,7 +588,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   onClick={handleCopyAll}
                   type="button"
                   disabled={students.length === 0}
-                  className="px-3.5 py-2 rounded-lg bg-white border border-stone-200 text-stone-700 text-sm font-bold hover:bg-stone-100 active:scale-95 transition-all inline-flex items-center gap-2 disabled:opacity-40"
+                  className="px-3.5 py-2 rounded-lg bg-[var(--vb-surface)] border border-[var(--vb-border)] text-[var(--vb-text-secondary)] text-sm font-bold hover:bg-[var(--vb-surface-alt)] active:scale-95 transition-all inline-flex items-center gap-2 disabled:opacity-40"
                   style={{ touchAction: "manipulation" }}
                   title={t.copyTitle}
                 >

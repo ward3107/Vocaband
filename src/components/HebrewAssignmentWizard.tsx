@@ -329,7 +329,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                 onClick={() => setGradePackId(null)}
                 className={`px-3 py-1.5 rounded-full text-xs font-black transition ${
                   gradePackId === null
-                    ? "bg-white text-indigo-700 shadow"
+                    ? "bg-[var(--vb-surface)] text-indigo-700 shadow"
                     : "bg-white/10 text-white hover:bg-white/15"
                 }`}
               >
@@ -342,7 +342,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                   onClick={() => setGradePackId(pack.id)}
                   className={`px-3 py-1.5 rounded-full text-xs font-black transition ${
                     gradePackId === pack.id
-                      ? "bg-white text-indigo-700 shadow"
+                      ? "bg-[var(--vb-surface)] text-indigo-700 shadow"
                       : "bg-white/10 text-white hover:bg-white/15"
                   }`}
                 >
@@ -403,7 +403,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                               </div>
                               <div
                                 className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                  picked ? "bg-white text-emerald-600" : "bg-white/10 border border-white/20"
+                                  picked ? "bg-[var(--vb-surface)] text-emerald-600" : "bg-white/10 border border-white/20"
                                 }`}
                               >
                                 {picked && <Check size={14} strokeWidth={3} />}
@@ -523,7 +523,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
                       {!locked && (
                         <div
                           className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            picked ? "bg-white text-emerald-600" : "bg-white/10 border border-white/20"
+                            picked ? "bg-[var(--vb-surface)] text-emerald-600" : "bg-white/10 border border-white/20"
                           }`}
                         >
                           {picked && <Check size={14} strokeWidth={3} />}
@@ -569,7 +569,7 @@ function SourceTab({
         disabled
           ? "bg-white/5 text-white/30 cursor-not-allowed"
           : active
-            ? "bg-white text-indigo-700 shadow"
+            ? "bg-[var(--vb-surface)] text-indigo-700 shadow"
             : "bg-white/10 text-white hover:bg-white/15"
       }`}
       lang="he"
