@@ -13,7 +13,23 @@ type Params = {
   quickPlayActiveSession: QuickPlaySession;
   qpCumulativeScoreRef: MutableRefObject<number>;
   lastScoreEmitRef: MutableRefObject<number>;
-  quickPlaySocketUpdateScore: (score: number) => void;
+  quickPlaySocketUpdateScore: (
+    score: number,
+    extras?: {
+      streak?: number;
+      roundProgress?: { done: number; total: number };
+      perfectRound?: boolean;
+    },
+  ) => void;
+};
+
+/** Tier B side-channel passed alongside the score so the teacher monitor
+ *  can render flames, progress bars, and PERFECT ROUND toasts. All
+ *  optional — the live-challenge path ignores these entirely. */
+export type QpScoreExtras = {
+  streak?: number;
+  roundProgress?: { done: number; total: number };
+  perfectRound?: boolean;
 };
 
 /**
@@ -23,9 +39,14 @@ type Params = {
  *   * Quick Play v2 guest game — new `/quick-play` namespace, no auth
  */
 export function buildEmitScoreUpdate(p: Params) {
-  return (newScore: number) => {
+  return (newScore: number, extras?: QpScoreExtras) => {
     const now = Date.now();
-    const shouldEmit = now - p.lastScoreEmitRef.current > 2000 || p.isFinished;
+    // perfectRound is a one-shot signal — always emit it immediately,
+    // even if we're inside the 2-second throttle window, so the
+    // achievement toast fires the moment the round actually ended.
+    const shouldEmit = now - p.lastScoreEmitRef.current > 2000
+      || p.isFinished
+      || extras?.perfectRound === true;
     if (!shouldEmit) return;
     p.lastScoreEmitRef.current = now;
 
@@ -35,7 +56,7 @@ export function buildEmitScoreUpdate(p: Params) {
       // each new mode would emit a small per-mode value and the server
       // would reject it as a regress (new < previous max).
       const cumulative = p.qpCumulativeScoreRef.current + newScore;
-      setTimeout(() => p.quickPlaySocketUpdateScore(cumulative), 0);
+      setTimeout(() => p.quickPlaySocketUpdateScore(cumulative, extras), 0);
       // Refresh the localStorage resume hint with the latest score and
       // a fresh joinedAt timestamp so QuickPlayResumeBanner shows the
       // actual score earned, and the 90-minute TTL window extends for
