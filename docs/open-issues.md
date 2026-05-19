@@ -152,12 +152,17 @@ These items are DONE. Don't rebuild them — surface and market them.
 
 ### Tier 2 — Distribution moats
 
-**4. WhatsApp-first homework links**
-- Audit existing share-link flow (commits 829bcae + 594fc76 added per-assignment share + WhatsApp fix). Verify: does the WhatsApp deep-link include `?assignment=<id>` and auto-open the right view?
-- Add: "Send homework on WhatsApp" primary button on every assignment-created success screen
-- Add: opens with localized pre-filled message ("Your English homework: {link}") in HE/AR/EN
-- ETA: 1 evening to audit + polish
-- Why: Israel = WhatsApp country; this is the friction killer
+**4. WhatsApp-first homework links — REJECTED 2026-05-19**
+- Decided not to ship.  Existing share-link flow (commits 829bcae +
+  594fc76) is the floor; no "Send on WhatsApp" primary button planned.
+- Original framing kept below for the historical record / future-you:
+  Audit existing share-link flow.  Verify: does the WhatsApp deep-link
+  include `?assignment=<id>` and auto-open the right view?  Add: "Send
+  homework on WhatsApp" primary button on every assignment-created
+  success screen.  Add: opens with localized pre-filled message ("Your
+  English homework: {link}") in HE/AR/EN.
+- Original ETA: 1 evening.
+- Original why: Israel = WhatsApp country.
 
 **5. Parent Weekly Report (Friday email)**
 - New Supabase Edge Function: scheduled Friday 16:00 IL time

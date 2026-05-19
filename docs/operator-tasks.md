@@ -2,10 +2,11 @@
 
 These are actions the human needs to take — no code change will cover them.
 
-> **Last reconciled with production:** 2026-05-07. The April-28 security
-> migration backlog is closed; pen-test passes 9/9. Remaining items are
-> the May/June feature migrations (with collision-investigation needed)
-> and the operational tasks #2–#4 below.
+> **Last reconciled with production:** 2026-05-19.  The four
+> CATASTROPHIC/HIGH operational items in §0 are now ¾ done — §0c
+> (external HTTP + SSL-expiry monitor) is the only one still open.
+> Feature-side, §2 (OTP email template) shipped; §4 (RU PDF
+> proofread) is deferred until a native reviewer is lined up.
 
 ---
 
@@ -86,66 +87,64 @@ Backend is now ready for: daily-missions UI, pet-evolution UI, spaced-repetition
 
 ---
 
-## 0. ⚠️ CATASTROPHIC — Set spending alerts + hard caps on every billing account
+## ✅ DONE 2026-05-19 — Latin web fonts self-hosted (PR #787 follow-up)
 
-**Why:** a single viral school heavy-using can blow through Fly egress, Supabase egress, Gemini OCR quota, or Cloudflare workers paid-tier overage in a week. No alerts are in place today. One $3,000 surprise invoice kills the runway.
-
-Set alerts at **50% / 80% / 100%** of monthly budget AND a hard cap where supported, on each:
-
-| Service | Where | Alert target | Hard cap |
-|---|---|---|---|
-| Fly.io | Dashboard → Billing → Budget alerts | email + SMS | not directly capped — set low-balance alert + watch egress meter |
-| Supabase | Org → Billing → Budgets | email | "spend cap" toggle ON — pauses project at limit instead of overage billing |
-| Cloudflare | Dashboard → Billing → Notifications | email | not capped — Workers free tier should be sufficient; watch R2 if used |
-| Google Cloud (Gemini) | Billing → Budgets & alerts | email + Pub/Sub | budget action: `disable billing` at 100% (kills the project but stops bleeding) |
-
-Reasonable starting budgets given current scale: Fly $20, Supabase $25 (Pro), Cloudflare $0 (free tier), GCP $50.
-
-Notion: *Vocaband — Risk Register* → "No spending alerts" + "One viral school blows quotas".
+Plus Jakarta Sans (variable) + Be Vietnam Pro (4 weights) now ship from
+`/public/fonts/` instead of `fonts.googleapis.com`.  ~95% of sessions
+(English-only) no longer touch Google for fonts.  RTL fonts (Heebo +
+Fredoka) still load from Google Fonts on HE/AR sessions — narrower-
+scoped registry entry tracks that as the next-step follow-up.  Commit
+`a1fb84a` on `claude/privacy-compliance-review-Z2JhW`.
 
 ---
 
-## 0b. ⚠️ CATASTROPHIC — Bus-factor: document every credential + grant emergency access
+## ✅ DONE 2026-05-19 — §0 / §0b / §0d billing + bus-factor + registrar
 
-**Why:** today every production credential lives with one human. If that human is unreachable for 2 weeks (illness, family emergency, account locked out), Vocaband becomes unmaintainable until they return — including security patches and outage response.
+Three of the four ⚠️ catastrophic/high operational items closed:
 
-1. Create a single 1Password (or Bitwarden) vault named `Vocaband Production`.
-2. Store credentials for: Supabase, Fly.io, Cloudflare, domain registrar, Google Cloud (Gemini), Sentry, GitHub `ward3107` account, Notion workspace owner, and any other service holding production secrets.
-3. Enable **Emergency Access** for one trusted person (co-founder, lawyer, spouse). 1Password's emergency-access flow gives them encrypted vault export after a waiting period if you don't deny the request — sound trust-but-verify default.
-4. Add a one-page `INCIDENT.md` to the vault with: who to call, where production is hosted, where the kill switch is (`?unregisterSW=1`), how to rotate Supabase service role key, how to pause Stripe (if added later).
+- **§0 spending alerts + hard caps** — Fly $20, Supabase $25 with
+  spend-cap ON, Cloudflare free, GCP $50 with `disable billing` action
+  at 100%.  Alerts at 50/80/100%.
+- **§0b bus-factor vault** — `Vocaband Production` 1Password vault
+  with Emergency Access granted to one trusted contact + INCIDENT.md
+  one-pager inside.
+- **§0d domain registrar** — `vocaband.com` (and `auth.vocaband.com`)
+  on 5-year auto-renew, secondary payment method added, WHOIS /
+  transfer lock enabled, registrar account email pointed at the
+  vault-stored mailbox.
 
-Notion: *Vocaband — Risk Register* → "Bus factor of 1".
+§0c (external HTTP + SSL-expiry + DNS monitor) remains open — see
+below.
 
 ---
 
-## 0c. ⚠️ HIGH — External cert + DNS expiry monitor
+## ✅ DONE 2026-05-19 — §2 Supabase OTP email template (6-digit)
 
-**Why:** Cloudflare and Fly auto-renew TLS certs, but auto-renewal fails silently (DNS race, ACME challenge timeout, rate limit). Result: cert expires at 3am Sunday, every device sees a security warning Monday morning, classes can't run.
+Authentication → Providers → Email enabled, OTP length set to 6
+digits.  Magic-link template updated with `{{ .Token }}`.  Unblocks
+teacher OTP login.
 
-Set up free external monitoring (UptimeRobot, Better Stack, or Cronitor):
+---
 
-- HTTP probe `https://www.vocaband.com/api/health` every 5 minutes — alerts if 5xx or unreachable
-- **SSL expiry probe** that pages you when cert has < 14 days remaining (UptimeRobot has this as a built-in monitor type)
+## 0c. ⚠️ HIGH — External cert + DNS expiry monitor (STILL OPEN)
+
+**Why:** Cloudflare and Fly auto-renew TLS certs, but auto-renewal
+fails silently (DNS race, ACME challenge timeout, rate limit).  Result:
+cert expires at 3am Sunday, every device sees a security warning
+Monday morning, classes can't run.
+
+Set up free external monitoring (UptimeRobot, Better Stack, or
+Cronitor):
+
+- HTTP probe `https://www.vocaband.com/api/health` every 5 minutes —
+  alerts if 5xx or unreachable
+- **SSL expiry probe** that pages you when cert has < 14 days
+  remaining (UptimeRobot has this as a built-in monitor type)
 - DNS A/AAAA record monitor for `vocaband.com` and `auth.vocaband.com`
 
 Page via SMS or push, not email — email is too easy to miss at 3am.
 
 Notion: *Vocaband — Risk Register* → "DNS / cert auto-renewal failure".
-
----
-
-## 0d. ⚠️ HIGH — Domain registrar: 5-year auto-renew + secondary card + WHOIS lock
-
-**Why:** vocaband.com is on one registrar tied to one email tied to one payment card. Expired card → registrar fails renewal → domain enters redemption → kids' school accounts go dark. Real-world horror story for many SaaS founders.
-
-Action items:
-
-1. Set `vocaband.com` and `auth.vocaband.com` (if separately registered) to auto-renew for **5 years**, not 1. Most registrars allow this.
-2. Add a **secondary payment method** in the registrar account. If primary card declines, secondary tries automatically.
-3. Enable **WHOIS / registrar lock** (transfer lock). Prevents domain hijack via social-engineered transfer.
-4. Verify the registrar account email is one in the 1Password vault from §0b — not a personal Gmail that could be lost.
-
-Notion: *Vocaband — Risk Register* → "Domain registrar lapse".
 
 ---
 
@@ -160,17 +159,20 @@ npx tsx scripts/upload-motivational.ts   # needs .env.local with service_role ke
 
 ---
 
-## 2. Configure Supabase email + magic-link template for teacher OTP
+## 2. ✅ DONE 2026-05-19 — Supabase email + magic-link template for teacher OTP
 
-**Authentication → Providers → Email:** enable + Email OTP length = **6** digits (default 8 won't validate).
-
-**Authentication → Email Templates → Magic Link:** paste styled template from OTP shipping notes — must include `{{ .Token }}`. Subject: `Vocaband sign-in code: {{ .Token }}`.
+Authentication → Providers → Email enabled, Email OTP length set to
+**6** digits (default 8 won't validate against the in-app OTP form).
+Magic-link template updated with `{{ .Token }}` and subject
+`Vocaband sign-in code: {{ .Token }}`.  Teacher OTP login flow unblocked.
 
 ---
 
 ## 3. (OPTIONAL) UptimeRobot ping
 
 Fly Starter has no cold starts but still good belt-and-suspenders.
+Largely subsumed by §0c above (which adds SSL-expiry + DNS monitors on
+top of a basic health-check probe).
 
 ---
 
@@ -186,7 +188,11 @@ lockout (we deliberately rejected per-account lockout — see
 
 ---
 
-## 4. Native Russian proofread for the teacher PDFs
+## 4. Native Russian proofread for the teacher PDFs (DEFERRED 2026-05-19)
+
+**Status:** parked until a native Russian reviewer is lined up.  Not
+shipping the RU PDFs to parents/admins in the meantime is the
+mitigation.
 
 The 5 Russian PDFs in `public/docs/*-ru.pdf` were authored without a native reviewer. Before any of them go out to parents or admins, get a native Russian speaker to proof at least:
 
