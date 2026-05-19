@@ -7,7 +7,8 @@
  * Both are rendered through this section.  Returns JSX or null based
  * on which view is active.
  */
-import { lazy, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import type { Word } from '../data/vocabulary';
@@ -16,10 +17,10 @@ import type { VocaId } from '../core/subject';
 import type { View } from '../core/views';
 import type { TranslationEntry } from '../hooks/useTranslate';
 
-const ClassShowView = lazy(() => import('./ClassShowView'));
-const WorksheetView = lazy(() => import('./WorksheetView'));
-const HebrewClassShowView = lazy(() => import('./HebrewClassShowView'));
-const HebrewWorksheetView = lazy(() => import('./HebrewWorksheetView'));
+const ClassShowView = lazyWithRetry(() => import('./ClassShowView'));
+const WorksheetView = lazyWithRetry(() => import('./WorksheetView'));
+const HebrewClassShowView = lazyWithRetry(() => import('./HebrewClassShowView'));
+const HebrewWorksheetView = lazyWithRetry(() => import('./HebrewWorksheetView'));
 
 export interface ClassShowAndWorksheetSectionDeps {
   view: View;

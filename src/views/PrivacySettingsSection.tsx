@@ -1,11 +1,12 @@
-import React, { lazy } from "react";
+import React from "react";
 import type { Dispatch, SetStateAction, ReactNode } from "react";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { LazyWrapper } from "../components/SuspenseWrapper";
 import type { View } from "../core/views";
 import type { AppUser } from "../core/supabase";
 import type { ShowToast } from "../hooks/useToasts";
 
-const PrivacySettingsView = lazy(() => import("./PrivacySettingsView"));
+const PrivacySettingsView = lazyWithRetry(() => import("./PrivacySettingsView"));
 
 type ConfirmDialog = { show: boolean; message: string; onConfirm: () => void };
 

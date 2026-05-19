@@ -6,7 +6,8 @@
  * Behaviour preserved exactly.  Closure deps from App's render scope
  * (state, setters, sibling-hook helpers) come in via a deps bag.
  */
-import { lazy, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import ClassRosterModal from '../components/ClassRosterModal';
@@ -33,7 +34,7 @@ import type { VocaId } from '../core/subject';
 import type { SavedTask } from '../hooks/useSavedTasks';
 import type { View } from '../core/views';
 
-const TeacherDashboardView = lazy(() => import('./TeacherDashboardView'));
+const TeacherDashboardView = lazyWithRetry(() => import('./TeacherDashboardView'));
 
 type AppToasts = {
   failedDeleteFromDb: (m: string) => string;

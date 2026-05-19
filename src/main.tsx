@@ -1,4 +1,5 @@
-import {lazy, Suspense} from 'react';
+import {Suspense} from 'react';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 import {createRoot} from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.tsx';
 import { runSafariDiagnostics } from './utils/safariDiagnostics';
@@ -182,7 +183,7 @@ function scheduleServiceWorkerRegistration() {
   }
 }
 
-const App = lazy(() => import('./App.tsx'));
+const App = lazyWithRetry(() => import('./App.tsx'));
 // AccessibilityWidget is lazy too — it doesn't render anything on
 // public pages until the user interacts, so keeping it in the entry
 // chunk (with its motion/lucide deps) was pure dead weight on first
@@ -190,7 +191,7 @@ const App = lazy(() => import('./App.tsx'));
 // already shows the trigger on landing, so missing the first
 // 'vocaband-view-change' event is harmless: the next view change
 // reaches it via the window event listener.
-const AccessibilityWidget = lazy(() =>
+const AccessibilityWidget = lazyWithRetry(() =>
   import('./components/AccessibilityWidget').then(m => ({ default: m.AccessibilityWidget })),
 );
 // Mounted as a sibling to <App /> (not inside it) so the install gate +
@@ -199,7 +200,7 @@ const AccessibilityWidget = lazy(() =>
 // cookieBannerOverlay, which is only wired into the public + auth-flow
 // view sections — post-login dashboards never rendered it, so the gate
 // never reached real users.
-const GlobalOverlays = lazy(() => import('./components/GlobalOverlays'));
+const GlobalOverlays = lazyWithRetry(() => import('./components/GlobalOverlays'));
 
 const Loading = () => (
   <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'system-ui',color:'#666'}}>

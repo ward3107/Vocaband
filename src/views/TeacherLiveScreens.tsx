@@ -6,7 +6,8 @@
  * "Reconnecting…" panel + Return-to-Dashboard button is the same
  * for both.
  */
-import { lazy, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import type { AppUser, ClassData } from '../core/supabase';
@@ -15,9 +16,9 @@ import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 import type { QpRealtimeStatus } from '../hooks/useQuickPlayRealtime';
 
-const LiveChallengeView = lazy(() => import('./LiveChallengeView'));
-const QuickPlayTeacherMonitorView = lazy(() => import('./QuickPlayTeacherMonitorView'));
-const HebrewComingSoonView = lazy(() => import('./HebrewComingSoonView'));
+const LiveChallengeView = lazyWithRetry(() => import('./LiveChallengeView'));
+const QuickPlayTeacherMonitorView = lazyWithRetry(() => import('./QuickPlayTeacherMonitorView'));
+const HebrewComingSoonView = lazyWithRetry(() => import('./HebrewComingSoonView'));
 
 function reconnectingFallback(
   bodyText: string,

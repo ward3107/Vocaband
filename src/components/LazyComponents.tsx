@@ -3,7 +3,8 @@
  * These components are loaded on-demand to reduce initial bundle size
  */
 
-import { lazy, Suspense, type ComponentType } from 'react';
+import { Suspense, type ComponentType } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 // Loader2 was the only lucide icon used here; inlined as <svg> so
 // this module (eagerly imported by PublicViews → App.tsx) no longer
 // drags the ~17 kB gz lucide chunk into the cold-load modulepreload
@@ -63,14 +64,14 @@ const LoadingFallback = ({ messageKey = 'default' }: { messageKey?: LoadingKey }
 };
 
 // Lazy load page components - these use default exports
-export const LazyLandingPage = lazy(() => import('./LandingPage'));
-export const LazyTermsPage = lazy(() => import('./TermsPage'));
-export const LazyPublicPrivacyPage = lazy(() => import('./PublicPrivacyPage'));
-export const LazyPublicSecurityPage = lazy(() => import('./PublicSecurityPage'));
-export const LazyDemoMode = lazy(() => import('./DemoMode'));
-export const LazyAccessibilityStatement = lazy(() => import('./AccessibilityStatement'));
-export const LazyFreeResourcesView = lazy(() => import('../views/FreeResourcesView'));
-export const LazyStatusView = lazy(() => import('../views/StatusView'));
+export const LazyLandingPage = lazyWithRetry(() => import('./LandingPage'));
+export const LazyTermsPage = lazyWithRetry(() => import('./TermsPage'));
+export const LazyPublicPrivacyPage = lazyWithRetry(() => import('./PublicPrivacyPage'));
+export const LazyPublicSecurityPage = lazyWithRetry(() => import('./PublicSecurityPage'));
+export const LazyDemoMode = lazyWithRetry(() => import('./DemoMode'));
+export const LazyAccessibilityStatement = lazyWithRetry(() => import('./AccessibilityStatement'));
+export const LazyFreeResourcesView = lazyWithRetry(() => import('../views/FreeResourcesView'));
+export const LazyStatusView = lazyWithRetry(() => import('../views/StatusView'));
 
 // Wrapper components with Suspense and Error Boundary
 export const LandingPageWrapper: ComponentType<any> = (props) => (

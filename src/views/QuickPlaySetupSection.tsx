@@ -3,7 +3,8 @@
  * activeVoca, threads the create-session handler through, then
  * forwards the wizard prop bag.
  */
-import { lazy, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import { isPro } from '../core/plan';
@@ -20,8 +21,8 @@ import type { VocaId } from '../core/subject';
 import type { SavedTaskInput } from '../hooks/useSavedTasks';
 import type { View } from '../core/views';
 
-const HebrewQuickPlaySetupView = lazy(() => import('./HebrewQuickPlaySetupView'));
-const QuickPlaySetupView = lazy(() => import('./QuickPlaySetupView'));
+const HebrewQuickPlaySetupView = lazyWithRetry(() => import('./HebrewQuickPlaySetupView'));
+const QuickPlaySetupView = lazyWithRetry(() => import('./QuickPlaySetupView'));
 
 export interface QuickPlaySetupSectionDeps {
   activeVoca: VocaId | null;

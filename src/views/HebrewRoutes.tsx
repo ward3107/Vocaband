@@ -8,7 +8,8 @@
  * English/teacher view branches.  Centralises the lemmaIds / hebrewExit
  * / saveHebrewScore wiring that used to be ad-hoc consts in App.tsx.
  */
-import { lazy, Suspense, type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import { getEntitledVocas, type VocaId } from '../core/subject';
@@ -16,11 +17,11 @@ import { hasTeacherAccess, type AppUser, type AssignmentData } from '../core/sup
 import { persistHebrewScore, type HebrewMode } from '../handlers/hebrewScore';
 import type { View } from '../core/views';
 
-const VocaHebrewDashboardView = lazy(() => import('./VocaHebrewDashboardView'));
-const NiqqudModeView = lazy(() => import('./NiqqudModeView'));
-const ShoreshHuntView = lazy(() => import('./ShoreshHuntView'));
-const SynonymMatchView = lazy(() => import('./SynonymMatchView'));
-const ListeningModeView = lazy(() => import('./ListeningModeView'));
+const VocaHebrewDashboardView = lazyWithRetry(() => import('./VocaHebrewDashboardView'));
+const NiqqudModeView = lazyWithRetry(() => import('./NiqqudModeView'));
+const ShoreshHuntView = lazyWithRetry(() => import('./ShoreshHuntView'));
+const SynonymMatchView = lazyWithRetry(() => import('./SynonymMatchView'));
+const ListeningModeView = lazyWithRetry(() => import('./ListeningModeView'));
 
 const HEBREW_VIEW_MAP: Record<
   string,

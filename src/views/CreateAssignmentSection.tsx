@@ -3,7 +3,8 @@
  * 30+ wizard props.  Lifted out of App.tsx so the prop-forwarding
  * doesn't crowd the orchestrator.
  */
-import { lazy, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import { isPro } from '../core/plan';
@@ -13,7 +14,7 @@ import type { AppUser, ClassData, AssignmentData } from '../core/supabase';
 import type { SavedTaskInput } from '../hooks/useSavedTasks';
 import type { View } from '../core/views';
 
-const CreateAssignmentView = lazy(() => import('./CreateAssignmentView'));
+const CreateAssignmentView = lazyWithRetry(() => import('./CreateAssignmentView'));
 
 export interface CreateAssignmentSectionDeps {
   user: AppUser | null;

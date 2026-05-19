@@ -26,7 +26,8 @@
  * with the same in-card title + Back button used by Worksheet/Class
  * Show. Mobile bottom-nav stays outside the card by design.
  */
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { motion } from "motion/react";
 import { Activity, ArrowLeft, Brain } from "lucide-react";
 import { type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
@@ -46,8 +47,8 @@ import { teacherGuidesT } from "../locales/teacher/guides";
 import { GraduationCap } from "lucide-react";
 import PageHero from "../components/PageHero";
 
-const AnalyticsView = lazy(() => import("./AnalyticsView"));
-const GradebookView = lazy(() => import("./GradebookView"));
+const AnalyticsView = lazyWithRetry(() => import("./AnalyticsView"));
+const GradebookView = lazyWithRetry(() => import("./GradebookView"));
 
 type LegacyTab = "pulse" | "mastery";
 type V2Tab = "today" | "students" | "assignments" | "reports";
