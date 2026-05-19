@@ -204,10 +204,11 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-2 rounded-full bg-stone-100 overflow-hidden">
                     <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: pct / 100 }}
                       transition={{ duration: 0.6, ease: 'easeOut' }}
-                      className={`h-full bg-gradient-to-r ${meta.barGradient}`}
+                      style={{ transformOrigin: 'left' }}
+                      className={`h-full w-full bg-gradient-to-r ${meta.barGradient}`}
                     />
                   </div>
                   <span className="text-[11px] font-bold text-stone-500 tabular-nums whitespace-nowrap">

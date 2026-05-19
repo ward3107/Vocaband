@@ -75,6 +75,10 @@ export interface StudentAuthRoutesDeps {
   setShowModeSelection: React.Dispatch<React.SetStateAction<boolean>>;
   cleanupSessionData: () => void;
 
+  // Lets the Quick Play join form route a server "kicked" rejection
+  // through the proper KICKED screen (which offers "Rejoin with a
+  // different name") instead of a silent toast + bounce to landing.
+  setQuickPlayKicked: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
@@ -90,6 +94,7 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     setAssignmentWords, setActiveAssignment, setCurrentIndex,
     setScore, setFeedback, setIsFinished, setMistakes, setShowModeSelection,
     cleanupSessionData,
+    setQuickPlayKicked,
   } = deps;
 
   if (view === 'student-pending-approval' && pendingApprovalInfo) {
@@ -142,6 +147,7 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
           cleanupSessionData={cleanupSessionData}
           showToast={showToast}
           userIsActiveGuest={!!user?.isGuest}
+          setQuickPlayKicked={setQuickPlayKicked}
         />
       </LazyWrapper>
     );

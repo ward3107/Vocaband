@@ -783,6 +783,7 @@ export default function App() {
     setView, fetchScores,
     showToast, appToasts, queueDepthRef,
     quickPlayActiveSession, preloadMany,
+    gameWords,
     currentWord, currentIndex, setIsFlipped,
   });
 
@@ -948,6 +949,22 @@ export default function App() {
   });
   if (publicView) return publicView;
 
+  // Quick Play exit screens (Kicked + SessionEnded) — check BEFORE the
+  // student auth route so a kick that arrives while the student is on
+  // the join form (or the resume card) actually surfaces the proper
+  // "You've been removed" screen with the Rejoin-with-different-name
+  // option.  Render order previously had studentAuthRoute first, which
+  // meant view==='quick-play-student' + quickPlayKicked=true silently
+  // rendered the join form again and hid the kicked screen entirely.
+  const qpExit = renderQuickPlayExitScreens({
+    quickPlayKicked, quickPlaySessionEnded, quickPlayActiveSession,
+    user, quickPlayStudentName, score,
+    cleanupSessionData,
+    setQuickPlayKicked, setQuickPlaySessionEnded, setQuickPlayActiveSession,
+    setActiveAssignment, setUser, setQuickPlayStudentName, setView,
+  });
+  if (qpExit) return qpExit;
+
   // Student auth / Quick Play join screens (pending-approval, account
   // login, quick-play-student) bundled into renderStudentAuthRoute.
   const studentAuthRoute = renderStudentAuthRoute({
@@ -961,22 +978,11 @@ export default function App() {
     setAssignmentWords, setActiveAssignment, setCurrentIndex,
     setScore, setFeedback, setIsFinished, setMistakes, setShowModeSelection,
     cleanupSessionData,
+    setQuickPlayKicked,
   });
   if (studentAuthRoute) return studentAuthRoute;
 
   // ── Student Pending Approval Screen ────────────────────────────────────────
-
-  // Shared "exit to public landing" path used by both the Kicked and
-  // Quick Play exit screens (Kicked + SessionEnded) + shared
-  // exit-to-landing cleanup — see views/QuickPlayExitScreens.
-  const qpExit = renderQuickPlayExitScreens({
-    quickPlayKicked, quickPlaySessionEnded, quickPlayActiveSession,
-    user, quickPlayStudentName, score,
-    cleanupSessionData,
-    setQuickPlayKicked, setQuickPlaySessionEnded, setQuickPlayActiveSession,
-    setActiveAssignment, setUser, setQuickPlayStudentName, setView,
-  });
-  if (qpExit) return qpExit;
 
 
 

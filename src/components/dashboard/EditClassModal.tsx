@@ -261,6 +261,8 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                   <img
                     src={safeLogoUrl}
                     alt={language === 'he' ? 'תצוגה מקדימה של לוגו בית הספר' : language === 'ar' ? 'معاينة شعار المدرسة' : 'School logo preview'}
+                    loading="lazy"
+                    decoding="async"
                     className="w-12 h-12 rounded-lg object-contain bg-white"
                     onError={() => setLogoBroken(true)}
                   />

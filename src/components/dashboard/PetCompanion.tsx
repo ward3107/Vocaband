@@ -167,10 +167,11 @@ export default function PetCompanion({
                 </div>
                 <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
                   <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: pct / 100 }}
                     transition={{ duration: 0.6, ease: 'easeOut' }}
-                    className="h-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 rounded-full"
+                    style={{ transformOrigin: 'left' }}
+                    className="h-full w-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 rounded-full"
                   />
                 </div>
                 <p className="text-xs text-stone-500 mt-2 flex items-center gap-1">

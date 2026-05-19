@@ -120,6 +120,8 @@ export default function LiveChallengeView({
                 <img
                   src={selectedClass.schoolLogoUrl}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   className="w-8 h-8 rounded object-contain bg-white"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
