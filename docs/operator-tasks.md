@@ -3,10 +3,11 @@
 These are actions the human needs to take — no code change will cover them.
 
 > **Last reconciled with production:** 2026-05-19.  The four
-> CATASTROPHIC/HIGH operational items in §0 are now ¾ done — §0c
+> CATASTROPHIC/HIGH operational items in §0 are now ⁵⁄₆ closed — §0c
 > (external HTTP + SSL-expiry monitor) is the only one still open.
-> Feature-side, §2 (OTP email template) shipped; §4 (RU PDF
-> proofread) is deferred until a native reviewer is lined up.
+> Feature-side, §2 (OTP email template) and §6 (audio CDN) shipped;
+> §4 (RU PDF proofread) is deferred until a native reviewer is lined
+> up.
 
 ---
 
@@ -219,28 +220,24 @@ The teacher / student / quick-start docs are lower-stakes and can wait. Source t
 
 ---
 
-## 6. Connect `audio.vocaband.com` to the R2 bucket (finishes the CDN migration)
+## ✅ DONE 2026-05-19 — §6 Audio CDN connected (`audio.vocaband.com` → R2)
 
-**Status as of 2026-05-19 (verified via MCP `r2_buckets_list` and direct fetch):**
+Custom domain wired, deploy env var landed, mirror complete.  Verified
+2026-05-19:
 
-- ✅ R2 bucket `vocaband-audio` exists (account `df686d8a898f1c25a378952aa4c99350`, ENAM, Standard class).
-- ✅ Mirror is complete — bucket holds **9.13k objects / 62.11 MB**, matching the 9,130 English MP3s `scripts/mirror-supabase-to-r2.ts` targets. No re-run needed.
-- ❌ Bucket is not yet exposed at `audio.vocaband.com` (`ECONNREFUSED`).
-- ❌ `VITE_CLOUDFLARE_URL` is not yet on the deploy. App still serves audio from Supabase Storage via `src/utils/audioUrl.ts:32`.
+- `https://audio.vocaband.com/sound/1.mp3` → `HTTP/2 200` from Cloudflare
+  (`content-type: audio/mpeg`, `cache-control: public, max-age=31536000,
+  immutable`).
+- `.github/workflows/cloudflare-deploy.yml:80` sets
+  `VITE_CLOUDFLARE_URL: https://audio.vocaband.com` on the build step,
+  so `src/utils/audioUrl.ts` now routes every word-audio fetch through
+  the CDN.
+- R2 bucket `vocaband-audio` holds the full 9.13k-object mirror of the
+  Supabase `sound/` bucket (confirmed earlier via `r2_buckets_list`).
 
-### Remaining steps (operator)
-
-1. **Connect the custom domain.** Cloudflare dashboard → R2 → `vocaband-audio` → **Settings** → **Public access** → **Connect Domain** → `audio.vocaband.com`. Don't use the R2.dev subdomain — Cloudflare rate-limits it and warns against production use. Since `vocaband.com` is already on Cloudflare DNS, the CNAME + TLS cert provision in ~1 minute.
-
-2. **Smoke-test in a browser** — `https://audio.vocaband.com/sound/1.mp3` should download/play. If 404, click into the bucket and verify keys live under a `sound/` prefix (the mirror script writes `${srcBucket}/${name}` — see `scripts/mirror-supabase-to-r2.ts:99`).
-
-3. **Merge the CI PR** that sets `VITE_CLOUDFLARE_URL=https://audio.vocaband.com` on the build step in `.github/workflows/cloudflare-deploy.yml`. Once merged to main, the next deploy will flip all word-audio fetches from Supabase Storage to the CDN.
-
-4. **Post-deploy verification.** Hard-refresh `vocaband.com`, play a word, confirm DevTools → Network shows the MP3 loading from `audio.vocaband.com` (not `auth.vocaband.com/storage/v1/object/public/sound/...`). Egress on Supabase Storage should drop to near-zero within the day.
-
-### Rollback
-
-If audio breaks after the flip, revert the workflow commit (or unset `VITE_CLOUDFLARE_URL` in the next workflow run). `audioUrl.ts:32` will fall back to Supabase Storage automatically — no data migration is needed in reverse.
+Rollback if anything breaks: unset `VITE_CLOUDFLARE_URL` in the workflow
+and `audioUrl.ts:32` falls back to Supabase Storage automatically — no
+data migration in reverse.
 
 ---
 
