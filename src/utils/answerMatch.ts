@@ -60,7 +60,11 @@ export function normalizeAnswer(text: string): string {
     .trim();
 }
 
-export function isAnswerCorrect(studentInput: string, expectedWord: string): boolean {
+export function isAnswerCorrect(
+  studentInput: string,
+  expectedWord: string,
+  options?: { ignoreSpaces?: boolean },
+): boolean {
   const student = normalizeAnswer(studentInput);
   if (!student) return false;
 
@@ -68,6 +72,16 @@ export function isAnswerCorrect(studentInput: string, expectedWord: string): boo
   const formA = normalizeAnswer(expectedWord.replace(/\([^)]*\)/g, " "));
   // Form B: drop only the parens, keep content — "(be) in a hurry" → "be in a hurry"
   const formB = normalizeAnswer(expectedWord.replace(/\(([^)]*)\)/g, "$1"));
+
+  if (options?.ignoreSpaces) {
+    // Scramble + similar tap-to-assemble modes can't render a space
+    // tile, so a multi-word answer like "all over" is unassemblable
+    // by design — the kid can only build "allover". Stripping spaces
+    // from BOTH sides lets the comparison succeed without making the
+    // typed Spelling mode lose its "all over ≠ allover" pedagogy.
+    const strip = (s: string) => s.replace(/\s+/g, "");
+    return strip(student) === strip(formA) || strip(student) === strip(formB);
+  }
 
   return student === formA || student === formB;
 }

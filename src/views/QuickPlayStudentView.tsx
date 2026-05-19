@@ -660,8 +660,33 @@ export default function QuickPlayStudentView({
                 <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
                   <QrCode className="text-white w-8 h-8 sm:w-10 sm:h-10" />
                 </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">Quick Play!</h1>
-                <p className="text-sm sm:text-base text-on-surface-variant font-bold">{quickPlayActiveSession.words.length} words • No login needed</p>
+                {(() => {
+                  // Localize so the headline + subhead don't bidi-flip
+                  // into "!Quick Play" / "words • No login needed 11"
+                  // when the student picks Hebrew/Arabic before naming
+                  // themselves. Inline ternaries match the existing
+                  // pattern in this file (no quick-play.ts locale
+                  // module yet).
+                  const wordsCount = quickPlayActiveSession.words.length;
+                  const headline =
+                    qpLanguage === "he"
+                      ? "משחק מהיר!"
+                      : qpLanguage === "ar"
+                      ? "لعب سريع!"
+                      : "Quick Play!";
+                  const subhead =
+                    qpLanguage === "he"
+                      ? `${wordsCount} מילים · אין צורך בהתחברות`
+                      : qpLanguage === "ar"
+                      ? `${wordsCount} كلمات · لا حاجة لتسجيل الدخول`
+                      : `${wordsCount} words • No login needed`;
+                  return (
+                    <>
+                      <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">{headline}</h1>
+                      <p className="text-sm sm:text-base text-on-surface-variant font-bold">{subhead}</p>
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="space-y-3 sm:space-y-4">
@@ -677,7 +702,9 @@ export default function QuickPlayStudentView({
 
 
                 <div className="relative">
-                  <label className="absolute -top-2.5 start-4 px-2 bg-surface text-primary font-black text-xs z-10">YOUR NAME</label>
+                  <label className="absolute -top-2.5 start-4 px-2 bg-surface text-primary font-black text-xs z-10">
+                    {qpLanguage === "he" ? "השם שלך" : qpLanguage === "ar" ? "اسمك" : "YOUR NAME"}
+                  </label>
                   {(() => {
                     // Check if student already joined this session — lock their name
                     let lockedName = '';
@@ -700,7 +727,15 @@ export default function QuickPlayStudentView({
                           readOnly
                           className="w-full px-4 py-3 sm:py-4 bg-surface-container border-4 border-stone-200 rounded-xl text-base sm:text-lg font-black text-on-surface cursor-not-allowed opacity-70"
                         />
-                        <p className="text-xs text-on-surface-variant mt-1 text-center">You already joined as <strong>{lockedName}</strong></p>
+                        <p className="text-xs text-on-surface-variant mt-1 text-center">
+                          {qpLanguage === "he" ? (
+                            <>כבר הצטרפת בשם <strong><bdi>{lockedName}</bdi></strong></>
+                          ) : qpLanguage === "ar" ? (
+                            <>لقد انضممت بالفعل باسم <strong><bdi>{lockedName}</bdi></strong></>
+                          ) : (
+                            <>You already joined as <strong><bdi>{lockedName}</bdi></strong></>
+                          )}
+                        </p>
                       </>
                     ) : (
                       <input
@@ -767,13 +802,17 @@ export default function QuickPlayStudentView({
                   }}
                   className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
                 >
-                  Continue {qpIsRTL ? '←' : '→'}
+                  {qpLanguage === "he" ? "המשך" : qpLanguage === "ar" ? "متابعة" : "Continue"} {qpIsRTL ? '←' : '→'}
                 </button>
               </div>
 
               <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-surface-container-low rounded-xl border-2 border-surface-container-highest">
                 <p className="text-xs sm:text-sm text-on-surface-variant text-center">
-                  ℹ️ Your progress won't be saved (guest mode). Create an account to track your XP and unlock features!
+                  {qpLanguage === "he"
+                    ? "ℹ️ ההתקדמות שלך לא תישמר (מצב אורח). פתחו חשבון כדי לעקוב אחר הנקודות ולפתוח אפשרויות נוספות!"
+                    : qpLanguage === "ar"
+                    ? "ℹ️ لن يتم حفظ تقدمك (وضع الضيف). أنشئ حسابًا لتتبع نقاطك وفتح ميزات إضافية!"
+                    : "ℹ️ Your progress won't be saved (guest mode). Create an account to track your XP and unlock features!"}
                 </p>
               </div>
             </div>

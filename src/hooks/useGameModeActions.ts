@@ -532,7 +532,15 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
       return;
     }
 
-    const isCorrect = isAnswerCorrect(spellingInput, currentWord.english);
+    // Scramble's tap-to-assemble UI doesn't render a space tile, so a
+    // multi-word answer like "all over" produces "allover" from the
+    // tray and would never match the spaced expected form. Tell the
+    // matcher to ignore whitespace for scramble only — typed Spelling
+    // still enforces "all over ≠ allover" so the kid actually learns
+    // the phrase boundary.
+    const isCorrect = isAnswerCorrect(spellingInput, currentWord.english, {
+      ignoreSpaces: gameMode === "scramble",
+    });
 
     gameDebug.logAnswer({
       gameMode: 'spelling',
