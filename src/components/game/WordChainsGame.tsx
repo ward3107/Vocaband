@@ -121,6 +121,14 @@ export default function WordChainsGame({
     );
   }, [currentWord, lastLetter, usedIds, gameWords]);
 
+  // Degenerate-pool detection: the FIRST thing the kid sees has no
+  // continuation. This is different from a mid-chain dead-end — it
+  // means the teacher's word set doesn't link at all (e.g. all 5
+  // words end in unique letters that none of them start with). Show
+  // a friendlier, more honest banner instead of pretending the kid
+  // just exhausted the chain. chain.length === 1 = still on the seed.
+  const isPoolDegenerate = noMoreCandidates && chain.length === 1;
+
   // Auto-focus the input on mount + after every accepted word.
   useEffect(() => {
     inputRef.current?.focus();
@@ -354,18 +362,27 @@ export default function WordChainsGame({
       {/* Dead-end banner — the pool has no word starting with the
           required letter, so the kid can't continue no matter what
           real-English word they try. Surface this BEFORE they guess
-          into the trap, with a one-tap End round CTA. */}
+          into the trap, with a one-tap End round CTA. When the very
+          first word is already a dead-end, the message is honest
+          about it being a pool problem, not the kid running out of
+          links mid-chain. */}
       {noMoreCandidates && (
         <div
           className="mt-4 w-full max-w-md px-4 py-3 rounded-xl bg-amber-50 border-2 border-amber-300 text-amber-900 text-sm font-bold text-center"
           role="status"
           dir={dir}
         >
-          {language === "he"
-            ? `אין מילים נוספות ברשימה שמתחילות ב-"${tail.toUpperCase()}" — הקש "סיים" כדי לסיים`
-            : language === "ar"
-            ? `لا توجد كلمات أخرى في القائمة تبدأ بـ "${tail.toUpperCase()}" — اضغط "إنهاء" لإنهاء الجولة`
-            : `No more words in your list start with "${tail.toUpperCase()}" — tap End round to finish`}
+          {isPoolDegenerate
+            ? language === "he"
+              ? `המילים בכיתה לא יוצרות שרשרת מ-"${tail.toUpperCase()}" — תוכלו לסיים את הסיבוב`
+              : language === "ar"
+              ? `كلمات صفك لا تشكّل سلسلة من "${tail.toUpperCase()}" — يمكنك إنهاء الجولة`
+              : `Your class words don't link from "${tail.toUpperCase()}" — you can end the round`
+            : language === "he"
+              ? `אין מילים נוספות ברשימה שמתחילות ב-"${tail.toUpperCase()}" — הקש "סיים" כדי לסיים`
+              : language === "ar"
+              ? `لا توجد كلمات أخرى في القائمة تبدأ بـ "${tail.toUpperCase()}" — اضغط "إنهاء" لإنهاء الجولة`
+              : `No more words in your list start with "${tail.toUpperCase()}" — tap End round to finish`}
         </div>
       )}
 
