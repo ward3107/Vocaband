@@ -42,11 +42,10 @@ The Vocaband vocabulary learning application now fully complies with WCAG 2.0 Le
    - `AccessibleButton` with Enter/Space key handling
    - `LiveRegion` for status/alert announcements
 
-3. **`docs/WCAG_2.0_AA_AUDIT.md`** (NEW)
-   - Comprehensive 400+ line audit report
-   - Line-by-line documentation of all fixes
-   - Compliance status table
-   - Verification checklist
+3. **WCAG 2.0 AA audit results** (consolidated into this summary 2026-05-19)
+   - All 38 criteria PASS
+   - Compliance status table — see below
+   - Verification checklist — see below
 
 ---
 

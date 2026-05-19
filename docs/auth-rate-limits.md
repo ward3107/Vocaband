@@ -36,7 +36,7 @@ Open: <https://supabase.com/dashboard/project/ilbeskwldyrleltnxyrp/auth/rate-lim
 Confirm each row matches the **"Current value"** column in the TL;DR. If anything has drifted higher, set it back to the default — the defaults are already at the conservative end for a public app.
 
 Why we don't go lower:
-- **Sign-ins / 5 min / IP = 30 (= 360/h)** — a class of 30 students all using PIN login (`signInWithPassword`) at 09:00 from the same school NAT sits exactly at the 5-min ceiling. One retry per student = limit tripped. The share-invite PR analysis (`docs/teacher-share-invites-plan.md` §6) deliberately rejected stricter lockouts for the same reason. **If a school reports "we can't all log in at once", come back here BEFORE blaming the app — and raise this to 60/5min rather than tightening.**
+- **Sign-ins / 5 min / IP = 30 (= 360/h)** — a class of 30 students all using PIN login (`signInWithPassword`) at 09:00 from the same school NAT sits exactly at the 5-min ceiling. One retry per student = limit tripped. We deliberately rejected stricter per-account lockouts on the share-invite path for the same NAT-shared reason. **If a school reports "we can't all log in at once", come back here BEFORE blaming the app — and raise this to 60/5min rather than tightening.**
 - **OTP verifications / 5 min / IP = 30** — students with email-OTP login on the same school NAT have the same issue.
 - **Emails / hour = 30** — only relevant if a project switches off Resend / SES and falls back to Supabase's built-in SMTP. We use Resend, so this never bites.
 

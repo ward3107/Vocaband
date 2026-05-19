@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-Starting from the post-school-Wi-Fi-sprint baseline (`docs/perf-audit-2026-04-28.md` + R1–R5 in `docs/SCHOOL-PERFORMANCE-PLAN.md`), this session pushed the **cold-load critical path** down from 2.61 s DCL to **112 ms DCL** on Slow 4G + warm cache, and **286 ms DCL** on Slow 4G + cold install. Six PRs shipped, all merged.
+Starting from the post-school-Wi-Fi-sprint baseline (`docs/perf-audit-2026-04-28.md` + the R1–R5 school-Wi-Fi survival tasks), this session pushed the **cold-load critical path** down from 2.61 s DCL to **112 ms DCL** on Slow 4G + warm cache, and **286 ms DCL** on Slow 4G + cold install. Six PRs shipped, all merged.
 
 | Scenario | Before | After |
 |---|---|---|
