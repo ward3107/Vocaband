@@ -122,7 +122,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
   return (
     <AnimatePresence>
       {klass && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-[100]">
           <motion.div
             dir={dir}
             initial={{ opacity: 0, scale: 0.9 }}
