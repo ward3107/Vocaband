@@ -42,6 +42,12 @@ export interface LiveChallengeStrings {
   placeSuffix: (rank: number) => string;
   studentsPlayedSummary: (n: number) => string;
   close: string;
+
+  // End-challenge confirmation (gate before results modal)
+  endConfirmTitle: string;
+  endConfirmBody: (n: number) => string;
+  endConfirmCancel: string;
+  endConfirmEnd: string;
 }
 
 export const liveChallengeT: Record<Language, LiveChallengeStrings> = {
@@ -67,6 +73,13 @@ export const liveChallengeT: Record<Language, LiveChallengeStrings> = {
     placeSuffix: (rank) => `#${rank} place`,
     studentsPlayedSummary: (n) => `${n} ${n === 1 ? "student" : "students"} played`,
     close: "Close",
+    endConfirmTitle: "End the challenge?",
+    endConfirmBody: (n) =>
+      n === 1
+        ? "1 student is playing right now. Their last answers will still count, but no new answers will be accepted."
+        : `${n} students are playing right now. Their last answers will still count, but no new answers will be accepted.`,
+    endConfirmCancel: "Keep going",
+    endConfirmEnd: "Yes, end it",
   },
   he: {
     backToClassSelection: "→ חזרה לבחירת כיתה",
@@ -90,6 +103,13 @@ export const liveChallengeT: Record<Language, LiveChallengeStrings> = {
     placeSuffix: (rank) => `מקום ${rank}`,
     studentsPlayedSummary: (n) => `${n} ${n === 1 ? "תלמיד שיחק" : "תלמידים שיחקו"}`,
     close: "סגירה",
+    endConfirmTitle: "לסיים את האתגר?",
+    endConfirmBody: (n) =>
+      n === 1
+        ? "תלמיד אחד משחק כרגע. התשובות האחרונות שלו עדיין ייספרו, אבל לא יתקבלו תשובות חדשות."
+        : `${n} תלמידים משחקים כרגע. התשובות האחרונות שלהם עדיין ייספרו, אבל לא יתקבלו תשובות חדשות.`,
+    endConfirmCancel: "ממשיכים",
+    endConfirmEnd: "כן, לסיים",
   },
   ar: {
     backToClassSelection: "→ العودة إلى اختيار الصف",
@@ -113,6 +133,13 @@ export const liveChallengeT: Record<Language, LiveChallengeStrings> = {
     placeSuffix: (rank) => `المركز ${rank}`,
     studentsPlayedSummary: (n) => `${n} ${n === 1 ? "طالب لعب" : "طلاب لعبوا"}`,
     close: "إغلاق",
+    endConfirmTitle: "إنهاء التحدي؟",
+    endConfirmBody: (n) =>
+      n === 1
+        ? "هناك طالب واحد يلعب الآن. ستُحتسب إجاباته الأخيرة، لكن لن تُقبل إجابات جديدة."
+        : `${n} طلاب يلعبون الآن. ستُحتسب إجاباتهم الأخيرة، لكن لن تُقبل إجابات جديدة.`,
+    endConfirmCancel: "المتابعة",
+    endConfirmEnd: "نعم، إنهاء",
   },
   ru: {
     backToClassSelection: "← Back to Class Selection",
@@ -136,5 +163,12 @@ export const liveChallengeT: Record<Language, LiveChallengeStrings> = {
     placeSuffix: (rank) => `#${rank} place`,
     studentsPlayedSummary: (n) => `${n} ${n === 1 ? "student" : "students"} played`,
     close: "Close",
+    endConfirmTitle: "End the challenge?",
+    endConfirmBody: (n) =>
+      n === 1
+        ? "1 student is playing right now. Their last answers will still count, but no new answers will be accepted."
+        : `${n} students are playing right now. Their last answers will still count, but no new answers will be accepted.`,
+    endConfirmCancel: "Keep going",
+    endConfirmEnd: "Yes, end it",
   },
 };

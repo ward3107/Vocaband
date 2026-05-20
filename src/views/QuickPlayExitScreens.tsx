@@ -50,16 +50,26 @@ export function renderQuickPlayExitScreens(deps: RenderQpExitScreensDeps): React
     setActiveAssignment, setUser, setQuickPlayStudentName, setView,
   } = deps;
 
+  // Single source of truth for Quick Play guest cleanup.  Used by
+  // exitQuickPlayToLanding and the rejoin path — previously each one
+  // hand-rolled its own `localStorage.removeItem` call plus partial
+  // state resets, which drifted out of sync (the rejoin path also
+  // signed out the anonymous auth user; exit-to-landing didn't).
+  // Consolidating prevents the two callers from drifting again.
+  const clearQuickPlayGuest = () => {
+    cleanupSessionData();
+    try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* ignore */ }
+  };
+
   // Shared "exit to public landing" cleanup — wipe QP session state,
   // sign out the guest identity, route home.  Callers still own the
   // screen-specific flag reset (setQuickPlayKicked / -Ended).
   const exitQuickPlayToLanding = () => {
-    cleanupSessionData();
+    clearQuickPlayGuest();
     setQuickPlayActiveSession(null);
     setActiveAssignment(null);
     setUser(null);
     setView('public-landing');
-    try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* ignore */ }
   };
 
   if (quickPlayKicked) {
@@ -73,8 +83,7 @@ export function renderQuickPlayExitScreens(deps: RenderQpExitScreensDeps): React
           onRejoin={
             quickPlayActiveSession
               ? () => {
-                  cleanupSessionData();
-                  try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* ignore */ }
+                  clearQuickPlayGuest();
                   supabase.auth.signOut().catch(() => { /* best-effort */ });
                   setQuickPlayKicked(false);
                   setActiveAssignment(null);

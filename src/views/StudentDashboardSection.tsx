@@ -62,6 +62,11 @@ export interface StudentDashboardSectionDeps {
   renameStudentDisplayName: Anyish;
   structure: Anyish;
   celebrateStructureKeys: Anyish;
+
+  /** Opens the friendly student soft-landing exit modal — same one
+   *  the hardware back button uses — when the student taps the top-
+   *  bar logout button.  Wired by App.tsx to setShowExitConfirmModal. */
+  onRequestLogout: () => void;
 }
 
 export function StudentDashboardSection(deps: StudentDashboardSectionDeps): ReactNode {
@@ -75,6 +80,7 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
     setGameMode, setIsFinished,
     startClassMinute, retention, boosters,
     showToast, renameStudentDisplayName, structure, celebrateStructureKeys,
+    onRequestLogout,
   } = deps;
 
   return (
@@ -134,6 +140,7 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
         onRenameDisplayName={renameStudentDisplayName}
         structure={structure}
         celebrateStructureKeys={celebrateStructureKeys}
+        onRequestLogout={onRequestLogout}
       />
     </LazyWrapper>
   );

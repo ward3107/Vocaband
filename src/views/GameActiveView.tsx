@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, X } from "lucide-react";
 import type { AppUser, AssignmentData } from "../core/supabase";
@@ -196,6 +197,28 @@ export default function GameActiveView({
   const t = gameActiveT[language];
   const modeTheme: GameThemeColor | undefined = MODE_THEME[gameMode];
   const modeLabel = MODE_LABEL[gameMode] ?? gameMode;
+
+  // Warn before the tab closes mid-game.  Without this guard a stray
+  // tap on the close button (or a pinch-to-go-back swipe that escapes
+  // useBackButtonTrap) silently throws away the current round — no
+  // score is persisted on mid-game exit (useGameFinish.handleExitGame
+  // only resets state, it doesn't call saveScore).  Modern browsers
+  // ignore the message string and show their own dialog, but the
+  // guard itself still fires and gives the student a chance to cancel.
+  // Self-contained modes (Speed Round, etc.) own their own timers so
+  // they're covered too — the boolean below fires whenever a student
+  // is mid-play, regardless of mode.
+  const gameInProgress =
+    user?.role === "student" && !isFinished && gameWords.length > 0;
+  useEffect(() => {
+    if (!gameInProgress) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [gameInProgress]);
 
   // Modes that own their entire question pool + UI chrome.  When one
   // of these is active we skip the global WordPromptCard / PowerUp

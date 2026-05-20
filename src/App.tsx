@@ -1008,6 +1008,10 @@ export default function App() {
       setGameMode, setIsFinished,
       startClassMinute, retention, boosters,
       showToast, renameStudentDisplayName, structure, celebrateStructureKeys,
+      // Top-bar logout routes through the same soft-landing modal the
+      // hardware back button uses, so a stray tap doesn't drop the kid
+      // straight out of their session.
+      onRequestLogout: () => setShowExitConfirmModal(true),
     });
   }
 
