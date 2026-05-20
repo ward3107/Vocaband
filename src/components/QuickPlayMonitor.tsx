@@ -25,7 +25,6 @@ import { teacherGuidesT } from '../locales/teacher/guides';
 // observes the /quick-play socket.io namespace for leaderboard
 // updates instead of subscribing to progress-table realtime, and
 // kicks students via TEACHER_KICK instead of a Supabase delete.
-const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === 'true';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Student {
@@ -35,8 +34,8 @@ interface Student {
   lastSeen: string;
   mode: string;
   studentUid: string;
-  /** Tier B fields — present only on the v2 QP socket path. Absent on
-   *  the legacy Supabase-realtime fallback. */
+  /** Tier B fields — emitted by the QP socket alongside each score
+   *  update.  Optional because old clients may not include them. */
   streak?: number;
   roundProgress?: { done: number; total: number };
   perfectRound?: boolean;
@@ -52,8 +51,6 @@ interface QuickPlaySession {
 
 interface QuickPlayMonitorProps {
   session: QuickPlaySession;
-  students: Student[];
-  setStudents: (students: Student[] | ((prev: Student[]) => Student[])) => void;
   onBack: () => void;
   onEndSession: () => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -642,8 +639,6 @@ function ReactionParticleLayer({
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function QuickPlayMonitor({
   session,
-  students,
-  setStudents,
   onBack,
   onEndSession,
   showToast,
@@ -723,19 +718,18 @@ export default function QuickPlayMonitor({
     });
   };
 
-  // ─── v2 socket wiring ─────────────────────────────────────────────────
-  // When VITE_QUICKPLAY_V2 is on, the real student list lives on the
-  // server's in-memory leaderboard, not in the progress table the parent
-  // polls. Subscribe as a teacher observer and override what we render.
+  // ─── Socket wiring ───────────────────────────────────────────────────
+  // The real student list lives on the server's in-memory leaderboard,
+  // not in the progress table.  Subscribe as a teacher observer and
+  // stream the leaderboard back over the /quick-play namespace.
   const socket = useQuickPlaySocket({
     sessionCode: session.sessionCode,
-    enabled: QUICKPLAY_V2,
+    enabled: true,
   });
 
   // Re-observe whenever the socket reconnects so the server grants us
   // authority on this teacher session and streams the leaderboard back.
   useEffect(() => {
-    if (!QUICKPLAY_V2) return;
     if (socket.status !== 'connected') return;
     let cancelled = false;
     (async () => {
@@ -765,9 +759,8 @@ export default function QuickPlayMonitor({
     }));
   }, [socket.leaderboard]);
 
-  // v2 on → socket is the source of truth; v2 off → fall back to the
-  // parent-fed students prop (legacy Supabase-realtime path).
-  const effectiveStudents = QUICKPLAY_V2 ? socketStudents : students;
+  // Socket is the source of truth for the live leaderboard.
+  const effectiveStudents = socketStudents;
 
   const prevStudentCountRef = useRef(effectiveStudents.length);
 
@@ -1040,7 +1033,6 @@ export default function QuickPlayMonitor({
   // shows a +N when the broadcast does land so the teacher gets quick
   // visual confirmation.
   const giveBonus = useCallback(async (studentUid: string, amount: number = 5) => {
-    if (!QUICKPLAY_V2) return;
     if (!studentUid) return;
     const { data: { session: authSession } } = await supabase.auth.getSession();
     const token = authSession?.access_token;
@@ -1049,59 +1041,35 @@ export default function QuickPlayMonitor({
       return;
     }
     socket.bonusStudent(studentUid, amount, token);
-  }, [QUICKPLAY_V2, socket, showToast]);
+  }, [socket, showToast]);
 
   const removeStudent = async (name: string) => {
-    if (QUICKPLAY_V2) {
-      // v2 path: kick via socket. The server finds the clientId, removes
-      // them from the in-memory leaderboard, emits KICKED to their
-      // socket, and broadcasts the refreshed leaderboard. No DB writes.
-      const target = effectiveStudents.find(s => s.name === name);
-      if (!target) {
-        showToast(`Couldn't find ${name} in the live list.`, 'error');
-        setConfirmKick(null);
-        return;
-      }
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      const token = authSession?.access_token;
-      if (!token) {
-        showToast('Your session expired. Please refresh and log in again.', 'error');
-        setConfirmKick(null);
-        return;
-      }
-      socket.kickStudent(target.studentUid, token);
-      // Cache kicked name locally so the legacy-path kid (if any still
-      // running old client) can't rejoin. Harmless under pure v2.
-      try {
-        const key = `vocaband_kicked_${session.id}`;
-        const kicked: string[] = JSON.parse(localStorage.getItem(key) || '[]');
-        if (!kicked.includes(name)) kicked.push(name);
-        localStorage.setItem(key, JSON.stringify(kicked));
-      } catch {}
-      showToast(`${name} removed from session`, 'info');
+    // Kick via socket.  The server finds the clientId, removes them
+    // from the in-memory leaderboard, emits KICKED to their socket,
+    // and broadcasts the refreshed leaderboard.  No DB writes.
+    const target = effectiveStudents.find(s => s.name === name);
+    if (!target) {
+      showToast(`Couldn't find ${name} in the live list.`, 'error');
       setConfirmKick(null);
       return;
     }
-
-    // ─── Legacy path ────────────────────────────────────────────────────
-    const { error } = await supabase
-      .from('progress')
-      .delete()
-      .eq('assignment_id', session.id)
-      .eq('student_name', name);
-    if (error) {
-      showToast(`Failed to remove ${name}: ${error.message}`, 'error');
-    } else {
-      setStudents((prev: Student[]) => prev.filter(s => s.name !== name));
-      // Track kicked name in localStorage so they can't rejoin
-      try {
-        const key = `vocaband_kicked_${session.id}`;
-        const kicked: string[] = JSON.parse(localStorage.getItem(key) || '[]');
-        if (!kicked.includes(name)) kicked.push(name);
-        localStorage.setItem(key, JSON.stringify(kicked));
-      } catch {}
-      showToast(`${name} removed from session`, 'info');
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const token = authSession?.access_token;
+    if (!token) {
+      showToast('Your session expired. Please refresh and log in again.', 'error');
+      setConfirmKick(null);
+      return;
     }
+    socket.kickStudent(target.studentUid, token);
+    // Cache kicked name locally to defeat any rejoin attempt from a
+    // stale tab that didn't see the KICKED event.
+    try {
+      const key = `vocaband_kicked_${session.id}`;
+      const kicked: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!kicked.includes(name)) kicked.push(name);
+      localStorage.setItem(key, JSON.stringify(kicked));
+    } catch {}
+    showToast(`${name} removed from session`, 'info');
     setConfirmKick(null);
   };
 
@@ -1117,8 +1085,7 @@ export default function QuickPlayMonitor({
   } | null>(null);
 
   const beginEndSession = useCallback(() => {
-    const all = (QUICKPLAY_V2 ? socketStudents : students);
-    const sortedAll = [...all].sort((a, b) => b.score - a.score);
+    const sortedAll = [...socketStudents].sort((a, b) => b.score - a.score);
     const top: SessionStudent[] = sortedAll.slice(0, 3).map(s => ({
       name: s.name,
       avatar: s.avatar || '🦊',
@@ -1127,19 +1094,19 @@ export default function QuickPlayMonitor({
     }));
     const classTotal = sortedAll.reduce((sum, s) => sum + s.score, 0);
     setResultsSnapshot({ top, totalStudents: sortedAll.length, classTotal });
-  }, [QUICKPLAY_V2, socketStudents, students]);
+  }, [socketStudents]);
 
   // Final teardown — called from the results modal's "Close Session"
-  // button. Mirrors the v2 socket emit + parent callback pattern.
+  // button.  Emits TEACHER_END on the socket so the server tears down
+  // the session for all observers, then the parent callback handles
+  // navigation + DB cleanup.
   const finishEndSession = useCallback(async () => {
-    if (QUICKPLAY_V2) {
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      const token = authSession?.access_token;
-      if (token) socket.endSession(token);
-    }
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const token = authSession?.access_token;
+    if (token) socket.endSession(token);
     setResultsSnapshot(null);
     onEndSession();
-  }, [QUICKPLAY_V2, socket, onEndSession]);
+  }, [socket, onEndSession]);
 
   // ─── Sorted students ──────────────────────────────────────────────────────
   const sorted = useMemo(() =>

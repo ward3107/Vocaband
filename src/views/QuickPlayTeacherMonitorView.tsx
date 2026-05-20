@@ -21,14 +21,13 @@ interface JoinedStudent {
 
 interface QuickPlayTeacherMonitorViewProps {
   quickPlayActiveSession: QuickPlaySession;
-  quickPlayJoinedStudents: JoinedStudent[];
-  setQuickPlayJoinedStudents: (
-    students: JoinedStudent[] | ((prev: JoinedStudent[]) => JoinedStudent[])
-  ) => void;
   setView: React.Dispatch<React.SetStateAction<View>>;
   setQuickPlayActiveSession: (s: QuickPlaySession | null) => void;
   setQuickPlaySelectedWords: (w: Word[]) => void;
   setQuickPlaySessionCode: (c: string | null) => void;
+  setQuickPlayJoinedStudents: (
+    students: JoinedStudent[] | ((prev: JoinedStudent[]) => JoinedStudent[])
+  ) => void;
   setQuickPlayCustomWords: (m: Map<string, { hebrew: string; arabic: string }>) => void;
   setQuickPlayAddingCustom: (s: Set<string>) => void;
   setQuickPlayTranslating: (s: Set<string>) => void;
@@ -39,12 +38,11 @@ interface QuickPlayTeacherMonitorViewProps {
 
 export default function QuickPlayTeacherMonitorView({
   quickPlayActiveSession,
-  quickPlayJoinedStudents,
-  setQuickPlayJoinedStudents,
   setView,
   setQuickPlayActiveSession,
   setQuickPlaySelectedWords,
   setQuickPlaySessionCode,
+  setQuickPlayJoinedStudents,
   setQuickPlayCustomWords,
   setQuickPlayAddingCustom,
   setQuickPlayTranslating,
@@ -55,8 +53,6 @@ export default function QuickPlayTeacherMonitorView({
   return (
     <QuickPlayMonitor
       session={quickPlayActiveSession}
-      students={quickPlayJoinedStudents}
-      setStudents={setQuickPlayJoinedStudents}
       realtimeStatus={realtimeStatus}
       onBack={() => {
         cleanupSessionData(); // Clear save queue and timers

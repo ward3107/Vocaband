@@ -1,8 +1,8 @@
 /**
  * Persist a Hebrew round's final score to the gradebook + (when the
- * student is in a Quick Play V2 session) push the cumulative round
- * score to the live podium so the teacher's QuickPlayMonitor
- * leaderboard updates in real time.
+ * student is in a Quick Play session) push the cumulative round score
+ * to the live podium so the teacher's QuickPlayMonitor leaderboard
+ * updates in real time.
  *
  * Mirrors what the English flow does via useGameFinish's
  * quickPlaySocketUpdateScore callback — accumulate per-mode into the
@@ -25,7 +25,6 @@ export interface HebrewScoreDeps {
   quickPlayActiveSession: { id: string } | null;
   qpCumulativeScoreRef: { current: number };
   quickPlaySocketUpdateScore: (cumulativeScore: number) => void;
-  quickPlayV2Enabled: boolean;
 }
 
 export async function persistHebrewScore(
@@ -40,10 +39,9 @@ export async function persistHebrewScore(
     quickPlayActiveSession,
     qpCumulativeScoreRef,
     quickPlaySocketUpdateScore,
-    quickPlayV2Enabled,
   } = deps;
 
-  if (quickPlayV2Enabled && quickPlayActiveSession) {
+  if (quickPlayActiveSession) {
     qpCumulativeScoreRef.current += Math.max(0, score);
     quickPlaySocketUpdateScore(qpCumulativeScoreRef.current);
   }

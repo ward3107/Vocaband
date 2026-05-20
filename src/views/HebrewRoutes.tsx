@@ -48,7 +48,6 @@ export interface RenderHebrewRouteDeps {
   quickPlayActiveSession: { id: string } | null;
   qpCumulativeScoreRef: React.MutableRefObject<number>;
   quickPlaySocketUpdateScore: (cumulativeScore: number) => void;
-  quickPlayV2Enabled: boolean;
 
   setActiveVoca: React.Dispatch<React.SetStateAction<VocaId | null>>;
   setShowModeSelection: React.Dispatch<React.SetStateAction<boolean>>;
@@ -59,7 +58,7 @@ export function renderHebrewRoute(deps: RenderHebrewRouteDeps): ReactNode {
   const {
     view, user, activeAssignment,
     quickPlayActiveSession, qpCumulativeScoreRef,
-    quickPlaySocketUpdateScore, quickPlayV2Enabled,
+    quickPlaySocketUpdateScore,
     setActiveVoca, setShowModeSelection, setView,
   } = deps;
 
@@ -101,8 +100,8 @@ export function renderHebrewRoute(deps: RenderHebrewRouteDeps): ReactNode {
     }
   };
 
-  // Persist a Hebrew round's final score to the gradebook + (Quick Play
-  // V2) push cumulative score to the live podium.
+  // Persist a Hebrew round's final score to the gradebook + (Quick
+  // Play) push cumulative score to the live podium.
   const saveHebrewScore = (mode: HebrewMode, score: number, total: number) => {
     if (!user || !activeAssignment || !inHebrewAssignment) return Promise.resolve();
     return persistHebrewScore(mode, score, total, {
@@ -111,7 +110,6 @@ export function renderHebrewRoute(deps: RenderHebrewRouteDeps): ReactNode {
       quickPlayActiveSession,
       qpCumulativeScoreRef,
       quickPlaySocketUpdateScore,
-      quickPlayV2Enabled,
     });
   };
 

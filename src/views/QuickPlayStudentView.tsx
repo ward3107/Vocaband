@@ -15,17 +15,11 @@ import { containsProfanity } from "../utils/nicknameProfanity";
 import { useLanguage, languageNames, ALL_LANGUAGES } from "../hooks/useLanguage";
 import { quickPlayT } from "../locales/student/quick-play";
 
-// ─── Feature flag ──────────────────────────────────────────────────────
-// When `VITE_QUICKPLAY_V2=true`, the join flow skips Supabase entirely —
-// no signInAnonymously(), no progress-table insert/delete. Students
-// connect to the `/quick-play` socket.io namespace with a local UUID
-// + the session code + their nickname. When the flag is off (default),
-// the legacy path runs unchanged.
-//
-// Both views (this one + QuickPlayMonitor) must be on the same side of
-// the flag in a given deployment, since the student leaderboard lives
-// in two different places per flag state.
-const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
+// Quick Play join flow: students connect to the `/quick-play`
+// socket.io namespace with a local UUID + the session code + their
+// nickname.  No anonymous Supabase sign-in, no progress-table writes
+// for the live leaderboard — scores stay on the server's in-memory
+// leaderboard and arrive at the monitor over the socket.
 
 interface QuickPlaySession {
   id: string;
@@ -101,7 +95,7 @@ export default function QuickPlayStudentView({
   // does not open a connection.
   const quickPlaySocket = useQuickPlaySocket({
     sessionCode: quickPlayActiveSession?.sessionCode ?? null,
-    enabled: QUICKPLAY_V2,
+    enabled: true,
   });
 
   // Three-step join flow:
@@ -263,7 +257,7 @@ export default function QuickPlayStudentView({
   // KICKED event that flips the app into the dedicated "You've been
   // removed" screen via the onKicked handler below.
   useEffect(() => {
-    if (!QUICKPLAY_V2 || !quickPlaySocket.lastError) return;
+    if (!quickPlaySocket.lastError) return;
     const { code, message } = quickPlaySocket.lastError;
     if (code === "kicked") {
       // Intentionally silent: onKicked → setQuickPlayKicked(true) shows
@@ -296,7 +290,6 @@ export default function QuickPlayStudentView({
   }, [quickPlaySocket.lastError, showToast]);
 
   useEffect(() => {
-    if (!QUICKPLAY_V2) return;
     if (!quickPlaySocket.joinedSessionCode) return;
     const pending = pendingJoinRef.current;
     if (!pending) return;
@@ -305,54 +298,19 @@ export default function QuickPlayStudentView({
     pending();
   }, [quickPlaySocket.joinedSessionCode]);
 
-  // Fire the actual server JOIN (or legacy progress insert) for the
-  // staged name.  Called from each language-picker button after we
-  // setAppLanguage(lang).  Async because the legacy path runs a
-  // duplicate-name check against the progress table; v2 path delegates
-  // that check to the server via STUDENT_JOIN.
+  // Fire STUDENT_JOIN on the /quick-play socket.  The server runs the
+  // duplicate-name check and replies with JOINED (or one of the error
+  // codes handled in the lastError effect above).  Called from each
+  // language-picker button after we setAppLanguage(lang).
   const runJoin = async (trimmedName: string) => {
     if (!quickPlayActiveSession) {
       showToast(qpT.toastSessionExpired, "error");
       return;
     }
-    if (!QUICKPLAY_V2) {
-      // ─── Legacy path duplicate-name check ────────────────────────
-      const { data: { session: currentAuth } } = await supabase.auth.getSession();
-      const currentAuthUid = currentAuth?.user?.id;
-      // Clean up any stale progress for this student:
-      // 1. By uid (same device refresh)
-      // 2. By name (re-joining with same name from any device)
-      if (currentAuthUid) {
-        await supabase
-          .from('progress')
-          .delete()
-          .eq('assignment_id', quickPlayActiveSession.id)
-          .or(`student_uid.eq.${currentAuthUid},student_name.eq.${trimmedName}`);
-      } else {
-        await supabase
-          .from('progress')
-          .delete()
-          .eq('assignment_id', quickPlayActiveSession.id)
-          .eq('student_name', trimmedName);
-      }
-      const { data: existingProgress } = await supabase
-        .from('progress')
-        .select('id')
-        .eq('assignment_id', quickPlayActiveSession.id)
-        .eq('student_name', trimmedName)
-        .limit(1);
-      if (existingProgress && existingProgress.length > 0) {
-        showToast(qpT.toastNameTaken, "error");
-        // Bounce back to form so they can fix the name.
-        setJoinStep("form");
-        return;
-      }
-    }
 
-    // Build the UI-advance callback once.  For QP V2 it runs only
-    // after the server confirms JOIN (deferred via pendingJoinRef +
-    // the useEffect on joinedSessionCode).  For legacy it runs
-    // immediately on next tick — no server confirmation flow exists.
+    // Build the UI-advance callback once.  It runs only after the
+    // server confirms JOIN (deferred via pendingJoinRef + the useEffect
+    // on joinedSessionCode above).
     const applyJoinedState = () => {
       setQuickPlayStudentName(trimmedName);
       const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
@@ -413,54 +371,15 @@ export default function QuickPlayStudentView({
       } catch {}
     };
 
-    setTimeout(async () => {
-      if (QUICKPLAY_V2) {
-        // v2 path: emit STUDENT_JOIN on the /quick-play socket and
-        // DEFER the UI advance until the server's JOINED reply
-        // arrives.  Without the defer, the optimistic UI raced ahead
-        // while the server was rejecting (nickname_taken, session
-        // inactive, kicked) and the student "played" a session they
-        // were never in.
-        pendingJoinRef.current = applyJoinedState;
-        armJoinWatchdog();
-        quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
-      } else {
-        // Legacy doesn't have a server-confirmation flow — fire the
-        // UI advance immediately, same as the original behaviour.
-        applyJoinedState();
-        (async () => {
-          let authUid: string | null = null;
-          for (let attempt = 0; attempt < 3; attempt++) {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user?.id) {
-              authUid = session.user.id;
-              break;
-            }
-            await supabase.auth.signInAnonymously().catch(() => {});
-            await new Promise(r => setTimeout(r, 300));
-          }
-          if (!authUid) {
-            console.error('[Quick Play] No auth session after retries — cannot record join');
-            showToast(qpT.toastConnectionLost, 'error');
-            return;
-          }
-          const { error } = await supabase.from('progress').insert({
-            student_name: trimmedName,
-            student_uid: authUid,
-            assignment_id: quickPlayActiveSession.id,
-            class_code: "QUICK_PLAY",
-            score: 0,
-            mode: "joined",
-            completed_at: new Date().toISOString(),
-            mistakes: [],
-            avatar: quickPlayAvatar || "🦊",
-          });
-          if (error) {
-            console.error('[Quick Play] Failed to record join:', error);
-            showToast(qpT.toastCantJoinLeaderboard, 'error');
-          }
-        })();
-      }
+    setTimeout(() => {
+      // Emit STUDENT_JOIN on the /quick-play socket and DEFER the UI
+      // advance until the server's JOINED reply arrives.  Without the
+      // defer, the optimistic UI raced ahead while the server was
+      // rejecting (nickname_taken, session inactive, kicked) and the
+      // student "played" a session they were never in.
+      pendingJoinRef.current = applyJoinedState;
+      armJoinWatchdog();
+      quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
     }, 100);
   };
 
@@ -482,7 +401,6 @@ export default function QuickPlayStudentView({
   // SESSION_ENDED keeps the bounce-to-landing flow — there's no
   // recovery action so a toast + landing is the right answer.
   useEffect(() => {
-    if (!QUICKPLAY_V2) return;
     const offKicked = quickPlaySocket.onKicked(() => {
       // Cancel any in-flight rejoin watchdog — the kicked screen
       // supersedes the language picker / resume card.
@@ -655,7 +573,7 @@ export default function QuickPlayStudentView({
                         setShowModeSelection(true);
                         setView("game");
                       };
-                      if (QUICKPLAY_V2 && quickPlayActiveSession && quickPlayStudentName) {
+                      if (quickPlayActiveSession && quickPlayStudentName) {
                         setResuming(true);
                         pendingJoinRef.current = advance;
                         armJoinWatchdog();
@@ -934,7 +852,7 @@ export default function QuickPlayStudentView({
           can't figure out the name field can ping the projector. */}
       {quickPlayActiveSession && !fatalError && (
         <QuickPlayHelpButton
-          onAlertTeacher={QUICKPLAY_V2 ? () => quickPlaySocket.sendReaction('🙋') : undefined}
+          onAlertTeacher={() => quickPlaySocket.sendReaction('🙋')}
           onLeave={() => {
             cleanupSessionData();
             try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* storage unavailable */ }

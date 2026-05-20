@@ -35,7 +35,6 @@ import {
   STREAK_CELEBRATION_MILESTONES,
 } from "../constants/game";
 import {
-  enqueueQuickPlaySave,
   enqueueAssignmentSave,
 } from "../core/saveQueue";
 import {
@@ -84,9 +83,6 @@ export interface UseGameFinishParams {
 
   // ─── Quick Play context ─────────────────────────────────────────
   quickPlayActiveSession: QuickPlaySession | null;
-  /** True when the v2 socket-only Quick Play flow is active (no progress
-   *  table writes). Same flag App.tsx already reads from VITE_QUICKPLAY_V2. */
-  quickPlayV2: boolean;
   /** updateScore on the /quick-play socket. Wired through so the hook
    *  doesn't need to import the socket hook directly. */
   quickPlaySocketUpdateScore: (
@@ -151,7 +147,7 @@ export interface UseGameFinishParams {
 export function useGameFinish(params: UseGameFinishParams) {
   const {
     user, score, gameMode, gameWords, mistakes, wordAttemptBatch, activeAssignment,
-    quickPlayActiveSession, quickPlayV2, quickPlaySocketUpdateScore,
+    quickPlayActiveSession, quickPlaySocketUpdateScore,
     xp, setXp, streak, setStreak, badges, studentProgress, setStudentProgress,
     setIsSaving, setSaveError, setQuickPlayCompletedModes,
     retention, boosters,
@@ -231,75 +227,22 @@ export function useGameFinish(params: UseGameFinishParams) {
     setIsSaving(true);
     setSaveError(null);
 
-    // Quick Play (guest) mode - save progress with session UUID as identifier
+    // Quick Play (guest) mode: score lives on the /quick-play socket's
+    // in-memory leaderboard, not in the progress table.  Emit a final
+    // SCORE_UPDATE so the teacher sees the end-of-game total, update
+    // the completed-modes set, and skip the Supabase insert entirely.
     if (user.isGuest && quickPlayActiveSession) {
-      // v2 path: score lives on the /quick-play socket's in-memory
-      // leaderboard, not in the progress table. Emit a final
-      // SCORE_UPDATE so the teacher sees the end-of-game total,
-      // update the completed-modes set, and skip the Supabase insert.
-      if (quickPlayV2) {
-        // Tier B: signal PERFECT ROUND to the monitor when the student
-        // finished the mode without a single recorded mistake. The
-        // server clears this flag after one broadcast tick so the
-        // achievement toast fires exactly once.
-        quickPlaySocketUpdateScore(Math.max(0, finalScore), {
-          perfectRound: mistakes.length === 0 && gameWords.length > 0,
-          roundProgress: { done: gameWords.length, total: gameWords.length },
-        });
-        setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
-        setIsSaving(false);
-        return;
-      }
-      try {
-        // Use the actual Supabase auth UID (not the guest app UID) so RLS allows the insert
-        const { data: { session: authSession } } = await supabase.auth.getSession();
-        const authUid = authSession?.user?.id || user.uid;
-        const progress: Omit<ProgressData, "id"> = {
-          studentName: user.displayName,
-          studentUid: authUid,
-          assignmentId: quickPlayActiveSession.id, // Use session UUID as assignment ID
-          classCode: "QUICK_PLAY", // Special identifier for Quick Play
-          score: Math.max(0, finalScore),
-          mode: gameMode,
-          completedAt: new Date().toISOString(),
-          mistakes: mistakes,
-          avatar: user.avatar || "🦊"
-        };
-
-        // Optimistic save-and-queue.  Previously we awaited the INSERT
-        // and showed a red 'Couldn't save your score' toast on failure;
-        // on flaky classroom Wi-Fi that fired often and shook students'
-        // trust in the game.  Now we drop the row into a local retry
-        // queue and let the background flusher (installQuickPlayQueue-
-        // Flusher, wired on app mount) push it to Supabase whenever the
-        // network is cooperating.  Student sees the mode credited
-        // instantly; no error toast ever fires for them.  If the send
-        // really can't complete after 20 retries we give up silently —
-        // the alternative would be nagging about something they can't
-        // act on.
-        enqueueQuickPlaySave({
-          student_name: progress.studentName,
-          student_uid: progress.studentUid || authUid,
-          assignment_id: progress.assignmentId,
-          class_code: progress.classCode,
-          score: progress.score,
-          mode: progress.mode,
-          completed_at: progress.completedAt,
-          mistakes: Array.isArray(mistakes) ? mistakes : [],
-          avatar: progress.avatar || '🦊',
-        });
-        setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
-
-        setIsSaving(false);
-        return;
-      } catch (err) {
-        // Only reachable if localStorage itself is broken (private
-        // browsing, quota exhausted).  Don't surface — the UI has
-        // already credited the mode; a toast here would just confuse.
-        console.error('[Quick Play] enqueue failed:', err);
-        setIsSaving(false);
-        return;
-      }
+      // Tier B: signal PERFECT ROUND to the monitor when the student
+      // finished the mode without a single recorded mistake. The
+      // server clears this flag after one broadcast tick so the
+      // achievement toast fires exactly once.
+      quickPlaySocketUpdateScore(Math.max(0, finalScore), {
+        perfectRound: mistakes.length === 0 && gameWords.length > 0,
+        roundProgress: { done: gameWords.length, total: gameWords.length },
+      });
+      setQuickPlayCompletedModes(prev => new Set([...prev, gameMode]));
+      setIsSaving(false);
+      return;
     }
 
     // Regular assignment mode
