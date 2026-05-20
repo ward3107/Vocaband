@@ -37,6 +37,38 @@
   doing deep code-walks before the audit is finalized would have
   caught both at draft stage.
 
+- **2026-05-20 (deployment day):** When the operator ran `fly deploy`
+  to ship PR #833's CF-only ingress middleware, the deploy succeeded
+  but the middleware never enforced. Five rounds of debugging
+  revealed three compounding causes:
+
+  1. The operator's local clone was on branch
+     `claude/fillblank-sentences`, not `main` — so none of the four
+     merged PRs were in the deployed image.
+  2. `fly deploy` without `-c fly.toml` silently used Fly defaults
+     (internal_port=3000 instead of our 3002), which is reported as
+     `Validating --config path unset--` in the deploy output.
+  3. After fixing #2, the second deploy was a no-op for machine
+     config because the image SHA was unchanged and Fly skipped the
+     machine update step (output said `Cleared lease` not `update
+     succeeded`).
+
+  Resolved by `git checkout main && git pull && fly deploy
+  --strategy immediate --no-cache -c fly.toml --app vocaband`. Live
+  verification confirmed enforcement: `403 Forbidden` from direct
+  origin probe, `200 OK` from CF-fronted path.
+
+  **Lessons for future ops runbooks:**
+  - Document the explicit `-c fly.toml` flag in every Fly command
+    we publish; the silent default-fallback is a real footgun.
+  - Always tell the operator to verify `git branch --show-current`
+    before deploying.
+  - The `[cf-ingress] enforcement enabled` boot log is the canonical
+    success signal — make that the test, not the deploy output.
+  - When Fly's "no diff detected" optimisation skips the machine
+    update, `--strategy immediate` or `--no-cache` forces a fresh
+    rollout.
+
 ---
 
 ## 1. Methodology limits

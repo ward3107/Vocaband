@@ -20,9 +20,9 @@ that doc — go there for the matrix, come here for the attacker paths.
 | Service-role usage in code | GOOD — server-only; one anon-exposed endpoint (Quick Play session lookup) | Medium | MODERATE | HIGH |
 | Cross-tenant isolation | HARDENED — teacher A cannot see teacher B's class/assignment/progress | Low | INFO | HIGH |
 | Anonymous-user privilege | GOOD — anon JWT cannot submit progress (RLS INSERT requires class enrollment) | Low | LOW | HIGH |
-| Audit logging of authz failures | MODERATE — Sentry sees them, but no per-tenant authz dashboard | Medium | LOW | MEDIUM |
+| Audit logging of authz failures | HARDENED — `authz_failures` table + `log_authz_failure` RPC + admin dashboard at `?view=admin-security` (PR #834, migration applied 2026-05-20) | Low | INFO | HIGH |
 
-**Overall:** HARDENED (92/100). This is the strongest module in the
+**Overall:** HARDENED (94/100). This is the strongest module in the
 platform.
 
 ---

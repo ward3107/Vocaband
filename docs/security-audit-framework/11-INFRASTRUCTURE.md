@@ -22,8 +22,9 @@
 | DNS / domain hijack | NOT VERIFIED — registrar lock, 2FA | Medium | MODERATE | LOW |
 | Sentry usage (errorTracking.ts) | GOOD — server-side filtering of PII per `src/errorTracking.ts` | Low | LOW | MEDIUM |
 
-**Overall:** GOOD (80/100). Strong configured posture; ceiling is
-operator-side controls we can't audit from code.
+**Overall:** HARDENED (90/100). Fly CF-only ingress live in production
+2026-05-20 09:24 UTC. Ceiling is operator-side controls we can't audit
+from code (CF WAF rules, R2 lifecycle, registrar 2FA, etc.).
 
 ---
 
@@ -50,17 +51,26 @@ operator-side controls we can't audit from code.
 If `vocaband.fly.dev` is reachable directly, an attacker bypasses
 Cloudflare's WAF + rate limits + observability.
 
-**SHIPPED (2026-05-20):** application-level allowlist middleware.
-`server.ts:cloudflareOnlyIngress` checks `req.ip` against the
-canonical Cloudflare CIDR ranges (static fallback in
-`config/cloudflare-ips.ts`, runtime refresh every 24 h from
-`https://www.cloudflare.com/ips-v{4,6}`).  `/api/health` is exempt
-so Fly's internal probe still passes.  Mounted before helmet, the
-rate limiter, and the body parser so a rejected request costs us
-zero further cycles.
+**✅ CLOSED — live in production (2026-05-20 09:24 UTC).**
+Application-level allowlist middleware `server.ts:cloudflareOnlyIngress`
+checks `req.ip` against the canonical Cloudflare CIDR ranges (static
+fallback in `config/cloudflare-ips.ts`, runtime refresh every 24 h from
+`https://www.cloudflare.com/ips-v{4,6}`). `/api/health` is exempt so
+Fly's internal probe still passes. Mounted before helmet, the rate
+limiter, and the body parser so a rejected request costs us zero
+further cycles.
 
-Gated by `CLOUDFLARE_INGRESS_ONLY=1` so the feature can be enabled
-after a deploy without coupling the rollout to the code change.
+Enabled via `fly secrets set CLOUDFLARE_INGRESS_ONLY=1`. Live
+verification:
+
+```
+curl -i https://vocaband.fly.dev/api/translate     → HTTP/1.1 403 Forbidden
+curl -i https://www.vocaband.com/api/health         → HTTP/1.1 200 OK
+```
+
+CI workflow `Cloudflare IP-list freshness` warns on drift between
+the committed list and `cloudflare.com/ips-v4`. Quarterly manual
+review still warranted.
 
 ### B. Supabase Storage policy holes
 
@@ -120,7 +130,7 @@ quarterly rotation.
 |---|---|---|
 | Cloudflare WAF managed rules on | ❓ | operator verify |
 | CF Bot Fight Mode on | ❓ | operator verify |
-| Fly IP allowlist (CF only) | ✅ shipped; needs `fly secrets set CLOUDFLARE_INGRESS_ONLY=1` to enable | P1 |
+| Fly IP allowlist (CF only) | ✅ shipped + enforcing in production (verified 2026-05-20 09:26 UTC) | done |
 | Sentry PII scrubber on (server + client) | partial | confirm `beforeSend` strips emails |
 | R2 versioning + lifecycle | ❓ | operator verify |
 | Supabase 2FA on operator accounts | ❓ | operator verify |

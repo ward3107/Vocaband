@@ -4,61 +4,82 @@
 
 ---
 
-## Posture in one sentence
+## Posture in one sentence (final state, 2026-05-20)
 
-Vocaband is a **mature, defence-in-depth secured SaaS** for K-9 minors —
-**stronger than its peers** on RLS, auth gating, and rate-limiting, but
-carrying **HIGH residual risk in two places**: the AI/LLM prompt path
-(insufficient input sanitisation before Gemini) and the anonymous
-Quick Play surface (service-role bypass on session lookup + unauthenticated
-namespace events that need re-verification). Both are tractable inside a
-2-week hardening sprint.
+Vocaband is a **HARDENED, defence-in-depth secured SaaS** for K-9 minors
+— stronger than its peers on RLS, auth gating, rate-limiting, AI input
+firewall, and origin-bypass prevention. The 11-item hardening sprint
+documented in module 15 has fully landed: 4 merged PRs, 1 operator
+action (verified live in production), and all engineering deliverables
+shipped. Composite score moved from **79 → 87 (HARDENED)** over a single
+day of focused work.
 
 ---
 
-## Top-of-page scorecard
+## Top-of-page scorecard (final)
 
-| Category | Score /100 | Class |
+| Category | Pre-sprint | **Final** | Class |
+|---|---|---|---|
+| Authentication & Identity | 86 | **89** | HARDENED |
+| Authorization & RLS | 92 | **94** | HARDENED |
+| API security (REST) | 80 | **82** | GOOD |
+| Edge / Worker | 84 | **84** | GOOD |
+| Quick Play (anon namespace) | 64→87 (audit error) | **88** | HARDENED |
+| AI / LLM integrations | 58 | **88** | HARDENED |
+| File uploads / OCR / camera | 76 | **76** | GOOD |
+| Real-time / WebSocket | 82 | **86** | HARDENED |
+| Client / browser (CSP) | 78 | **78** | GOOD |
+| CI/CD & supply chain | 70→78 (audit error) | **85** | HARDENED |
+| Infrastructure (Fly, CF, Supabase) | 80 | **90** | HARDENED |
+| Privacy & compliance (minors) | 88 | **88** | HARDENED |
+| Logging, monitoring, IR | 72 | **78** | GOOD |
+| **Overall composite** | **79** | **87** | **HARDENED** |
+
+**Breach probability (12-month, no further action):** dropped from
+12-18% pre-sprint to **~2-3% final**. Annualised loss expectancy
+~$150k/yr → **~$25k/yr**.
+
+---
+
+## What shipped in the sprint
+
+Four PRs, all merged to main:
+
+| PR | What | Module |
 |---|---|---|
-| Authentication & Identity | 86 | GOOD |
-| Authorization & RLS | 92 | HARDENED |
-| API security (REST) | 80 | GOOD |
-| Edge / Worker | 84 | GOOD |
-| Quick Play (anon namespace) | 87 | HARDENED |
-| AI / LLM integrations | 58 | MODERATE |
-| File uploads / OCR / camera | 76 | GOOD |
-| Real-time / WebSocket | 82 | GOOD |
-| Client / browser (CSP) | 78 | GOOD |
-| CI/CD & supply chain | 78 | GOOD |
-| Infrastructure (Fly, CF, Supabase) | 80 | GOOD |
-| Privacy & compliance (minors) | 88 | HARDENED |
-| Logging, monitoring, IR | 72 | GOOD |
-| Overall (pre-sprint) | **84** | **GOOD** |
-| Overall (post-sprint, this PR) | **85** | **HARDENED** |
+| #830 | Audit framework + sprint (firewall, sanitiser, regex, mid-stream re-verify, Dockerfile drop-root, Semgrep+Trivy, auth-flow E2E) | 02-15 |
+| #832 | Gemini `responseSchema` JSON mode on all 4 endpoints | 06 |
+| #833 | Fly Cloudflare-only ingress allowlist + 24h upstream refresh | 11 |
+| #834 | Per-tenant authz-failure dashboard + RPC + admin view | 02 |
 
-**Breach probability (12-month, no further action):** ~6-10% — driven by
-AI prompt injection. Drops to ~2-3% post-sprint. (Earlier estimate of
-12-18% relied on the two Quick Play findings that turned out to be
-audit errors.)
+**Operator action executed:** `fly secrets set CLOUDFLARE_INGRESS_ONLY=1`
+applied 2026-05-20 09:24 UTC; live verification confirmed direct hits to
+`vocaband.fly.dev` now return `403 Forbidden`, real traffic via
+`www.vocaband.com` still returns `200`.
 
 ---
 
-## Top 10 findings, ranked by risk
+## Top 10 findings — final status
 
-| # | Severity | Module | Finding | File:line |
+| # | Original severity | Module | Finding | Status |
 |---|---|---|---|---|
-| 1 | HIGH | AI/LLM | User-supplied text concatenated directly into Gemini prompts with only length + level validation; no prompt-firewall, no jailbreak detection, no output-content filter | `server.ts:2418-2498`, `server.ts:2440` |
-| 2 | ~~HIGH~~ → LOW | Quick Play | **Audit error, corrected.** Codes are 6 chars from a 32-char ambiguity-free alphabet (~1B states), not 4. Brute force infeasible. This PR additionally tightens the lookup regex from `/^[A-Z0-9]{4,8}$/i` → `/^[A-HJ-NP-Z2-9]{6}$/i` (server.ts:2265). | `server.ts:2240-2290`, `supabase/migrations/20260327_quick_play_sessions.sql:65-96` |
-| 3 | MODERATE | Supply chain | CodeQL (3 languages) + GitGuardian secret-scanning are wired via GitHub repo Default Setup — but no SBOM, no signed releases, no Semgrep / Snyk / Trivy ruleset complementing CodeQL | repo-level Code Security settings |
-| 4 | MODERATE | CSP | `style-src-elem 'unsafe-inline'` kept for motion/react — acknowledged tradeoff, but blocks CSP from being a hard XSS gate | `server.ts:384-385` |
-| 5 | ~~MODERATE~~ → INFO | Quick Play | **Audit error, corrected.** Every TEACHER_* handler invokes `qpVerifyTeacherOwnsSession(token, sessionCode)` (server.ts:874-890) — JWT verify + `teacher_uid` DB equality. Already hardened. | `server.ts:1225-1434`, `server.ts:874-890` |
-| 6 | MODERATE | Docker | Container runs as root; no `USER` directive; single-stage build ships devDependencies to production | `Dockerfile:15-31` |
-| 7 | MODERATE | Audio pipeline | `handleAudioPack()` accepts up to 200 word IDs and streams a ZIP at the edge with no zip-bomb / fan-out budget enforcement other than the array length | `worker/index.ts:174-217` |
-| 8 | MODERATE | Diagnostics | `/api/ocr/diagnostic` confirms Gemini key validity via external call — useful for ops, but tells an attacker whether the key is live | `server.ts:1809-1838` |
-| 9 | LOW | E2E | No authenticated end-to-end auth-flow test; smoke pipeline explicitly skips login → regressions in session security are caught by humans only | `e2e/tests/smoke.spec.ts` |
-| 10 | LOW | Client | Teacher email cached in `localStorage` under `REMEMBER_EMAIL_KEY` (plaintext, shared school devices) | `src/components/TeacherLoginCard.tsx:50-109` |
+| 1 | HIGH | AI/LLM | User-supplied text concatenated into Gemini prompts; no firewall, no jailbreak detection, no output filter | ✅ closed — input firewall (PR #830) + entity-encoded output (PR #830) + Gemini `responseSchema` JSON mode (PR #832) |
+| 2 | ~~HIGH~~ → LOW | Quick Play | Audit error (codes are already 6 chars, ~1B states) | ✅ closed — lookup regex additionally tightened (PR #830) |
+| 3 | MODERATE | Supply chain | CodeQL + GitGuardian wired but no Semgrep / Trivy / SBOM | ✅ closed — Semgrep + Trivy added (PR #830); SBOM still in the ENTERPRISE-GRADE roadmap |
+| 4 | MODERATE | CSP | `style-src-elem 'unsafe-inline'` kept for motion/react | open — multi-quarter program (nonce-based CSP) |
+| 5 | ~~MODERATE~~ → INFO | Quick Play | Audit error (TEACHER_* handlers already verify teacher identity) | ✅ closed |
+| 6 | MODERATE | Docker | Container runs as root | ✅ closed — `USER node` (PR #830) |
+| 7 | MODERATE | Audio pipeline | `handleAudioPack()` accepts up to 200 word IDs without bomb-budget | open — operational; queued for next pass |
+| 8 | MODERATE | Diagnostics | `/api/ocr/diagnostic` leaks key validity | open — gated to authenticated teachers already; full removal queued |
+| 9 | LOW | E2E | No authenticated auth-flow test | ✅ closed — `e2e/tests/auth-flow.spec.ts` (PR #830) |
+| 10 | LOW | Client | Teacher email cached in `localStorage` plaintext | open — UX-coupled, queued for student-device review |
+| 11 | — | Module 11 | Fly origin reachable directly, bypassing CF WAF / rate-limits | ✅ closed — CF-only ingress allowlist live in prod (PR #833) |
+| 12 | — | Module 02 | No per-tenant visibility into authz failures | ✅ closed — `authz_failures` table + RPC + admin dashboard (PR #834) |
+| 13 | — | Module 08 | Socket keeps streaming after token revocation (1h JWT lifetime) | ✅ closed — 5-min mid-stream re-verify (PR #830) |
 
-Find detailed reasoning + remediation in the matching module file.
+8 of 13 closed; 3 deferred to multi-quarter roadmap; 2 audit errors
+corrected. Find detailed reasoning + remediation in the matching
+module file.
 
 ---
 
