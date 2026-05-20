@@ -97,11 +97,6 @@ import { buildEmitScoreUpdate } from "./handlers/emitScoreUpdate";
 import { navigateToTeacherLogin, navigateToStudentLogin } from "./handlers/landingNav";
 import { buildCleanupSessionData, buildCleanupQuickPlayGuest } from "./handlers/sessionCleanups";
 
-// Match the flag used in QuickPlayStudentView + QuickPlayMonitor. When
-// on, Quick Play runs entirely over the /quick-play socket namespace —
-// no Supabase anon auth, no progress-table writes during a session.
-const QUICKPLAY_V2 = import.meta.env.VITE_QUICKPLAY_V2 === "true";
-
 type ConfirmDialog = { show: boolean; message: string; onConfirm: () => void };
 
 export default function App() {
@@ -380,19 +375,14 @@ export default function App() {
   const [showModeSelection, setShowModeSelection] = useState(true);
 
   // Quick Play Supabase Realtime plumbing — teacher monitor progress
-  // stream + legacy v1 session-end / kick watchers.  v2 sessions use
-  // useQuickPlaySocket for kick/end instead; the hook no-ops that path
-  // when quickPlayV2 is true.
+  // stream.  Student-side kick / session-end events arrive over the
+  // /quick-play socket.io namespace via useQuickPlaySocket instead.
   useQuickPlayRealtime({
     view,
     user,
     quickPlayActiveSession,
-    quickPlayV2: QUICKPLAY_V2,
     setQuickPlayJoinedStudents,
     setQuickPlayRealtimeStatus,
-    setQuickPlaySessionEnded,
-    setQuickPlayKicked,
-    setActiveAssignment,
   });
 
   // Handle Quick Play session from URL parameter — extracted to a
@@ -575,18 +565,18 @@ export default function App() {
   // logout / session-end paths.  See handlers/sessionCleanups.
   const cleanupSessionData = buildCleanupSessionData(clearSaveQueue, feedbackTimeoutRef);
 
-  // Quick Play v2 socket — only active when the flag is on + a session
-  // is live. Forwards in-game score changes to the teacher's monitor.
+  // Quick Play socket — active whenever a session is live.  Forwards
+  // in-game score changes to the teacher's monitor.
   const quickPlaySocket = useQuickPlaySocket({
     sessionCode: quickPlayActiveSession?.sessionCode ?? null,
-    enabled: QUICKPLAY_V2,
+    enabled: true,
   });
 
-  // Translate v2 KICKED / SESSION_ENDED events into the existing UI
+  // Translate KICKED / SESSION_ENDED events into the existing UI
   // state.  Hook guards on isGuest so the teacher ending the session
   // doesn't land on the student exit screen.
   useQuickPlayEvents({
-    enabled: QUICKPLAY_V2,
+    enabled: true,
     isGuest: user?.isGuest ?? false,
     onKicked: quickPlaySocket.onKicked,
     onSessionEnded: quickPlaySocket.onSessionEnded,
@@ -595,11 +585,10 @@ export default function App() {
   });
 
   // Throttled Socket.IO score emit — routes to the live-challenge `/`
-  // namespace or the Quick Play v2 `/quick-play` namespace depending
-  // on context. See handlers/emitScoreUpdate.
+  // namespace or the Quick Play `/quick-play` namespace depending on
+  // context. See handlers/emitScoreUpdate.
   const emitScoreUpdate = buildEmitScoreUpdate({
     user, socket, isFinished,
-    quickPlayV2: QUICKPLAY_V2,
     quickPlayActiveSession,
     qpCumulativeScoreRef, lastScoreEmitRef,
     quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
@@ -842,7 +831,6 @@ export default function App() {
     user,
     score, gameMode, gameWords, mistakes, wordAttemptBatch, activeAssignment,
     quickPlayActiveSession,
-    quickPlayV2: QUICKPLAY_V2,
     // On mode-finish: accumulate this mode's finalScore into the
     // Accumulate mode score into the session-wide cumulative BEFORE
     // emitting, so the QP socket sees a monotonically-increasing
@@ -1029,7 +1017,6 @@ export default function App() {
     view, user, activeAssignment,
     quickPlayActiveSession, qpCumulativeScoreRef,
     quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
-    quickPlayV2Enabled: QUICKPLAY_V2,
     setActiveVoca, setShowModeSelection, setView,
   });
   if (hebrewRoute) return hebrewRoute;
@@ -1130,7 +1117,7 @@ export default function App() {
   const teacherLiveScreen = renderTeacherLiveScreens({
     view, user, selectedClass, setView, setIsLiveChallenge,
     leaderboard, socketConnected,
-    quickPlayActiveSession, quickPlayJoinedStudents, setQuickPlayJoinedStudents,
+    quickPlayActiveSession, setQuickPlayJoinedStudents,
     setQuickPlayActiveSession, setQuickPlaySelectedWords, setQuickPlaySessionCode,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
     cleanupSessionData, showToast, quickPlayRealtimeStatus,
@@ -1177,8 +1164,7 @@ export default function App() {
   // Once the student is actually answering questions, the prompt
   // sits high on the screen with comfortable space underneath, so
   // the bar can dock at the bottom without colliding.
-  const showQpReactionBar = QUICKPLAY_V2
-    && !!quickPlayActiveSession
+  const showQpReactionBar = !!quickPlayActiveSession
     && view === "game"
     && !isFinished
     && !showModeSelection
@@ -1219,7 +1205,7 @@ export default function App() {
       {showQpReactionBar && <QpReactionBar sendReaction={quickPlaySocket.sendReaction} />}
       {showQpHelpButton && (
         <QuickPlayHelpButton
-          onAlertTeacher={QUICKPLAY_V2 ? () => quickPlaySocket.sendReaction('🙋') : undefined}
+          onAlertTeacher={() => quickPlaySocket.sendReaction('🙋')}
           onLeave={() => {
             cleanupQuickPlayGuest();
             setView('public-landing');

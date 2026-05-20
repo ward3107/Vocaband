@@ -1,23 +1,15 @@
 /**
  * useQuickPlayRealtime — Supabase Realtime plumbing for the Quick Play
- * live teacher monitor + legacy (v1) student session/kick watchers.
+ * live teacher monitor.
  *
- * Extracted from App.tsx (~155 lines) so the orchestrator doesn't own
- * two postgres_changes subscriptions + the aggregation helper.
+ * Subscribes to `progress` INSERTs for the active session, hydrates the
+ * joined-students leaderboard via `aggregateProgress`, and manages a
+ * polling fallback that only runs while Realtime is NOT delivering
+ * events.  Visibility change listener re-fetches when the tab comes
+ * back into focus.
  *
- * Two effects:
- *
- *  1. Teacher monitor — subscribes to `progress` INSERTs for the active
- *     session, hydrates the joined-students leaderboard via
- *     `aggregateProgress`, and manages a polling fallback that only
- *     runs while Realtime is NOT delivering events.  Visibility change
- *     listener re-fetches when the tab comes back into focus.
- *
- *  2. Student session/kick watcher — legacy v1 only (skipped when
- *     VITE_QUICKPLAY_V2 is enabled).  One channel with two listeners:
- *     session UPDATE to detect teacher-end, and progress DELETE to
- *     detect student-kick.  v2 replaces this path with the native
- *     SESSION_ENDED / KICKED socket events in useQuickPlaySocket.
+ * Student-side session/kick events are delivered over the /quick-play
+ * socket.io namespace via useQuickPlaySocket (see QuickPlayStudentView).
  *
  * The `aggregateProgress` helper is now a pure top-level function — it
  * was wrapped in useCallback inside the component solely because it was
@@ -26,7 +18,7 @@
  */
 import { useEffect } from 'react';
 import { supabase } from '../core/supabase';
-import type { AppUser, AssignmentData } from '../core/supabase';
+import type { AppUser } from '../core/supabase';
 import type { View } from '../core/views';
 
 export interface QpJoinedStudent {
@@ -138,12 +130,8 @@ export interface UseQuickPlayRealtimeParams {
   view: View;
   user: AppUser | null;
   quickPlayActiveSession: QpActiveSession | null;
-  quickPlayV2: boolean;
   setQuickPlayJoinedStudents: React.Dispatch<React.SetStateAction<QpJoinedStudent[]>>;
   setQuickPlayRealtimeStatus: React.Dispatch<React.SetStateAction<QpRealtimeStatus>>;
-  setQuickPlaySessionEnded: React.Dispatch<React.SetStateAction<boolean>>;
-  setQuickPlayKicked: React.Dispatch<React.SetStateAction<boolean>>;
-  setActiveAssignment: (a: AssignmentData | null) => void;
 }
 
 export function useQuickPlayRealtime(params: UseQuickPlayRealtimeParams): void {
@@ -151,12 +139,8 @@ export function useQuickPlayRealtime(params: UseQuickPlayRealtimeParams): void {
     view,
     user,
     quickPlayActiveSession,
-    quickPlayV2,
     setQuickPlayJoinedStudents,
     setQuickPlayRealtimeStatus,
-    setQuickPlaySessionEnded,
-    setQuickPlayKicked,
-    setActiveAssignment,
   } = params;
 
   // ─── Teacher monitor: progress-table Realtime + polling fallback ───
@@ -258,60 +242,9 @@ export function useQuickPlayRealtime(params: UseQuickPlayRealtimeParams): void {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, quickPlayActiveSession?.id, user?.uid]);
 
-  // ─── Student session/kick watcher (legacy v1 only) ─────────────────
-  useEffect(() => {
-    if (!user?.isGuest || !quickPlayActiveSession?.sessionCode) return;
-    // v2 routes session-end + kick over the /quick-play socket.io
-    // namespace. Subscribing to the progress-table DELETE stream here
-    // under v2 was the root cause of the "everyone else joining kicks
-    // the two who logged in" bug — any DELETE event (including the
-    // teacher's own kick cleanup) was treated as "you were kicked".
-    // Under v2 we skip this subscription entirely; v2-native KICKED
-    // and SESSION_ENDED events are handled via useQuickPlaySocket in
-    // QuickPlayStudentView.
-    if (quickPlayV2) return;
-
-    const sessionCode = quickPlayActiveSession.sessionCode;
-    const sessionId = quickPlayActiveSession.id;
-    const uid = user.uid;
-
-    const channel = supabase
-      .channel(`qp-student-${sessionCode}-${uid}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'quick_play_sessions',
-          filter: `session_code=eq.${sessionCode}`,
-        },
-        (payload) => {
-          if (payload.new && !(payload.new as { is_active?: boolean }).is_active) {
-            setQuickPlaySessionEnded(true);
-            setActiveAssignment(null);
-          }
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'progress',
-          filter: `assignment_id=eq.${sessionId}`,
-        },
-        (payload) => {
-          if (payload.old && (payload.old as { student_uid?: string }).student_uid === uid) {
-            setQuickPlayKicked(true);
-            setActiveAssignment(null);
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.isGuest, user?.uid, quickPlayActiveSession?.sessionCode, quickPlayActiveSession?.id, quickPlayV2]);
+  // Student session/kick events are delivered over the /quick-play
+  // socket.io namespace via useQuickPlaySocket (see QuickPlayStudentView).
+  // The previous progress-table DELETE listener was removed because
+  // Supabase DELETE payloads omit student_uid without REPLICA IDENTITY
+  // FULL, so kick events fanned out to every student in the session.
 }

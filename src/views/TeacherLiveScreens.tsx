@@ -53,7 +53,6 @@ export interface RenderTeacherLiveScreensDeps {
 
   // Quick Play monitor deps
   quickPlayActiveSession: { id: string; sessionCode: string; wordIds: number[]; words: Word[] } | null;
-  quickPlayJoinedStudents: { name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string }[];
   setQuickPlayJoinedStudents: React.Dispatch<React.SetStateAction<{ name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string }[]>>;
   setQuickPlayActiveSession: React.Dispatch<
     React.SetStateAction<{
@@ -79,7 +78,7 @@ export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): Re
   const {
     view, user, selectedClass, setView, setIsLiveChallenge,
     leaderboard, socketConnected,
-    quickPlayActiveSession, quickPlayJoinedStudents, setQuickPlayJoinedStudents,
+    quickPlayActiveSession, setQuickPlayJoinedStudents,
     setQuickPlayActiveSession, setQuickPlaySelectedWords, setQuickPlaySessionCode,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
     cleanupSessionData, showToast, quickPlayRealtimeStatus,
@@ -134,7 +133,6 @@ export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): Re
       >
         <QuickPlayTeacherMonitorView
           quickPlayActiveSession={quickPlayActiveSession}
-          quickPlayJoinedStudents={quickPlayJoinedStudents}
           setQuickPlayJoinedStudents={setQuickPlayJoinedStudents}
           setView={setView}
           setQuickPlayActiveSession={setQuickPlayActiveSession}

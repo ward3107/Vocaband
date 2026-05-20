@@ -9,7 +9,6 @@ type Params = {
   user: AppUser | null;
   socket: Socket | null;
   isFinished: boolean;
-  quickPlayV2: boolean;
   quickPlayActiveSession: QuickPlaySession;
   qpCumulativeScoreRef: MutableRefObject<number>;
   lastScoreEmitRef: MutableRefObject<number>;
@@ -36,7 +35,7 @@ export type QpScoreExtras = {
  * Throttled Socket.IO score emit. Routes to the right transport
  * depending on context:
  *   * classroom live challenge — existing `/` namespace, needs classCode
- *   * Quick Play v2 guest game — new `/quick-play` namespace, no auth
+ *   * Quick Play guest game — `/quick-play` namespace, no auth
  */
 export function buildEmitScoreUpdate(p: Params) {
   return (newScore: number, extras?: QpScoreExtras) => {
@@ -50,7 +49,7 @@ export function buildEmitScoreUpdate(p: Params) {
     if (!shouldEmit) return;
     p.lastScoreEmitRef.current = now;
 
-    if (p.quickPlayV2 && p.quickPlayActiveSession) {
+    if (p.quickPlayActiveSession) {
       // Add the per-mode score on top of the cumulative running total
       // for previously-completed modes in this session. Without this,
       // each new mode would emit a small per-mode value and the server
