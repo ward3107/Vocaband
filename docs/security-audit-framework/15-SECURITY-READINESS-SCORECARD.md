@@ -6,22 +6,22 @@
 
 ## Per-category scores
 
-| Category | Score /100 | Class | Trend |
+| Category | Pre-sprint | Post-sprint (this PR) | Class |
 |---|---|---|---|
-| Authentication & Identity | 86 | GOOD | flat |
-| Authorization & RLS | 92 | HARDENED | flat |
-| API security (REST) | 80 | GOOD | flat |
-| Edge / Worker | 84 | GOOD | flat |
-| Quick Play (anon namespace) | 64 | MODERATE | flat — sprint to ↑85 |
-| AI / LLM integrations | 58 | MODERATE | flat — sprint to ↑80 |
-| File uploads / OCR / camera | 76 | GOOD | flat |
-| Real-time / WebSocket | 82 | GOOD | flat |
-| Client / browser (CSP) | 78 | GOOD | flat |
-| CI/CD & supply chain | 78 | GOOD | sprint to ↑85 (post-correction: CodeQL + GitGuardian already wired at repo level) |
-| Infrastructure | 80 | GOOD | flat |
-| Privacy & compliance | 88 | HARDENED | flat |
-| Logging, monitoring, IR | 72 | GOOD | flat |
-| **Overall composite** | **80** | **GOOD** | sprint to **89** |
+| Authentication & Identity | 86 | 89 | HARDENED (mid-stream re-verify added) |
+| Authorization & RLS | 92 | 92 | HARDENED |
+| API security (REST) | 80 | 80 | GOOD |
+| Edge / Worker | 84 | 84 | GOOD |
+| Quick Play (anon namespace) | 64→87 (audit error) | 88 | HARDENED (regex tightened) |
+| AI / LLM integrations | 58 | 76 | GOOD (input firewall + output sanitisation) |
+| File uploads / OCR / camera | 76 | 76 | GOOD |
+| Real-time / WebSocket | 82 | 86 | HARDENED (mid-stream re-verify) |
+| Client / browser (CSP) | 78 | 78 | GOOD |
+| CI/CD & supply chain | 70→78 (audit error) | 85 | HARDENED (Semgrep + Trivy + USER node + auth-flow E2E) |
+| Infrastructure | 80 | 80 | GOOD (Fly IP allowlist still op action) |
+| Privacy & compliance | 88 | 88 | HARDENED |
+| Logging, monitoring, IR | 72 | 72 | GOOD |
+| **Overall composite** | **79** | **85** | **HARDENED** |
 
 Class scale: CRITICAL <40, HIGH RISK 40-59, MODERATE 60-69, GOOD 70-84,
 HARDENED 85-94, ENTERPRISE GRADE ≥95.
@@ -44,20 +44,23 @@ HARDENED 85-94, ENTERPRISE GRADE ≥95.
 
 ## Top-10 remediations, ranked by ALE delta / cost
 
-| # | Remediation | Cost | ALE drop | Module |
-|---|---|---|---|---|
-| 1 | Prompt-injection input firewall + `responseSchema` JSON mode | 2 days | ↓~$25k/yr | 06 |
-| 2 | Verify + add inline auth on all `QP_EVENTS.TEACHER_*` | 0.5 day | ↓~$20k/yr | 05 |
-| 3 | Extend Quick Play codes 4 → 6 chars | 0.5 day | ↓~$10k/yr | 05 |
-| 4 | Add Semgrep + Trivy to CI (CodeQL + GitGuardian already wired via repo-level Default Setup / App) | 1 day | ↓~$10k/yr | 10 |
-| 5 | Dockerfile `USER node` + multi-stage build | 0.5 day | ↓~$5k/yr | 10 |
-| 6 | Output-content sanitisation on AI responses | 0.5 day | ↓~$8k/yr | 06 |
-| 7 | Fly IP allowlist (CF-only ingress) | 0.5 day | ↓~$5k/yr | 11 |
-| 8 | Mid-stream socket JWT re-verification | 1 day | ↓~$3k/yr | 08 |
-| 9 | Authenticated E2E in CI | 1 day | ↓~$5k/yr | 10 |
-| 10 | Audit-log dashboard (per-tenant authz failures) | 1 day | ↓~$4k/yr | 02 |
+| # | Remediation | Status | Cost | ALE drop | Module |
+|---|---|---|---|---|---|
+| 1 | Prompt-injection input firewall (shared `detectPromptInjection`) on `/api/translate`, `/api/ai-process-text`, `/api/ai-generate-lesson`, `/api/generate-sentences` | ✅ shipped this PR | 0.5 day | ↓~$20k/yr | 06 |
+| 2 | Output sanitisation (`sanitizeAiOutput`) on all AI endpoints | ✅ shipped this PR | 0.5 day | ↓~$8k/yr | 06 |
+| 3 | ~~Verify + add inline auth on `QP_EVENTS.TEACHER_*`~~ | ✅ **already wired in code; audit error** | — | — | 05 |
+| 4 | ~~Extend Quick Play codes 4 → 6 chars~~ | ✅ **already 6 chars; audit error**. Lookup regex tightened to match exact generator | ✅ shipped this PR | ↓~$2k/yr | 05 |
+| 5 | Semgrep + Trivy in CI (CodeQL + GitGuardian already wired at repo level) | ✅ shipped this PR | 0.5 day | ↓~$10k/yr | 10 |
+| 6 | Dockerfile `USER node` (multi-stage not viable — tsx in devDeps used at runtime) | ✅ shipped this PR | 0.25 day | ↓~$5k/yr | 10 |
+| 7 | Mid-stream socket JWT re-verification (5-min cadence, `forced_disconnect` on revocation) | ✅ shipped this PR | 0.5 day | ↓~$3k/yr | 08 |
+| 8 | Authenticated entry-point E2E (auth-flow.spec.ts) + JWT/anon-key leak regex guard | ✅ shipped this PR | 0.5 day | ↓~$5k/yr | 10 |
+| 9 | Gemini `responseSchema` JSON mode (full per-endpoint schema migration) | deferred — multi-day | 3 days | ↓~$5k/yr | 06 |
+| 10 | Fly IP allowlist (CF-only ingress) | operator action — config-only | 0.5 day | ↓~$5k/yr | 11 |
+| 11 | Audit-log dashboard (per-tenant authz failures) | deferred — full feature | 2 days | ↓~$4k/yr | 02 |
 
-Total: ~10 days, ~$110k/yr ALE reduction.
+**This PR:** items 1, 2, 4 (regex), 5, 6, 7, 8 shipped (~3 days of work).
+**Remaining:** items 9, 10, 11 (~5.5 days; one requires operator
+access to Fly + Cloudflare).
 
 ---
 

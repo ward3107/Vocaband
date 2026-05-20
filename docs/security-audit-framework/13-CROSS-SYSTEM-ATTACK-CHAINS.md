@@ -56,23 +56,24 @@ Chain becomes infeasible: input firewall + CSP `report-uri` + Gemini
 
 ---
 
-## Chain 2: Quick Play code sweep → teacher event impersonation
+## Chain 2: Quick Play code sweep → teacher event impersonation — **NOT VIABLE**
 
 ### Objective
-Take over an active classroom Quick Play session: kick the real
-teacher's view offline, manipulate scores.
+Take over an active classroom Quick Play session.
 
-### Primitives chained
-1. **Code sweep** (module 05) — 1.68M 4-char codes; ~30min on a 100-
-   node residential botnet.
-2. **Find an active session** — receive 200 from `/api/quick-play/session/:code`.
-3. **Connect socket on `/quick-play` namespace** (no auth).
-4. **Emit `QP_EVENTS.TEACHER_END`** — if the handler doesn't re-verify
-   teacher identity (FLAGGED as residual risk), the session terminates.
-5. **Repeat across active sessions** in real time.
+### Why the chain falls apart
+1. **Code space is ~1.07B**, not 1.68M (6 chars × 32-char alphabet) —
+   sweep infeasible.
+2. **Lookup regex tightened** in this PR to `/^[A-HJ-NP-Z2-9]{6}$/i` —
+   matching exactly the generator, dropping malformed probes at the edge.
+3. **Every `QP_EVENTS.TEACHER_*` handler verifies the caller** via
+   `qpVerifyTeacherOwnsSession(token, sessionCode)` — JWT verify +
+   `teacher_uid` DB equality. A socket without a teacher JWT for that
+   session cannot mutate it.
 
 ### Likelihood
-**MODERATE** if step 4 isn't verified; **LOW** if it is.
+**NEGLIGIBLE.** The first-draft audit assumed 4-char codes and an
+unverified teacher-event surface; both assumptions were wrong.
 
 ### Detection points
 - Sweep: 95% 404 rate on `/api/quick-play/session/:code` → P1 alert.

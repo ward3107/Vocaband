@@ -121,3 +121,31 @@ jobs:
             echo "## Bundle size" >> $GITHUB_STEP_SUMMARY
             du -sh dist/assets/*.js | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
           fi
+
+      # Complementary SAST — CodeQL (Default Setup) covers most patterns,
+      # but Semgrep's curated security-audit ruleset catches different
+      # classes (express-misconfig, jwt-misuse, supabase patterns).
+      # Warning-only on PRs; aggregates as a step summary so reviewers
+      # can scan findings without blocking merges on noisy rulesets.
+      - name: Semgrep SAST
+        if: always()
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/security-audit p/typescript p/javascript p/owasp-top-ten
+          generateSarif: false
+        continue-on-error: true
+
+      # Filesystem CVE scan against the lockfile + Dockerfile.  Trivy
+      # complements npm audit (image-layer + IaC checks vs. dep-only).
+      # Severity gated to HIGH/CRITICAL to match the npm audit threshold.
+      # Warning-only so a CVE in a transitive without a fix available
+      # doesn't permanently block the pipeline.
+      - name: Trivy filesystem scan
+        if: always()
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          exit-code: '0'

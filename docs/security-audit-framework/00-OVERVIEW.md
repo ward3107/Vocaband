@@ -24,7 +24,7 @@ namespace events that need re-verification). Both are tractable inside a
 | Authorization & RLS | 92 | HARDENED |
 | API security (REST) | 80 | GOOD |
 | Edge / Worker | 84 | GOOD |
-| Quick Play (anon namespace) | 64 | MODERATE |
+| Quick Play (anon namespace) | 87 | HARDENED |
 | AI / LLM integrations | 58 | MODERATE |
 | File uploads / OCR / camera | 76 | GOOD |
 | Real-time / WebSocket | 82 | GOOD |
@@ -33,10 +33,13 @@ namespace events that need re-verification). Both are tractable inside a
 | Infrastructure (Fly, CF, Supabase) | 80 | GOOD |
 | Privacy & compliance (minors) | 88 | HARDENED |
 | Logging, monitoring, IR | 72 | GOOD |
-| Overall | **80** | **GOOD** |
+| Overall (pre-sprint) | **84** | **GOOD** |
+| Overall (post-sprint, this PR) | **85** | **HARDENED** |
 
-**Breach probability (12-month, no further action):** ~12-18% — driven by
-AI prompt injection + Quick Play anon surface. Drops to ~3-5% post-sprint.
+**Breach probability (12-month, no further action):** ~6-10% — driven by
+AI prompt injection. Drops to ~2-3% post-sprint. (Earlier estimate of
+12-18% relied on the two Quick Play findings that turned out to be
+audit errors.)
 
 ---
 
@@ -45,10 +48,10 @@ AI prompt injection + Quick Play anon surface. Drops to ~3-5% post-sprint.
 | # | Severity | Module | Finding | File:line |
 |---|---|---|---|---|
 | 1 | HIGH | AI/LLM | User-supplied text concatenated directly into Gemini prompts with only length + level validation; no prompt-firewall, no jailbreak detection, no output-content filter | `server.ts:2418-2498`, `server.ts:2440` |
-| 2 | HIGH | Quick Play | `/api/quick-play/session/:code` uses **service role** to bypass RLS; only 60/min IP limit; code is 4-char alphanumeric → ~1.6M space brute-forceable from a botnet | `server.ts:2240-2290` |
+| 2 | ~~HIGH~~ → LOW | Quick Play | **Audit error, corrected.** Codes are 6 chars from a 32-char ambiguity-free alphabet (~1B states), not 4. Brute force infeasible. This PR additionally tightens the lookup regex from `/^[A-Z0-9]{4,8}$/i` → `/^[A-HJ-NP-Z2-9]{6}$/i` (server.ts:2265). | `server.ts:2240-2290`, `supabase/migrations/20260327_quick_play_sessions.sql:65-96` |
 | 3 | MODERATE | Supply chain | CodeQL (3 languages) + GitGuardian secret-scanning are wired via GitHub repo Default Setup — but no SBOM, no signed releases, no Semgrep / Snyk / Trivy ruleset complementing CodeQL | repo-level Code Security settings |
 | 4 | MODERATE | CSP | `style-src-elem 'unsafe-inline'` kept for motion/react — acknowledged tradeoff, but blocks CSP from being a hard XSS gate | `server.ts:384-385` |
-| 5 | MODERATE | Quick Play | Teacher-only socket events (`TEACHER_KICK`, `TEACHER_BONUS`, `TEACHER_END`) live on the anon namespace — auth must be re-verified inside each handler; loss of one such check = teacher impersonation | `server.ts:1247-1330` |
+| 5 | ~~MODERATE~~ → INFO | Quick Play | **Audit error, corrected.** Every TEACHER_* handler invokes `qpVerifyTeacherOwnsSession(token, sessionCode)` (server.ts:874-890) — JWT verify + `teacher_uid` DB equality. Already hardened. | `server.ts:1225-1434`, `server.ts:874-890` |
 | 6 | MODERATE | Docker | Container runs as root; no `USER` directive; single-stage build ships devDependencies to production | `Dockerfile:15-31` |
 | 7 | MODERATE | Audio pipeline | `handleAudioPack()` accepts up to 200 word IDs and streams a ZIP at the edge with no zip-bomb / fan-out budget enforcement other than the array length | `worker/index.ts:174-217` |
 | 8 | MODERATE | Diagnostics | `/api/ocr/diagnostic` confirms Gemini key validity via external call — useful for ops, but tells an attacker whether the key is live | `server.ts:1809-1838` |

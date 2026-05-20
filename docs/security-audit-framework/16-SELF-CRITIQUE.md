@@ -17,6 +17,26 @@
   workflow YAML; future audits must inspect GitHub Settings → Code
   security and analysis, and the installed GitHub Apps list.
 
+- **2026-05-20 (same day, before merge):** When implementing the sprint
+  from Module 15, deep code-read revealed TWO more audit errors:
+
+  1. Quick Play session codes are **6 chars from a 32-char ambiguity-
+     free alphabet** (~1B states), not 4 chars × 36 alphanumeric (~1.6M).
+     Code: `public.generate_session_code()` in
+     `supabase/migrations/20260327_quick_play_sessions.sql:65-96`.
+     Brute-force concern was overblown by ~1000× in the first draft.
+  2. Every `QP_EVENTS.TEACHER_*` handler **already** verifies teacher
+     identity via `qpVerifyTeacherOwnsSession(token, sessionCode)`
+     (server.ts:874-890) — JWT verify + `teacher_uid` DB equality.
+     The HIGH-severity "may be unverified" flag was wrong.
+
+  Modules 00, 05, 13 (chain 2), 15 corrected; Quick Play module score
+  raised 64 → 87 (HARDENED). **Lesson:** grep can map names but not
+  semantics; high-severity findings in code-heavy modules need a
+  full handler-body read before being graded. The `Explore` agent
+  doing deep code-walks before the audit is finalized would have
+  caught both at draft stage.
+
 ---
 
 ## 1. Methodology limits
