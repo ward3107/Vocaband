@@ -24,7 +24,10 @@ export default function DeleteAssignmentModal({ modal, onCancel, onConfirm }: De
             style={{ backgroundColor: 'var(--vb-surface)' }}
             className="rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
           >
-            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: 'var(--vb-danger-soft)', color: 'var(--vb-danger)' }}
+            >
               <AlertTriangle size={32} />
             </div>
             <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
@@ -33,7 +36,14 @@ export default function DeleteAssignmentModal({ modal, onCancel, onConfirm }: De
             <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
               {t.delAssignBody(modal.title)}
             </p>
-            <p className="text-amber-600 bg-amber-50 px-4 py-3 rounded-xl mb-6 font-medium border-2 border-amber-200">
+            <p
+              className="px-4 py-3 rounded-xl mb-6 font-medium border-2"
+              style={{
+                color: 'var(--vb-warning)',
+                backgroundColor: 'var(--vb-warning-soft)',
+                borderColor: 'var(--vb-warning)',
+              }}
+            >
               {t.delAssignWarn}
             </p>
             <div className="flex gap-3">
@@ -50,7 +60,8 @@ export default function DeleteAssignmentModal({ modal, onCancel, onConfirm }: De
               </button>
               <button
                 onClick={() => onConfirm(modal.id, modal.title)}
-                className="flex-1 py-4 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-colors shadow-lg shadow-rose-100"
+                style={{ backgroundColor: 'var(--vb-danger)', color: '#ffffff' }}
+                className="flex-1 py-4 rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg"
               >
                 {t.delAssignConfirm}
               </button>

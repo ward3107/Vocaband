@@ -423,8 +423,15 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
               <p className="text-xs text-[var(--vb-text-muted)] mt-2">
                 {t.addHelp}
               </p>
-              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md mt-2 px-3 py-2 flex items-start gap-2">
-                <Lightbulb size={14} className="mt-0.5 flex-shrink-0 text-amber-600" />
+              <p
+                className="text-xs rounded-md mt-2 px-3 py-2 flex items-start gap-2 border"
+                style={{
+                  color: 'var(--vb-warning)',
+                  backgroundColor: 'var(--vb-warning-soft)',
+                  borderColor: 'var(--vb-warning)',
+                }}
+              >
+                <Lightbulb size={14} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--vb-warning)' }} />
                 <span className="font-medium leading-snug">{t.privacyTip}</span>
               </p>
             </div>
@@ -434,7 +441,12 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mx-6 mt-1 px-4 py-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-sm font-bold flex items-start gap-2"
+                className="mx-6 mt-1 px-4 py-3 rounded-lg border text-sm font-bold flex items-start gap-2"
+                style={{
+                  backgroundColor: 'var(--vb-danger-soft)',
+                  borderColor: 'var(--vb-danger)',
+                  color: 'var(--vb-danger)',
+                }}
               >
                 <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
@@ -472,7 +484,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                       return (
                         <div
                           key={s.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-[var(--vb-border)] hover:border-stone-300 transition-colors"
+                          className="flex items-center gap-3 p-3 rounded-lg border border-[var(--vb-border)] hover:border-[var(--vb-accent)] transition-colors"
                         >
                           <span className="text-2xl shrink-0">{s.avatar}</span>
                           <div className="flex-1 min-w-0">
@@ -487,14 +499,17 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                           <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                             {s.pin ? (
                               isRevealed ? (
-                                <span className="font-mono font-black text-base text-indigo-700 tracking-[0.15em] px-3 py-1.5 bg-indigo-50 rounded-lg select-all">
+                                <span
+                                  className="font-mono font-black text-base tracking-[0.15em] px-3 py-1.5 rounded-lg select-all"
+                                  style={{ color: 'var(--vb-info)', backgroundColor: 'var(--vb-info-soft)' }}
+                                >
                                   {s.pin}
                                 </span>
                               ) : (
                                 <button
                                   onClick={() => toggleReveal(s.id)}
                                   type="button"
-                                  className="px-3 py-1.5 text-xs font-bold text-[var(--vb-text-secondary)] bg-[var(--vb-surface-alt)] rounded-lg hover:bg-stone-200 inline-flex items-center gap-1.5 transition-colors"
+                                  className="px-3 py-1.5 text-xs font-bold text-[var(--vb-text-secondary)] bg-[var(--vb-surface-alt)] rounded-lg hover:bg-[var(--vb-border)] inline-flex items-center gap-1.5 transition-colors"
                                   style={{ touchAction: "manipulation" }}
                                 >
                                   <Eye size={12} />
@@ -507,12 +522,19 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                             {/* Channel-separation share buttons.  Distinct colours
                                 (indigo / fuchsia) so a teacher can't tap the wrong
                                 one and leak the PIN through the link channel. */}
+                            {/* Channel-separation share buttons keep their
+                                distinct indigo + fuchsia hues so a teacher
+                                can't tap the wrong one and leak the PIN
+                                through the link channel — but the bg uses
+                                a /15 opacity wash so the theme surface tone
+                                shows through and the buttons remain legible
+                                on both light + dark palettes. */}
                             <button
                               onClick={() => handleShareLink(s)}
                               type="button"
                               title={t.shareLinkTitle}
                               aria-label={t.shareLinkAria(s.displayName)}
-                              className="h-9 px-2.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 hover:bg-indigo-100 inline-flex items-center gap-1.5 transition-colors"
+                              className="h-9 px-2.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-indigo-500 bg-indigo-500/15 hover:bg-indigo-500/25 inline-flex items-center gap-1.5 transition-colors"
                               style={{ touchAction: "manipulation" }}
                             >
                               <Link2 size={13} />
@@ -524,7 +546,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                               disabled={!s.pin}
                               title={t.sharePinTitle}
                               aria-label={t.sharePinAria(s.displayName)}
-                              className="h-9 px-2.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-fuchsia-700 bg-fuchsia-50 hover:bg-fuchsia-100 inline-flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="h-9 px-2.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-fuchsia-500 bg-fuchsia-500/15 hover:bg-fuchsia-500/25 inline-flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                               style={{ touchAction: "manipulation" }}
                             >
                               <KeyRound size={13} />
@@ -535,7 +557,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                               type="button"
                               title={t.resetPinTitle}
                               aria-label={t.resetPinAria(s.displayName)}
-                              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--vb-text-muted)] hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--vb-text-muted)] hover:!bg-[var(--vb-warning-soft)] hover:!text-[var(--vb-warning)] transition-colors"
                               style={{ touchAction: "manipulation" }}
                             >
                               <RefreshCw size={15} />
@@ -545,7 +567,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                               type="button"
                               title={t.removeTitle}
                               aria-label={t.removeAria(s.displayName)}
-                              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--vb-text-muted)] hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--vb-text-muted)] hover:!bg-[var(--vb-danger-soft)] hover:!text-[var(--vb-danger)] transition-colors"
                               style={{ touchAction: "manipulation" }}
                             >
                               <Trash2 size={15} />

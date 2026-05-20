@@ -394,7 +394,14 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
               </div>
 
               {error && (
-                <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                <p
+                  className="text-sm border rounded-lg px-3 py-2"
+                  style={{
+                    color: 'var(--vb-danger)',
+                    backgroundColor: 'var(--vb-danger-soft)',
+                    borderColor: 'var(--vb-danger)',
+                  }}
+                >
                   {error}
                 </p>
               )}
@@ -491,9 +498,12 @@ const ExercisePicker: React.FC<{
           return (
             <div
               key={type}
-              className={`rounded-lg border-2 transition-all ${
-                active ? "bg-emerald-50 border-emerald-500" : "bg-[var(--vb-surface)] border-[var(--vb-border)]"
-              }`}
+              className="rounded-lg border-2 transition-all"
+              style={
+                active
+                  ? { backgroundColor: 'var(--vb-success-soft)', borderColor: 'var(--vb-success)' }
+                  : { backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }
+              }
             >
               <button
                 type="button"
@@ -502,7 +512,10 @@ const ExercisePicker: React.FC<{
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 <div className="flex-1 min-w-0">
-                  <div className={`font-bold ${active ? "text-emerald-900" : "text-[var(--vb-text-secondary)]"}`}>
+                  <div
+                    className="font-bold"
+                    style={{ color: active ? 'var(--vb-success)' : 'var(--vb-text-secondary)' }}
+                  >
                     {meta?.label ?? type}
                   </div>
                   <div className="text-xs text-[var(--vb-text-muted)] truncate">{meta?.desc ?? ""}</div>
@@ -511,9 +524,12 @@ const ExercisePicker: React.FC<{
                   )}
                 </div>
                 <div
-                  className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                    active ? "bg-emerald-500 border-emerald-500" : "border-[var(--vb-border)]"
-                  }`}
+                  className="shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
+                  style={
+                    active
+                      ? { backgroundColor: 'var(--vb-success)', borderColor: 'var(--vb-success)' }
+                      : { borderColor: 'var(--vb-border)' }
+                  }
                   aria-hidden
                 >
                   {active ? (
@@ -548,7 +564,10 @@ const AiConfirmPanel: React.FC<{
   onConfirm: () => void;
   onSkip: () => void;
 }> = ({ t, wordCount, onConfirm, onSkip }) => (
-  <div className="px-4 pb-4 pt-1 border-t border-emerald-200 bg-emerald-50">
+  <div
+    className="px-4 pb-4 pt-1 border-t"
+    style={{ borderColor: 'var(--vb-success)', backgroundColor: 'var(--vb-success-soft)' }}
+  >
     <div className="flex items-start gap-2 mb-2">
       <Sparkles size={16} className="text-violet-600 mt-0.5 shrink-0" />
       <div>

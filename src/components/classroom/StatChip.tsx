@@ -45,23 +45,30 @@ interface StatChipProps {
   icon?: React.ReactNode;
 }
 
+// Semantic StatChip tones map onto the active teacher palette so the
+// emerald-good / amber-warn / rose-bad signal tracks the chosen theme
+// (saturated mid-tones on light, lighter Tailwind-400 tones on dark)
+// without losing readability.  Violet has no semantic counterpart and
+// stays Tailwind for now — it's a decorative "neutral pop" used by
+// callers that opt out of the score scale.
 const TEXT_TONE: Record<StatTone, string> = {
-  emerald: "text-emerald-600",
-  amber:   "text-amber-600",
-  rose:    "text-rose-600",
-  indigo:  "text-indigo-600",
-  violet:  "text-violet-600",
-  // The neutral tone reads from the active teacher theme so it blends in
-  // with whichever palette the teacher picked.
+  emerald: "text-[color:var(--vb-success)]",
+  amber:   "text-[color:var(--vb-warning)]",
+  rose:    "text-[color:var(--vb-danger)]",
+  indigo:  "text-[color:var(--vb-info)]",
+  violet:  "text-violet-500",
   stone:   "text-[var(--vb-text-secondary)]",
 };
 
+// Rings use a /30 opacity wash of the same semantic so the surface
+// tone of the active theme shows through.  This replaces the original
+// Tailwind-100/200 light-only borders that glowed on dark themes.
 const RING_TONE: Record<StatTone, string> = {
-  emerald: "border-emerald-100 hover:border-emerald-200",
-  amber:   "border-amber-100 hover:border-amber-200",
-  rose:    "border-rose-100 hover:border-rose-200",
-  indigo:  "border-indigo-100 hover:border-indigo-200",
-  violet:  "border-violet-100 hover:border-violet-200",
+  emerald: "border-[color:var(--vb-success)]/30 hover:border-[color:var(--vb-success)]/60",
+  amber:   "border-[color:var(--vb-warning)]/30 hover:border-[color:var(--vb-warning)]/60",
+  rose:    "border-[color:var(--vb-danger)]/30 hover:border-[color:var(--vb-danger)]/60",
+  indigo:  "border-[color:var(--vb-info)]/30 hover:border-[color:var(--vb-info)]/60",
+  violet:  "border-violet-500/30 hover:border-violet-500/60",
   stone:   "border-[var(--vb-border)] hover:border-[var(--vb-text-muted)]",
 };
 

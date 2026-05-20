@@ -145,13 +145,16 @@ export default function AssignmentDetail({
       {!assignment ? null : (
         <div className="p-4 sm:p-5 space-y-4 pb-24">
           {/* ── Headline completion ────────────────────────────────── */}
-          <div className="rounded-xl p-4 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100">
+          <div
+            className="rounded-xl p-4 border"
+            style={{ backgroundColor: 'var(--vb-accent-soft)', borderColor: 'var(--vb-accent)' }}
+          >
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="text-[11px] font-black uppercase tracking-wider text-[var(--vb-text-muted)]">
                   Completion
                 </div>
-                <div className="text-3xl font-black text-indigo-600 mt-1">
+                <div className="text-3xl font-black mt-1" style={{ color: 'var(--vb-accent)' }}>
                   {done.length + stuck.length}
                   <span className="text-[var(--vb-text-muted)] text-xl"> / {totalExpected}</span>
                 </div>
@@ -274,8 +277,8 @@ function Bucket({
   children: React.ReactNode;
 }) {
   const toneRing: Record<string, string> = {
-    emerald: "border-emerald-100",
-    amber:   "border-amber-100",
+    emerald: "border-[color:var(--vb-success)]/30",
+    amber:   "border-[color:var(--vb-warning)]/30",
     stone:   "border-[var(--vb-border)]",
   };
   return (

@@ -95,9 +95,15 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
                 key={theme.id}
                 type="button"
                 onClick={() => pick(theme.id)}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className={`relative ${theme.swatch} rounded-lg p-2 h-20 flex flex-col items-center justify-center gap-1 ring-2 transition-all
-                  ${selected ? 'ring-stone-900 shadow-lg scale-[1.02]' : 'ring-transparent hover:ring-stone-300 hover:scale-[1.02]'}`}
+                style={{
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                  // Use the active palette accent for the selection ring so it
+                  // remains visible across light + dark surface swatches.
+                  ...(selected ? { boxShadow: '0 0 0 2px var(--vb-accent), 0 10px 15px -3px rgb(0 0 0 / 0.1)' } : {}),
+                }}
+                className={`relative ${theme.swatch} rounded-lg p-2 h-20 flex flex-col items-center justify-center gap-1 transition-all
+                  ${selected ? 'scale-[1.02]' : 'hover:scale-[1.02] hover:ring-2 hover:ring-[var(--vb-accent)]/40'}`}
               >
                 <span className="text-2xl">{theme.emoji}</span>
                 <span className={`text-xs font-black ${theme.dark ? 'text-white' : 'text-stone-900'}`}>
@@ -123,9 +129,15 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
                 key={theme.id}
                 type="button"
                 onClick={() => pick(theme.id)}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className={`relative ${theme.swatch} rounded-lg p-2 h-20 flex flex-col items-center justify-center gap-1 ring-2 transition-all
-                  ${selected ? 'ring-stone-900 shadow-lg scale-[1.02]' : 'ring-transparent hover:ring-stone-300 hover:scale-[1.02]'}`}
+                style={{
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                  // Use the active palette accent for the selection ring so it
+                  // remains visible across light + dark surface swatches.
+                  ...(selected ? { boxShadow: '0 0 0 2px var(--vb-accent), 0 10px 15px -3px rgb(0 0 0 / 0.1)' } : {}),
+                }}
+                className={`relative ${theme.swatch} rounded-lg p-2 h-20 flex flex-col items-center justify-center gap-1 transition-all
+                  ${selected ? 'scale-[1.02]' : 'hover:scale-[1.02] hover:ring-2 hover:ring-[var(--vb-accent)]/40'}`}
               >
                 <span className="text-2xl">{theme.emoji}</span>
                 <span className={`text-xs font-black ${theme.dark ? 'text-white' : 'text-stone-900'}`}>

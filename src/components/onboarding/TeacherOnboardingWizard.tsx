@@ -341,7 +341,7 @@ export default function TeacherOnboardingWizard({
                         borderColor: 'var(--vb-border)',
                         color: 'var(--vb-text-primary)',
                       }}
-                      className={`w-full px-4 py-3.5 rounded-xl border-2 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-base font-bold ${isRTL ? 'text-right' : 'text-left'}`}
+                      className={`w-full px-4 py-3.5 rounded-xl border-2 focus:border-[var(--vb-accent)] focus:ring-2 focus:ring-[color:var(--vb-accent)]/30 outline-none text-base font-bold ${isRTL ? 'text-right' : 'text-left'}`}
                     />
                     <p className={`text-xs mt-2 ${isRTL ? 'text-right' : 'text-left'}`} style={{ color: 'var(--vb-text-muted)' }}>
                       {t.classNameHelp}

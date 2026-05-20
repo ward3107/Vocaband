@@ -43,6 +43,29 @@ export interface TeacherDashboardPalette {
   accentSoft: string;
   /** Text colour that goes on top of `accent` (usually white). */
   accentText: string;
+
+  /* ─── Semantic state tokens ───────────────────────────────────────
+   * Pair each saturated colour with a `*Soft` counterpart tuned to
+   * the surface tone — pale tints on light themes, deep desaturated
+   * tints on dark themes.  Saturated variants take white text; soft
+   * variants take the saturated colour as foreground text. */
+
+  /** Approve, completed, online — sits on top with white text. */
+  success: string;
+  /** Soft success background — pair with `success` as text colour. */
+  successSoft: string;
+  /** Destructive actions, errors — sits on top with white text. */
+  danger: string;
+  /** Soft danger background — pair with `danger` as text colour. */
+  dangerSoft: string;
+  /** Warnings, "are you sure" callouts — sits on top with white text. */
+  warning: string;
+  /** Soft warning background — pair with `warning` as text colour. */
+  warningSoft: string;
+  /** Informational callouts, neutral highlights — sits on top with white text. */
+  info: string;
+  /** Soft info background — pair with `info` as text colour. */
+  infoSoft: string;
 }
 
 export interface TeacherDashboardTheme {
@@ -85,6 +108,17 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
       accent: '#6366f1',
       accentSoft: '#eef2ff',
       accentText: '#ffffff',
+      // Saturated mid-tones that take white text; soft variants are
+      // the matching Tailwind-50 tints, harmonised against the warm
+      // off-white surface.
+      success: '#059669',
+      successSoft: '#ecfdf5',
+      danger: '#e11d48',
+      dangerSoft: '#fff1f2',
+      warning: '#d97706',
+      warningSoft: '#fffbeb',
+      info: '#4f46e5',
+      infoSoft: '#eef2ff',
     },
   },
 
@@ -111,6 +145,18 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
       accent: '#818cf8',
       accentSoft: '#2a3257',
       accentText: '#ffffff',
+      // Brighter Tailwind-400 saturates for foreground readability on
+      // dark slate.  Soft variants are deeply darkened tints with a
+      // cool undertone so they sit one notch above surface-alt without
+      // ever glowing like the light-theme Tailwind-50 leaks did.
+      success: '#34d399',
+      successSoft: '#0f2a23',
+      danger: '#fb7185',
+      dangerSoft: '#2b1015',
+      warning: '#fbbf24',
+      warningSoft: '#2a1f08',
+      info: '#a5b4fc',
+      infoSoft: '#1f2547',
     },
   },
   {
@@ -130,6 +176,19 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
       accent: '#f59e0b',
       accentSoft: '#3d2e0e',
       accentText: '#1c1917',
+      // Brighter saturates for dark-on-dark readability, soft variants
+      // carry a warm undertone so they harmonise with the graphite
+      // neutrals.  Warning is bumped slightly brighter than the accent
+      // amber (#f59e0b) so warning callouts stay visually distinct from
+      // primary-accent UI in this theme.
+      success: '#34d399',
+      successSoft: '#11241f',
+      danger: '#fb7185',
+      dangerSoft: '#2d1518',
+      warning: '#fbbf24',
+      warningSoft: '#3a2a0c',
+      info: '#a5b4fc',
+      infoSoft: '#1c1d3a',
     },
   },
 ];

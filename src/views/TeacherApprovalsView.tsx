@@ -94,8 +94,11 @@ export default function TeacherApprovalsView({
             className="border border-dashed rounded-xl py-16 px-6 text-center"
             style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
           >
-            <div className="w-16 h-16 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-5">
-              <CheckCircle2 size={28} className="text-emerald-500" />
+            <div
+              className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-5"
+              style={{ backgroundColor: 'var(--vb-success-soft)' }}
+            >
+              <CheckCircle2 size={28} style={{ color: 'var(--vb-success)' }} />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: 'var(--vb-text-primary)' }}>{t.allCaughtUp}</h2>
             <p className="text-sm mb-6" style={{ color: 'var(--vb-text-muted)' }}>
@@ -148,8 +151,8 @@ export default function TeacherApprovalsView({
                       showToast(t.approvedNToast(names.length), "success");
                     }}
                     type="button"
-                    style={{ touchAction: 'manipulation' }}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm shadow-sm active:scale-95 transition-all"
+                    style={{ touchAction: 'manipulation', backgroundColor: 'var(--vb-success)', color: '#ffffff' }}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 hover:opacity-90 rounded-lg font-semibold text-sm shadow-sm active:scale-95 transition-all"
                     title={t.approveAllTitle}
                   >
                     <Check size={15} />
@@ -198,7 +201,7 @@ export default function TeacherApprovalsView({
                         onClick={() => handleRejectStudent(student.id, student.displayName)}
                         type="button"
                         style={{ touchAction: 'manipulation', color: 'var(--vb-text-muted)' }}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-lg transition-colors hover:!bg-[var(--vb-danger-soft)] hover:!text-[var(--vb-danger)]"
                         title={t.rejectTitle}
                       >
                         <X size={16} />
@@ -207,8 +210,8 @@ export default function TeacherApprovalsView({
                       <button
                         onClick={() => handleApproveStudent(student.id, student.displayName)}
                         type="button"
-                        style={{ touchAction: 'manipulation' }}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm shadow-sm active:scale-95 transition-all"
+                        style={{ touchAction: 'manipulation', backgroundColor: 'var(--vb-success)', color: '#ffffff' }}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 hover:opacity-90 rounded-lg font-semibold text-sm shadow-sm active:scale-95 transition-all"
                         title={t.approveTitle}
                       >
                         <Check size={16} />
@@ -244,11 +247,14 @@ export default function TeacherApprovalsView({
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className={`px-5 py-3.5 rounded-xl shadow-lg font-semibold text-sm flex items-center gap-2.5 ${
-                toast.type === 'success' ? 'bg-emerald-600 text-white' :
-                toast.type === 'error' ? 'bg-rose-600 text-white' :
-                'bg-indigo-600 text-white'
-              }`}
+              className="px-5 py-3.5 rounded-xl shadow-lg font-semibold text-sm flex items-center gap-2.5"
+              style={{
+                backgroundColor:
+                  toast.type === 'success' ? 'var(--vb-success)' :
+                  toast.type === 'error'   ? 'var(--vb-danger)'  :
+                                             'var(--vb-info)',
+                color: '#ffffff',
+              }}
             >
               {toast.type === 'success' && <CheckCircle2 size={18} />}
               {toast.type === 'error' && <AlertTriangle size={18} />}

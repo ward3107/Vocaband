@@ -209,7 +209,12 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
 
             <div className="px-6 pt-6 pb-6 -mt-4">
               <div className="rounded-xl bg-[var(--vb-surface)] p-5 shadow-lg shadow-indigo-500/10 border border-[var(--vb-border)] flex flex-col items-center gap-4">
-                <div className="rounded-lg bg-[var(--vb-surface)] p-3 ring-1 ring-[var(--vb-border)]">
+                {/* QR codes need high-contrast dark-on-white to scan
+                    reliably across every scanner.  Pin the inner panel
+                    to an explicit white card with a soft stone ring so
+                    it reads as a deliberate "scan target" rather than a
+                    rendering glitch when the modal is on a dark theme. */}
+                <div className="rounded-lg bg-white p-3 ring-1 ring-stone-200 shadow-sm">
                   <QRCodeSVG
                     value={url}
                     size={192}
