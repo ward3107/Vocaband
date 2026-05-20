@@ -456,17 +456,17 @@ const OptionCard: React.FC<OptionCardProps> = ({
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       type="button"
-      className="bg-[var(--vb-surface)] rounded-xl shadow-md hover:shadow-xl border border-[var(--vb-border)] p-6 flex flex-col items-center text-center min-h-[180px] transition-shadow"
+      className="w-full bg-[var(--vb-surface)] rounded-xl shadow-md hover:shadow-xl border border-[var(--vb-border)] p-3 sm:p-6 flex flex-col items-center text-center min-h-[150px] sm:min-h-[180px] transition-shadow"
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
     >
       {/* Icon with optional sparkle */}
       <div className="relative">
-        <span className="text-5xl">{emoji}</span>
+        <span className="text-3xl sm:text-5xl">{emoji}</span>
         {isNew && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1 -right-2 text-lg"
+            className="absolute -top-1 -right-2 text-base sm:text-lg"
           >
             ✨
           </motion.span>
@@ -474,16 +474,16 @@ const OptionCard: React.FC<OptionCardProps> = ({
       </div>
 
       {/* Title */}
-      <h3 className="mt-3 font-bold text-[var(--vb-text-primary)]">{title}</h3>
+      <h3 className="mt-2 sm:mt-3 text-sm sm:text-base font-bold text-[var(--vb-text-primary)] leading-tight">{title}</h3>
 
       {/* Subtitle */}
-      <p className="mt-1 text-sm text-[var(--vb-text-muted)]">{subtitle}</p>
+      <p className="mt-1 text-xs sm:text-sm text-[var(--vb-text-muted)] leading-tight">{subtitle}</p>
 
       {/* CTA Button */}
-      <div className="mt-auto pt-4 self-start">
-        <span className={`inline-flex items-center gap-1 text-sm font-semibold bg-gradient-to-r ${gradient} text-transparent bg-clip-text`}>
+      <div className="mt-auto pt-3 sm:pt-4 self-center sm:self-start">
+        <span className={`inline-flex items-center gap-1 text-xs sm:text-sm font-semibold bg-gradient-to-r ${gradient} text-transparent bg-clip-text`}>
           {ctaText}
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </span>
       </div>
     </motion.button>
@@ -2329,8 +2329,11 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
       </div>
 
       {/* Option Cards Grid — centered 3-up layout (Browse Library removed
-          per teacher feedback so we go from 4 columns to 3). */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto justify-items-center">
+          per teacher feedback so we go from 4 columns to 3).  Stays
+          horizontal on mobile (teachers expected the three setup
+          entry-points to live side-by-side, not stacked); the card
+          interior scales down via the size tokens inside OptionCard. */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-3xl mx-auto justify-items-stretch sm:justify-items-center">
         <OptionCard
           emoji="🧩"
           title={TEXT.topicPacks}
