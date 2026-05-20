@@ -54,7 +54,6 @@ interface QuickPlayMonitorProps {
   onBack: () => void;
   onEndSession: () => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
-  realtimeStatus?: 'connecting' | 'live' | 'polling';
 }
 
 // ─── Theme definitions (light surface + accent colors) ────────────────────────
@@ -642,7 +641,6 @@ export default function QuickPlayMonitor({
   onBack,
   onEndSession,
   showToast,
-  realtimeStatus = 'connecting',
 }: QuickPlayMonitorProps) {
   const { language } = useLanguage();
   const tT = teacherViewsT[language];
@@ -726,6 +724,15 @@ export default function QuickPlayMonitor({
     sessionCode: session.sessionCode,
     enabled: true,
   });
+
+  // Map the QP socket's connection state to the same three-bucket
+  // shape the header chip already renders.  `disconnected`/`error`
+  // surface as the amber "degraded" state so the teacher knows new
+  // joins won't reach the podium until the socket recovers.
+  const realtimeStatus: 'connecting' | 'live' | 'polling' =
+    socket.status === 'connected' ? 'live'
+    : socket.status === 'disconnected' || socket.status === 'error' ? 'polling'
+    : 'connecting';
 
   // Re-observe whenever the socket reconnects so the server grants us
   // authority on this teacher session and streams the leaderboard back.
@@ -1309,10 +1316,9 @@ export default function QuickPlayMonitor({
             Vocaband
           </button>
 
-          {/* Realtime status indicator.  Tells the teacher whether the
-              podium is getting instant pushes or leaning on the polling
-              fallback (up to ~5s delayed).  Silent for the happy path;
-              loud only when degraded. */}
+          {/* Realtime status indicator.  Reflects the QP socket
+              connection: green when live, amber when reconnecting,
+              gray while the initial handshake is in flight. */}
           <div className="flex items-center gap-2">
             <GuideTriggerButton onClick={guide.open} className="bg-white/10 text-current hover:bg-white/20" />
           <div
@@ -1320,7 +1326,7 @@ export default function QuickPlayMonitor({
               realtimeStatus === 'live'
                 ? 'Live updates: on'
                 : realtimeStatus === 'polling'
-                ? 'Live updates unavailable — refreshing every 5s'
+                ? 'Reconnecting — live updates paused'
                 : 'Connecting…'
             }
             className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10 text-xs font-bold"

@@ -104,14 +104,6 @@ export interface UseAuthRestoreDeps {
   setQuickPlaySessionCode: Dispatch<string | null>;
   setQuickPlayKicked: Dispatch<boolean>;
   setQuickPlaySessionEnded: Dispatch<boolean>;
-  setQuickPlayJoinedStudents: Dispatch<{
-    name: string;
-    score: number;
-    avatar: string;
-    lastSeen: string;
-    mode: string;
-    studentUid: string;
-  }[]>;
   setClassNotFoundIntent: Dispatch<string | null>;
   setPendingClassSwitch: Dispatch<{
     fromCode: string;
@@ -159,7 +151,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
     setClasses, setStudentAssignments, setStudentProgress,
     setActiveAssignment, setAssignmentWords,
     setQuickPlayActiveSession, setQuickPlaySessionCode,
-    setQuickPlayKicked, setQuickPlaySessionEnded, setQuickPlayJoinedStudents,
+    setQuickPlayKicked, setQuickPlaySessionEnded,
     setClassNotFoundIntent, setPendingClassSwitch, setPendingApprovalInfo,
     setOauthAuthUid, setOauthEmail, setShowOAuthClassCode,
     setCurrentIndex, setScore, setMistakes, setIsFinished, setFeedback,
@@ -774,7 +766,6 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
         setShowModeSelection(false);
         setQuickPlayActiveSession(null);
         setQuickPlaySessionCode(null);
-        setQuickPlayJoinedStudents([]);
         qpCumulativeScoreRef.current = 0;
         setQuickPlayKicked(false);
         setQuickPlaySessionEnded(false);

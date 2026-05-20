@@ -367,7 +367,7 @@ export function useGameFinish(params: UseGameFinishParams) {
     //
     // Why no error UI: the student can't act on a network failure
     // mid-game and they already see their score + XP update.  The
-    // flusher (installQuickPlayQueueFlusher, wired on mount) retries
+    // flusher (installSaveQueueFlusher, wired on mount) retries
     // the save on 'online', tab refocus, and a 30s interval.  If the
     // save ultimately can't be sent after 20 attempts we give up
     // silently — the alternative is nagging the student about a state

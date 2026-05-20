@@ -54,7 +54,6 @@ import { useTranslate } from "./hooks/useTranslate";
 import { useSaveQueue } from "./hooks/useSaveQueue";
 import { useTeacherData } from "./hooks/useTeacherData";
 import { useQuickPlayUrlBootstrap } from "./hooks/useQuickPlayUrlBootstrap";
-import { useQuickPlayRealtime, type QpRealtimeStatus } from "./hooks/useQuickPlayRealtime";
 import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
 import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
 import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
@@ -251,18 +250,13 @@ export default function App() {
     quickPlaySessionEnded, setQuickPlaySessionEnded,
     quickPlayCompletedModes, setQuickPlayCompletedModes,
   } = useQuickPlayGuestState();
-  // Teacher-monitor QP state — joinedStudents is the live podium feed;
-  // the three "only-setter" entries below are leftovers consumed by the
-  // teacher-monitor reset path so it can null/empty them on session end.
-  const [quickPlayJoinedStudents, setQuickPlayJoinedStudents] = useState<{name: string, score: number, avatar: string, lastSeen: string, mode: string, studentUid: string}[]>([]);
+  // Teacher-monitor QP state — the live podium feed comes from the
+  // /quick-play socket inside QuickPlayMonitor; only the custom-word
+  // setters remain here so the teacher-monitor reset path can clear
+  // them on session end.
   const [, setQuickPlayCustomWords] = useState<Map<string, {hebrew: string, arabic: string}>>(new Map());
   const [, setQuickPlayAddingCustom] = useState<Set<string>>(new Set());
   const [, setQuickPlayTranslating] = useState<Set<string>>(new Set());
-  // Tracks whether the teacher monitor's Realtime channel is actually
-  // receiving events ('live' / 'connecting' / 'polling').  Shown as a
-  // discrete status dot on the monitor header.
-  const [quickPlayRealtimeStatus, setQuickPlayRealtimeStatus] =
-    useState<QpRealtimeStatus>('connecting');
 
   // Game music player state (previously defined here) was dead code —
   // the track/volume setters were never called from anywhere, so the
@@ -373,17 +367,6 @@ export default function App() {
   // --- GAME STATE ---
   const [gameMode, setGameMode] = useState<GameMode>("classic");
   const [showModeSelection, setShowModeSelection] = useState(true);
-
-  // Quick Play Supabase Realtime plumbing — teacher monitor progress
-  // stream.  Student-side kick / session-end events arrive over the
-  // /quick-play socket.io namespace via useQuickPlaySocket instead.
-  useQuickPlayRealtime({
-    view,
-    user,
-    quickPlayActiveSession,
-    setQuickPlayJoinedStudents,
-    setQuickPlayRealtimeStatus,
-  });
 
   // Handle Quick Play session from URL parameter — extracted to a
   // dedicated hook because the load logic plus the page-refresh
@@ -672,7 +655,7 @@ export default function App() {
     setClasses, setStudentAssignments, setStudentProgress,
     setActiveAssignment, setAssignmentWords,
     setQuickPlayActiveSession, setQuickPlaySessionCode,
-    setQuickPlayKicked, setQuickPlaySessionEnded, setQuickPlayJoinedStudents,
+    setQuickPlayKicked, setQuickPlaySessionEnded,
     setClassNotFoundIntent, setPendingClassSwitch, setPendingApprovalInfo,
     setOauthAuthUid, setOauthEmail, setShowOAuthClassCode,
     setCurrentIndex, setScore, setMistakes, setIsFinished, setFeedback,
@@ -1117,10 +1100,10 @@ export default function App() {
   const teacherLiveScreen = renderTeacherLiveScreens({
     view, user, selectedClass, setView, setIsLiveChallenge,
     leaderboard, socketConnected,
-    quickPlayActiveSession, setQuickPlayJoinedStudents,
+    quickPlayActiveSession,
     setQuickPlayActiveSession, setQuickPlaySelectedWords, setQuickPlaySessionCode,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
-    cleanupSessionData, showToast, quickPlayRealtimeStatus,
+    cleanupSessionData, showToast,
   });
   if (teacherLiveScreen) return teacherLiveScreen;
 
