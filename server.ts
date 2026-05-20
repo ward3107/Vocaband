@@ -516,19 +516,29 @@ function cloudflareOnlyIngress(
   if (process.env.CLOUDFLARE_INGRESS_ONLY !== "1") return next();
   if (CF_INGRESS_ALLOWED_PATHS.has(req.path)) return next();
 
-  const rawIp = req.ip || req.socket?.remoteAddress || "";
-  // Normalise IPv4-mapped IPv6 (`::ffff:1.2.3.4`) back to IPv4 — Fly's
-  // proxy serves v4 clients in that form, which would miss the v4
-  // BlockList without the strip.
-  const ip = rawIp.startsWith("::ffff:") ? rawIp.slice(7) : rawIp;
-  if (!ip) {
-    console.warn(`[cf-ingress] no source IP on request — rejecting path=${req.path}`);
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-  const family: "ipv4" | "ipv6" = ip.includes(":") ? "ipv6" : "ipv4";
-  if (!cloudflareBlockList.check(ip, family)) {
-    console.warn(`[cf-ingress] non-Cloudflare ingress rejected: ip=${ip} path=${req.path}`);
+  // Header-presence check.  Cloudflare sets BOTH `cf-ray` and
+  // `cf-connecting-ip` on every proxied request reaching the origin —
+  // including the case where a CF Worker `fetch()`s the origin
+  // (the headers are preserved by `new Request(url, originalRequest)`
+  // in worker/index.ts).  A direct hit to `vocaband.fly.dev` from
+  // outside CF's network has neither header.
+  //
+  // History: the first implementation of this middleware checked
+  // `req.ip` against the published Cloudflare INGRESS CIDR list.
+  // That broke production from 2026-05-20 09:24 → ~15:40 UTC because
+  // CF Worker EGRESS IPs aren't in the published ingress list — every
+  // Worker-forwarded `/api/*` request silently 403'd until rollback.
+  // The header check sidesteps the ingress/egress distinction.
+  //
+  // Header spoofing concern: a direct origin probe COULD inject these
+  // headers manually.  This middleware is "make casual probing
+  // expensive", not "stop a determined attacker"; the network-layer
+  // alternative (Authenticated Origin Pulls / mTLS) is documented in
+  // security-audit-framework module 11 for the next hardening tier.
+  if (!req.headers["cf-ray"] || !req.headers["cf-connecting-ip"]) {
+    console.warn(
+      `[cf-ingress] missing CF signature headers — rejected. path=${req.path} ip=${req.ip ?? "?"}`,
+    );
     res.status(403).json({ error: "Forbidden" });
     return;
   }
