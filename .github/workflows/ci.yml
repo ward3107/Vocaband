@@ -122,30 +122,42 @@ jobs:
             du -sh dist/assets/*.js | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
           fi
 
-      # Complementary SAST — CodeQL (Default Setup) covers most patterns,
-      # but Semgrep's curated security-audit ruleset catches different
-      # classes (express-misconfig, jwt-misuse, supabase patterns).
-      # Warning-only on PRs; aggregates as a step summary so reviewers
-      # can scan findings without blocking merges on noisy rulesets.
+      # Complementary SAST — CodeQL (configured at repo level via Default
+      # Setup) covers most patterns, but Semgrep's curated security-audit
+      # ruleset catches different classes (express-misconfig, jwt-misuse,
+      # supabase patterns).  Installed via pip rather than the archived
+      # `semgrep/semgrep-action@v1` (the action was deprecated; the CLI is
+      # the supported integration path).  Warning-only — bad rules in a
+      # ruleset shouldn't block merges.
       - name: Semgrep SAST
         if: always()
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: p/security-audit p/typescript p/javascript p/owasp-top-ten
-          generateSarif: false
         continue-on-error: true
+        run: |
+          python3 -m pip install --quiet --user semgrep
+          export PATH="$HOME/.local/bin:$PATH"
+          semgrep ci \
+            --config=p/security-audit \
+            --config=p/typescript \
+            --config=p/javascript \
+            --config=p/owasp-top-ten \
+            --no-suppress-errors \
+            --exclude=dist --exclude=node_modules --exclude=.next --exclude=playwright-report \
+            || true
 
       # Filesystem CVE scan against the lockfile + Dockerfile.  Trivy
       # complements npm audit (image-layer + IaC checks vs. dep-only).
+      # Installed via the upstream install script so the version pin is
+      # explicit and not coupled to an action's release cadence.
       # Severity gated to HIGH/CRITICAL to match the npm audit threshold.
-      # Warning-only so a CVE in a transitive without a fix available
-      # doesn't permanently block the pipeline.
       - name: Trivy filesystem scan
         if: always()
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          severity: 'HIGH,CRITICAL'
-          ignore-unfixed: true
-          exit-code: '0'
+        continue-on-error: true
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b "$RUNNER_TEMP" v0.58.1
+          "$RUNNER_TEMP/trivy" fs \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --skip-dirs node_modules,dist,playwright-report \
+            .

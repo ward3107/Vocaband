@@ -285,19 +285,41 @@ function detectPromptInjection(text: string): { detected: boolean; pattern?: str
   return { detected: false };
 }
 
-// HTML-tag, javascript:-URI, on*= handler, and control-char strip.  This is
-// intentionally aggressive: AI outputs are vocab / sentences / lesson text,
-// none of which legitimately contain HTML.  Anything that looks like markup
-// is removed.  Length is preserved otherwise.
-const HTML_TAG_RE = /<[^>]*>/g;
+// Sanitise model-returned strings before they reach the client.
+//
+// CodeQL alert #48 (Incomplete multi-character sanitization) showed that
+// stripping HTML via regex is fundamentally broken: `<<script>>` survives
+// a single `/<[^>]*>/g` pass because removing the outer brackets leaves a
+// valid `<script>`; and `>` characters can survive a loop after their
+// matching `<` was already removed.  The universally correct answer is to
+// **encode** rather than **strip**.  An entity-encoded `&lt;script&gt;` is
+// inert in every consumer: HTML parsers treat it as a text node; PDF/Word
+// libs render the entity literally; React displays it as visible text.
+//
+// CodeQL alert #49 (Overly permissive regular expression range) required
+// explicit `\u00xx` escape sequences for control-character ranges instead
+// of literal control bytes embedded in source.
+//
+// Whitespace within the printable range (\t \n \r) is preserved.
+
+const AMP_RE = /&/g;
+const LT_RE = /</g;
+const GT_RE = />/g;
+const DQUOTE_RE = /"/g;
+const SQUOTE_RE = /'/g;
 const JS_URI_RE = /\b(?:javascript|data|vbscript)\s*:/gi;
-const CONTROL_CHAR_RE = /[ --]/g;
-const ZERO_WIDTH_RE = /[​-‍⁠﻿]/g;
+const CONTROL_CHAR_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const ZERO_WIDTH_RE = /[\u200B-\u200D\u2060\uFEFF]/g;
 
 function sanitizeAiOutput(value: unknown): string {
   if (typeof value !== "string") return "";
   return value
-    .replace(HTML_TAG_RE, "")
+    // Encode `&` first so the entities we emit below don't get re-encoded.
+    .replace(AMP_RE, "&amp;")
+    .replace(LT_RE, "&lt;")
+    .replace(GT_RE, "&gt;")
+    .replace(DQUOTE_RE, "&quot;")
+    .replace(SQUOTE_RE, "&#x27;")
     .replace(JS_URI_RE, "")
     .replace(CONTROL_CHAR_RE, "")
     .replace(ZERO_WIDTH_RE, "")
