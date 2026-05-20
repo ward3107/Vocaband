@@ -10,6 +10,7 @@
  *   - vocabagrut + Hebrew variant   (teacher)
  *   - global-leaderboard
  *   - teacher-approvals
+ *   - admin-security
  *   - worksheet-attempts
  *   - classroom / analytics / gradebook (legacy aliases)
  *   - live-challenge-class-select + Hebrew variant
@@ -32,6 +33,7 @@ const VocabagrutShell = lazyWithRetry(() => import('../features/vocabagrut/Vocab
 const HebrewComingSoonView = lazyWithRetry(() => import('./HebrewComingSoonView'));
 const GlobalLeaderboardView = lazyWithRetry(() => import('./GlobalLeaderboardView'));
 const TeacherApprovalsView = lazyWithRetry(() => import('./TeacherApprovalsView'));
+const AdminSecurityView = lazyWithRetry(() => import('./AdminSecurityView'));
 const WorksheetAttemptsView = lazyWithRetry(() => import('./WorksheetAttemptsView'));
 const ClassroomView = lazyWithRetry(() => import('./ClassroomView'));
 const LiveChallengeClassSelectView = lazyWithRetry(() => import('./LiveChallengeClassSelectView'));
@@ -218,6 +220,18 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           handleRejectStudent={handleRejectStudent}
           showToast={showToast}
         />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'admin-security') {
+    // The view itself reads from `authz_failures`, which is RLS-gated to
+    // admins only.  A non-admin landing here simply sees "no events" —
+    // we don't extra-gate at the router so the admin's bookmark works
+    // without an extra round-trip to `is_admin()`.
+    return (
+      <LazyWrapper loadingMessage="Loading security log...">
+        <AdminSecurityView setView={setView} />
       </LazyWrapper>
     );
   }
