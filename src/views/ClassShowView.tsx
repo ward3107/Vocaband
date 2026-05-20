@@ -3,20 +3,15 @@
  *
  * Designed for classrooms where students DON'T have phones.  The
  * teacher's projected screen IS the entire experience: a giant
- * question, four lettered options, a Reveal button.  Students answer
- * verbally; teacher reveals; everyone sees the green-highlighted
+ * question, four lettered options.  Teacher taps an answer to reveal
+ * it (no separate Reveal button); everyone sees the green-highlighted
  * correct answer.  No scoring, no per-student tracking, no server
  * round trips — just a beautifully-paced classroom slideshow.
  *
- * Six modes ship in v1: Classic / Listening / Reverse / Fill-Blank /
- * True-False / Flashcards.  The other six (Spelling / Scramble /
- * Letter Sounds / Matching / Memory Flip / Sentence Builder) live in
- * Pillar B and are added in a later commit.
- *
  * State machine:
  *   setup   → teacher picks mode + word source + question count
- *   playing → reveal/skip/next/end loop
- *   finished → "Show complete!" + replay or back-to-dashboard
+ *   playing → answer-tap-reveals / skip / next / choose-different-mode loop
+ *   finished → "Show complete!" (only when teacher plays through all words)
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
@@ -142,8 +137,15 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
     }
     if (playingMode === 'fill-blank') {
       const q = buildFillBlankQuestion(word, pool);
-      // Fall back to classic if this word lacks a usable sentence.
-      return { multiChoice: q ?? buildClassicQuestion(word, pool, translationLang), trueFalse: null };
+      // buildFillBlankQuestion returns null when the word has no
+      // word.sentence or word.example — which is the case for almost
+      // every word in the compact tuple vocabulary.  Falling back to
+      // classic here defeats the mode's purpose, so the question UI
+      // synthesises a sentence on the fly using the sentence-bank
+      // (see FillBlankWithGenerated below).  Pass the multiChoice
+      // through if we did get a real one, otherwise null lets the
+      // child fall through to its generated path.
+      return { multiChoice: q, trueFalse: null };
     }
     if (playingMode === 'true-false') {
       return { multiChoice: null, trueFalse: buildTrueFalseQuestion(word, pool, translationLang) };
@@ -213,6 +215,15 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
     ? phase.wordOrder.slice(phase.currentIndex, phase.currentIndex + batchSize).map(i => phase.source.words[i])
     : [];
 
+  const handleReveal = () =>
+    setPhase(p =>
+      p.kind === 'playing'
+        ? p.mode === 'flashcards'
+          ? { ...p, flashcardFlipped: true, revealed: true }
+          : { ...p, revealed: true }
+        : p,
+    );
+
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="flex-1 flex">
@@ -227,6 +238,7 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
             onToggleFlashcard={() =>
               setPhase(p => (p.kind === 'playing' ? { ...p, flashcardFlipped: !p.flashcardFlipped } : p))
             }
+            onReveal={handleReveal}
             batch={batch}
             pool={phase.source.words}
           />
@@ -237,20 +249,14 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
         isLast={isLast}
         currentIndex={phase.currentIndex}
         total={phase.wordOrder.length}
-        onReveal={() =>
-          setPhase(p =>
-            p.kind === 'playing'
-              ? phase.mode === 'flashcards'
-                ? { ...p, flashcardFlipped: true, revealed: true }
-                : { ...p, revealed: true }
-              : p,
-          )
-        }
         onSkip={() =>
           setPhase(p => {
             if (p.kind !== 'playing') return p;
             if (p.currentIndex >= p.wordOrder.length - 1) {
-              return { kind: 'finished', questionsCovered: p.currentIndex };
+              // Past the last word — bounce back to mode selection
+              // rather than showing the Finale celebration, matching
+              // the new "Choose different mode" flow.
+              return { kind: 'setup' };
             }
             return { ...p, currentIndex: p.currentIndex + 1, revealed: false, flashcardFlipped: false };
           })
@@ -259,18 +265,12 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
           setPhase(p => {
             if (p.kind !== 'playing') return p;
             if (p.currentIndex >= p.wordOrder.length - 1) {
-              return { kind: 'finished', questionsCovered: p.currentIndex + 1 };
+              return { kind: 'setup' };
             }
             return { ...p, currentIndex: p.currentIndex + 1, revealed: false, flashcardFlipped: false };
           })
         }
-        onEnd={() =>
-          setPhase(p =>
-            p.kind === 'playing'
-              ? { kind: 'finished', questionsCovered: p.currentIndex + (p.revealed ? 1 : 0) }
-              : p,
-          )
-        }
+        onChooseDifferentMode={() => setPhase({ kind: 'setup' })}
       />
     </div>
   );

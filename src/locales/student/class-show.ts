@@ -21,6 +21,7 @@ export interface ClassShowStrings {
   skip: string;
   next: string;
   endShow: string;
+  chooseDifferentMode: string;
   showComplete: string;
   showCompleteSubtitle: (n: number) => string;
   playAnother: string;
@@ -49,6 +50,11 @@ export interface ClassShowStrings {
   sentenceBuilderHint: string;
   letterSoundsHint: string;
   reset: string;
+  // Scramble case toggle
+  uppercase: string;
+  lowercase: string;
+  // Click-to-reveal hint
+  tapToReveal: string;
   // Word source labels
   set1: string;
   set2: string;
@@ -78,6 +84,7 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     skip: 'Skip',
     next: 'Next',
     endShow: 'End show',
+    chooseDifferentMode: 'Choose different mode',
     showComplete: 'Show complete!',
     showCompleteSubtitle: (n) => `${n} word${n === 1 ? '' : 's'} covered. Great class!`,
     playAnother: 'Play another round',
@@ -98,12 +105,15 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeSpeedRound: 'Speed Round',
     modeWordChains: 'Word Chains',
     spellingHint: 'Type each letter as the class calls it out',
-    scrambleHint: 'Class shouts the answer · tap reveal',
+    scrambleHint: 'Class shouts the answer · tap any letter to reveal',
     matchingHint: 'Tap an English word, then its translation',
     memoryFlipHint: 'Tap two cards · class remembers locations',
     sentenceBuilderHint: 'Tap tiles in order as the class calls them',
     letterSoundsHint: 'Tap the speaker to play the sound',
     reset: 'Reset',
+    uppercase: 'UPPERCASE',
+    lowercase: 'lowercase',
+    tapToReveal: 'Tap an answer to reveal',
     set1: 'Set 1',
     set2: 'Set 2',
     set3: 'Set 3',
@@ -128,6 +138,7 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     skip: 'דלג',
     next: 'הבא',
     endShow: 'סיים',
+    chooseDifferentMode: 'בחר מצב אחר',
     showComplete: 'סיימנו!',
     showCompleteSubtitle: (n) => `כיסינו ${n} מילים. כיתה מצוינת!`,
     playAnother: 'סבב נוסף',
@@ -148,12 +159,15 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeSpeedRound: 'סבב מהיר',
     modeWordChains: 'שרשרת מילים',
     spellingHint: 'הקלד כל אות שהכיתה קוראת',
-    scrambleHint: 'הכיתה אומרת את התשובה · לחץ הצג',
+    scrambleHint: 'הכיתה אומרת את התשובה · לחץ אות להצגה',
     matchingHint: 'לחץ מילה באנגלית ואז את התרגום',
     memoryFlipHint: 'לחץ שני כרטיסים · הכיתה זוכרת מיקומים',
     sentenceBuilderHint: 'לחץ אריחים לפי הסדר שהכיתה קוראת',
     letterSoundsHint: 'לחץ על הרמקול להשמעת הצליל',
     reset: 'אפס',
+    uppercase: 'אותיות גדולות',
+    lowercase: 'אותיות קטנות',
+    tapToReveal: 'לחץ על תשובה להצגה',
     set1: 'סט 1',
     set2: 'סט 2',
     set3: 'סט 3',
@@ -178,6 +192,7 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     skip: 'تخطى',
     next: 'التالي',
     endShow: 'إنهاء',
+    chooseDifferentMode: 'اختر وضعًا آخر',
     showComplete: 'انتهينا!',
     showCompleteSubtitle: (n) => `غطّينا ${n} كلمة. صف ممتاز!`,
     playAnother: 'جولة أخرى',
@@ -198,12 +213,15 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeSpeedRound: 'جولة سريعة',
     modeWordChains: 'سلاسل الكلمات',
     spellingHint: 'اكتب كل حرف كما يقوله الصف',
-    scrambleHint: 'الصف يقول الإجابة · اضغط اكشف',
+    scrambleHint: 'الصف يقول الإجابة · اضغط أي حرف للكشف',
     matchingHint: 'اضغط كلمة إنجليزية ثم ترجمتها',
     memoryFlipHint: 'اضغط بطاقتين · الصف يتذكر المواقع',
     sentenceBuilderHint: 'اضغط البلاط بالترتيب الذي يقوله الصف',
     letterSoundsHint: 'اضغط السماعة لتشغيل الصوت',
     reset: 'إعادة',
+    uppercase: 'أحرف كبيرة',
+    lowercase: 'أحرف صغيرة',
+    tapToReveal: 'اضغط على إجابة للكشف',
     set1: 'مجموعة 1',
     set2: 'مجموعة 2',
     set3: 'مجموعة 3',
@@ -228,6 +246,7 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     skip: 'Skip',
     next: 'Next',
     endShow: 'End show',
+    chooseDifferentMode: 'Choose different mode',
     showComplete: 'Show complete!',
     showCompleteSubtitle: (n) => `${n} word${n === 1 ? '' : 's'} covered. Great class!`,
     playAnother: 'Play another round',
@@ -248,12 +267,15 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeSpeedRound: 'Speed Round',
     modeWordChains: 'Word Chains',
     spellingHint: 'Type each letter as the class calls it out',
-    scrambleHint: 'Class shouts the answer · tap reveal',
+    scrambleHint: 'Class shouts the answer · tap any letter to reveal',
     matchingHint: 'Tap an English word, then its translation',
     memoryFlipHint: 'Tap two cards · class remembers locations',
     sentenceBuilderHint: 'Tap tiles in order as the class calls them',
     letterSoundsHint: 'Tap the speaker to play the sound',
     reset: 'Reset',
+    uppercase: 'UPPERCASE',
+    lowercase: 'lowercase',
+    tapToReveal: 'Tap an answer to reveal',
     set1: 'Set 1',
     set2: 'Set 2',
     set3: 'Set 3',

@@ -21,7 +21,7 @@ import { motion } from 'motion/react';
 import {
   Layers, Headphones, ArrowLeftRight, FileText, CheckCircle, Sparkles, Play,
   Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle, Wand2,
-  MessageCircle, Zap, Link, Tv2,
+  Zap, Tv2,
 } from 'lucide-react';
 import PageHero from '../PageHero';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -95,22 +95,23 @@ interface ClassShowSetupProps {
   onTranslationLangChange: (lang: TranslationLang) => void;
 }
 
+// Idioms + Word Chains are intentionally excluded from Class Show — they
+// don't translate well to the projected single-screen-for-the-whole-class
+// format and they're available in the student game flow.
 const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: React.ReactNode; gradient: string }> = [
   { id: 'classic',          nameKey: 'modeClassic',         icon: <Layers size={26} />,         gradient: 'from-indigo-300 to-violet-400' },
   { id: 'listening',        nameKey: 'modeListening',       icon: <Headphones size={26} />,     gradient: 'from-sky-300 to-cyan-400' },
   { id: 'reverse',          nameKey: 'modeReverse',         icon: <ArrowLeftRight size={26} />, gradient: 'from-amber-300 to-orange-400' },
   { id: 'fill-blank',       nameKey: 'modeFillBlank',       icon: <FileText size={26} />,       gradient: 'from-emerald-300 to-teal-400' },
   { id: 'true-false',       nameKey: 'modeTrueFalse',       icon: <CheckCircle size={26} />,    gradient: 'from-rose-300 to-pink-400' },
-  { id: 'flashcards',       nameKey: 'modeFlashcards',      icon: <Sparkles size={26} />,       gradient: 'from-fuchsia-300 to-purple-400' },
+  { id: 'flashcards',       nameKey: 'modeFlashcards',      icon: <Sparkles size={26} />,       gradient: 'from-purple-500 to-purple-700' },
   { id: 'spelling',         nameKey: 'modeSpelling',        icon: <Keyboard size={26} />,       gradient: 'from-blue-300 to-indigo-400' },
   { id: 'scramble',         nameKey: 'modeScramble',        icon: <Shuffle size={26} />,        gradient: 'from-orange-300 to-red-400' },
   { id: 'letter-sounds',    nameKey: 'modeLetterSounds',    icon: <AudioLines size={26} />,     gradient: 'from-cyan-300 to-blue-400' },
   { id: 'matching',         nameKey: 'modeMatching',        icon: <Link2 size={26} />,          gradient: 'from-pink-300 to-rose-400' },
   { id: 'memory-flip',      nameKey: 'modeMemoryFlip',      icon: <Grid3x3 size={26} />,        gradient: 'from-violet-300 to-purple-400' },
   { id: 'sentence-builder', nameKey: 'modeSentenceBuilder', icon: <Puzzle size={26} />,         gradient: 'from-teal-300 to-emerald-400' },
-  { id: 'idiom',            nameKey: 'modeIdiom',           icon: <MessageCircle size={26} />,  gradient: 'from-sky-300 to-cyan-400' },
   { id: 'speed-round',      nameKey: 'modeSpeedRound',      icon: <Zap size={26} />,            gradient: 'from-red-300 to-rose-400' },
-  { id: 'word-chains',      nameKey: 'modeWordChains',      icon: <Link size={26} />,           gradient: 'from-amber-300 to-orange-400' },
 ];
 
 export default function ClassShowSetup({

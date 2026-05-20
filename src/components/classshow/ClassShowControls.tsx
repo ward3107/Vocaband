@@ -1,27 +1,29 @@
 /**
  * ClassShowControls — bottom action bar inside the active round.
- * Reveal · Skip · Next · End.  Reveal toggles to "Next" automatically
- * once the answer is shown so the teacher's flow is one big button per
- * question.
+ *
+ * The Reveal button is gone: teachers now tap the answer directly on
+ * the projected screen to reveal it, matching the click-driven flow
+ * students get in the regular game.  The bar keeps Choose-Different-
+ * Mode (back to setup) · Skip · Next.
  */
-import { Eye, SkipForward, ChevronRight, X } from 'lucide-react';
+import { SkipForward, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings } from '../../locales/student/class-show';
 
 interface ClassShowControlsProps {
   revealed: boolean;
   isLast: boolean;
-  onReveal: () => void;
   onSkip: () => void;
   onNext: () => void;
-  onEnd: () => void;
+  /** Back to the setup screen — labelled "Choose different mode" now. */
+  onChooseDifferentMode: () => void;
   /** Counter line shown above the buttons. */
   currentIndex: number;
   total: number;
 }
 
 export default function ClassShowControls({
-  revealed, isLast, onReveal, onSkip, onNext, onEnd, currentIndex, total,
+  revealed, isLast, onSkip, onNext, onChooseDifferentMode, currentIndex, total,
 }: ClassShowControlsProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
@@ -35,7 +37,7 @@ export default function ClassShowControls({
         <div className="flex flex-wrap justify-center items-center gap-3">
           <button
             type="button"
-            onClick={onEnd}
+            onClick={onChooseDifferentMode}
             style={{
               borderColor: 'var(--vb-border)',
               color: 'var(--vb-text-secondary)',
@@ -43,8 +45,8 @@ export default function ClassShowControls({
             }}
             className="px-5 py-3 rounded-xl font-bold border-2 inline-flex items-center gap-2"
           >
-            <X size={18} />
-            {t.endShow}
+            <ArrowLeft size={18} />
+            {t.chooseDifferentMode}
           </button>
           <button
             type="button"
@@ -58,20 +60,7 @@ export default function ClassShowControls({
             <SkipForward size={18} />
             {t.skip}
           </button>
-          {!revealed ? (
-            <button
-              type="button"
-              onClick={onReveal}
-              style={{
-                backgroundColor: 'var(--vb-accent)',
-                color: 'var(--vb-accent-text)',
-              }}
-              className="px-8 py-4 rounded-xl font-black text-lg shadow-lg inline-flex items-center gap-2"
-            >
-              <Eye size={20} />
-              {t.reveal}
-            </button>
-          ) : (
+          {revealed && (
             <button
               type="button"
               onClick={onNext}
@@ -81,7 +70,7 @@ export default function ClassShowControls({
               }}
               className="px-8 py-4 rounded-xl font-black text-lg shadow-lg inline-flex items-center gap-2"
             >
-              {isLast ? t.endShow : t.next}
+              {isLast ? t.chooseDifferentMode : t.next}
               <ChevronRight size={20} />
             </button>
           )}

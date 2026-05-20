@@ -1,40 +1,45 @@
 /**
- * AdaptedModes — projector layouts for the 6 game modes that don't
- * fit the "everyone watches one screen" format directly.  The teacher
- * does the typing/dragging on behalf of the class while students call
- * out the answers verbally.
+ * AdaptedModes — projector layouts for the game modes that don't fit
+ * the "everyone watches one screen" format directly.  The teacher does
+ * the typing/tapping on behalf of the class while students call out
+ * the answers verbally.
  *
- * All six modes are kept in one file because each one is small (50-90
- * lines) and they share the same shape (a Word + revealed flag, plus
- * mode-specific local state).  Splitting per-file would dilute the
- * codebase without adding clarity.
+ * Click-to-reveal: every adapted mode now lets the teacher tap an
+ * answer (or any visible target letter / sentence tile) to reveal the
+ * solution, matching the click-driven flow students get in the regular
+ * game.  Modes without a clickable answer (Spelling, Sentence Builder)
+ * still expose a tappable reveal surface.
  *
- *   - SpellingProjector       — teacher types each letter
- *   - ScrambleProjector       — call-and-response with reveal animation
- *   - LetterSoundsProjector   — audio-led, matches a phoneme to one of 4 words
- *   - MatchingProjector       — teacher-led tap-pair (4 pairs)
+ *   - SpellingProjector       — teacher types each letter, larger boxes
+ *   - ScrambleProjector       — large tiles, uppercase/lowercase toggle
+ *   - LetterSoundsProjector   — slow audio, click an option to reveal
+ *   - MatchingProjector       — card-grid redesign, click to match/reveal
  *   - MemoryFlipProjector     — collaborative grid flip
- *   - SentenceBuilderProjector— teacher-led drag-tile assembly
+ *   - SentenceBuilderProjector— generated sentences from sentence-bank
+ *   - SpeedRoundProjector     — bigger word + auto-reveal at countdown
  */
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Volume2, RotateCcw, Check, X, ArrowRight } from 'lucide-react';
+import { Volume2, RotateCcw, Check, X, Type, CaseLower } from 'lucide-react';
 import type { Word } from '../../data/vocabulary';
 import { useAudio } from '../../hooks/useAudio';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings } from '../../locales/student/class-show';
 import { gameAriasT } from '../../locales/student/game-arias';
+import { getSentencesForWord } from '../../data/sentence-bank';
 
 interface BaseProps {
   word: Word;
   revealed: boolean;
   /** Pool used to fetch distractors for matching / multi-choice modes. */
   pool: Word[];
+  /** Called when the teacher reveals the answer by tapping the surface. */
+  onReveal?: () => void;
 }
 
 // ─── Spelling — teacher types one letter at a time ─────────────────
 
-export function SpellingProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
+export function SpellingProjector({ word, revealed, onReveal }: Omit<BaseProps, 'pool'>) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
   const audio = useAudio();
@@ -64,9 +69,9 @@ export function SpellingProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
   const display = revealed ? word.english : typed;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 gap-10">
       <div className="text-center">
-        <div className="text-3xl sm:text-5xl font-bold mb-2" style={{ color: 'var(--vb-text-secondary)' }} dir="auto">
+        <div className="text-5xl sm:text-7xl font-bold mb-3" style={{ color: 'var(--vb-text-secondary)' }} dir="auto">
           {translation}
         </div>
         <button
@@ -75,10 +80,16 @@ export function SpellingProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full"
           style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
         >
-          <Volume2 size={20} />
+          <Volume2 size={22} />
         </button>
       </div>
-      <div className="flex flex-wrap justify-center gap-2 sm:gap-4 max-w-5xl">
+      <button
+        type="button"
+        onClick={onReveal}
+        disabled={revealed}
+        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        className="flex flex-wrap justify-center gap-3 sm:gap-5 max-w-6xl"
+      >
         {target.split('').map((targetChar, idx) => {
           const typedChar = display[idx];
           const filled = !!typedChar;
@@ -86,7 +97,7 @@ export function SpellingProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
           return (
             <div
               key={idx}
-              className="w-14 h-20 sm:w-20 sm:h-28 rounded-xl border-4 flex items-center justify-center text-4xl sm:text-6xl font-black uppercase shadow-lg"
+              className="w-20 h-28 sm:w-28 sm:h-40 rounded-2xl border-4 flex items-center justify-center text-6xl sm:text-8xl font-black uppercase shadow-xl"
               style={{
                 backgroundColor: filled ? (correct ? '#10b981' : '#fff') : 'var(--vb-surface)',
                 borderColor: filled ? (correct ? '#059669' : '#dc2626') : 'var(--vb-border)',
@@ -97,7 +108,7 @@ export function SpellingProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
             </div>
           );
         })}
-      </div>
+      </button>
       <div className="text-base font-bold" style={{ color: 'var(--vb-text-muted)' }}>
         {t.spellingHint}
       </div>
@@ -121,33 +132,60 @@ function scrambleLetters(input: string): string[] {
   return letters;
 }
 
-export function ScrambleProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
+export function ScrambleProjector({ word, revealed, onReveal }: Omit<BaseProps, 'pool'>) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
   const scrambled = useMemo(() => scrambleLetters(word.english), [word.id]);
-  const display = revealed ? word.english.split('') : scrambled;
+  // Teachers asked for a way to project the lowercase forms — younger
+  // learners haven't fully internalised the uppercase ↔ lowercase
+  // mapping yet, so the toggle lets the same word serve both groups.
+  const [isUppercase, setIsUppercase] = useState(true);
+  const renderedLetters = (revealed ? word.english.split('') : scrambled).map(l =>
+    isUppercase ? l.toUpperCase() : l.toLowerCase(),
+  );
   const translation = language === 'he' ? word.hebrew : language === 'ar' ? word.arabic : word.hebrew;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
-      <div className="text-center text-2xl sm:text-4xl font-bold" style={{ color: 'var(--vb-text-secondary)' }} dir="auto">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 gap-10 py-8">
+      <div className="text-center text-5xl sm:text-7xl font-bold" style={{ color: 'var(--vb-text-secondary)' }} dir="auto">
         {translation}
       </div>
-      <div className="flex flex-wrap justify-center gap-3 sm:gap-5">
-        {display.map((letter, idx) => (
+      <button
+        type="button"
+        onClick={onReveal}
+        disabled={revealed}
+        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        className="flex flex-wrap justify-center gap-4 sm:gap-6 max-w-6xl"
+      >
+        {renderedLetters.map((letter, idx) => (
           <motion.div
-            key={`${idx}-${letter}-${revealed ? 'r' : 's'}`}
+            key={`${idx}-${letter}-${revealed ? 'r' : 's'}-${isUppercase ? 'u' : 'l'}`}
             initial={{ rotate: -10, scale: 0.9 }}
             animate={{ rotate: 0, scale: 1 }}
             transition={{ delay: idx * 0.04 }}
-            className="w-16 h-24 sm:w-24 sm:h-32 rounded-xl flex items-center justify-center text-5xl sm:text-7xl font-black uppercase shadow-xl bg-gradient-to-br from-orange-500 to-red-600 text-white"
+            className="w-24 h-32 sm:w-32 sm:h-44 rounded-2xl flex items-center justify-center text-7xl sm:text-9xl font-black shadow-2xl bg-gradient-to-br from-orange-500 to-red-600 text-white"
           >
             {letter}
           </motion.div>
         ))}
-      </div>
-      <div className="text-base font-bold" style={{ color: 'var(--vb-text-muted)' }}>
-        {t.scrambleHint}
+      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setIsUppercase(v => !v)}
+          style={{
+            backgroundColor: 'var(--vb-surface)',
+            color: 'var(--vb-text-primary)',
+            borderColor: 'var(--vb-border)',
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 font-bold text-sm sm:text-base"
+        >
+          {isUppercase ? <CaseLower size={18} /> : <Type size={18} />}
+          {isUppercase ? t.lowercase : t.uppercase}
+        </button>
+        <div className="text-base font-bold" style={{ color: 'var(--vb-text-muted)' }}>
+          {t.scrambleHint}
+        </div>
       </div>
     </div>
   );
@@ -155,7 +193,7 @@ export function ScrambleProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
 
 // ─── Letter Sounds — phoneme prompt + 4 word options ──────────────
 
-export function LetterSoundsProjector({ word, pool, revealed }: BaseProps) {
+export function LetterSoundsProjector({ word, pool, revealed, onReveal }: BaseProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
   const tAria = gameAriasT[language];
@@ -197,7 +235,7 @@ export function LetterSoundsProjector({ word, pool, revealed }: BaseProps) {
     <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
       <button
         type="button"
-        onClick={() => audio.speak(word.id, word.english)}
+        onClick={() => audio.speakSlow(word.id, word.english)}
         className="w-32 h-32 sm:w-44 sm:h-44 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center shadow-2xl hover:scale-105 transition-transform"
         aria-label={tAria.playSound}
       >
@@ -212,17 +250,22 @@ export function LetterSoundsProjector({ word, pool, revealed }: BaseProps) {
           const dim = revealed && !isCorrect;
           const highlight = revealed && isCorrect;
           return (
-            <div
+            <button
               key={`${opt}-${idx}`}
+              type="button"
+              onClick={onReveal}
+              disabled={revealed}
               style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
                 backgroundColor: highlight ? '#10b981' : 'var(--vb-surface)',
                 color: highlight ? '#ffffff' : 'var(--vb-text-primary)',
                 borderColor: highlight ? '#059669' : 'var(--vb-border)',
               }}
-              className={`flex items-center justify-center px-6 py-8 rounded-2xl border-2 shadow-lg transition-all text-3xl sm:text-5xl font-black ${dim ? 'opacity-30' : ''} ${highlight ? 'scale-[1.03]' : ''}`}
+              className={`flex items-center justify-center px-6 py-8 rounded-2xl border-2 shadow-lg transition-all text-3xl sm:text-5xl font-black ${dim ? 'opacity-30' : ''} ${highlight ? 'scale-[1.03]' : ''} ${!revealed ? 'hover:scale-[1.02]' : ''}`}
             >
               {opt}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -230,111 +273,119 @@ export function LetterSoundsProjector({ word, pool, revealed }: BaseProps) {
   );
 }
 
-// ─── Matching — 4 English on left, 4 shuffled translations on right ──
-
-export interface MatchingProjectorState {
-  /** Selected English-side card index (-1 = none). */
-  selectedLeft: number;
-  /** Pair indexes that have been matched by the teacher. */
-  matched: Set<number>;
-}
+// ─── Matching — fresh card-grid design ────────────────────────────────
+//
+// New design (replaces the old two-column English-on-left / translation-
+// on-right grid): every card sits in a single 2×4 grid mixing English
+// and translations.  The teacher taps two cards in a row; matching pairs
+// flash green, mismatches reset.  Tapping on the surface when not in
+// active matching reveals all pairs at once (drives the "reveal" flow).
 
 export function MatchingProjector({
-  pool, words, revealed, onAllMatched,
+  pool, words, revealed, onReveal,
 }: {
   pool: Word[];
   words: Word[]; // exactly 4 words (caller slices)
   revealed: boolean;
-  onAllMatched?: () => void;
+  onReveal?: () => void;
 }) {
-  void pool; // unused — kept for symmetry with other modes
+  void pool;
   const { language } = useLanguage();
   const t = classShowStrings[language];
 
   const translation = (w: Word) => language === 'he' ? w.hebrew : language === 'ar' ? w.arabic : w.hebrew;
 
-  const rightOrder = useMemo(() => {
-    const indices = words.map((_, i) => i);
-    for (let i = indices.length - 1; i > 0; i--) {
+  // Build a shuffled list of 8 cards (4 English + 4 translations).  Each
+  // card carries the pairId (index into `words`) and a `side` tag so the
+  // match check can ensure we pair English↔Translation, not two of the
+  // same kind.
+  const cards = useMemo(() => {
+    const list: Array<{ key: string; pairId: number; text: string; side: 'en' | 'tr' }> = [];
+    words.forEach((w, idx) => {
+      list.push({ key: `en-${w.id}`, pairId: idx, text: w.english, side: 'en' });
+      list.push({ key: `tr-${w.id}`, pairId: idx, text: translation(w), side: 'tr' });
+    });
+    for (let i = list.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
+      [list[i], list[j]] = [list[j], list[i]];
     }
-    return indices;
-  }, [words]);
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [words.map(w => w.id).join(','), language]);
 
-  const [selectedLeft, setSelectedLeft] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const [matched, setMatched] = useState<Set<number>>(new Set());
+  const [wrong, setWrong] = useState<[number, number] | null>(null);
 
-  // Reveal: snap all pairs into matched state.
-  const effectiveMatched = revealed ? new Set(words.map((_, i) => i)) : matched;
+  // Snap-to-all-matched on reveal.
+  const effectiveMatched = revealed ? new Set(cards.map(c => c.pairId)) : matched;
 
-  useEffect(() => {
-    if (matched.size === words.length && onAllMatched) onAllMatched();
-  }, [matched, words.length, onAllMatched]);
-
-  const handleRightTap = (rightIdx: number) => {
-    if (selectedLeft === null) return;
-    const pairWordIdx = rightOrder[rightIdx];
-    if (pairWordIdx === selectedLeft) {
-      setMatched(prev => {
-        const next = new Set(prev);
-        next.add(selectedLeft);
-        return next;
-      });
+  const handleTap = (idx: number) => {
+    const card = cards[idx];
+    if (effectiveMatched.has(card.pairId)) return;
+    if (selected === null) {
+      setSelected(idx);
+      return;
     }
-    setSelectedLeft(null);
+    if (selected === idx) {
+      setSelected(null);
+      return;
+    }
+    const first = cards[selected];
+    if (first.pairId === card.pairId && first.side !== card.side) {
+      setMatched(prev => new Set(prev).add(card.pairId));
+      setSelected(null);
+    } else {
+      // Visual mismatch — flash both cards red, then reset.
+      setWrong([selected, idx]);
+      setSelected(null);
+      window.setTimeout(() => setWrong(null), 600);
+    }
+  };
+
+  // Hidden tap-anywhere reveal fallback so teachers without all matches
+  // can still reveal everything at once.
+  const handleSurfaceTap = () => {
+    if (!revealed && effectiveMatched.size === 0 && onReveal) onReveal();
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6 py-8" onClick={handleSurfaceTap}>
       <div className="text-base font-bold" style={{ color: 'var(--vb-text-muted)' }}>
         {t.matchingHint}
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:gap-8 w-full max-w-5xl">
-        <div className="flex flex-col gap-3">
-          {words.map((w, idx) => {
-            const done = effectiveMatched.has(idx);
-            const sel = selectedLeft === idx;
-            return (
-              <button
-                key={`l-${w.id}`}
-                type="button"
-                onClick={() => !done && setSelectedLeft(sel ? null : idx)}
-                disabled={done}
-                style={{
-                  backgroundColor: done ? '#10b981' : sel ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
-                  color: done ? '#ffffff' : 'var(--vb-text-primary)',
-                  borderColor: done ? '#059669' : sel ? 'var(--vb-accent)' : 'var(--vb-border)',
-                }}
-                className={`px-6 py-5 rounded-xl border-2 text-2xl sm:text-4xl font-black text-left shadow-md transition-all ${done ? 'opacity-80' : 'hover:scale-[1.01]'}`}
-              >
-                {w.english}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex flex-col gap-3">
-          {rightOrder.map((wordIdx, rightIdx) => {
-            const done = effectiveMatched.has(wordIdx);
-            return (
-              <button
-                key={`r-${wordIdx}`}
-                type="button"
-                onClick={() => !done && handleRightTap(rightIdx)}
-                disabled={done}
-                style={{
-                  backgroundColor: done ? '#10b981' : 'var(--vb-surface)',
-                  color: done ? '#ffffff' : 'var(--vb-text-primary)',
-                  borderColor: done ? '#059669' : 'var(--vb-border)',
-                }}
-                className={`px-6 py-5 rounded-xl border-2 text-2xl sm:text-4xl font-black text-right shadow-md transition-all ${done ? 'opacity-80' : 'hover:scale-[1.01]'}`}
-                dir="auto"
-              >
-                {translation(words[wordIdx])}
-              </button>
-            );
-          })}
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5 w-full max-w-6xl">
+        {cards.map((card, idx) => {
+          const done = effectiveMatched.has(card.pairId);
+          const sel = selected === idx;
+          const isWrong = wrong && (wrong[0] === idx || wrong[1] === idx);
+          // English cards get the amber tint (matches the student
+          // MatchingModeGame's palette); translations get orange.
+          const baseGradient = card.side === 'en'
+            ? 'from-amber-50 to-amber-100 border-amber-200 text-amber-900'
+            : 'from-orange-50 to-rose-50 border-rose-200 text-rose-900';
+          return (
+            <button
+              key={card.key}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleTap(idx); }}
+              disabled={done}
+              dir="auto"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              className={`relative aspect-[4/3] rounded-2xl border-2 px-3 py-3 flex items-center justify-center text-center font-black shadow-lg transition-all text-2xl sm:text-4xl ${
+                done
+                  ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white border-emerald-500 scale-[1.02]'
+                  : sel
+                    ? 'bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white border-fuchsia-600 scale-[1.05] ring-4 ring-fuchsia-200'
+                    : isWrong
+                      ? 'bg-gradient-to-br from-rose-500 to-pink-600 text-white border-rose-600'
+                      : `bg-gradient-to-br ${baseGradient}`
+              } ${!done ? 'hover:scale-[1.02]' : ''}`}
+            >
+              {card.text}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -362,6 +413,7 @@ export function MemoryFlipProjector({ words, revealed }: { words: Word[]; reveal
       [list[i], list[j]] = [list[j], list[i]];
     }
     return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words.map(w => w.id).join(',')]);
 
   const [flipped, setFlipped] = useState<number[]>([]);
@@ -441,13 +493,29 @@ export function MemoryFlipProjector({ words, revealed }: { words: Word[]; reveal
   );
 }
 
-// ─── Sentence Builder — scrambled tiles, teacher taps in order ───
+// ─── Sentence Builder — generated sentence + tappable tiles ───────────
+//
+// Pulls from the sentence-bank so every word — including the ~6400
+// vocabulary entries that lack a hand-written sentence — gets a
+// well-formed prompt instead of falling back to the bland
+// "I see a <word>." synthesised in the old build.
 
-export function SentenceBuilderProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
+export function SentenceBuilderProjector({ word, revealed, onReveal }: Omit<BaseProps, 'pool'>) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
 
-  const sentence = word.sentence ?? word.example ?? `I see a ${word.english}.`;
+  // Pick a stable sentence per word from the level-2 bank so repeated
+  // visits to the same word show the same prompt for the duration of
+  // the show.
+  const sentence = useMemo(() => {
+    const choices = getSentencesForWord(word, 2);
+    if (choices.length === 0) return `I see a ${word.english}.`;
+    // Prefer a sentence that actually contains the target word so the
+    // class hears the connection while the teacher assembles tiles.
+    const containsTarget = choices.find(s => new RegExp(`\\b${word.english}\\b`, 'i').test(s));
+    return containsTarget ?? choices[0];
+  }, [word.id, word.english]);
+
   const tokens = useMemo(() => sentence.split(/\s+/).filter(Boolean), [sentence]);
   const scrambled = useMemo(() => {
     const arr = tokens.map((tok, idx) => ({ tok, originalIdx: idx, key: idx + Math.random().toString(36).slice(2, 6) }));
@@ -470,6 +538,7 @@ export function SentenceBuilderProjector({ word, revealed }: Omit<BaseProps, 'po
   useEffect(() => { setOrder([]); }, [word.id]);
 
   const tap = (scrambledIdx: number) => {
+    if (revealed) return;
     if (order.includes(scrambledIdx)) return;
     setOrder(prev => [...prev, scrambledIdx]);
   };
@@ -490,8 +559,14 @@ export function SentenceBuilderProjector({ word, revealed }: Omit<BaseProps, 'po
         {t.sentenceBuilderHint}
       </div>
 
-      {/* Target slots */}
-      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-5xl">
+      {/* Target slots — click the row to reveal at once */}
+      <button
+        type="button"
+        onClick={onReveal}
+        disabled={revealed}
+        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        className="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-5xl"
+      >
         {placedSlots.map((slot, idx) => (
           <div
             key={`slot-${idx}`}
@@ -506,7 +581,7 @@ export function SentenceBuilderProjector({ word, revealed }: Omit<BaseProps, 'po
             {slot ? slot.tok : '·'}
           </div>
         ))}
-      </div>
+      </button>
 
       {/* Scrambled source tiles */}
       <div className="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-5xl">
@@ -537,13 +612,13 @@ export function SentenceBuilderProjector({ word, revealed }: Omit<BaseProps, 'po
       </div>
 
       {revealed && (
-        <div className="flex items-center gap-2 text-2xl font-bold" style={{ color: 'var(--vb-accent)' }}>
+        <div className="flex items-center gap-2 text-2xl sm:text-3xl font-bold" style={{ color: 'var(--vb-accent)' }}>
           <Check size={24} /> {sentence}
         </div>
       )}
       {!revealed && order.length === tokens.length && (
         <div className="text-lg font-bold" style={{ color: 'var(--vb-text-muted)' }}>
-          <X size={18} className="inline mr-1" /> Tap reveal to compare
+          <X size={18} className="inline mr-1" /> {t.tapToReveal}
         </div>
       )}
     </div>
@@ -554,7 +629,7 @@ export function SentenceBuilderProjector({ word, revealed }: Omit<BaseProps, 'po
 
 const SPEED_ROUND_DURATION_MS = 3000;
 
-export function SpeedRoundProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
+export function SpeedRoundProjector({ word, revealed, onReveal }: Omit<BaseProps, 'pool'>) {
   const { language } = useLanguage();
   const tAria = gameAriasT[language];
   const audio = useAudio();
@@ -571,10 +646,17 @@ export function SpeedRoundProjector({ word, revealed }: Omit<BaseProps, 'pool'>)
     const id = setInterval(() => {
       const e = Date.now() - start;
       setElapsed(e);
-      if (e >= SPEED_ROUND_DURATION_MS) clearInterval(id);
+      // Auto-reveal once the countdown completes so the teacher
+      // doesn't have to chase the Reveal button between every word.
+      // The parent's revealed-state flip stops the interval via the
+      // dependency array above.
+      if (e >= SPEED_ROUND_DURATION_MS) {
+        clearInterval(id);
+        onReveal?.();
+      }
     }, 50);
     return () => clearInterval(id);
-  }, [word.id, revealed]);
+  }, [word.id, revealed, onReveal]);
 
   const pct = Math.min(100, (elapsed / SPEED_ROUND_DURATION_MS) * 100);
   const remaining = Math.max(0, Math.ceil((SPEED_ROUND_DURATION_MS - elapsed) / 1000));
@@ -595,7 +677,7 @@ export function SpeedRoundProjector({ word, revealed }: Omit<BaseProps, 'pool'>)
         initial={{ scale: 0.85, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 220, damping: 18 }}
-        className="text-6xl sm:text-8xl md:text-9xl font-black tracking-tight text-center"
+        className="text-7xl sm:text-9xl md:text-[10rem] font-black tracking-tight text-center"
         style={{ color: 'var(--vb-text-primary)' }}
       >
         {word.english}
@@ -604,7 +686,7 @@ export function SpeedRoundProjector({ word, revealed }: Omit<BaseProps, 'pool'>)
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl sm:text-5xl font-bold"
+          className="text-6xl sm:text-8xl md:text-9xl font-black"
           style={{ color: 'var(--vb-accent)' }}
           dir="auto"
         >
@@ -612,7 +694,7 @@ export function SpeedRoundProjector({ word, revealed }: Omit<BaseProps, 'pool'>)
         </motion.div>
       )}
       {!revealed && (
-        <div className="text-7xl font-black tabular-nums" style={{ color: 'var(--vb-text-muted)' }}>
+        <div className="text-8xl sm:text-9xl font-black tabular-nums" style={{ color: 'var(--vb-text-muted)' }}>
           {remaining}
         </div>
       )}
@@ -622,109 +704,6 @@ export function SpeedRoundProjector({ word, revealed }: Omit<BaseProps, 'pool'>)
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.05, ease: 'linear' }}
         />
-      </div>
-    </div>
-  );
-}
-
-// ─── Idiom — flip card from phrase to figurative meaning ──────────
-
-export function IdiomProjector({ word, revealed }: Omit<BaseProps, 'pool'>) {
-  const { language } = useLanguage();
-  const meaning = language === 'he' ? word.hebrew : language === 'ar' ? word.arabic : word.hebrew;
-  const example = word.example ?? word.sentence;
-
-  return (
-    <div className="flex-1 flex items-center justify-center px-6">
-      <motion.div
-        key={`${word.id}-${revealed ? 'back' : 'front'}`}
-        initial={{ rotateY: -20, opacity: 0 }}
-        animate={{ rotateY: 0, opacity: 1 }}
-        transition={{ duration: 0.35 }}
-        className="relative w-full max-w-4xl aspect-[5/3] rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-600 shadow-2xl flex items-center justify-center text-white px-8"
-      >
-        {!revealed ? (
-          <div className="text-center">
-            <div className="text-7xl sm:text-8xl mb-4">💭</div>
-            <div className="text-5xl sm:text-7xl font-black tracking-tight" dir="auto">
-              {word.english}
-            </div>
-            <div className="mt-6 text-xl sm:text-2xl opacity-80">
-              What does this mean?
-            </div>
-          </div>
-        ) : (
-          <div className="text-center">
-            <div className="text-4xl sm:text-6xl font-black mb-4" dir="auto">
-              {meaning}
-            </div>
-            {example && (
-              <div className="mt-4 text-xl sm:text-2xl opacity-90 italic" dir="auto">
-                “{example}”
-              </div>
-            )}
-          </div>
-        )}
-      </motion.div>
-    </div>
-  );
-}
-
-// ─── Word Chains — neighbours on either side of the current word ───
-
-export function WordChainsProjector({ word, pool, revealed }: BaseProps) {
-  // Pick stable prev / next pulls from the pool so the chain doesn't
-  // re-shuffle on every render.  Falls back gracefully when pool is
-  // smaller than 3 words.
-  const { prev, next } = useMemo(() => {
-    const others = pool.filter(w => w.id !== word.id);
-    const shuffled = [...others];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return { prev: shuffled[0] ?? null, next: shuffled[1] ?? null };
-  }, [word.id, pool]);
-
-  const Tile = ({ w, dim }: { w: Word; dim: boolean }) => (
-    <motion.div
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: dim ? 0.45 : 1 }}
-      className="px-6 py-6 sm:px-10 sm:py-10 rounded-2xl border-2 shadow-xl text-3xl sm:text-5xl font-black"
-      style={{
-        backgroundColor: dim ? 'var(--vb-surface-alt)' : 'var(--vb-surface)',
-        color: 'var(--vb-text-primary)',
-        borderColor: 'var(--vb-border)',
-      }}
-    >
-      {w.english}
-    </motion.div>
-  );
-
-  const Arrow = ({ visible }: { visible: boolean }) => (
-    <motion.div
-      animate={{ opacity: visible ? 1 : 0.15 }}
-      style={{ color: 'var(--vb-accent)' }}
-      className="flex items-center"
-    >
-      <ArrowRight size={48} />
-    </motion.div>
-  );
-
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
-      <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 max-w-6xl">
-        {prev && <Tile w={prev} dim={!revealed} />}
-        {prev && <Arrow visible={revealed} />}
-        <motion.div
-          initial={{ scale: 0.85 }}
-          animate={{ scale: 1 }}
-          className="px-8 py-8 sm:px-14 sm:py-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-2xl text-4xl sm:text-6xl font-black"
-        >
-          {word.english}
-        </motion.div>
-        {next && <Arrow visible={revealed} />}
-        {next && <Tile w={next} dim={!revealed} />}
       </div>
     </div>
   );
