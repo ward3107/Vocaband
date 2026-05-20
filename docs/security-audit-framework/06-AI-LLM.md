@@ -10,9 +10,9 @@
 
 | Category | Current level | Risk | Severity | Confidence |
 |---|---|---|---|---|
-| Prompt-injection defence (input) | LOW — text passed in triple-quote delimiter only | High | HIGH | HIGH |
-| Output validation (LLM → server) | MODERATE — JSON parse + minimal shape check | Medium | MODERATE | HIGH |
-| Output rendering (LLM → student UI) | GOOD — React auto-escapes; AI-content rendered as text | Low | LOW | HIGH |
+| Prompt-injection defence (input) | HARDENED — shared `detectPromptInjection` rejects triple-quote breakout, role-override, "ignore previous", etc. (PR #830, server.ts) | Low | LOW | HIGH |
+| Output validation (LLM → server) | HARDENED — Gemini `responseSchema` JSON mode constrains shape on all 4 endpoints (PR #832); markdown-fence + regex-salvage fallbacks deleted | Low | INFO | HIGH |
+| Output rendering (LLM → student UI) | HARDENED — `sanitizeAiOutput` HTML-entity-encodes every AI-returned string (PR #830) before client receives it; safe in PDF/Word/SVG exports as well as React | Low | INFO | HIGH |
 | Authentication on AI endpoints | HARDENED — Pro-tier teacher gate (`requireProTeacher`) | Low | INFO | HIGH |
 | Rate limiting | GOOD — per-token, with explicit hour + day buckets on Bagrut | Low | LOW | HIGH |
 | Cost-pump abuse defence | MODERATE — rate limits cap, but no cost alarm | Medium | MODERATE | HIGH |
@@ -20,8 +20,9 @@
 | Output PII leakage (model echoing training data) | LOW — Gemini/Claude unlikely to leak Vocaband-specific data because we send none | Low | LOW | MEDIUM |
 | Diagnostic disclosure (`/api/ocr/diagnostic`) | MODERATE — confirms key validity to authenticated teachers | Medium | LOW | HIGH |
 
-**Overall:** MODERATE (58/100). Same input-validation gap drags the
-whole module down; one shared mitigation closes most of it.
+**Overall:** HARDENED (88/100). Input-validation gap fully closed in
+PRs #830 + #832. Remaining gap is operational (cost alarm) + product
+(/api/ocr/diagnostic still leaks key validity to authenticated teachers).
 
 ---
 
