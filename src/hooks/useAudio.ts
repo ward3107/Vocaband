@@ -109,7 +109,7 @@ if ('speechSynthesis' in window) {
 }
 
 // Speak text using high-quality TTS voice with enhanced pronunciation
-const speakWithTTS = (text: string, lang: AudioLang = 'en'): void => {
+const speakWithTTS = (text: string, lang: AudioLang = 'en', rateOverride?: number): void => {
   if (!('speechSynthesis' in window)) return;
 
   // Cancel any ongoing speech
@@ -138,7 +138,7 @@ const speakWithTTS = (text: string, lang: AudioLang = 'en'): void => {
   // Speak the whole phrase smoothly (no word-by-word pauses)
   const utterance = new SpeechSynthesisUtterance(speakText);
   utterance.lang = lang === 'he' ? 'he-IL' : 'en-US';
-  utterance.rate = ttsSettings.rate;  // Slower rate (0.7) makes it clear naturally
+  utterance.rate = rateOverride ?? ttsSettings.rate;  // Slower rate (0.7) makes it clear naturally
   utterance.pitch = ttsSettings.pitch;
   utterance.volume = ttsSettings.volume;
   if (voice) utterance.voice = voice;
@@ -513,6 +513,17 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     }
   }
 
+  // Speak a word using browser TTS at a slower rate.  Used by Class
+  // Show's Letter Sounds mode where the teacher needs the phoneme to
+  // ring out clearly enough for the back of the room to catch it.
+  // Default rate is 0.7; 0.55 gives noticeable-but-natural slowing.
+  const speakSlow = (_wordId: number, fallbackText?: string) => {
+    if (!fallbackText) return
+    window.speechSynthesis?.cancel()
+    Object.values(wordCache).forEach(h => h.stop())
+    speakWithTTS(fallbackText, lang, 0.55)
+  }
+
   const preloadMany = (wordIds: number[]) => {
     wordIds.filter(id => id > 0).forEach(preload)
   }
@@ -608,7 +619,7 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     window.speechSynthesis?.cancel()
   }
 
-  return { speak, preloadMany, preloadMotivational, playMotivational, getMotivationalLabel, playWrong, stopAll, setForceTTSMode }
+  return { speak, speakSlow, preloadMany, preloadMotivational, playMotivational, getMotivationalLabel, playWrong, stopAll, setForceTTSMode }
 }
 
 // ── TTS Settings (adjustable via console) ───────────────────────────────────
