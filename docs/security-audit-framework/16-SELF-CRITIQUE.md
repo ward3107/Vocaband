@@ -4,6 +4,21 @@
 
 ---
 
+## 0. Correction log
+
+- **2026-05-20 (same day):** The initial PR-830 CI run revealed
+  `CodeQL (javascript-typescript / actions / python)` and
+  `GitGuardian Security Checks` running on every PR. Module 10
+  originally marked both as MISSING — incorrect. These integrations
+  are configured at the **GitHub repo level** (Code Security Default
+  Setup + GitHub App), so a grep of `.github/workflows/` returned
+  nothing. Modules 00, 10, 15 corrected; CI/CD score raised 70 → 78,
+  composite 79 → 80. **Lesson:** repo-level controls live outside the
+  workflow YAML; future audits must inspect GitHub Settings → Code
+  security and analysis, and the installed GitHub Apps list.
+
+---
+
 ## 1. Methodology limits
 
 This audit is a **code-and-config review** of a snapshot at 2026-05-20.

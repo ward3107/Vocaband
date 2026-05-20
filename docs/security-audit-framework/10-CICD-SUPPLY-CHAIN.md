@@ -1,6 +1,7 @@
 # 10 — CI/CD & Supply Chain
 
-> Six GitHub Actions workflows, locked-file dependencies, no SAST.
+> Six GitHub Actions workflows + repo-level CodeQL (Default Setup) +
+> GitGuardian App for secret scanning, locked-file dependencies.
 
 ---
 
@@ -15,8 +16,9 @@
 | Dependency overrides for CVEs | GOOD — 7 explicit pins (`package.json:77-84`) | Low | INFO | HIGH |
 | Dependabot grouped PRs | GOOD — weekly patch+minor, monthly Actions | Low | LOW | HIGH |
 | Lockfile pinning | GOOD — `package-lock.json` 15866 lines, committed | Low | INFO | HIGH |
-| SAST (CodeQL / Semgrep) | MISSING | Medium | MODERATE | HIGH |
-| Secret scanning (gitleaks / TruffleHog) | MISSING | Medium | MODERATE | HIGH |
+| SAST (CodeQL) | GOOD — GitHub Default Setup runs CodeQL across `javascript-typescript`, `actions`, `python` on every PR | Low | LOW | HIGH |
+| SAST (Semgrep / Snyk) — complementary rules | MISSING — CodeQL covers most but Semgrep's ruleset catches different patterns | Medium | LOW | HIGH |
+| Secret scanning | GOOD — GitGuardian App enabled (passing on this PR); GitHub native secret scanning also available at repo level | Low | LOW | HIGH |
 | SBOM generation | MISSING | Medium | LOW | HIGH |
 | Artifact signing (sigstore / cosign) | MISSING | Medium | LOW | HIGH |
 | Docker base + USER | MODERATE — `node:22-alpine`, runs as root, single-stage | Medium | MODERATE | HIGH |
@@ -24,9 +26,10 @@
 | E2E auth coverage | MODERATE — smoke skips login | Medium | LOW | HIGH |
 | Branch protection (PR gates) | EXPECTED — verify in GitHub settings | Medium | LOW | LOW |
 
-**Overall:** MODERATE (70/100). Sound fundamentals (locked deps,
-allowlisted permissions, audit gate) but no SAST, no signing, no SBOM
-— the supply-chain detection ceiling.
+**Overall:** GOOD (78/100). Sound fundamentals (locked deps, allowlisted
+permissions, audit gate) **plus CodeQL (3 languages) + GitGuardian
+secret-scanning at repo level**. Ceiling is no SBOM, no signing, no
+Semgrep/Trivy to complement CodeQL.
 
 ---
 
@@ -154,9 +157,9 @@ grep -E 'VITE_[A-Z_]*(SECRET|TOKEN|PRIVATE)' .env.production && exit 1
 | Lockfile pinned | ✅ | — |
 | Dependabot | ✅ | — |
 | 2-reviewer approval for security-sensitive paths | ❌ | P1 (CODEOWNERS) |
-| CodeQL in CI | ❌ | P0 (sprint) |
-| Gitleaks pre-commit + CI | ❌ | P0 (sprint) |
-| Semgrep ruleset | ❌ | P1 |
+| CodeQL in CI | ✅ — Default Setup (js-ts + actions + python) | — |
+| Secret scanning | ✅ — GitGuardian App + GitHub native | — |
+| Semgrep complementary ruleset | ❌ | P1 |
 | Trivy on Docker image | ❌ | P1 |
 | SBOM (`@cyclonedx/bom`) | ❌ | P2 |
 | sigstore cosign on wrangler artifact | ❌ | P2 |
@@ -172,8 +175,8 @@ grep -E 'VITE_[A-Z_]*(SECRET|TOKEN|PRIVATE)' .env.production && exit 1
 | Test | Auto? |
 |---|---|
 | Dependency vulnerability scan (npm audit) | ✅ Auto |
-| CodeQL JS/TS scan | will be Auto |
-| Secret-string scan on every commit | will be Auto (gitleaks) |
+| CodeQL JS/TS scan | ✅ Auto (Default Setup) |
+| Secret-string scan on every commit | ✅ Auto (GitGuardian) |
 | Container vulnerability scan | will be Auto (trivy) |
 | `npm ls <pinned-package>` agrees with override | Manual quarterly |
 | Authenticated login flow doesn't regress | will be Auto (Playwright + Supabase test user) |

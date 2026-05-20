@@ -17,11 +17,11 @@
 | File uploads / OCR / camera | 76 | GOOD | flat |
 | Real-time / WebSocket | 82 | GOOD | flat |
 | Client / browser (CSP) | 78 | GOOD | flat |
-| CI/CD & supply chain | 70 | MODERATE | flat — sprint to ↑85 |
+| CI/CD & supply chain | 78 | GOOD | sprint to ↑85 (post-correction: CodeQL + GitGuardian already wired at repo level) |
 | Infrastructure | 80 | GOOD | flat |
 | Privacy & compliance | 88 | HARDENED | flat |
 | Logging, monitoring, IR | 72 | GOOD | flat |
-| **Overall composite** | **79** | **GOOD** | sprint to **89** |
+| **Overall composite** | **80** | **GOOD** | sprint to **89** |
 
 Class scale: CRITICAL <40, HIGH RISK 40-59, MODERATE 60-69, GOOD 70-84,
 HARDENED 85-94, ENTERPRISE GRADE ≥95.
@@ -49,7 +49,7 @@ HARDENED 85-94, ENTERPRISE GRADE ≥95.
 | 1 | Prompt-injection input firewall + `responseSchema` JSON mode | 2 days | ↓~$25k/yr | 06 |
 | 2 | Verify + add inline auth on all `QP_EVENTS.TEACHER_*` | 0.5 day | ↓~$20k/yr | 05 |
 | 3 | Extend Quick Play codes 4 → 6 chars | 0.5 day | ↓~$10k/yr | 05 |
-| 4 | Add CodeQL + gitleaks + Semgrep to CI | 1 day | ↓~$25k/yr | 10 |
+| 4 | Add Semgrep + Trivy to CI (CodeQL + GitGuardian already wired via repo-level Default Setup / App) | 1 day | ↓~$10k/yr | 10 |
 | 5 | Dockerfile `USER node` + multi-stage build | 0.5 day | ↓~$5k/yr | 10 |
 | 6 | Output-content sanitisation on AI responses | 0.5 day | ↓~$8k/yr | 06 |
 | 7 | Fly IP allowlist (CF-only ingress) | 0.5 day | ↓~$5k/yr | 11 |
@@ -104,7 +104,7 @@ SCORECARD.md` — keep one truth.
 ## Acceptance criteria for "ENTERPRISE GRADE" (≥95)
 
 - Every module ≥85.
-- CodeQL + gitleaks + Semgrep + Trivy + SBOM in CI.
+- CodeQL ✅ + GitGuardian ✅ + Semgrep + Trivy + SBOM in CI.
 - Annual external pen-test, gap-closure within 90 days of finding.
 - 2 quarterly tabletops completed in the trailing 12 months.
 - Zero unresolved HIGH findings older than 30 days.

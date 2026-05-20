@@ -29,11 +29,11 @@ namespace events that need re-verification). Both are tractable inside a
 | File uploads / OCR / camera | 76 | GOOD |
 | Real-time / WebSocket | 82 | GOOD |
 | Client / browser (CSP) | 78 | GOOD |
-| CI/CD & supply chain | 70 | MODERATE |
+| CI/CD & supply chain | 78 | GOOD |
 | Infrastructure (Fly, CF, Supabase) | 80 | GOOD |
 | Privacy & compliance (minors) | 88 | HARDENED |
 | Logging, monitoring, IR | 72 | GOOD |
-| Overall | **79** | **GOOD** |
+| Overall | **80** | **GOOD** |
 
 **Breach probability (12-month, no further action):** ~12-18% — driven by
 AI prompt injection + Quick Play anon surface. Drops to ~3-5% post-sprint.
@@ -46,7 +46,7 @@ AI prompt injection + Quick Play anon surface. Drops to ~3-5% post-sprint.
 |---|---|---|---|---|
 | 1 | HIGH | AI/LLM | User-supplied text concatenated directly into Gemini prompts with only length + level validation; no prompt-firewall, no jailbreak detection, no output-content filter | `server.ts:2418-2498`, `server.ts:2440` |
 | 2 | HIGH | Quick Play | `/api/quick-play/session/:code` uses **service role** to bypass RLS; only 60/min IP limit; code is 4-char alphanumeric → ~1.6M space brute-forceable from a botnet | `server.ts:2240-2290` |
-| 3 | HIGH | Supply chain | No SAST (CodeQL/semgrep), no SBOM, no signed releases — supply-chain incident detection is dependent on Dependabot lag | `.github/workflows/ci.yml` |
+| 3 | MODERATE | Supply chain | CodeQL (3 languages) + GitGuardian secret-scanning are wired via GitHub repo Default Setup — but no SBOM, no signed releases, no Semgrep / Snyk / Trivy ruleset complementing CodeQL | repo-level Code Security settings |
 | 4 | MODERATE | CSP | `style-src-elem 'unsafe-inline'` kept for motion/react — acknowledged tradeoff, but blocks CSP from being a hard XSS gate | `server.ts:384-385` |
 | 5 | MODERATE | Quick Play | Teacher-only socket events (`TEACHER_KICK`, `TEACHER_BONUS`, `TEACHER_END`) live on the anon namespace — auth must be re-verified inside each handler; loss of one such check = teacher impersonation | `server.ts:1247-1330` |
 | 6 | MODERATE | Docker | Container runs as root; no `USER` directive; single-stage build ships devDependencies to production | `Dockerfile:15-31` |
@@ -84,7 +84,7 @@ Find detailed reasoning + remediation in the matching module file.
 
 | Day | Workstream | Outcome |
 |---|---|---|
-| 1-2 | Add CodeQL + gitleaks + semgrep to CI | SAST + secret scan on every PR |
+| 1-2 | Add Semgrep + Trivy + SBOM to CI (CodeQL + GitGuardian already wired at repo level) | Complementary SAST + image scan + supply-chain attestation |
 | 2-3 | Prompt-firewall layer for AI endpoints | Reject prompts with role-override / system-prompt-leak patterns |
 | 3-4 | Quick Play code length 4 → 6 + per-IP burst cap to 10/min | ~16M space, slower brute-force |
 | 4-5 | Add `USER node` to Dockerfile + multi-stage build | Drop devDependencies in prod image |
