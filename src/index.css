@@ -106,6 +106,14 @@
   --vb-warning-soft: #fef3c7;
   --vb-error: #dc2626;
   --vb-error-soft: #fee2e2;
+  /* `--vb-danger` is the naming used by the teacher dashboard palette
+     (applyThemePalette writes these per-theme at runtime).  Seed them
+     here too so components that use `var(--vb-danger)` still resolve
+     to a sensible saturated red when no teacher palette is active — eg.
+     pre-auth surfaces, student flows that reuse a shared component,
+     or the brief paint before applyThemePalette runs on first load. */
+  --vb-danger: #dc2626;
+  --vb-danger-soft: #fee2e2;
   --vb-info: #0ea5e9;
   --vb-info-soft: #e0f2fe;
 
