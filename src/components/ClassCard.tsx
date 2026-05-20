@@ -186,9 +186,12 @@ const ClassCard: React.FC<ClassCardProps> = ({
   // Close the avatar picker on outside click.  Same dual-ref check
   // as the ⋮ menu — the picker is portaled, so we need to test both
   // the trigger wrapper and the portaled node before treating a
-  // click as "outside".  Dismiss on scroll / resize so the
+  // click as "outside".  Dismiss on outer page scroll / resize so the
   // fixed-position popover doesn't strand itself when the page
-  // moves under it.
+  // moves under it — but ignore scrolls that originate *inside* the
+  // popover (the emoji grid has its own `max-h-48 overflow-y-auto`
+  // scroller; the previous unconditional dismiss closed the picker
+  // the moment the teacher tried to scroll the grid).
   useEffect(() => {
     if (!avatarPickerOpen) return;
     const isInsidePicker = (target: Node) =>
@@ -197,14 +200,17 @@ const ClassCard: React.FC<ClassCardProps> = ({
     const onDoc = (e: MouseEvent) => {
       if (!isInsidePicker(e.target as Node)) setAvatarPickerOpen(false);
     };
-    const onDismiss = () => setAvatarPickerOpen(false);
+    const onScroll = (e: Event) => {
+      if (!isInsidePicker(e.target as Node)) setAvatarPickerOpen(false);
+    };
+    const onResize = () => setAvatarPickerOpen(false);
     document.addEventListener('mousedown', onDoc);
-    window.addEventListener('scroll', onDismiss, true);
-    window.addEventListener('resize', onDismiss);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
     return () => {
       document.removeEventListener('mousedown', onDoc);
-      window.removeEventListener('scroll', onDismiss, true);
-      window.removeEventListener('resize', onDismiss);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
     };
   }, [avatarPickerOpen]);
 
