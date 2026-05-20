@@ -193,8 +193,13 @@ export default function StudentProfile({
           <button
             type="button"
             onClick={onReward}
-            className="px-3 py-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold text-sm flex items-center gap-1.5 shrink-0"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+            className="px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-1.5 shrink-0 transition-colors hover:opacity-90"
+            style={{
+              touchAction: "manipulation",
+              WebkitTapHighlightColor: "transparent" as never,
+              backgroundColor: 'var(--vb-warning-soft)',
+              color: 'var(--vb-warning)',
+            }}
             aria-label={t.rewardAria(student.name)}
           >
             <Gift size={16} />
@@ -332,10 +337,18 @@ export default function StudentProfile({
                       <span
                         key={display.id}
                         title={t.struggledChipTitle(display.primary, count, display.secondary)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-bold text-xs"
+                        style={{
+                          backgroundColor: 'var(--vb-danger-soft)',
+                          borderColor: 'var(--vb-danger)',
+                          color: 'var(--vb-danger)',
+                        }}
                       >
                         {display.primary}
-                        <span className="px-1.5 py-0.5 rounded-md bg-rose-200 text-rose-800 tabular-nums text-[10px]">
+                        <span
+                          className="px-1.5 py-0.5 rounded-md tabular-nums text-[10px] text-white"
+                          style={{ backgroundColor: 'var(--vb-danger)' }}
+                        >
                           ×{count}
                         </span>
                       </span>

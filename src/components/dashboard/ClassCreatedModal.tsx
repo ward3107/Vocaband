@@ -83,7 +83,7 @@ export default function ClassCreatedModal({
                 href={`https://wa.me/?text=${encodeURIComponent(createdClassCode || "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="py-4 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg shadow-green-100"
+                className="py-4 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg"
               >
                 <MessageCircle size={20} />
                 <span>{t.whatsAppShort}</span>

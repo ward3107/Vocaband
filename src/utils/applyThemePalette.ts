@@ -56,6 +56,14 @@ const TOKEN_KEYS: Array<{ key: keyof TeacherDashboardPalette; cssVars: string[] 
     key: 'accentText',
     cssVars: ['--vb-accent-text', '--color-on-primary'],
   },
+  { key: 'success',     cssVars: ['--vb-success'] },
+  { key: 'successSoft', cssVars: ['--vb-success-soft'] },
+  { key: 'danger',      cssVars: ['--vb-danger'] },
+  { key: 'dangerSoft',  cssVars: ['--vb-danger-soft'] },
+  { key: 'warning',     cssVars: ['--vb-warning'] },
+  { key: 'warningSoft', cssVars: ['--vb-warning-soft'] },
+  { key: 'info',        cssVars: ['--vb-info'] },
+  { key: 'infoSoft',    cssVars: ['--vb-info-soft'] },
 ];
 
 export function applyThemePalette(palette: TeacherDashboardPalette): void {

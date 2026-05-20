@@ -169,45 +169,47 @@ export default function TodayActionList({
         </span>
       </header>
       <div className="space-y-2">
-        {items.map(item => (
+        {items.map(item => {
+          const toneVar =
+            item.tone === "amber" ? "var(--vb-warning)" :
+            item.tone === "rose"  ? "var(--vb-danger)"  :
+                                    "var(--vb-info)";
+          const toneSoftVar =
+            item.tone === "amber" ? "var(--vb-warning-soft)" :
+            item.tone === "rose"  ? "var(--vb-danger-soft)"  :
+                                    "var(--vb-info-soft)";
+          return (
           <button
             key={item.key}
             type="button"
             onClick={item.onClick}
-            className={`group w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
-              item.tone === "amber"
-                ? "border-amber-100 hover:bg-amber-50/40"
-                : item.tone === "rose"
-                  ? "border-rose-100 hover:bg-rose-50/40"
-                  : "border-indigo-100 hover:bg-indigo-50/40"
-            }`}
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+            className="group w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left hover:bg-[var(--hover-soft)]"
+            style={{
+              touchAction: "manipulation",
+              WebkitTapHighlightColor: "transparent" as never,
+              borderColor: toneVar,
+              // Custom CSS prop drives the hover bg above so each tone
+              // picks up its own soft tint from the theme palette.
+              ['--hover-soft' as never]: toneSoftVar,
+            }}
           >
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-              item.tone === "amber"
-                ? "bg-amber-100 text-amber-700"
-                : item.tone === "rose"
-                  ? "bg-rose-100 text-rose-700"
-                  : "bg-indigo-100 text-indigo-700"
-            }`}>
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+              style={{ backgroundColor: toneSoftVar, color: toneVar }}
+            >
               {item.icon}
             </div>
             <p className="flex-1 text-sm font-bold leading-snug" style={{ color: 'var(--vb-text-primary)' }}>
               {item.title}
             </p>
-            <div className={`hidden sm:flex items-center gap-1 text-xs font-black shrink-0 ${
-              item.tone === "amber"
-                ? "text-amber-700"
-                : item.tone === "rose"
-                  ? "text-rose-700"
-                  : "text-indigo-700"
-            }`}>
+            <div className="hidden sm:flex items-center gap-1 text-xs font-black shrink-0" style={{ color: toneVar }}>
               {item.cta}
               <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
             </div>
             <ArrowRight size={16} className="sm:hidden text-[var(--vb-text-muted)] shrink-0" aria-hidden />
           </button>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

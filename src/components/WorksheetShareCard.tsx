@@ -151,20 +151,28 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
         />
       </div>
 
-      <div className="rounded-lg bg-stone-50 border border-stone-200 px-3 py-3">
-        <p className="text-xs uppercase tracking-widest font-bold text-stone-400 mb-1">
+      <div
+        className="rounded-lg border px-3 py-3"
+        style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
+      >
+        <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: 'var(--vb-text-muted)' }}>
           {t.linkLabel}
         </p>
-        <p className="font-mono text-sm break-all text-stone-800">{shareUrl}</p>
-        <p className="text-xs text-stone-500 mt-1">{t.expiresNote}</p>
+        <p className="font-mono text-sm break-all" style={{ color: 'var(--vb-text-primary)' }}>{shareUrl}</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--vb-text-muted)' }}>{t.expiresNote}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={handleCopy}
-          className="py-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center gap-2 transition-all"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-all hover:opacity-90"
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
+            backgroundColor: 'var(--vb-surface-alt)',
+            color: 'var(--vb-text-secondary)',
+          }}
         >
           {copied ? <Check size={16} /> : <Copy size={16} />}
           {copied ? t.copiedBtn : t.copyBtn}
@@ -184,8 +192,13 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
         <button
           type="button"
           onClick={handleDownloadPng}
-          className="py-2.5 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700 font-bold flex items-center justify-center gap-2 transition-all"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-all hover:opacity-90"
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
+            backgroundColor: 'var(--vb-accent-soft)',
+            color: 'var(--vb-accent)',
+          }}
         >
           <Download size={16} />
           {t.downloadPngBtn}
@@ -193,8 +206,13 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
         <button
           type="button"
           onClick={handleDownloadPdf}
-          className="py-2.5 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700 font-bold flex items-center justify-center gap-2 transition-all"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-all hover:opacity-90"
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
+            backgroundColor: 'var(--vb-accent-soft)',
+            color: 'var(--vb-accent)',
+          }}
         >
           <FileText size={16} />
           {t.downloadPdfBtn}
@@ -205,8 +223,14 @@ export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
         <button
           type="button"
           onClick={handleNativeShare}
-          className="w-full py-2.5 rounded-lg bg-stone-50 hover:bg-stone-100 text-stone-700 font-bold flex items-center justify-center gap-2 transition-all border border-stone-200"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="w-full py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-all border hover:opacity-90"
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
+            backgroundColor: 'var(--vb-surface-alt)',
+            color: 'var(--vb-text-secondary)',
+            borderColor: 'var(--vb-border)',
+          }}
         >
           <Share2 size={16} />
           {t.moreShareBtn}

@@ -140,15 +140,13 @@ export default function TopStrugglingWords({
                   <td className="px-3 py-2 text-right tabular-nums">{row.total}</td>
                   <td className="px-3 py-2 text-right">
                     <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                        row.studentPct >= 60 ? "bg-rose-100 text-rose-700" :
-                        row.studentPct >= 30 ? "bg-amber-100 text-amber-700" :
-                        ""
-                      }`}
+                      className="px-2 py-0.5 rounded-full text-xs font-bold"
                       style={
-                        row.studentPct < 30
-                          ? { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }
-                          : undefined
+                        row.studentPct >= 60
+                          ? { backgroundColor: 'var(--vb-danger-soft)', color: 'var(--vb-danger)' }
+                          : row.studentPct >= 30
+                          ? { backgroundColor: 'var(--vb-warning-soft)', color: 'var(--vb-warning)' }
+                          : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }
                       }
                     >
                       {row.studentPct}%

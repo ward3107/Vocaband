@@ -101,8 +101,8 @@ export default function TeacherQuickActions({
             <div className="h-full" data-tour="classroom">
               <CompactActionCard
                 icon={<GraduationCap size={20} />}
-                iconBg="bg-violet-100"
-                iconColor="text-violet-600"
+                iconBgVar="var(--vb-accent-soft)"
+                iconColorVar="var(--vb-accent)"
                 title={t.classroomTitle}
                 description={t.classroomDescription}
                 onClick={onClassroomClick}
@@ -120,8 +120,8 @@ export default function TeacherQuickActions({
               <div className="h-full" data-tour="approvals">
                 <CompactActionCard
                   icon={<UserCircle size={20} />}
-                  iconBg="bg-rose-100"
-                  iconColor="text-rose-600"
+                  iconBgVar="var(--vb-danger-soft)"
+                  iconColorVar="var(--vb-danger)"
                   title={t.approvalsTitle}
                   description={t.approvalsWaiting(pendingStudentsCount)}
                   onClick={onApprovalsClick}
@@ -141,8 +141,8 @@ export default function TeacherQuickActions({
               <div className="h-full" data-tour="worksheet-results">
                 <CompactActionCard
                   icon={<ClipboardList size={20} />}
-                  iconBg="bg-violet-100"
-                  iconColor="text-violet-600"
+                  iconBgVar="var(--vb-accent-soft)"
+                  iconColorVar="var(--vb-accent)"
                   title={t.worksheetResultsTitle}
                   description={t.worksheetResultsDescription}
                   onClick={onWorksheetResultsClick}
@@ -163,8 +163,10 @@ export default function TeacherQuickActions({
 ────────────────────────────────────────────────────────────────────────────────── */
 interface CompactActionCardProps {
   icon: React.ReactNode;
-  iconBg: string;
-  iconColor?: string;
+  /** CSS-variable string for the icon badge background (e.g. "var(--vb-accent-soft)"). */
+  iconBgVar: string;
+  /** CSS-variable string for the icon glyph colour (e.g. "var(--vb-accent)"). */
+  iconColorVar: string;
   title: string;
   description: string;
   onClick: () => void;
@@ -175,8 +177,8 @@ interface CompactActionCardProps {
 
 const CompactActionCard: React.FC<CompactActionCardProps> = ({
   icon,
-  iconBg,
-  iconColor,
+  iconBgVar,
+  iconColorVar,
   title,
   description,
   onClick,
@@ -196,13 +198,19 @@ const CompactActionCard: React.FC<CompactActionCardProps> = ({
       className={`group relative w-full rounded-xl p-4 ${isHebrew ? "text-right" : "text-left"} border shadow-sm hover:shadow-md active:scale-[0.99] transition-all`}
     >
       {badge != null && badge > 0 && (
-        <span className={`absolute top-3 ${isHebrew ? "left-3" : "right-3"} bg-rose-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center shadow-sm`}>
+        <span
+          className={`absolute top-3 ${isHebrew ? "left-3" : "right-3"} text-white text-xs font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center shadow-sm`}
+          style={{ backgroundColor: 'var(--vb-danger)' }}
+        >
           {badge}
         </span>
       )}
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
-          <span className={iconColor}>{icon}</span>
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+          style={{ backgroundColor: iconBgVar }}
+        >
+          <span style={{ color: iconColorVar }}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0">
           <h3 style={{ color: 'var(--vb-text-primary)' }} className="text-sm font-bold leading-tight mb-0.5">

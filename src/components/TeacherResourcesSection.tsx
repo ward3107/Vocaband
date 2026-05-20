@@ -175,7 +175,10 @@ const TeacherResourcesSection: React.FC<TeacherResourcesSectionProps> = ({
         {/* Hero header — landing page only */}
         {isHero && (
           <div className="text-center mb-10 md:mb-14">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-black uppercase tracking-[0.15em] mb-4">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-[0.15em] mb-4"
+              style={{ backgroundColor: 'var(--vb-accent-soft)', color: 'var(--vb-accent)' }}
+            >
               {t.sectionEyebrow}
             </div>
             <h2 className="text-3xl md:text-5xl font-black text-stone-900 tracking-tight mb-3">

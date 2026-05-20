@@ -126,7 +126,7 @@ export default function SavedTasksSection({
                 onClick={() => {
                   if (confirm(t.deleteConfirm(task.title || t.untitledTemplate))) onRemove(task.id);
                 }}
-                className="p-2 rounded-lg hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                className="p-2 rounded-lg transition-colors hover:!bg-[var(--vb-danger-soft)] hover:!text-[var(--vb-danger)]"
                 style={{
                   backgroundColor: 'var(--vb-surface-alt)',
                   color: 'var(--vb-text-muted)',

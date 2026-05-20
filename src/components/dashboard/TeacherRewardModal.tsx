@@ -140,7 +140,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
                     className={`py-4 px-2 rounded-xl font-black text-lg transition-all border-2 ${
                       selectedXp === xp
                         ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/30'
-                        : 'bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] border-[var(--vb-border)] hover:border-amber-300 hover:bg-amber-50'
+                        : 'bg-[var(--vb-surface)] text-[var(--vb-text-secondary)] border-[var(--vb-border)] hover:border-[var(--vb-warning)] hover:bg-[var(--vb-warning-soft)]'
                     }`}
                   >
                     +{xp}
@@ -164,7 +164,8 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
                 onChange={(e) => setReason(e.target.value)}
                 placeholder={t.shortMsgPlaceholder}
                 maxLength={120}
-                className="w-full px-4 py-3 rounded-lg border-2 border-[var(--vb-border)] focus:border-amber-400 focus:outline-none transition-colors text-sm"
+                style={{ color: 'var(--vb-text-primary)', backgroundColor: 'var(--vb-surface)' }}
+                className="w-full px-4 py-3 rounded-lg border-2 border-[var(--vb-border)] focus:border-[var(--vb-warning)] focus:outline-none transition-colors text-sm"
               />
               <p className="text-xs text-[var(--vb-text-muted)] mt-1">
                 Shows up in the student's dashboard next to the XP boost.

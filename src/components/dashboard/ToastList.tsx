@@ -22,11 +22,13 @@ export default function ToastList({ toasts }: ToastListProps) {
             initial={{ opacity: 0, y: -20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className={`px-6 py-4 rounded-xl shadow-2xl font-bold flex items-center gap-3 min-w-[300px] ${
-              toast.type === 'success' ? 'bg-green-600 text-white' :
-              toast.type === 'error' ? 'bg-red-600 text-white' :
-              'bg-blue-600 text-white'
-            }`}
+            className="px-6 py-4 rounded-xl shadow-2xl font-bold flex items-center gap-3 min-w-[300px] text-white"
+            style={{
+              backgroundColor:
+                toast.type === 'success' ? 'var(--vb-success)' :
+                toast.type === 'error'   ? 'var(--vb-danger)'  :
+                                           'var(--vb-info)',
+            }}
           >
             {toast.type === 'success' && <CheckCircle2 size={24} />}
             {toast.type === 'error' && <AlertTriangle size={24} />}

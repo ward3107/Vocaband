@@ -154,9 +154,17 @@ export default function LiveChallengeView({
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 bg-amber-100 text-amber-900 border border-amber-300 rounded-xl p-4 sm:p-5 shadow-lg flex items-start gap-3"
+            className="mb-6 border rounded-xl p-4 sm:p-5 shadow-lg flex items-start gap-3"
+            style={{
+              backgroundColor: 'var(--vb-warning-soft)',
+              color: 'var(--vb-warning)',
+              borderColor: 'var(--vb-warning)',
+            }}
           >
-            <div className="shrink-0 w-10 h-10 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xl">⚠️</div>
+            <div
+              className="shrink-0 w-10 h-10 rounded-lg text-white flex items-center justify-center text-xl"
+              style={{ backgroundColor: 'var(--vb-warning)' }}
+            >⚠️</div>
             <div className="flex-1 min-w-0">
               <p className="font-black text-base">{t.podiumNotConnected}</p>
               <p className="text-sm mt-1 leading-relaxed">

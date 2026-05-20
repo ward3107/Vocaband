@@ -33,7 +33,10 @@ export default function ConfirmDialog({ confirmDialog, setConfirmDialog }: Confi
             exit={{ opacity: 0, scale: 0.9 }}
             className="bg-[var(--vb-surface)] rounded-2xl p-8 max-w-md w-full shadow-2xl text-center"
           >
-            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: 'var(--vb-warning-soft)', color: 'var(--vb-warning)' }}
+            >
               <AlertTriangle size={32} />
             </div>
             <h3 className="text-2xl font-black mb-3 text-[var(--vb-text-primary)]">{t.confirmActionTitle}</h3>
@@ -41,13 +44,14 @@ export default function ConfirmDialog({ confirmDialog, setConfirmDialog }: Confi
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
-                className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-border)] transition-all border-2 border-blue-200"
+                className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-border)] transition-all border-2 border-[var(--vb-border)]"
               >
                 {t.cancel}
               </button>
               <button
                 onClick={confirmDialog.onConfirm}
-                className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                style={{ backgroundColor: 'var(--vb-danger)', color: '#ffffff' }}
+                className="flex-1 py-4 rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg"
               >
                 {t.confirmBtn}
               </button>

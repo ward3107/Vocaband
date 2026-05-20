@@ -650,7 +650,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 <button
                   onClick={() => { onDelete(); setMenuOpen(false); }}
                   type="button"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 text-left"
+                  style={{ color: 'var(--vb-danger)' }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-danger-soft)]"
                 >
                   <Trash2 size={14} />
                   {t.deleteClass}
@@ -844,7 +845,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   <button
                     onClick={() => onDeleteAssignment(assignment)}
                     type="button"
-                    className="px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                    style={{ color: 'var(--vb-danger)' }}
+                    className="px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors hover:bg-[var(--vb-danger-soft)]"
                     aria-label={t.deleteAssignmentAria}
                   >
                     <Trash2 size={13} />

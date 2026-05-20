@@ -336,10 +336,11 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-100"
+                className="rounded-xl p-4 border-2"
+                style={{ backgroundColor: 'var(--vb-accent-soft)', borderColor: 'var(--vb-accent)' }}
               >
-                <div className="text-sm text-blue-700 mb-2 font-bold">{t.shareWithStudents}</div>
-                <div className="text-3xl font-black text-blue-900 mb-4 tracking-wider">
+                <div className="text-sm mb-2 font-bold" style={{ color: 'var(--vb-accent)' }}>{t.shareWithStudents}</div>
+                <div className="text-3xl font-black mb-4 tracking-wider" style={{ color: 'var(--vb-text-primary)' }}>
                   {selectedClass.code}
                 </div>
                 <div className="flex gap-2">
