@@ -79,12 +79,13 @@ jobs:
         # `--with-deps` reinstalls only the apt packages.
         run: npx playwright install-deps chromium
 
-      # Scope to smoke.spec.ts only — the rest of the e2e suite (23
-      # tests across navigation / public-pages / schema-validation)
-      # was timing out at 10 min on a single worker.  Smoke is the
-      # "does it boot" gate; deeper suites stay opt-in via local run.
-      - name: Run Playwright smoke
-        run: npx playwright test --config e2e/playwright.config.ts e2e/tests/smoke.spec.ts
+      # Scope to smoke.spec.ts + auth-flow.spec.ts — the rest of the
+      # e2e suite (navigation / public-pages / schema-validation) was
+      # timing out at 10 min on a single worker.  Smoke is the "does
+      # it boot" gate; auth-flow.spec.ts is the security-regression
+      # gate added per docs/security-audit-framework/01-AUTH-IDENTITY.md.
+      - name: Run Playwright smoke + auth-flow
+        run: npx playwright test --config e2e/playwright.config.ts e2e/tests/smoke.spec.ts e2e/tests/auth-flow.spec.ts
 
       - name: Upload Playwright report on failure
         if: failure()

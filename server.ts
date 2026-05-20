@@ -242,6 +242,90 @@ async function isTeacherForClass(uid: string, classCode: string): Promise<boolea
   }
 }
 
+// -----------------------------------------------------------------------------
+// AI / LLM input + output safety helpers (security-audit-framework module 06)
+// -----------------------------------------------------------------------------
+//
+// detectPromptInjection: heuristic scan for known prompt-injection markers in
+// user-supplied text that will be interpolated into an LLM prompt.  Not a
+// guarantee — pair with output sanitisation + (eventually) Gemini's
+// responseSchema JSON mode.  Heuristic-only because Hebrew/Arabic content
+// would false-positive a strict allowlist, and the cost of a missed prompt
+// is bounded (output sanitisation strips dangerous markup before send).
+//
+// sanitizeAiOutput: strips HTML tags, control chars, and zero-width
+// characters from AI-generated strings before they hit the client.  Defends
+// against a stored-XSS chain where AI-returned text reaches a non-React
+// renderer (PDF/Word worksheet export) and gets interpreted as markup.
+
+const PROMPT_INJECTION_PATTERNS: ReadonlyArray<{ name: string; re: RegExp }> = [
+  // Triple-quote breakout used in our own templates — if user content
+  // contains this, treat as suspicious regardless of intent.
+  { name: "triple_quote", re: /"""/ },
+  // System-prompt override attempts in any language we serve.  English
+  // keywords cover most automated probes; Hebrew/Arabic variants need
+  // human-moderated abuse triage if the platform expands non-English UGC.
+  { name: "ignore_previous", re: /\bignore (?:all |the |any )?(?:previous|prior|above)\b/i },
+  { name: "disregard_previous", re: /\bdisregard (?:all |the |any )?(?:previous|prior|above)\b/i },
+  { name: "forget_previous", re: /\bforget (?:everything|all|the|your)\b/i },
+  { name: "new_instructions", re: /\bnew instructions?:/i },
+  { name: "system_prompt", re: /\b(?:system|developer) prompt\b/i },
+  // Role-injection markers from the major chat templates.
+  { name: "role_tokens", re: /<\|(?:im_start|im_end|system|user|assistant|endoftext)\|>/i },
+  { name: "chatml_role", re: /<\|start_header_id\|>|<\|end_header_id\|>/i },
+  // Try-to-exfil-the-system-prompt pattern.
+  { name: "reveal_prompt", re: /\b(?:repeat|reveal|print|show|output) (?:the |your )?(?:system|developer|hidden|initial) (?:prompt|instructions?)\b/i },
+];
+
+function detectPromptInjection(text: string): { detected: boolean; pattern?: string } {
+  if (!text) return { detected: false };
+  for (const { name, re } of PROMPT_INJECTION_PATTERNS) {
+    if (re.test(text)) return { detected: true, pattern: name };
+  }
+  return { detected: false };
+}
+
+// Sanitise model-returned strings before they reach the client.
+//
+// CodeQL alert #48 (Incomplete multi-character sanitization) showed that
+// stripping HTML via regex is fundamentally broken: `<<script>>` survives
+// a single `/<[^>]*>/g` pass because removing the outer brackets leaves a
+// valid `<script>`; and `>` characters can survive a loop after their
+// matching `<` was already removed.  The universally correct answer is to
+// **encode** rather than **strip**.  An entity-encoded `&lt;script&gt;` is
+// inert in every consumer: HTML parsers treat it as a text node; PDF/Word
+// libs render the entity literally; React displays it as visible text.
+//
+// CodeQL alert #49 (Overly permissive regular expression range) required
+// explicit `\u00xx` escape sequences for control-character ranges instead
+// of literal control bytes embedded in source.
+//
+// Whitespace within the printable range (\t \n \r) is preserved.
+
+const AMP_RE = /&/g;
+const LT_RE = /</g;
+const GT_RE = />/g;
+const DQUOTE_RE = /"/g;
+const SQUOTE_RE = /'/g;
+const JS_URI_RE = /\b(?:javascript|data|vbscript)\s*:/gi;
+const CONTROL_CHAR_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const ZERO_WIDTH_RE = /[\u200B-\u200D\u2060\uFEFF]/g;
+
+function sanitizeAiOutput(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    // Encode `&` first so the entities we emit below don't get re-encoded.
+    .replace(AMP_RE, "&amp;")
+    .replace(LT_RE, "&lt;")
+    .replace(GT_RE, "&gt;")
+    .replace(DQUOTE_RE, "&quot;")
+    .replace(SQUOTE_RE, "&#x27;")
+    .replace(JS_URI_RE, "")
+    .replace(CONTROL_CHAR_RE, "")
+    .replace(ZERO_WIDTH_RE, "")
+    .trim();
+}
+
 async function startServer() {
   const app = express();
   const httpServer = createServer(app);
@@ -610,6 +694,30 @@ async function startServer() {
     const uid = (socket.data as { uid: string }).uid;
     const clientIp = getSocketIp(socket);
     if (isDev) console.log(`[Socket] Client connected: uid=${uid}, ip=${clientIp}, socket=${socket.id}`);
+
+    // Mid-stream JWT re-verification — Supabase access tokens default to
+    // 1h.  Without periodic re-check, a socket established at T=0 can
+    // continue receiving live-challenge events past T=1h even if the
+    // teacher account was suspended.  Every 5 min we re-verify the
+    // handshake token; on failure we disconnect, forcing the client to
+    // reconnect with a fresh (or denied) token.  Cost: one
+    // supabaseAdmin.auth.getUser() call per socket per 5 min — bounded
+    // and acceptable at 1500 concurrent users.
+    const reverifyHandle = setInterval(async () => {
+      const token = socket.handshake.auth?.token;
+      if (typeof token !== "string" || token.length === 0) {
+        socket.emit("forced_disconnect", { reason: "token_missing" });
+        socket.disconnect(true);
+        return;
+      }
+      const stillValidUid = await verifyToken(token);
+      if (!stillValidUid || stillValidUid !== uid) {
+        if (isDev) console.warn(`[Socket] Re-verify failed for uid=${uid}, disconnecting`);
+        socket.emit("forced_disconnect", { reason: "token_revoked" });
+        socket.disconnect(true);
+      }
+    }, 5 * 60 * 1000);
+    socket.on("disconnect", () => clearInterval(reverifyHandle));
 
     // Helper: emit the reason a challenge event was rejected back to
     // the specific socket that sent it.  Previously every reject path
@@ -1638,6 +1746,16 @@ async function startServer() {
       return res.status(400).json({ error: "No valid words provided" });
     }
 
+    // Input firewall — each word will be JSON.stringify'd into the prompt;
+    // injection markers inside a word still surface in the model context.
+    for (const w of validWords) {
+      const injection = detectPromptInjection(w);
+      if (injection.detected) {
+        console.warn(`[abuse] /api/translate prompt-injection in word: ip=${ip} uid=${uid} pattern=${injection.pattern}`);
+        return res.status(400).json({ error: "A word contains a disallowed pattern" });
+      }
+    }
+
     const apiKey = process.env.GOOGLE_AI_API_KEY;
     if (!apiKey || apiKey.trim() === "") {
       return res.status(503).json({
@@ -1690,14 +1808,18 @@ ${JSON.stringify(validWords)}`;
       // Align by input order. If Gemini returns fewer items than requested
       // (rare but possible), pad with empty strings so the arrays stay
       // positional — frontend can show an auto-translate button for gaps.
+      // Output sanitisation — translation text is downstream-renderable
+      // (PDF / Word / SVG worksheet exports).  Strip any HTML / control
+      // chars / js: URIs the model returned, intentionally or via prompt
+      // injection of its own (Gemini occasionally echoes input).
       const hebrew: string[] = [];
       const arabic: string[] = [];
       const russian: string[] = [];
       for (let i = 0; i < validWords.length; i++) {
         const item = parsed[i];
-        hebrew.push(item?.hebrew?.trim() || "");
-        arabic.push(item?.arabic?.trim() || "");
-        russian.push(item?.russian?.trim() || "");
+        hebrew.push(sanitizeAiOutput(item?.hebrew));
+        arabic.push(sanitizeAiOutput(item?.arabic));
+        russian.push(sanitizeAiOutput(item?.russian));
       }
 
       return res.json({ hebrew, arabic, russian });
@@ -2262,7 +2384,11 @@ Quality rules:
   app.get("/api/quick-play/session/:code", qpSessionLimiter, async (req, res) => {
     // @types/express 5 widens req.params.* to string | string[]; narrow it.
     const code = typeof req.params.code === "string" ? req.params.code : "";
-    if (!code || !/^[A-Z0-9]{4,8}$/i.test(code)) {
+    // Tightened to match exactly what `generate_session_code()` produces
+    // (6 chars from a 32-char ambiguity-free alphabet — no I/O/0/1).
+    // Cuts probe surface from ~3T (4-8 char A-Z0-9) to ~1B (6 char restricted),
+    // and rejects all malformed enumeration attempts up front before the DB hit.
+    if (!code || !/^[A-HJ-NP-Z2-9]{6}$/i.test(code)) {
       return res.status(400).json({ error: "Invalid session code format" });
     }
     if (!supabaseAdmin) {
@@ -2325,6 +2451,16 @@ Quality rules:
     if (validWords.length === 0) {
       return res.status(400).json({ error: "No valid words provided" });
     }
+    // Input firewall — each word ends up in the user-message body of the
+    // Anthropic call.  Triple-quote / role-override patterns get rejected
+    // before we spend tokens.
+    for (const w of validWords) {
+      const injection = detectPromptInjection(w);
+      if (injection.detected) {
+        console.warn(`[Sentences] prompt-injection rejected in word (pattern=${injection.pattern})`);
+        return res.status(400).json({ error: "A word contains a disallowed pattern" });
+      }
+    }
     const diff = [1, 2, 3, 4].includes(difficulty) ? difficulty : 2;
 
     try {
@@ -2382,7 +2518,10 @@ Examples of good vs bad sentences:
         const lines = text.split("\n").filter(l => l.trim());
 
         for (let i = 0; i < uncachedWords.length; i++) {
-          const sentence = lines[i]?.trim() || `I like the word ${uncachedWords[i]}.`;
+          // Sanitize output — Claude rarely emits markup, but a successful
+          // prompt-injection could attempt to embed it.  Strip defensively.
+          const raw = lines[i]?.trim() || `I like the word ${uncachedWords[i]}.`;
+          const sentence = sanitizeAiOutput(raw) || `I like the word ${uncachedWords[i]}.`;
           cached[uncachedWords[i].toLowerCase()] = sentence;
 
           // Store in cache (fire and forget)
@@ -2425,6 +2564,16 @@ Examples of good vs bad sentences:
     const validLevels = ["A1", "A2", "B1", "B2"];
     if (!level || !validLevels.includes(level)) {
       return res.status(400).json({ error: `level must be one of: ${validLevels.join(", ")}` });
+    }
+
+    // Input firewall — reject prompts that look like injection attempts.
+    // The triple-quote check is the most important: our prompt template
+    // wraps user text in `"""..."""` and embedded `"""` lets the user
+    // escape the delimiter and inject arbitrary instructions.
+    const injection = detectPromptInjection(text);
+    if (injection.detected) {
+      console.warn(`[AI Text] uid=${auth.uid}: prompt-injection rejected (pattern=${injection.pattern})`);
+      return res.status(400).json({ error: "Text contains disallowed pattern" });
     }
 
     try {
@@ -2528,31 +2677,36 @@ Output ONLY the JSON, no markdown, no explanations.
         }
       }
 
-      // Sanitize vocabulary
+      // Sanitize vocabulary — strip HTML / js: / control chars from every
+      // model-returned string before it leaves the server.  Defends against
+      // a stored-XSS chain where AI output reaches a non-React renderer
+      // (PDF/Word worksheet export) and gets interpreted as markup.
       const sanitizedVocab = (resultData.vocabulary || [])
         .filter(w => w && typeof w === "object")
         .filter(w => typeof w.english === "string" && w.english.trim().length > 0)
         .filter(w => typeof w.hebrew === "string" && w.hebrew.trim().length > 0)
         .filter(w => typeof w.arabic === "string" && w.arabic.trim().length > 0)
         .map(w => ({
-          english: w.english.trim().toLowerCase(),
-          hebrew: w.hebrew.trim(),
-          arabic: w.arabic.trim(),
-          example: w.example && typeof w.example === "string" ? w.example.trim() : undefined,
+          english: sanitizeAiOutput(w.english).toLowerCase(),
+          hebrew: sanitizeAiOutput(w.hebrew),
+          arabic: sanitizeAiOutput(w.arabic),
+          example: w.example && typeof w.example === "string" ? sanitizeAiOutput(w.example) : undefined,
         }))
+        .filter(w => w.english.length > 0 && w.hebrew.length > 0 && w.arabic.length > 0)
         .filter(w => w.english.length <= 50 && w.hebrew.length <= 100 && w.arabic.length <= 100)
         .slice(0, 20);
 
-      // Sanitize questions
+      // Sanitize questions — same defence applied to teacher-facing prose.
       const sanitizedQuestions = (resultData.questions || [])
         .filter(q => q && typeof q === "object")
         .filter(q => typeof q.question === "string" && q.question.trim().length > 0)
         .filter(q => typeof q.answer === "string" && q.answer.trim().length > 0)
         .map(q => ({
-          question: q.question.trim(),
-          answer: q.answer.trim(),
+          question: sanitizeAiOutput(q.question),
+          answer: sanitizeAiOutput(q.answer),
           type: q.type === "inferential" ? "inferential" as const : "literal" as const,
         }))
+        .filter(q => q.question.length > 0 && q.answer.length > 0)
         .slice(0, 10);
 
       console.log(`[AI Text] uid=${auth.uid}: extracted ${sanitizedVocab.length} words, ${sanitizedQuestions.length} questions`);
@@ -2602,6 +2756,29 @@ Output ONLY the JSON, no markdown, no explanations.
     }
     if (!config.questionTypes || typeof config.questionTypes !== "object") {
       return res.status(400).json({ error: "config.questionTypes is required" });
+    }
+
+    // Input firewall — config.textType is interpolated free-form into the
+    // prompt at "Text type: ${config.textType}".  Likewise textDifficulty.
+    // Each word's `.english` string also lands in the prompt as `wordList`.
+    const textTypeStr = typeof config.textType === "string" ? config.textType : "";
+    const textDifficultyStr = typeof config.textDifficulty === "string" ? config.textDifficulty : "";
+    for (const [field, value] of [["config.textType", textTypeStr], ["config.textDifficulty", textDifficultyStr]] as const) {
+      const injection = detectPromptInjection(value);
+      if (injection.detected) {
+        console.warn(`[AI Lesson] uid=${auth.uid}: prompt-injection rejected in ${field} (pattern=${injection.pattern})`);
+        return res.status(400).json({ error: `${field} contains a disallowed pattern` });
+      }
+    }
+    for (const w of words) {
+      const candidate = typeof w === "string" ? w : (w && typeof w === "object" && typeof w.english === "string" ? w.english : "");
+      if (candidate) {
+        const injection = detectPromptInjection(candidate);
+        if (injection.detected) {
+          console.warn(`[AI Lesson] uid=${auth.uid}: prompt-injection rejected in words (pattern=${injection.pattern})`);
+          return res.status(400).json({ error: "A vocabulary word contains a disallowed pattern" });
+        }
+      }
     }
 
     try {
@@ -2761,8 +2938,10 @@ Important notes:
         throw new Error("Invalid response: missing questions array");
       }
 
-      // Sanitize
-      const sanitizedText = lessonData.text.trim().slice(0, 10000);
+      // Sanitize — strip HTML / js: / control chars from every AI-returned
+      // string (defends against stored-XSS in PDF/Word worksheet exports
+      // that may render lesson text outside React's auto-escape).
+      const sanitizedText = sanitizeAiOutput(lessonData.text).slice(0, 10000);
       const sanitizedQuestions = lessonData.questions
         .filter(q => q && typeof q === "object")
         .filter(q => typeof q.question === "string" && q.question.trim().length > 0)
@@ -2770,10 +2949,11 @@ Important notes:
         .filter(q => ["yesNo", "wh", "literal", "inferential", "fillBlank", "trueFalse", "matching", "multipleChoice", "sentenceComplete"].includes(q.type))
         .map(q => ({
           type: q.type,
-          question: q.question.trim(),
-          answer: q.answer.trim(),
-          options: Array.isArray(q.options) ? q.options.slice(0, 6).map(o => String(o).trim()) : undefined,
+          question: sanitizeAiOutput(q.question),
+          answer: sanitizeAiOutput(q.answer),
+          options: Array.isArray(q.options) ? q.options.slice(0, 6).map(o => sanitizeAiOutput(String(o))) : undefined,
         }))
+        .filter(q => q.question.length > 0 && q.answer.length > 0)
         .slice(0, 100);
 
       // Count words in generated text
