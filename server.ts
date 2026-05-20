@@ -32,7 +32,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient as createRedisClient } from "redis";
 import Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { buildSystemPrompt, buildUserMessage, BAGRUT_TOOL } from "./src/features/vocabagrut/lib/bagrutPrompt";
 import { validateBagrutTest, computeMcMax, scoreMcAnswers, stripAnswerKey } from "./src/features/vocabagrut/lib/bagrutSchema";
 import { MODULE_SPECS } from "./src/features/vocabagrut/lib/moduleMap";
@@ -325,6 +325,112 @@ function sanitizeAiOutput(value: unknown): string {
     .replace(ZERO_WIDTH_RE, "")
     .trim();
 }
+
+// -----------------------------------------------------------------------------
+// Gemini responseSchema definitions
+// -----------------------------------------------------------------------------
+//
+// Gemini's `responseMimeType: "application/json"` + `responseSchema` combo
+// constrains the model to emit valid JSON matching the declared shape — no
+// markdown fences, no prose preamble, no schema drift.  Switching to this
+// mode lets us delete the per-endpoint markdown-fence stripping and the
+// `parsedText.match(/\{[\s\S]*\}/)` salvage fallback that previous code
+// needed when the model occasionally wrapped its output.
+//
+// Schemas are intentionally permissive on optional fields (e.g. `example`
+// on a vocab row) so that the existing "filter out empties" sanitiser
+// step still works uniformly across legacy responses and schema-mode
+// responses.  Required fields enforce the minimum we depend on.
+
+const TRANSLATE_SCHEMA = {
+  type: SchemaType.ARRAY,
+  items: {
+    type: SchemaType.OBJECT,
+    properties: {
+      english: { type: SchemaType.STRING },
+      hebrew: { type: SchemaType.STRING },
+      arabic: { type: SchemaType.STRING },
+      russian: { type: SchemaType.STRING },
+    },
+    required: ["english", "hebrew", "arabic", "russian"],
+  },
+};
+
+const OCR_SCHEMA = {
+  type: SchemaType.ARRAY,
+  items: { type: SchemaType.STRING },
+};
+
+const AI_TEXT_SCHEMA = {
+  type: SchemaType.OBJECT,
+  properties: {
+    vocabulary: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          english: { type: SchemaType.STRING },
+          hebrew: { type: SchemaType.STRING },
+          arabic: { type: SchemaType.STRING },
+          example: { type: SchemaType.STRING },
+        },
+        required: ["english", "hebrew", "arabic"],
+      },
+    },
+    questions: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          question: { type: SchemaType.STRING },
+          answer: { type: SchemaType.STRING },
+          type: {
+            type: SchemaType.STRING,
+            enum: ["literal", "inferential"],
+          },
+        },
+        required: ["question", "answer", "type"],
+      },
+    },
+  },
+};
+
+const AI_LESSON_SCHEMA = {
+  type: SchemaType.OBJECT,
+  properties: {
+    text: { type: SchemaType.STRING },
+    questions: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          type: {
+            type: SchemaType.STRING,
+            enum: [
+              "yesNo",
+              "wh",
+              "literal",
+              "inferential",
+              "fillBlank",
+              "trueFalse",
+              "matching",
+              "multipleChoice",
+              "sentenceComplete",
+            ],
+          },
+          question: { type: SchemaType.STRING },
+          answer: { type: SchemaType.STRING },
+          options: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING },
+          },
+        },
+        required: ["type", "question", "answer"],
+      },
+    },
+  },
+  required: ["text", "questions"],
+};
 
 async function startServer() {
   const app = express();
@@ -1773,13 +1879,23 @@ async function startServer() {
       // scale.  Upgrade here if we ever need nuance the lite tier
       // can't deliver — translation is a well-solved task and lite
       // handles idioms + multi-word phrases fine.
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+      // Schema-mode: Gemini is constrained to emit a JSON array matching
+      // TRANSLATE_SCHEMA, so the regex-based parse fallback below is no
+      // longer needed.  The prompt still describes what to translate —
+      // the schema only enforces shape, not semantics.
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash-lite",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: TRANSLATE_SCHEMA,
+        },
+      });
 
       // Structured prompt so we can parse deterministically.
       // Now also produces Russian alongside Hebrew + Arabic.  Arabic
       // stays in the response even when the UI isn't showing it yet —
       // adding it later is a client-only flip.
-      const prompt = `Translate these English words into Hebrew, Arabic, AND Russian. Return ONLY a JSON array with this exact shape — no prose, no markdown fences:
+      const prompt = `Translate these English words into Hebrew, Arabic, AND Russian. Return a JSON array with this exact shape:
 [{"english":"word","hebrew":"פירוש","arabic":"ترجمة","russian":"перевод"},...]
 
 Rules:
@@ -1793,15 +1909,18 @@ Input:
 ${JSON.stringify(validWords)}`;
 
       const result = await model.generateContent(prompt);
-      const raw = result.response.text().trim();
-      const cleaned = raw.replace(/```json?\s*|\s*```/g, "").trim();
+      const raw = result.response.text();
 
+      // Schema-mode guarantees valid JSON matching TRANSLATE_SCHEMA.  We
+      // still wrap in try/catch as belt-and-braces — a stricter SDK
+      // upgrade or a Gemini outage that bypasses schema enforcement
+      // would otherwise crash the route.
       let parsed: Array<{ english: string; hebrew: string; arabic: string; russian?: string }>;
       try {
-        parsed = JSON.parse(cleaned);
+        parsed = JSON.parse(raw);
         if (!Array.isArray(parsed)) throw new Error("not an array");
       } catch {
-        console.error("[translate] Gemini returned unparseable response:", raw.slice(0, 200));
+        console.error("[translate] Gemini returned unparseable response (should be impossible with responseSchema):", raw.slice(0, 200));
         return res.status(502).json({ error: "Translation parsing failed" });
       }
 
@@ -1999,7 +2118,15 @@ ${JSON.stringify(validWords)}`;
       const genAI = new GoogleGenerativeAI(apiKey.trim());
       // gemini-2.5-flash: current stable production model with generous free tier.
       // Supports up to 1M tokens context and multimodal (image) input.
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      // Schema-mode constrains the response to a JSON array of strings,
+      // so the regex-fallback parser below is for SDK-bypass paranoia only.
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: OCR_SCHEMA,
+        },
+      });
 
       // Gemini accepts the raw image buffer directly via inlineData.
       //
@@ -2094,15 +2221,16 @@ Quality rules:
 
       const responseText = result.response.text();
 
-      // Parse the JSON array from Gemini's response.
-      // Entries may be multi-word phrases ("turn on", "ice cream") so
-      // we preserve inner whitespace — only collapse runs of spaces
-      // and trim the ends.
-      // Hebrew skips lowercase normalization (Hebrew has no case).
+      // Schema-mode (OCR_SCHEMA) guarantees a JSON array of strings.
+      // The old markdown-fence strip + regex-token fallback was needed
+      // when Gemini occasionally wrapped output in ```json … ``` or
+      // returned bullet lists; with responseSchema the model can't do
+      // either.  If a parse failure ever happens here it's an upstream
+      // outage and the right answer is "fail loud", not "fall back to a
+      // looser parser that may return wrong entries".
       let words: string[] = [];
       try {
-        const cleaned = responseText.replace(/```json?\s*|\s*```/g, "").trim();
-        const parsed = JSON.parse(cleaned);
+        const parsed = JSON.parse(responseText);
         if (Array.isArray(parsed)) {
           words = parsed
             .filter((w: unknown): w is string => typeof w === "string" && w.trim().length >= 1)
@@ -2111,18 +2239,8 @@ Quality rules:
               return lang === "he" ? collapsed : collapsed.toLowerCase();
             });
         }
-      } catch {
-        // Fallback: Gemini didn't return valid JSON. Split on commas +
-        // newlines (the natural item separators), NOT whitespace, so
-        // phrases stay together. The token filter is per-language —
-        // Hebrew uses the U+0590-U+05FF Unicode block.
-        const HEBREW_TOKEN_RE = /^[֐-׿][֐-׿ '\-]{0,}[֐-׿]$/;
-        const ENGLISH_TOKEN_RE = /^[a-z][a-z '\-]{1,}[a-z]$/i;
-        words = responseText
-          .replace(/[\[\]"`]/g, "")
-          .split(/[,\n\r]+/)
-          .map(s => (lang === "he" ? s.trim() : s.trim().toLowerCase()))
-          .filter(s => (lang === "he" ? HEBREW_TOKEN_RE : ENGLISH_TOKEN_RE).test(s));
+      } catch (err) {
+        console.error("[ocr] Gemini returned unparseable response (should be impossible with responseSchema):", responseText.slice(0, 200));
       }
 
       // Dedup: case-insensitive for English (book == Book), exact for
@@ -2642,23 +2760,20 @@ Output ONLY the JSON, no markdown, no explanations.
 `;
 
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      // Schema-mode constrains the response to AI_TEXT_SCHEMA — the
+      // markdown-fence cleanup + object-regex salvage parser that
+      // followed the old call has been removed.
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: AI_TEXT_SCHEMA,
+        },
+      });
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      const jsonText = response.text().trim();
-
-      // Parse JSON from Gemini response (it might include markdown code blocks)
-      let parsedText = jsonText;
-      if (parsedText.startsWith("```json")) {
-        parsedText = parsedText.slice(7);
-      } else if (parsedText.startsWith("```")) {
-        parsedText = parsedText.slice(3);
-      }
-      if (parsedText.endsWith("```")) {
-        parsedText = parsedText.slice(0, -3);
-      }
-      parsedText = parsedText.trim();
+      const jsonText = response.text();
 
       let resultData: {
         vocabulary?: Array<{ english: string; hebrew: string; arabic: string; example?: string }>;
@@ -2666,15 +2781,10 @@ Output ONLY the JSON, no markdown, no explanations.
       };
 
       try {
-        resultData = JSON.parse(parsedText);
+        resultData = JSON.parse(jsonText);
       } catch (parseError) {
-        console.warn("[AI Text] JSON parse failed, trying to extract object:", parseError);
-        const objectMatch = parsedText.match(/\{[\s\S]*\}/);
-        if (objectMatch) {
-          resultData = JSON.parse(objectMatch[0]);
-        } else {
-          throw new Error("Failed to parse AI response as JSON");
-        }
+        console.error("[AI Text] Gemini returned unparseable response (should be impossible with responseSchema):", jsonText.slice(0, 200));
+        return res.status(502).json({ error: "AI response parsing failed" });
       }
 
       // Sanitize vocabulary — strip HTML / js: / control chars from every
@@ -2892,22 +3002,20 @@ Important notes:
 `;
 
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      // Schema-mode constrains the response to AI_LESSON_SCHEMA — the
+      // markdown-fence cleanup + object-regex salvage parser that
+      // followed the old call has been removed.
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: AI_LESSON_SCHEMA,
+        },
+      });
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      let jsonText = response.text().trim();
-
-      // Parse JSON from Gemini response
-      if (jsonText.startsWith("```json")) {
-        jsonText = jsonText.slice(7);
-      } else if (jsonText.startsWith("```")) {
-        jsonText = jsonText.slice(3);
-      }
-      if (jsonText.endsWith("```")) {
-        jsonText = jsonText.slice(0, -3);
-      }
-      jsonText = jsonText.trim();
+      const jsonText = response.text();
 
       let lessonData: {
         text: string;
@@ -2922,13 +3030,8 @@ Important notes:
       try {
         lessonData = JSON.parse(jsonText);
       } catch (parseError) {
-        console.warn("[AI Lesson] JSON parse failed, trying to extract object:", parseError);
-        const objectMatch = jsonText.match(/\{[\s\S]*\}/);
-        if (objectMatch) {
-          lessonData = JSON.parse(objectMatch[0]);
-        } else {
-          throw new Error("Failed to parse AI response as JSON");
-        }
+        console.error("[AI Lesson] Gemini returned unparseable response (should be impossible with responseSchema):", jsonText.slice(0, 200));
+        return res.status(502).json({ error: "AI response parsing failed" });
       }
 
       if (!lessonData.text || typeof lessonData.text !== "string") {
