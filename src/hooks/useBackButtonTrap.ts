@@ -123,6 +123,11 @@ export function useBackButtonTrap(
     exitModalOpenRef.current = showExitConfirmModal;
   }, [showExitConfirmModal]);
 
+  // Tracks the previous `user` value across renders so we can detect
+  // the user → null transition (logout) and refill the pad buffer.
+  // See the logout-trap useEffect below for the why.
+  const prevUserRef = useRef(user);
+
   // The "home" view for each role — back button cannot go past this.
   const getHomeView = (): string =>
     hasTeacherAccess(userRef.current) ? 'teacher-dashboard' : 'student-dashboard';
@@ -144,6 +149,32 @@ export function useBackButtonTrap(
     window.history.replaceState({ view }, '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── On user → null transition (logout): refill the pad buffer ────
+  //
+  // After the SIGNED_OUT handler replaces the current history entry
+  // with public-landing, the back stack still contains everything
+  // that was pushed before logout — including the cross-origin
+  // Google OAuth URL that the browser navigated through during sign-in.
+  // Each in-app back-press pops one entry and the popstate handler
+  // re-pushes the current view, but Android Chrome's edge-swipe gesture
+  // can chain-pop faster than popstate can fire — and once a cross-
+  // origin entry is reached, the browser navigates to it WITHOUT a
+  // popstate, dropping the user back into accounts.google.com which
+  // re-auths and bounces them to the landing page.
+  //
+  // Pushing a fresh PAD_COUNT buffer immediately after logout gives the
+  // re-trap enough headroom to outrun the edge-swipe before the user
+  // can reach those pre-login entries.
+  useEffect(() => {
+    const hadUser = !!prevUserRef.current;
+    const hasUser = !!user;
+    prevUserRef.current = user;
+    if (hadUser && !hasUser) {
+      pushDashboardTrap();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // ─── On view change: push a history entry ─────────────────────────
   useEffect(() => {
