@@ -122,6 +122,32 @@ jobs:
             du -sh dist/assets/*.js | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
           fi
 
+      # Cloudflare IP allowlist staleness check.  The static list under
+      # config/cloudflare-ips.ts is the fallback for the Fly ingress
+      # filter; if it drifts from upstream's published ranges, the
+      # allowlist starts rejecting legitimate Cloudflare traffic.
+      # Warning-only — surfaces the drift in the step summary; doesn't
+      # block PRs (a maintainer reruns the refresh script).
+      - name: Cloudflare IP-list freshness
+        if: always()
+        continue-on-error: true
+        run: |
+          set -eu
+          UPSTREAM_V4=$(curl -fsS https://www.cloudflare.com/ips-v4)
+          STATIC_V4=$(grep -oE '"[0-9.]+/[0-9]+"' config/cloudflare-ips.ts | tr -d '"' | grep -v ':')
+          MISSING_V4=$(comm -23 <(echo "$UPSTREAM_V4" | sort -u) <(echo "$STATIC_V4" | sort -u) || true)
+          if [ -n "$MISSING_V4" ]; then
+            {
+              echo "## ⚠️  Cloudflare IP list drifted";
+              echo "Run \`npx tsx scripts/refresh-cloudflare-ips.ts\` and commit the result.";
+              echo;
+              echo "Ranges present upstream but missing locally:";
+              echo '```';
+              echo "$MISSING_V4";
+              echo '```';
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       # Complementary SAST — CodeQL (configured at repo level via Default
       # Setup) covers most patterns, but Semgrep's curated security-audit
       # ruleset catches different classes (express-misconfig, jwt-misuse,

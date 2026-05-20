@@ -21,6 +21,7 @@ Sentry.init({
 
 import express from "express";
 import { createServer } from "http";
+import { BlockList } from "node:net";
 import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -40,6 +41,11 @@ import type { BagrutModule, BagrutTest } from "./src/features/vocabagrut/types";
 import { synthesizeSpeechMp3 } from "./tts-common";
 import { isDevEmail } from "./src/core/dev-allowlist";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload } from "./src/core/types";
+import {
+  CLOUDFLARE_IPV4_RANGES,
+  CLOUDFLARE_IPV6_RANGES,
+  LAST_REFRESHED_UTC as CLOUDFLARE_IPS_LAST_REFRESHED_UTC,
+} from "./config/cloudflare-ips";
 import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils";
 import {
   QUICK_PLAY_NS,
@@ -432,6 +438,103 @@ const AI_LESSON_SCHEMA = {
   required: ["text", "questions"],
 };
 
+// -----------------------------------------------------------------------------
+// Cloudflare-only ingress (security-audit-framework module 11)
+// -----------------------------------------------------------------------------
+//
+// Toggled by env var CLOUDFLARE_INGRESS_ONLY=1.  When enabled, every
+// request whose source IP isn't a Cloudflare proxy gets a 403 before
+// helmet / rate-limit / body parsing ever runs.  Static CIDR list lives
+// in config/cloudflare-ips.ts; runtime refresh fetches the canonical
+// publication from cloudflare.com every 24h.
+
+// Paths exempt from the ingress check.  /api/health is what Fly's
+// internal probe hits, which originates from Fly's own network — not
+// via Cloudflare.  Keeping that exempt is what lets us turn the check
+// on without breaking the health check.
+const CF_INGRESS_ALLOWED_PATHS = new Set(["/api/health"]);
+
+function buildCloudflareBlockList(
+  v4: ReadonlyArray<string>,
+  v6: ReadonlyArray<string>,
+): BlockList {
+  const list = new BlockList();
+  for (const cidr of v4) {
+    const [addr, mask] = cidr.split("/");
+    list.addSubnet(addr, parseInt(mask, 10), "ipv4");
+  }
+  for (const cidr of v6) {
+    const [addr, mask] = cidr.split("/");
+    list.addSubnet(addr, parseInt(mask, 10), "ipv6");
+  }
+  return list;
+}
+
+let cloudflareBlockList: BlockList = buildCloudflareBlockList(
+  CLOUDFLARE_IPV4_RANGES,
+  CLOUDFLARE_IPV6_RANGES,
+);
+
+async function refreshCloudflareBlockListFromUpstream(): Promise<void> {
+  try {
+    const [v4Res, v6Res] = await Promise.all([
+      fetch("https://www.cloudflare.com/ips-v4"),
+      fetch("https://www.cloudflare.com/ips-v6"),
+    ]);
+    if (!v4Res.ok || !v6Res.ok) {
+      console.warn(
+        `[cf-ingress] upstream refresh got non-OK: v4=${v4Res.status} v6=${v6Res.status} — keeping current list`,
+      );
+      return;
+    }
+    const v4 = (await v4Res.text())
+      .split("\n")
+      .map(s => s.trim())
+      .filter(Boolean);
+    const v6 = (await v6Res.text())
+      .split("\n")
+      .map(s => s.trim())
+      .filter(Boolean);
+    // Empty result almost certainly means upstream returned an error page
+    // disguised as 200 — keep the existing list rather than wipe it.
+    if (v4.length === 0 || v6.length === 0) {
+      console.warn("[cf-ingress] upstream refresh returned empty list — keeping current list");
+      return;
+    }
+    cloudflareBlockList = buildCloudflareBlockList(v4, v6);
+    console.log(`[cf-ingress] refreshed from upstream: ${v4.length} v4 + ${v6.length} v6 ranges`);
+  } catch (err) {
+    console.warn("[cf-ingress] upstream refresh failed:", (err as Error)?.message || err);
+  }
+}
+
+function cloudflareOnlyIngress(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): void {
+  if (process.env.CLOUDFLARE_INGRESS_ONLY !== "1") return next();
+  if (CF_INGRESS_ALLOWED_PATHS.has(req.path)) return next();
+
+  const rawIp = req.ip || req.socket?.remoteAddress || "";
+  // Normalise IPv4-mapped IPv6 (`::ffff:1.2.3.4`) back to IPv4 — Fly's
+  // proxy serves v4 clients in that form, which would miss the v4
+  // BlockList without the strip.
+  const ip = rawIp.startsWith("::ffff:") ? rawIp.slice(7) : rawIp;
+  if (!ip) {
+    console.warn(`[cf-ingress] no source IP on request — rejecting path=${req.path}`);
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const family: "ipv4" | "ipv6" = ip.includes(":") ? "ipv6" : "ipv4";
+  if (!cloudflareBlockList.check(ip, family)) {
+    console.warn(`[cf-ingress] non-Cloudflare ingress rejected: ip=${ip} path=${req.path}`);
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  next();
+}
+
 async function startServer() {
   const app = express();
   const httpServer = createServer(app);
@@ -543,6 +646,32 @@ async function startServer() {
   if (process.env.NODE_ENV === "production") {
     // Trust proxy so req.ip reflects the real client IP behind Cloudflare/Render
     app.set("trust proxy", 1);
+
+    // Cloudflare-only ingress (security-audit-framework module 11).
+    // Off by default; flip CLOUDFLARE_INGRESS_ONLY=1 after the Fly
+    // deploy succeeds to start rejecting requests that didn't come
+    // through Cloudflare's edge.  Defends against attackers who find
+    // the *.fly.dev hostname and bypass Cloudflare's WAF + rate limits
+    // by hitting the origin directly.
+    //
+    // Mounted first (before helmet, rate limiter, body parser) so we
+    // spend zero cycles on a request that's about to be rejected.
+    // /api/health is exempt — Fly's internal probe doesn't traverse
+    // Cloudflare.  The static CIDR list ships under config/cloudflare-
+    // ips.ts and is refreshed from upstream every 24h.
+    app.use(cloudflareOnlyIngress);
+    if (process.env.CLOUDFLARE_INGRESS_ONLY === "1") {
+      // Fire-and-forget initial refresh, then schedule.  Failure leaves
+      // the static list in place — no startup dependency on egress.
+      void refreshCloudflareBlockListFromUpstream();
+      setInterval(() => {
+        void refreshCloudflareBlockListFromUpstream();
+      }, 24 * 60 * 60 * 1000);
+      console.log(
+        `[cf-ingress] enforcement enabled. static list refreshed ${CLOUDFLARE_IPS_LAST_REFRESHED_UTC}; ` +
+          `${CLOUDFLARE_IPV4_RANGES.length} v4 + ${CLOUDFLARE_IPV6_RANGES.length} v6 ranges loaded.`,
+      );
+    }
 
     // Security headers via helmet.
     //

@@ -48,13 +48,19 @@ operator-side controls we can't audit from code.
 ### A. Origin bypass (skip the Worker)
 
 If `vocaband.fly.dev` is reachable directly, an attacker bypasses
-Cloudflare's WAF + rate limits + observability. **Action:** restrict
-Fly machine ingress to Cloudflare IPs only (Fly supports "[[http_service.checks]]"
-plus optional WAF). Or run a `verify-client-ip` middleware that
-rejects requests not from CF using `CF-Connecting-IP` + IP allowlist.
+Cloudflare's WAF + rate limits + observability.
 
-Currently the helmet/CSP catches some of this (HSTS preload assumes
-HTTPS), but direct hits to Fly avoid Cloudflare rate-limits entirely.
+**SHIPPED (2026-05-20):** application-level allowlist middleware.
+`server.ts:cloudflareOnlyIngress` checks `req.ip` against the
+canonical Cloudflare CIDR ranges (static fallback in
+`config/cloudflare-ips.ts`, runtime refresh every 24 h from
+`https://www.cloudflare.com/ips-v{4,6}`).  `/api/health` is exempt
+so Fly's internal probe still passes.  Mounted before helmet, the
+rate limiter, and the body parser so a rejected request costs us
+zero further cycles.
+
+Gated by `CLOUDFLARE_INGRESS_ONLY=1` so the feature can be enabled
+after a deploy without coupling the rollout to the code change.
 
 ### B. Supabase Storage policy holes
 
@@ -114,7 +120,7 @@ quarterly rotation.
 |---|---|---|
 | Cloudflare WAF managed rules on | ❓ | operator verify |
 | CF Bot Fight Mode on | ❓ | operator verify |
-| Fly IP allowlist (CF only) | ❌ | P1 |
+| Fly IP allowlist (CF only) | ✅ shipped; needs `fly secrets set CLOUDFLARE_INGRESS_ONLY=1` to enable | P1 |
 | Sentry PII scrubber on (server + client) | partial | confirm `beforeSend` strips emails |
 | R2 versioning + lifecycle | ❓ | operator verify |
 | Supabase 2FA on operator accounts | ❓ | operator verify |
