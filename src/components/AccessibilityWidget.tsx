@@ -223,12 +223,6 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    const handler = (e: Event) => setCurrentView((e as CustomEvent<string>).detail || '');
-    window.addEventListener('vocaband-view-change', handler);
-    return () => window.removeEventListener('vocaband-view-change', handler);
-  }, []);
-
   // Pages where the floating trigger should appear. Public-facing
   // pages only — once a student is in a game or a teacher is doing
   // teacher work, the trigger gets out of the way. Footer link still
@@ -241,7 +235,27 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
     'landing',
     'student-account-login',
   ]);
-  const showTrigger = currentView === '' || TRIGGER_VIEWS.has(currentView);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const next = (e as CustomEvent<string>).detail || '';
+      setCurrentView(next);
+      // Auto-close the panel if the new view isn't a trigger view, so
+      // a panel left open on the landing page doesn't float on top of
+      // the student's first game screen.  Done here (not in a separate
+      // effect) to avoid a cascading-render lint on setState-in-effect.
+      if (!TRIGGER_VIEWS.has(next)) setIsOpen(false);
+    };
+    window.addEventListener('vocaband-view-change', handler);
+    return () => window.removeEventListener('vocaband-view-change', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Default to hidden until the view-change event tells us where we
+  // are. Previously this checked `currentView === ''` too, which
+  // flashed the trigger on first mount (before the dispatch fires)
+  // even when the student was about to land in a game.
+  const showTrigger = TRIGGER_VIEWS.has(currentView);
 
   // Apply CSS overrides whenever settings change
   useEffect(() => {

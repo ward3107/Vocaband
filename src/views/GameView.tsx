@@ -79,11 +79,17 @@ export default function GameView(props: GameViewProps) {
     availableWords, setAvailableWords, sentenceFeedback, handleSentenceWordTap,
     handleSentenceCheck, speak, leaderboard, isFinished,
   } = props;
-  const { language, dir } = useLanguage();
+  const { language } = useLanguage();
   const t = gameActiveT[language];
 
+  // The game container is forced LTR even when the UI language is
+  // Hebrew/Arabic. The vocabulary itself is English, so RTL flow on
+  // the parent visually reversed multi-word English content (e.g.
+  // sentences in the Sentence Builder, idiom phrases). Hebrew/Arabic
+  // UI labels inside still render in their native script direction
+  // via the browser's bidi algorithm; only paragraph flow is LTR.
   return (
-    <div dir={dir} className={`min-h-screen ${user?.role === 'student' ? activeThemeBg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 font-sans max-w-7xl mx-auto`}>
+    <div dir="ltr" className={`min-h-screen ${user?.role === 'student' ? activeThemeBg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 font-sans max-w-7xl mx-auto`}>
       {saveError && (
         <div className="fixed bottom-4 end-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />

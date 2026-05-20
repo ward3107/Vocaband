@@ -205,6 +205,55 @@ export default function QuickPlayStudentView({
   // its toast after the view is already gone.
   useEffect(() => () => disarmJoinWatchdog(), []);
 
+  // ─── Phone back-button trap for the QP join flow ────────────────────
+  //
+  // Without this, the hardware back button on the join screen popped
+  // straight out to public-landing (useBackButtonTrap's CASE C only
+  // walks the global view stack; it doesn't know about the local
+  // form → language → get-ready join steps).  Each step was reached by
+  // a tap inside this view, so the only previous global entry was
+  // public-landing — back kicked the student out mid-join.
+  //
+  // Approach mirrors DemoMode's internal popstate trap: push a marker
+  // entry on mount and on every joinStep change, then intercept
+  // popstate in the capture phase (stopImmediatePropagation keeps the
+  // global trap from re-pushing) and walk the joinStep backwards.
+  // Once we're at the form step (or on the resume card mid-game), we
+  // re-push instead of exiting — the student must use the in-view
+  // Back button in the header (which calls cleanupSessionData) to
+  // actually leave Quick Play.
+  const qpPopStateInProgressRef = useRef(false);
+  useEffect(() => {
+    if (qpPopStateInProgressRef.current) {
+      qpPopStateInProgressRef.current = false;
+      return;
+    }
+    window.history.pushState({ view: 'quick-play-student', qpStep: joinStep }, '');
+  }, [joinStep]);
+
+  useEffect(() => {
+    const handler = (e: PopStateEvent) => {
+      // Walk the join flow backwards instead of exiting.  Even when
+      // the popped state is null / external, stay on the join screen —
+      // the student is in an active QP session and the only correct
+      // exit is via the visible Back / Switch class buttons.
+      e.stopImmediatePropagation();
+      qpPopStateInProgressRef.current = true;
+      if (joinStep === 'get-ready') {
+        setJoinStep('language');
+      } else if (joinStep === 'language') {
+        setJoinStep('form');
+      } else {
+        // joinStep === 'form' (first screen) or resume card — block
+        // exit by re-pushing the current marker.
+        window.history.pushState({ view: 'quick-play-student', qpStep: joinStep }, '');
+        qpPopStateInProgressRef.current = false;
+      }
+    };
+    window.addEventListener('popstate', handler, { capture: true });
+    return () => window.removeEventListener('popstate', handler, { capture: true });
+  }, [joinStep]);
+
   // Surface server-side join errors. Recoverable errors (taken name,
   // rate-limited) show as toasts so the student can fix and retry on
   // the same screen. Fatal errors (session gone) take over the whole
