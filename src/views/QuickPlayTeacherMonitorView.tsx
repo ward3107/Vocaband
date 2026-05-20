@@ -10,30 +10,17 @@ interface QuickPlaySession {
   words: Word[];
 }
 
-interface JoinedStudent {
-  name: string;
-  score: number;
-  avatar: string;
-  lastSeen: string;
-  mode: string;
-  studentUid: string;
-}
-
 interface QuickPlayTeacherMonitorViewProps {
   quickPlayActiveSession: QuickPlaySession;
   setView: React.Dispatch<React.SetStateAction<View>>;
   setQuickPlayActiveSession: (s: QuickPlaySession | null) => void;
   setQuickPlaySelectedWords: (w: Word[]) => void;
   setQuickPlaySessionCode: (c: string | null) => void;
-  setQuickPlayJoinedStudents: (
-    students: JoinedStudent[] | ((prev: JoinedStudent[]) => JoinedStudent[])
-  ) => void;
   setQuickPlayCustomWords: (m: Map<string, { hebrew: string; arabic: string }>) => void;
   setQuickPlayAddingCustom: (s: Set<string>) => void;
   setQuickPlayTranslating: (s: Set<string>) => void;
   cleanupSessionData: () => void;
   showToast: (message: string, type: "success" | "error" | "info") => void;
-  realtimeStatus?: "connecting" | "live" | "polling";
 }
 
 export default function QuickPlayTeacherMonitorView({
@@ -42,25 +29,21 @@ export default function QuickPlayTeacherMonitorView({
   setQuickPlayActiveSession,
   setQuickPlaySelectedWords,
   setQuickPlaySessionCode,
-  setQuickPlayJoinedStudents,
   setQuickPlayCustomWords,
   setQuickPlayAddingCustom,
   setQuickPlayTranslating,
   cleanupSessionData,
   showToast,
-  realtimeStatus,
 }: QuickPlayTeacherMonitorViewProps) {
   return (
     <QuickPlayMonitor
       session={quickPlayActiveSession}
-      realtimeStatus={realtimeStatus}
       onBack={() => {
         cleanupSessionData(); // Clear save queue and timers
         setView("teacher-dashboard");
         setQuickPlayActiveSession(null);
         setQuickPlaySelectedWords([]);
         setQuickPlaySessionCode(null);
-        setQuickPlayJoinedStudents([]);
         setQuickPlayCustomWords(new Map());
         setQuickPlayAddingCustom(new Set());
         setQuickPlayTranslating(new Set());
@@ -80,7 +63,6 @@ export default function QuickPlayTeacherMonitorView({
         setQuickPlayActiveSession(null);
         setQuickPlaySelectedWords([]);
         setQuickPlaySessionCode(null);
-        setQuickPlayJoinedStudents([]);
         setQuickPlayCustomWords(new Map());
         setQuickPlayAddingCustom(new Set());
         setQuickPlayTranslating(new Set());

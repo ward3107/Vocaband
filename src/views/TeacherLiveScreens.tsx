@@ -14,7 +14,6 @@ import type { AppUser, ClassData } from '../core/supabase';
 import type { LeaderboardEntry } from '../core/types';
 import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
-import type { QpRealtimeStatus } from '../hooks/useQuickPlayRealtime';
 
 const LiveChallengeView = lazyWithRetry(() => import('./LiveChallengeView'));
 const QuickPlayTeacherMonitorView = lazyWithRetry(() => import('./QuickPlayTeacherMonitorView'));
@@ -53,7 +52,6 @@ export interface RenderTeacherLiveScreensDeps {
 
   // Quick Play monitor deps
   quickPlayActiveSession: { id: string; sessionCode: string; wordIds: number[]; words: Word[] } | null;
-  setQuickPlayJoinedStudents: React.Dispatch<React.SetStateAction<{ name: string; score: number; avatar: string; lastSeen: string; mode: string; studentUid: string }[]>>;
   setQuickPlayActiveSession: React.Dispatch<
     React.SetStateAction<{
       id: string;
@@ -71,17 +69,16 @@ export interface RenderTeacherLiveScreensDeps {
   setQuickPlayTranslating: React.Dispatch<React.SetStateAction<Set<string>>>;
   cleanupSessionData: () => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
-  quickPlayRealtimeStatus: QpRealtimeStatus;
 }
 
 export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): ReactNode {
   const {
     view, user, selectedClass, setView, setIsLiveChallenge,
     leaderboard, socketConnected,
-    quickPlayActiveSession, setQuickPlayJoinedStudents,
+    quickPlayActiveSession,
     setQuickPlayActiveSession, setQuickPlaySelectedWords, setQuickPlaySessionCode,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
-    cleanupSessionData, showToast, quickPlayRealtimeStatus,
+    cleanupSessionData, showToast,
   } = deps;
 
   if (view === 'live-challenge' && selectedClass) {
@@ -133,7 +130,6 @@ export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): Re
       >
         <QuickPlayTeacherMonitorView
           quickPlayActiveSession={quickPlayActiveSession}
-          setQuickPlayJoinedStudents={setQuickPlayJoinedStudents}
           setView={setView}
           setQuickPlayActiveSession={setQuickPlayActiveSession}
           setQuickPlaySelectedWords={setQuickPlaySelectedWords}
@@ -143,7 +139,6 @@ export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): Re
           setQuickPlayTranslating={setQuickPlayTranslating}
           cleanupSessionData={cleanupSessionData}
           showToast={showToast}
-          realtimeStatus={quickPlayRealtimeStatus}
         />
       </LazyWrapper>
     );

@@ -30,7 +30,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { supabase, type AppUser } from '../core/supabase';
-import { installQuickPlayQueueFlusher } from '../core/saveQueue';
+import { installSaveQueueFlusher } from '../core/saveQueue';
 
 export interface UseSaveQueueResilienceParams {
   user: AppUser | null;
@@ -129,9 +129,9 @@ export function useSaveQueueResilience(
     retryPending();
   }, []);
 
-  // ─── 3. Install Quick Play queue flusher for the tab lifetime ────
+  // ─── 3. Install save-queue flusher for the tab lifetime ──────────
   useEffect(() => {
-    const uninstall = installQuickPlayQueueFlusher();
+    const uninstall = installSaveQueueFlusher();
     return uninstall;
   }, []);
 }
