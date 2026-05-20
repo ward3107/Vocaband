@@ -114,6 +114,10 @@ interface StudentDashboardViewProps {
    *  story as `structure` above; declaring the prop here closes the
    *  free-reference. */
   celebrateStructureKeys?: string[];
+  /** Triggered when the student taps the top-bar logout button.  App.tsx
+   *  routes this to the soft-landing exit-confirm modal so a stray tap
+   *  doesn't sign them out instantly. */
+  onRequestLogout?: () => void;
 }
 
 // Feature flag — set VITE_STRUCTURE_UX=true to enable the Phase 1
@@ -136,6 +140,7 @@ export default function StudentDashboardView({
   onStartReview,
   onStartClassMinute,
   onStartIdioms,
+  onRequestLogout,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
 
@@ -481,7 +486,7 @@ export default function StudentDashboardView({
       )}
       <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
         {classNotFoundBanner}
-        <StudentTopBar />
+        <StudentTopBar onRequestLogout={onRequestLogout} />
         {/* Teacher rewards land here FIRST so the student sees the
             celebration before anything else on the dashboard. Hides
             itself when the inbox is empty. */}

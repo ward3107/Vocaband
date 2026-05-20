@@ -69,14 +69,33 @@ export default function LiveChallengeView({
     prevLeaderUidRef.current = currentLeaderUid;
   }, [sortedLeaderboard]);
 
-  // ─── Final-results modal when teacher ends the challenge
-  // Instead of navigating away the instant "End Challenge" is clicked,
-  // show a proper wrap-up modal: top 3 with medals, total players, dismiss
-  // button that then does the exit.  Gives the class a sense of closure.
+  // ─── End-challenge flow: confirm → results → exit
+  //
+  // Originally "End Challenge" went straight to the results modal,
+  // whose backdrop also called exitChallenge.  Two problems with
+  // that: (1) no real confirmation step — a double-tap on the red
+  // button immediately closed a live lesson; (2) the backdrop and
+  // the Close button did the same thing, so the teacher had no way
+  // to back out of the results modal without ending the challenge.
+  //
+  // Now: first click shows a confirm dialog ("X students are playing
+  // — really end?").  Confirm advances to the results modal, whose
+  // backdrop now just dismisses the modal (canceling the exit).
+  // Only the explicit Close button performs exitChallenge.
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const exitChallenge = () => {
     setView("live-challenge-class-select");
     setIsLiveChallenge(false);
+  };
+  const requestEndChallenge = () => {
+    // If nobody played, skip both modals — a confirm dialog for a
+    // ceremonial 0-player wrap-up feels silly.
+    if (sortedLeaderboard.length === 0) {
+      exitChallenge();
+      return;
+    }
+    setShowEndConfirm(true);
   };
 
   return (
@@ -90,13 +109,7 @@ export default function LiveChallengeView({
               <span className="font-bold">{socketConnected ? t.liveIndicator : t.reconnecting}</span>
             </div>
             <button
-              onClick={() => {
-                // Only show the results modal if anyone actually played.
-                // Otherwise just exit — a ceremonial "everybody scored 0"
-                // screen feels silly.
-                if (sortedLeaderboard.length > 0) setShowResultsModal(true);
-                else exitChallenge();
-              }}
+              onClick={requestEndChallenge}
               className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-5 py-2 rounded-full font-bold transition-all text-sm sm:text-base shadow-lg hover:shadow-xl hover:scale-105"
             >
               {t.endChallenge}
@@ -295,9 +308,11 @@ export default function LiveChallengeView({
         </div>
       </div>
 
-      {/* Final-results modal — shown when the teacher clicks "End Challenge"
-          with at least one player on the board.  Dismissing the modal
-          navigates back to the class-select view. */}
+      {/* Final-results modal — shown after the teacher confirms ending
+          the challenge.  Backdrop click DISMISSES the modal (and the
+          challenge keeps running) so the teacher can back out; only
+          the explicit Close button calls exitChallenge.  Originally
+          the backdrop also exited, which silently killed live lessons. */}
       <AnimatePresence>
         {showResultsModal && (
           <motion.div
@@ -305,7 +320,7 @@ export default function LiveChallengeView({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => { setShowResultsModal(false); exitChallenge(); }}
+            onClick={() => setShowResultsModal(false)}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0, y: 20 }}
@@ -363,6 +378,55 @@ export default function LiveChallengeView({
               >
                 {t.close}
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* End-challenge confirmation — shown before the results modal
+          when one or more students are on the board.  Prevents a stray
+          tap on the red "End Challenge" button from killing a live
+          lesson.  Backdrop click cancels (same as the Cancel button). */}
+      <AnimatePresence>
+        {showEndConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowEndConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 240, damping: 22 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white text-stone-900 rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-2xl"
+              dir={dir}
+            >
+              <h3 className="text-xl sm:text-2xl font-black mb-2">{t.endConfirmTitle}</h3>
+              <p className="text-sm text-stone-600 mb-6 leading-relaxed">
+                {t.endConfirmBody(sortedLeaderboard.length)}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowEndConfirm(false)}
+                  type="button"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  className="flex-1 py-3 rounded-xl font-bold text-stone-600 hover:bg-stone-50 border-2 border-stone-200 transition-colors"
+                >
+                  {t.endConfirmCancel}
+                </button>
+                <button
+                  onClick={() => { setShowEndConfirm(false); setShowResultsModal(true); }}
+                  type="button"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  className="flex-1 py-3 rounded-xl font-black text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200 transition-all"
+                >
+                  {t.endConfirmEnd}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

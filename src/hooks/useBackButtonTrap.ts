@@ -47,6 +47,12 @@ const AUTH_VIEWS = new Set<string>([
 // dashboard / game-active entries reachable via the back button.
 // Without this guard a teacher pressing back from the landing page
 // would get dropped into the last quiz they were previewing.
+//
+// ⚠️ When adding a NEW public-facing view (a marketing page, a new
+// legal/help page, an auth screen), add its `View` literal here.
+// Otherwise the back trap re-pushes the current entry and a
+// logged-out user can't navigate to it via back.  This is the only
+// place that needs to be kept in sync with src/core/views.ts.
 const PUBLIC_VIEWS = new Set<string>([
   'landing', 'public-landing', 'public-terms', 'public-privacy',
   'public-security', 'public-free-resources', 'public-interactive-worksheet',
@@ -55,8 +61,12 @@ const PUBLIC_VIEWS = new Set<string>([
   'oauth-class-code', 'oauth-callback',
 ]);
 
-// Number of padding entries pushed beneath the dashboard.
-const PAD_COUNT = 10;
+// Number of padding entries pushed beneath the dashboard.  Bumped
+// from 10 → 20 because Android Chrome's edge-swipe gesture can
+// chain-pop entries faster than popstate fires.  Twenty pads give
+// the trap enough headroom to catch even rapid swipe-mashing
+// before the user escapes the SPA.
+const PAD_COUNT = 20;
 
 // Window (ms) during which popstate is not re-trapped after an
 // explicit leave intent is signaled.  Gives SIGNED_OUT a tick to
