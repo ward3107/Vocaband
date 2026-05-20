@@ -73,6 +73,12 @@ export interface VocabagrutStrings {
   shareOnline: string;
   shareDisabledTitle: string;
   shareSkipTitle: (count: number) => string;
+  copyDrillText: string;
+  copyDrillTitle: string;
+  copyDrillToastSuccess: string;
+  copyDrillToastFailed: string;
+  droppedWordsBanner: (count: number) => string;
+  droppedWordsMore: (count: number) => string;
   exportPdf: string;
   publishToClass: string;
   publishToClassLabel: string;
@@ -141,6 +147,12 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     shareOnline: "Share online",
     shareDisabledTitle: "These custom words aren't in our vocabulary, so an interactive worksheet isn't available.",
     shareSkipTitle: (count) => `${count} custom word(s) aren't in our vocabulary and will be skipped in the online version.`,
+    copyDrillText: "Copy as text",
+    copyDrillTitle: "Copy the full word list as plain text — paste into WhatsApp, Google Classroom, or anywhere else.",
+    copyDrillToastSuccess: "Word list copied to clipboard.",
+    copyDrillToastFailed: "Couldn't copy — try again or copy from the editor.",
+    droppedWordsBanner: (count) => `${count} word${count === 1 ? '' : 's'} won't appear in the online practice (not in our vocabulary). Use "Copy as text" to share them another way:`,
+    droppedWordsMore: (count) => ` + ${count} more`,
     exportPdf: "Export PDF",
     publishToClass: "Publish to class",
     publishToClassLabel: "Publish to class (optional)",
@@ -205,6 +217,12 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     shareOnline: "שתפו אונליין",
     shareDisabledTitle: "המילים המותאמות האלה לא נמצאות באוצר המילים שלנו, כך שדף עבודה אינטראקטיבי אינו זמין.",
     shareSkipTitle: (count) => `${count} מילים מותאמות לא נמצאות באוצר ויידלגו בגרסה האונליין.`,
+    copyDrillText: "העתק כטקסט",
+    copyDrillTitle: "העתיקו את רשימת המילים המלאה כטקסט פשוט — הדביקו ב‑WhatsApp, ב‑Google Classroom או בכל מקום אחר.",
+    copyDrillToastSuccess: "רשימת המילים הועתקה ללוח.",
+    copyDrillToastFailed: "ההעתקה נכשלה — נסו שוב או העתיקו מהעורך.",
+    droppedWordsBanner: (count) => `${count} מילים לא יופיעו בתרגול האונליין (לא נמצאות באוצר המילים שלנו). השתמשו ב„העתק כטקסט” כדי לשתף אותן בדרך אחרת:`,
+    droppedWordsMore: (count) => ` + ${count} נוספות`,
     exportPdf: "ייצוא PDF",
     publishToClass: "פרסום לכיתה",
     publishToClassLabel: "פרסום לכיתה (אופציונלי)",
@@ -269,6 +287,12 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     shareOnline: "شارك إلكترونياً",
     shareDisabledTitle: "هذه الكلمات المخصّصة ليست في مفرداتنا، لذا لا تتوفر ورقة عمل تفاعلية.",
     shareSkipTitle: (count) => `${count} كلمات مخصّصة ليست في مفرداتنا وسيتم تخطّيها في النسخة الإلكترونية.`,
+    copyDrillText: "نسخ كنص",
+    copyDrillTitle: "انسخ قائمة الكلمات الكاملة كنص عادي — الصقها في WhatsApp أو Google Classroom أو أي مكان آخر.",
+    copyDrillToastSuccess: "تم نسخ قائمة الكلمات إلى الحافظة.",
+    copyDrillToastFailed: "تعذّر النسخ — حاول مرة أخرى أو انسخ من المحرّر.",
+    droppedWordsBanner: (count) => `${count} كلمات لن تظهر في التدريب الإلكتروني (ليست في مفرداتنا). استخدم «نسخ كنص» لمشاركتها بطريقة أخرى:`,
+    droppedWordsMore: (count) => ` + ${count} أخرى`,
     exportPdf: "تصدير PDF",
     publishToClass: "نشر إلى الصف",
     publishToClassLabel: "نشر إلى صف (اختياري)",
@@ -333,6 +357,12 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     shareOnline: "Share online",
     shareDisabledTitle: "These custom words aren't in our vocabulary, so an interactive worksheet isn't available.",
     shareSkipTitle: (count) => `${count} custom word(s) aren't in our vocabulary and will be skipped in the online version.`,
+    copyDrillText: "Copy as text",
+    copyDrillTitle: "Copy the full word list as plain text — paste into WhatsApp, Google Classroom, or anywhere else.",
+    copyDrillToastSuccess: "Word list copied to clipboard.",
+    copyDrillToastFailed: "Couldn't copy — try again or copy from the editor.",
+    droppedWordsBanner: (count) => `${count} word${count === 1 ? '' : 's'} won't appear in the online practice (not in our vocabulary). Use "Copy as text" to share them another way:`,
+    droppedWordsMore: (count) => ` + ${count} more`,
     exportPdf: "Export PDF",
     publishToClass: "Publish to class",
     publishToClassLabel: "Publish to class (optional)",

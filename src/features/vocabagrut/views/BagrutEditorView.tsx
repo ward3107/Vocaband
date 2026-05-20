@@ -2,7 +2,7 @@
 // edits, export PDF, save draft, optionally publish to a class.
 
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Download, Save, Upload, Loader2, FileText, Eye, Share2 } from 'lucide-react';
+import { ArrowLeft, Copy, Download, Save, Upload, Loader2, FileText, Eye, Share2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AppUser, ClassData } from '../../../core/supabase';
 import type { BagrutTest } from '../types';
@@ -50,6 +50,29 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
     const lowered = new Set(sourceWords.map(s => s.toLowerCase()));
     return ALL_WORDS.filter(w => lowered.has(w.english.toLowerCase())).map(w => w.id);
   }, [sourceWords]);
+
+  // Source words that the interactive solver can't render (no audio /
+  // translations because they're not in ALL_WORDS).  Surfaced inline so
+  // the teacher can see exactly which words got dropped — the share
+  // button's tooltip only shows a count, and hover tooltips don't fire
+  // on mobile, leaving teachers blind to what was skipped.
+  const droppedWords = useMemo(() => {
+    const known = new Set(ALL_WORDS.map(w => w.english.toLowerCase()));
+    return sourceWords.filter(s => !known.has(s.toLowerCase()));
+  }, [sourceWords]);
+
+  async function handleCopyDrillText() {
+    if (sourceWords.length === 0) return;
+    const title = draft.title || t.bagrutPracticeFallback;
+    const lines = sourceWords.map((w, i) => `${i + 1}. ${w}`);
+    const text = `${title}\n\n${lines.join('\n')}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(t.copyDrillToastSuccess, 'success');
+    } catch {
+      showToast(t.copyDrillToastFailed, 'error');
+    }
+  }
 
   function patchSection(idx: number, patch: Partial<BagrutTest['sections'][number]>) {
     setDraft(d => ({
@@ -193,6 +216,16 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
             </button>
             <button
               type="button"
+              onClick={handleCopyDrillText}
+              disabled={sourceWords.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              title={t.copyDrillTitle}
+            >
+              <Copy size={16} /> {t.copyDrillText}
+            </button>
+            <button
+              type="button"
               onClick={handleExport}
               disabled={exporting}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow"
@@ -204,6 +237,17 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {droppedWords.length > 0 && (
+          <div className="rounded-xl p-3 border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-sm">
+            <div className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
+              {t.droppedWordsBanner(droppedWords.length)}
+            </div>
+            <div className="text-amber-700 dark:text-amber-200 italic break-words">
+              {droppedWords.slice(0, 20).join(', ')}
+              {droppedWords.length > 20 && t.droppedWordsMore(droppedWords.length - 20)}
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="rounded-xl p-5 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
           <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--vb-text-muted)' }}>
