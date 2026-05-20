@@ -207,6 +207,16 @@ export function hasTeacherAccess<T extends { role?: string }>(
   return user?.role === 'teacher' || user?.role === 'admin';
 }
 
+/** Admin-only gate.  Used by the security audit dashboard nav entry —
+ *  the underlying `authz_failures` table is also RLS-protected to
+ *  admin readers, so this is purely a UI shortcut to avoid showing
+ *  a button that would just dead-end for non-admins. */
+export function hasAdminAccess<T extends { role?: string }>(
+  user: T | null | undefined
+): user is T & { role: 'admin' } {
+  return user?.role === 'admin';
+}
+
 export interface ClassData {
   id: string;
   name: string;

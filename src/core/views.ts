@@ -33,6 +33,9 @@ export type View =
   | "students"
   | "shop"
   | "privacy-settings"
+  // Admin-only audit dashboard for authz-failure events
+  // (security-audit-framework module 02, item #11).
+  | "admin-security"
   | "quick-play-setup"
   | "quick-play-teacher-monitor"
   | "quick-play-student"

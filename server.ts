@@ -780,13 +780,34 @@ async function startServer() {
     const token = socket.handshake.auth?.token;
     if (isDev) console.log("[Socket] Connection attempt from", socket.handshake.address, "with token:", token ? "✓" : "✗");
 
+    const ip = getSocketIp(socket);
     if (typeof token !== "string" || token.length === 0) {
       if (isDev) console.warn("[Socket] Rejected: No token provided");
+      if (supabaseAdmin) {
+        void supabaseAdmin.rpc("log_authz_failure", {
+          p_endpoint: "socket:connect",
+          p_reason: "missing_bearer",
+          p_table_name: null,
+          p_operation: null,
+          p_metadata: null,
+          p_ip_address: ip,
+        });
+      }
       return next(new Error("Authentication required"));
     }
     const uid = await verifyToken(token);
     if (!uid) {
       if (isDev) console.warn("[Socket] Rejected: Invalid token");
+      if (supabaseAdmin) {
+        void supabaseAdmin.rpc("log_authz_failure", {
+          p_endpoint: "socket:connect",
+          p_reason: "invalid_jwt",
+          p_table_name: null,
+          p_operation: null,
+          p_metadata: null,
+          p_ip_address: ip,
+        });
+      }
       return next(new Error("Invalid token"));
     }
 
@@ -1963,19 +1984,59 @@ ${JSON.stringify(validWords)}`;
   // recon goldmine for an unauthenticated attacker. Restrict to authenticated
   // teachers; the boolean shape stays the same so the in-app diagnostic page
   // still works.
+  // Fire-and-forget write to public.authz_failures via the
+  // SECURITY DEFINER `log_authz_failure` RPC.  Backs the per-tenant
+  // dashboard (security-audit-framework module 02, item #11) — the
+  // table is admin-only readable, so we can instrument liberally
+  // without worrying about per-teacher visibility.
+  //
+  // Failure is intentionally swallowed: this is on the error path of
+  // a request that's already being rejected; we don't want a write
+  // failure to mask the original 401/403 response.
+  function logAuthzFailure(
+    req: express.Request,
+    endpoint: string,
+    reason: string,
+    opts?: {
+      table?: string | null;
+      operation?: string | null;
+      metadata?: Record<string, unknown> | null;
+    },
+  ): void {
+    if (!supabaseAdmin) return;
+    const ip = req.ip || req.socket?.remoteAddress || null;
+    void supabaseAdmin
+      .rpc("log_authz_failure", {
+        p_endpoint: endpoint,
+        p_reason: reason,
+        p_table_name: opts?.table ?? null,
+        p_operation: opts?.operation ?? null,
+        p_metadata: opts?.metadata ?? null,
+        p_ip_address: ip,
+      })
+      .then(({ error }) => {
+        if (error) console.warn("[authz-log] rpc error:", error.message);
+      });
+  }
+
   async function requireAuthenticatedTeacher(req: express.Request, res: express.Response): Promise<{ uid: string } | null> {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
+      logAuthzFailure(req, req.originalUrl || req.url, "missing_bearer");
       res.status(401).json({ error: "Authentication required" });
       return null;
     }
     const uid = await verifyToken(authHeader.substring(7));
     if (!uid) {
+      logAuthzFailure(req, req.originalUrl || req.url, "invalid_jwt");
       res.status(401).json({ error: "Invalid token" });
       return null;
     }
     const userData = await getUserRoleAndClass(uid);
     if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
+      logAuthzFailure(req, req.originalUrl || req.url, "wrong_role_or_missing", {
+        metadata: { observed_role: userData?.role ?? null, uid },
+      });
       res.status(403).json({ error: "Forbidden" });
       return null;
     }
@@ -2005,6 +2066,11 @@ ${JSON.stringify(validWords)}`;
         .eq("uid", baseAuth.uid)
         .maybeSingle();
       if (error || !data) {
+        logAuthzFailure(req, req.originalUrl || req.url, "requireProTeacher_user_lookup_failed", {
+          table: "users",
+          operation: "select",
+          metadata: { uid: baseAuth.uid, supabase_error: error?.message ?? null },
+        });
         res.status(403).json({ error: "ai_requires_pro" });
         return null;
       }
@@ -2017,6 +2083,9 @@ ${JSON.stringify(validWords)}`;
       const isAdmin = role === "admin";
       const isDev = isDevEmail(email);
       if (!isPaid && !isTrialing && !isAdmin && !isDev) {
+        logAuthzFailure(req, req.originalUrl || req.url, "requireProTeacher_plan_too_low", {
+          metadata: { uid: baseAuth.uid, plan, role, trialing: isTrialing },
+        });
         res.status(403).json({
           error: "ai_requires_pro",
           message: "AI features require Pro. Upgrade to continue.",
