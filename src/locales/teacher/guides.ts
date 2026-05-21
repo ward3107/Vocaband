@@ -42,6 +42,10 @@ export interface GuideStrings {
   worksheet: GuidePageStrings;
   classShow: GuidePageStrings;
   quickPlayMonitor: GuidePageStrings;
+  /** Shown once on the teacher dashboard after the Vocabulary Library
+   *  shipped so returning teachers learn that their OCR-extracted
+   *  words are now saved automatically. */
+  libraryIntro: GuidePageStrings;
 }
 
 export const teacherGuidesT: Record<Language, GuideStrings> = {
@@ -176,6 +180,27 @@ export const teacherGuidesT: Record<Language, GuideStrings> = {
           icon: "🎵",
           title: "Background music + themes",
           body: "Optional looped music + 7 colour themes for the projector. All saved to your dashboard for next time.",
+        },
+      ],
+    },
+    libraryIntro: {
+      heading: "New: Vocabulary Library",
+      subheading: "Your saved words now live in one place",
+      steps: [
+        {
+          icon: "📚",
+          title: "Your work is saved automatically",
+          body: "Words you extract from a photo are now saved to your Library as a Vocabulary Set, so closing the tab no longer loses them.",
+        },
+        {
+          icon: "🗂️",
+          title: "Organize into Collections",
+          body: "Group sets into folders any way you like — by grade, by class, by unit, by year. Folders nest up to 5 levels deep.",
+        },
+        {
+          icon: "↻",
+          title: "Reuse across activities",
+          body: "Any saved Set can power an assignment, a worksheet, a Class Show, or a Quick Play — no need to re-extract or re-paste.",
         },
       ],
     },
@@ -315,6 +340,27 @@ export const teacherGuidesT: Record<Language, GuideStrings> = {
         },
       ],
     },
+    libraryIntro: {
+      heading: "חדש: ספריית אוצר המילים",
+      subheading: "המילים השמורות שלך — כולן במקום אחד",
+      steps: [
+        {
+          icon: "📚",
+          title: "העבודה שלך נשמרת אוטומטית",
+          body: "מילים שאתם מחלצים מתמונה נשמרות עכשיו לספרייה שלכם כרשימת מילים, כך שסגירת הלשונית כבר לא תאבד אותן.",
+        },
+        {
+          icon: "🗂️",
+          title: "סדרו באוספים",
+          body: "קבצו רשימות לתיקיות בכל דרך שתרצו — לפי שכבה, כיתה, יחידה או שנה. עומק התיקיות עד 5 רמות.",
+        },
+        {
+          icon: "↻",
+          title: "השתמשו שוב בכל פעילות",
+          body: "כל רשימה שמורה יכולה להפעיל מטלה, דף עבודה, Class Show או משחק מהיר — בלי לחלץ או להדביק מחדש.",
+        },
+      ],
+    },
   },
 
   ar: {
@@ -451,6 +497,27 @@ export const teacherGuidesT: Record<Language, GuideStrings> = {
         },
       ],
     },
+    libraryIntro: {
+      heading: "جديد: مكتبة المفردات",
+      subheading: "كلماتك المحفوظة الآن في مكان واحد",
+      steps: [
+        {
+          icon: "📚",
+          title: "عملك يُحفظ تلقائيًا",
+          body: "الكلمات التي تستخرجها من صورة تُحفظ الآن في مكتبتك كقائمة مفردات، فلن يؤدي إغلاق علامة التبويب إلى فقدانها.",
+        },
+        {
+          icon: "🗂️",
+          title: "نظّمها في مجموعات",
+          body: "اجمع القوائم في مجلدات بأي طريقة تريدها — حسب الصف، أو الفصل، أو الوحدة، أو السنة. تتداخل المجلدات حتى 5 مستويات.",
+        },
+        {
+          icon: "↻",
+          title: "أعد استخدامها في أي نشاط",
+          body: "يمكن لأي قائمة محفوظة أن تدير واجبًا أو ورقة عمل أو Class Show أو لعبًا سريعًا — دون إعادة الاستخراج أو اللصق.",
+        },
+      ],
+    },
   },
 
   ru: {
@@ -584,6 +651,27 @@ export const teacherGuidesT: Record<Language, GuideStrings> = {
           icon: "🎵",
           title: "Background music + themes",
           body: "Optional looped music + 7 colour themes for the projector. All saved to your dashboard for next time.",
+        },
+      ],
+    },
+    libraryIntro: {
+      heading: "New: Vocabulary Library",
+      subheading: "Your saved words now live in one place",
+      steps: [
+        {
+          icon: "📚",
+          title: "Your work is saved automatically",
+          body: "Words you extract from a photo are now saved to your Library as a Vocabulary Set, so closing the tab no longer loses them.",
+        },
+        {
+          icon: "🗂️",
+          title: "Organize into Collections",
+          body: "Group sets into folders any way you like — by grade, by class, by unit, by year. Folders nest up to 5 levels deep.",
+        },
+        {
+          icon: "↻",
+          title: "Reuse across activities",
+          body: "Any saved Set can power an assignment, a worksheet, a Class Show, or a Quick Play — no need to re-extract or re-paste.",
         },
       ],
     },

@@ -36,7 +36,11 @@ export type GuideKey =
   | "approvals"
   | "worksheet"
   | "class-show"
-  | "quick-play-monitor";
+  | "quick-play-monitor"
+  // One-time "what's new" intro shown on the teacher dashboard after
+  // the Vocabulary Library shipped, so returning teachers learn that
+  // their OCR-extracted words are now saved automatically.
+  | "library-intro";
 
 // ─── Account-level persistence (Supabase, pub/sub store) ───────────────────
 
