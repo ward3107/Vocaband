@@ -29,7 +29,7 @@ import {
   type VocabularySet,
 } from "../core/vocabularyLibrary";
 import SetBuildWizard from "./library/SetBuildWizard";
-import SentenceGenerationModal from "./library/SentenceGenerationModal";
+import VocabularySetDetailModal from "./library/VocabularySetDetailModal";
 
 type Tab = "all" | "collections" | "recent";
 
@@ -61,8 +61,11 @@ export default function VocabularyLibraryView({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showBuildWizard, setShowBuildWizard] = useState(false);
-  /** When set, opens the SentenceGenerationModal for this Set. Phase 4d. */
-  const [sentenceSet, setSentenceSet] = useState<VocabularySet | null>(null);
+  /** When set, opens the VocabularySetDetailModal for this Set. The
+   *  detail modal itself nests the SentenceGenerationModal — opening
+   *  the detail page is the canonical "I want to do something with this
+   *  set" entry point now. */
+  const [openedSet, setOpenedSet] = useState<VocabularySet | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -236,7 +239,7 @@ export default function VocabularyLibraryView({
             ) : (
               <CardGrid>
                 {allSets.map((s) => (
-                  <SetCard key={s.id} set={s} t={t} onOpen={() => setSentenceSet(s)} />
+                  <SetCard key={s.id} set={s} t={t} onOpen={() => setOpenedSet(s)} />
                 ))}
               </CardGrid>
             )
@@ -263,7 +266,7 @@ export default function VocabularyLibraryView({
           ) : (
             <CardGrid>
               {recent.map((s) => (
-                <SetCard key={s.id} set={s} t={t} onOpen={() => setSentenceSet(s)} />
+                <SetCard key={s.id} set={s} t={t} onOpen={() => setOpenedSet(s)} />
               ))}
             </CardGrid>
           )}
@@ -281,12 +284,12 @@ export default function VocabularyLibraryView({
             showToast={showToast}
           />
         )}
-        {sentenceSet && user && hasTeacherAccess(user) && (
-          <SentenceGenerationModal
-            key={`sentence-modal-${sentenceSet.id}`}
-            set={sentenceSet}
-            onClose={() => setSentenceSet(null)}
-            onSaved={() => { setSentenceSet(null); void refresh(); }}
+        {openedSet && user && hasTeacherAccess(user) && (
+          <VocabularySetDetailModal
+            key={`set-detail-${openedSet.id}`}
+            set={openedSet}
+            onClose={() => setOpenedSet(null)}
+            onChanged={() => { void refresh(); }}
             showToast={showToast}
           />
         )}
