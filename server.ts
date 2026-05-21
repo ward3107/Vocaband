@@ -3223,6 +3223,256 @@ Return JSON: an array, one item per word, each with the target word string and a
     return res.json({ wordResults: finals, level: reqLevel });
   });
 
+  // ────────────────────────────────────────────────────────────────────────
+  // Library MCQ-distractor generation
+  // ────────────────────────────────────────────────────────────────────────
+  // /api/library/generate-distractors — for each word in a Set, generate
+  // 3 plausible WRONG-answer choices. Used to build printable
+  // multiple-choice worksheets: "The brave ______ roared.  (a) lion
+  // (b) tiger (c) bear (d) zebra" — three of those are distractors.
+  //
+  // Quality rules (in the prompt):
+  //   - Same part of speech as the target.
+  //   - Same topical category — animal target → animal distractors,
+  //     emotion target → emotion distractors. Mixed-category lists
+  //     destroy the exercise.
+  //   - Common words at the chosen level the student should recognize.
+  //   - Avoid using OTHER target words from the same set (otherwise the
+  //     student could ace the worksheet by elimination).
+  //   - No inflections / spelling variants of the target ("lions" for
+  //     "lion" is a trick question, not a vocabulary check).
+  //
+  // Storage: distractors live in vocabulary_set_words.metadata.distractors
+  // (string[3]).  No schema migration needed — the metadata column was
+  // designed in Phase 0 for exactly this kind of structured-but-flexible
+  // per-word data.
+  const LIBRARY_DISTRACTORS_SCHEMA = {
+    type: SchemaType.ARRAY,
+    items: {
+      type: SchemaType.OBJECT,
+      properties: {
+        word: { type: SchemaType.STRING },
+        distractors: {
+          type: SchemaType.ARRAY,
+          items: { type: SchemaType.STRING },
+        },
+      },
+      required: ["word", "distractors"],
+    },
+  };
+
+  app.post("/api/library/generate-distractors", aiRateLimiter, async (req, res) => {
+    const ip = req.ip || "unknown";
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) return res.status(401).json({ error: "Invalid token" });
+
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
+      console.warn(`[library/generate-distractors] non-teacher caller: ip=${ip} uid=${uid}`);
+      return res.status(403).json({ error: "Only teachers can generate distractors" });
+    }
+
+    const { setId, level, wordIds } = req.body ?? {};
+    if (typeof setId !== "string" || !setId) {
+      return res.status(400).json({ error: "setId is required" });
+    }
+    const validLevels = ["A1", "A2", "B1", "B2"] as const;
+    type Level = (typeof validLevels)[number];
+    const reqLevel: Level = (validLevels as ReadonlyArray<string>).includes(level) ? (level as Level) : "A2";
+    const wordIdFilter: string[] | null = Array.isArray(wordIds)
+      ? wordIds.filter((w): w is string => typeof w === "string" && w.length > 0).slice(0, 60)
+      : null;
+
+    if (!supabaseAdmin) {
+      return res.status(503).json({ error: "Storage backend not configured" });
+    }
+
+    // Quota check — distractors share the daily quota bucket with
+    // sentences (both are AI text-generation flows; one quota line is
+    // enough). Different action key for analytics granularity.
+    try {
+      const { data: overQuota } = await supabaseAdmin.rpc("check_ai_quota", {
+        p_teacher_uid: uid,
+        p_action: "ai_generate_sentences",
+        p_plan: "free",
+      });
+      if (overQuota === true) {
+        return res.status(429).json({ error: "Daily AI quota exceeded. Try again tomorrow." });
+      }
+    } catch (quotaErr) {
+      console.warn(`[library/generate-distractors] quota check failed:`, (quotaErr as Error)?.message || quotaErr);
+    }
+
+    const { data: setRow, error: setErr } = await supabaseAdmin
+      .from("vocabulary_sets")
+      .select("id,teacher_uid,name,sentence_preset")
+      .eq("id", setId)
+      .maybeSingle();
+    if (setErr || !setRow) {
+      return res.status(404).json({ error: "Set not found" });
+    }
+    if (setRow.teacher_uid !== uid && userData.role !== "admin") {
+      return res.status(403).json({ error: "You don't own this set" });
+    }
+
+    const { data: allWordRows, error: wordsErr } = await supabaseAdmin
+      .from("vocabulary_set_words")
+      .select("id,position,english,part_of_speech,metadata")
+      .eq("set_id", setId)
+      .order("position", { ascending: true });
+    if (wordsErr) {
+      console.error("[library/generate-distractors] words fetch failed:", wordsErr.message);
+      return res.status(500).json({ error: "Failed to load set words" });
+    }
+    const allWords = (allWordRows ?? []).filter((w) => typeof w.english === "string" && w.english.trim().length > 0);
+    if (allWords.length === 0) {
+      return res.status(400).json({ error: "This set has no words" });
+    }
+    if (allWords.length > 60) {
+      return res.status(400).json({ error: "Sets larger than 60 words can't be generated in one batch" });
+    }
+
+    const targetWordSet = wordIdFilter && wordIdFilter.length > 0 ? new Set(wordIdFilter) : null;
+    const words = targetWordSet ? allWords.filter((w) => targetWordSet.has(w.id)) : allWords;
+    if (words.length === 0) {
+      return res.status(400).json({ error: "No matching words to generate for" });
+    }
+
+    for (const w of words) {
+      const injection = detectPromptInjection(w.english);
+      if (injection.detected) {
+        return res.status(400).json({ error: "A word in this set contains a disallowed pattern" });
+      }
+    }
+
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey || apiKey.trim() === "") {
+      return res.status(503).json({ error: "Gemini API key not configured" });
+    }
+
+    const allTargets = allWords.map((w) => w.english.toLowerCase().trim());
+    const allTargetsSet = new Set(allTargets);
+
+    const prompt = `You are generating multiple-choice distractors for an English vocabulary worksheet.
+
+Class level: ${reqLevel} — ${LIBRARY_LEVEL_DESCRIPTIONS[reqLevel]}
+Set name: ${setRow.name}
+Full word list of this lesson: ${allWords.map((w) => w.english).join(", ")}
+
+For each target word, write 3 DIFFERENT distractors — plausible WRONG-answer choices for a fill-in-the-blank multiple-choice question.
+
+Rules:
+- Same part of speech as the target (noun ↔ noun, verb ↔ verb).
+- Same topical category. Animal target → other animals. Food → other foods. Emotion → other emotions. Never mix categories.
+- Common words a student at ${reqLevel} would recognize.
+- Roughly similar word length / syllable count for visual balance.
+- Avoid using any other target word from this set (would let students ace the sheet by elimination).
+- No inflections / spelling variants of the target (don't use "lions" for "lion").
+- Plain lowercase form, no punctuation, no articles.
+
+Target words:
+${JSON.stringify(words.map((w) => ({ word: w.english, partOfSpeech: w.part_of_speech ?? null })))}
+
+Return JSON: an array, one item per word, each with { word, distractors: [string, string, string] }.`;
+
+    type GeminiItem = { word: string; distractors: string[] };
+
+    let parsed: GeminiItem[];
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey.trim());
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash-lite",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: LIBRARY_DISTRACTORS_SCHEMA,
+        },
+      });
+      const result = await model.generateContent(prompt);
+      const raw = result.response.text();
+      try {
+        parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error("not an array");
+      } catch {
+        console.error("[library/generate-distractors] unparseable Gemini response:", raw.slice(0, 200));
+        return res.status(502).json({ error: "Distractor parsing failed" });
+      }
+    } catch (err) {
+      console.error("[library/generate-distractors] Gemini call failed:", (err as Error)?.message || err);
+      return res.status(500).json({ error: "Distractor generation failed" });
+    }
+
+    // Build a map keyed by lowercased target word, validate the
+    // distractor list against the rules. Anything that violates is
+    // silently dropped — we'd rather return 2 good distractors + 1
+    // empty slot the teacher can fill in than 3 garbage ones.
+    interface FinalResult { wordId: string; english: string; distractors: string[] }
+    const finals: FinalResult[] = [];
+    const byTarget = new Map<string, string[]>();
+    for (const item of parsed) {
+      if (!item?.word || !Array.isArray(item.distractors)) continue;
+      const norm = item.word.toLowerCase().trim();
+      const cleaned: string[] = [];
+      for (const d of item.distractors) {
+        if (typeof d !== "string") continue;
+        const sanitized = sanitizeAiOutput(d).toLowerCase().trim();
+        if (!sanitized) continue;
+        if (sanitized.length > 50) continue;
+        if (sanitized === norm) continue;                // distractor === target
+        if (allTargetsSet.has(sanitized)) continue;       // another target word
+        if (sanitized.startsWith(norm) || norm.startsWith(sanitized)) continue; // inflection-ish
+        if (cleaned.includes(sanitized)) continue;        // dup within a word's distractors
+        cleaned.push(sanitized);
+        if (cleaned.length === 3) break;
+      }
+      byTarget.set(norm, cleaned);
+    }
+
+    // Persist + build response. Writes are server-side via service role
+    // so we can merge into the existing metadata jsonb without race
+    // conditions. One UPDATE per word — cheap, <60 rows.
+    for (const w of words) {
+      const norm = w.english.toLowerCase().trim();
+      const distractors = byTarget.get(norm) ?? [];
+
+      // Merge with any existing metadata so we don't blow away other
+      // fields a future feature may have added to the same JSONB.
+      const newMetadata = { ...(w.metadata as object | null ?? {}), distractors };
+      try {
+        await supabaseAdmin
+          .from("vocabulary_set_words")
+          .update({ metadata: newMetadata })
+          .eq("id", w.id);
+      } catch (saveErr) {
+        console.warn(`[library/generate-distractors] save failed for word ${w.id}:`, (saveErr as Error)?.message);
+      }
+      finals.push({ wordId: w.id, english: w.english, distractors });
+    }
+
+    // Telemetry — distractor batches use the same daily counter as
+    // sentence batches (same cost order of magnitude).
+    try {
+      await supabaseAdmin.rpc("bump_ai_usage", {
+        p_teacher_uid: uid,
+        p_action: "ai_generate_sentences",
+        p_count: 1,
+        p_cost_micro_usd: 3000,
+        p_plan_at_action: "free",
+      });
+    } catch (bumpErr) {
+      console.warn(`[library/generate-distractors] usage bump failed:`, (bumpErr as Error)?.message || bumpErr);
+    }
+
+    const okCount = finals.filter((f) => f.distractors.length === 3).length;
+    console.info(`[library/generate-distractors] uid=${uid} setId=${setId} level=${reqLevel} ok=${okCount}/${finals.length}`);
+
+    return res.json({ wordResults: finals, level: reqLevel });
+  });
+
   app.post("/api/generate-sentences", aiRateLimiter, async (req, res) => {
     if (!(await requireProTeacher(req, res))) return;
 
