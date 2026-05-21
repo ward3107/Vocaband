@@ -162,20 +162,18 @@ jobs:
       # fallbacks (src/core/supabase.ts — the same publishable values
       # that ship in every browser bundle).  Override via repo secrets
       # if you ever need to point at a staging project.
-      - name: RLS pen-test (warning-only — see PR #845)
-        # Soft-launch state: the script passes locally but the
-        # GitHub-runner outbound to www.vocaband.com fails with no
-        # currently-diagnosable signal.  DEBUG=1 turns on `set -x`
-        # in the script so the next CI failure prints every command +
-        # response and we can finally see what differs in the runner
-        # environment.  Once we have a green CI confirming the script
-        # works here, drop DEBUG and flip to hard-gate.
-        continue-on-error: true
+      - name: RLS pen-test (hard gate)
+        # Use literal publishable values for CI. The publishable anon key is
+        # already shipped in every browser bundle (see src/core/supabase.ts),
+        # so it doesn't need a secret indirection — and a stale repo secret
+        # silently overrode an updated in-source fallback in May 2026 (see
+        # PR #844). Drop the override; future rotations are one in-repo edit.
+        # If a staging deployment ever needs different values, branch this
+        # step into its own matrix entry rather than re-introducing secrets.
         env:
-          DEBUG: '1'
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://auth.vocaband.com' }}
-          ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_Pw-mQ9L76U5T-wLdKjOkpg_GnG99XDF' }}
-          APP_URL: ${{ secrets.APP_URL || 'https://www.vocaband.com' }}
+          SUPABASE_URL: 'https://auth.vocaband.com'
+          ANON_KEY: 'sb_publishable_Pw-mQ9L76U5T-wLdKjOkpg_GnG99XDF'
+          APP_URL: 'https://www.vocaband.com'
         run: |
           chmod +x scripts/security-pen-test.sh
           bash scripts/security-pen-test.sh
