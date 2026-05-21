@@ -43,6 +43,14 @@ export type View =
   | "class-show"
   | "worksheet"
   | "vocabagrut"
+  // Vocabulary Library — teacher-owned persistent vocabulary storage.
+  // Top: list of root Collections + unfiled Sets.
+  // Detail variants navigate within nested folders / into a single Set.
+  // See supabase/migrations/20260621000000_vocabulary_library.sql.
+  | "vocabulary-library"
+  | "vocabulary-collection"
+  | "vocabulary-set-detail"
+  | "vocabulary-set-builder"
   // VocaHebrew — shown when an admin picks Hebrew on the Voca Picker
   // post-login.  Teachers belong to a single Voca (users.subject) and
   // route straight to teacher-dashboard, skipping the picker entirely.

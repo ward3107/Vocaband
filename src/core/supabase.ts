@@ -490,3 +490,338 @@ export function mapProgressToDb(p: Omit<ProgressData, 'id'>) {
     avatar: p.avatar,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Vocabulary Library — teacher-owned persistent vocabulary storage
+// ---------------------------------------------------------------------------
+// Schema in supabase/migrations/20260621000000_vocabulary_library.sql.
+// Hierarchy: teacher → Collection (nested, max depth 5) → Set → Word → Sentence.
+// All consumer surfaces (assignments, worksheets, Class Show, Quick Play)
+// read from these tables; OCR / manual / paste / AI / curriculum-pick all
+// write into them.
+
+export const VOCABULARY_COLLECTION_COLUMNS =
+  'id,teacher_uid,parent_id,name,description,emoji,color,school_year,grade_level,share_mode,shared_with_school_id,is_archived,created_at,updated_at';
+
+export const VOCABULARY_SET_COLUMNS =
+  'id,teacher_uid,collection_id,name,description,source_type,source_label,extraction_job_id,grade_level,language_pair,curriculum_alignment,difficulty,word_count,sentence_preset,emoji,color,is_archived,is_template,created_at,updated_at,last_used_at';
+
+export const VOCABULARY_SET_WORD_COLUMNS =
+  'id,set_id,position,english,hebrew,arabic,part_of_speech,difficulty,curriculum_word_id,audio_url,metadata,created_at,updated_at';
+
+export const VOCABULARY_SET_WORD_SENTENCE_COLUMNS =
+  'id,word_id,text,level,length_bucket,tense,tone,theme,grammar_focus,cultural_context,is_primary,was_edited,generated_by,audio_url,created_at,updated_at';
+
+export const VOCABULARY_EXTRACTION_JOB_COLUMNS =
+  'id,teacher_uid,set_id,source_type,source_filename,source_size_bytes,source_mime_type,source_hash_sha256,ai_model,status,words_extracted,processing_ms,error_message,storage_object_key,storage_deleted_at,created_at,completed_at';
+
+export type VocabularySourceType =
+  | 'manual'
+  | 'paste'
+  | 'ocr_image'
+  | 'ocr_document'
+  | 'ai_topic'
+  | 'ai_augment'
+  | 'curriculum'
+  | 'imported';
+
+export type VocabularyShareMode = 'private' | 'school' | 'invite';
+
+export type VocabularyLanguagePair =
+  | 'en-he-ar'
+  | 'en-he'
+  | 'en-ar'
+  | 'he-en'
+  | 'ar-en';
+
+export type VocabularyCurriculumAlignment = 'Set 1' | 'Set 2' | 'Set 3' | 'Custom';
+
+export type VocabularyExtractionStatus =
+  | 'pending'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'expired';
+
+export type SentenceLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1';
+export type SentenceLengthBucket = 'short' | 'medium' | 'long';
+export type SentenceTense = 'present' | 'past' | 'future' | 'mixed';
+export type SentenceTone = 'neutral' | 'fun' | 'story' | 'conversational' | 'educational';
+export type SentenceCulturalContext = 'universal' | 'israeli';
+
+/** Sentence-generation defaults persisted on each Set. Empty object = no
+ *  preset; the AI uses smart defaults derived from grade_level at call
+ *  time. See migration #4 (sentence controls). */
+export interface VocabularySentencePreset {
+  level?: SentenceLevel;
+  length?: SentenceLengthBucket;
+  tense?: SentenceTense;
+  tone?: SentenceTone;
+  theme?: string;
+  grammar?: string | null;
+  perWord?: 1 | 2 | 3;
+  culturalContext?: SentenceCulturalContext;
+}
+
+export interface VocabularyCollection {
+  id: string;
+  teacherUid: string;
+  parentId: string | null;
+  name: string;
+  description?: string | null;
+  emoji?: string | null;
+  color?: string | null;
+  schoolYear?: string | null;
+  gradeLevel?: number | null;
+  shareMode: VocabularyShareMode;
+  sharedWithSchoolId?: string | null;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VocabularySet {
+  id: string;
+  teacherUid: string;
+  collectionId: string | null;
+  name: string;
+  description?: string | null;
+  sourceType: VocabularySourceType;
+  sourceLabel?: string | null;
+  extractionJobId?: string | null;
+  gradeLevel?: number | null;
+  languagePair: VocabularyLanguagePair;
+  curriculumAlignment?: VocabularyCurriculumAlignment | null;
+  difficulty?: number | null;
+  wordCount: number;
+  sentencePreset: VocabularySentencePreset;
+  emoji?: string | null;
+  color?: string | null;
+  isArchived: boolean;
+  isTemplate: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt?: string | null;
+}
+
+export interface VocabularySetWord {
+  id: string;
+  setId: string;
+  position: number;
+  english: string;
+  hebrew?: string | null;
+  arabic?: string | null;
+  partOfSpeech?: string | null;
+  difficulty?: number | null;
+  curriculumWordId?: number | null;
+  audioUrl?: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VocabularySetWordSentence {
+  id: string;
+  wordId: string;
+  text: string;
+  level?: SentenceLevel | null;
+  lengthBucket?: SentenceLengthBucket | null;
+  tense?: SentenceTense | null;
+  tone?: SentenceTone | null;
+  theme?: string | null;
+  grammarFocus?: string | null;
+  culturalContext?: SentenceCulturalContext | null;
+  isPrimary: boolean;
+  wasEdited: boolean;
+  generatedBy: 'ai' | 'manual';
+  audioUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VocabularyExtractionJob {
+  id: string;
+  teacherUid: string;
+  setId?: string | null;
+  sourceType: 'ocr_image' | 'ocr_document' | 'paste' | 'ai_topic' | 'ai_augment';
+  sourceFilename?: string | null;
+  sourceSizeBytes?: number | null;
+  sourceMimeType?: string | null;
+  sourceHashSha256?: string | null;
+  aiModel?: string | null;
+  status: VocabularyExtractionStatus;
+  wordsExtracted?: number | null;
+  processingMs?: number | null;
+  errorMessage?: string | null;
+  storageObjectKey?: string | null;
+  storageDeletedAt?: string | null;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapVocabularyCollection(row: any): VocabularyCollection {
+  return {
+    id: row.id,
+    teacherUid: row.teacher_uid,
+    parentId: row.parent_id ?? null,
+    name: row.name,
+    description: row.description ?? null,
+    emoji: row.emoji ?? null,
+    color: row.color ?? null,
+    schoolYear: row.school_year ?? null,
+    gradeLevel: row.grade_level ?? null,
+    shareMode: (row.share_mode ?? 'private') as VocabularyShareMode,
+    sharedWithSchoolId: row.shared_with_school_id ?? null,
+    isArchived: row.is_archived === true,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapVocabularySet(row: any): VocabularySet {
+  return {
+    id: row.id,
+    teacherUid: row.teacher_uid,
+    collectionId: row.collection_id ?? null,
+    name: row.name,
+    description: row.description ?? null,
+    sourceType: (row.source_type ?? 'manual') as VocabularySourceType,
+    sourceLabel: row.source_label ?? null,
+    extractionJobId: row.extraction_job_id ?? null,
+    gradeLevel: row.grade_level ?? null,
+    languagePair: (row.language_pair ?? 'en-he-ar') as VocabularyLanguagePair,
+    curriculumAlignment: (row.curriculum_alignment ?? null) as VocabularyCurriculumAlignment | null,
+    difficulty: row.difficulty ?? null,
+    wordCount: row.word_count ?? 0,
+    sentencePreset: (row.sentence_preset ?? {}) as VocabularySentencePreset,
+    emoji: row.emoji ?? null,
+    color: row.color ?? null,
+    isArchived: row.is_archived === true,
+    isTemplate: row.is_template === true,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lastUsedAt: row.last_used_at ?? null,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapVocabularySetWord(row: any): VocabularySetWord {
+  return {
+    id: row.id,
+    setId: row.set_id,
+    position: row.position,
+    english: row.english,
+    hebrew: row.hebrew ?? null,
+    arabic: row.arabic ?? null,
+    partOfSpeech: row.part_of_speech ?? null,
+    difficulty: row.difficulty ?? null,
+    curriculumWordId: row.curriculum_word_id ?? null,
+    audioUrl: row.audio_url ?? null,
+    metadata: row.metadata ?? {},
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapVocabularySetWordSentence(row: any): VocabularySetWordSentence {
+  return {
+    id: row.id,
+    wordId: row.word_id,
+    text: row.text,
+    level: (row.level ?? null) as SentenceLevel | null,
+    lengthBucket: (row.length_bucket ?? null) as SentenceLengthBucket | null,
+    tense: (row.tense ?? null) as SentenceTense | null,
+    tone: (row.tone ?? null) as SentenceTone | null,
+    theme: row.theme ?? null,
+    grammarFocus: row.grammar_focus ?? null,
+    culturalContext: (row.cultural_context ?? null) as SentenceCulturalContext | null,
+    isPrimary: row.is_primary === true,
+    wasEdited: row.was_edited === true,
+    generatedBy: (row.generated_by ?? 'ai') as 'ai' | 'manual',
+    audioUrl: row.audio_url ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapVocabularyExtractionJob(row: any): VocabularyExtractionJob {
+  return {
+    id: row.id,
+    teacherUid: row.teacher_uid,
+    setId: row.set_id ?? null,
+    sourceType: row.source_type,
+    sourceFilename: row.source_filename ?? null,
+    sourceSizeBytes: row.source_size_bytes ?? null,
+    sourceMimeType: row.source_mime_type ?? null,
+    sourceHashSha256: row.source_hash_sha256 ?? null,
+    aiModel: row.ai_model ?? null,
+    status: (row.status ?? 'pending') as VocabularyExtractionStatus,
+    wordsExtracted: row.words_extracted ?? null,
+    processingMs: row.processing_ms ?? null,
+    errorMessage: row.error_message ?? null,
+    storageObjectKey: row.storage_object_key ?? null,
+    storageDeletedAt: row.storage_deleted_at ?? null,
+    createdAt: row.created_at,
+    completedAt: row.completed_at ?? null,
+  };
+}
+
+export function mapVocabularyCollectionToDb(c: Partial<VocabularyCollection> & { teacherUid: string; name: string }) {
+  return {
+    ...(c.id !== undefined && { id: c.id }),
+    teacher_uid: c.teacherUid,
+    ...(c.parentId !== undefined && { parent_id: c.parentId }),
+    name: c.name,
+    ...(c.description !== undefined && { description: c.description }),
+    ...(c.emoji !== undefined && { emoji: c.emoji }),
+    ...(c.color !== undefined && { color: c.color }),
+    ...(c.schoolYear !== undefined && { school_year: c.schoolYear }),
+    ...(c.gradeLevel !== undefined && { grade_level: c.gradeLevel }),
+    ...(c.shareMode !== undefined && { share_mode: c.shareMode }),
+    ...(c.sharedWithSchoolId !== undefined && { shared_with_school_id: c.sharedWithSchoolId }),
+    ...(c.isArchived !== undefined && { is_archived: c.isArchived }),
+  };
+}
+
+export function mapVocabularySetToDb(s: Partial<VocabularySet> & { teacherUid: string; name: string }) {
+  return {
+    ...(s.id !== undefined && { id: s.id }),
+    teacher_uid: s.teacherUid,
+    ...(s.collectionId !== undefined && { collection_id: s.collectionId }),
+    name: s.name,
+    ...(s.description !== undefined && { description: s.description }),
+    ...(s.sourceType !== undefined && { source_type: s.sourceType }),
+    ...(s.sourceLabel !== undefined && { source_label: s.sourceLabel }),
+    ...(s.extractionJobId !== undefined && { extraction_job_id: s.extractionJobId }),
+    ...(s.gradeLevel !== undefined && { grade_level: s.gradeLevel }),
+    ...(s.languagePair !== undefined && { language_pair: s.languagePair }),
+    ...(s.curriculumAlignment !== undefined && { curriculum_alignment: s.curriculumAlignment }),
+    ...(s.difficulty !== undefined && { difficulty: s.difficulty }),
+    ...(s.sentencePreset !== undefined && { sentence_preset: s.sentencePreset }),
+    ...(s.emoji !== undefined && { emoji: s.emoji }),
+    ...(s.color !== undefined && { color: s.color }),
+    ...(s.isArchived !== undefined && { is_archived: s.isArchived }),
+  };
+}
+
+export function mapVocabularySetWordToDb(
+  w: Partial<VocabularySetWord> & { setId: string; position: number; english: string }
+) {
+  return {
+    ...(w.id !== undefined && { id: w.id }),
+    set_id: w.setId,
+    position: w.position,
+    english: w.english,
+    ...(w.hebrew !== undefined && { hebrew: w.hebrew }),
+    ...(w.arabic !== undefined && { arabic: w.arabic }),
+    ...(w.partOfSpeech !== undefined && { part_of_speech: w.partOfSpeech }),
+    ...(w.difficulty !== undefined && { difficulty: w.difficulty }),
+    ...(w.curriculumWordId !== undefined && { curriculum_word_id: w.curriculumWordId }),
+    ...(w.audioUrl !== undefined && { audio_url: w.audioUrl }),
+    ...(w.metadata !== undefined && { metadata: w.metadata }),
+  };
+}
