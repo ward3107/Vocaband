@@ -127,10 +127,10 @@ export default function VocabularyLibraryView({
     void refresh();
   }, [refresh]);
 
-  const tabs: Array<{ id: Tab; label: string; icon: ReactNode }> = [
-    { id: "all", label: t.tabAllSets, icon: <FileText className="w-4 h-4" /> },
-    { id: "collections", label: t.tabCollections, icon: <Folder className="w-4 h-4" /> },
-    { id: "recent", label: t.tabRecent, icon: <Clock className="w-4 h-4" /> },
+  const tabs: Array<{ id: Tab; label: string; icon: ReactNode; count: number }> = [
+    { id: "all", label: t.tabAllSets, icon: <FileText className="w-4 h-4" />, count: allSets.length },
+    { id: "collections", label: t.tabCollections, icon: <Folder className="w-4 h-4" />, count: collections.length },
+    { id: "recent", label: t.tabRecent, icon: <Clock className="w-4 h-4" />, count: recent.length },
   ];
 
   if (!hasTeacherAccess(user)) {
@@ -225,6 +225,16 @@ export default function VocabularyLibraryView({
               >
                 {tab.icon}
                 {tab.label}
+                {!loading && tab.count > 0 && (
+                  <span
+                    aria-hidden
+                    className={`inline-flex items-center justify-center rounded-full text-xs font-bold min-w-[1.25rem] h-5 px-1.5 ${
+                      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
               </button>
             );
           })}
