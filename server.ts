@@ -1,5 +1,6 @@
 import "dotenv/config";
 import * as Sentry from "@sentry/node";
+import { scrubPii } from "./src/utils/scrubPii";
 
 // Sentry init — must run BEFORE other modules so the SDK can patch them.
 // Stays disabled in dev (no DSN set locally). Tracing is off to stay
@@ -17,6 +18,17 @@ Sentry.init({
     /^Request aborted/,
     /^socket hang up/,
   ],
+  // Defensive PII scrubber for incidental leaks — see
+  // `src/utils/scrubPii.ts`.  Strips emails, JWTs, Bearer tokens,
+  // Supabase keys, and the value of any sensitive-named header /
+  // form field from every outbound event payload.  Closes QA
+  // framework item #9.
+  beforeSend(event) {
+    return scrubPii(event) as Sentry.ErrorEvent;
+  },
+  beforeSendTransaction(event) {
+    return scrubPii(event) as Sentry.TransactionEvent;
+  },
 });
 
 import express from "express";

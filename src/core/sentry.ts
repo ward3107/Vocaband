@@ -21,6 +21,7 @@
 // three hosts at the same time or events silently disappear.
 
 import * as Sentry from "@sentry/react";
+import { scrubPii } from "../utils/scrubPii";
 
 // Same DSN as the Fly server uses (see SENTRY_DSN secret). Errors
 // from both surfaces land in one project — easier triage at our
@@ -93,6 +94,17 @@ export function initSentry(): void {
     // Don't send default PII (cookies, IP). We attach the Supabase uid
     // explicitly via setSentryUser() when a teacher/student signs in.
     sendDefaultPii: false,
+    // Defensive PII scrubber for incidental leaks — see
+    // `src/utils/scrubPii.ts` and `src/__tests__/scrubPii.test.ts`.
+    // Strips emails, JWTs, Bearer tokens, Supabase keys, and the
+    // value of any sensitive-named header / form field from every
+    // outbound event payload.  Closes QA framework item #9.
+    beforeSend(event) {
+      return scrubPii(event) as Sentry.ErrorEvent;
+    },
+    beforeSendTransaction(event) {
+      return scrubPii(event) as Sentry.TransactionEvent;
+    },
   });
 }
 
