@@ -174,7 +174,7 @@ jobs:
         env:
           DEBUG: '1'
           SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://auth.vocaband.com' }}
-          ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_O1immSThDxWWI6PNXPNi1w__27CAThD' }}
+          ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_Pw-mQ9L76U5T-wLdKjOkpg_GnG99XDF' }}
           APP_URL: ${{ secrets.APP_URL || 'https://www.vocaband.com' }}
         run: |
           chmod +x scripts/security-pen-test.sh
