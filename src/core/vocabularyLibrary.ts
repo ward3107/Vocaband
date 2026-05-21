@@ -372,6 +372,31 @@ export async function saveGeneratedSentences(
   return (data ?? []).map(mapVocabularySetWordSentence);
 }
 
+/** In-place edit of one sentence row. Used by the Set Detail view's
+ *  inline edit. Stamps was_edited so the UI can show an "edited"
+ *  badge and analytics can count human-touched vs pure-AI output. */
+export async function updateSentenceText(
+  sentenceId: string,
+  text: string,
+): Promise<VocabularySetWordSentence> {
+  const { data, error } = await supabase
+    .from('vocabulary_set_word_sentences')
+    .update({ text: text.trim(), was_edited: true })
+    .eq('id', sentenceId)
+    .select(VOCABULARY_SET_WORD_SENTENCE_COLUMNS)
+    .single();
+  if (error) return handleDbError(error, OperationType.UPDATE, 'vocabulary_set_word_sentences');
+  return mapVocabularySetWordSentence(data);
+}
+
+export async function deleteSentence(sentenceId: string): Promise<void> {
+  const { error } = await supabase
+    .from('vocabulary_set_word_sentences')
+    .delete()
+    .eq('id', sentenceId);
+  if (error) await handleDbError(error, OperationType.DELETE, 'vocabulary_set_word_sentences');
+}
+
 // ─── Extraction jobs ──────────────────────────────────────────────────
 
 export async function listRecentExtractionJobs(
