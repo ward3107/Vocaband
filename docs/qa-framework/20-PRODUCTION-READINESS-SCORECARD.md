@@ -41,7 +41,7 @@
 | 5  | S1 | Backend | Server-side score validation on `apply_game_finish` | ✅ shipped — `supabase/migrations/20260606_f3_progress_score_cap.sql` (RPC + CHECK constraint, cap = 1000) |
 | 6  | S2 | Backend | Centralized rate-limit middleware on Fly Express | ✅ shipped — `server.ts:751` global limiter + per-endpoint limiters (OCR, translate, TTS, AI) |
 | 7  | S2 | Backend | OpenAPI spec + client type generation | 🔴 still open — no spec |
-| 8  | S2 | DevOps | Backup restore drill executed | 🔴 still open — operator action |
+| 8  | S2 | DevOps | Backup restore drill executed | 🟡 runbook + verify script shipped (`docs/backup-restore-runbook.md`, `scripts/verify-restore.sql`); operator runs the drill quarterly |
 | 9  | S2 | Compliance | PII-in-logs audit + Sentry `beforeSend` filter | 🟡 partial — `ignoreErrors` configured; `beforeSend` PII scrubber not yet added |
 | 10 | S2 | QA | Smoke E2E suite wired into CI | ✅ shipped — `smoke.spec.ts` + `auth-flow.spec.ts` on every PR via `ci-e2e.yml` |
 | 11 | S2 | Infra | Fly origin protection (CF-only ingress) | ✅ shipped + live in prod 2026-05-20 09:24 UTC — direct hits return 403 |
@@ -85,7 +85,7 @@ Each row below must be GREEN before serving any school beyond pilot scale.
 | Load test passes 5000 sockets | Yes                  | 🔴 not started |
 | Save-queue resilience tests | Yes                    | 🟡 partial |
 | PII audit clean             | Yes                    | 🟡 partial |
-| Backup restore drilled      | Yes                    | 🔴 not started |
+| Backup restore drilled      | Yes                    | 🟡 runbook ready; first drill not yet executed |
 | OpenAPI + contract tests    | Yes                    | 🔴 not started |
 | Observability dashboards live | Yes                  | 🟡 Sentry only |
 | Incident response drill done | Yes                  | 🔴 not started |
