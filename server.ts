@@ -2046,32 +2046,91 @@ async function startServer() {
       });
     }
 
-    try {
-      const genAI = new GoogleGenerativeAI(apiKey.trim());
-      // gemini-2.5-flash-lite: cheapest tier in the 2.5 family
-      // (~half the cost of `gemini-2.5-flash` per token, similar
-      // quality for mechanical tasks like translation).  Chosen so the
-      // "translate these 40 words" button stays cheap at classroom
-      // scale.  Upgrade here if we ever need nuance the lite tier
-      // can't deliver — translation is a well-solved task and lite
-      // handles idioms + multi-word phrases fine.
-      // Schema-mode: Gemini is constrained to emit a JSON array matching
-      // TRANSLATE_SCHEMA, so the regex-based parse fallback below is no
-      // longer needed.  The prompt still describes what to translate —
-      // the schema only enforces shape, not semantics.
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash-lite",
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: TRANSLATE_SCHEMA,
-        },
-      });
+    // ── Cache layer ──────────────────────────────────────────────────────
+    // Before paying the AI tax, consult public.translation_cache. Same
+    // word translated by 1,000 teachers should be 1 API call, not 1,000.
+    // Cache lookup is a single batch query keyed on (source_lang,
+    // source_text, target_lang). For each input word we check all three
+    // target langs (he, ar, ru) — a word is "fully cached" only when
+    // all three are present.
+    const normalizedInputs = validWords.map(w => w.toLowerCase().trim());
+    type CacheRow = { id: string; source_text: string; target_lang: 'he' | 'ar' | 'ru'; translation: string };
+    interface CacheEntry { he?: string; ar?: string; ru?: string; ids: { he?: string; ar?: string; ru?: string } }
+    const cacheMap = new Map<string, CacheEntry>();
+    if (supabaseAdmin && normalizedInputs.length > 0) {
+      try {
+        const { data: cached } = await supabaseAdmin
+          .from('translation_cache')
+          .select('id,source_text,target_lang,translation')
+          .eq('source_lang', 'en')
+          .in('source_text', normalizedInputs)
+          .in('target_lang', ['he', 'ar', 'ru']);
+        for (const row of (cached ?? []) as CacheRow[]) {
+          const entry = cacheMap.get(row.source_text) ?? { ids: {} };
+          entry[row.target_lang] = row.translation;
+          entry.ids[row.target_lang] = row.id;
+          cacheMap.set(row.source_text, entry);
+        }
+      } catch (cacheErr) {
+        // Cache failures are not fatal — fall through to Gemini with
+        // an empty cache so the user still gets translations.
+        console.warn(`[translate] cache read failed (continuing without cache):`, (cacheErr as Error)?.message || cacheErr);
+      }
+    }
 
-      // Structured prompt so we can parse deterministically.
-      // Now also produces Russian alongside Hebrew + Arabic.  Arabic
-      // stays in the response even when the UI isn't showing it yet —
-      // adding it later is a client-only flip.
-      const prompt = `Translate these English words into Hebrew, Arabic, AND Russian. Return a JSON array with this exact shape:
+    // Build the set of normalized words that need Gemini. A word is
+    // uncached if ANY target language is missing — we don't try to ask
+    // Gemini for just the missing langs because the schema always
+    // returns all 4 fields, and the marginal cost is tiny vs. the
+    // complexity of partial fetches.
+    const uncachedNormalized: string[] = [];
+    const seenUncached = new Set<string>();
+    for (const w of normalizedInputs) {
+      const entry = cacheMap.get(w);
+      if (!entry || !entry.he || !entry.ar || !entry.ru) {
+        if (!seenUncached.has(w)) {
+          seenUncached.add(w);
+          uncachedNormalized.push(w);
+        }
+      }
+    }
+    // Preserve the user's casing for words we pass to Gemini (some
+    // translation cues depend on it — proper nouns, acronyms).
+    const uncachedOriginalCase = uncachedNormalized.map(norm => {
+      const idx = normalizedInputs.indexOf(norm);
+      return idx >= 0 ? validWords[idx] : norm;
+    });
+
+    type GeminiItem = { english: string; hebrew: string; arabic: string; russian?: string };
+    const geminiMap = new Map<string, GeminiItem>();
+
+    if (uncachedOriginalCase.length > 0) {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey.trim());
+        // gemini-2.5-flash-lite: cheapest tier in the 2.5 family
+        // (~half the cost of `gemini-2.5-flash` per token, similar
+        // quality for mechanical tasks like translation).  Chosen so the
+        // "translate these 40 words" button stays cheap at classroom
+        // scale.  Upgrade here if we ever need nuance the lite tier
+        // can't deliver — translation is a well-solved task and lite
+        // handles idioms + multi-word phrases fine.
+        // Schema-mode: Gemini is constrained to emit a JSON array matching
+        // TRANSLATE_SCHEMA, so the regex-based parse fallback below is no
+        // longer needed.  The prompt still describes what to translate —
+        // the schema only enforces shape, not semantics.
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash-lite",
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: TRANSLATE_SCHEMA,
+          },
+        });
+
+        // Structured prompt so we can parse deterministically.
+        // Now also produces Russian alongside Hebrew + Arabic.  Arabic
+        // stays in the response even when the UI isn't showing it yet —
+        // adding it later is a client-only flip.
+        const prompt = `Translate these English words into Hebrew, Arabic, AND Russian. Return a JSON array with this exact shape:
 [{"english":"word","hebrew":"פירוש","arabic":"ترجمة","russian":"перевод"},...]
 
 Rules:
@@ -2082,46 +2141,100 @@ Rules:
 - Never return an empty string — if you're unsure, transliterate phonetically.
 
 Input:
-${JSON.stringify(validWords)}`;
+${JSON.stringify(uncachedOriginalCase)}`;
 
-      const result = await model.generateContent(prompt);
-      const raw = result.response.text();
+        const result = await model.generateContent(prompt);
+        const raw = result.response.text();
 
-      // Schema-mode guarantees valid JSON matching TRANSLATE_SCHEMA.  We
-      // still wrap in try/catch as belt-and-braces — a stricter SDK
-      // upgrade or a Gemini outage that bypasses schema enforcement
-      // would otherwise crash the route.
-      let parsed: Array<{ english: string; hebrew: string; arabic: string; russian?: string }>;
-      try {
-        parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) throw new Error("not an array");
-      } catch {
-        console.error("[translate] Gemini returned unparseable response (should be impossible with responseSchema):", raw.slice(0, 200));
-        return res.status(502).json({ error: "Translation parsing failed" });
+        // Schema-mode guarantees valid JSON matching TRANSLATE_SCHEMA.  We
+        // still wrap in try/catch as belt-and-braces — a stricter SDK
+        // upgrade or a Gemini outage that bypasses schema enforcement
+        // would otherwise crash the route.
+        let parsed: GeminiItem[];
+        try {
+          parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) throw new Error("not an array");
+        } catch {
+          console.error("[translate] Gemini returned unparseable response (should be impossible with responseSchema):", raw.slice(0, 200));
+          return res.status(502).json({ error: "Translation parsing failed" });
+        }
+
+        for (let i = 0; i < uncachedOriginalCase.length; i++) {
+          const item = parsed[i];
+          if (!item) continue;
+          const key = uncachedNormalized[i];
+          geminiMap.set(key, item);
+        }
+
+        // Persist the new translations into the cache (fire-and-forget).
+        // Writes are scoped to en→{he,ar,ru}. Failures are silent — the
+        // user already has their response by the time this awaits.
+        if (supabaseAdmin) {
+          const rows: Array<{ source_lang: 'en'; source_text: string; target_lang: 'he' | 'ar' | 'ru'; translation: string }> = [];
+          for (let i = 0; i < uncachedNormalized.length; i++) {
+            const norm = uncachedNormalized[i];
+            const item = parsed[i];
+            if (!item) continue;
+            const he = sanitizeAiOutput(item.hebrew);
+            const ar = sanitizeAiOutput(item.arabic);
+            const ru = sanitizeAiOutput(item.russian);
+            if (he) rows.push({ source_lang: 'en', source_text: norm, target_lang: 'he', translation: he });
+            if (ar) rows.push({ source_lang: 'en', source_text: norm, target_lang: 'ar', translation: ar });
+            if (ru) rows.push({ source_lang: 'en', source_text: norm, target_lang: 'ru', translation: ru });
+          }
+          if (rows.length > 0) {
+            void supabaseAdmin
+              .from('translation_cache')
+              .upsert(rows, { onConflict: 'source_lang,source_text,target_lang' })
+              .then(({ error: upsertErr }) => {
+                if (upsertErr) console.warn('[translate] cache upsert failed:', upsertErr.message);
+              });
+          }
+        }
+      } catch (error: any) {
+        console.error("[translate] Gemini error:", error?.message || error);
+        return res.status(500).json({ error: "Translation failed", message: (error?.message || "").substring(0, 200) });
       }
-
-      // Align by input order. If Gemini returns fewer items than requested
-      // (rare but possible), pad with empty strings so the arrays stay
-      // positional — frontend can show an auto-translate button for gaps.
-      // Output sanitisation — translation text is downstream-renderable
-      // (PDF / Word / SVG worksheet exports).  Strip any HTML / control
-      // chars / js: URIs the model returned, intentionally or via prompt
-      // injection of its own (Gemini occasionally echoes input).
-      const hebrew: string[] = [];
-      const arabic: string[] = [];
-      const russian: string[] = [];
-      for (let i = 0; i < validWords.length; i++) {
-        const item = parsed[i];
-        hebrew.push(sanitizeAiOutput(item?.hebrew));
-        arabic.push(sanitizeAiOutput(item?.arabic));
-        russian.push(sanitizeAiOutput(item?.russian));
-      }
-
-      return res.json({ hebrew, arabic, russian });
-    } catch (error: any) {
-      console.error("[translate] Gemini error:", error?.message || error);
-      return res.status(500).json({ error: "Translation failed", message: (error?.message || "").substring(0, 200) });
     }
+
+    // Bump hit_count on the cached rows we actually used. Fire-and-forget;
+    // failure of telemetry shouldn't slow the response.
+    const hitIds: string[] = [];
+    for (const entry of cacheMap.values()) {
+      if (entry.ids.he) hitIds.push(entry.ids.he);
+      if (entry.ids.ar) hitIds.push(entry.ids.ar);
+      if (entry.ids.ru) hitIds.push(entry.ids.ru);
+    }
+    if (hitIds.length > 0 && supabaseAdmin) {
+      void supabaseAdmin
+        .rpc('touch_translation_cache', { p_ids: hitIds })
+        .then(({ error: touchErr }) => {
+          if (touchErr) console.warn('[translate] cache touch failed:', touchErr.message);
+        });
+    }
+
+    // Assemble final response in input order. Cache wins over Gemini
+    // when both have a value for the same word (cache is the canonical
+    // source after the upsert above lands).
+    const hebrew: string[] = [];
+    const arabic: string[] = [];
+    const russian: string[] = [];
+    for (let i = 0; i < validWords.length; i++) {
+      const key = normalizedInputs[i];
+      const fromCache = cacheMap.get(key);
+      const fromGemini = geminiMap.get(key);
+      hebrew.push(sanitizeAiOutput(fromCache?.he ?? fromGemini?.hebrew));
+      arabic.push(sanitizeAiOutput(fromCache?.ar ?? fromGemini?.arabic));
+      russian.push(sanitizeAiOutput(fromCache?.ru ?? fromGemini?.russian));
+    }
+
+    // Lightweight telemetry — % of input words served from cache.
+    // Read in logs to confirm the cache is actually doing its job.
+    const totalWords = validWords.length;
+    const fullyCached = totalWords - uncachedNormalized.length;
+    console.info(`[translate] cache_hit=${fullyCached}/${totalWords} uid=${uid}`);
+
+    return res.json({ hebrew, arabic, russian });
   });
 
   // ── OCR via Claude Haiku Vision ───────────────────────────────────────────
