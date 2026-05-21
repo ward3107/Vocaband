@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Sparkles, Printer, Send, Pencil, Trash2, Loader2, ListChecks, RefreshCcw } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { loadHebrewArabicFonts, registerHebrewArabicFonts, fixRtl } from "../../lib/pdfFonts";
 import { useLanguage } from "../../hooks/useLanguage";
 import { setDetailT, type SetDetailStrings } from "../../locales/teacher/vocabulary-library-detail";
 import {
@@ -239,7 +240,7 @@ export default function VocabularySetDetailModal({
     if (printing || loading) return;
     setPrinting(true);
     try {
-      buildAndDownloadPdf({ set, grouped, t });
+      await buildAndDownloadPdf({ set, grouped, t });
     } catch (err) {
       console.warn("[VocabularySetDetailModal] PDF gen failed:", err);
       showToast(t.errorPrint, "error");
@@ -602,7 +603,7 @@ function SentenceRow({
 // the function next to the modal that owns it avoids an import dance
 // for what's effectively view-layer code.
 
-function buildAndDownloadPdf({
+async function buildAndDownloadPdf({
   set,
   grouped,
   t,
@@ -610,10 +611,16 @@ function buildAndDownloadPdf({
   set: VocabularySet;
   grouped: WordWithSentences[];
   t: SetDetailStrings;
-}): void {
+}): Promise<void> {
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const margin = 18;
+
+  // Helvetica has no glyphs for Hebrew/Arabic — without registering Noto
+  // Sans here, the worksheet's translation columns render as Latin-1
+  // garbage (the low byte of each Unicode codepoint).
+  const fonts = await loadHebrewArabicFonts().catch(() => null);
+  if (fonts) registerHebrewArabicFonts(pdf, fonts);
 
   // ── Page 1 header ──────────────────────────────────────────────────
   pdf.setFont("helvetica", "bold");
@@ -641,13 +648,18 @@ function buildAndDownloadPdf({
     body: grouped.map((g, i) => [
       String(i + 1),
       g.word.english,
-      g.word.hebrew ?? "",
-      g.word.arabic ?? "",
+      // jsPDF writes glyphs left-to-right — pre-reverse RTL runs so the
+      // text reads correctly. fixRtl is a no-op on cells without RTL chars.
+      fixRtl(g.word.hebrew ?? ""),
+      fixRtl(g.word.arabic ?? ""),
     ]),
     styles: { fontSize: 10, cellPadding: 2.2 },
     columnStyles: {
       0: { halign: "center", cellWidth: 10 },
       1: { fontStyle: "bold" },
+      // Only switches when the font was actually registered; otherwise
+      // autoTable falls back to helvetica (same as before this fix).
+      ...(fonts ? { 2: { font: "Hebrew", halign: "right" }, 3: { font: "Arabic", halign: "right" } } : {}),
     },
     alternateRowStyles: { fillColor: [248, 250, 252] },
   });
