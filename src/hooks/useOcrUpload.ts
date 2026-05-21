@@ -18,6 +18,10 @@
  *        are added but left unchecked for the teacher to review.
  *      - Fire Neural2 audio generation for the custom words so
  *        students hear real pronunciations in-game.
+ *      - **NEW (Phase 2): also persist the extracted words to the
+ *        Vocabulary Library as a new Set so the work survives a
+ *        tab-close.  Best-effort — failure is swallowed; the existing
+ *        flow continues either way.**
  *      - Navigate to create-assignment if the teacher has a class.
  *
  * Mechanical extraction. Kept the full App.tsx behaviour — status UI,
@@ -31,6 +35,7 @@ import { getCachedVocabulary } from "./useVocabularyLazy";
 import { trackAutoError } from "../errorTracking";
 import { requestCustomWordAudio } from "../utils/requestCustomWordAudio";
 import { postOcrImage, isPostOcrImageError } from "../utils/postOcrImage";
+import { createSet, addWordsToSet } from "../core/vocabularyLibrary";
 
 export interface UseOcrUploadParams {
   classes: ClassData[];
@@ -49,6 +54,12 @@ export interface UseOcrUploadParams {
    *  (callers that haven't adopted the paywall flow keep working). */
   showPaywallToast?: (message: string) => void;
   translateWordsBatch: (words: string[]) => Promise<Map<string, { hebrew: string; arabic: string; match: number }>>;
+  /** When set, extracted words are also persisted to the Vocabulary
+   *  Library as a new Set owned by this teacher (Phase 2). Best-effort:
+   *  if the save fails (RLS, network, etc.) the existing in-memory flow
+   *  still runs. Pass `undefined` for anonymous flows like Quick Play
+   *  where there's no teacher account to attach the Set to. */
+  teacherUid?: string;
 }
 
 export function useOcrUpload(params: UseOcrUploadParams) {
@@ -57,6 +68,7 @@ export function useOcrUpload(params: UseOcrUploadParams) {
     setCustomWords, setSelectedWords, setSelectedLevel, setView,
     setIsOcrProcessing, setOcrProgress, setOcrStatus, setOcrPendingFile,
     showToast, showPaywallToast, translateWordsBatch,
+    teacherUid,
   } = params;
 
   // Step 2: User confirms from the preview → run OCR
@@ -151,6 +163,49 @@ export function useOcrUpload(params: UseOcrUploadParams) {
         // Fire off Neural2 audio generation so students hear real pronunciations.
         void requestCustomWordAudio(customWordsFromOCR);
 
+        // ── Phase 2: persist to the Vocabulary Library ──────────────
+        // Best-effort save so an OCR extraction is no longer ephemeral.
+        // Runs in the background; the existing flow doesn't wait on it.
+        // Failure is silent (logged for telemetry) — the in-memory
+        // customWords state stays valid and the teacher's working
+        // session is unaffected.
+        let savedSetName: string | null = null;
+        if (teacherUid) {
+          try {
+            const today = new Date().toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            });
+            const setName = `Photo · ${today}`;
+            const newSet = await createSet({
+              teacherUid,
+              name: setName,
+              sourceType: "ocr_image",
+              languagePair: "en-he-ar",
+              emoji: "📷",
+            });
+            await addWordsToSet(
+              newSet.id,
+              customWordsFromOCR.map((w, idx) => ({
+                position: idx,
+                english: w.english,
+                hebrew: w.hebrew || null,
+                arabic: w.arabic || null,
+                partOfSpeech: null,
+                difficulty: null,
+                curriculumWordId: null,
+                audioUrl: null,
+                metadata: {},
+              }))
+            );
+            savedSetName = newSet.name;
+          } catch (saveErr) {
+            // Silent — the user still gets the in-memory flow.
+            // Logged so we can spot RLS or schema regressions early.
+            console.warn("[useOcrUpload] library save failed:", saveErr);
+          }
+        }
+
         // Navigate to create-assignment view so user can see the matched words
         if (classes.length > 0) {
           setSelectedClass(classes[0]);
@@ -158,9 +213,12 @@ export function useOcrUpload(params: UseOcrUploadParams) {
         }
 
         const unknownCount = customWordsFromOCR.length - knownCustomIds.length;
-        const successMsg = knownCustomIds.length > 0 && unknownCount > 0
+        const baseMsg = knownCustomIds.length > 0 && unknownCount > 0
           ? `Found ${customWordsFromOCR.length} words — ${knownCustomIds.length} curriculum matches auto-selected, ${unknownCount} need review.`
           : `Found ${customWordsFromOCR.length} words from the image!`;
+        const successMsg = savedSetName
+          ? `${baseMsg} 📚 Saved to your Library as "${savedSetName}".`
+          : baseMsg;
         showToast(successMsg, "success");
       }
     } catch (err) {
@@ -188,7 +246,7 @@ export function useOcrUpload(params: UseOcrUploadParams) {
     classes, setSelectedClass,
     setCustomWords, setSelectedWords, setSelectedLevel, setView,
     setIsOcrProcessing, setOcrProgress, setOcrStatus, setOcrPendingFile,
-    showToast, translateWordsBatch,
+    showToast, showPaywallToast, translateWordsBatch, teacherUid,
   ]);
 
   const handleOcrUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

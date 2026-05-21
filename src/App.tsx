@@ -625,6 +625,9 @@ export default function App() {
   });
 
   // OCR pipeline — photo → /api/ocr → translate → custom-word tab.
+  // Phase 2: teacherUid is also threaded so each extraction is persisted
+  // to the Vocabulary Library as a new Set. Undefined for anonymous
+  // flows (Quick Play guests etc.) — the library save short-circuits.
   const { handleOcrUpload, processOcrFile } = useOcrUpload({
     classes, setSelectedClass,
     setCustomWords, setSelectedWords,
@@ -632,6 +635,7 @@ export default function App() {
     setView: setView as (v: string) => void,
     setIsOcrProcessing, setOcrProgress, setOcrStatus, setOcrPendingFile,
     showToast, showPaywallToast, translateWordsBatch,
+    teacherUid: hasTeacherAccess(user) ? user.uid : undefined,
   });
 
   // Adapter for the picker's `onOcrUpload` contract — the OCR pipeline

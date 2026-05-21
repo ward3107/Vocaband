@@ -23,6 +23,9 @@ import ToastList, { type Toast } from "../components/dashboard/ToastList";
 import ConfirmDialog, { type ConfirmDialogState } from "../components/dashboard/ConfirmDialog";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
+import { useFirstTimeGuide } from "../hooks/useFirstTimeGuide";
+import FirstTimeGuide from "../components/onboarding/FirstTimeGuide";
+import { teacherGuidesT } from "../locales/teacher/guides";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
 import type { VocaId } from "../core/subject";
 import type { SavedTask } from "../hooks/useSavedTasks";
@@ -177,6 +180,13 @@ export default function TeacherDashboardView({
   const effectiveLanguage = isHebrew ? "he" : language;
   const dir = isHebrew ? "rtl" : uiDir;
   const t = teacherDashboardT[effectiveLanguage];
+
+  // One-time "what's new" intro for the Vocabulary Library. Surfaces
+  // once per teacher account (tracked via users.guides_seen), suppressed
+  // while the brand-new-teacher onboarding wizard is on screen so the
+  // two modals never stack.
+  const libraryIntroGuide = useFirstTimeGuide("library-intro");
+  const libraryIntroStrings = teacherGuidesT[effectiveLanguage].libraryIntro;
 
   // Time-of-day greeting — small but friendly touch so the teacher feels the
   // app is responsive to them and not a generic admin panel.
@@ -515,6 +525,20 @@ export default function TeacherDashboardView({
       )}
       {showThemeMenu && (
         <TeacherThemeMenu user={user} setUser={setUser} onClose={() => setShowThemeMenu(false)} />
+      )}
+
+      {/* One-time "what's new" intro for the Vocabulary Library.
+          Suppressed while the brand-new-teacher onboarding wizard is
+          up so the two modals never stack. After dismissal, the next
+          mount sees seen=true and skips render entirely. */}
+      {!showOnboarding && (
+        <FirstTimeGuide
+          isOpen={libraryIntroGuide.isOpen}
+          onDone={libraryIntroGuide.dismiss}
+          heading={libraryIntroStrings.heading}
+          subheading={libraryIntroStrings.subheading}
+          steps={libraryIntroStrings.steps}
+        />
       )}
 
       {/* First-rating prompt — fires when the teacher has meaningfully
