@@ -2,21 +2,19 @@
  * VocabularyLibraryView — the teacher's personal library of vocabulary
  * sets, organized into nested Collections.
  *
- * Phase 0 (this PR): library shell.
- *   - Loads collections + sets via core/vocabularyLibrary helpers.
- *   - Three tabs (All Sets / Collections / Recent) with empty states.
- *   - Functional "+ New Collection" / "+ New Set" buttons that create
- *     minimal rows so the schema can be exercised end-to-end.
- *   - No build wizard / extraction yet — that lands in Phase 2.
- *   - Not yet wired into App.tsx routing (follow-up); the view compiles
- *     and is importable so the routing PR is mechanical.
+ * Phase 0: library shell.
+ * Phase 1: wired into App.tsx routing + dashboard tile.
+ * Phase 2: OCR pipeline auto-saves into vocabulary_sets.
+ * Phase 3 (current): "+ New Vocabulary Set" launches the SetBuildWizard
+ *   modal with 3 working source modes (Manual / Paste / Photo) and
+ *   3 visible-but-disabled modes (Upload / AI / Curriculum).
  *
  * Design: matches the rest of the teacher surface — TopAppBar +
  * gradient hero, big motion cards with frosted emoji medallions, RTL-
  * aware via useLanguage().
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { BookMarked, FolderPlus, Plus, FileText, Folder, Clock, Sparkles } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import { useLanguage } from "../hooks/useLanguage";
@@ -27,10 +25,10 @@ import {
   listAllSets,
   listRecentSets,
   createCollection,
-  createSet,
   type VocabularyCollection,
   type VocabularySet,
 } from "../core/vocabularyLibrary";
+import SetBuildWizard from "./library/SetBuildWizard";
 
 type Tab = "all" | "collections" | "recent";
 
@@ -61,6 +59,7 @@ export default function VocabularyLibraryView({
   const [recent, setRecent] = useState<VocabularySet[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [showBuildWizard, setShowBuildWizard] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -107,27 +106,15 @@ export default function VocabularyLibraryView({
     }
   }, [user, busy, collectionId, t, showToast, refresh]);
 
-  const handleNewSet = useCallback(async () => {
+  const handleNewSet = useCallback(() => {
     if (!user || !hasTeacherAccess(user) || busy) return;
-    const name = window.prompt(t.newSet);
-    if (!name || !name.trim()) return;
-    setBusy(true);
-    try {
-      const saved = await createSet({
-        teacherUid: user.uid,
-        name: name.trim(),
-        collectionId,
-        sourceType: "manual",
-        languagePair: "en-he-ar",
-      });
-      showToast(t.toastSetSaved(saved.name), "success");
-      await refresh();
-    } catch {
-      showToast(t.toastError, "error");
-    } finally {
-      setBusy(false);
-    }
-  }, [user, busy, collectionId, t, showToast, refresh]);
+    setShowBuildWizard(true);
+  }, [user, busy]);
+
+  const handleWizardSaved = useCallback(() => {
+    setShowBuildWizard(false);
+    void refresh();
+  }, [refresh]);
 
   const tabs: Array<{ id: Tab; label: string; icon: ReactNode }> = [
     { id: "all", label: t.tabAllSets, icon: <FileText className="w-4 h-4" /> },
@@ -279,6 +266,19 @@ export default function VocabularyLibraryView({
           )}
         </section>
       </main>
+
+      <AnimatePresence>
+        {showBuildWizard && user && hasTeacherAccess(user) && (
+          <SetBuildWizard
+            key="build-wizard"
+            user={user}
+            collectionId={collectionId}
+            onClose={() => setShowBuildWizard(false)}
+            onSaved={handleWizardSaved}
+            showToast={showToast}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
