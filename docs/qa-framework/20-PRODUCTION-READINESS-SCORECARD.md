@@ -36,7 +36,7 @@
 |----|----------|-------|------|---------------------|
 | 1  | S1 | AppSec | External pen-test outstanding | 🔴 still open — operator action |
 | 2  | S1 | Backend / DevOps | Confirm CSP / HSTS / Permissions-Policy headers | ✅ shipped — `server.ts:697` helmet config + custom permissions-policy middleware; production response confirmed live (audit module 11) |
-| 3  | S1 | Realtime QA | Load test Live Challenge to 5000 sockets | 🔴 still open — no load test exists |
+| 3  | S1 | Realtime QA | Load test Live Challenge to 5000 sockets | 🟡 harness + runbook shipped (`scripts/loadtest-socket.ts`, `docs/load-test-runbook.md`); operator runs the rounds against a droplet |
 | 4  | S1 | Backend | RLS regression suite in CI on every PR | 🟡 partial — `scripts/security-pen-test.sh` exists but is not yet wired into a workflow file |
 | 5  | S1 | Backend | Server-side score validation on `apply_game_finish` | ✅ shipped — `supabase/migrations/20260606_f3_progress_score_cap.sql` (RPC + CHECK constraint, cap = 1000) |
 | 6  | S2 | Backend | Centralized rate-limit middleware on Fly Express | ✅ shipped — `server.ts:751` global limiter + per-endpoint limiters (OCR, translate, TTS, AI) |
@@ -82,7 +82,7 @@ Each row below must be GREEN before serving any school beyond pilot scale.
 |-----------------------------|------------------------|--------|
 | External pen-test resolved | Critical findings closed | 🔴 not started |
 | RLS regression in CI        | Yes                    | 🟡 script exists, not wired |
-| Load test passes 5000 sockets | Yes                  | 🔴 not started |
+| Load test passes 5000 sockets | Yes                  | 🟡 harness ready; first ramp not yet executed |
 | Save-queue resilience tests | Yes                    | 🟡 partial |
 | PII audit clean             | Yes                    | 🟡 partial |
 | Backup restore drilled      | Yes                    | 🟡 runbook ready; first drill not yet executed |
