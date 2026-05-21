@@ -14,6 +14,13 @@
 
 set -u
 
+# Optional debug: set DEBUG=1 to trace every command. Useful for
+# diagnosing CI-specific failures where the local run passes but
+# the GitHub-runner run fails (network, DNS, curl version, etc.).
+if [[ "${DEBUG:-}" == "1" ]]; then
+  set -x
+fi
+
 SUPABASE_URL="${SUPABASE_URL:-}"
 ANON_KEY="${ANON_KEY:-}"
 
