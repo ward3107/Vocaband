@@ -1,4 +1,4 @@
-import { GraduationCap, UserCircle, Zap, ClipboardList } from "lucide-react";
+import { GraduationCap, UserCircle, Zap, ClipboardList, Library } from "lucide-react";
 import { HelpTooltip } from "../HelpTooltip";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
@@ -12,6 +12,10 @@ interface TeacherQuickActionsProps {
   /** Optional — only the English dashboard wires this for now, since
    *  interactive worksheets are an English-Set feature. */
   onWorksheetResultsClick?: () => void;
+  /** Vocabulary Library — teacher-owned persistent word storage.
+   *  Optional today so callers that haven't adopted the route yet
+   *  keep working (the tile is hidden when undefined). */
+  onLibraryClick?: () => void;
   /** Drives Hebrew-locked locale + RTL when the dashboard is showing a
    *  Hebrew class context. Defaults to "english" so existing callers
    *  keep their current behaviour. */
@@ -21,6 +25,7 @@ interface TeacherQuickActionsProps {
 export default function TeacherQuickActions({
   pendingStudentsCount,
   onQuickPlayClick, onClassroomClick, onApprovalsClick, onWorksheetResultsClick,
+  onLibraryClick,
   subject = "english",
 }: TeacherQuickActionsProps) {
   const { language } = useLanguage();
@@ -146,6 +151,28 @@ export default function TeacherQuickActions({
                   title={t.worksheetResultsTitle}
                   description={t.worksheetResultsDescription}
                   onClick={onWorksheetResultsClick}
+                  isHebrew={isHebrew}
+                />
+              </div>
+            </HelpTooltip>
+          )}
+
+          {/* Vocabulary Library — the teacher's saved-vocabulary
+              workspace.  Subject-agnostic so it shows on both English
+              and Hebrew dashboards (sets are language-pair tagged
+              per row, not per dashboard).  Hidden when the caller
+              doesn't wire the click handler (legacy entry points
+              that haven't adopted the route yet). */}
+          {onLibraryClick && (
+            <HelpTooltip className="h-full" content={t.libraryTooltip}>
+              <div className="h-full" data-tour="vocabulary-library">
+                <CompactActionCard
+                  icon={<Library size={20} />}
+                  iconBgVar="var(--vb-accent-soft)"
+                  iconColorVar="var(--vb-accent)"
+                  title={t.libraryTitle}
+                  description={t.libraryDescription}
+                  onClick={onLibraryClick}
                   isHebrew={isHebrew}
                 />
               </div>

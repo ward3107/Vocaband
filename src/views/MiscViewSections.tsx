@@ -37,6 +37,7 @@ const AdminSecurityView = lazyWithRetry(() => import('./AdminSecurityView'));
 const WorksheetAttemptsView = lazyWithRetry(() => import('./WorksheetAttemptsView'));
 const ClassroomView = lazyWithRetry(() => import('./ClassroomView'));
 const LiveChallengeClassSelectView = lazyWithRetry(() => import('./LiveChallengeClassSelectView'));
+const VocabularyLibraryView = lazyWithRetry(() => import('./VocabularyLibraryView'));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Anyish = any;
@@ -240,6 +241,21 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
     return (
       <LazyWrapper loadingMessage="Loading worksheet results...">
         <WorksheetAttemptsView user={user} onBack={() => setView('teacher-dashboard')} />
+      </LazyWrapper>
+    );
+  }
+
+  // Vocabulary Library — the teacher's persistent saved-vocabulary surface.
+  // Lives behind the teacher-access gate; non-teachers landing here see the
+  // view's own friendly fallback (see VocabularyLibraryView).
+  if (view === 'vocabulary-library' && hasTeacherAccess(user)) {
+    return (
+      <LazyWrapper loadingMessage="Loading your library…">
+        <VocabularyLibraryView
+          user={user}
+          onBack={() => setView('teacher-dashboard')}
+          showToast={showToast}
+        />
       </LazyWrapper>
     );
   }
