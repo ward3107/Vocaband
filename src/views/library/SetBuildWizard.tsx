@@ -1,23 +1,20 @@
 /**
  * SetBuildWizard — unified "create a vocabulary set" modal flow.
  *
- * Phase 3 ships three working source modes:
- *   - Manual   — editable row table
- *   - Paste    — paste text → split into words → auto-translate
- *   - Photo    — file picker → /api/ocr → auto-translate
+ * Phase 4d simplification: two source modes only.
+ *   - 📋 Type or paste — one textarea, teacher types or pastes a list
+ *   - 📷 Photo or image — file picker (camera, gallery, screenshot…)
+ *                          → /api/ocr → auto-translate
  *
- * Three more modes are visible-but-disabled (Upload, AI from topic,
- * From curriculum) so teachers see the full roadmap and know to come
- * back. They light up in Phases 4-5.
- *
- * State shape — kept inside the component because the wizard is
- * single-instance and short-lived; promoting it to a hook would add
- * indirection without payoff.
+ * Phases 3's Manual mode was removed (paste already covers typing).
+ * Phase 3's "Soon" tiles (Upload, AI from topic, From curriculum) were
+ * removed too — Photo + paste already cover every realistic teacher
+ * workflow, so the wizard no longer promises features we won't build.
  */
-import { useCallback, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  X, ArrowLeft, Pencil, Clipboard, Camera, FileUp, Sparkles, BookOpen, Plus, Trash2, Loader2,
+  X, ArrowLeft, Clipboard, Camera, Sparkles, Trash2, Loader2,
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { useTranslate } from "../../hooks/useTranslate";
@@ -27,18 +24,16 @@ import { postOcrImage, isPostOcrImageError } from "../../utils/postOcrImage";
 import { createSet, addWordsToSet } from "../../core/vocabularyLibrary";
 import { type AppUser } from "../../core/supabase";
 
-type Step = "pick-source" | "manual" | "paste" | "photo";
-type ActiveMode = "manual" | "paste" | "ocr_image";
+type Step = "pick-source" | "paste" | "photo";
+type ActiveMode = "paste" | "ocr_image";
 
-/** A row in the words-review / manual-entry table. Local-only — gets
- *  mapped to the DB row shape at save time. */
+/** A row in the words-review table. Local-only — gets mapped to the
+ *  DB row shape at save time. */
 interface WordRow {
   english: string;
   hebrew: string;
   arabic: string;
 }
-
-const EMPTY_ROW: WordRow = { english: "", hebrew: "", arabic: "" };
 
 interface SetBuildWizardProps {
   user: AppUser;
@@ -64,11 +59,6 @@ export default function SetBuildWizard({
 
   const [step, setStep] = useState<Step>("pick-source");
   const [setName, setSetName] = useState("");
-  const [manualRows, setManualRows] = useState<WordRow[]>([
-    { ...EMPTY_ROW },
-    { ...EMPTY_ROW },
-    { ...EMPTY_ROW },
-  ]);
   const [pasteText, setPasteText] = useState("");
   const [extractedWords, setExtractedWords] = useState<WordRow[]>([]);
   const [extracting, setExtracting] = useState(false);
@@ -82,8 +72,7 @@ export default function SetBuildWizard({
   const handlePickMode = useCallback((next: Step) => {
     const today = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
     if (!setName.trim()) {
-      if (next === "manual") setSetName(t.defaultSetNameManual(today));
-      else if (next === "paste") setSetName(t.defaultSetNamePaste(today));
+      if (next === "paste") setSetName(t.defaultSetNamePaste(today));
       else if (next === "photo") setSetName(t.defaultSetNamePhoto(today));
     }
     setStep(next);
@@ -159,8 +148,7 @@ export default function SetBuildWizard({
 
   // ─── Save ────────────────────────────────────────────────────────
   const handleSave = useCallback(async (mode: ActiveMode) => {
-    const sourceRows = mode === "manual" ? manualRows : extractedWords;
-    const words = sourceRows
+    const words = extractedWords
       .filter((r) => r.english.trim().length > 0)
       .map((r, idx) => ({
         position: idx,
@@ -179,7 +167,7 @@ export default function SetBuildWizard({
     }
     setSaving(true);
     try {
-      const emoji = mode === "ocr_image" ? "📷" : mode === "paste" ? "📋" : "📝";
+      const emoji = mode === "ocr_image" ? "📷" : "📋";
       const set = await createSet({
         teacherUid: user.uid,
         name: setName.trim() || libT.unfiledLabel,
@@ -197,19 +185,9 @@ export default function SetBuildWizard({
     } finally {
       setSaving(false);
     }
-  }, [manualRows, extractedWords, setName, collectionId, user.uid, libT, t, showToast, onSaved]);
+  }, [extractedWords, setName, collectionId, user.uid, libT, t, showToast, onSaved]);
 
-  // ─── Row helpers (manual mode) ───────────────────────────────────
-  const addManualRow = useCallback(() => {
-    setManualRows((rows) => [...rows, { ...EMPTY_ROW }]);
-  }, []);
-  const removeManualRow = useCallback((idx: number) => {
-    setManualRows((rows) => rows.filter((_, i) => i !== idx));
-  }, []);
-  const updateManualRow = useCallback((idx: number, field: keyof WordRow, value: string) => {
-    setManualRows((rows) => rows.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
-  }, []);
-
+  // ─── Row helpers (review table) ──────────────────────────────────
   const removeExtractedRow = useCallback((idx: number) => {
     setExtractedWords((rows) => rows.filter((_, i) => i !== idx));
   }, []);
@@ -274,17 +252,6 @@ export default function SetBuildWizard({
               {step === "pick-source" && (
                 <PickSourceStep t={t} onPick={handlePickMode} />
               )}
-              {step === "manual" && (
-                <ManualStep
-                  t={t}
-                  setName={setName}
-                  setSetName={setSetName}
-                  rows={manualRows}
-                  onAddRow={addManualRow}
-                  onRemoveRow={removeManualRow}
-                  onUpdateRow={updateManualRow}
-                />
-              )}
               {step === "paste" && (
                 <PasteStep
                   t={t}
@@ -331,14 +298,9 @@ export default function SetBuildWizard({
             <SaveButton
               t={t}
               saving={saving}
-              disabled={
-                saving ||
-                (step === "manual" && manualRows.every((r) => !r.english.trim())) ||
-                ((step === "paste" || step === "photo") && extractedWords.length === 0)
-              }
+              disabled={saving || extractedWords.length === 0}
               onClick={() => {
-                const mode: ActiveMode =
-                  step === "manual" ? "manual" : step === "paste" ? "paste" : "ocr_image";
+                const mode: ActiveMode = step === "paste" ? "paste" : "ocr_image";
                 void handleSave(mode);
               }}
             />
@@ -352,61 +314,20 @@ export default function SetBuildWizard({
 // ─── Step 1: pick source ─────────────────────────────────────────────
 
 function PickSourceStep({ t, onPick }: { t: typeof setBuildWizardT.en; onPick: (s: Step) => void }) {
-  const tiles: Array<{
-    step: Step | null;
-    icon: ReactNode;
-    title: string;
-    blurb: string;
-    accent: string;
-    enabled: boolean;
-  }> = [
+  const tiles = [
     {
-      step: "manual",
-      icon: <Pencil className="w-6 h-6" />,
-      title: t.modeManualTitle,
-      blurb: t.modeManualBlurb,
-      accent: "from-slate-500 to-slate-700",
-      enabled: true,
-    },
-    {
-      step: "paste",
+      step: "paste" as const,
       icon: <Clipboard className="w-6 h-6" />,
       title: t.modePasteTitle,
       blurb: t.modePasteBlurb,
       accent: "from-emerald-500 to-teal-600",
-      enabled: true,
     },
     {
-      step: "photo",
+      step: "photo" as const,
       icon: <Camera className="w-6 h-6" />,
       title: t.modePhotoTitle,
       blurb: t.modePhotoBlurb,
       accent: "from-indigo-500 to-violet-600",
-      enabled: true,
-    },
-    {
-      step: null,
-      icon: <FileUp className="w-6 h-6" />,
-      title: t.modeUploadTitle,
-      blurb: t.modeUploadBlurb,
-      accent: "from-blue-500 to-cyan-600",
-      enabled: false,
-    },
-    {
-      step: null,
-      icon: <Sparkles className="w-6 h-6" />,
-      title: t.modeAiTitle,
-      blurb: t.modeAiBlurb,
-      accent: "from-fuchsia-500 to-pink-600",
-      enabled: false,
-    },
-    {
-      step: null,
-      icon: <BookOpen className="w-6 h-6" />,
-      title: t.modeCurriculumTitle,
-      blurb: t.modeCurriculumBlurb,
-      accent: "from-amber-500 to-orange-600",
-      enabled: false,
     },
   ];
 
@@ -415,17 +336,14 @@ function PickSourceStep({ t, onPick }: { t: typeof setBuildWizardT.en; onPick: (
       <h3 className="text-xl font-bold text-slate-900">{t.pickSourceHeading}</h3>
       <p className="text-sm text-slate-600 mt-1">{t.pickSourceSubtitle}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
-        {tiles.map((tile, i) => (
+        {tiles.map((tile) => (
           <motion.button
-            key={i}
+            key={tile.step}
             type="button"
-            whileHover={tile.enabled ? { scale: 1.02 } : undefined}
-            whileTap={tile.enabled ? { scale: 0.97 } : undefined}
-            onClick={() => tile.enabled && tile.step && onPick(tile.step)}
-            disabled={!tile.enabled}
-            className={`relative text-left rounded-2xl border border-slate-200 overflow-hidden ${
-              tile.enabled ? "hover:shadow-md cursor-pointer bg-white" : "opacity-60 cursor-not-allowed bg-slate-50"
-            }`}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onPick(tile.step)}
+            className="relative text-left rounded-2xl border border-slate-200 overflow-hidden hover:shadow-md cursor-pointer bg-white"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >
             <div className={`h-1.5 bg-gradient-to-r ${tile.accent}`} />
@@ -436,14 +354,7 @@ function PickSourceStep({ t, onPick }: { t: typeof setBuildWizardT.en; onPick: (
                 {tile.icon}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-slate-900 text-sm">{tile.title}</h4>
-                  {!tile.enabled && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 uppercase tracking-wider">
-                      {t.comingSoonBadge}
-                    </span>
-                  )}
-                </div>
+                <h4 className="font-bold text-slate-900 text-sm">{tile.title}</h4>
                 <p className="text-xs text-slate-600 mt-0.5 leading-snug">{tile.blurb}</p>
               </div>
             </div>
@@ -480,89 +391,7 @@ function SetNameField({
   );
 }
 
-// ─── Step 2A: Manual ─────────────────────────────────────────────────
-
-function ManualStep({
-  t,
-  setName,
-  setSetName,
-  rows,
-  onAddRow,
-  onRemoveRow,
-  onUpdateRow,
-}: {
-  t: typeof setBuildWizardT.en;
-  setName: string;
-  setSetName: (s: string) => void;
-  rows: WordRow[];
-  onAddRow: () => void;
-  onRemoveRow: (i: number) => void;
-  onUpdateRow: (i: number, field: keyof WordRow, value: string) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-bold text-slate-900">{t.manualHeading}</h3>
-        <p className="text-sm text-slate-600 mt-1">{t.manualSubtitle}</p>
-      </div>
-      <SetNameField t={t} value={setName} onChange={setSetName} />
-      <div className="rounded-xl border border-slate-200 overflow-hidden">
-        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
-          <div>{t.manualHeaderEnglish}</div>
-          <div>{t.manualHeaderHebrew}</div>
-          <div>{t.manualHeaderArabic}</div>
-          <div />
-        </div>
-        <div className="divide-y divide-slate-200">
-          {rows.map((row, idx) => (
-            <div key={idx} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center">
-              <input
-                type="text"
-                value={row.english}
-                onChange={(e) => onUpdateRow(idx, "english", e.target.value)}
-                className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
-                placeholder="lion"
-              />
-              <input
-                type="text"
-                value={row.hebrew}
-                onChange={(e) => onUpdateRow(idx, "hebrew", e.target.value)}
-                className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
-                placeholder="אריה"
-              />
-              <input
-                type="text"
-                value={row.arabic}
-                onChange={(e) => onUpdateRow(idx, "arabic", e.target.value)}
-                className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
-                placeholder="أسد"
-              />
-              <button
-                type="button"
-                onClick={() => onRemoveRow(idx)}
-                aria-label={t.manualRemoveRowAria}
-                className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={onAddRow}
-          className="w-full px-3 py-2.5 text-sm font-semibold text-violet-600 hover:bg-violet-50 border-t border-slate-200 flex items-center justify-center gap-1"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-        >
-          <Plus className="w-4 h-4" /> {t.manualAddRow}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Step 2B: Paste ──────────────────────────────────────────────────
+// ─── Step 2A: Paste ──────────────────────────────────────────────────
 
 function PasteStep({
   t,
@@ -664,7 +493,10 @@ function PhotoStep({
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture="environment"
+          /* No `capture` attribute — Phase 4d: teachers want to attach
+             gallery photos / screenshots / PDFs-as-image too, not just
+             snap a fresh camera shot. Mobile browsers still offer the
+             camera as one of the options when accept="image/*". */
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];

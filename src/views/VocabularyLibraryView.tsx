@@ -29,6 +29,7 @@ import {
   type VocabularySet,
 } from "../core/vocabularyLibrary";
 import SetBuildWizard from "./library/SetBuildWizard";
+import SentenceGenerationModal from "./library/SentenceGenerationModal";
 
 type Tab = "all" | "collections" | "recent";
 
@@ -60,6 +61,8 @@ export default function VocabularyLibraryView({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showBuildWizard, setShowBuildWizard] = useState(false);
+  /** When set, opens the SentenceGenerationModal for this Set. Phase 4d. */
+  const [sentenceSet, setSentenceSet] = useState<VocabularySet | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -233,7 +236,7 @@ export default function VocabularyLibraryView({
             ) : (
               <CardGrid>
                 {allSets.map((s) => (
-                  <SetCard key={s.id} set={s} t={t} />
+                  <SetCard key={s.id} set={s} t={t} onOpen={() => setSentenceSet(s)} />
                 ))}
               </CardGrid>
             )
@@ -260,7 +263,7 @@ export default function VocabularyLibraryView({
           ) : (
             <CardGrid>
               {recent.map((s) => (
-                <SetCard key={s.id} set={s} t={t} />
+                <SetCard key={s.id} set={s} t={t} onOpen={() => setSentenceSet(s)} />
               ))}
             </CardGrid>
           )}
@@ -275,6 +278,15 @@ export default function VocabularyLibraryView({
             collectionId={collectionId}
             onClose={() => setShowBuildWizard(false)}
             onSaved={handleWizardSaved}
+            showToast={showToast}
+          />
+        )}
+        {sentenceSet && user && hasTeacherAccess(user) && (
+          <SentenceGenerationModal
+            key={`sentence-modal-${sentenceSet.id}`}
+            set={sentenceSet}
+            onClose={() => setSentenceSet(null)}
+            onSaved={() => { setSentenceSet(null); void refresh(); }}
             showToast={showToast}
           />
         )}
@@ -313,13 +325,23 @@ function EmptyState({ title, blurb, isRTL }: { title: string; blurb: string; isR
   );
 }
 
-function SetCard({ set, t }: { set: VocabularySet; t: VocabularyLibraryStrings }) {
+function SetCard({
+  set,
+  t,
+  onOpen,
+}: {
+  set: VocabularySet;
+  t: VocabularyLibraryStrings;
+  onOpen: () => void;
+}) {
   const gradient = set.color ? undefined : "from-fuchsia-500 via-pink-500 to-rose-500";
   return (
-    <motion.div
+    <motion.button
+      type="button"
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
-      className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden cursor-pointer"
+      onClick={onOpen}
+      className="text-left rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden cursor-pointer"
       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
     >
       <div
@@ -332,7 +354,7 @@ function SetCard({ set, t }: { set: VocabularySet; t: VocabularyLibraryStrings }
         <h4 className="font-bold text-slate-900 line-clamp-1">{set.name}</h4>
         <p className="text-xs text-slate-500 mt-1">{t.wordsCount(set.wordCount)}</p>
       </div>
-    </motion.div>
+    </motion.button>
   );
 }
 

@@ -288,6 +288,90 @@ export async function listSentencesForWord(
   return (data ?? []).map(mapVocabularySetWordSentence);
 }
 
+/** Fetch every sentence for every word in this set, in one round-trip.
+ *  Used by the sentence-generation modal to show "what's already there
+ *  for this set" before generating new ones. */
+export async function listSentencesForSet(
+  setId: string
+): Promise<VocabularySetWordSentence[]> {
+  // Two-step: first the word ids for this set, then the sentences. Avoids
+  // a server-side join PostgREST won't compose for us.
+  const { data: wordRows, error: wordsErr } = await supabase
+    .from('vocabulary_set_words')
+    .select('id')
+    .eq('set_id', setId);
+  if (wordsErr) return handleDbError(wordsErr, OperationType.LIST, 'vocabulary_set_words');
+  const wordIds = (wordRows ?? []).map((r) => r.id as string);
+  if (wordIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('vocabulary_set_word_sentences')
+    .select(VOCABULARY_SET_WORD_SENTENCE_COLUMNS)
+    .in('word_id', wordIds)
+    .order('is_primary', { ascending: false });
+  if (error) return handleDbError(error, OperationType.LIST, 'vocabulary_set_word_sentences');
+  return (data ?? []).map(mapVocabularySetWordSentence);
+}
+
+/** Save a batch of teacher-chosen generated sentences for a set.
+ *  Demotes any existing primary sentences of the same kind for the
+ *  affected words first, then inserts the new ones as primary. The
+ *  older sentences are kept (is_primary = false) so the teacher's
+ *  history isn't destroyed — but worksheets / Class Show / game modes
+ *  only read primary rows by default.
+ *
+ *  Returns the newly inserted rows. */
+export async function saveGeneratedSentences(
+  input: Array<{
+    wordId: string;
+    text: string;
+    kind: 'sentence' | 'fill_blank';
+    level?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | null;
+    wasEdited?: boolean;
+  }>
+): Promise<VocabularySetWordSentence[]> {
+  if (input.length === 0) return [];
+
+  // Demote existing primary rows by (word_id, kind). One UPDATE per
+  // pair — Supabase's PostgREST builder doesn't compose multi-column
+  // tuple-IN, so we group by kind and run two updates max.
+  const byKind = new Map<'sentence' | 'fill_blank', string[]>();
+  for (const row of input) {
+    const arr = byKind.get(row.kind) ?? [];
+    arr.push(row.wordId);
+    byKind.set(row.kind, arr);
+  }
+  for (const [kind, wordIds] of byKind.entries()) {
+    const uniqueIds = Array.from(new Set(wordIds));
+    const { error: demoteErr } = await supabase
+      .from('vocabulary_set_word_sentences')
+      .update({ is_primary: false })
+      .eq('kind', kind)
+      .in('word_id', uniqueIds)
+      .eq('is_primary', true);
+    if (demoteErr) {
+      await handleDbError(demoteErr, OperationType.UPDATE, 'vocabulary_set_word_sentences');
+    }
+  }
+
+  const rows = input.map((r) => ({
+    word_id: r.wordId,
+    text: r.text,
+    kind: r.kind,
+    level: r.level ?? null,
+    is_primary: true,
+    was_edited: r.wasEdited === true,
+    generated_by: 'ai',
+  }));
+
+  const { data, error } = await supabase
+    .from('vocabulary_set_word_sentences')
+    .insert(rows)
+    .select(VOCABULARY_SET_WORD_SENTENCE_COLUMNS);
+  if (error) return handleDbError(error, OperationType.CREATE, 'vocabulary_set_word_sentences');
+  return (data ?? []).map(mapVocabularySetWordSentence);
+}
+
 // ─── Extraction jobs ──────────────────────────────────────────────────
 
 export async function listRecentExtractionJobs(

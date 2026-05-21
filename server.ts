@@ -2887,6 +2887,342 @@ Quality rules:
     4: "10-15 word sentences. Complex grammar. Conditionals.",
   };
 
+  // ────────────────────────────────────────────────────────────────────────
+  // Library sentence generation
+  // ────────────────────────────────────────────────────────────────────────
+  // /api/library/generate-sentences — bulk sentence generation for a saved
+  // Vocabulary Set. Distinct from the legacy /api/generate-sentences
+  // (which is Pro-gated, Claude-based, sentence-builder game mode):
+  //
+  //   - Free for all authenticated teachers (rate-limited via
+  //     ai_usage_counters daily quota).
+  //   - Returns CANDIDATES (up to 3 per word) so the teacher picks
+  //     instead of regenerating in a loop.
+  //   - Each candidate ships as BOTH a full sentence and a fill-in-the-
+  //     blank rendering (the target word programmatically blanked) —
+  //     teachers usually want the fill-in version for worksheets.
+  //   - Server-side validation: every sentence must contain the target
+  //     word.  Failures retry once per word; persistent failures get
+  //     filtered out so the client never sees a broken candidate.
+  //   - Saving is left to the client (uses the saveGeneratedSentences
+  //     helper) — the endpoint is stateless, easier to test, and keeps
+  //     the storage layer out of the Express handler.
+  const LIBRARY_SENTENCES_SCHEMA = {
+    type: SchemaType.ARRAY,
+    items: {
+      type: SchemaType.OBJECT,
+      properties: {
+        word: { type: SchemaType.STRING },
+        sentences: {
+          type: SchemaType.ARRAY,
+          items: { type: SchemaType.STRING },
+        },
+      },
+      required: ["word", "sentences"],
+    },
+  };
+
+  const LIBRARY_LEVEL_DESCRIPTIONS: Record<string, string> = {
+    A1: "Beginner / grade 4-5. 5-8 word sentences. Present tense. Concrete nouns + simple verbs. Vocabulary a 10-year-old EFL learner knows.",
+    A2: "Elementary / grade 6-7. 7-10 word sentences. Present + past tense. Common adjectives + adverbs. Simple connectors (and, but, because).",
+    B1: "Intermediate / grade 8-9. 9-14 word sentences. Mixed tenses including future. Relative clauses. Some idiomatic phrases.",
+    B2: "Advanced / Bagrut prep. 12-18 word sentences. Complex grammar incl. conditionals, passive voice, modal verbs. Idiom + collocations acceptable.",
+  };
+
+  /** Replace the first occurrence of `targetWord` (case-insensitive) in
+   *  `sentence` with a fill-in-the-blank marker. Returns null if the
+   *  target word isn't present — that lets the caller drop bad
+   *  candidates instead of shipping a sentence + identical "fill" rendering. */
+  function blankOutTarget(sentence: string, targetWord: string): string | null {
+    const norm = targetWord.trim();
+    if (!norm) return null;
+    // Word boundary + flexible internal regex so plurals / inflected
+    // forms match. Case-insensitive. Stop at the FIRST match — generating
+    // multiple blanks would defeat the exercise.
+    const escaped = norm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`\\b${escaped}\\b`, "i");
+    if (!re.test(sentence)) return null;
+    return sentence.replace(re, "______");
+  }
+
+  app.post("/api/library/generate-sentences", aiRateLimiter, async (req, res) => {
+    const ip = req.ip || "unknown";
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) return res.status(401).json({ error: "Invalid token" });
+
+    // Teachers + admins only. Anonymous + students rejected.
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
+      console.warn(`[library/generate-sentences] non-teacher caller: ip=${ip} uid=${uid}`);
+      return res.status(403).json({ error: "Only teachers can generate sentences" });
+    }
+
+    const { setId, level, candidateCount, wordIds } = req.body ?? {};
+    if (typeof setId !== "string" || !setId) {
+      return res.status(400).json({ error: "setId is required" });
+    }
+    const validLevels = ["A1", "A2", "B1", "B2"] as const;
+    type Level = (typeof validLevels)[number];
+    const reqLevel: Level = (validLevels as ReadonlyArray<string>).includes(level) ? (level as Level) : "A2";
+    const candCount = Math.max(1, Math.min(3, Number.isFinite(candidateCount) ? Math.trunc(candidateCount) : 3));
+    // Optional word filter — when present, only regenerate for the listed
+    // word ids. Used by the per-word "Regenerate" button so the teacher
+    // doesn't burn the whole set's candidates to refresh one word.
+    const wordIdFilter: string[] | null = Array.isArray(wordIds)
+      ? wordIds.filter((w): w is string => typeof w === "string" && w.length > 0).slice(0, 60)
+      : null;
+
+    if (!supabaseAdmin) {
+      return res.status(503).json({ error: "Storage backend not configured" });
+    }
+
+    // Quota check — daily cap per teacher via ai_usage_counters.
+    try {
+      const { data: overQuota } = await supabaseAdmin.rpc("check_ai_quota", {
+        p_teacher_uid: uid,
+        p_action: "ai_generate_sentences",
+        p_plan: "free",
+      });
+      if (overQuota === true) {
+        return res.status(429).json({ error: "Daily sentence-generation quota exceeded. Try again tomorrow." });
+      }
+    } catch (quotaErr) {
+      // Quota check failure is non-fatal — the daily counter is a soft
+      // guardrail. Log and continue so a transient DB error doesn't
+      // block legitimate teachers.
+      console.warn(`[library/generate-sentences] quota check failed:`, (quotaErr as Error)?.message || quotaErr);
+    }
+
+    // Fetch the set + words. RLS allows the teacher to read their own
+    // rows; we use service-role here purely to fail fast with a 403 if
+    // the teacher doesn't own the set (instead of getting empty rows).
+    const { data: setRow, error: setErr } = await supabaseAdmin
+      .from("vocabulary_sets")
+      .select("id,teacher_uid,name,sentence_preset")
+      .eq("id", setId)
+      .maybeSingle();
+    if (setErr || !setRow) {
+      return res.status(404).json({ error: "Set not found" });
+    }
+    if (setRow.teacher_uid !== uid && userData.role !== "admin") {
+      return res.status(403).json({ error: "You don't own this set" });
+    }
+
+    // Always fetch ALL words first — the full list goes into the prompt
+    // as theme context even when we're only regenerating a single word.
+    const { data: allWordRows, error: wordsErr } = await supabaseAdmin
+      .from("vocabulary_set_words")
+      .select("id,position,english,hebrew,arabic")
+      .eq("set_id", setId)
+      .order("position", { ascending: true });
+    if (wordsErr) {
+      console.error("[library/generate-sentences] words fetch failed:", wordsErr.message);
+      return res.status(500).json({ error: "Failed to load set words" });
+    }
+    const allWords = (allWordRows ?? []).filter((w) => typeof w.english === "string" && w.english.trim().length > 0);
+    if (allWords.length === 0) {
+      return res.status(400).json({ error: "This set has no words to generate from" });
+    }
+    if (allWords.length > 60) {
+      return res.status(400).json({ error: "Sets larger than 60 words can't be generated in one batch" });
+    }
+
+    // Target words = either the whole set, or just the filter subset.
+    const targetWordSet = wordIdFilter && wordIdFilter.length > 0
+      ? new Set(wordIdFilter)
+      : null;
+    const words = targetWordSet ? allWords.filter((w) => targetWordSet.has(w.id)) : allWords;
+    if (words.length === 0) {
+      return res.status(400).json({ error: "No matching words to generate for" });
+    }
+
+    // Defence: each word's English gets prompt-injection-screened.
+    for (const w of words) {
+      const injection = detectPromptInjection(w.english);
+      if (injection.detected) {
+        return res.status(400).json({ error: "A word in this set contains a disallowed pattern" });
+      }
+    }
+
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey || apiKey.trim() === "") {
+      return res.status(503).json({ error: "Gemini API key not configured" });
+    }
+
+    // Build the prompt. Set context (full word list) + cultural + theme
+    // give Gemini the signal it needs to produce coherent, themed,
+    // level-appropriate sentences.
+    const themeRaw = (setRow.sentence_preset as { theme?: string } | null)?.theme;
+    const themeText = typeof themeRaw === "string" && themeRaw.trim().length > 0 ? themeRaw.trim() : "neutral / mixed";
+    const cultural = (setRow.sentence_preset as { culturalContext?: string } | null)?.culturalContext === "israeli"
+      ? "Israeli school context (school, family, neighborhood, Shabbat, holidays as natural setting)"
+      : "universal / culturally neutral";
+
+    // Context for the prompt = full set, even if we're only generating
+    // for a subset (per-word regenerate keeps the theme awareness).
+    const allWordsForContext = allWords.map((w) => w.english).join(", ");
+    const buildPrompt = (targetWords: { english: string; hebrew: string | null }[]) => `You are generating English example sentences for an EFL vocabulary lesson.
+
+Class level: ${reqLevel} — ${LIBRARY_LEVEL_DESCRIPTIONS[reqLevel]}
+Theme: ${themeText}
+Cultural setting: ${cultural}
+Set name: ${setRow.name}
+Full word list of this lesson: ${allWordsForContext}
+
+For each target word, write ${candCount} DIFFERENT example sentences in English.  Each sentence must:
+- Use the target word exactly once, in the form given (no inflection / pluralisation changes).
+- Provide enough surrounding CONTEXT that a student at ${reqLevel} could guess the target word from the rest of the sentence (these become fill-in-the-blank exercises).
+- Avoid using other target words from the set whenever possible — keeps the blank uniquely answerable.
+- Stay culturally appropriate for the given setting.
+- Match the level's grammar + vocabulary expectations.
+
+Across the ${candCount} sentences for one word, vary the context: don't repeat the same setting or sentence shape.
+
+Target words:
+${JSON.stringify(targetWords.map((w) => ({ word: w.english, translation: w.hebrew ?? "" })))}
+
+Return JSON: an array, one item per word, each with the target word string and a sentences string array of length ${candCount}.`;
+
+    type GeminiItem = { word: string; sentences: string[] };
+
+    const generationModel = (() => {
+      const genAI = new GoogleGenerativeAI(apiKey.trim());
+      return genAI.getGenerativeModel({
+        model: "gemini-2.5-flash-lite",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: LIBRARY_SENTENCES_SCHEMA,
+        },
+      });
+    })();
+
+    const callGemini = async (targets: typeof words): Promise<Map<string, string[]>> => {
+      const prompt = buildPrompt(targets);
+      const result = await generationModel.generateContent(prompt);
+      const raw = result.response.text();
+      let parsed: GeminiItem[];
+      try {
+        parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error("not an array");
+      } catch {
+        console.error("[library/generate-sentences] unparseable Gemini response:", raw.slice(0, 200));
+        return new Map();
+      }
+      const out = new Map<string, string[]>();
+      for (const item of parsed) {
+        if (!item?.word || !Array.isArray(item.sentences)) continue;
+        const cleaned = item.sentences
+          .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+          .map((s) => sanitizeAiOutput(s));
+        out.set(item.word.toLowerCase().trim(), cleaned);
+      }
+      return out;
+    };
+
+    // First pass — generate all words in one call.
+    let firstPass: Map<string, string[]>;
+    try {
+      firstPass = await callGemini(words);
+    } catch (err) {
+      console.error("[library/generate-sentences] Gemini call failed:", (err as Error)?.message || err);
+      return res.status(500).json({ error: "Sentence generation failed" });
+    }
+
+    // Validate each sentence: target word must appear.  Track words
+    // needing a retry (no valid sentences returned, or fewer than
+    // candCount valid ones).
+    interface FinalResult {
+      wordId: string;
+      english: string;
+      candidates: Array<{ sentence: string; fillBlank: string }>;
+    }
+    const finals: FinalResult[] = [];
+    const needsRetry: typeof words = [];
+
+    for (const w of words) {
+      const key = w.english.toLowerCase().trim();
+      const candidates = firstPass.get(key) ?? [];
+      const validated = candidates
+        .map((s) => {
+          const fb = blankOutTarget(s, w.english);
+          return fb ? { sentence: s, fillBlank: fb } : null;
+        })
+        .filter((c): c is { sentence: string; fillBlank: string } => c !== null);
+
+      if (validated.length === 0) {
+        needsRetry.push(w);
+      } else {
+        finals.push({ wordId: w.id, english: w.english, candidates: validated.slice(0, candCount) });
+      }
+    }
+
+    // Per-word retry — one call per word in the retry list.  Capped at
+    // 10 retries so a totally broken Gemini response doesn't fan out.
+    if (needsRetry.length > 0 && needsRetry.length <= 10) {
+      for (const w of needsRetry) {
+        try {
+          const retryMap = await callGemini([w]);
+          const key = w.english.toLowerCase().trim();
+          const candidates = retryMap.get(key) ?? [];
+          const validated = candidates
+            .map((s) => {
+              const fb = blankOutTarget(s, w.english);
+              return fb ? { sentence: s, fillBlank: fb } : null;
+            })
+            .filter((c): c is { sentence: string; fillBlank: string } => c !== null);
+          if (validated.length > 0) {
+            finals.push({ wordId: w.id, english: w.english, candidates: validated.slice(0, candCount) });
+          } else {
+            // Persistent failure — return empty candidates for this
+            // word so the client renders "(no candidates — try editing
+            // manually)" with a retry button.
+            finals.push({ wordId: w.id, english: w.english, candidates: [] });
+          }
+        } catch (err) {
+          console.warn(`[library/generate-sentences] retry failed for "${w.english}":`, (err as Error)?.message);
+          finals.push({ wordId: w.id, english: w.english, candidates: [] });
+        }
+      }
+    } else if (needsRetry.length > 10) {
+      // Mass failure (probably a Gemini outage). Don't spam retries —
+      // surface as a single failure to the client.
+      for (const w of needsRetry) {
+        finals.push({ wordId: w.id, english: w.english, candidates: [] });
+      }
+    }
+
+    // Telemetry — bump per-teacher daily counter. Counts one for the
+    // batch (the cost-budget tracker treats one set-gen as one unit
+    // regardless of word count).
+    try {
+      await supabaseAdmin.rpc("bump_ai_usage", {
+        p_teacher_uid: uid,
+        p_action: "ai_generate_sentences",
+        p_count: 1,
+        p_cost_micro_usd: 5000, // ~$0.005 conservative for a 30-word batch
+        p_plan_at_action: "free",
+      });
+    } catch (bumpErr) {
+      // Telemetry failure is non-fatal.
+      console.warn(`[library/generate-sentences] usage bump failed:`, (bumpErr as Error)?.message || bumpErr);
+    }
+
+    // Sort finals by original word position to keep client UX stable.
+    const posByWordId = new Map<string, number>();
+    for (const w of words) posByWordId.set(w.id, w.position ?? 0);
+    finals.sort((a, b) => (posByWordId.get(a.wordId) ?? 0) - (posByWordId.get(b.wordId) ?? 0));
+
+    const successCount = finals.filter((f) => f.candidates.length > 0).length;
+    console.info(`[library/generate-sentences] uid=${uid} setId=${setId} level=${reqLevel} ok=${successCount}/${finals.length}`);
+
+    return res.json({ wordResults: finals, level: reqLevel });
+  });
+
   app.post("/api/generate-sentences", aiRateLimiter, async (req, res) => {
     if (!(await requireProTeacher(req, res))) return;
 

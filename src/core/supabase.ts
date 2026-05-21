@@ -510,7 +510,7 @@ export const VOCABULARY_SET_WORD_COLUMNS =
   'id,set_id,position,english,hebrew,arabic,part_of_speech,difficulty,curriculum_word_id,audio_url,metadata,created_at,updated_at';
 
 export const VOCABULARY_SET_WORD_SENTENCE_COLUMNS =
-  'id,word_id,text,level,length_bucket,tense,tone,theme,grammar_focus,cultural_context,is_primary,was_edited,generated_by,audio_url,created_at,updated_at';
+  'id,word_id,text,kind,level,length_bucket,tense,tone,theme,grammar_focus,cultural_context,is_primary,was_edited,generated_by,audio_url,created_at,updated_at';
 
 export const VOCABULARY_EXTRACTION_JOB_COLUMNS =
   'id,teacher_uid,set_id,source_type,source_filename,source_size_bytes,source_mime_type,source_hash_sha256,ai_model,status,words_extracted,processing_ms,error_message,storage_object_key,storage_deleted_at,created_at,completed_at';
@@ -620,10 +620,16 @@ export interface VocabularySetWord {
   updatedAt: string;
 }
 
+export type SentenceKind = 'sentence' | 'fill_blank';
+
 export interface VocabularySetWordSentence {
   id: string;
   wordId: string;
   text: string;
+  /** 'sentence' = full sentence; 'fill_blank' = sentence with the
+   *  target word replaced by ______. Added in migration
+   *  20260621000020_sentence_kind.sql. */
+  kind: SentenceKind;
   level?: SentenceLevel | null;
   lengthBucket?: SentenceLengthBucket | null;
   tense?: SentenceTense | null;
@@ -731,6 +737,7 @@ export function mapVocabularySetWordSentence(row: any): VocabularySetWordSentenc
     id: row.id,
     wordId: row.word_id,
     text: row.text,
+    kind: (row.kind ?? 'sentence') as SentenceKind,
     level: (row.level ?? null) as SentenceLevel | null,
     lengthBucket: (row.length_bucket ?? null) as SentenceLengthBucket | null,
     tense: (row.tense ?? null) as SentenceTense | null,
