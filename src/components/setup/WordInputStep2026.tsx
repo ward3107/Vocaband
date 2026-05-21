@@ -27,6 +27,7 @@ import {
   type AutocompleteMatch,
 } from '../../utils/spellSuggest';
 import InPageCamera from '../InPageCamera';
+import LibrarySetsPanel from '../../views/library/LibrarySetsPanel';
 import { useLanguage } from '../../hooks/useLanguage';
 import { wordInputStepT } from '../../locales/teacher/word-input-step';
 
@@ -132,7 +133,7 @@ export interface WordInputStep2026Props {
 }
 
 type OcrState = 'idle' | 'uploading' | 'processing' | 'success' | 'error';
-type PanelType = 'topic-packs' | 'saved-groups' | 'browse-library' | null;
+type PanelType = 'topic-packs' | 'saved-groups' | 'browse-library' | 'my-library' | null;
 export type TranslationLang = 'both' | 'hebrew' | 'arabic';
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -2328,12 +2329,21 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         <div className="flex-1 h-px bg-[var(--vb-border)]" />
       </div>
 
-      {/* Option Cards Grid — centered 3-up layout (Browse Library removed
-          per teacher feedback so we go from 4 columns to 3).  Stays
-          horizontal on mobile (teachers expected the three setup
-          entry-points to live side-by-side, not stacked); the card
-          interior scales down via the size tokens inside OptionCard. */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-3xl mx-auto justify-items-stretch sm:justify-items-center">
+      {/* Option Cards Grid — 4-up layout. My Library leads as the
+          primary entry point (Phase 5 — saved sets flow back into
+          assignments / Class Show / worksheets via this card). On
+          mobile we collapse to 2-up so each card stays tappable. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 max-w-4xl mx-auto justify-items-stretch sm:justify-items-center">
+        <OptionCard
+          emoji="📚"
+          title={TEXT.myLibrary}
+          subtitle={TEXT.mySavedSets}
+          ctaText={TEXT.view}
+          gradient="from-indigo-300 to-violet-400"
+          onClick={() => setOpenPanel('my-library')}
+          delay={0}
+          isNew
+        />
         <OptionCard
           emoji="🧩"
           title={TEXT.topicPacks}
@@ -2341,7 +2351,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           ctaText={TEXT.view}
           gradient="from-emerald-300 to-teal-400"
           onClick={() => setOpenPanel('topic-packs')}
-          delay={0}
+          delay={0.05}
         />
         <OptionCard
           emoji="💾"
@@ -2353,10 +2363,11 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           delay={0.1}
         />
         {/* Browse Library card removed per teacher feedback — the
-            full curriculum dump was overwhelming and teachers said
-            they prefer pasting / topic-packs / saved-groups / OCR.
-            The browse-library panel is still in the file (renderer +
-            state) so we can re-enable it later if needed. */}
+            full curriculum dump was overwhelming. The browse-library
+            panel is still in the file (renderer + state) so we can
+            re-enable it later if needed. The new "My Library" card
+            above is a DIFFERENT surface: only the teacher's curated
+            saved sets, not the full ALL_WORDS dump. */}
         <OptionCard
           emoji="📷"
           title={TEXT.ocr}
@@ -2364,8 +2375,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
           ctaText={TEXT.upload}
           gradient="from-rose-300 to-fuchsia-400"
           onClick={() => setOcrModalOpen(true)}
-          delay={0.2}
-          isNew
+          delay={0.15}
         />
       </div>
 
@@ -2602,7 +2612,9 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         onDeleteGroup={onDeleteSavedGroup}
       />
 
-      {/* Browse Library Panel */}
+      {/* Browse Library Panel — legacy ALL_WORDS dump, currently hidden
+          (see comment in the OptionCards grid). Kept mounted so it can
+          be re-enabled with a flag flip. */}
       <BrowseLibraryPanel
         isOpen={openPanel === 'browse-library'}
         onClose={() => setOpenPanel(null)}
@@ -2610,6 +2622,18 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
         selectedWords={selectedWords}
         onAddWords={handleAddWords}
         onRemoveWord={handleRemoveWord}
+      />
+
+      {/* My Library Panel — Phase 5 loop-closer. Lists the teacher's
+          saved Vocabulary Sets; tapping a set drops its words into
+          the picker's selection (curriculum-matched words resolve
+          to their canonical Word entries for shared audio + level). */}
+      <LibrarySetsPanel
+        isOpen={openPanel === 'my-library'}
+        onClose={() => setOpenPanel(null)}
+        allWords={allWords}
+        selectedWords={selectedWords}
+        onAddWords={handleAddWords}
       />
     </div>
   );

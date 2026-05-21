@@ -21,6 +21,10 @@ export interface WordInputStepStrings {
   topicPacks: string;
   savedGroups: string;
   browseLibrary: string;
+  /** Vocabulary Library — the teacher's own saved sets (Phase 5). */
+  myLibrary: string;
+  /** Subtitle under the My Library option card. */
+  mySavedSets: string;
   ocr: string;
   ocrSubtitle: string;
   view: string;
@@ -110,6 +114,8 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     topicPacks: "Topic Packs",
     savedGroups: "Saved Groups",
     browseLibrary: "Browse Library",
+    myLibrary: "My Library",
+    mySavedSets: "Your saved sets",
     ocr: "Scan & Upload",
     ocrSubtitle: "Photo to text",
     view: "View",
@@ -189,6 +195,8 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     topicPacks: "חבילות נושא",
     savedGroups: "קבוצות שמורות",
     browseLibrary: "עיין בספרייה",
+    myLibrary: "הספרייה שלי",
+    mySavedSets: "הרשימות השמורות שלך",
     ocr: "סרוק והעלה",
     ocrSubtitle: "תמונה לטקסט",
     view: "תצוגה",
@@ -268,6 +276,8 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     topicPacks: "حزم المواضيع",
     savedGroups: "المجموعات المحفوظة",
     browseLibrary: "تصفّح المكتبة",
+    myLibrary: "مكتبتي",
+    mySavedSets: "قوائمك المحفوظة",
     ocr: "مسح ورفع",
     ocrSubtitle: "صورة إلى نص",
     view: "عرض",
@@ -347,6 +357,8 @@ export const wordInputStepT: Record<Language, WordInputStepStrings> = {
     topicPacks: "Topic Packs",
     savedGroups: "Saved Groups",
     browseLibrary: "Browse Library",
+    myLibrary: "My Library",
+    mySavedSets: "Your saved sets",
     ocr: "Scan & Upload",
     ocrSubtitle: "Photo to text",
     view: "View",
