@@ -23,11 +23,15 @@ Sentry.init({
   // Supabase keys, and the value of any sensitive-named header /
   // form field from every outbound event payload.  Closes QA
   // framework item #9.
+  //
+  // scrubPii's generic overload preserves the input type, so no
+  // explicit cast is needed and we don't have to track SDK type
+  // renames between Sentry major versions.
   beforeSend(event) {
-    return scrubPii(event) as Sentry.ErrorEvent;
+    return scrubPii(event);
   },
   beforeSendTransaction(event) {
-    return scrubPii(event) as Sentry.TransactionEvent;
+    return scrubPii(event);
   },
 });
 

@@ -99,11 +99,16 @@ export function initSentry(): void {
     // Strips emails, JWTs, Bearer tokens, Supabase keys, and the
     // value of any sensitive-named header / form field from every
     // outbound event payload.  Closes QA framework item #9.
+    //
+    // scrubPii's generic overload preserves the input type, so the
+    // hook's return type matches what Sentry expects without an
+    // explicit cast (which would have to track the SDK's type
+    // renames — `Event` → `ErrorEvent` between v7 and v9).
     beforeSend(event) {
-      return scrubPii(event) as Sentry.ErrorEvent;
+      return scrubPii(event);
     },
     beforeSendTransaction(event) {
-      return scrubPii(event) as Sentry.TransactionEvent;
+      return scrubPii(event);
     },
   });
 }
