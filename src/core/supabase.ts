@@ -15,7 +15,7 @@ import type { Language } from '../hooks/useLanguage';
 // the repo. Source-level fallbacks sidestep that entirely: if the env
 // var is empty/missing for any reason, this still works.
 const FALLBACK_SUPABASE_URL = 'https://auth.vocaband.com';
-const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_O1immSThDxWWI6PNXPNi1w__27CAThD';
+const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_Pw-mQ9L76U5T-wLdKjOkpg_GnG99XDF';
 
 const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
