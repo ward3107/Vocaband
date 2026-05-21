@@ -29,10 +29,16 @@ import {
   type VocabularySetWord,
   type VocabularySetWordSentence,
 } from "../../core/vocabularyLibrary";
+import type { ClassData } from "../../core/supabase";
 import SentenceGenerationModal from "./SentenceGenerationModal";
+import AssignSetToClassModal from "./AssignSetToClassModal";
 
 interface VocabularySetDetailModalProps {
   set: VocabularySet;
+  /** Teacher's classes — passed down so the Assign action can render
+   *  its class picker. Empty array is fine; the button stays enabled
+   *  and the modal shows a "create a class first" empty state. */
+  classes?: ClassData[];
   onClose: () => void;
   /** Fired when something changed (sentence edited/deleted, sentences
    *  generated). Parent uses it to refresh its list view. */
@@ -60,6 +66,7 @@ function safeFilename(s: string): string {
 
 export default function VocabularySetDetailModal({
   set,
+  classes = [],
   onClose,
   onChanged,
   showToast,
@@ -71,6 +78,7 @@ export default function VocabularySetDetailModal({
   const [sentences, setSentences] = useState<VocabularySetWordSentence[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSentenceGen, setShowSentenceGen] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -228,9 +236,10 @@ export default function VocabularySetDetailModal({
           </button>
           <button
             type="button"
-            disabled
-            title="Coming next"
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-400 text-sm font-semibold opacity-60 cursor-not-allowed"
+            onClick={() => setShowAssignModal(true)}
+            disabled={loading || words.length === 0}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-100 disabled:opacity-50"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >
             <Send className="w-4 h-4" /> {t.actionAssign}
           </button>
@@ -274,6 +283,16 @@ export default function VocabularySetDetailModal({
             set={set}
             onClose={() => setShowSentenceGen(false)}
             onSaved={() => { setShowSentenceGen(false); void refresh(); onChanged(); }}
+            showToast={showToast}
+          />
+        )}
+        {showAssignModal && (
+          <AssignSetToClassModal
+            key="assign-from-detail"
+            set={set}
+            classes={classes}
+            onClose={() => setShowAssignModal(false)}
+            onAssigned={() => { setShowAssignModal(false); onChanged(); }}
             showToast={showToast}
           />
         )}

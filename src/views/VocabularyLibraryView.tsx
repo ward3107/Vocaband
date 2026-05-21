@@ -19,7 +19,7 @@ import { BookMarked, FolderPlus, Plus, FileText, Folder, Clock, Sparkles } from 
 import TopAppBar from "../components/TopAppBar";
 import { useLanguage } from "../hooks/useLanguage";
 import { vocabularyLibraryT, type VocabularyLibraryStrings } from "../locales/teacher/vocabulary-library";
-import { hasTeacherAccess, type AppUser } from "../core/supabase";
+import { hasTeacherAccess, type AppUser, type ClassData } from "../core/supabase";
 import {
   listCollectionChildren,
   listAllSets,
@@ -35,6 +35,10 @@ type Tab = "all" | "collections" | "recent";
 
 interface VocabularyLibraryViewProps {
   user: AppUser | null;
+  /** The teacher's classes — threaded through to the Set Detail modal
+   *  so the "Assign to class" action has a list to render. Optional
+   *  because callers that haven't adopted the assign flow still work. */
+  classes?: ClassData[];
   onBack: () => void;
   onLogout?: () => void;
   showToast: (message: string, type: "success" | "error" | "info") => void;
@@ -46,6 +50,7 @@ interface VocabularyLibraryViewProps {
 
 export default function VocabularyLibraryView({
   user,
+  classes = [],
   onBack,
   onLogout,
   showToast,
@@ -288,6 +293,7 @@ export default function VocabularyLibraryView({
           <VocabularySetDetailModal
             key={`set-detail-${openedSet.id}`}
             set={openedSet}
+            classes={classes}
             onClose={() => setOpenedSet(null)}
             onChanged={() => { void refresh(); }}
             showToast={showToast}

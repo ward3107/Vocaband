@@ -253,6 +253,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
       <LazyWrapper loadingMessage="Loading your library…">
         <VocabularyLibraryView
           user={user}
+          classes={visibleClasses}
           onBack={() => setView('teacher-dashboard')}
           showToast={showToast}
         />
