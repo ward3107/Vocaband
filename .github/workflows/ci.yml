@@ -148,6 +148,29 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # RLS regression check — runs the security pen-test script
+      # against production Supabase + the Cloudflare-fronted Express
+      # app.  Every probe is designed to be REJECTED at the RLS or
+      # auth layer; if any one returns success, an RLS policy or auth
+      # gate regressed and we MUST NOT merge.
+      #
+      # Non-mutating by construction: all writes are expected to fail,
+      # all reads are expected to return [] under anon role.  ~9-18
+      # HTTP requests per run, negligible production load.
+      #
+      # SUPABASE_URL + SUPABASE_ANON_KEY default to the in-repo
+      # fallbacks (src/core/supabase.ts — the same publishable values
+      # that ship in every browser bundle).  Override via repo secrets
+      # if you ever need to point at a staging project.
+      - name: RLS pen-test (hard gate)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://auth.vocaband.com' }}
+          ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_O1immSThDxWWI6PNXPNi1w__27CAThD' }}
+          APP_URL: ${{ secrets.APP_URL || 'https://www.vocaband.com' }}
+        run: |
+          chmod +x scripts/security-pen-test.sh
+          bash scripts/security-pen-test.sh
+
       # Complementary SAST — CodeQL (configured at repo level via Default
       # Setup) covers most patterns, but Semgrep's curated security-audit
       # ruleset catches different classes (express-misconfig, jwt-misuse,
