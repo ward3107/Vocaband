@@ -665,7 +665,7 @@ export default function QuickPlayMonitor({
   }, []);
   const [endModal, setEndModal] = useState(false);
   const [showWordsModal, setShowWordsModal] = useState(false);
-  const [theme, setTheme] = useState<ThemeKey>('classic');
+  const [theme, setTheme] = useState<ThemeKey>('neon');
   const [showThemePicker, setShowThemePicker] = useState(false);
   // Reduced-motion toggle for sensory-sensitive classrooms — disables
   // particles, +N floaters, sparkles, and the gentle ambient bobs.

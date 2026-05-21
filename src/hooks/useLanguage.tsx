@@ -19,38 +19,6 @@ export const LANGUAGE_KEY = 'vocaband_legal_language';
 let globalLanguage: Language = 'en';
 const listeners: Set<(lang: Language) => void> = new Set();
 
-/**
- * Detect the user's browser-preferred language and map it to one of
- * the languages we actually support.  Reads navigator.languages first
- * (the ordered preference list — what the user picked in their OS /
- * browser settings) and falls back to navigator.language (the single
- * primary language) for older browsers.
- *
- * Match is case-insensitive and prefix-based: `he-IL`, `he-il`, `he`
- * all resolve to 'he'.  Anything we don't support resolves to 'en'.
- *
- * Used only on FIRST visit (when localStorage is empty).  After that
- * the saved choice always wins — we never silently override what the
- * teacher manually picked.
- */
-const detectBrowserLanguage = (): Language => {
-  if (typeof navigator === 'undefined') return 'en';
-  const candidates: string[] = [];
-  if (Array.isArray(navigator.languages)) {
-    candidates.push(...navigator.languages);
-  }
-  if (navigator.language) {
-    candidates.push(navigator.language);
-  }
-  for (const raw of candidates) {
-    const lc = raw.toLowerCase();
-    if (lc === 'he' || lc.startsWith('he-') || lc === 'iw' || lc.startsWith('iw-')) return 'he';
-    if (lc === 'ar' || lc.startsWith('ar-')) return 'ar';
-    if (lc === 'en' || lc.startsWith('en-')) return 'en';
-  }
-  return 'en';
-};
-
 const SUPPORTED_LANGS: readonly Language[] = ['en', 'he', 'ar'] as const;
 const isSupported = (v: unknown): v is Language =>
   typeof v === 'string' && (SUPPORTED_LANGS as readonly string[]).includes(v);
@@ -75,15 +43,13 @@ const getInitialLanguage = (): Language => {
   if (isSupported(saved)) {
     return saved;
   }
-  // First visit (or saved key missing / invalid): auto-detect from
-  // browser preferences so an Israeli teacher's phone (Hebrew OS)
-  // lands in Hebrew without manually toggling the picker.  Manual
-  // picker remains visible so the teacher can override if the
-  // detection was wrong.  We do NOT persist the auto-detected choice
-  // — that way if the teacher later changes their browser language,
-  // the next visit re-detects.  Once they explicitly pick from the
-  // language picker, that choice is persisted and wins forever.
-  return detectBrowserLanguage();
+  // First visit (or saved key missing / invalid): default to English.
+  // The app teaches English vocabulary, so the landing page surface is
+  // English regardless of OS / browser locale — that reinforces the
+  // learning context and gives every visitor the same first impression.
+  // The language picker stays visible so a teacher can switch to Hebrew
+  // or Arabic, and the explicit pick is persisted in localStorage.
+  return 'en';
 };
 
 // Initialize global state and set initial lang attribute
