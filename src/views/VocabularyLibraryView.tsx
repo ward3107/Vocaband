@@ -156,7 +156,7 @@ export default function VocabularyLibraryView({
         showScaleControl
       />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-24">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-24 pb-24">
         {/* Hero strip with the two primary CTAs */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
