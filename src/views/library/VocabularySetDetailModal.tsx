@@ -15,7 +15,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Sparkles, Printer, Send, Pencil, Trash2, Loader2 } from "lucide-react";
+import { X, Sparkles, Printer, Send, Pencil, Trash2, Loader2, ListChecks, RefreshCcw } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -25,13 +25,46 @@ import {
   listSentencesForSet,
   updateSentenceText,
   deleteSentence,
+  getDistractorsFromMetadata,
   type VocabularySet,
   type VocabularySetWord,
   type VocabularySetWordSentence,
 } from "../../core/vocabularyLibrary";
-import type { ClassData } from "../../core/supabase";
+import { supabase, type ClassData } from "../../core/supabase";
 import SentenceGenerationModal from "./SentenceGenerationModal";
 import AssignSetToClassModal from "./AssignSetToClassModal";
+
+interface McqApiWordResult {
+  wordId: string;
+  english: string;
+  distractors: string[];
+}
+
+/** POST /api/library/generate-distractors. Server-side validates ownership,
+ *  rate limits via ai_usage_counters, and writes distractors to each
+ *  word's metadata.distractors. Returns the results so the client can
+ *  show them without an extra refetch. */
+async function callGenerateDistractors(
+  setId: string,
+  wordIds?: string[],
+): Promise<{ wordResults: McqApiWordResult[] } | { error: string; status: number }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) return { error: "Not authenticated", status: 401 };
+  const res = await fetch("/api/library/generate-distractors", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ setId, level: "A2", ...(wordIds ? { wordIds } : {}) }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "" }));
+    return { error: body?.error || `Request failed (${res.status})`, status: res.status };
+  }
+  return (await res.json()) as { wordResults: McqApiWordResult[] };
+}
 
 interface VocabularySetDetailModalProps {
   set: VocabularySet;
@@ -80,6 +113,9 @@ export default function VocabularySetDetailModal({
   const [showSentenceGen, setShowSentenceGen] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [printing, setPrinting] = useState(false);
+  const [generatingMcq, setGeneratingMcq] = useState(false);
+  /** wordId currently regenerating its MCQ row. */
+  const [regeneratingMcqId, setRegeneratingMcqId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
 
@@ -163,6 +199,42 @@ export default function VocabularySetDetailModal({
     }
   }, [t.confirmDelete, t.toastSentenceDeleted, t.errorDelete, showToast, onChanged]);
 
+  const handleGenerateMcq = useCallback(async (wordId?: string) => {
+    if (wordId) {
+      setRegeneratingMcqId(wordId);
+    } else {
+      if (generatingMcq) return;
+      setGeneratingMcq(true);
+    }
+    try {
+      const out = await callGenerateDistractors(set.id, wordId ? [wordId] : undefined);
+      if ("error" in out) {
+        showToast(out.status === 429 ? t.errorMcq : t.errorMcq, "error");
+        return;
+      }
+      // The server already persisted into each word's metadata. Refresh
+      // the words list so the UI picks up distractors without a full
+      // reload of sentences.
+      try {
+        const fresh = await listSetWords(set.id);
+        setWords(fresh);
+      } catch {
+        // listSetWords failure is mostly cosmetic — the data is in the
+        // DB, the UI just won't reflect it until next mount.
+      }
+      if (!wordId) {
+        showToast(t.toastMcqGenerated(out.wordResults.filter((r) => r.distractors.length === 3).length), "success");
+      }
+      onChanged();
+    } finally {
+      if (wordId) {
+        setRegeneratingMcqId(null);
+      } else {
+        setGeneratingMcq(false);
+      }
+    }
+  }, [generatingMcq, set.id, showToast, t, onChanged]);
+
   const handlePrint = useCallback(async () => {
     if (printing || loading) return;
     setPrinting(true);
@@ -226,6 +298,16 @@ export default function VocabularySetDetailModal({
           </button>
           <button
             type="button"
+            onClick={() => handleGenerateMcq()}
+            disabled={generatingMcq || loading || words.length === 0}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-100 disabled:opacity-50"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          >
+            {generatingMcq ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListChecks className="w-4 h-4" />}
+            {generatingMcq ? t.generatingMcq : t.actionMcq}
+          </button>
+          <button
+            type="button"
             onClick={handlePrint}
             disabled={printing || loading || words.length === 0}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-100 disabled:opacity-50"
@@ -269,6 +351,8 @@ export default function VocabularySetDetailModal({
                   onSaveEdit={handleSaveEdit}
                   onCancelEdit={handleCancelEdit}
                   onDelete={handleDelete}
+                  regeneratingMcq={regeneratingMcqId === g.word.id}
+                  onRegenerateMcq={() => handleGenerateMcq(g.word.id)}
                 />
               ))}
             </ul>
@@ -322,6 +406,8 @@ function WordRow({
   onSaveEdit,
   onCancelEdit,
   onDelete,
+  regeneratingMcq,
+  onRegenerateMcq,
 }: {
   t: SetDetailStrings;
   group: WordWithSentences;
@@ -332,9 +418,12 @@ function WordRow({
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onDelete: (id: string) => void;
+  regeneratingMcq: boolean;
+  onRegenerateMcq: () => void;
 }) {
   const { word, fillBlank, sentence } = group;
   const hasAny = fillBlank || sentence;
+  const distractors = getDistractorsFromMetadata(word.metadata);
   return (
     <li className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
       <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
@@ -374,9 +463,40 @@ function WordRow({
             onDelete={() => onDelete(sentence.id)}
           />
         )}
-        {!hasAny && (
+        {!hasAny && !distractors && (
           <div className="px-4 py-3 text-sm text-slate-500 italic">
             <span className="font-semibold not-italic">{t.noSentencesYet}.</span> {t.noSentencesYetHint}
+          </div>
+        )}
+        {distractors && distractors.length > 0 && (
+          <div className="px-4 py-2.5 flex items-start gap-3">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-1 shrink-0 w-10">
+              {t.distractorsLabel}
+            </span>
+            <div className="flex-1 min-w-0 flex flex-wrap gap-1.5">
+              {/* The target word is rendered as the "correct" chip
+                  alongside the distractors so the teacher can
+                  visualise the MCQ at a glance. */}
+              <span className="inline-flex items-center text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-1">
+                {word.english}
+              </span>
+              {distractors.map((d, i) => (
+                <span key={i} className="inline-flex items-center text-xs rounded-full bg-slate-100 text-slate-700 px-2.5 py-1">
+                  {d}
+                </span>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={onRegenerateMcq}
+              disabled={regeneratingMcq}
+              aria-label={t.regenerateMcqAria}
+              title={t.regenerateMcqAria}
+              className="p-1.5 rounded-md text-slate-500 hover:text-violet-600 hover:bg-violet-50 disabled:opacity-40 shrink-0"
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            >
+              {regeneratingMcq ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCcw className="w-3.5 h-3.5" />}
+            </button>
           </div>
         )}
       </div>
@@ -569,7 +689,64 @@ function buildAndDownloadPdf({
       },
     });
 
-    // ── Section 3: Answer key on its own page ───────────────────────
+    // ── Section 3: Multiple-choice page — only when distractors exist ─
+    // For each fill-row that also has distractors, render a numbered
+    // sentence + a 4-option line (target + distractors, shuffled
+    // deterministically by word id so the same PDF prints the same
+    // option order each time).
+    const mcqRows = fillRows
+      .map((r) => {
+        const d = getDistractorsFromMetadata(r.g.word.metadata);
+        return d && d.length === 3 ? { ...r, distractors: d } : null;
+      })
+      .filter((x): x is typeof fillRows[number] & { distractors: string[] } => x !== null);
+
+    if (mcqRows.length > 0) {
+      pdf.addPage();
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.setTextColor(40);
+      pdf.text(t.pdfSectionMcq, margin, 22);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(110);
+      pdf.text(t.pdfMcqInstructions, margin, 30);
+      pdf.text(`${t.pdfNameLabel} ________________________________`, margin, 38);
+
+      autoTable(pdf, {
+        startY: 46,
+        margin: { left: margin, right: margin },
+        body: mcqRows.flatMap((r, i) => {
+          // Stable 4-letter shuffle so the same PDF always prints the
+          // same option order — students can swap sheets without copying.
+          const seed = (r.g.word.english.charCodeAt(0) + i) % 4;
+          const opts = [r.g.word.english, ...r.distractors];
+          const rotated = [...opts.slice(seed), ...opts.slice(0, seed)];
+          const labelled = rotated.map((w, j) => `(${"abcd"[j]}) ${w}`).join("   ");
+          return [
+            [String(i + 1), r.g.fillBlank?.text ?? ""],
+            ["", labelled],
+          ];
+        }),
+        styles: { fontSize: 11, cellPadding: 2, valign: "top" },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 10, fontStyle: "bold", textColor: 80 },
+        },
+        didParseCell: (data) => {
+          // The option-row sits in shaded-grey, with no border, slightly
+          // smaller font — visually links it to the sentence above.
+          if (data.section === "body" && data.row.index % 2 === 1) {
+            data.cell.styles.fillColor = [248, 250, 252];
+            data.cell.styles.fontSize = 10;
+            data.cell.styles.textColor = [60, 60, 80];
+            data.cell.styles.cellPadding = { top: 1, right: 2, bottom: 4, left: 4 };
+          }
+        },
+      });
+    }
+
+    // ── Section 4: Answer key on its own page ───────────────────────
     pdf.addPage();
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(16);

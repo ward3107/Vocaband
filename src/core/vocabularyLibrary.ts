@@ -397,6 +397,44 @@ export async function deleteSentence(sentenceId: string): Promise<void> {
   if (error) await handleDbError(error, OperationType.DELETE, 'vocabulary_set_word_sentences');
 }
 
+// ─── MCQ distractors ──────────────────────────────────────────────────
+// Stored in vocabulary_set_words.metadata.distractors as a string[3]
+// per word. No dedicated table — the metadata jsonb column was added
+// in Phase 0 for exactly this kind of per-word ancillary data.
+
+/** Type narrowing helper. Returns null when the word has no
+ *  distractors yet, otherwise the (validated) array. */
+export function getDistractorsFromMetadata(metadata: unknown): string[] | null {
+  if (!metadata || typeof metadata !== 'object') return null;
+  const raw = (metadata as { distractors?: unknown }).distractors;
+  if (!Array.isArray(raw)) return null;
+  const filtered = raw.filter((d): d is string => typeof d === 'string' && d.trim().length > 0);
+  return filtered.length > 0 ? filtered : null;
+}
+
+/** Save a teacher-edited distractor list for one word. Used after
+ *  inline edit / regenerate. Merges with the existing metadata jsonb
+ *  so other fields stay intact. */
+export async function saveWordDistractors(
+  wordId: string,
+  distractors: string[],
+): Promise<void> {
+  // Read existing metadata so the merge is safe.
+  const { data: existing, error: readErr } = await supabase
+    .from('vocabulary_set_words')
+    .select('metadata')
+    .eq('id', wordId)
+    .maybeSingle();
+  if (readErr) await handleDbError(readErr, OperationType.GET, 'vocabulary_set_words');
+  const merged = { ...(existing?.metadata ?? {}), distractors: distractors.slice(0, 3) };
+
+  const { error: writeErr } = await supabase
+    .from('vocabulary_set_words')
+    .update({ metadata: merged })
+    .eq('id', wordId);
+  if (writeErr) await handleDbError(writeErr, OperationType.UPDATE, 'vocabulary_set_words');
+}
+
 // ─── Extraction jobs ──────────────────────────────────────────────────
 
 export async function listRecentExtractionJobs(
