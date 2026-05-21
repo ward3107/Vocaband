@@ -176,7 +176,20 @@ jobs:
           APP_URL: 'https://www.vocaband.com'
         run: |
           chmod +x scripts/security-pen-test.sh
-          bash scripts/security-pen-test.sh
+          # Capture output so we can promote FAIL lines to GitHub Actions
+          # annotations (visible in the run summary even without auth).
+          set +e
+          bash scripts/security-pen-test.sh | tee pen-test.log
+          status=${PIPESTATUS[0]}
+          set -e
+          # Surface every FAIL line as an annotation, plus the result line.
+          grep -E '^\s*FAIL ' pen-test.log | while IFS= read -r line; do
+            echo "::error::pen-test ${line## }"
+          done
+          tail -1 pen-test.log | grep -E '^Results:' | while IFS= read -r line; do
+            echo "::notice::${line}"
+          done
+          exit "$status"
 
       # Complementary SAST — CodeQL (configured at repo level via Default
       # Setup) covers most patterns, but Semgrep's curated security-audit
