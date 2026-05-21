@@ -52,6 +52,11 @@ export interface TeacherDashboardT {
   worksheetResultsDescription: string;
   worksheetResultsTooltip: string;
 
+  // ─── Vocabulary Library tile ──────────────────────────────────
+  libraryTitle: string;
+  libraryDescription: string;
+  libraryTooltip: string;
+
   // ─── Quick Play hero accents + section headings ────────────────
   qpInstantBadge: string;
   qpStartBtn: string;
@@ -160,6 +165,10 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     worksheetResultsDescription: "Scores from shared worksheets",
     worksheetResultsTooltip: "See who completed the worksheets you shared via the Free Resources page and how they did.",
 
+    libraryTitle: "Vocabulary Library",
+    libraryDescription: "Your saved word lists & collections",
+    libraryTooltip: "Build vocabulary sets from photos, paste, AI, or your curriculum — organize them into collections and reuse across classes.",
+
     qpInstantBadge: "Instant",
     qpStartBtn: "Start",
     forYourClassesHeading: "For your classes",
@@ -258,6 +267,10 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     worksheetResultsTooltip: "ראה מי השלים את דפי העבודה ששיתפת דרך עמוד המשאבים החינמיים וכמה הצליחו.",
     approvalsButtonReview: "סקור",
     approvalsButtonCheck: "בדוק",
+
+    libraryTitle: "ספריית אוצר המילים",
+    libraryDescription: "רשימות המילים והאוספים השמורים שלך",
+    libraryTooltip: "בנו רשימות מילים מצילומים, הדבקת טקסט, AI או מתוכנית הלימודים — סדרו אותן באוספים והשתמשו בהן שוב בכיתות שונות.",
 
     qpInstantBadge: "מיידי",
     qpStartBtn: "התחל",
@@ -358,6 +371,10 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     approvalsButtonReview: "مراجعة",
     approvalsButtonCheck: "تحقّق",
 
+    libraryTitle: "مكتبة المفردات",
+    libraryDescription: "قوائم الكلمات والمجموعات المحفوظة لديك",
+    libraryTooltip: "أنشئ قوائم مفردات من الصور أو النصوص الملصوقة أو الذكاء الاصطناعي أو منهجك — رتّبها في مجموعات وأعد استخدامها عبر الفصول.",
+
     qpInstantBadge: "فوري",
     qpStartBtn: "ابدأ",
     forYourClassesHeading: "لفصولك",
@@ -456,6 +473,10 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     worksheetResultsTitle: "Worksheet Results",
     worksheetResultsDescription: "Scores from shared worksheets",
     worksheetResultsTooltip: "See who completed the worksheets you shared via the Free Resources page and how they did.",
+
+    libraryTitle: "Vocabulary Library",
+    libraryDescription: "Your saved word lists & collections",
+    libraryTooltip: "Build vocabulary sets from photos, paste, AI, or your curriculum — organize them into collections and reuse across classes.",
 
     qpInstantBadge: "Instant",
     qpStartBtn: "Start",

@@ -83,6 +83,10 @@ interface TeacherDashboardViewProps {
    *  shared interactive worksheets.  Optional because Hebrew teachers
    *  don't get this tile (the feature is English-Set only for now). */
   onWorksheetResultsClick?: () => void;
+  /** Open the Vocabulary Library — teacher-owned persistent word
+   *  storage. Optional today so the tile is hidden until the caller
+   *  wires it. */
+  onLibraryClick?: () => void;
   /** Project a specific assignment to the class via Class Show.
    *  The standalone "Class Show" entry point lives in the New Activity
    *  wizard's tab strip now, not as a dashboard tile. */
@@ -151,6 +155,7 @@ export default function TeacherDashboardView({
   toasts, confirmDialog, setConfirmDialog,
   onQuickPlayClick, onClassroomClick, onApprovalsClick,
   onWorksheetResultsClick,
+  onLibraryClick,
   onProjectAssignmentToClass,
   onPrintAssignmentWorksheet,
   onNewClass, onAssignClass, onDeleteClass,
@@ -369,6 +374,7 @@ export default function TeacherDashboardView({
             onClassroomClick={onClassroomClick}
             onApprovalsClick={onApprovalsClick}
             onWorksheetResultsClick={onWorksheetResultsClick}
+            onLibraryClick={onLibraryClick}
           />
 
           <TeacherClassesSection
