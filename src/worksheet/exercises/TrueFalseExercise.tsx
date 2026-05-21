@@ -15,6 +15,7 @@ import { Check, X } from "lucide-react";
 import type { Word } from "../../data/vocabulary";
 import type { Answer, ExerciseComponent, ExerciseOf, Language } from "../types";
 import { shuffle, translationFor } from "../shared";
+import { SkipQuestionButton } from "./SkipQuestionButton";
 
 interface Item {
   word_id: number;
@@ -110,6 +111,31 @@ export const TrueFalseExercise: ExerciseComponent<ExerciseOf<"true_false">> = ({
     }, 900);
   };
 
+  const handleSkip = () => {
+    if (picked !== null || !current) return;
+    const statement = `"${current.english}" means "${current.shown_translation}"`;
+    const answer: Answer = {
+      kind: "true_false",
+      word_id: current.word_id,
+      statement,
+      // Sentinel for the dashboard renderer: "no choice was made".
+      // is_correct: false covers the score side; the renderer can show
+      // a blank pill instead of true/false when given === correct (no
+      // overlap with a real answer).
+      given: !current.is_true_statement,
+      correct: current.is_true_statement,
+      is_correct: false,
+    };
+    const nextAnswers = [...answers, answer];
+    setAnswers(nextAnswers);
+    if (idx + 1 < items.length) {
+      setIdx(idx + 1);
+      setPicked(null);
+    } else {
+      onComplete({ score: correct, total: items.length, answers: nextAnswers });
+    }
+  };
+
   const reveal = picked !== null;
   const wasRight = reveal && picked === current.is_true_statement;
 
@@ -174,6 +200,10 @@ export const TrueFalseExercise: ExerciseComponent<ExerciseOf<"true_false">> = ({
           <span className="text-rose-900">{current.correct_translation}</span>
         </p>
       )}
+
+      <div className="mt-4 flex justify-center">
+        <SkipQuestionButton onSkip={handleSkip} disabled={picked !== null} />
+      </div>
     </div>
   );
 };

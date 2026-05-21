@@ -14,6 +14,7 @@ import { Eye, EyeOff, Headphones, Volume2 } from "lucide-react";
 import { useAudio } from "../../hooks/useAudio";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { normaliseAnswer, shuffle, translationFor } from "../shared";
+import { SkipQuestionButton } from "./SkipQuestionButton";
 
 export const ListeningDictationExercise: ExerciseComponent<ExerciseOf<"listening_dictation">> = ({
   words,
@@ -85,6 +86,27 @@ export const ListeningDictationExercise: ExerciseComponent<ExerciseOf<"listening
 
   const playAudio = () => {
     speak(current.id, current.english);
+  };
+
+  const handleSkip = () => {
+    if (submitted || !current) return;
+    const answer: Answer = {
+      kind: "listening_dictation",
+      word_id: current.id,
+      word: current.english,
+      typed: "",
+      is_correct: false,
+    };
+    const nextAnswers = [...answers, answer];
+    setAnswers(nextAnswers);
+    if (idx + 1 < order.length) {
+      setIdx(idx + 1);
+      setTyped("");
+      setSubmitted(false);
+      setShowHint(false);
+    } else {
+      onComplete({ score: correct, total: order.length, answers: nextAnswers });
+    }
   };
 
   const translation = translationFor(current, targetLang);
@@ -174,6 +196,9 @@ export const ListeningDictationExercise: ExerciseComponent<ExerciseOf<"listening
             Hint: <span className="font-bold text-stone-700">{translation}</span>
           </p>
         )}
+        <div className="mt-3 flex justify-center">
+          <SkipQuestionButton onSkip={handleSkip} disabled={submitted} />
+        </div>
       </form>
     </div>
   );

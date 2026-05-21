@@ -16,6 +16,7 @@ import { X } from "lucide-react";
 import { useSentenceResolver } from "../SentencesContext";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { shuffle } from "../shared";
+import { SkipQuestionButton } from "./SkipQuestionButton";
 
 interface Item {
   word_id: number;
@@ -134,6 +135,28 @@ export const SentenceBuildingExercise: ExerciseComponent<ExerciseOf<"sentence_bu
   const handleClear = () => setPicked([]);
   const handleUndo = () => setPicked((prev) => prev.slice(0, -1));
 
+  // Skip — record an unsolved attempt (given == empty) and move on.
+  // Counts as 0 first-try correct.
+  const handleSkip = () => {
+    if (!current) return;
+    const answer: Answer = {
+      kind: "sentence_building",
+      word_id: current.word_id,
+      target: current.target,
+      given: "",
+      is_correct: false,
+    };
+    const allAnswers = [...answers, answer];
+    setAnswers(allAnswers);
+    if (idx + 1 < items.length) {
+      setIdx(idx + 1);
+      setAttempts(0);
+      setPicked([]);
+    } else {
+      onComplete({ score: firstTryCorrect, total: items.length, answers: allAnswers });
+    }
+  };
+
   const complete = picked.length === targetTokens.length;
   const isRight = complete && builtTokens.join(" ").toLowerCase() === targetTokens.join(" ").toLowerCase();
 
@@ -206,6 +229,10 @@ export const SentenceBuildingExercise: ExerciseComponent<ExerciseOf<"sentence_bu
         >
           <X size={12} /> Clear
         </button>
+      </div>
+
+      <div className="mb-3 flex justify-center">
+        <SkipQuestionButton onSkip={handleSkip} disabled={complete && isRight} />
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-2" dir="ltr">

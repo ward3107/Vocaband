@@ -16,6 +16,7 @@ import { useAudio } from "../../hooks/useAudio";
 import { useSentenceResolver } from "../SentencesContext";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { normaliseAnswer, shuffle } from "../shared";
+import { SkipQuestionButton } from "./SkipQuestionButton";
 
 type Item = { word_id: number; english: string; sentence: string; blanked: string };
 
@@ -100,6 +101,28 @@ export const FillBlankExercise: ExerciseComponent<ExerciseOf<"fill_blank">> = ({
     speak(current.word_id, current.english);
   };
 
+  // Student "I don't know" — record a blank-typed wrong answer and
+  // advance without the 1100ms reveal pause.
+  const handleSkip = () => {
+    if (submitted || !current) return;
+    const answer: Answer = {
+      kind: "fill_blank",
+      word_id: current.word_id,
+      sentence: current.sentence,
+      typed: "",
+      is_correct: false,
+    };
+    const nextAnswers = [...answers, answer];
+    setAnswers(nextAnswers);
+    if (idx + 1 < order.length) {
+      setIdx(idx + 1);
+      setTyped("");
+      setSubmitted(false);
+    } else {
+      onComplete({ score: correct, total: order.length, answers: nextAnswers });
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
@@ -169,6 +192,9 @@ export const FillBlankExercise: ExerciseComponent<ExerciseOf<"fill_blank">> = ({
           >
             Submit
           </button>
+        </div>
+        <div className="mt-3 flex justify-center">
+          <SkipQuestionButton onSkip={handleSkip} disabled={submitted} />
         </div>
       </form>
     </div>

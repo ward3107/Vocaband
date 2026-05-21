@@ -16,6 +16,7 @@ import { ALL_RELATION_WORDS, RELATIONS, type WordRelation } from "../../data/wor
 import type { Word } from "../../data/vocabulary";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { shuffle } from "../shared";
+import { SkipQuestionButton } from "./SkipQuestionButton";
 
 interface Item {
   word_id: number;
@@ -114,6 +115,27 @@ export const SynonymAntonymExercise: ExerciseComponent<ExerciseOf<"synonym_anton
     }, 900);
   };
 
+  const handleSkip = () => {
+    if (pickedOption !== null || !current) return;
+    const answer: Answer = {
+      kind: "synonym_antonym",
+      word_id: current.word_id,
+      word: current.word,
+      mode,
+      given: "",
+      correct: current.correct,
+      is_correct: false,
+    };
+    const nextAnswers = [...answers, answer];
+    setAnswers(nextAnswers);
+    if (idx + 1 < items.length) {
+      setIdx(idx + 1);
+      setPickedOption(null);
+    } else {
+      onComplete({ score: correct, total: items.length, answers: nextAnswers });
+    }
+  };
+
   const prompt = mode === "synonym" ? "Pick the synonym" : "Pick the antonym";
 
   return (
@@ -167,6 +189,10 @@ export const SynonymAntonymExercise: ExerciseComponent<ExerciseOf<"synonym_anton
             </motion.button>
           );
         })}
+      </div>
+
+      <div className="mt-4 flex justify-center">
+        <SkipQuestionButton onSkip={handleSkip} disabled={pickedOption !== null} />
       </div>
     </div>
   );

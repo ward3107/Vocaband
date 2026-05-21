@@ -17,6 +17,7 @@ import { useAudio } from "../../hooks/useAudio";
 import type { Word } from "../../data/vocabulary";
 import type { Answer, ExerciseComponent, ExerciseOf, TranslationDirection } from "../types";
 import { normaliseAnswer, shuffle } from "../shared";
+import { SkipQuestionButton } from "./SkipQuestionButton";
 
 interface SidePair {
   prompt: string;
@@ -110,6 +111,27 @@ export const TranslationTypingExercise: ExerciseComponent<ExerciseOf<"translatio
     }, 1100);
   };
 
+  const handleSkip = () => {
+    if (submitted || !current) return;
+    const answer: Answer = {
+      kind: "translation_typing",
+      word_id: current.word_id,
+      prompt: pair.prompt,
+      typed: "",
+      correct: pair.correct,
+      is_correct: false,
+    };
+    const nextAnswers = [...answers, answer];
+    setAnswers(nextAnswers);
+    if (idx + 1 < order.length) {
+      setIdx(idx + 1);
+      setTyped("");
+      setSubmitted(false);
+    } else {
+      onComplete({ score: correct, total: order.length, answers: nextAnswers });
+    }
+  };
+
   const playPromptAudio = () => {
     // Only play TTS when the prompt is the English word — audio bundle
     // doesn't carry HE/AR pronunciations.
@@ -194,6 +216,9 @@ export const TranslationTypingExercise: ExerciseComponent<ExerciseOf<"translatio
         >
           Submit
         </button>
+        <div className="mt-3 flex justify-center">
+          <SkipQuestionButton onSkip={handleSkip} disabled={submitted} />
+        </div>
       </form>
     </div>
   );
