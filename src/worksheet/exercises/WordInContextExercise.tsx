@@ -19,6 +19,7 @@ import { useSentenceResolver } from "../SentencesContext";
 import type { Word } from "../../data/vocabulary";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { shuffle, translationFor } from "../shared";
+import { SkipQuestionButton } from "./SkipQuestionButton";
 
 interface Item {
   word_id: number;
@@ -118,6 +119,24 @@ export const WordInContextExercise: ExerciseComponent<ExerciseOf<"word_in_contex
     speak(current.word_id, current.word.english);
   };
 
+  const handleSkip = () => {
+    if (pickedId !== null || !current) return;
+    const answer: Answer = {
+      kind: "word_in_context",
+      word_id: current.word_id,
+      given_sentence: current.sentence,
+      is_correct: false,
+    };
+    const nextAnswers = [...answers, answer];
+    setAnswers(nextAnswers);
+    if (idx + 1 < items.length) {
+      setIdx(idx + 1);
+      setPickedId(null);
+    } else {
+      onComplete({ score: correct, total: items.length, answers: nextAnswers });
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div className="flex items-center justify-between mb-6">
@@ -181,6 +200,10 @@ export const WordInContextExercise: ExerciseComponent<ExerciseOf<"word_in_contex
             </motion.button>
           );
         })}
+      </div>
+
+      <div className="mt-4 flex justify-center">
+        <SkipQuestionButton onSkip={handleSkip} disabled={pickedId !== null} />
       </div>
     </div>
   );

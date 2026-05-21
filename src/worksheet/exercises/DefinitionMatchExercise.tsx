@@ -21,6 +21,7 @@ import type { Word } from "../../data/vocabulary";
 import { WORD_DEFINITIONS } from "../../data/word-definitions";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { shuffle } from "../shared";
+import { SkipQuestionButton } from "./SkipQuestionButton";
 
 interface Item {
   word_id: number;
@@ -102,6 +103,26 @@ export const DefinitionMatchExercise: ExerciseComponent<ExerciseOf<"definition_m
     speak(current.word_id, current.word.english);
   };
 
+  const handleSkip = () => {
+    if (pickedDefinition !== null || !current) return;
+    const answer: Answer = {
+      kind: "definition_match",
+      word_id: current.word_id,
+      word: current.word.english,
+      given: "",
+      correct: current.definition,
+      is_correct: false,
+    };
+    const nextAnswers = [...answers, answer];
+    setAnswers(nextAnswers);
+    if (idx + 1 < items.length) {
+      setIdx(idx + 1);
+      setPickedDefinition(null);
+    } else {
+      onComplete({ score: correct, total: items.length, answers: nextAnswers });
+    }
+  };
+
   // Need at least 2 items to render a quiz with 1 correct + ≥1
   // distractor.  With only 1 word that has a definition, auto-mark
   // it correct (the student can't be wrong) and move on rather than
@@ -179,6 +200,10 @@ export const DefinitionMatchExercise: ExerciseComponent<ExerciseOf<"definition_m
             </motion.button>
           );
         })}
+      </div>
+
+      <div className="mt-4 flex justify-center">
+        <SkipQuestionButton onSkip={handleSkip} disabled={pickedDefinition !== null} />
       </div>
     </div>
   );

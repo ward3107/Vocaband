@@ -18,6 +18,7 @@ import { Volume2, X } from "lucide-react";
 import { useAudio } from "../../hooks/useAudio";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { shuffle, translationFor } from "../shared";
+import { SkipQuestionButton } from "./SkipQuestionButton";
 
 type LetterTile = { id: number; char: string };
 
@@ -111,6 +112,29 @@ export const LetterScrambleExercise: ExerciseComponent<ExerciseOf<"letter_scramb
 
   const handleClear = () => setPicked([]);
 
+  // Student "I don't know" — record as unsolved (counts as 0 first-try
+  // correct) and move on.  Counts the current partial attempts so the
+  // teacher sees how many tries the kid took before giving up.
+  const handleSkip = () => {
+    if (!current) return;
+    const answer: Answer = {
+      kind: "letter_scramble",
+      word_id: current.id,
+      word: current.english,
+      attempts,
+      solved: false,
+    };
+    const allAnswers = [...answers, answer];
+    setAnswers(allAnswers);
+    if (idx + 1 < order.length) {
+      setIdx(idx + 1);
+      setAttempts(0);
+      setPicked([]);
+    } else {
+      onComplete({ score: firstTryCorrect, total: order.length, answers: allAnswers });
+    }
+  };
+
   const playAudio = () => {
     speak(current.id, current.english);
   };
@@ -187,6 +211,10 @@ export const LetterScrambleExercise: ExerciseComponent<ExerciseOf<"letter_scramb
         >
           <X size={12} /> Clear
         </button>
+      </div>
+
+      <div className="mb-3 flex justify-center">
+        <SkipQuestionButton onSkip={handleSkip} disabled={complete && isRight} />
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">

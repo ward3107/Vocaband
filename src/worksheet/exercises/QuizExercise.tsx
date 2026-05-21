@@ -13,6 +13,7 @@ import { useAudio } from "../../hooks/useAudio";
 import type { Word } from "../../data/vocabulary";
 import type { Answer, ExerciseComponent, ExerciseOf } from "../types";
 import { shuffle, translationFor } from "../shared";
+import { SkipQuestionButton } from "./SkipQuestionButton";
 
 export const QuizExercise: ExerciseComponent<ExerciseOf<"quiz">> = ({
   words,
@@ -60,6 +61,29 @@ export const QuizExercise: ExerciseComponent<ExerciseOf<"quiz">> = ({
         onComplete({ score: finalScore, total: order.length, answers: nextAnswers });
       }
     }, 800);
+  };
+
+  // Student-initiated skip — records a blank-given / wrong answer for
+  // this word and advances immediately, no reveal pause.  The "wrong"
+  // accounting matches the user-confirmed spec ("skipped questions
+  // count as 0 in the final score").
+  const handleSkip = () => {
+    if (pickedId !== null || !current) return;
+    const answer: Answer = {
+      kind: "quiz",
+      word_id: current.id,
+      prompt: current.english,
+      given: "",
+      correct: translationFor(current, targetLang),
+      is_correct: false,
+    };
+    const nextAnswers = [...answers, answer];
+    setAnswers(nextAnswers);
+    if (idx + 1 < order.length) {
+      setIdx(idx + 1);
+    } else {
+      onComplete({ score: correct, total: order.length, answers: nextAnswers });
+    }
   };
 
   const playAudio = () => {
@@ -127,6 +151,10 @@ export const QuizExercise: ExerciseComponent<ExerciseOf<"quiz">> = ({
             </motion.button>
           );
         })}
+      </div>
+
+      <div className="mt-4 flex justify-center">
+        <SkipQuestionButton onSkip={handleSkip} disabled={pickedId !== null} />
       </div>
     </div>
   );
