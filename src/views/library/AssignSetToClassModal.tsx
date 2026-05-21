@@ -14,7 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Send, Loader2, Check, Users } from "lucide-react";
+import { X, Send, Loader2, Check, Users, Languages } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { supabase, type ClassData } from "../../core/supabase";
 import {
@@ -80,6 +80,10 @@ export default function AssignSetToClassModal({
   );
   const [title, setTitle] = useState(set.name);
   const [deadline, setDeadline] = useState<string>("");
+  // Which translation(s) the assignment will carry. Defaults to "both" so
+  // existing teacher muscle memory (today everything ships with both)
+  // stays unchanged.
+  const [translations, setTranslations] = useState<"hebrew" | "arabic" | "both">("both");
   const [busy, setBusy] = useState(false);
   const [words, setWords] = useState<VocabularySetWord[] | null>(null);
 
@@ -115,7 +119,19 @@ export default function AssignSetToClassModal({
       const allWordsById = new Map<number, Word>();
       for (const w of cached?.ALL_WORDS ?? []) allWordsById.set(w.id, w);
 
-      const assignmentWords = words.map((w) => libraryWordToAssignmentWord(w, allWordsById));
+      const rawAssignmentWords = words.map((w) => libraryWordToAssignmentWord(w, allWordsById));
+      // Strip the un-selected translation so students only see the one
+      // the teacher picked. Curriculum-canonical words get a shallow
+      // clone first — they're shared singletons in the ALL_WORDS cache
+      // and mutating them would poison every other view.
+      const assignmentWords = rawAssignmentWords.map((w) => {
+        if (translations === "both") return w;
+        return {
+          ...w,
+          hebrew: translations === "hebrew" ? w.hebrew : "",
+          arabic: translations === "arabic" ? w.arabic : "",
+        };
+      });
       // word_ids only carries IDs that resolve in ALL_WORDS — keeps the
       // gradebook + analytics RPCs (which join against ALL_WORDS) clean.
       const wordIds = assignmentWords
@@ -152,7 +168,7 @@ export default function AssignSetToClassModal({
     } finally {
       setBusy(false);
     }
-  }, [selectedClassId, title, deadline, words, classes, set.id, showToast, t, onAssigned]);
+  }, [selectedClassId, title, deadline, translations, words, classes, set.id, showToast, t, onAssigned]);
 
   return (
     <AnimatePresence>
@@ -255,6 +271,49 @@ export default function AssignSetToClassModal({
                   maxLength={100}
                 />
               </label>
+            </section>
+
+            {/* Translation language */}
+            <section>
+              <div className="flex items-center gap-2">
+                <Languages className="w-4 h-4 text-slate-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                  {t.translationsHeading}
+                </h3>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">{t.translationsHint}</p>
+              <div
+                role="radiogroup"
+                aria-label={t.translationsHeading}
+                className={`mt-2 flex gap-2 ${isRTL ? "flex-row-reverse" : ""}`}
+              >
+                {(
+                  [
+                    { id: "hebrew", label: t.translationHebrew },
+                    { id: "arabic", label: t.translationArabic },
+                    { id: "both", label: t.translationBoth },
+                  ] as const
+                ).map((opt) => {
+                  const active = translations === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => setTranslations(opt.id)}
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${
+                        active
+                          ? "border-violet-500 bg-violet-50 text-violet-700 shadow-sm"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
             </section>
 
             {/* Deadline */}

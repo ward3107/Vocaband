@@ -22,6 +22,12 @@ export interface AssignSetStrings {
   deadlineHint: string;
   deadlineNone: string;
 
+  translationsHeading: string;
+  translationsHint: string;
+  translationHebrew: string;
+  translationArabic: string;
+  translationBoth: string;
+
   /** Toast on success — assignment created for class N. */
   toastAssigned: (className: string) => string;
 
@@ -48,6 +54,12 @@ export const assignSetT: Record<Language, AssignSetStrings> = {
     deadlineHint: "Students can still play after the deadline, but the assignment shows as overdue.",
     deadlineNone: "No deadline",
 
+    translationsHeading: "Translations students see",
+    translationsHint: "Pick the language(s) shown alongside the English word.",
+    translationHebrew: "Hebrew",
+    translationArabic: "Arabic",
+    translationBoth: "Both",
+
     toastAssigned: (className) => `Assigned to ${className} 📋`,
 
     errorNoClass: "Pick a class to assign to.",
@@ -70,6 +82,12 @@ export const assignSetT: Record<Language, AssignSetStrings> = {
     deadlineLabel: "תאריך יעד (אופציונלי)",
     deadlineHint: "התלמידים יכולים לשחק גם אחרי תאריך היעד, אך המטלה תוצג כבאיחור.",
     deadlineNone: "ללא תאריך יעד",
+
+    translationsHeading: "תרגומים שהתלמידים יראו",
+    translationsHint: "בחרו את השפה (או השפות) שיוצגו לצד המילה באנגלית.",
+    translationHebrew: "עברית",
+    translationArabic: "ערבית",
+    translationBoth: "שתיהן",
 
     toastAssigned: (className) => `המטלה שויכה ל־${className} 📋`,
 
@@ -94,6 +112,12 @@ export const assignSetT: Record<Language, AssignSetStrings> = {
     deadlineHint: "يستطيع الطلاب اللعب بعد الموعد، لكن الواجب يظهر متأخّرًا.",
     deadlineNone: "بلا موعد نهائي",
 
+    translationsHeading: "الترجمات التي يراها الطلاب",
+    translationsHint: "اختر اللغة (أو اللغتين) التي ستظهر بجانب الكلمة الإنجليزية.",
+    translationHebrew: "العبرية",
+    translationArabic: "العربية",
+    translationBoth: "كلاهما",
+
     toastAssigned: (className) => `تم الإسناد إلى ${className} 📋`,
 
     errorNoClass: "اختر فصلًا للإسناد.",
@@ -116,6 +140,12 @@ export const assignSetT: Record<Language, AssignSetStrings> = {
     deadlineLabel: "Deadline (optional)",
     deadlineHint: "Students can still play after the deadline, but the assignment shows as overdue.",
     deadlineNone: "No deadline",
+
+    translationsHeading: "Translations students see",
+    translationsHint: "Pick the language(s) shown alongside the English word.",
+    translationHebrew: "Hebrew",
+    translationArabic: "Arabic",
+    translationBoth: "Both",
 
     toastAssigned: (className) => `Assigned to ${className} 📋`,
 
