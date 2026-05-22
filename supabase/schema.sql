@@ -135,13 +135,37 @@ CREATE POLICY "users_update" ON public.users
   );
 
 -- ·· classes ··
--- The 6-digit class code IS the join credential — knowing it grants access to the class.
--- We intentionally allow any authenticated user to look up a class by code so that
--- new students (who have no user row yet) can validate the code during login.
--- The practical enumeration risk is low (1 million possible codes, rate-limited by Supabase).
+-- Tenant-scoped read: teachers see only their own classes; students see
+-- only the single class their `users.class_code` points at; admins see
+-- everything.  Anonymous-auth sessions (`auth.jwt() ->> 'is_anonymous'
+-- = true`) are blocked from direct reads as belt-and-braces against a
+-- compromised anon session enumerating classes.
+--
+-- Pre-membership lookup — when a student is joining a class by code
+-- for the first time and is not yet in `public.users` — goes through
+-- the SECURITY DEFINER RPC `get_class_by_code` (rate-limited 30/min
+-- per uid+ip).  See migration 20260619000001 for the rate limit, and
+-- 20260517160000 for the anon-execute grant on the RPC.
+--
+-- History — earlier baselines of this file had `USING(true)`, which
+-- let any authenticated user list every class row in the database.
+-- The fix shipped in migrations 20260430_hardening_and_perf.sql and
+-- 20260517125414_filter_anon_auth_round2.sql; this baseline mirrors
+-- the resulting effective policy so the file matches production and
+-- a fresh `psql -f schema.sql` bootstrap starts in the secure state.
+-- Cross-tenant enumeration is verified by pen-test [9b] in
+-- scripts/security-pen-test.sh.  Closes audit finding C-3.
 DROP POLICY IF EXISTS "classes_select" ON public.classes;
 CREATE POLICY "classes_select" ON public.classes
-  FOR SELECT TO authenticated USING (true);
+  FOR SELECT TO authenticated
+  USING (
+    (
+      teacher_uid = auth.uid()::text
+      OR public.is_admin()
+      OR code = (SELECT class_code FROM public.users WHERE uid = auth.uid()::text)
+    )
+    AND COALESCE(((auth.jwt() ->> 'is_anonymous'))::boolean, false) IS FALSE
+  );
 
 DROP POLICY IF EXISTS "classes_insert" ON public.classes;
 CREATE POLICY "classes_insert" ON public.classes
