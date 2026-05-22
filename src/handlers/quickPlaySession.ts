@@ -64,6 +64,16 @@ export async function createEnglishQuickPlaySession(
   deps: QuickPlaySessionDeps,
   generateAiSentences: (sessionId: string, words: Word[], difficulty: 1 | 2 | 3 | 4) => void,
 ): Promise<string> {
+  // Guard against creating a session with zero words.  The student-side
+  // hydration (useQuickPlayUrlBootstrap) bails out and bounces to landing
+  // when allWords.length === 0, which presents to the student as an
+  // unexplained white-then-redirect.  Fail loudly at the teacher's
+  // create-step instead so they realise the picker is empty.
+  if (words.length === 0) {
+    deps.showToast(deps.failedCreateSessionMsg("Pick at least one word before starting a Quick Play."), "error");
+    throw new Error("Cannot create Quick Play session: no words selected");
+  }
+
   const dbWords = words.filter((w) => w.id >= 0);
   const customWords = words.filter((w) => w.id < 0);
   const wordIds = dbWords.map((w) => w.id);
@@ -124,6 +134,13 @@ export async function createHebrewQuickPlaySession(
   // hebrewTitle is accepted by the wizard for future use (when we add
   // a sessions.title column) but not persisted today.
   void hebrewTitle;
+
+  // Same guard as the English path — see comment in
+  // createEnglishQuickPlaySession.
+  if (lemmaIds.length === 0) {
+    deps.showToast(deps.failedCreateSessionMsg("Pick at least one lemma before starting a Quick Play."), "error");
+    throw new Error("Cannot create Quick Play session: no lemmas selected");
+  }
 
   const { data, error } = await supabase.rpc('create_quick_play_session', {
     p_word_ids: lemmaIds.length > 0 ? lemmaIds : null,
