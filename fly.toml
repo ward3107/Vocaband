@@ -20,6 +20,16 @@
 app = 'vocaband'
 primary_region = 'fra'
 
+# Graceful shutdown — Fly sends SIGINT (or SIGTERM per kill_signal) when a
+# Machine is being stopped (rolling deploy, scale-down, host move), then
+# SIGKILL after kill_timeout.  Default 5s is too tight: server.ts's
+# gracefulShutdown disconnects every active socket.io client (firing each
+# disconnect handler), waits for in-flight HTTP requests to drain, and
+# quits both Redis pub/sub connections.  10s gives us an 8s drain budget
+# inside server.ts with a 2s safety margin before SIGKILL.  Without this,
+# every `fly deploy` would kill mid-game WebSocket sessions.
+kill_timeout = "10s"
+
 # ─── Required secrets (set with `fly secrets set NAME=value`) ────
 #   SUPABASE_URL                 — Supabase project URL.  Also used to fetch
 #                                  the JWKS at /auth/v1/.well-known/jwks.json

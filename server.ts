@@ -703,6 +703,9 @@ async function startServer() {
   // single-VM as before — no adapter, no error. Set REDIS_URL via
   // `fly secrets set REDIS_URL=rediss://...` to activate.
   let redisPubClient: ReturnType<typeof createRedisClient> | null = null;
+  // Sub client is duplicated from pubClient below; stored here so the
+  // graceful-shutdown handler can .quit() both when the process exits.
+  let redisSubClient: ReturnType<typeof createRedisClient> | null = null;
   let redisAdapterStatus: "disabled" | "attached" | "failed" = "disabled";
   let redisAdapterError: string | null = null;
   if (process.env.REDIS_URL) {
@@ -715,6 +718,7 @@ async function startServer() {
       await Promise.all([pubClient.connect(), subClient.connect()]);
       io.adapter(createAdapter(pubClient, subClient));
       redisPubClient = pubClient;
+      redisSubClient = subClient;
       redisAdapterStatus = "attached";
       console.log("[redis-adapter] attached — multi-VM socket.io broadcasts enabled");
 
@@ -2002,17 +2006,93 @@ async function startServer() {
     }
   }, 60_000);
 
-  // Clean shutdown hook: if the process is killed, release intervals so
-  // tests / dev restarts don't leak timers.
-  process.on("SIGTERM", () => {
+  // Graceful shutdown — Fly sends SIGINT (rolling deploys, scale-down,
+  // host-machine moves) and the dev tooling sends SIGTERM/SIGINT on
+  // Ctrl+C.  Without this drain, every fly deploy kills in-flight
+  // WebSocket connections and HTTP requests mid-handler:
+  //   * Students lose their Live Challenge / Quick Play session mid-game
+  //     and the socket throws ECONNRESET instead of a clean disconnect.
+  //   * HTTP /api/* requests in-flight (translate, OCR, AI sentence gen)
+  //     hang up half-written; the client sees a network error.
+  // Sequence:
+  //   1. Flip isShuttingDown — /api/health starts returning 503 so Fly's
+  //      proxy stops routing new traffic to this VM (belt + braces; the
+  //      proxy normally drains on signal anyway).
+  //   2. Clear shared background intervals and shut down rate-limiters.
+  //   3. io.close() — closes the socket.io server: stops accepting new
+  //      handshakes AND disconnects every existing client (which fires
+  //      their disconnect handlers, including the per-socket reverify
+  //      interval cleanup at line 1132).
+  //   4. httpServer.close() — stops accepting new HTTP connections and
+  //      waits for in-flight requests to complete.
+  //   5. Quit Redis pub/sub clients last so adapter messages emitted
+  //      during step 3 finish flushing first.
+  //   6. process.exit(0).
+  // Drain cap: 8s.  Fly's kill_timeout in fly.toml is 10s, so we have
+  // a 2s safety margin before SIGKILL.  If 8s isn't enough something is
+  // very wrong (Redis stuck, in-flight LLM call blocking) — exit 1 so
+  // monitoring catches it.
+  let isShuttingDown = false;
+  const gracefulShutdown = (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log(`[shutdown] ${signal} received — draining`);
+
     clearInterval(qpSweepInterval);
+    if (broadcastTimer) {
+      clearInterval(broadcastTimer);
+      broadcastTimer = null;
+    }
     qpJoinLimiter.shutdown();
     qpScoreLimiter.shutdown();
     qpTeacherLimiter.shutdown();
-  });
 
-  // Health check endpoint for monitoring — minimal info to avoid leaking server state
+    const drainTimer = setTimeout(() => {
+      console.warn("[shutdown] drain exceeded 8s — forcing exit(1)");
+      process.exit(1);
+    }, 8_000);
+    // Don't keep the event loop alive just for this timer; if the two
+    // close() callbacks below fire first, we exit cleanly without
+    // waiting for the timeout.
+    drainTimer.unref();
+
+    let pending = 2;
+    const settle = () => {
+      pending -= 1;
+      if (pending !== 0) return;
+      // Both server.close callbacks fired.  Quit Redis last; failures
+      // are logged but not awaited beyond a brief soft window — the
+      // adapter doesn't need the connection for the final exit.
+      Promise.allSettled([
+        redisPubClient ? redisPubClient.quit() : Promise.resolve(),
+        redisSubClient ? redisSubClient.quit() : Promise.resolve(),
+      ]).finally(() => {
+        clearTimeout(drainTimer);
+        console.log("[shutdown] clean exit(0)");
+        process.exit(0);
+      });
+    };
+
+    io.close(() => settle());
+    httpServer.close(() => settle());
+  };
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+  // Health check endpoint for monitoring — minimal info to avoid leaking server state.
+  // Returns 503 once gracefulShutdown has fired so Fly's proxy / external
+  // monitors stop routing new traffic to a draining VM.  The proxy also
+  // drains on signal natively; this is defence in depth (and useful for
+  // any voluntary drain triggered without a signal).
   app.get("/api/health", (_req, res) => {
+    if (isShuttingDown) {
+      res.status(503).json({
+        status: "draining",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
     res.json({
       status: "ok",
       timestamp: new Date().toISOString(),
