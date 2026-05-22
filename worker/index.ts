@@ -295,6 +295,22 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    // Canonicalize www → apex at the edge.  Supabase's auth allowlist
+    // contains `https://vocaband.com/**` but not the `www.` host, and the
+    // Site URL is the apex.  Visiting `www.vocaband.com` previously used
+    // a JS-side `window.location.replace()` in main.tsx — that paid one
+    // full HTML + entry-chunk round-trip just to learn the page should
+    // redirect.  Issuing a 301 here at the edge skips the entire
+    // download.  src/main.tsx's canonicalizeHost() is left in place as a
+    // safety net for static-asset URLs that bypass the Worker (Cloudflare
+    // Workers Assets routes JS/CSS requests directly without invoking
+    // the Worker), but the cold-load HTML path now hits this redirect
+    // first and never executes the JS fallback.
+    if (url.hostname === "www.vocaband.com") {
+      const target = `https://vocaband.com${url.pathname}${url.search}${url.hash}`;
+      return Response.redirect(target, 301);
+    }
+
     // Edge-handled routes (run on the Worker, NOT proxied). These must come
     // before the /api/* proxy fallthrough or they'll be forwarded to Fly.io
     // and return a 404.

@@ -291,8 +291,17 @@
 
     <!-- Main application content with landmark -->
     <div id="root"><div id="boot-debug" class="boot-loader">Loading Vocaband...</div></div>
-    <!-- Pre-React boot diagnostic. External so CSP `script-src` can drop
-         `unsafe-inline` and only allow `'self'`. -->
+    <!-- Pre-React boot diagnostic + RTL font loader.
+         vite.config.ts's vocabandHtmlPerf plugin inlines /public/boot-debug.js
+         here at build time as a <script> block so cold first-paint doesn't
+         pay a network round-trip for the diagnostic. CSP allowlists the
+         inlined script via its SHA-256 hash in public/_headers — when the
+         file changes, recompute the hash and update _headers (see the
+         comment in the plugin for the openssl command). In `vite dev` the
+         placeholder below stays as-is and the dev server serves the
+         external /boot-debug.js normally — the inline win only matters
+         under production network latency. -->
+    <!-- VOCABAND_INLINE_BOOT_DEBUG -->
     <script src="/boot-debug.js"></script>
     <noscript>
       <div class="boot-noscript">
