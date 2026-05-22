@@ -33,7 +33,7 @@
 
   <h1>Privacy Policy</h1>
   <div class="meta">
-    <p><strong>Effective Date:</strong> 2026-05-04 | <strong>Version:</strong> 2.1</p>
+    <p><strong>Effective Date:</strong> 2026-05-22 | <strong>Version:</strong> 2.1</p>
     <p><strong>Legal Basis:</strong> Privacy Protection Law, 5741-1981 (Israel), Amendment 13 (תיקון 13 לחוק הגנת הפרטיות)</p>
   </div>
 
@@ -147,8 +147,22 @@
       <td><strong>Google Cloud (Gemini API)</strong></td>
       <td>Server-side OCR of teacher-uploaded vocabulary list images (replaces previous in-process Tesseract.js)</td>
       <td>uploaded image bytes (typically a worksheet photo containing only English words)</td>
-      <td>EU (europe-west)</td>
+      <td>EU (europe-west) for Gemini OCR; Google-global for Text-to-Speech</td>
       <td>generativelanguage.googleapis.com</td>
+    </tr>
+    <tr>
+      <td><strong>Google Cloud (Text-to-Speech API)</strong></td>
+      <td>Server-side generation of MP3 audio for vocabulary words (used both as a runtime fallback for teacher-uploaded custom words and as a batch generator for the base 9,159-word corpus)</td>
+      <td>English vocabulary words (no personal data) — the cleaned text string sent to the synthesis API</td>
+      <td>Google-global (texttospeech.googleapis.com is not regionally pinned for the public v1 endpoint)</td>
+      <td>texttospeech.googleapis.com</td>
+    </tr>
+    <tr>
+      <td><strong>Sentry</strong></td>
+      <td>Application error tracking and performance monitoring (browser SPA + Node server)</td>
+      <td>JavaScript error messages and stack traces (scrubbed by `src/utils/scrubPii.ts` before send: emails, JWTs, Bearer tokens, Supabase keys removed); browser metadata (User-Agent, viewport, URL path); user UID when authenticated (no email, no name — only the opaque UUID, attached via Sentry.setUser); session-replay snippets (DOM masked, inputs masked) when the user has not opted out</td>
+      <td>EU (Germany) — *.ingest.de.sentry.io</td>
+      <td>o*.ingest.de.sentry.io, browser.sentry-cdn.com</td>
     </tr>
     <tr>
       <td><strong>Google Fonts</strong></td>
@@ -225,8 +239,18 @@
       <td>Processor under DPA; encryption in transit + at rest</td>
     </tr>
     <tr>
-      <td>EU (europe-west)</td>
+      <td>EU (europe-west) for Gemini OCR; Google-global for Text-to-Speech</td>
       <td>Google Cloud (Gemini API)</td>
+      <td>Processor under DPA; encryption in transit + at rest</td>
+    </tr>
+    <tr>
+      <td>Google-global (texttospeech.googleapis.com is not regionally pinned for the public v1 endpoint)</td>
+      <td>Google Cloud (Text-to-Speech API)</td>
+      <td>Processor under DPA; encryption in transit + at rest</td>
+    </tr>
+    <tr>
+      <td>EU (Germany) — *.ingest.de.sentry.io</td>
+      <td>Sentry</td>
       <td>Processor under DPA; encryption in transit + at rest</td>
     </tr>
     <tr>
