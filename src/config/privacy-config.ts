@@ -44,12 +44,14 @@ export const DATA_PROTECTION_OFFICER = {
 // 2. Privacy policy versioning
 // ---------------------------------------------------------------------------
 
-// Bumped 2026-05-04 — sub-processor list refreshed (Render + Tesseract
-// removed; Cloudflare, Fly.io, Anthropic, Google Cloud Gemini, Google
-// Fonts added).  Bumping triggers the consent re-prompt so existing
-// users see the updated disclosure list before continuing.
-export const PRIVACY_POLICY_VERSION = "2026-05-04";  // Version 2.1 - Amendment 13 + processor list refresh
-export const TERMS_VERSION = "2026-05-04";            // Version 2.1 - bumped alongside privacy version
+// Bumped 2026-05-22 — added Sentry (EU region) and Google Cloud
+// Text-to-Speech.  Sentry was active but undeclared (audit finding
+// C-9); Text-to-Speech was implicit under the Gemini entry but is
+// a distinct API and warranted its own row.  Bumping triggers the
+// consent re-prompt so existing users see the updated disclosure list
+// before continuing.
+export const PRIVACY_POLICY_VERSION = "2026-05-22";  // Version 2.2 - Sentry + Google TTS disclosed
+export const TERMS_VERSION = "2026-05-22";            // Version 2.2 - bumped alongside privacy version
 
 // ---------------------------------------------------------------------------
 // 3. Hosting regions (for cross-border transfer disclosures)
@@ -61,8 +63,9 @@ export const HOSTING_REGIONS = {
   cloudflare: "Global edge network",
   googleAuth: "Global (US-anchored)",
   anthropic: "United States",
-  googleCloud: "EU (europe-west)",
+  googleCloud: "EU (europe-west) for Gemini OCR; Google-global for Text-to-Speech",
   googleFonts: "Global edge network",
+  sentry: "EU (Germany) — *.ingest.de.sentry.io",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -139,6 +142,24 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
     hostingRegion: HOSTING_REGIONS.googleCloud,
     endpoint: "generativelanguage.googleapis.com",
     notes: "Triggered only on explicit teacher action.  Image discarded after the API returns the extracted text; not stored on Vocaband infrastructure.",
+  },
+  {
+    name: "Google Cloud (Text-to-Speech API)",
+    purpose: "Server-side generation of MP3 audio for vocabulary words (used both as a runtime fallback for teacher-uploaded custom words and as a batch generator for the base 9,159-word corpus)",
+    dataCategories: ["English vocabulary words (no personal data) — the cleaned text string sent to the synthesis API"],
+    processorOnly: true,
+    hostingRegion: "Google-global (texttospeech.googleapis.com is not regionally pinned for the public v1 endpoint)",
+    endpoint: "texttospeech.googleapis.com",
+    notes: "Triggered on teacher action (custom-word audio) or on operator action (corpus regeneration via scripts/generate-audio.ts).  No user data is sent — only the vocabulary word itself.  Generated MP3 is stored in the Supabase `sound` bucket and served to students; cleared from Google after synthesis.",
+  },
+  {
+    name: "Sentry",
+    purpose: "Application error tracking and performance monitoring (browser SPA + Node server)",
+    dataCategories: ["JavaScript error messages and stack traces (scrubbed by `src/utils/scrubPii.ts` before send: emails, JWTs, Bearer tokens, Supabase keys removed)", "browser metadata (User-Agent, viewport, URL path)", "user UID when authenticated (no email, no name — only the opaque UUID, attached via Sentry.setUser)", "session-replay snippets (DOM masked, inputs masked) when the user has not opted out"],
+    processorOnly: true,
+    hostingRegion: HOSTING_REGIONS.sentry,
+    endpoint: "o*.ingest.de.sentry.io, browser.sentry-cdn.com",
+    notes: "Sentry DSN points to the EU region (Germany) — no transatlantic transfer for error telemetry.  Before-send scrubber redacts PII on every event payload server-side (server.ts) and client-side (src/core/sentry.ts).  Sentry DPA at https://sentry.io/legal/dpa/.  Session-replay is gated by user-consent and lazy-loaded after first paint to honour the 'no telemetry before interaction' guarantee.",
   },
   {
     name: "Google Fonts",

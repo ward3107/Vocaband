@@ -355,6 +355,16 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                     <td className="py-2 pr-4">{language === 'en' ? 'OCR for teacher-uploaded vocabulary images' : language === 'he' ? 'OCR לתמונות אוצר מילים שמורים מעלים' : 'OCR لصور مفردات يحملها المعلمون'}</td>
                     <td className="py-2 pr-4">{language === 'en' ? 'EU (europe-west)' : language === 'he' ? 'אירופה' : 'الاتحاد الأوروبي'}</td>
                   </tr>
+                  <tr className="border-b border-surface-container/50">
+                    <td className="py-2 pr-4 font-medium">Google Cloud (Text-to-Speech)</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'MP3 audio synthesis for vocabulary words' : language === 'he' ? 'יצירת MP3 לאוצר מילים' : 'تحويل المفردات إلى صوت MP3'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Google-global' : language === 'he' ? 'גלובלי (Google)' : 'عالمي (Google)'}</td>
+                  </tr>
+                  <tr className="border-b border-surface-container/50">
+                    <td className="py-2 pr-4 font-medium">Sentry</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Error tracking (PII scrubbed before send)' : language === 'he' ? 'מעקב שגיאות (PII מוסר לפני שליחה)' : 'تتبع الأخطاء (يتم تنقية PII قبل الإرسال)'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'EU (Germany)' : language === 'he' ? 'אירופה (גרמניה)' : 'الاتحاد الأوروبي (ألمانيا)'}</td>
+                  </tr>
                   <tr>
                     <td className="py-2 pr-4 font-medium">Google Fonts</td>
                     <td className="py-2 pr-4">{language === 'en' ? 'Web font delivery' : language === 'he' ? 'אספקת גופנים' : 'تسليم الخطوط'}</td>

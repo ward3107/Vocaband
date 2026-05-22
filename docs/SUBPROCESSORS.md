@@ -10,7 +10,7 @@
 > If you spot a difference between this doc and the source code, the
 > source code wins — file an issue and we'll re-sync.
 
-> Last updated 2026-05-04.
+> Last updated 2026-05-22.
 
 ---
 
@@ -102,7 +102,34 @@
 | Trigger | Only on explicit teacher action (uploading an image to extract vocabulary) |
 | Notes | Image is sent over HTTPS and discarded after the API returns the extracted text. Not stored on Vocaband infrastructure. |
 
-### 7. Google Fonts
+### 7. Google Cloud (Text-to-Speech API)
+
+| Field | Value |
+|---|---|
+| Type | Processor |
+| Purpose | Generate MP3 audio for vocabulary words (runtime fallback for teacher-uploaded custom words; batch generator for the base 9,159-word corpus) |
+| Data categories | The vocabulary word itself (no personal data — only the cleaned English string that gets synthesised) |
+| Hosting region | Google-global (the public `texttospeech.googleapis.com/v1` endpoint is not regionally pinned) |
+| Endpoint | `texttospeech.googleapis.com` |
+| Trigger | Teacher action (custom-word audio generation) or operator action (corpus regeneration via `scripts/generate-audio.ts`) |
+| Sub-processor agreement | Google Cloud DPA at https://cloud.google.com/terms/data-processing-addendum |
+| Notes | Synthesised MP3 is stored in the Supabase `sound` bucket and served to students; cleared from Google's side after synthesis. Uses the same `GOOGLE_AI_API_KEY` that powers Gemini OCR — no separate service-account JSON. |
+
+### 8. Sentry
+
+| Field | Value |
+|---|---|
+| Type | Processor |
+| Purpose | Application error tracking and performance monitoring (browser SPA + Node server) |
+| Data categories | JavaScript error messages and stack traces (scrubbed by `src/utils/scrubPii.ts` before send — emails, JWTs, Bearer tokens, Supabase keys removed); browser metadata (User-Agent, viewport, URL path); user UID when authenticated (no email, no name — only the opaque UUID, attached via `Sentry.setUser`); session-replay snippets (DOM masked, inputs masked) when the user has not opted out |
+| Hosting region | **EU (Germany)** — DSN points at `*.ingest.de.sentry.io` |
+| Endpoint | `o*.ingest.de.sentry.io`, `browser.sentry-cdn.com` (for lazy-loaded replay integration) |
+| Encryption at rest | Sentry-managed (AES-256) |
+| Sub-processor agreement | Sentry DPA at https://sentry.io/legal/dpa/ |
+| Access by Vocaband staff | Founder via Sentry dashboard MFA |
+| Notes | EU-region DSN means error telemetry never crosses to the US. The PII scrubber runs in Sentry's `beforeSend` hook server-side (`server.ts`) and client-side (`src/core/sentry.ts`) so any incidental email / token / key in an error payload is redacted before it leaves the user's browser or our server. Session-replay is lazy-loaded after first paint and DOM-masked by default. |
+
+### 9. Google Fonts
 
 | Field | Value |
 |---|---|
@@ -128,13 +155,21 @@
 ## Cross-border transfers
 
 All persistent data lives in the EU (Frankfurt for Supabase, Amsterdam
-for Fly.io request handling).  Transfers from EU → US occur only for:
+for Fly.io request handling; Germany for Sentry error telemetry).
+Transfers from EU → US occur only for:
 
 - **Anthropic API calls** when a teacher uses AI features.  Anthropic
   is a US company; transfer covered by their EU SCCs.
 - **Google OAuth handshake** when a teacher signs in with Google.
   Google is a US company; transfer covered by EU-US Data Privacy
   Framework (Google is certified).
+- **Google Cloud Text-to-Speech** calls when generating word audio.
+  The public `texttospeech.googleapis.com/v1` endpoint is not
+  regionally pinned, so synthesis may occur on US infrastructure.
+  Payload is the vocabulary word only (no personal data), so the
+  transfer impact assessment is minimal; same Google Cloud DPA
+  applies.  Migration to the regionally-pinned `eu-texttospeech`
+  endpoint is on the roadmap.
 
 For Israeli users, EU is an "adequate" jurisdiction under both EU
 GDPR (Israel ↔ EU adequacy) and Israeli Privacy Protection Law.
