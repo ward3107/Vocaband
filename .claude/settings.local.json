@@ -278,7 +278,9 @@
       "Bash(grep *)",
       "mcp__2b97ba60-f590-4f65-b1ad-ec7ed00f0638__find_organizations",
       "mcp__2b97ba60-f590-4f65-b1ad-ec7ed00f0638__search_issues",
-      "mcp__2b97ba60-f590-4f65-b1ad-ec7ed00f0638__search_events"
+      "mcp__2b97ba60-f590-4f65-b1ad-ec7ed00f0638__search_events",
+      "mcp__252f2ba4-5416-41f5-8779-25f17f4e8a00__hub_repo_search",
+      "mcp__e0e3f17d-9f48-4f22-8520-bb25f280e3d2__search_files"
     ]
   }
 }
