@@ -52,6 +52,25 @@ export interface VocabularyLibraryStrings {
   privacyNoticeTitle: string;
   privacyNoticeBody: string;
 
+  // Drill-in (inside a collection)
+  breadcrumbRoot: string;
+  breadcrumbAria: string;
+  tabSetsHere: string;
+  tabSubFolders: string;
+  emptySubfoldersBlurb: string;
+  emptySetsHereBlurb: string;
+
+  // Move / reparent
+  moveAria: string;
+  moveModalTitle: (name: string) => string;
+  movePickFolder: string;
+  moveToRoot: string;
+  moveCurrentLocation: (name: string) => string;
+  moveConfirm: string;
+  moveCancel: string;
+  moveCannotIntoSelf: string;
+  toastMoved: (name: string) => string;
+
   // Toasts
   toastCollectionCreated: (name: string) => string;
   toastSetSaved: (name: string) => string;
@@ -99,6 +118,23 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
     privacyNoticeBody:
       "We process your file to extract vocabulary, then delete it within 72 hours. We don't share, index, or keep your materials. Only the extracted words are saved to your library.",
 
+    breadcrumbRoot: "Library",
+    breadcrumbAria: "Folder location",
+    tabSetsHere: "Sets in this folder",
+    tabSubFolders: "Sub-folders",
+    emptySubfoldersBlurb: "No sub-folders here yet. Tap “New collection” to add one.",
+    emptySetsHereBlurb: "No sets in this folder yet. Tap “New vocabulary set” to add one.",
+
+    moveAria: "Move",
+    moveModalTitle: (name) => `Move “${name}”`,
+    movePickFolder: "Pick a destination folder",
+    moveToRoot: "Move to root (no folder)",
+    moveCurrentLocation: (name) => `Currently in: ${name}`,
+    moveConfirm: "Move here",
+    moveCancel: "Cancel",
+    moveCannotIntoSelf: "Can't move a folder into itself or one of its sub-folders.",
+    toastMoved: (name) => `Moved “${name}”`,
+
     toastCollectionCreated: (name) => `Created “${name}”`,
     toastSetSaved: (name) => `Saved “${name}” to your library`,
     toastDeleted: "Deleted",
@@ -142,6 +178,23 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
     privacyNoticeTitle: "הקובץ שלכם נשאר פרטי",
     privacyNoticeBody:
       "אנחנו מעבדים את הקובץ כדי לחלץ ממנו מילים ואז מוחקים אותו תוך 72 שעות. איננו משתפים, מאנדקסים או שומרים את החומר שלכם. רק המילים המחולצות נשמרות בספרייה שלכם.",
+
+    breadcrumbRoot: "ספרייה",
+    breadcrumbAria: "מיקום בתיקייה",
+    tabSetsHere: "רשימות בתיקייה",
+    tabSubFolders: "תת־תיקיות",
+    emptySubfoldersBlurb: "אין עדיין תת־תיקיות. הקישו על “אוסף חדש” כדי להוסיף.",
+    emptySetsHereBlurb: "אין עדיין רשימות בתיקייה הזו. הקישו על “רשימת מילים חדשה” כדי להוסיף.",
+
+    moveAria: "העברה",
+    moveModalTitle: (name) => `העברת "${name}"`,
+    movePickFolder: "בחרו תיקיית יעד",
+    moveToRoot: "העבר לשורש (ללא תיקייה)",
+    moveCurrentLocation: (name) => `נמצא כעת ב־${name}`,
+    moveConfirm: "העבר לכאן",
+    moveCancel: "ביטול",
+    moveCannotIntoSelf: "לא ניתן להעביר תיקייה לתוך עצמה או לתת־תיקייה שלה.",
+    toastMoved: (name) => `"${name}" הועבר`,
 
     toastCollectionCreated: (name) => `נוצר "${name}"`,
     toastSetSaved: (name) => `הרשימה "${name}" נשמרה בספרייה`,
@@ -187,6 +240,23 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
     privacyNoticeBody:
       "نعالج ملفك لاستخراج المفردات ثم نحذفه خلال 72 ساعة. لا نشارك موادّك ولا نفهرسها ولا نحتفظ بها. فقط الكلمات المستخرَجة تُحفظ في مكتبتك.",
 
+    breadcrumbRoot: "المكتبة",
+    breadcrumbAria: "موقع المجلد",
+    tabSetsHere: "القوائم في هذا المجلد",
+    tabSubFolders: "المجلدات الفرعية",
+    emptySubfoldersBlurb: "لا توجد مجلدات فرعية بعد. اضغط على “مجموعة جديدة” لإضافة واحدة.",
+    emptySetsHereBlurb: "لا توجد قوائم في هذا المجلد بعد. اضغط على “قائمة مفردات جديدة” لإضافة قائمة.",
+
+    moveAria: "نقل",
+    moveModalTitle: (name) => `نقل "${name}"`,
+    movePickFolder: "اختر مجلد الوجهة",
+    moveToRoot: "النقل إلى الجذر (بدون مجلد)",
+    moveCurrentLocation: (name) => `الموقع الحالي: ${name}`,
+    moveConfirm: "انقل هنا",
+    moveCancel: "إلغاء",
+    moveCannotIntoSelf: "لا يمكن نقل مجلد إلى نفسه أو إلى أحد مجلداته الفرعية.",
+    toastMoved: (name) => `تم نقل "${name}"`,
+
     toastCollectionCreated: (name) => `تم إنشاء "${name}"`,
     toastSetSaved: (name) => `تم حفظ "${name}" في مكتبتك`,
     toastDeleted: "تم الحذف",
@@ -230,6 +300,23 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
     privacyNoticeTitle: "Your file stays private",
     privacyNoticeBody:
       "We process your file to extract vocabulary, then delete it within 72 hours. We don't share, index, or keep your materials. Only the extracted words are saved to your library.",
+
+    breadcrumbRoot: "Library",
+    breadcrumbAria: "Folder location",
+    tabSetsHere: "Sets in this folder",
+    tabSubFolders: "Sub-folders",
+    emptySubfoldersBlurb: "No sub-folders here yet. Tap “New collection” to add one.",
+    emptySetsHereBlurb: "No sets in this folder yet. Tap “New vocabulary set” to add one.",
+
+    moveAria: "Move",
+    moveModalTitle: (name) => `Move “${name}”`,
+    movePickFolder: "Pick a destination folder",
+    moveToRoot: "Move to root (no folder)",
+    moveCurrentLocation: (name) => `Currently in: ${name}`,
+    moveConfirm: "Move here",
+    moveCancel: "Cancel",
+    moveCannotIntoSelf: "Can't move a folder into itself or one of its sub-folders.",
+    toastMoved: (name) => `Moved “${name}”`,
 
     toastCollectionCreated: (name) => `Created “${name}”`,
     toastSetSaved: (name) => `Saved “${name}” to your library`,

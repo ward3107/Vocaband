@@ -15,21 +15,25 @@
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { BookMarked, FolderPlus, Plus, FileText, Folder, Clock, Sparkles } from "lucide-react";
+import { BookMarked, FolderPlus, Plus, FileText, Folder, Clock, Sparkles, ChevronRight, ChevronLeft, Home, FolderInput } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import { useLanguage } from "../hooks/useLanguage";
 import { vocabularyLibraryT, type VocabularyLibraryStrings } from "../locales/teacher/vocabulary-library";
 import { hasTeacherAccess, type AppUser, type ClassData } from "../core/supabase";
 import {
   listCollectionChildren,
+  listCollections,
   listAllSets,
+  listSetsInCollection,
   listRecentSets,
+  getCollectionPath,
   createCollection,
   type VocabularyCollection,
   type VocabularySet,
 } from "../core/vocabularyLibrary";
 import SetBuildWizard from "./library/SetBuildWizard";
 import VocabularySetDetailModal from "./library/VocabularySetDetailModal";
+import MoveItemModal, { type MovableItem } from "./library/MoveItemModal";
 
 type Tab = "all" | "collections" | "recent";
 
@@ -60,7 +64,17 @@ export default function VocabularyLibraryView({
   const t = useMemo(() => vocabularyLibraryT[language], [language]);
 
   const [activeTab, setActiveTab] = useState<Tab>("all");
+  /** Folder the teacher has drilled into. Null = root view. The `collectionId`
+   *  prop is the external entry point (passed when routing directly to a
+   *  collection) and behaves the same as a drilled-in state. */
+  const [currentCollection, setCurrentCollection] = useState<VocabularyCollection | null>(null);
+  /** Breadcrumb chain root → … → currentCollection, fetched lazily via the
+   *  get_collection_path RPC. Empty at root. */
+  const [breadcrumbPath, setBreadcrumbPath] = useState<Array<{ id: string; name: string }>>([]);
   const [collections, setCollections] = useState<VocabularyCollection[]>([]);
+  /** Full flat list of every collection the teacher owns — used by
+   *  MoveItemModal so its destination picker doesn't refetch. */
+  const [allCollections, setAllCollections] = useState<VocabularyCollection[]>([]);
   const [allSets, setAllSets] = useState<VocabularySet[]>([]);
   const [recent, setRecent] = useState<VocabularySet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,24 +85,48 @@ export default function VocabularyLibraryView({
    *  the detail page is the canonical "I want to do something with this
    *  set" entry point now. */
   const [openedSet, setOpenedSet] = useState<VocabularySet | null>(null);
+  /** When set, opens MoveItemModal to reparent a collection or set. */
+  const [movingItem, setMovingItem] = useState<MovableItem | null>(null);
+
+  const effectiveCollectionId = currentCollection?.id ?? collectionId;
+  const isInsideCollection = effectiveCollectionId != null;
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [cols, sets, recents] = await Promise.all([
-        listCollectionChildren(collectionId),
-        listAllSets(),
-        listRecentSets(12),
-      ]);
-      setCollections(cols);
-      setAllSets(sets);
-      setRecent(recents);
+      if (isInsideCollection && effectiveCollectionId) {
+        // Scoped to a folder: show direct sub-folders + sets that live
+        // here. Recent is hidden at this level so we skip its fetch.
+        const [cols, sets, every, path] = await Promise.all([
+          listCollectionChildren(effectiveCollectionId),
+          listSetsInCollection(effectiveCollectionId),
+          listCollections(),
+          getCollectionPath(effectiveCollectionId),
+        ]);
+        setCollections(cols);
+        setAllSets(sets);
+        setRecent([]);
+        setAllCollections(every);
+        setBreadcrumbPath(path.map((p) => ({ id: p.id, name: p.name })));
+      } else {
+        const [cols, sets, recents, every] = await Promise.all([
+          listCollectionChildren(null),
+          listAllSets(),
+          listRecentSets(12),
+          listCollections(),
+        ]);
+        setCollections(cols);
+        setAllSets(sets);
+        setRecent(recents);
+        setAllCollections(every);
+        setBreadcrumbPath([]);
+      }
     } catch {
       showToast(t.toastError, "error");
     } finally {
       setLoading(false);
     }
-  }, [collectionId, showToast, t.toastError]);
+  }, [effectiveCollectionId, isInsideCollection, showToast, t.toastError]);
 
   useEffect(() => {
     if (!hasTeacherAccess(user)) return;
@@ -105,7 +143,7 @@ export default function VocabularyLibraryView({
       await createCollection({
         teacherUid: user.uid,
         name: name.trim(),
-        parentId: collectionId,
+        parentId: effectiveCollectionId,
         shareMode: "private",
       });
       showToast(t.toastCollectionCreated(name.trim()), "success");
@@ -115,7 +153,7 @@ export default function VocabularyLibraryView({
     } finally {
       setBusy(false);
     }
-  }, [user, busy, collectionId, t, showToast, refresh]);
+  }, [user, busy, effectiveCollectionId, t, showToast, refresh]);
 
   const handleNewSet = useCallback(() => {
     if (!user || !hasTeacherAccess(user) || busy) return;
@@ -127,11 +165,53 @@ export default function VocabularyLibraryView({
     void refresh();
   }, [refresh]);
 
-  const tabs: Array<{ id: Tab; label: string; icon: ReactNode; count: number }> = [
-    { id: "all", label: t.tabAllSets, icon: <FileText className="w-4 h-4" />, count: allSets.length },
-    { id: "collections", label: t.tabCollections, icon: <Folder className="w-4 h-4" />, count: collections.length },
-    { id: "recent", label: t.tabRecent, icon: <Clock className="w-4 h-4" />, count: recent.length },
-  ];
+  /** Drill into a folder. Resets the active tab so a teacher coming
+   *  from "Recent" doesn't land on a tab that's hidden inside a folder. */
+  const openCollection = useCallback((c: VocabularyCollection) => {
+    setCurrentCollection(c);
+    setActiveTab("all");
+  }, []);
+
+  /** Step one level back up. If we're one level below root, return to
+   *  root; otherwise jump to the parent collection (looked up from the
+   *  breadcrumb chain). */
+  const goBack = useCallback(() => {
+    if (breadcrumbPath.length <= 1) {
+      setCurrentCollection(null);
+      return;
+    }
+    const parentCrumb = breadcrumbPath[breadcrumbPath.length - 2];
+    const parent = allCollections.find((c) => c.id === parentCrumb.id) ?? null;
+    setCurrentCollection(parent);
+  }, [breadcrumbPath, allCollections]);
+
+  /** Jump to any ancestor via a breadcrumb tap. id=null is the root. */
+  const jumpToCrumb = useCallback((id: string | null) => {
+    if (id == null) {
+      setCurrentCollection(null);
+      return;
+    }
+    const target = allCollections.find((c) => c.id === id) ?? null;
+    setCurrentCollection(target);
+  }, [allCollections]);
+
+  const handleMoved = useCallback(() => {
+    setMovingItem(null);
+    void refresh();
+  }, [refresh]);
+
+  // Inside a folder the surface shrinks: "sets here" + "sub-folders".
+  // Recent is global by definition, so it only makes sense at the root.
+  const tabs: Array<{ id: Tab; label: string; icon: ReactNode; count: number }> = isInsideCollection
+    ? [
+        { id: "all", label: t.tabSetsHere, icon: <FileText className="w-4 h-4" />, count: allSets.length },
+        { id: "collections", label: t.tabSubFolders, icon: <Folder className="w-4 h-4" />, count: collections.length },
+      ]
+    : [
+        { id: "all", label: t.tabAllSets, icon: <FileText className="w-4 h-4" />, count: allSets.length },
+        { id: "collections", label: t.tabCollections, icon: <Folder className="w-4 h-4" />, count: collections.length },
+        { id: "recent", label: t.tabRecent, icon: <Clock className="w-4 h-4" />, count: recent.length },
+      ];
 
   if (!hasTeacherAccess(user)) {
     // Guard: route guard at App.tsx should prevent this, but keep a
@@ -157,6 +237,46 @@ export default function VocabularyLibraryView({
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-24 pb-24">
+        {/* Breadcrumb — visible only when drilled into a folder. Crumbs
+        are tappable so the teacher can jump to any ancestor in one tap. */}
+        {isInsideCollection && (
+          <nav
+            aria-label={t.breadcrumbAria}
+            className={`mb-3 flex items-center gap-1 text-sm text-slate-600 flex-wrap ${isRTL ? "flex-row-reverse" : ""}`}
+          >
+            <button
+              type="button"
+              onClick={() => jumpToCrumb(null)}
+              className="inline-flex items-center gap-1 font-semibold hover:text-violet-700"
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            >
+              <Home className="w-4 h-4" />
+              {t.breadcrumbRoot}
+            </button>
+            {breadcrumbPath.map((crumb, i) => {
+              const isLast = i === breadcrumbPath.length - 1;
+              const Sep = isRTL ? ChevronLeft : ChevronRight;
+              return (
+                <span key={crumb.id} className="inline-flex items-center gap-1">
+                  <Sep className="w-4 h-4 text-slate-400" />
+                  {isLast ? (
+                    <span className="font-bold text-slate-900 truncate max-w-[40vw]">{crumb.name}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => jumpToCrumb(crumb.id)}
+                      className="font-semibold hover:text-violet-700 truncate max-w-[30vw]"
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                    >
+                      {crumb.name}
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+          </nav>
+        )}
+
         {/* Hero strip with the two primary CTAs */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -165,12 +285,31 @@ export default function VocabularyLibraryView({
         >
           <div className={`flex items-start gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
             <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center shrink-0">
-              <BookMarked className="w-7 h-7" />
+              {currentCollection ? (
+                <span className="text-2xl" aria-hidden>{currentCollection.emoji ?? "📁"}</span>
+              ) : (
+                <BookMarked className="w-7 h-7" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl font-extrabold leading-tight">{t.pageTitle}</h1>
-              <p className="text-sm sm:text-base text-white/85 mt-1">{t.pageSubtitle}</p>
+              <h1 className="text-xl sm:text-2xl font-extrabold leading-tight">
+                {currentCollection ? currentCollection.name : t.pageTitle}
+              </h1>
+              <p className="text-sm sm:text-base text-white/85 mt-1">
+                {currentCollection?.description || t.pageSubtitle}
+              </p>
             </div>
+            {isInsideCollection && (
+              <button
+                type="button"
+                onClick={goBack}
+                aria-label={t.backToDashboard}
+                className="rounded-full bg-white/15 hover:bg-white/25 backdrop-blur p-2 shrink-0"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              >
+                {isRTL ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+              </button>
+            )}
           </div>
 
           <div className={`mt-5 flex flex-col sm:flex-row gap-3 ${isRTL ? "sm:flex-row-reverse" : ""}`}>
@@ -247,14 +386,20 @@ export default function VocabularyLibraryView({
           ) : activeTab === "all" ? (
             allSets.length === 0 ? (
               <EmptyState
-                title={t.emptyLibraryTitle}
-                blurb={t.emptyLibraryBlurb}
+                title={isInsideCollection ? t.emptyCollectionTitle : t.emptyLibraryTitle}
+                blurb={isInsideCollection ? t.emptySetsHereBlurb : t.emptyLibraryBlurb}
                 isRTL={isRTL}
               />
             ) : (
               <CardGrid>
                 {allSets.map((s) => (
-                  <SetCard key={s.id} set={s} t={t} onOpen={() => setOpenedSet(s)} />
+                  <SetCard
+                    key={s.id}
+                    set={s}
+                    t={t}
+                    onOpen={() => setOpenedSet(s)}
+                    onMove={() => setMovingItem({ kind: "set", set: s })}
+                  />
                 ))}
               </CardGrid>
             )
@@ -262,13 +407,19 @@ export default function VocabularyLibraryView({
             collections.length === 0 ? (
               <EmptyState
                 title={t.emptyCollectionTitle}
-                blurb={t.emptyCollectionBlurb}
+                blurb={isInsideCollection ? t.emptySubfoldersBlurb : t.emptyCollectionBlurb}
                 isRTL={isRTL}
               />
             ) : (
               <CardGrid>
                 {collections.map((c) => (
-                  <CollectionCard key={c.id} collection={c} t={t} />
+                  <CollectionCard
+                    key={c.id}
+                    collection={c}
+                    t={t}
+                    onOpen={() => openCollection(c)}
+                    onMove={() => setMovingItem({ kind: "collection", collection: c })}
+                  />
                 ))}
               </CardGrid>
             )
@@ -281,7 +432,13 @@ export default function VocabularyLibraryView({
           ) : (
             <CardGrid>
               {recent.map((s) => (
-                <SetCard key={s.id} set={s} t={t} onOpen={() => setOpenedSet(s)} />
+                <SetCard
+                  key={s.id}
+                  set={s}
+                  t={t}
+                  onOpen={() => setOpenedSet(s)}
+                  onMove={() => setMovingItem({ kind: "set", set: s })}
+                />
               ))}
             </CardGrid>
           )}
@@ -293,7 +450,7 @@ export default function VocabularyLibraryView({
           <SetBuildWizard
             key="build-wizard"
             user={user}
-            collectionId={collectionId}
+            collectionId={effectiveCollectionId}
             onClose={() => setShowBuildWizard(false)}
             onSaved={handleWizardSaved}
             showToast={showToast}
@@ -306,6 +463,17 @@ export default function VocabularyLibraryView({
             classes={classes}
             onClose={() => setOpenedSet(null)}
             onChanged={() => { void refresh(); }}
+            showToast={showToast}
+          />
+        )}
+        {movingItem && (
+          <MoveItemModal
+            key={`move-${movingItem.kind}-${movingItem.kind === "collection" ? movingItem.collection.id : movingItem.set.id}`}
+            item={movingItem}
+            allCollections={allCollections}
+            t={t}
+            onClose={() => setMovingItem(null)}
+            onMoved={handleMoved}
             showToast={showToast}
           />
         )}
@@ -348,62 +516,99 @@ function SetCard({
   set,
   t,
   onOpen,
+  onMove,
 }: {
   set: VocabularySet;
   t: VocabularyLibraryStrings;
   onOpen: () => void;
+  onMove: () => void;
 }) {
   const gradient = set.color ? undefined : "from-fuchsia-500 via-pink-500 to-rose-500";
   return (
-    <motion.button
-      type="button"
+    <motion.div
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
-      onClick={onOpen}
-      className="text-left rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden cursor-pointer"
-      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+      className="relative rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden"
     >
-      <div
-        className={`h-20 ${set.color ? "" : `bg-gradient-to-br ${gradient}`} flex items-center justify-center`}
-        style={set.color ? { background: set.color } : undefined}
+      <button
+        type="button"
+        onClick={onOpen}
+        className="block w-full text-left cursor-pointer"
+        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       >
-        <span className="text-3xl">{set.emoji ?? "📄"}</span>
-      </div>
-      <div className="p-4">
-        <h4 className="font-bold text-slate-900 line-clamp-1">{set.name}</h4>
-        <p className="text-xs text-slate-500 mt-1">{t.wordsCount(set.wordCount)}</p>
-      </div>
-    </motion.button>
+        <div
+          className={`h-20 ${set.color ? "" : `bg-gradient-to-br ${gradient}`} flex items-center justify-center`}
+          style={set.color ? { background: set.color } : undefined}
+        >
+          <span className="text-3xl">{set.emoji ?? "📄"}</span>
+        </div>
+        <div className="p-4 pe-12">
+          <h4 className="font-bold text-slate-900 line-clamp-1">{set.name}</h4>
+          <p className="text-xs text-slate-500 mt-1">{t.wordsCount(set.wordCount)}</p>
+        </div>
+      </button>
+      <CardMoveButton onMove={onMove} ariaLabel={t.moveAria} />
+    </motion.div>
   );
 }
 
 function CollectionCard({
   collection,
+  t,
+  onOpen,
+  onMove,
 }: {
   collection: VocabularyCollection;
   t: VocabularyLibraryStrings;
+  onOpen: () => void;
+  onMove: () => void;
 }) {
   const gradient = collection.color ? undefined : "from-amber-400 via-orange-500 to-rose-500";
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
-      className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden cursor-pointer"
+      className="relative rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden"
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className="block w-full text-left cursor-pointer"
+        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+      >
+        <div
+          className={`h-20 ${collection.color ? "" : `bg-gradient-to-br ${gradient}`} flex items-center justify-center`}
+          style={collection.color ? { background: collection.color } : undefined}
+        >
+          <span className="text-3xl">{collection.emoji ?? "📁"}</span>
+        </div>
+        <div className="p-4 pe-12">
+          <h4 className="font-bold text-slate-900 line-clamp-1">{collection.name}</h4>
+          {collection.description ? (
+            <p className="text-xs text-slate-500 mt-1 line-clamp-2">{collection.description}</p>
+          ) : null}
+        </div>
+      </button>
+      <CardMoveButton onMove={onMove} ariaLabel={t.moveAria} />
+    </motion.div>
+  );
+}
+
+/** Small floating "move" button anchored to a card's bottom-right corner.
+ *  Sits outside the card's main button so its click doesn't trigger the
+ *  drill-in / open-detail action. */
+function CardMoveButton({ onMove, ariaLabel }: { onMove: () => void; ariaLabel: string }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onMove(); }}
+      aria-label={ariaLabel}
+      title={ariaLabel}
+      className="absolute end-2 bottom-2 w-9 h-9 rounded-full bg-white/90 backdrop-blur border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 flex items-center justify-center shadow-sm"
       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
     >
-      <div
-        className={`h-20 ${collection.color ? "" : `bg-gradient-to-br ${gradient}`} flex items-center justify-center`}
-        style={collection.color ? { background: collection.color } : undefined}
-      >
-        <span className="text-3xl">{collection.emoji ?? "📁"}</span>
-      </div>
-      <div className="p-4">
-        <h4 className="font-bold text-slate-900 line-clamp-1">{collection.name}</h4>
-        {collection.description ? (
-          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{collection.description}</p>
-        ) : null}
-      </div>
-    </motion.div>
+      <FolderInput className="w-4 h-4" />
+    </button>
   );
 }
 
