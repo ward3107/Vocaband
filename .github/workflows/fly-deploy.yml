@@ -1,0 +1,65 @@
+# Fly.io deploy — triggered on every push to main that touches the
+# backend (server.ts, fly.toml, Dockerfile) or this workflow file.
+#
+# Why this exists: the SPA deploys via .github/workflows/cloudflare-deploy.yml
+# on every push to main, but Fly.io has been deployed manually with
+# `fly deploy` from a developer machine. When PR #856 added
+# /api/library/generate-sentences and PR #859 added
+# /api/library/generate-distractors, both lines landed in main but
+# nobody ran `fly deploy`. Result: the freshly-deployed client called
+# routes the running backend didn't know about and every teacher hit a
+# 404. This workflow closes that gap.
+#
+# Required GitHub secret:
+#   FLY_API_TOKEN — a token from `fly tokens create deploy`
+#                   (or Fly.io dashboard → Tokens → "Create deploy token").
+#                   Scope: deploy. Add it under
+#                   Settings → Secrets and variables → Actions.
+#
+# Idempotent — flyctl skips re-deploy when nothing changed, so running
+# this on a docs-only main push is a harmless no-op (and the path filter
+# already prevents that case anyway).
+
+name: Deploy to Fly.io
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "server.ts"
+      - "fly.toml"
+      - "Dockerfile"
+      - ".github/workflows/fly-deploy.yml"
+  # Manual trigger for re-runs (e.g. after rotating a Fly secret without
+  # a code change, or to catch up after a missed run).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Cancel any in-progress deploy when a new push lands. Prevents two
+  # deploys from racing and overwriting each other.
+  group: fly-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        # --remote-only: build runs on Fly's remote builder, so this
+        # runner doesn't need Docker buildx set up locally. Faster cold
+        # start and matches what `fly deploy` does on a developer machine.
+        # FLY_API_TOKEN is read from env automatically by flyctl.
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only
