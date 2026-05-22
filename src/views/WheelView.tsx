@@ -28,7 +28,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Trophy, ArrowRight, Volume2, X, Play, BookOpen,
   ClipboardPaste, ChevronRight, Sparkles, Disc3,
-  Languages, FileText, MessageSquareQuote, CheckCircle2,
+  Languages, MessageSquareQuote, CheckCircle2,
 } from 'lucide-react';
 import { useLanguage, type Language } from '../hooks/useLanguage';
 import { useVocabularyLazy } from '../hooks/useVocabularyLazy';
@@ -36,13 +36,13 @@ import type { Word } from '../data/vocabulary';
 import {
   buildClassicQuestion,
   buildReverseQuestion,
-  buildFillBlankQuestion,
   buildTrueFalseQuestion,
   type MultiChoiceQuestion,
   type TrueFalseQuestion,
   type TranslationLang,
 } from '../utils/buildQuestion';
 import PageHero from '../components/PageHero';
+import { celebrate } from '../utils/celebrate';
 
 export interface WheelAssignment {
   id: string;
@@ -67,10 +67,10 @@ interface WheelViewProps {
   initialPlayerNames?: string[];
 }
 
-type Phase = 'setup' | 'spinning' | 'landed' | 'question' | 'done';
+type Phase = 'setup' | 'spinning' | 'landed' | 'question' | 'winner' | 'done';
 type TargetLang = 'hebrew' | 'arabic';
 type SourceKind = 'paste' | 'assignment' | 'topic';
-type ChallengeKind = 'meaning' | 'translation' | 'fill-blank' | 'true-false';
+type ChallengeKind = 'meaning' | 'translation' | 'true-false';
 
 interface PlayerScore {
   /** Stable id assigned at game start.  Slices reference players by
@@ -93,7 +93,7 @@ interface ActiveQuestion {
   trueFalse: TrueFalseQuestion | null;
 }
 
-const ALL_CHALLENGES: ChallengeKind[] = ['meaning', 'translation', 'fill-blank', 'true-false'];
+const ALL_CHALLENGES: ChallengeKind[] = ['meaning', 'translation', 'true-false'];
 
 // Slice colours cycle through a kid-friendly palette.  Saturated enough
 // that the wheel reads from the back of a classroom but not so loud that
@@ -191,6 +191,41 @@ function playLandingChime(ctx: AudioContext) {
   });
 }
 
+function playWinnerFanfare(ctx: AudioContext) {
+  // Ascending major arpeggio (C5–E5–G5–C6–E6) followed by a sustained
+  // major triad chord — sounds like "ta-da-da-DAAAA!"  Longer and
+  // louder than the landing chime so the winner moment really lands.
+  const arpeggio = [523.25, 659.25, 783.99, 1046.5, 1318.51];
+  arpeggio.forEach((freq, i) => {
+    const t0 = ctx.currentTime + i * 0.13;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(0.22, t0 + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.5);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.55);
+  });
+  // Final sustained chord — C5 E5 G5 C6 — fades over 2.5s.
+  const chord = [523.25, 659.25, 783.99, 1046.5];
+  const chordStart = ctx.currentTime + arpeggio.length * 0.13;
+  chord.forEach(freq => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, chordStart);
+    gain.gain.linearRampToValueAtTime(0.18, chordStart + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, chordStart + 2.4);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(chordStart);
+    osc.stop(chordStart + 2.5);
+  });
+}
+
 function playAnswerSound(ctx: AudioContext, correct: boolean) {
   const now = ctx.currentTime;
   const osc = ctx.createOscillator();
@@ -215,7 +250,6 @@ function playAnswerSound(ctx: AudioContext, correct: boolean) {
 const CHALLENGE_META: Record<ChallengeKind, { emoji: string; gradient: string; iconColor: string }> = {
   'meaning':     { emoji: '📖', gradient: 'from-indigo-500 via-violet-500 to-fuchsia-500',  iconColor: 'text-indigo-500' },
   'translation': { emoji: '🌍', gradient: 'from-emerald-500 via-teal-500 to-cyan-500',      iconColor: 'text-emerald-500' },
-  'fill-blank':  { emoji: '✍️', gradient: 'from-amber-500 via-orange-500 to-rose-500',      iconColor: 'text-amber-500' },
   'true-false':  { emoji: '✅', gradient: 'from-rose-500 via-pink-500 to-fuchsia-500',      iconColor: 'text-rose-500' },
 };
 
@@ -251,8 +285,6 @@ const STRINGS: Record<Language, {
   meaningDesc: string;
   translationLabel: string;
   translationDesc: string;
-  fillBlankLabel: string;
-  fillBlankDesc: string;
   trueFalseLabel: string;
   trueFalseDesc: string;
   needChallenge: string;
@@ -262,6 +294,10 @@ const STRINGS: Record<Language, {
   eliminatedHeading: string;
   eliminatedSubline: string;
   outBadge: string;
+  winnerHeading: string;
+  winnerSubline: string;
+  winnerAnswered: string;
+  viewResultsBtn: string;
 
   startBtn: string;
   loadingWords: string;
@@ -277,7 +313,6 @@ const STRINGS: Record<Language, {
   pickHebrew: string;
   pickArabic: string;
   pickEnglish: string;
-  fillBlankPrompt: string;
   trueFalsePrompt: string;
   trueLabel: string;
   falseLabel: string;
@@ -321,8 +356,6 @@ const STRINGS: Record<Language, {
     meaningDesc: 'English → pick translation',
     translationLabel: 'Translation',
     translationDesc: 'Translation → pick English',
-    fillBlankLabel: 'Fill in the Blank',
-    fillBlankDesc: 'Sentence with missing word',
     trueFalseLabel: 'True or False',
     trueFalseDesc: 'Is this pair correct?',
     needChallenge: 'Pick at least one challenge type.',
@@ -331,6 +364,10 @@ const STRINGS: Record<Language, {
     eliminatedHeading: 'Out of the wheel',
     eliminatedSubline: 'is OUT!',
     outBadge: 'OUT',
+    winnerHeading: 'Winner!',
+    winnerSubline: 'Last one standing!',
+    winnerAnswered: 'answered',
+    viewResultsBtn: 'View Full Results',
     startBtn: 'Start the Wheel',
     loadingWords: 'Loading words…',
     spinBtn: 'SPIN',
@@ -343,7 +380,6 @@ const STRINGS: Record<Language, {
     pickHebrew: 'Pick the Hebrew translation',
     pickArabic: 'Pick the Arabic translation',
     pickEnglish: 'Pick the English word',
-    fillBlankPrompt: 'Fill the blank',
     trueFalsePrompt: 'Is this match correct?',
     trueLabel: 'TRUE',
     falseLabel: 'FALSE',
@@ -386,8 +422,6 @@ const STRINGS: Record<Language, {
     meaningDesc: 'אנגלית ← בחר תרגום',
     translationLabel: 'תרגום',
     translationDesc: 'תרגום ← בחר אנגלית',
-    fillBlankLabel: 'השלם את החסר',
-    fillBlankDesc: 'משפט עם מילה חסרה',
     trueFalseLabel: 'נכון או לא נכון',
     trueFalseDesc: 'האם הזוג נכון?',
     needChallenge: 'בחר לפחות סוג אתגר אחד.',
@@ -396,6 +430,10 @@ const STRINGS: Record<Language, {
     eliminatedHeading: 'הודח מהגלגל',
     eliminatedSubline: 'בחוץ!',
     outBadge: 'בחוץ',
+    winnerHeading: 'מנצח!',
+    winnerSubline: 'האחרון שנותר!',
+    winnerAnswered: 'תשובות',
+    viewResultsBtn: 'הצג תוצאות מלאות',
     startBtn: 'התחל את הגלגל',
     loadingWords: 'טוען מילים…',
     spinBtn: 'סובב',
@@ -408,7 +446,6 @@ const STRINGS: Record<Language, {
     pickHebrew: 'בחר את התרגום לעברית',
     pickArabic: 'בחר את התרגום לערבית',
     pickEnglish: 'בחר את המילה באנגלית',
-    fillBlankPrompt: 'השלם את המילה החסרה',
     trueFalsePrompt: 'האם ההתאמה נכונה?',
     trueLabel: 'נכון',
     falseLabel: 'לא נכון',
@@ -451,8 +488,6 @@ const STRINGS: Record<Language, {
     meaningDesc: 'إنجليزي ← اختر الترجمة',
     translationLabel: 'الترجمة',
     translationDesc: 'ترجمة ← اختر الإنجليزية',
-    fillBlankLabel: 'املأ الفراغ',
-    fillBlankDesc: 'جملة بكلمة ناقصة',
     trueFalseLabel: 'صح أم خطأ',
     trueFalseDesc: 'هل هذا الزوج صحيح؟',
     needChallenge: 'اختر نوع تحدي واحدًا على الأقل.',
@@ -461,6 +496,10 @@ const STRINGS: Record<Language, {
     eliminatedHeading: 'خارج العجلة',
     eliminatedSubline: 'خرج!',
     outBadge: 'خارج',
+    winnerHeading: 'الفائز!',
+    winnerSubline: 'الأخير المتبقي!',
+    winnerAnswered: 'إجابات',
+    viewResultsBtn: 'عرض النتائج الكاملة',
     startBtn: 'ابدأ العجلة',
     loadingWords: 'جارٍ تحميل الكلمات…',
     spinBtn: 'أدر',
@@ -473,7 +512,6 @@ const STRINGS: Record<Language, {
     pickHebrew: 'اختر الترجمة العبرية',
     pickArabic: 'اختر الترجمة العربية',
     pickEnglish: 'اختر الكلمة الإنجليزية',
-    fillBlankPrompt: 'املأ الكلمة الناقصة',
     trueFalsePrompt: 'هل التطابق صحيح؟',
     trueLabel: 'صحيح',
     falseLabel: 'خطأ',
@@ -516,8 +554,6 @@ const STRINGS: Record<Language, {
     meaningDesc: 'English → pick translation',
     translationLabel: 'Translation',
     translationDesc: 'Translation → pick English',
-    fillBlankLabel: 'Fill in the Blank',
-    fillBlankDesc: 'Sentence with missing word',
     trueFalseLabel: 'True or False',
     trueFalseDesc: 'Is this pair correct?',
     needChallenge: 'Pick at least one challenge type.',
@@ -526,6 +562,10 @@ const STRINGS: Record<Language, {
     eliminatedHeading: 'Out of the wheel',
     eliminatedSubline: 'is OUT!',
     outBadge: 'OUT',
+    winnerHeading: 'Winner!',
+    winnerSubline: 'Last one standing!',
+    winnerAnswered: 'answered',
+    viewResultsBtn: 'View Full Results',
     startBtn: 'Start the Wheel',
     loadingWords: 'Loading words…',
     spinBtn: 'SPIN',
@@ -538,7 +578,6 @@ const STRINGS: Record<Language, {
     pickHebrew: 'Pick the Hebrew translation',
     pickArabic: 'Pick the Arabic translation',
     pickEnglish: 'Pick the English word',
-    fillBlankPrompt: 'Fill the blank',
     trueFalsePrompt: 'Is this match correct?',
     trueLabel: 'TRUE',
     falseLabel: 'FALSE',
@@ -735,11 +774,6 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
             trueFalse: null,
           };
         }
-        if (kind === 'fill-blank') {
-          const q = buildFillBlankQuestion(word, pool);
-          if (q) return { kind, word, multiChoice: q, trueFalse: null };
-          continue;
-        }
         if (kind === 'true-false') {
           return {
             kind,
@@ -806,7 +840,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
       // Auto-speak the prompt word so the kid hears it before answering.
       // For reverse questions the prompt IS the translation, so don't
       // speak the English — we'd give away the answer.
-      if (q.kind === 'meaning' || q.kind === 'fill-blank' || q.kind === 'true-false') {
+      if (q.kind === 'meaning' || q.kind === 'true-false') {
         speak(q.word.id, q.word.english);
       }
     },
@@ -894,8 +928,23 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
   // answer, so both paths see the same setup.
   const startNextSpin = useCallback(() => {
     const fresh = playersRef.current.filter(p => !p.eliminated);
-    if (fresh.length <= 1) {
-      // One survivor (or zero) — the round is over, podium it.
+    if (fresh.length === 1) {
+      // Last student standing — celebrate them with the winner screen
+      // before dropping to the regular podium.
+      clearPendingTimers();
+      setEliminationBanner(null);
+      setPhase('winner');
+      const ctx = getAudioCtx();
+      if (ctx) playWinnerFanfare(ctx);
+      void celebrate('big');
+      // A couple of follow-up bursts so the confetti keeps falling for
+      // the full fanfare duration.
+      pendingTimersRef.current.push(window.setTimeout(() => void celebrate('big'), 900));
+      pendingTimersRef.current.push(window.setTimeout(() => void celebrate('normal'), 1800));
+      return;
+    }
+    if (fresh.length === 0) {
+      // Theoretical edge case — nobody left.  Skip to the podium.
       clearPendingTimers();
       setPhase('done');
       return;
@@ -908,7 +957,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
     submittedRef.current = false;
     setPhase('spinning');
     doSpin(fresh, allowedChallenges, wordPool);
-  }, [allowedChallenges, clearPendingTimers, doSpin, wordPool]);
+  }, [allowedChallenges, clearPendingTimers, doSpin, getAudioCtx, wordPool]);
 
   const handleSpin = () => {
     if (phase === 'spinning') return;
@@ -1196,7 +1245,6 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                   {([
                     { kind: 'meaning'     as ChallengeKind, label: t.meaningLabel,     desc: t.meaningDesc,     Icon: BookOpen },
                     { kind: 'translation' as ChallengeKind, label: t.translationLabel, desc: t.translationDesc, Icon: Languages },
-                    { kind: 'fill-blank'  as ChallengeKind, label: t.fillBlankLabel,   desc: t.fillBlankDesc,   Icon: FileText },
                     { kind: 'true-false'  as ChallengeKind, label: t.trueFalseLabel,   desc: t.trueFalseDesc,   Icon: MessageSquareQuote },
                   ]).map(opt => {
                     const active = allowedChallenges.has(opt.kind);
@@ -1270,7 +1318,6 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
     const challengeLabel: Record<ChallengeKind, string> = {
       'meaning': t.meaningLabel,
       'translation': t.translationLabel,
-      'fill-blank': t.fillBlankLabel,
       'true-false': t.trueFalseLabel,
     };
 
@@ -1545,8 +1592,8 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
     // options are HE/AR (rtl), for translation they're English (ltr),
     // for fill-blank options are English (ltr), for true-false the
     // shown translation is HE/AR (rtl).
-    const promptIsEnglish = activeQ.kind === 'meaning' || activeQ.kind === 'fill-blank' || activeQ.kind === 'true-false';
-    const optionsAreEnglish = activeQ.kind === 'translation' || activeQ.kind === 'fill-blank';
+    const promptIsEnglish = activeQ.kind === 'meaning' || activeQ.kind === 'true-false';
+    const optionsAreEnglish = activeQ.kind === 'translation';
     const promptDir = promptIsEnglish ? 'ltr' : 'rtl';
     const optionDir = optionsAreEnglish ? 'ltr' : 'rtl';
 
@@ -1573,7 +1620,6 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
               {pickedMeta.emoji} {{
                 'meaning': t.meaningLabel,
                 'translation': t.translationLabel,
-                'fill-blank': t.fillBlankLabel,
                 'true-false': t.trueFalseLabel,
               }[pickedChallenge]}
             </div>
@@ -1607,9 +1653,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
               <p className="mt-4 text-base sm:text-lg font-bold text-stone-600" dir={dir}>
                 {activeQ.kind === 'meaning'
                   ? (targetLang === 'hebrew' ? t.pickHebrew : t.pickArabic)
-                  : activeQ.kind === 'translation'
-                  ? t.pickEnglish
-                  : t.fillBlankPrompt}
+                  : t.pickEnglish}
               </p>
             </>
           )}
@@ -1790,6 +1834,109 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // ── WINNER — last student standing ─────────────────────────
+  // ════════════════════════════════════════════════════════════
+  if (phase === 'winner') {
+    const winner = activePlayers[0];
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500"
+        dir={dir}
+      >
+        {/* Soft radial halo behind the name to lift it off the
+            gradient bg without going full-on glow. */}
+        <div className="absolute inset-0 pointer-events-none opacity-50"
+             style={{ background: 'radial-gradient(circle at 50% 40%, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 60%)' }}
+             aria-hidden />
+
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center relative z-10 max-w-3xl"
+        >
+          {/* Big trophy */}
+          <motion.div
+            initial={{ scale: 0.4, rotate: -20 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', damping: 12, stiffness: 200, delay: 0.1 }}
+            className="text-9xl sm:text-[10rem] mb-4 inline-block"
+            style={{ filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.25))' }}
+          >
+            🏆
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-sm sm:text-base font-black uppercase tracking-[0.4em] text-white/90 mb-2"
+          >
+            {t.winnerHeading}
+          </motion.p>
+
+          <motion.h1
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', damping: 14, stiffness: 220, delay: 0.5 }}
+            className="text-6xl sm:text-8xl md:text-9xl font-black text-white break-words leading-tight"
+            style={{ textShadow: '0 4px 16px rgba(0,0,0,0.3)' }}
+          >
+            {winner?.name ?? ''}
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9 }}
+            className="text-xl sm:text-3xl font-black text-white/95 mt-3"
+          >
+            {t.winnerSubline}
+          </motion.p>
+
+          {winner && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.1 }}
+              className="mt-6 inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/20 backdrop-blur text-white font-black text-base"
+            >
+              <span>✓ {winner.correct}</span>
+              <span className="opacity-60">·</span>
+              <span>{winner.total} {t.winnerAnswered}</span>
+            </motion.div>
+          )}
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.4 }}
+            className="mt-8 flex items-center justify-center gap-3 flex-wrap"
+          >
+            <button
+              type="button"
+              onClick={() => setPhase('done')}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              className="px-6 py-3.5 rounded-xl bg-white text-orange-600 font-black text-base shadow-lg active:scale-[0.98] transition flex items-center gap-2"
+            >
+              <Trophy size={18} />
+              {t.viewResultsBtn}
+            </button>
+            <button
+              type="button"
+              onClick={onExit}
+              style={{ touchAction: 'manipulation' }}
+              className="px-5 py-3.5 rounded-xl bg-white/15 text-white border-2 border-white/30 font-black text-base hover:bg-white/25 active:scale-[0.98] transition"
+            >
+              {t.done}
+            </button>
+          </motion.div>
+        </motion.div>
       </div>
     );
   }
