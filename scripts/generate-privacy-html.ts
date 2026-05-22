@@ -48,18 +48,29 @@ const subProcessorRows = THIRD_PARTY_REGISTRY.map(
     </tr>`,
 ).join("");
 
-const crossBorderRows = THIRD_PARTY_REGISTRY.map(
-  (p) => `
-    <tr>
-      <td>${escape(p.hostingRegion)}</td>
-      <td>${escape(p.name)}</td>
-      <td>${escape(
+const MECHANISM_LABEL: Record<string, string> = {
+  dpf: "EU-US Data Privacy Framework (DPF) certified",
+  scc: "EU Standard Contractual Clauses (2021/914)",
+  adequacy: "EU adequacy decision (intra-EEA)",
+  consent: "Art. 49(1)(a) explicit consent",
+  "not-required": "No personal data transferred",
+};
+
+const crossBorderRows = THIRD_PARTY_REGISTRY.map((p) => {
+  const safeguard = p.transfer
+    ? `${escape(MECHANISM_LABEL[p.transfer.mechanism] ?? p.transfer.mechanism)} — verify at <a href="${escape(p.transfer.verificationUrl)}" target="_blank" rel="noopener">vendor record</a>. DPA: <a href="${escape(p.transfer.dpaUrl)}" target="_blank" rel="noopener">link</a>. TIA risk: ${escape(p.transfer.tiaRisk)}. Last reviewed: ${escape(p.transfer.lastReviewed)}.`
+    : escape(
         p.processorOnly
           ? "Processor under DPA; encryption in transit + at rest"
           : "Independent controller for this surface; encryption in transit",
-      )}</td>
-    </tr>`,
-).join("");
+      );
+  return `
+    <tr>
+      <td>${escape(p.hostingRegion)}</td>
+      <td>${escape(p.name)}</td>
+      <td>${safeguard}</td>
+    </tr>`;
+}).join("");
 
 const storageRows = Object.entries(CLIENT_STORAGE_KEYS)
   .map(
@@ -220,11 +231,11 @@ const html = `<!DOCTYPE html>
 
   <!-- Section 7: Cross-Border Transfers -->
   <h2>7. Cross-Border Data Transfers</h2>
-  <p>Some processing occurs outside Israel. Below is the destination for each sub-processor, with safeguards in place:</p>
+  <p>Some processing occurs outside Israel and the EEA. Below is the destination for each sub-processor, with the lawful transfer mechanism (under GDPR Chapter V + Schrems II), the vendor's published Data Processing Agreement, the result of our per-vendor Transfer Impact Assessment (TIA), and the date the mechanism was last reviewed:</p>
   <table class="table">
-    <tr><th>Destination</th><th>Service</th><th>Safeguards</th></tr>${crossBorderRows}
+    <tr><th>Destination</th><th>Service</th><th>Safeguards &amp; transfer mechanism</th></tr>${crossBorderRows}
   </table>
-  <p>All transfers use Standard Contractual Clauses or the processor's equivalent, plus encryption in transit (TLS 1.3) and at rest.</p>
+  <p>All transfers additionally use encryption in transit (TLS 1.3) and at rest. For the full transfer register, change history, and subscription instructions, see the human-readable companion doc <a href="https://github.com/ward3107/vocaband/blob/main/docs/SUBPROCESSORS.md" target="_blank" rel="noopener">docs/SUBPROCESSORS.md</a>.</p>
 
   <!-- Section 8: Your Rights -->
   <h2>8. Your Rights (Data Subject Rights)</h2>
