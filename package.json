@@ -66,6 +66,7 @@
     "pptxgenjs": "^4.0.1",
     "qrcode-generator": "^2.0.4",
     "qrcode.react": "^4.2.0",
+    "rate-limit-redis": "^5.0.0",
     "react": "^19.2.6",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.6",

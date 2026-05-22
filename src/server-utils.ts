@@ -41,6 +41,49 @@ export function isValidToken(value: unknown): value is string {
     && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value);
 }
 
+// ─── Retry helper ───────────────────────────────────────────────────────────
+
+// Background task retry with exponential backoff. Used to make
+// fire-and-forget cache writes durable: an AI response is already returned
+// to the user, but we want to persist it to the cache so the next identical
+// request hits the cache instead of re-paying Anthropic/Gemini.  A transient
+// Supabase blip would otherwise discard the result silently.
+//
+// Defaults: 3 attempts, 200 ms / 400 ms / 800 ms backoff. Total worst-case
+// 1.4 s, fully off the request path. After the final attempt, the failure
+// is logged but never thrown — the user already got their response.
+export interface WithRetryOptions {
+  attempts?: number;
+  baseDelayMs?: number;
+  label?: string;
+  onFinalFailure?: (err: unknown) => void;
+}
+
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  opts: WithRetryOptions = {}
+): Promise<T | null> {
+  const attempts = opts.attempts ?? 3;
+  const base = opts.baseDelayMs ?? 200;
+  const label = opts.label ?? "withRetry";
+  let lastErr: unknown = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        const delay = base * Math.pow(2, i);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+  const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+  console.warn(`[${label}] failed after ${attempts} attempts: ${msg}`);
+  opts.onFinalFailure?.(lastErr);
+  return null;
+}
+
 // ─── Rate limiter ───────────────────────────────────────────────────────────
 
 export function createSocketRateLimiter(windowMs: number, maxAttempts: number, cleanupIntervalMs: number) {

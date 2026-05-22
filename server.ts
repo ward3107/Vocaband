@@ -44,6 +44,7 @@ import path from "path";
 import { createHash } from "crypto";
 import helmet from "helmet";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import { RedisStore } from "rate-limit-redis";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import { createAdapter } from "@socket.io/redis-adapter";
@@ -63,7 +64,7 @@ import {
   CLOUDFLARE_IPV6_RANGES,
   LAST_REFRESHED_UTC as CLOUDFLARE_IPS_LAST_REFRESHED_UTC,
 } from "./config/cloudflare-ips";
-import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter } from "./src/server-utils";
+import { isValidClassCode, isValidName, isValidUid, isValidToken, createSocketRateLimiter, withRetry } from "./src/server-utils";
 import {
   QUICK_PLAY_NS,
   QP_EVENTS,
@@ -756,6 +757,36 @@ async function startServer() {
     console.log("[redis-adapter] REDIS_URL not set — running single-VM (fine for dev / single-instance prod)");
   }
 
+  // ─── Shared rate-limit factory ─────────────────────────────────────────
+  // Backs every express-rate-limit instance with the same Upstash Redis
+  // that powers the socket.io adapter. Without this, each Fly VM kept its
+  // own in-memory counter — a user hitting the limit on VM-A could simply
+  // retry, land on VM-B, and proceed (the "5/min/user" guarantee silently
+  // degrading to "5/min/user-per-machine" once we passed 1 VM).
+  //
+  // Graceful fallback: if Redis is unset OR the adapter failed to attach,
+  // we still hand back a working limiter using the default memory store.
+  // That keeps dev + single-VM prod unchanged, and means a Redis outage
+  // degrades multi-VM mode to "best effort" instead of breaking the
+  // whole server. Each call gets ~3 Redis ops (INCR + EXPIRE + GET); even
+  // at 10k req/s that's well under Upstash free-tier limits.
+  type RateLimitOpts = Parameters<typeof rateLimit>[0];
+  function createSharedRateLimit(opts: RateLimitOpts) {
+    if (redisPubClient && redisAdapterStatus === "attached") {
+      return rateLimit({
+        ...opts,
+        store: new RedisStore({
+          // node-redis v4 sendCommand returns Promise<unknown>; rate-limit-redis
+          // accepts any callable matching this shape via Promise<string | null>.
+          // The runtime types align; the cast quiets the TS overload mismatch.
+          sendCommand: ((...args: string[]) => redisPubClient!.sendCommand(args)) as never,
+          prefix: "rl:",
+        }),
+      });
+    }
+    return rateLimit(opts);
+  }
+
   // 3002 in dev so the Vite proxy (on 5173) can reach us without
   // colliding with sibling projects that already use 3000/3001.
   // Production still respects $PORT from Fly.io.
@@ -866,8 +897,10 @@ async function startServer() {
     });
 
     // Rate limit page/API requests per IP — skip static assets (JS/CSS/images/fonts)
-    // so a classroom of 100+ students behind one IP can all load the app smoothly
-    app.use(rateLimit({
+    // so a classroom of 100+ students behind one IP can all load the app smoothly.
+    // Uses the Redis-backed shared store so the cap is enforced across all
+    // Fly VMs (single bucket of 200/min/IP), not per-VM.
+    app.use(createSharedRateLimit({
       windowMs: 60 * 1000,
       max: 200,
       standardHeaders: true,
@@ -915,7 +948,7 @@ async function startServer() {
   });
 
   // OCR-specific rate limiter (per-teacher, not per-IP)
-  const ocrRateLimiter = rateLimit({
+  const ocrRateLimiter = createSharedRateLimit({
     windowMs: 60 * 1000,
     max: 10,
     standardHeaders: true,
@@ -928,7 +961,7 @@ async function startServer() {
   // teacher will hit /api/translate a handful of times per assignment; a
   // spammer churning through Gemini quota will hit hundreds.  We also log
   // the offender so abuse patterns show up in Render logs for follow-up.
-  const translateRateLimiter = rateLimit({
+  const translateRateLimiter = createSharedRateLimit({
     windowMs: 60 * 1000,
     max: 30,
     standardHeaders: true,
@@ -2143,6 +2176,25 @@ async function startServer() {
       });
     }
 
+    // Quota check — daily cap per teacher via ai_usage_counters.
+    // translation_batch counts WORDS (matches the schema's cost model),
+    // so the limit naturally scales with how much work a teacher actually
+    // makes Gemini do, not just request count.
+    if (supabaseAdmin) {
+      try {
+        const { data: overQuota } = await supabaseAdmin.rpc("check_ai_quota", {
+          p_teacher_uid: uid,
+          p_action: "translation_batch",
+          p_plan: "free",
+        });
+        if (overQuota === true) {
+          return res.status(429).json({ error: "Daily translation quota exceeded. Try again tomorrow." });
+        }
+      } catch (quotaErr) {
+        console.warn(`[translate] quota check failed:`, (quotaErr as Error)?.message || quotaErr);
+      }
+    }
+
     // ── Cache layer ──────────────────────────────────────────────────────
     // Before paying the AI tax, consult public.translation_cache. Same
     // word translated by 1,000 teachers should be 1 API call, not 1,000.
@@ -2280,12 +2332,15 @@ ${JSON.stringify(uncachedOriginalCase)}`;
             if (ru) rows.push({ source_lang: 'en', source_text: norm, target_lang: 'ru', translation: ru });
           }
           if (rows.length > 0) {
-            void supabaseAdmin
-              .from('translation_cache')
-              .upsert(rows, { onConflict: 'source_lang,source_text,target_lang' })
-              .then(({ error: upsertErr }) => {
-                if (upsertErr) console.warn('[translate] cache upsert failed:', upsertErr.message);
-              });
+            void withRetry(
+              async () => {
+                const { error: upsertErr } = await supabaseAdmin!
+                  .from('translation_cache')
+                  .upsert(rows, { onConflict: 'source_lang,source_text,target_lang' });
+                if (upsertErr) throw upsertErr;
+              },
+              { label: 'translate:cache-upsert' }
+            );
           }
         }
       } catch (error: any) {
@@ -2329,7 +2384,26 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     // Read in logs to confirm the cache is actually doing its job.
     const totalWords = validWords.length;
     const fullyCached = totalWords - uncachedNormalized.length;
+    const billableWords = uncachedNormalized.length;
     console.info(`[translate] cache_hit=${fullyCached}/${totalWords} uid=${uid}`);
+
+    // Bump per-teacher quota counter — count words that actually hit Gemini
+    // (cache hits cost us nothing). Telemetry failure is non-fatal.
+    if (supabaseAdmin && billableWords > 0) {
+      try {
+        await supabaseAdmin.rpc("bump_ai_usage", {
+          p_teacher_uid: uid,
+          p_action: "translation_batch",
+          p_count: billableWords,
+          // 3 target langs per word × Gemini Flash Lite ~ $0.10/1M input + $0.40/1M output;
+          // very rough average ~$0.00005/word = 50 micro-USD.
+          p_cost_micro_usd: billableWords * 50,
+          p_plan_at_action: "free",
+        });
+      } catch (bumpErr) {
+        console.warn(`[translate] usage bump failed:`, (bumpErr as Error)?.message || bumpErr);
+      }
+    }
 
     return res.json({ hebrew, arabic, russian });
   });
@@ -2536,6 +2610,22 @@ ${JSON.stringify(uncachedOriginalCase)}`;
       return res.status(400).json({ error: "No image file uploaded, or invalid file type." });
     }
 
+    // Quota check — daily ocr_image cap via ai_usage_counters.
+    if (supabaseAdmin) {
+      try {
+        const { data: overQuota } = await supabaseAdmin.rpc("check_ai_quota", {
+          p_teacher_uid: auth.uid,
+          p_action: "ocr_image",
+          p_plan: "free",
+        });
+        if (overQuota === true) {
+          return res.status(429).json({ error: "Daily OCR quota exceeded. Try again tomorrow." });
+        }
+      } catch (quotaErr) {
+        console.warn(`[ocr] quota check failed:`, (quotaErr as Error)?.message || quotaErr);
+      }
+    }
+
     // OCR powered by Google Gemini Flash (free tier: 1500 requests/day).
     // Gemini accepts images up to 20MB and handles HEIC/HEIF natively —
     // no base64 encoding, no size limits, no browser compression needed.
@@ -2692,6 +2782,21 @@ Quality rules:
       const sizeKB = Math.round(req.file.size / 1024);
       console.log(`[OCR] uid=${auth.uid} lang=${lang}: Gemini Flash found ${uniqueWords.length} ${lang === "he" ? "Hebrew" : "English"} items (image: ${sizeKB} KB, ${mimeType})`);
 
+      // Bump per-teacher OCR counter. One call = one unit, regardless of word count.
+      if (supabaseAdmin) {
+        try {
+          await supabaseAdmin.rpc("bump_ai_usage", {
+            p_teacher_uid: auth.uid,
+            p_action: "ocr_image",
+            p_count: 1,
+            p_cost_micro_usd: 500, // Gemini 2.5 Flash multimodal ~$0.0005/img
+            p_plan_at_action: "free",
+          });
+        } catch (bumpErr) {
+          console.warn(`[ocr] usage bump failed:`, (bumpErr as Error)?.message || bumpErr);
+        }
+      }
+
       res.json({
         words: uniqueWords,
         raw_text: responseText,
@@ -2732,7 +2837,7 @@ Quality rules:
   // Called fire-and-forget from the client right after custom words are
   // created, so the teacher never waits on it. By the time students start
   // playing an assignment, the files are in place.
-  const ttsCustomLimiter = rateLimit({
+  const ttsCustomLimiter = createSharedRateLimit({
     windowMs: 60 * 1000,
     max: 20,
     standardHeaders: true,
@@ -2926,7 +3031,7 @@ Quality rules:
   // sessions are designed to be public-by-code (anyone with the QR
   // can join), and we only return rows where is_active=true.  Rate
   // limited to make code-guessing painful.
-  const qpSessionLimiter = rateLimit({
+  const qpSessionLimiter = createSharedRateLimit({
     windowMs: 60 * 1000,
     max: 60, // 60 lookups/min/IP — generous for a classroom of 30
     standardHeaders: true,
@@ -2968,7 +3073,7 @@ Quality rules:
   });
 
   // AI sentence generation — rate limited per teacher
-  const aiRateLimiter = rateLimit({
+  const aiRateLimiter = createSharedRateLimit({
     windowMs: 60 * 1000,
     max: 10,
     standardHeaders: true,
@@ -3571,11 +3676,31 @@ Return JSON: an array, one item per word, each with { word, distractors: [string
   });
 
   app.post("/api/generate-sentences", aiRateLimiter, async (req, res) => {
-    if (!(await requireProTeacher(req, res))) return;
+    const auth = await requireProTeacher(req, res);
+    if (!auth) return;
+    const { uid } = auth;
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return res.status(503).json({ error: "AI sentence generation not configured" });
+    }
+
+    // Quota check — daily cap per teacher via ai_usage_counters.
+    // Shared bucket with the vocabulary-library sentence-gen endpoint
+    // (both produce sentences from words; one quota line is enough).
+    if (supabaseAdmin) {
+      try {
+        const { data: overQuota } = await supabaseAdmin.rpc("check_ai_quota", {
+          p_teacher_uid: uid,
+          p_action: "ai_generate_sentences",
+          p_plan: "free",
+        });
+        if (overQuota === true) {
+          return res.status(429).json({ error: "Daily sentence-generation quota exceeded. Try again tomorrow." });
+        }
+      } catch (quotaErr) {
+        console.warn(`[generate-sentences] quota check failed:`, (quotaErr as Error)?.message || quotaErr);
+      }
     }
 
     const { words, difficulty } = req.body;
@@ -3662,18 +3787,42 @@ Examples of good vs bad sentences:
           const sentence = sanitizeAiOutput(raw) || `I like the word ${uncachedWords[i]}.`;
           cached[uncachedWords[i].toLowerCase()] = sentence;
 
-          // Store in cache (fire and forget)
+          // Store in cache — retry to survive transient Supabase blips
+          // (avoids re-paying Anthropic for the same word on the next request).
           if (supabaseAdmin) {
-            supabaseAdmin
-              .from("sentence_cache")
-              .upsert({ word: uncachedWords[i].toLowerCase(), difficulty: diff, sentence }, { onConflict: "word,difficulty" })
-              .then(() => {});
+            const word = uncachedWords[i].toLowerCase();
+            void withRetry(
+              async () => {
+                const { error: upsertErr } = await supabaseAdmin!
+                  .from("sentence_cache")
+                  .upsert({ word, difficulty: diff, sentence }, { onConflict: "word,difficulty" });
+                if (upsertErr) throw upsertErr;
+              },
+              { label: 'sentence_cache:upsert' }
+            );
           }
         }
       }
 
       // Return sentences in the same order as input
       const sentences = validWords.map((w: string) => cached[w.toLowerCase()] || `I like the word ${w}.`);
+
+      // Bump per-teacher quota counter only when we actually paid Anthropic
+      // (i.e. at least one word missed the cache). One batch = one unit.
+      if (supabaseAdmin && uncachedWords.length > 0) {
+        try {
+          await supabaseAdmin.rpc("bump_ai_usage", {
+            p_teacher_uid: uid,
+            p_action: "ai_generate_sentences",
+            p_count: 1,
+            p_cost_micro_usd: 5000, // Haiku 4.5 ~$0.005 conservative for a 50-word batch
+            p_plan_at_action: "free",
+          });
+        } catch (bumpErr) {
+          console.warn(`[generate-sentences] usage bump failed:`, (bumpErr as Error)?.message || bumpErr);
+        }
+      }
+
       return res.json({ sentences });
     } catch (error: any) {
       console.error("AI generation error:", error?.message || error);
@@ -4111,7 +4260,7 @@ Important notes:
   // English teachers will batch — generate a week of tests for several
   // classes in one sitting.  Per-token (per-teacher) limits intentionally
   // higher than the sentence generator.
-  const bagrutHourLimiter = rateLimit({
+  const bagrutHourLimiter = createSharedRateLimit({
     windowMs: 60 * 60 * 1000,
     max: 30,
     standardHeaders: true,
@@ -4119,7 +4268,7 @@ Important notes:
     message: { error: "You've generated 30 mock exams in the last hour. Take a break and try again shortly." },
     keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
   });
-  const bagrutDayLimiter = rateLimit({
+  const bagrutDayLimiter = createSharedRateLimit({
     windowMs: 24 * 60 * 60 * 1000,
     max: 200,
     standardHeaders: true,
@@ -4188,6 +4337,25 @@ Important notes:
 
     const model = MODEL_BY_MODULE[moduleTyped];
     const cacheKey = bagrutCacheKey(moduleTyped, model, sanitized);
+
+    // Quota check — daily cap per teacher via ai_usage_counters.
+    // Bagrut already has its own hour + day limiters (100/h, 200/day) at
+    // the request level, but those are per-IP. ai_generate_questions adds
+    // a per-teacher daily cap that survives IP rotation.
+    if (supabaseAdmin) {
+      try {
+        const { data: overQuota } = await supabaseAdmin.rpc("check_ai_quota", {
+          p_teacher_uid: auth.uid,
+          p_action: "ai_generate_questions",
+          p_plan: "free",
+        });
+        if (overQuota === true) {
+          return res.status(429).json({ error: "Daily Bagrut-generation quota exceeded. Try again tomorrow." });
+        }
+      } catch (quotaErr) {
+        console.warn(`[bagrut] quota check failed:`, (quotaErr as Error)?.message || quotaErr);
+      }
+    }
 
     // ── Cache lookup ────────────────────────────────────────────────
     if (supabaseAdmin) {
@@ -4273,17 +4441,38 @@ Important notes:
       return res.status(502).json({ error: "Generation failed validation", detail: lastError });
     }
 
-    // ── Cache write (fire-and-forget) ───────────────────────────────
+    // ── Cache write — retry on transient Supabase failure (compounds
+    // with C4 cost cap if dropped: same expensive generation would re-run).
     if (supabaseAdmin) {
-      supabaseAdmin
-        .from("bagrut_cache")
-        .upsert({
-          cache_key: cacheKey,
-          module: moduleTyped,
-          model,
-          content: validated,
-        }, { onConflict: "cache_key" })
-        .then(() => {});
+      void withRetry(
+        async () => {
+          const { error: upsertErr } = await supabaseAdmin!
+            .from("bagrut_cache")
+            .upsert({
+              cache_key: cacheKey,
+              module: moduleTyped,
+              model,
+              content: validated,
+            }, { onConflict: "cache_key" });
+          if (upsertErr) throw upsertErr;
+        },
+        { label: 'bagrut_cache:upsert' }
+      );
+
+      // Bump per-teacher quota counter. Bagrut tests are the single most
+      // expensive Anthropic call we make (≈ $0.05/test), so the counter
+      // is the early-warning system for runaway spend.
+      try {
+        await supabaseAdmin.rpc("bump_ai_usage", {
+          p_teacher_uid: auth.uid,
+          p_action: "ai_generate_questions",
+          p_count: 1,
+          p_cost_micro_usd: 50000, // Sonnet 4.7 mock-test gen ~$0.05 per call (incl. prompt cache discount)
+          p_plan_at_action: "free",
+        });
+      } catch (bumpErr) {
+        console.warn(`[bagrut] usage bump failed:`, (bumpErr as Error)?.message || bumpErr);
+      }
     }
 
     return res.json({ test: validated, cached: false, model });
@@ -4292,7 +4481,7 @@ Important notes:
   // Per-student rate limit for bagrut submissions/lookups. A real student
   // submits a single test once and reviews it a few times. Anything beyond
   // 60/min/token is either retry-storm or scripted abuse — drop it.
-  const bagrutStudentLimiter = rateLimit({
+  const bagrutStudentLimiter = createSharedRateLimit({
     windowMs: 60 * 1000,
     max: 60,
     standardHeaders: true,
