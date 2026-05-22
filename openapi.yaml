@@ -1,0 +1,684 @@
+openapi: 3.1.0
+info:
+  title: Vocaband REST API
+  version: 1.0.0
+  description: |
+    REST endpoints served by the Fly.io backend (`server.ts`).
+    All endpoints sit behind the Cloudflare Worker proxy at `vocaband.com/api/*`.
+
+    ## Authentication
+    Most endpoints require a Supabase JWT in the `Authorization: Bearer <token>`
+    header.  Tokens are issued by Supabase Auth via Google OAuth (teachers)
+    or anonymous sign-in (Quick Play guests).  Verification is local (JWKS)
+    starting May 2026 — see `docs/load-test-report-2026-05-21.md`.
+
+    ## Rate limiting
+    Tiered per-endpoint via `express-rate-limit`.  Limits documented under
+    each operation.  Global limiter wraps everything at 1000 req/min/IP.
+
+    ## Errors
+    All errors return JSON `{ "error": "message" }` with appropriate HTTP
+    status (400 malformed, 401 unauthenticated, 403 forbidden, 429 rate
+    limited, 500 internal, 503 dependency unavailable).
+  contact:
+    name: Vocaband Engineering
+    url: https://www.vocaband.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://www.vocaband.com
+    description: Production (Cloudflare Worker → Fly.io)
+  - url: https://vocaband-staging-honeyed-brook-4330.fly.dev
+    description: Staging Fly app (direct, no Worker)
+  - url: http://localhost:3002
+    description: Local dev (vite proxy points here for /api/*)
+
+tags:
+  - name: Health
+    description: Liveness and dependency probes; no auth required
+  - name: AI
+    description: Server-side AI calls (Gemini + Claude); teacher-only, rate-limited
+  - name: Library
+    description: Vocabulary Library AI helpers (sentence + distractor generation)
+  - name: Quick Play
+    description: Live classroom QR-join session lookup
+  - name: Bagrut
+    description: Israeli matriculation mock-exam generation + grading (premium feature)
+  - name: OCR
+    description: Image-to-text for word list uploads
+  - name: TTS
+    description: Text-to-speech for custom words
+  - name: Feature flags
+    description: Server-controlled feature toggles
+  - name: Public
+    description: Public files (sitemap, security.txt, sw.js) — not application APIs
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ──────────────────────────── Health ────────────────────────────
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      description: Returns 200 if the Fly.io process is up. Used by Fly's health checker every 30s.
+      security: []  # no auth
+      responses:
+        '200':
+          description: Server is up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/health/audit-log:
+    get:
+      tags: [Health]
+      summary: Audit-log immutability check
+      description: |
+        Confirms the audit-log triggers from migration `20260518120000` are
+        still attached.  Used to verify Reg 2017 § 8 compliance — append-only
+        audit log.
+      security: []
+      responses:
+        '200':
+          description: Trigger presence report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  triggers_present: { type: boolean }
+                  checked_at: { type: string, format: date-time }
+
+  /api/health/redis:
+    get:
+      tags: [Health]
+      summary: Redis adapter health
+      description: |
+        Confirms `@socket.io/redis-adapter` connected to the configured
+        `REDIS_URL`.  Required for multi-VM socket.io broadcasts.
+      security: []
+      responses:
+        '200':
+          description: Redis is connected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connected: { type: boolean }
+                  url_host: { type: string, description: "Redacted Redis host" }
+
+  # ──────────────────────────── AI ────────────────────────────────
+  /api/translate:
+    post:
+      tags: [AI]
+      summary: Translate English words to Hebrew/Arabic/Russian
+      description: |
+        Batch-translates English vocabulary.  Hits Gemini after a
+        `translation_cache` lookup so repeat words are free.
+        Anonymous Supabase users are rejected — must be authenticated
+        teacher or student.
+      x-rate-limit: 30/min per token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [words]
+              properties:
+                words:
+                  type: array
+                  items: { type: string }
+                  minItems: 1
+                  maxItems: 100
+                  description: English words to translate (capped at 100 per request)
+      responses:
+        '200':
+          description: Translation results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        english: { type: string }
+                        hebrew: { type: string }
+                        arabic: { type: string }
+                        russian: { type: string, nullable: true }
+                        match: { type: number, format: float, minimum: 0, maximum: 1 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Anonymous user — must sign in
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+
+  /api/ai-process-text:
+    post:
+      tags: [AI]
+      summary: Extract vocabulary words from arbitrary text
+      description: Teacher-only. Pastes text → returns candidate words.
+      x-rate-limit: 10/min per token (aiRateLimiter)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 50000 }
+      responses:
+        '200':
+          description: Extracted word candidates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  words:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        english: { type: string }
+                        hebrew: { type: string }
+                        arabic: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Caller is not a teacher
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/ai-generate-lesson:
+    post:
+      tags: [AI]
+      summary: Generate a lesson plan around a word list
+      description: Teacher-only AI lesson plan generation using Gemini.
+      x-rate-limit: 10/min per token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [words, level]
+              properties:
+                words:
+                  type: array
+                  items: { type: string }
+                level:
+                  type: string
+                  enum: [A1, A2, B1, B2]
+                topic: { type: string, nullable: true }
+      responses:
+        '200':
+          description: Generated lesson
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lesson: { type: string, description: "Markdown lesson body" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Not a teacher
+
+  /api/generate-sentences:
+    post:
+      tags: [AI]
+      summary: Generate example sentences for a word list (legacy)
+      description: |
+        Older endpoint, used by Sentence Builder game mode. Library setup
+        flow uses `/api/library/generate-sentences` instead.
+      x-rate-limit: 10/min per token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [words]
+              properties:
+                words:
+                  type: array
+                  items: { type: string }
+                difficulty:
+                  type: integer
+                  enum: [1, 2, 3, 4]
+                  default: 2
+      responses:
+        '200':
+          description: Sentences keyed by word
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+
+  # ──────────────────────────── Library ───────────────────────────
+  /api/library/generate-sentences:
+    post:
+      tags: [Library, AI]
+      summary: Generate example sentences for a Vocabulary Library set
+      description: |
+        Teacher-only.  Generates candidate sentences for each word in
+        `setId`.  Output stored in `vocabulary_set_word_sentences`.
+      x-rate-limit: 10/min per token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [setId]
+              properties:
+                setId: { type: string, format: uuid }
+                level:
+                  type: string
+                  enum: [A1, A2, B1, B2]
+                  default: A2
+                candidateCount:
+                  type: integer
+                  minimum: 1
+                  maximum: 3
+                  default: 3
+                wordIds:
+                  type: array
+                  items: { type: string }
+                  maxItems: 60
+                  description: "Optional: regenerate only these word ids"
+      responses:
+        '200':
+          description: Sentences saved + returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  generated_count: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Non-teacher caller
+
+  /api/library/generate-distractors:
+    post:
+      tags: [Library, AI]
+      summary: Generate wrong-answer distractors for a set's words
+      description: |
+        Teacher-only.  Used by multiple-choice game modes (Classic, Reverse,
+        True/False).  Output stored in vocabulary_set_words.metadata.
+      x-rate-limit: 10/min per token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [setId]
+              properties:
+                setId: { type: string, format: uuid }
+      responses:
+        '200': { description: Distractors saved }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Non-teacher caller
+
+  # ──────────────────────────── Quick Play ────────────────────────
+  /api/quick-play/session/:code:
+    get:
+      tags: [Quick Play]
+      summary: Anonymous Quick Play session lookup (QR-scan fallback)
+      description: |
+        Public endpoint that returns the active session row.  Used by
+        `useQuickPlayUrlBootstrap` when the direct Supabase REST path fails
+        (anonymous sign-ins disabled OR the anon SELECT policy missing).
+
+        Session codes are 6 chars from a 32-char alphabet (no I/O/0/1).
+        Anything malformed is rejected at the input layer before the DB hit.
+      security: []
+      x-rate-limit: 60/min per IP
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-HJ-NP-Z2-9]{6}$'
+            example: PNTUM6
+      responses:
+        '200':
+          description: Active session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuickPlaySession'
+        '400':
+          description: Malformed session code
+        '404':
+          description: No active session under that code
+        '500':
+          description: Supabase lookup failed
+
+  # ──────────────────────────── OCR ────────────────────────────────
+  /api/ocr:
+    post:
+      tags: [OCR]
+      summary: Extract words from an uploaded image
+      description: |
+        Teacher-only.  Multipart upload — single image up to 10 MB.
+        Backed by Google Vision (or Gemini Vision fallback).
+      x-rate-limit: 5/min per token
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: PNG / JPG, ≤10 MB
+      responses:
+        '200':
+          description: Extracted words
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  words:
+                    type: array
+                    items: { type: string }
+                  raw_text: { type: string }
+
+  /api/ocr/status:
+    get:
+      tags: [OCR]
+      summary: OCR backend health
+      security: []
+      responses:
+        '200':
+          description: OCR backend status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  google_vision: { type: boolean }
+                  gemini_fallback: { type: boolean }
+
+  /api/ocr/diagnostic:
+    get:
+      tags: [OCR]
+      summary: OCR self-diagnostic
+      security: []
+      responses:
+        '200':
+          description: Diagnostic info
+
+  # ──────────────────────────── TTS ────────────────────────────────
+  /api/tts/custom-words:
+    post:
+      tags: [TTS]
+      summary: Generate MP3 audio for custom (teacher-uploaded) words
+      description: |
+        Teacher-only.  Synthesizes English audio via Google TTS, uploads
+        to R2 (audio.vocaband.com), returns the public URLs.
+      x-rate-limit: 5/min per token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [words]
+              properties:
+                words:
+                  type: array
+                  items: { type: string }
+                  maxItems: 50
+      responses:
+        '200':
+          description: Audio URLs keyed by word
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uri
+
+  # ──────────────────────────── Bagrut ────────────────────────────
+  /api/generate-bagrut:
+    post:
+      tags: [Bagrut, AI]
+      summary: Generate a Bagrut mock exam
+      description: |
+        Premium feature — caller must be in `ai_allowlist`.  Uses Claude
+        (Anthropic) for the high-quality exam content.
+      x-rate-limit: tight daily + hourly caps; ~5/day per teacher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [module, words]
+              properties:
+                module:
+                  type: string
+                  enum: [A, B, C, D, E]
+                  description: "v1 supports A, B, C"
+                words:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          description: Generated exam
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BagrutExam'
+        '403':
+          description: Not in ai_allowlist (premium-only)
+
+  /api/submit-bagrut:
+    post:
+      tags: [Bagrut]
+      summary: Submit a Bagrut exam attempt for grading
+      x-rate-limit: per-student limiter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [examId, answers]
+              properties:
+                examId: { type: string, format: uuid }
+                answers:
+                  type: object
+                  additionalProperties: { type: string }
+      responses:
+        '200':
+          description: Grading result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  score: { type: integer, minimum: 0, maximum: 100 }
+                  feedback: { type: string }
+
+  /api/student-bagrut/:id:
+    get:
+      tags: [Bagrut]
+      summary: Fetch a student's Bagrut attempt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Bagrut attempt detail
+        '404':
+          description: Not found
+
+  # ──────────────────────────── Feature flags / version ───────────
+  /api/features:
+    get:
+      tags: [Feature flags]
+      summary: Active feature flags
+      description: Returns the current GrowthBook / static flags for the caller.
+      security: []
+      responses:
+        '200':
+          description: Flag state
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: boolean }
+
+  /api/version:
+    get:
+      tags: [Health]
+      summary: Server build info
+      security: []
+      responses:
+        '200':
+          description: Build metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version: { type: string }
+                  git_sha: { type: string }
+                  deployed_at: { type: string, format: date-time }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Supabase JWT.  Obtained via Supabase Auth (Google OAuth for
+        teachers, anonymous sign-in for Quick Play guests).
+        Verified locally against Supabase's JWKS endpoint —
+        `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`.
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        timestamp:
+          type: string
+          format: date-time
+
+    QuickPlaySession:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        session_code:
+          type: string
+          pattern: '^[A-HJ-NP-Z2-9]{6}$'
+        word_ids:
+          type: array
+          items: { type: integer }
+          description: References to bundled ALL_WORDS by id (English)
+        custom_words:
+          type: string
+          format: json
+          nullable: true
+          description: "JSON array of { english, hebrew, arabic } objects for teacher-uploaded words"
+        allowed_modes:
+          type: array
+          items: { type: string }
+          description: Game modes the teacher enabled for this session
+        subject:
+          type: string
+          enum: [english, hebrew]
+          default: english
+        ai_sentences:
+          type: array
+          items: { type: string }
+          nullable: true
+        is_active:
+          type: boolean
+
+    BagrutExam:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        module:
+          type: string
+          enum: [A, B, C, D, E]
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              title: { type: string }
+              questions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    prompt: { type: string }
+                    type:
+                      type: string
+                      enum: [reading, writing, vocabulary, listening]
+                    answer_key: { type: string }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Malformed input
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing or invalid JWT
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Caller authenticated but lacks the required role / allowlist entry
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimited:
+      description: Per-token or per-IP rate limit exceeded
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DependencyUnavailable:
+      description: Upstream dependency (Supabase, Gemini, Anthropic, R2) not configured or unreachable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
