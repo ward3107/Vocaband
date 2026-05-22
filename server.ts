@@ -48,7 +48,7 @@ import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient as createRedisClient } from "redis";
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+import jwt from "jsonwebtoken";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { buildSystemPrompt, buildUserMessage, BAGRUT_TOOL } from "./src/features/vocabagrut/lib/bagrutPrompt";
@@ -126,36 +126,32 @@ function flagNonAscii(name: string, value: string | undefined) {
 }
 flagNonAscii('SUPABASE_URL', process.env.SUPABASE_URL);
 flagNonAscii('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY);
+flagNonAscii('SUPABASE_JWT_SECRET', process.env.SUPABASE_JWT_SECRET);
 flagNonAscii('GOOGLE_AI_API_KEY', process.env.GOOGLE_AI_API_KEY);
 flagNonAscii('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY);
 
-// Local JWT signature + expiry verification using Supabase's published JWKS.
-// Replaces the per-connection remote round-trip to Supabase auth.getUser()
-// (~300 ms per call) with a local crypto check (<1 ms after the first JWKS
-// fetch).  That remote round-trip was the documented connection-throughput
-// bottleneck in the 2026-05-21 load test — p95 connect latency went from
-// 2.8 s at 1000 sockets to 16 s at 2500 sockets as the auth pipeline saturated.
+// JWT secret for local signature verification. Optional — when set, eliminates
+// the ~300ms round-trip to Supabase auth.getUser() on every connection. That
+// remote round-trip was the documented connection-throughput bottleneck in the
+// 2026-05-21 load test (p95 connect latency went from 2.8s at 1000 sockets to
+// 16s at 2500 sockets — that cliff was the auth pipeline saturating). Local
+// signature check is <1ms and removes the cliff entirely.
 //
-// JWKS, not a shared HS256 secret: Supabase has migrated this project to
-// asymmetric (ES256) JWT signing.  The legacy "JWT Secret" field in the
-// dashboard no longer signs new tokens — they're signed with the project's
-// ECDSA key, and verification requires the matching public key fetched from
-// <SUPABASE_URL>/auth/v1/.well-known/jwks.json.  jose's createRemoteJWKSet
-// handles the fetch + in-memory cache + auto-refresh on key rotation, so no
-// secret needs to be set anywhere and key rotation is operationally invisible.
+// Find the value in Supabase dashboard → Settings → API → "JWT Settings" → "JWT Secret".
+// Set with: fly secrets set SUPABASE_JWT_SECRET=<value>
 //
 // Token revocation: local verify can't detect Supabase-side session revocation
-// (suspended account, deleted user, password change). The 5-min mid-stream
-// re-verify intentionally uses verifyTokenRemote() to keep revocation
-// detection working — cost is bounded (one remote call per active socket
-// per 5 min).
-const JWKS = process.env.SUPABASE_URL
-  ? createRemoteJWKSet(new URL(`${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`))
-  : null;
-if (JWKS) {
-  console.log(`[verifyToken] local JWKS verification ENABLED — keys from ${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`);
+// (suspended account, deleted user). The 5-min mid-stream re-verify
+// intentionally uses verifyTokenRemote() to keep revocation detection working;
+// cost is bounded (1 remote call per active socket per 5 min).
+const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+if (SUPABASE_JWT_SECRET) {
+  console.log("[verifyToken] local JWT verification ENABLED — connection-time auth uses signature check, no remote call");
 } else if (hasSupabaseConfig) {
-  console.warn("[verifyToken] local JWKS verification DISABLED — SUPABASE_URL not set; falling back to remote auth.getUser()");
+  console.warn(
+    "[verifyToken] local JWT verification DISABLED — falling back to remote auth.getUser() per connection. " +
+    "Set SUPABASE_JWT_SECRET (Supabase Settings → API → JWT Secret) to unlock 5000+ concurrent students."
+  );
 }
 
 // Supabase admin client — uses the service role key to verify tokens server-side
@@ -168,46 +164,44 @@ const supabaseAdmin = hasSupabaseConfig
     )
   : null;
 
-interface SupabaseJwtPayload extends JWTPayload {
+interface SupabaseJwtPayload {
   sub: string;
   email?: string;
+  aud?: string;
+  exp?: number;
+  role?: string;
 }
 
-// Local JWT signature + expiry check using JWKS. Returns the decoded payload on
-// success, null on any failure (invalid signature, expired, malformed, or
-// JWKS not configured). jose's jwtVerify handles algorithm selection from the
-// JWKS metadata (ES256, RS256, HS256, etc.) and validates the exp claim
-// automatically — expired tokens throw JWTExpired which we catch.
-async function verifyTokenLocal(token: string): Promise<SupabaseJwtPayload | null> {
-  if (!JWKS) return null;
+// Local JWT signature + expiry check. Returns the decoded payload on success,
+// null on any failure (invalid signature, expired, malformed, or
+// SUPABASE_JWT_SECRET not configured). The jsonwebtoken library handles the
+// exp claim automatically — expired tokens throw TokenExpiredError.
+function verifyTokenLocal(token: string): SupabaseJwtPayload | null {
+  if (!SUPABASE_JWT_SECRET) return null;
   try {
-    const { payload } = await jwtVerify(token, JWKS);
-    if (typeof payload.sub !== "string" || payload.sub.length === 0) return null;
-    return {
-      ...payload,
-      sub: payload.sub,
-      email: typeof payload.email === "string" ? payload.email : undefined,
-    };
+    const decoded = jwt.verify(token, SUPABASE_JWT_SECRET, { algorithms: ["HS256"] });
+    if (typeof decoded === "string") return null;
+    if (typeof decoded.sub !== "string" || decoded.sub.length === 0) return null;
+    return decoded as SupabaseJwtPayload;
   } catch {
     // Don't log per-failure here — at >1000 reqs/s this would flood logs.
-    // Caller surfaces the rejection via socket/REST 401 response.
+    // Caller will surface the rejection via socket/REST 401 response.
     return null;
   }
 }
 
 async function verifyToken(token: string): Promise<string | null> {
-  // Fast path: local signature verification — no network round-trip after the
-  // initial JWKS fetch.  This is the load-test win
-  // (docs/load-test-report-2026-05-21.md).
-  const local = await verifyTokenLocal(token);
+  // Fast path: local signature verification — no network round-trip.
+  // This is the load-test win (docs/load-test-report-2026-05-21.md).
+  const local = verifyTokenLocal(token);
   if (local) return local.sub;
 
-  // When JWKS is configured but local verify failed, the token is bad.
-  // Short-circuit instead of paying for a remote round-trip on a known bad
-  // token — that would reintroduce the bottleneck on the failure path.
-  if (JWKS) return null;
+  // When SUPABASE_JWT_SECRET is set and local verify failed, the token is bad.
+  // Short-circuit instead of paying for a remote round-trip on a known bad token —
+  // that would reintroduce the bottleneck on the failure path.
+  if (SUPABASE_JWT_SECRET) return null;
 
-  // Slow path (legacy): no SUPABASE_URL configured, fall back to remote verify.
+  // Slow path (legacy): no JWT secret configured, fall back to remote verify.
   if (!supabaseAdmin) {
     console.error("[verifyToken] supabaseAdmin is null — SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing");
     return null;
@@ -256,13 +250,13 @@ async function verifyTokenRemote(token: string): Promise<string | null> {
 
 async function verifyTokenWithEmail(token: string): Promise<{ uid: string; email: string } | null> {
   // Fast path: email lives in the JWT claims, no remote needed.
-  const local = await verifyTokenLocal(token);
+  const local = verifyTokenLocal(token);
   if (local?.email) return { uid: local.sub, email: local.email };
 
   // If local verify succeeded but the token lacks an email claim (rare), fall
-  // through to remote to fetch it.  Otherwise, when JWKS is set and local
-  // verify failed, short-circuit.
-  if (JWKS && !local) return null;
+  // through to remote to fetch it.  Otherwise, when JWT secret is set and
+  // local verify failed, short-circuit.
+  if (SUPABASE_JWT_SECRET && !local) return null;
 
   if (!supabaseAdmin) return null;
   try {
