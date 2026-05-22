@@ -73,9 +73,17 @@ type SourceKind = 'paste' | 'assignment' | 'topic';
 type ChallengeKind = 'meaning' | 'translation' | 'fill-blank' | 'true-false';
 
 interface PlayerScore {
+  /** Stable id assigned at game start.  Slices reference players by
+   *  id (not index) so eliminating one in the middle of the list
+   *  doesn't shift every other player's identity on the wheel. */
+  id: number;
   name: string;
   correct: number;
   total: number;
+  /** Cumulative wrong-answer count.  When this reaches maxWrongAnswers
+   *  the player is removed from the wheel for the rest of the round. */
+  wrongCount: number;
+  eliminated: boolean;
 }
 
 interface ActiveQuestion {
@@ -249,6 +257,12 @@ const STRINGS: Record<Language, {
   trueFalseDesc: string;
   needChallenge: string;
 
+  livesLabel: string;
+  livesHint: string;
+  eliminatedHeading: string;
+  eliminatedSubline: string;
+  outBadge: string;
+
   startBtn: string;
   loadingWords: string;
 
@@ -312,6 +326,11 @@ const STRINGS: Record<Language, {
     trueFalseLabel: 'True or False',
     trueFalseDesc: 'Is this pair correct?',
     needChallenge: 'Pick at least one challenge type.',
+    livesLabel: 'Lives (wrong answers before elimination)',
+    livesHint: 'When a student passes this many wrong answers their name is removed from the wheel.',
+    eliminatedHeading: 'Out of the wheel',
+    eliminatedSubline: 'is OUT!',
+    outBadge: 'OUT',
     startBtn: 'Start the Wheel',
     loadingWords: 'Loading words…',
     spinBtn: 'SPIN',
@@ -372,6 +391,11 @@ const STRINGS: Record<Language, {
     trueFalseLabel: 'נכון או לא נכון',
     trueFalseDesc: 'האם הזוג נכון?',
     needChallenge: 'בחר לפחות סוג אתגר אחד.',
+    livesLabel: 'חיים (תשובות שגויות לפני הדחה)',
+    livesHint: 'כאשר תלמיד עובר את מספר התשובות השגויות הזה — שמו יוסר מהגלגל.',
+    eliminatedHeading: 'הודח מהגלגל',
+    eliminatedSubline: 'בחוץ!',
+    outBadge: 'בחוץ',
     startBtn: 'התחל את הגלגל',
     loadingWords: 'טוען מילים…',
     spinBtn: 'סובב',
@@ -432,6 +456,11 @@ const STRINGS: Record<Language, {
     trueFalseLabel: 'صح أم خطأ',
     trueFalseDesc: 'هل هذا الزوج صحيح؟',
     needChallenge: 'اختر نوع تحدي واحدًا على الأقل.',
+    livesLabel: 'الأرواح (الإجابات الخاطئة قبل الإقصاء)',
+    livesHint: 'عندما يتجاوز الطالب هذا العدد من الإجابات الخاطئة — يُزال اسمه من العجلة.',
+    eliminatedHeading: 'خارج العجلة',
+    eliminatedSubline: 'خرج!',
+    outBadge: 'خارج',
     startBtn: 'ابدأ العجلة',
     loadingWords: 'جارٍ تحميل الكلمات…',
     spinBtn: 'أدر',
@@ -492,6 +521,11 @@ const STRINGS: Record<Language, {
     trueFalseLabel: 'True or False',
     trueFalseDesc: 'Is this pair correct?',
     needChallenge: 'Pick at least one challenge type.',
+    livesLabel: 'Lives (wrong answers before elimination)',
+    livesHint: 'When a student passes this many wrong answers their name is removed from the wheel.',
+    eliminatedHeading: 'Out of the wheel',
+    eliminatedSubline: 'is OUT!',
+    outBadge: 'OUT',
     startBtn: 'Start the Wheel',
     loadingWords: 'Loading words…',
     spinBtn: 'SPIN',
@@ -545,6 +579,10 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
   const [allowedChallenges, setAllowedChallenges] = useState<Set<ChallengeKind>>(
     () => new Set(ALL_CHALLENGES),
   );
+  // Wrong-answer threshold per student.  When a player's wrongCount
+  // reaches this, they're removed from the wheel.  Range 1-5; default
+  // 3 (classic "three strikes you're out").
+  const [maxWrongAnswers, setMaxWrongAnswers] = useState(3);
 
   const englishLookup = useMemo(() => {
     if (!vocab) return null;
@@ -599,13 +637,29 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
 
   // ── Round state ────────────────────────────────────────────────
   const [players, setPlayers] = useState<PlayerScore[]>([]);
-  const [pickedPlayerIdx, setPickedPlayerIdx] = useState<number | null>(null);
+  const [pickedPlayerId, setPickedPlayerId] = useState<number | null>(null);
   const [pickedChallenge, setPickedChallenge] = useState<ChallengeKind | null>(null);
   const [wheelRotation, setWheelRotation] = useState(0);
   const [activeQ, setActiveQ] = useState<ActiveQuestion | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [tfPicked, setTfPicked] = useState<boolean | null>(null);
+  // Set when an answer just dropped a player to zero lives — the
+  // wheel screen surfaces "{Name} is OUT!" for a beat before either
+  // auto-spinning again or jumping to the podium.
+  const [eliminationBanner, setEliminationBanner] = useState<string | null>(null);
   const submittedRef = useRef(false);
+
+  // Only active players appear on the wheel.  When all-but-one are
+  // eliminated, the round auto-ends.
+  const activePlayers = useMemo(() => players.filter(p => !p.eliminated), [players]);
+
+  // Mirror `players` into a ref so deferred timers (auto-spin after an
+  // answer) read the post-elimination state instead of a stale closure
+  // from the moment the timer was scheduled.
+  const playersRef = useRef<PlayerScore[]>(players);
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
 
   // ── Audio + scheduled timers ───────────────────────────────────
   // AudioContext is lazy-created on the first user gesture (the Start
@@ -714,13 +768,17 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
       .map(n => n.trim())
       .filter(n => n.length > 0);
     if (names.length < 2 || wordPool.length < 4 || allowedChallenges.size === 0) return;
-    setPlayers(names.map(name => ({ name, correct: 0, total: 0 })));
-    setPickedPlayerIdx(null);
+    const initialPlayers: PlayerScore[] = names.map((name, id) => ({
+      id, name, correct: 0, total: 0, wrongCount: 0, eliminated: false,
+    }));
+    setPlayers(initialPlayers);
+    setPickedPlayerId(null);
     setPickedChallenge(null);
     setWheelRotation(0);
     setActiveQ(null);
     setPicked(null);
     setTfPicked(null);
+    setEliminationBanner(null);
     submittedRef.current = false;
     setPhase('spinning');
     // Prime the audio context on this user-gesture frame so the very
@@ -728,7 +786,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
     getAudioCtx();
     // Kick off the first spin immediately so the wheel screen never
     // shows the static "waiting" state on entry.
-    const id = window.setTimeout(() => doSpin(names.length, allowedChallenges, wordPool), 350);
+    const id = window.setTimeout(() => doSpin(initialPlayers, allowedChallenges, wordPool), 350);
     pendingTimersRef.current.push(id);
   };
 
@@ -756,22 +814,23 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
   );
 
   const doSpin = useCallback(
-    (playerCount: number, allowed: Set<ChallengeKind>, pool: Word[]) => {
-      if (playerCount < 1) return;
+    (active: PlayerScore[], allowed: Set<ChallengeKind>, pool: Word[]) => {
+      if (active.length < 1) return;
       clearPendingTimers();
-      const targetIdx = Math.floor(Math.random() * playerCount);
+      const targetIdx = Math.floor(Math.random() * active.length);
+      const targetPlayer = active[targetIdx];
       const allowedList = Array.from(allowed);
       const challenge = allowedList[Math.floor(Math.random() * allowedList.length)];
       // Each slice spans 360/n degrees.  The pointer sits at the top
       // (angle = 0 in our rotation frame).  To land slice `targetIdx`
       // under the pointer we rotate the wheel so its centre lines up
       // there — minus a random jitter within the slice for realism.
-      const sliceDeg = 360 / playerCount;
+      const sliceDeg = 360 / active.length;
       const sliceCenter = targetIdx * sliceDeg + sliceDeg / 2;
       const jitter = (Math.random() - 0.5) * sliceDeg * 0.6;
       const fullSpins = 5 + Math.floor(Math.random() * 3); // 5-7 turns
       const finalRotation = fullSpins * 360 - sliceCenter - jitter;
-      setPickedPlayerIdx(null);
+      setPickedPlayerId(null);
       setPickedChallenge(null);
       setWheelRotation(prev => {
         // Build on whatever rotation we left off at so the wheel feels
@@ -811,7 +870,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
       // stops so the chime and the text appear together.
       pendingTimersRef.current.push(
         window.setTimeout(() => {
-          setPickedPlayerIdx(targetIdx);
+          setPickedPlayerId(targetPlayer.id);
           setPickedChallenge(challenge);
           setPhase('landed');
         }, SPIN_MS + 100),
@@ -829,24 +888,77 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
     [clearPendingTimers, getAudioCtx, showQuestionFor],
   );
 
-  const handleSpin = () => {
-    if (phase === 'spinning') return;
+  // Re-prep the wheel state and kick off a fresh spin using whoever's
+  // still alive in the current player roster.  Used by the Re-spin
+  // button on the landed reveal AND by the auto-advance after an
+  // answer, so both paths see the same setup.
+  const startNextSpin = useCallback(() => {
+    const fresh = playersRef.current.filter(p => !p.eliminated);
+    if (fresh.length <= 1) {
+      // One survivor (or zero) — the round is over, podium it.
+      clearPendingTimers();
+      setPhase('done');
+      return;
+    }
     clearPendingTimers();
-    setPhase('spinning');
+    setEliminationBanner(null);
     setActiveQ(null);
     setPicked(null);
     setTfPicked(null);
     submittedRef.current = false;
-    doSpin(players.length, allowedChallenges, wordPool);
+    setPhase('spinning');
+    doSpin(fresh, allowedChallenges, wordPool);
+  }, [allowedChallenges, clearPendingTimers, doSpin, wordPool]);
+
+  const handleSpin = () => {
+    if (phase === 'spinning') return;
+    startNextSpin();
   };
 
-  const recordResult = (isCorrect: boolean) => {
-    if (pickedPlayerIdx === null) return;
+  // Record the answer AND drive the post-answer flow (feedback delay
+  // → optional elimination banner → auto-spin or podium).  Centralised
+  // here so MC and T/F handlers stay short.
+  const finishAnswer = (isCorrect: boolean) => {
+    if (pickedPlayerId === null) return;
+    const current = players.find(p => p.id === pickedPlayerId);
+    if (!current) return;
+    const nextWrongCount = current.wrongCount + (isCorrect ? 0 : 1);
+    const willEliminate = !isCorrect && nextWrongCount >= maxWrongAnswers;
+
     setPlayers(prev =>
-      prev.map((p, i) =>
-        i === pickedPlayerIdx
-          ? { ...p, correct: p.correct + (isCorrect ? 1 : 0), total: p.total + 1 }
-          : p,
+      prev.map(p => {
+        if (p.id !== pickedPlayerId) return p;
+        return {
+          ...p,
+          correct: p.correct + (isCorrect ? 1 : 0),
+          total: p.total + 1,
+          wrongCount: nextWrongCount,
+          eliminated: willEliminate ? true : p.eliminated,
+        };
+      }),
+    );
+
+    const ctx = getAudioCtx();
+    if (ctx) playAnswerSound(ctx, isCorrect);
+
+    // Reveal feedback for ~1.4s.  If this answer eliminated a player,
+    // a "X is OUT!" banner appears at 0.8s and the next-step delay
+    // extends so the class registers the elimination before the wheel
+    // spins again.
+    const ANSWER_FEEDBACK_MS = 1400;
+    const ELIMINATION_BANNER_DELAY_MS = 800;
+    const ELIMINATION_EXTRA_MS = 1200;
+
+    if (willEliminate) {
+      pendingTimersRef.current.push(
+        window.setTimeout(() => setEliminationBanner(current.name), ELIMINATION_BANNER_DELAY_MS),
+      );
+    }
+
+    pendingTimersRef.current.push(
+      window.setTimeout(
+        () => startNextSpin(),
+        ANSWER_FEEDBACK_MS + (willEliminate ? ELIMINATION_EXTRA_MS : 0),
       ),
     );
   };
@@ -856,39 +968,42 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
     submittedRef.current = true;
     setPicked(option);
     const correct = activeQ.multiChoice.options[activeQ.multiChoice.correctIndex];
-    const isCorrect = option === correct;
-    recordResult(isCorrect);
-    const ctx = getAudioCtx();
-    if (ctx) playAnswerSound(ctx, isCorrect);
+    finishAnswer(option === correct);
   };
 
   const handleAnswerTrueFalse = (value: boolean) => {
     if (!activeQ || !activeQ.trueFalse || tfPicked !== null || submittedRef.current) return;
     submittedRef.current = true;
     setTfPicked(value);
-    const isCorrect = value === activeQ.trueFalse.isTrue;
-    recordResult(isCorrect);
-    const ctx = getAudioCtx();
-    if (ctx) playAnswerSound(ctx, isCorrect);
+    finishAnswer(value === activeQ.trueFalse.isTrue);
   };
 
   const handleEndRound = () => {
     clearPendingTimers();
+    setEliminationBanner(null);
     setPhase('done');
   };
 
   const handlePlayAgain = () => {
     clearPendingTimers();
-    setPlayers(prev => prev.map(p => ({ ...p, correct: 0, total: 0 })));
-    setPickedPlayerIdx(null);
+    const reset: PlayerScore[] = players.map(p => ({
+      ...p,
+      correct: 0,
+      total: 0,
+      wrongCount: 0,
+      eliminated: false,
+    }));
+    setPlayers(reset);
+    setPickedPlayerId(null);
     setPickedChallenge(null);
     setWheelRotation(0);
     setActiveQ(null);
     setPicked(null);
     setTfPicked(null);
+    setEliminationBanner(null);
     submittedRef.current = false;
     setPhase('spinning');
-    const id = window.setTimeout(() => doSpin(players.length, allowedChallenges, wordPool), 350);
+    const id = window.setTimeout(() => doSpin(reset, allowedChallenges, wordPool), 350);
     pendingTimersRef.current.push(id);
   };
 
@@ -1044,6 +1159,32 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                 </div>
               </div>
 
+              {/* Lives picker — 1 to 5 wrong answers before elimination */}
+              <div>
+                <label className="block text-sm font-bold text-stone-700 mb-2">
+                  {t.livesLabel}
+                </label>
+                <p className="text-xs text-stone-500 mb-2">{t.livesHint}</p>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setMaxWrongAnswers(n)}
+                      aria-pressed={maxWrongAnswers === n}
+                      style={{ touchAction: 'manipulation' }}
+                      className={`flex-1 py-2.5 rounded-lg font-black text-base border-2 transition-all ${
+                        maxWrongAnswers === n
+                          ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
+                          : 'bg-white text-stone-600 border-stone-200 hover:border-rose-200'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Challenge type picker */}
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
@@ -1121,8 +1262,10 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
   // ── SPINNING / LANDED ───────────────────────────────────────
   // ════════════════════════════════════════════════════════════
   if (phase === 'spinning' || phase === 'landed') {
-    const sliceDeg = players.length > 0 ? 360 / players.length : 0;
-    const pickedPlayer = pickedPlayerIdx !== null ? players[pickedPlayerIdx] : null;
+    const sliceDeg = activePlayers.length > 0 ? 360 / activePlayers.length : 0;
+    const pickedPlayer = pickedPlayerId !== null
+      ? players.find(p => p.id === pickedPlayerId) ?? null
+      : null;
     const pickedMeta = pickedChallenge ? CHALLENGE_META[pickedChallenge] : null;
     const challengeLabel: Record<ChallengeKind, string> = {
       'meaning': t.meaningLabel,
@@ -1145,7 +1288,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
 
         {/* Scoreboard strip */}
         <div className="absolute top-4 end-4 max-w-[60%] hidden sm:block z-10">
-          <Scoreboard players={players} label={t.scoreboard} />
+          <Scoreboard players={players} label={t.scoreboard} outBadge={t.outBadge} />
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center gap-6 sm:gap-8">
@@ -1224,14 +1367,16 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                     </radialGradient>
                   ))}
                 </defs>
-                {players.map((p, i) => {
+                {activePlayers.map((p, i) => {
                   const startAngle = i * sliceDeg;
                   const endAngle = (i + 1) * sliceDeg;
                   const midAngle = startAngle + sliceDeg / 2;
                   const labelPos = polarToCart(110, 110, 68, midAngle);
-                  const colorIdx = i % SLICE_COLORS.length;
+                  // Colour by stable player id so a kid's slice colour
+                  // doesn't reshuffle when somebody else gets eliminated.
+                  const colorIdx = p.id % SLICE_COLORS.length;
                   return (
-                    <g key={`${p.name}-${i}`}>
+                    <g key={`player-${p.id}`}>
                       <path
                         d={slicePath(startAngle, endAngle, 96, 110, 110)}
                         fill={`url(#vb-slice-${colorIdx})`}
@@ -1244,7 +1389,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                         fill="white"
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fontSize={Math.max(7, 15 - players.length * 0.32)}
+                        fontSize={Math.max(7, 15 - activePlayers.length * 0.32)}
                         fontWeight={900}
                         transform={`rotate(${midAngle} ${labelPos.x} ${labelPos.y})`}
                         style={{ pointerEvents: 'none', textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
@@ -1380,7 +1525,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
 
         {/* Mobile scoreboard at the bottom */}
         <div className="sm:hidden mt-4">
-          <Scoreboard players={players} label={t.scoreboard} />
+          <Scoreboard players={players} label={t.scoreboard} outBadge={t.outBadge} />
         </div>
       </div>
     );
@@ -1389,8 +1534,9 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
   // ════════════════════════════════════════════════════════════
   // ── QUESTION ───────────────────────────────────────────────
   // ════════════════════════════════════════════════════════════
-  if (phase === 'question' && activeQ && pickedPlayerIdx !== null && pickedChallenge) {
-    const pickedPlayer = players[pickedPlayerIdx];
+  if (phase === 'question' && activeQ && pickedPlayerId !== null && pickedChallenge) {
+    const pickedPlayer = players.find(p => p.id === pickedPlayerId);
+    if (!pickedPlayer) return null;
     const pickedMeta = CHALLENGE_META[pickedChallenge];
     const mc = activeQ.multiChoice;
     const tf = activeQ.trueFalse;
@@ -1609,16 +1755,38 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                 >
                   {t.endRoundBtn}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSpin}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  className="px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-black text-sm shadow-md active:scale-[0.98] transition flex items-center gap-2"
-                >
-                  <Disc3 size={16} />
-                  {t.spinAgainBtn}
-                </button>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Elimination overlay — full-screen for ~1.2s after a wrong
+            answer pushes a player past their last life.  Pure visual,
+            timer in finishAnswer drives mount/unmount. */}
+        <AnimatePresence>
+          {eliminationBanner && (
+            <motion.div
+              key="elim-banner"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-30 flex items-center justify-center bg-stone-950/70 backdrop-blur-sm pointer-events-none"
+              dir={dir}
+            >
+              <motion.div
+                initial={{ scale: 0.6, rotate: -6, opacity: 0 }}
+                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                transition={{ type: 'spring', damping: 14, stiffness: 220 }}
+                className="px-10 py-8 rounded-3xl bg-gradient-to-br from-rose-500 via-pink-500 to-fuchsia-600 text-white text-center shadow-2xl"
+              >
+                <p className="text-sm font-black uppercase tracking-[0.4em] mb-3 opacity-90">
+                  {t.eliminatedHeading}
+                </p>
+                <h2 className="text-6xl sm:text-8xl font-black break-words">
+                  {eliminationBanner}
+                </h2>
+                <p className="mt-4 text-2xl font-black">{t.eliminatedSubline}</p>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1697,24 +1865,48 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
 }
 
 // ── Scoreboard — compact running tally shown alongside the wheel ──
-function Scoreboard({ players, label }: { players: PlayerScore[]; label: string }) {
-  // Top 5 by correct count.  Ties broken by total attempted (more
-  // tries = higher position in tie), then by original order.
-  const top = [...players]
+function Scoreboard({
+  players,
+  label,
+  outBadge,
+}: {
+  players: PlayerScore[];
+  label: string;
+  outBadge: string;
+}) {
+  // Active players ranked first (by correct, then total), eliminated
+  // appended below in elimination order so the teacher can see
+  // everyone's score at a glance.
+  const sorted = [...players]
     .map((p, i) => ({ ...p, idx: i }))
-    .sort((a, b) => b.correct - a.correct || b.total - a.total || a.idx - b.idx)
-    .slice(0, 5);
+    .sort((a, b) => {
+      if (a.eliminated !== b.eliminated) return a.eliminated ? 1 : -1;
+      return b.correct - a.correct || b.total - a.total || a.idx - b.idx;
+    })
+    .slice(0, 6);
   return (
     <div className="rounded-xl bg-white/85 backdrop-blur shadow-md border border-violet-100 px-3 py-2">
       <p className="text-[10px] font-black uppercase tracking-widest text-violet-600 mb-1.5">
         {label}
       </p>
       <ul className="space-y-1">
-        {top.map((p, i) => (
-          <li key={`${p.name}-${p.idx}`} className="flex items-center justify-between gap-3 text-sm">
+        {sorted.map((p, i) => (
+          <li
+            key={`${p.name}-${p.idx}`}
+            className={`flex items-center justify-between gap-3 text-sm ${
+              p.eliminated ? 'opacity-55' : ''
+            }`}
+          >
             <span className="flex items-center gap-1.5 min-w-0">
-              <span className="text-xs w-4 text-center">{i < 3 ? MEDAL[i] : `${i + 1}`}</span>
-              <span className="font-bold text-stone-900 truncate">{p.name}</span>
+              <span className="text-xs w-4 text-center">{i < 3 && !p.eliminated ? MEDAL[i] : `${i + 1}`}</span>
+              <span className={`font-bold truncate ${p.eliminated ? 'text-stone-500 line-through' : 'text-stone-900'}`}>
+                {p.name}
+              </span>
+              {p.eliminated && (
+                <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-100 text-rose-600">
+                  {outBadge}
+                </span>
+              )}
             </span>
             <span className="font-black text-stone-700 tabular-nums shrink-0">
               {p.correct}/{p.total}
