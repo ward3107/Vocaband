@@ -23,11 +23,11 @@
  *   4. question — single question of the picked challenge type
  *   5. done     — podium with medals + Play Again / Exit
  */
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Trophy, ArrowRight, Volume2, X, Play, BookOpen,
-  ClipboardPaste, Eye, ChevronRight, Sparkles, Disc3,
+  ClipboardPaste, ChevronRight, Sparkles, Disc3,
   Languages, FileText, MessageSquareQuote, CheckCircle2,
 } from 'lucide-react';
 import { useLanguage, type Language } from '../hooks/useLanguage';
@@ -138,6 +138,72 @@ function polarToCart(cx: number, cy: number, r: number, angleDeg: number) {
   return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
 }
 
+// JS easing that mirrors the visual transition.  Used twice: passed to
+// motion/react as the `ease` for the spin, and inverted to schedule
+// tick sound effects at the moments the wheel crosses slice boundaries.
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+const invertEaseOutCubic = (y: number) => 1 - Math.pow(1 - y, 1 / 3);
+
+// ── Web Audio synthesis ──────────────────────────────────────────────
+// Sound effects are generated on the fly rather than shipped as audio
+// assets — keeps the bundle lean and lets us pitch ticks against the
+// spin animation cleanly.  Browsers require a user gesture before
+// AudioContext can produce sound, which is fine: the spin button is
+// always the first call.
+
+function playWheelTick(ctx: AudioContext) {
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = 1500;
+  gain.gain.setValueAtTime(0.18, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.06);
+}
+
+function playLandingChime(ctx: AudioContext) {
+  // C5–E5–G5 major triad, fired in quick succession so it reads as a
+  // single triumphant chime rather than three discrete notes.
+  const notes = [523.25, 659.25, 783.99];
+  notes.forEach((freq, i) => {
+    const t0 = ctx.currentTime + i * 0.05;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(0.22, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 1.1);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 1.2);
+  });
+}
+
+function playAnswerSound(ctx: AudioContext, correct: boolean) {
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  // Rising minor third for correct, falling tritone for wrong.
+  if (correct) {
+    osc.frequency.setValueAtTime(659.25, now);
+    osc.frequency.linearRampToValueAtTime(880, now + 0.18);
+  } else {
+    osc.frequency.setValueAtTime(440, now);
+    osc.frequency.linearRampToValueAtTime(311.13, now + 0.22);
+  }
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.6);
+}
+
 const CHALLENGE_META: Record<ChallengeKind, { emoji: string; gradient: string; iconColor: string }> = {
   'meaning':     { emoji: '📖', gradient: 'from-indigo-500 via-violet-500 to-fuchsia-500',  iconColor: 'text-indigo-500' },
   'translation': { emoji: '🌍', gradient: 'from-emerald-500 via-teal-500 to-cyan-500',      iconColor: 'text-emerald-500' },
@@ -190,7 +256,7 @@ const STRINGS: Record<Language, {
   spinning: string;
   pickedHeading: string;
   challengeLabel: string;
-  showQuestionBtn: string;
+  getReady: string;
   endRoundBtn: string;
   spinAgainBtn: string;
 
@@ -252,7 +318,7 @@ const STRINGS: Record<Language, {
     spinning: 'Spinning…',
     pickedHeading: "It's",
     challengeLabel: 'Challenge:',
-    showQuestionBtn: 'Show Question',
+    getReady: 'Get ready!',
     endRoundBtn: 'End Round',
     spinAgainBtn: 'Spin Again',
     pickHebrew: 'Pick the Hebrew translation',
@@ -312,7 +378,7 @@ const STRINGS: Record<Language, {
     spinning: 'מסתובב…',
     pickedHeading: 'זה',
     challengeLabel: 'אתגר:',
-    showQuestionBtn: 'הצג שאלה',
+    getReady: 'תתכוננו!',
     endRoundBtn: 'סיים סבב',
     spinAgainBtn: 'סובב שוב',
     pickHebrew: 'בחר את התרגום לעברית',
@@ -372,7 +438,7 @@ const STRINGS: Record<Language, {
     spinning: 'يدور…',
     pickedHeading: 'إنه',
     challengeLabel: 'التحدي:',
-    showQuestionBtn: 'عرض السؤال',
+    getReady: 'استعدوا!',
     endRoundBtn: 'إنهاء الجولة',
     spinAgainBtn: 'أدر مرة أخرى',
     pickHebrew: 'اختر الترجمة العبرية',
@@ -432,7 +498,7 @@ const STRINGS: Record<Language, {
     spinning: 'Spinning…',
     pickedHeading: "It's",
     challengeLabel: 'Challenge:',
-    showQuestionBtn: 'Show Question',
+    getReady: 'Get ready!',
     endRoundBtn: 'End Round',
     spinAgainBtn: 'Spin Again',
     pickHebrew: 'Pick the Hebrew translation',
@@ -541,6 +607,50 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
   const [tfPicked, setTfPicked] = useState<boolean | null>(null);
   const submittedRef = useRef(false);
 
+  // ── Audio + scheduled timers ───────────────────────────────────
+  // AudioContext is lazy-created on the first user gesture (the Start
+  // or Spin tap).  Timer ids accumulate during a spin so we can cancel
+  // them cleanly if the teacher exits mid-spin or hits End Round.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const pendingTimersRef = useRef<number[]>([]);
+
+  const getAudioCtx = useCallback((): AudioContext | null => {
+    if (typeof window === 'undefined') return null;
+    if (!audioCtxRef.current) {
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AC) return null;
+      try {
+        audioCtxRef.current = new AC();
+      } catch {
+        return null;
+      }
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx.state === 'suspended') {
+      void ctx.resume();
+    }
+    return ctx;
+  }, []);
+
+  const clearPendingTimers = useCallback(() => {
+    pendingTimersRef.current.forEach((id) => window.clearTimeout(id));
+    pendingTimersRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      pendingTimersRef.current.forEach((id) => window.clearTimeout(id));
+      pendingTimersRef.current = [];
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state !== 'closed') {
+        void ctx.close();
+      }
+    };
+  }, []);
+
   // Translation lang used by builders.  Mirrors HotSeat — hebrew/arabic
   // target maps directly to TranslationLang.
   const translationLang: TranslationLang = targetLang === 'hebrew' ? 'he' : 'ar';
@@ -613,14 +723,42 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
     setTfPicked(null);
     submittedRef.current = false;
     setPhase('spinning');
+    // Prime the audio context on this user-gesture frame so the very
+    // first tick fires reliably (browsers gate audio behind a tap).
+    getAudioCtx();
     // Kick off the first spin immediately so the wheel screen never
     // shows the static "waiting" state on entry.
-    window.setTimeout(() => doSpin(names.length, allowedChallenges), 350);
+    const id = window.setTimeout(() => doSpin(names.length, allowedChallenges, wordPool), 350);
+    pendingTimersRef.current.push(id);
   };
 
+  // Single source of truth for moving into the question phase.  Used by
+  // the auto-advance scheduled at the end of a spin AND by any future
+  // manual trigger.  Stays a useCallback so the timer closure in
+  // doSpin can capture a stable reference.
+  const showQuestionFor = useCallback(
+    (challenge: ChallengeKind, pool: Word[]) => {
+      const q = buildOneQuestion(challenge, pool);
+      if (!q) return;
+      setActiveQ(q);
+      setPicked(null);
+      setTfPicked(null);
+      submittedRef.current = false;
+      setPhase('question');
+      // Auto-speak the prompt word so the kid hears it before answering.
+      // For reverse questions the prompt IS the translation, so don't
+      // speak the English — we'd give away the answer.
+      if (q.kind === 'meaning' || q.kind === 'fill-blank' || q.kind === 'true-false') {
+        speak(q.word.id, q.word.english);
+      }
+    },
+    [buildOneQuestion, speak],
+  );
+
   const doSpin = useCallback(
-    (playerCount: number, allowed: Set<ChallengeKind>) => {
+    (playerCount: number, allowed: Set<ChallengeKind>, pool: Word[]) => {
       if (playerCount < 1) return;
+      clearPendingTimers();
       const targetIdx = Math.floor(Math.random() * playerCount);
       const allowedList = Array.from(allowed);
       const challenge = allowedList[Math.floor(Math.random() * allowedList.length)];
@@ -641,41 +779,65 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
         const base = prev % 360;
         return prev - base + finalRotation;
       });
-      // Reveal after the CSS transition (3s + small buffer).
-      window.setTimeout(() => {
-        setPickedPlayerIdx(targetIdx);
-        setPickedChallenge(challenge);
-        setPhase('landed');
-      }, 3200);
+
+      const SPIN_MS = 3000;
+      const LANDED_REVEAL_MS = 2200; // how long the "It's NAME!" reveal stays before auto-advancing
+      const ctx = getAudioCtx();
+
+      // Schedule a tick at each slice-boundary crossing.  We invert the
+      // visual easing so the audio decelerates at exactly the same rate
+      // as the wheel.  Ticks closer than 40ms collapse into one — keeps
+      // the early "buzz" from drowning itself out.
+      if (ctx) {
+        const totalDeg = Math.abs(finalRotation);
+        const crossings = Math.floor(totalDeg / sliceDeg);
+        let lastTickMs = -1000;
+        for (let i = 1; i <= crossings; i++) {
+          const ratio = (i * sliceDeg) / totalDeg;
+          const t = invertEaseOutCubic(ratio);
+          const ms = t * SPIN_MS;
+          if (ms - lastTickMs < 40) continue;
+          lastTickMs = ms;
+          const id = window.setTimeout(() => playWheelTick(ctx), ms);
+          pendingTimersRef.current.push(id);
+        }
+        // Landing chime fires the instant the wheel visually stops.
+        pendingTimersRef.current.push(
+          window.setTimeout(() => playLandingChime(ctx), SPIN_MS),
+        );
+      }
+
+      // Reveal the landed-on player + challenge a hair after the visual
+      // stops so the chime and the text appear together.
+      pendingTimersRef.current.push(
+        window.setTimeout(() => {
+          setPickedPlayerIdx(targetIdx);
+          setPickedChallenge(challenge);
+          setPhase('landed');
+        }, SPIN_MS + 100),
+      );
+
+      // Auto-advance into the question after the landed reveal has had
+      // room to land.  Teacher can interrupt with End Round or Re-spin
+      // — both call clearPendingTimers() to cancel this.
+      pendingTimersRef.current.push(
+        window.setTimeout(() => {
+          showQuestionFor(challenge, pool);
+        }, SPIN_MS + 100 + LANDED_REVEAL_MS),
+      );
     },
-    [],
+    [clearPendingTimers, getAudioCtx, showQuestionFor],
   );
 
   const handleSpin = () => {
     if (phase === 'spinning') return;
+    clearPendingTimers();
     setPhase('spinning');
     setActiveQ(null);
     setPicked(null);
     setTfPicked(null);
     submittedRef.current = false;
-    doSpin(players.length, allowedChallenges);
-  };
-
-  const handleShowQuestion = () => {
-    if (pickedChallenge === null) return;
-    const q = buildOneQuestion(pickedChallenge, wordPool);
-    if (!q) return; // shouldn't happen — wordPool >= 4 gate handles it
-    setActiveQ(q);
-    setPicked(null);
-    setTfPicked(null);
-    submittedRef.current = false;
-    setPhase('question');
-    // Auto-speak the prompt word so the kid hears it before answering.
-    // For reverse questions the prompt IS the translation, so don't
-    // speak the English — we'd give away the answer.
-    if (q.kind === 'meaning' || q.kind === 'fill-blank' || q.kind === 'true-false') {
-      speak(q.word.id, q.word.english);
-    }
+    doSpin(players.length, allowedChallenges, wordPool);
   };
 
   const recordResult = (isCorrect: boolean) => {
@@ -694,21 +856,29 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
     submittedRef.current = true;
     setPicked(option);
     const correct = activeQ.multiChoice.options[activeQ.multiChoice.correctIndex];
-    recordResult(option === correct);
+    const isCorrect = option === correct;
+    recordResult(isCorrect);
+    const ctx = getAudioCtx();
+    if (ctx) playAnswerSound(ctx, isCorrect);
   };
 
   const handleAnswerTrueFalse = (value: boolean) => {
     if (!activeQ || !activeQ.trueFalse || tfPicked !== null || submittedRef.current) return;
     submittedRef.current = true;
     setTfPicked(value);
-    recordResult(value === activeQ.trueFalse.isTrue);
+    const isCorrect = value === activeQ.trueFalse.isTrue;
+    recordResult(isCorrect);
+    const ctx = getAudioCtx();
+    if (ctx) playAnswerSound(ctx, isCorrect);
   };
 
   const handleEndRound = () => {
+    clearPendingTimers();
     setPhase('done');
   };
 
   const handlePlayAgain = () => {
+    clearPendingTimers();
     setPlayers(prev => prev.map(p => ({ ...p, correct: 0, total: 0 })));
     setPickedPlayerIdx(null);
     setPickedChallenge(null);
@@ -718,7 +888,8 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
     setTfPicked(null);
     submittedRef.current = false;
     setPhase('spinning');
-    window.setTimeout(() => doSpin(players.length, allowedChallenges), 350);
+    const id = window.setTimeout(() => doSpin(players.length, allowedChallenges, wordPool), 350);
+    pendingTimersRef.current.push(id);
   };
 
   const toggleChallenge = (k: ChallengeKind) => {
@@ -978,59 +1149,164 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center gap-6 sm:gap-8">
-          {/* Wheel */}
-          <div className="relative" style={{ width: 'min(80vw, 480px)', height: 'min(80vw, 480px)' }}>
-            {/* Pointer arrow (top centre, pointing down into the wheel) */}
-            <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 drop-shadow-md">
-              <svg width="36" height="44" viewBox="0 0 36 44">
-                <path d="M 18 44 L 0 8 Q 18 -4 36 8 Z" fill="#0f172a" />
-                <path d="M 18 38 L 6 12 Q 18 4 30 12 Z" fill="#facc15" />
-              </svg>
-            </div>
+          {/* Wheel — three layers: static gold frame with studs, rotating
+              slices, fixed dome highlight on top.  Splitting the frame
+              from the rotating slices is what makes the wheel feel like
+              a physical object: the highlight stays put as the wheel
+              spins underneath it. */}
+          <div className="relative" style={{ width: 'min(86vw, 540px)', height: 'min(86vw, 540px)' }}>
+            {/* Soft ground shadow under the wheel — helps it feel
+                anchored rather than floating against the gradient bg. */}
+            <div
+              className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-3/4 h-6 rounded-full blur-xl bg-stone-900/35 pointer-events-none"
+              aria-hidden
+            />
 
+            {/* Layer 1: static frame — gold metal ring + lightbulb studs */}
+            <svg viewBox="0 0 220 220" className="absolute inset-0 w-full h-full drop-shadow-2xl">
+              <defs>
+                <radialGradient id="vb-wheel-glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="rgba(250, 204, 21, 0.5)" />
+                  <stop offset="55%" stopColor="rgba(250, 204, 21, 0.15)" />
+                  <stop offset="100%" stopColor="rgba(250, 204, 21, 0)" />
+                </radialGradient>
+                <radialGradient id="vb-wheel-rim" cx="50%" cy="30%" r="70%">
+                  <stop offset="0%" stopColor="#fef3c7" />
+                  <stop offset="40%" stopColor="#fbbf24" />
+                  <stop offset="75%" stopColor="#d97706" />
+                  <stop offset="100%" stopColor="#78350f" />
+                </radialGradient>
+                <radialGradient id="vb-wheel-rim-inner" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#451a03" />
+                  <stop offset="100%" stopColor="#1c1917" />
+                </radialGradient>
+              </defs>
+              <circle cx="110" cy="110" r="108" fill="url(#vb-wheel-glow)" />
+              <circle cx="110" cy="110" r="106" fill="url(#vb-wheel-rim)" />
+              <circle cx="110" cy="110" r="100" fill="url(#vb-wheel-rim-inner)" />
+              {/* 24 alternating "lightbulb" studs around the rim — gives
+                  the casino / fairground wheel look without needing any
+                  CSS animation noise. */}
+              {Array.from({ length: 24 }).map((_, i) => {
+                const angle = (i / 24) * 360;
+                const pos = polarToCart(110, 110, 103, angle);
+                const isLit = i % 2 === 0;
+                return (
+                  <g key={`stud-${i}`}>
+                    {isLit && (
+                      <circle cx={pos.x} cy={pos.y} r="3.6" fill="rgba(254, 240, 138, 0.55)" />
+                    )}
+                    <circle
+                      cx={pos.x}
+                      cy={pos.y}
+                      r="2.2"
+                      fill={isLit ? '#fef3c7' : '#fbbf24'}
+                      stroke={isLit ? '#facc15' : '#92400e'}
+                      strokeWidth="0.5"
+                    />
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* Layer 2: rotating wheel — slices, labels, hub */}
             <motion.div
-              className="w-full h-full"
+              className="absolute inset-0"
               animate={{ rotate: wheelRotation }}
-              transition={{ duration: 3, ease: [0.17, 0.67, 0.32, 1] }}
+              transition={{ duration: 3, ease: easeOutCubic }}
             >
-              <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-2xl">
-                {/* Slices */}
+              <svg viewBox="0 0 220 220" className="w-full h-full">
+                <defs>
+                  {SLICE_COLORS.map((color, i) => (
+                    <radialGradient key={`vb-slice-${i}`} id={`vb-slice-${i}`} cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor={color} stopOpacity="1" />
+                      <stop offset="100%" stopColor={color} stopOpacity="0.82" />
+                    </radialGradient>
+                  ))}
+                </defs>
                 {players.map((p, i) => {
                   const startAngle = i * sliceDeg;
                   const endAngle = (i + 1) * sliceDeg;
                   const midAngle = startAngle + sliceDeg / 2;
-                  const labelPos = polarToCart(100, 100, 62, midAngle);
-                  // Rotate label so its baseline runs along the slice's
-                  // radial axis — kids should read the name without
-                  // tilting their head 90° to one side.
-                  const labelRotation = midAngle;
-                  const color = SLICE_COLORS[i % SLICE_COLORS.length];
+                  const labelPos = polarToCart(110, 110, 68, midAngle);
+                  const colorIdx = i % SLICE_COLORS.length;
                   return (
                     <g key={`${p.name}-${i}`}>
-                      <path d={slicePath(startAngle, endAngle)} fill={color} stroke="white" strokeWidth="1.5" />
+                      <path
+                        d={slicePath(startAngle, endAngle, 96, 110, 110)}
+                        fill={`url(#vb-slice-${colorIdx})`}
+                        stroke="rgba(15, 23, 42, 0.55)"
+                        strokeWidth="1.2"
+                      />
                       <text
                         x={labelPos.x}
                         y={labelPos.y}
                         fill="white"
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fontSize={Math.max(6, 14 - players.length * 0.3)}
+                        fontSize={Math.max(7, 15 - players.length * 0.32)}
                         fontWeight={900}
-                        transform={`rotate(${labelRotation} ${labelPos.x} ${labelPos.y})`}
-                        style={{ pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,0.35)' }}
+                        transform={`rotate(${midAngle} ${labelPos.x} ${labelPos.y})`}
+                        style={{ pointerEvents: 'none', textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
                       >
                         {p.name.length > 12 ? `${p.name.slice(0, 11)}…` : p.name}
                       </text>
                     </g>
                   );
                 })}
-                {/* Outer ring */}
-                <circle cx="100" cy="100" r="96" fill="none" stroke="#0f172a" strokeWidth="2.5" />
-                {/* Centre hub */}
-                <circle cx="100" cy="100" r="18" fill="#0f172a" />
-                <circle cx="100" cy="100" r="14" fill="#facc15" />
+                {/* Centre hub — black outer ring, gold dome, black inner
+                    bezel, dark axle.  The tiny pale dot near the top is
+                    an asymmetry so the rotation is visible at the centre. */}
+                <circle cx="110" cy="110" r="22" fill="#0f172a" />
+                <circle cx="110" cy="110" r="20" fill="url(#vb-wheel-rim)" />
+                <circle cx="110" cy="110" r="9" fill="#1c1917" />
+                <circle cx="110" cy="110" r="7" fill="url(#vb-wheel-rim-inner)" />
+                <circle cx="110" cy="98" r="1.4" fill="#fef3c7" />
               </svg>
             </motion.div>
+
+            {/* Layer 3: fixed dome highlight on top — sells the 3D /
+                physical object look.  Top-left is bright, bottom-right
+                is shadowed, simulating a light source above. */}
+            <svg
+              viewBox="0 0 220 220"
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              aria-hidden
+            >
+              <defs>
+                <radialGradient id="vb-wheel-dome" cx="30%" cy="25%" r="85%">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0.45)" />
+                  <stop offset="40%" stopColor="rgba(255,255,255,0.05)" />
+                  <stop offset="75%" stopColor="rgba(0,0,0,0)" />
+                  <stop offset="100%" stopColor="rgba(0,0,0,0.45)" />
+                </radialGradient>
+              </defs>
+              <circle cx="110" cy="110" r="96" fill="url(#vb-wheel-dome)" />
+            </svg>
+
+            {/* Pointer — three-tone metallic arrow, drop-shadow casts
+                onto the wheel so it reads as physically in front. */}
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-20 drop-shadow-xl">
+              <svg width="56" height="68" viewBox="0 0 52 62">
+                <defs>
+                  <linearGradient id="vb-pointer-metal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#fef3c7" />
+                    <stop offset="45%" stopColor="#fbbf24" />
+                    <stop offset="80%" stopColor="#b45309" />
+                    <stop offset="100%" stopColor="#451a03" />
+                  </linearGradient>
+                  <linearGradient id="vb-pointer-shine" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(255,255,255,0.7)" />
+                    <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                  </linearGradient>
+                </defs>
+                <path d="M 26 62 L 0 14 Q 26 -2 52 14 Z" fill="#0f172a" />
+                <path d="M 26 56 L 6 18 Q 26 5 46 18 Z" fill="url(#vb-pointer-metal)" />
+                <path d="M 26 50 L 12 22 Q 26 14 40 22 Z" fill="url(#vb-pointer-shine)" opacity="0.45" />
+                <circle cx="26" cy="22" r="3" fill="#0f172a" />
+                <circle cx="26" cy="22" r="1.8" fill="#fef3c7" />
+              </svg>
+            </div>
           </div>
 
           {/* CTA panel under the wheel */}
@@ -1066,6 +1342,17 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                     <span className="text-xl">{pickedMeta.emoji}</span>
                     <span>{t.challengeLabel} {challengeLabel[pickedChallenge]}</span>
                   </div>
+                  {/* Auto-advance pulse — signals the question is about
+                      to appear without making the teacher tap.  Re-spin
+                      / End Round still let them bail before it fires. */}
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 1, 0.6, 1] }}
+                    transition={{ duration: 1.8, times: [0, 0.3, 0.6, 1] }}
+                    className="text-sm font-bold text-violet-700"
+                  >
+                    {t.getReady}
+                  </motion.p>
                   <div className="grid grid-cols-2 gap-2 pt-2">
                     <button
                       type="button"
@@ -1077,12 +1364,12 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                     </button>
                     <button
                       type="button"
-                      onClick={handleShowQuestion}
+                      onClick={handleSpin}
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                      className="py-3 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-black text-sm shadow-md active:scale-[0.98] transition flex items-center justify-center gap-2"
+                      className="py-3 rounded-lg bg-white text-violet-700 border-2 border-violet-200 font-black text-sm hover:bg-violet-50 active:scale-[0.98] transition flex items-center justify-center gap-2"
                     >
-                      <Eye size={16} />
-                      {t.showQuestionBtn}
+                      <Disc3 size={16} />
+                      {t.spinAgainBtn}
                     </button>
                   </div>
                 </motion.div>
