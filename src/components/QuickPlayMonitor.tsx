@@ -371,7 +371,7 @@ function SessionResultsModal({
           className="flex flex-col items-center gap-2"
         >
           <Trophy size={56} className="text-amber-300 drop-shadow-lg" />
-          <h2 className="font-headline font-black text-3xl sm:text-5xl text-center tracking-tight">Great Job, Class!</h2>
+          <h2 className="font-headline font-black text-3xl sm:text-5xl text-center tracking-tight">Great Job, Everyone!</h2>
           {topStudents[0] && (
             <p className="font-label text-base sm:text-xl text-amber-200 italic">
               🥇 Winner — <span className="font-black">{topStudents[0].name}</span>
