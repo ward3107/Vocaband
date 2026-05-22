@@ -52,6 +52,21 @@
 #                      callers (FreeResourcesView audio-pack download
 #                      preview) fetch the MP3 directly.
 #
+# 2026-05-22 — img-src wildcard removed (ZAP "CSP: Wildcard Directive"):
+#   * img-src        — `https:` REMOVED, replaced with explicit allowlist:
+#                      challenges.cloudflare.com (Turnstile widget assets),
+#                      *.supabase.co (any future image bucket — mirrors the
+#                      pattern used by the `sound` bucket), *.r2.dev (future
+#                      R2 image hosting — mirrors media-src), and
+#                      lh3.googleusercontent.com (Google OAuth avatars from
+#                      user_metadata.picture, not rendered today but the
+#                      data is there). Audit before this change: no client
+#                      code loads <img src="https://..."> from any external
+#                      host — all UI images are 'self', data:, or blob:.
+#                      If a future feature loads an image from a host not
+#                      on this list it will silently fail; add the host
+#                      here (don't restore the wildcard).
+#
 # 2026-05-16, R5 — Sentry observability:
 #   * connect-src     — `https://o4511016408514560.ingest.de.sentry.io`
 #                       ADDED.  This is the ingest host derived from the
@@ -92,7 +107,7 @@
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cross-Origin-Resource-Policy: same-site
   X-Permitted-Cross-Domain-Policies: none
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-u2tz3AO+oBAKJtNgGuvmNfXpmnbjA8TTRNPNq+91mw4=' 'sha256-VxcUPwAXbsfZRn4miguT1rBLDq9Gg1p5Hr/Y/ydWun4=' 'sha256-jsbFxr3mSLx85mPMZk3vlvNft1gFvBAJ4A6V1bv+mzE=' 'sha256-ZScbVWl2oPtslrDUjXS97uAuKx/+fHiCl/TSvOiFHjg=' 'sha256-sKY1gwBjIT7B9oNDzL/p0o4yh9WLDbHr5N7HW0yiap4=' https://static.cloudflareinsights.com https://challenges.cloudflare.com https://browser.sentry-cdn.com; script-src-elem 'self' 'sha256-u2tz3AO+oBAKJtNgGuvmNfXpmnbjA8TTRNPNq+91mw4=' 'sha256-VxcUPwAXbsfZRn4miguT1rBLDq9Gg1p5Hr/Y/ydWun4=' 'sha256-jsbFxr3mSLx85mPMZk3vlvNft1gFvBAJ4A6V1bv+mzE=' 'sha256-ZScbVWl2oPtslrDUjXS97uAuKx/+fHiCl/TSvOiFHjg=' 'sha256-sKY1gwBjIT7B9oNDzL/p0o4yh9WLDbHr5N7HW0yiap4=' https://static.cloudflareinsights.com https://challenges.cloudflare.com https://browser.sentry-cdn.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://auth.vocaband.com wss://auth.vocaband.com https://api.vocaband.com wss://api.vocaband.com https://vocaband.fly.dev wss://vocaband.fly.dev https://*.supabase.co wss://*.supabase.co https://static.cloudflareinsights.com https://cloudflareinsights.com https://vocaband.com wss://vocaband.com https://audio.vocaband.com https://*.r2.dev https://challenges.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://o4511016408514560.ingest.de.sentry.io https://browser.sentry-cdn.com; media-src 'self' https://auth.vocaband.com https://*.supabase.co https://*.cloudflare.com https://audio.vocaband.com https://*.r2.dev; worker-src 'self' blob:; frame-src https://accounts.google.com https://challenges.cloudflare.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-u2tz3AO+oBAKJtNgGuvmNfXpmnbjA8TTRNPNq+91mw4=' 'sha256-VxcUPwAXbsfZRn4miguT1rBLDq9Gg1p5Hr/Y/ydWun4=' 'sha256-jsbFxr3mSLx85mPMZk3vlvNft1gFvBAJ4A6V1bv+mzE=' 'sha256-ZScbVWl2oPtslrDUjXS97uAuKx/+fHiCl/TSvOiFHjg=' 'sha256-sKY1gwBjIT7B9oNDzL/p0o4yh9WLDbHr5N7HW0yiap4=' https://static.cloudflareinsights.com https://challenges.cloudflare.com https://browser.sentry-cdn.com; script-src-elem 'self' 'sha256-u2tz3AO+oBAKJtNgGuvmNfXpmnbjA8TTRNPNq+91mw4=' 'sha256-VxcUPwAXbsfZRn4miguT1rBLDq9Gg1p5Hr/Y/ydWun4=' 'sha256-jsbFxr3mSLx85mPMZk3vlvNft1gFvBAJ4A6V1bv+mzE=' 'sha256-ZScbVWl2oPtslrDUjXS97uAuKx/+fHiCl/TSvOiFHjg=' 'sha256-sKY1gwBjIT7B9oNDzL/p0o4yh9WLDbHr5N7HW0yiap4=' https://static.cloudflareinsights.com https://challenges.cloudflare.com https://browser.sentry-cdn.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://challenges.cloudflare.com https://*.supabase.co https://*.r2.dev https://lh3.googleusercontent.com; connect-src 'self' https://auth.vocaband.com wss://auth.vocaband.com https://api.vocaband.com wss://api.vocaband.com https://vocaband.fly.dev wss://vocaband.fly.dev https://*.supabase.co wss://*.supabase.co https://static.cloudflareinsights.com https://cloudflareinsights.com https://vocaband.com wss://vocaband.com https://audio.vocaband.com https://*.r2.dev https://challenges.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://o4511016408514560.ingest.de.sentry.io https://browser.sentry-cdn.com; media-src 'self' https://auth.vocaband.com https://*.supabase.co https://*.cloudflare.com https://audio.vocaband.com https://*.r2.dev; worker-src 'self' blob:; frame-src https://accounts.google.com https://challenges.cloudflare.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
 
 # Cache static assets aggressively (hashed filenames)
 /assets/*
