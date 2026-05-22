@@ -40,6 +40,7 @@ export type View =
   | "quick-play-teacher-monitor"
   | "quick-play-student"
   | "hot-seat"
+  | "wheel"
   | "class-show"
   | "worksheet"
   | "vocabagrut"

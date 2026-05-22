@@ -199,6 +199,8 @@ export function CreateAssignmentSection(deps: CreateAssignmentSectionDeps): Reac
             setView('class-show');
           } else if (type === 'hot-seat') {
             setView('hot-seat');
+          } else if (type === 'wheel') {
+            setView('wheel');
           } else if (type === 'vocabagrut') {
             setView('vocabagrut');
           }

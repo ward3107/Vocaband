@@ -7,6 +7,7 @@
  *   - shop                          (student)
  *   - voca-picker                   (admin)
  *   - hot-seat                      (teacher)
+ *   - wheel                         (teacher)
  *   - vocabagrut + Hebrew variant   (teacher)
  *   - global-leaderboard
  *   - teacher-approvals
@@ -29,6 +30,7 @@ import type { View } from '../core/views';
 const ShopView = lazyWithRetry(() => import('./ShopMarketplaceView'));
 const VocaPickerView = lazyWithRetry(() => import('./VocaPickerView'));
 const HotSeatView = lazyWithRetry(() => import('./HotSeatView'));
+const WheelView = lazyWithRetry(() => import('./WheelView'));
 const VocabagrutShell = lazyWithRetry(() => import('../features/vocabagrut/VocabagrutShell'));
 const HebrewComingSoonView = lazyWithRetry(() => import('./HebrewComingSoonView'));
 const GlobalLeaderboardView = lazyWithRetry(() => import('./GlobalLeaderboardView'));
@@ -146,6 +148,33 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           speak={speakWord}
           assignments={hotSeatAssignments}
           topicPacks={topicPacks}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'wheel') {
+    // Vocab Wheel — projector-first mode where every spin randomly
+    // picks a student AND a challenge type.  Same assignment-scoping
+    // rules as Hot Seat; pre-fill the roster textarea with the
+    // selected class's students when available so the teacher doesn't
+    // retype names they already manage in the dashboard.
+    const wheelAssignments = visibleAssignments
+      .filter((a) => !selectedClass || a.classId === selectedClass.id)
+      .map((a) => ({ id: a.id, title: a.title, wordIds: a.wordIds, words: a.words }));
+    const initialPlayerNames = selectedClass
+      ? (classStudents as { name: string; classCode: string }[])
+          .filter((s) => s.classCode === selectedClass.code)
+          .map((s) => s.name)
+      : undefined;
+    return (
+      <LazyWrapper loadingMessage="Loading Vocab Wheel…">
+        <WheelView
+          onExit={() => setView(wizardBackOrDashboard())}
+          speak={speakWord}
+          assignments={wheelAssignments}
+          topicPacks={topicPacks}
+          initialPlayerNames={initialPlayerNames}
         />
       </LazyWrapper>
     );

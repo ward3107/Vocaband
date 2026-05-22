@@ -16,12 +16,12 @@
  * tiles used).
  */
 import React from 'react';
-import { BookOpen, Tv2, Users, Sparkles } from 'lucide-react';
+import { BookOpen, Tv2, Users, Sparkles, Disc3 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { teacherWizardsT } from '../../locales/teacher/wizards';
 import { teacherDashboardT } from '../../locales/teacher/dashboard';
 
-export type ActivityType = 'assignment' | 'class-show' | 'hot-seat' | 'vocabagrut';
+export type ActivityType = 'assignment' | 'class-show' | 'hot-seat' | 'wheel' | 'vocabagrut';
 
 export interface ActivityTypeTabsProps {
   /** Currently-rendered activity. The wizard always passes
@@ -63,6 +63,7 @@ const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
     { id: 'class-show', label: td.classShowTitle, icon: <Tv2 size={16} />, activeBg: 'bg-fuchsia-600', iconColor: 'text-fuchsia-600' },
     ...(hideEnglishOnlyTabs ? [] : [
       { id: 'hot-seat' as const, label: td.hotSeatTitle, icon: <Users size={16} />, activeBg: 'bg-orange-600', iconColor: 'text-orange-600' },
+      { id: 'wheel' as const, label: td.wheelTitle, icon: <Disc3 size={16} />, activeBg: 'bg-violet-600', iconColor: 'text-violet-600' },
       { id: 'vocabagrut' as const, label: td.vocabagrutTitle, icon: <Sparkles size={16} />, activeBg: 'bg-violet-600', iconColor: 'text-violet-600' },
     ]),
   ];

@@ -76,6 +76,9 @@ export interface TeacherDashboardT {
   hotSeatTitle: string;
   hotSeatDescription: string;
   hotSeatTooltip: string;
+  wheelTitle: string;
+  wheelDescription: string;
+  wheelTooltip: string;
 
   // ─── Classes section ───────────────────────────────────────────
   myClassesHeading: string;
@@ -186,6 +189,9 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     hotSeatTitle: "Hot Seat",
     hotSeatDescription: "Pass-around single-device game",
     hotSeatTooltip: "One device, many players. Type student names, pass the tablet around — each student gets a turn in the hot seat. Perfect for classes where not every kid has a phone.",
+    wheelTitle: "Vocab Wheel",
+    wheelDescription: "Spin to pick a student + a challenge",
+    wheelTooltip: "Project the wheel on your classroom screen. Each spin randomly picks a student AND a challenge type (meaning, translation, fill-in-the-blank, true/false). Keeps the whole class engaged because anyone could be next.",
 
     myClassesHeading: "My classes",
     noClassesYetSubtitle: "You haven't created any classes yet.",
@@ -289,6 +295,9 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     hotSeatTitle: "כיסא חם",
     hotSeatDescription: "משחק במכשיר אחד עם תורות",
     hotSeatTooltip: "מכשיר אחד, הרבה שחקנים. הקלידו שמות תלמידים, העבירו את הטאבלט — לכל תלמיד תור בכיסא החם. מושלם לכיתות שבהן לא לכל ילד יש טלפון.",
+    wheelTitle: "גלגל המילים",
+    wheelDescription: "סובבו לבחור תלמיד ואתגר",
+    wheelTooltip: "הקרינו את הגלגל למסך הכיתה. כל סיבוב בוחר באקראי תלמיד וגם סוג אתגר (משמעות, תרגום, השלמת חסר, נכון/לא נכון). שומר על מעורבות כל הכיתה — כי כל אחד יכול להיות הבא בתור.",
 
     myClassesHeading: "הכיתות שלי",
     noClassesYetSubtitle: "עוד לא יצרת כיתות.",
@@ -392,6 +401,9 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     hotSeatTitle: "الكرسي الساخن",
     hotSeatDescription: "لعبة بجهاز واحد بالأدوار",
     hotSeatTooltip: "جهاز واحد، عدة لاعبين. اكتب أسماء الطلاب ومرّر الجهاز — كل طالب يحصل على دوره في الكرسي الساخن. مثالي للصفوف التي لا يملك فيها كل طالب هاتفًا.",
+    wheelTitle: "عجلة المفردات",
+    wheelDescription: "أدرها لاختيار طالب وتحدٍ",
+    wheelTooltip: "اعرض العجلة على شاشة الصف. كل دورة تختار طالبًا عشوائيًا ونوع تحدٍ (المعنى، الترجمة، ملء الفراغ، صح/خطأ). تحافظ على انتباه الصف بأكمله — لأن أي شخص قد يكون التالي.",
 
     myClassesHeading: "فصولي",
     noClassesYetSubtitle: "لم تنشئ أي فصول بعد.",
@@ -495,6 +507,9 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     hotSeatTitle: "Hot Seat",
     hotSeatDescription: "Pass-around single-device game",
     hotSeatTooltip: "One device, many players. Type student names, pass the tablet around — each student gets a turn in the hot seat. Perfect for classes where not every kid has a phone.",
+    wheelTitle: "Vocab Wheel",
+    wheelDescription: "Spin to pick a student + a challenge",
+    wheelTooltip: "Project the wheel on your classroom screen. Each spin randomly picks a student AND a challenge type (meaning, translation, fill-in-the-blank, true/false). Keeps the whole class engaged because anyone could be next.",
 
     myClassesHeading: "My classes",
     noClassesYetSubtitle: "You haven't created any classes yet.",
