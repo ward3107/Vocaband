@@ -48,6 +48,7 @@ import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient as createRedisClient } from "redis";
+import jwt from "jsonwebtoken";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { buildSystemPrompt, buildUserMessage, BAGRUT_TOOL } from "./src/features/vocabagrut/lib/bagrutPrompt";
@@ -125,8 +126,33 @@ function flagNonAscii(name: string, value: string | undefined) {
 }
 flagNonAscii('SUPABASE_URL', process.env.SUPABASE_URL);
 flagNonAscii('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY);
+flagNonAscii('SUPABASE_JWT_SECRET', process.env.SUPABASE_JWT_SECRET);
 flagNonAscii('GOOGLE_AI_API_KEY', process.env.GOOGLE_AI_API_KEY);
 flagNonAscii('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY);
+
+// JWT secret for local signature verification. Optional — when set, eliminates
+// the ~300ms round-trip to Supabase auth.getUser() on every connection. That
+// remote round-trip was the documented connection-throughput bottleneck in the
+// 2026-05-21 load test (p95 connect latency went from 2.8s at 1000 sockets to
+// 16s at 2500 sockets — that cliff was the auth pipeline saturating). Local
+// signature check is <1ms and removes the cliff entirely.
+//
+// Find the value in Supabase dashboard → Settings → API → "JWT Settings" → "JWT Secret".
+// Set with: fly secrets set SUPABASE_JWT_SECRET=<value>
+//
+// Token revocation: local verify can't detect Supabase-side session revocation
+// (suspended account, deleted user). The 5-min mid-stream re-verify
+// intentionally uses verifyTokenRemote() to keep revocation detection working;
+// cost is bounded (1 remote call per active socket per 5 min).
+const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+if (SUPABASE_JWT_SECRET) {
+  console.log("[verifyToken] local JWT verification ENABLED — connection-time auth uses signature check, no remote call");
+} else if (hasSupabaseConfig) {
+  console.warn(
+    "[verifyToken] local JWT verification DISABLED — falling back to remote auth.getUser() per connection. " +
+    "Set SUPABASE_JWT_SECRET (Supabase Settings → API → JWT Secret) to unlock 5000+ concurrent students."
+  );
+}
 
 // Supabase admin client — uses the service role key to verify tokens server-side
 // Only created if credentials are available.
@@ -138,7 +164,44 @@ const supabaseAdmin = hasSupabaseConfig
     )
   : null;
 
+interface SupabaseJwtPayload {
+  sub: string;
+  email?: string;
+  aud?: string;
+  exp?: number;
+  role?: string;
+}
+
+// Local JWT signature + expiry check. Returns the decoded payload on success,
+// null on any failure (invalid signature, expired, malformed, or
+// SUPABASE_JWT_SECRET not configured). The jsonwebtoken library handles the
+// exp claim automatically — expired tokens throw TokenExpiredError.
+function verifyTokenLocal(token: string): SupabaseJwtPayload | null {
+  if (!SUPABASE_JWT_SECRET) return null;
+  try {
+    const decoded = jwt.verify(token, SUPABASE_JWT_SECRET, { algorithms: ["HS256"] });
+    if (typeof decoded === "string") return null;
+    if (typeof decoded.sub !== "string" || decoded.sub.length === 0) return null;
+    return decoded as SupabaseJwtPayload;
+  } catch {
+    // Don't log per-failure here — at >1000 reqs/s this would flood logs.
+    // Caller will surface the rejection via socket/REST 401 response.
+    return null;
+  }
+}
+
 async function verifyToken(token: string): Promise<string | null> {
+  // Fast path: local signature verification — no network round-trip.
+  // This is the load-test win (docs/load-test-report-2026-05-21.md).
+  const local = verifyTokenLocal(token);
+  if (local) return local.sub;
+
+  // When SUPABASE_JWT_SECRET is set and local verify failed, the token is bad.
+  // Short-circuit instead of paying for a remote round-trip on a known bad token —
+  // that would reintroduce the bottleneck on the failure path.
+  if (SUPABASE_JWT_SECRET) return null;
+
+  // Slow path (legacy): no JWT secret configured, fall back to remote verify.
   if (!supabaseAdmin) {
     console.error("[verifyToken] supabaseAdmin is null — SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing");
     return null;
@@ -170,7 +233,31 @@ async function verifyToken(token: string): Promise<string | null> {
   }
 }
 
+// Forces remote verification — bypasses the local fast path. Used by the 5-min
+// mid-stream re-verify so revoked sessions (suspended teacher, deleted user)
+// still get kicked when the token would otherwise pass local signature check.
+// Cost: 1 remote call per active socket per 5 min — bounded and acceptable.
+async function verifyTokenRemote(token: string): Promise<string | null> {
+  if (!supabaseAdmin) return null;
+  try {
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) return null;
+    return user.id;
+  } catch {
+    return null;
+  }
+}
+
 async function verifyTokenWithEmail(token: string): Promise<{ uid: string; email: string } | null> {
+  // Fast path: email lives in the JWT claims, no remote needed.
+  const local = verifyTokenLocal(token);
+  if (local?.email) return { uid: local.sub, email: local.email };
+
+  // If local verify succeeded but the token lacks an email claim (rare), fall
+  // through to remote to fetch it.  Otherwise, when JWT secret is set and
+  // local verify failed, short-circuit.
+  if (SUPABASE_JWT_SECRET && !local) return null;
+
   if (!supabaseAdmin) return null;
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
@@ -992,7 +1079,11 @@ async function startServer() {
         socket.disconnect(true);
         return;
       }
-      const stillValidUid = await verifyToken(token);
+      // Force remote verify here even when SUPABASE_JWT_SECRET is set —
+      // local signature check can't detect server-side session revocation
+      // (suspended account, deleted user, password change). Cost is one
+      // Supabase round-trip per active socket per 5 min — bounded.
+      const stillValidUid = await verifyTokenRemote(token);
       if (!stillValidUid || stillValidUid !== uid) {
         if (isDev) console.warn(`[Socket] Re-verify failed for uid=${uid}, disconnecting`);
         socket.emit("forced_disconnect", { reason: "token_revoked" });
