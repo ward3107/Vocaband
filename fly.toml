@@ -21,21 +21,18 @@ app = 'vocaband'
 primary_region = 'fra'
 
 # ─── Required secrets (set with `fly secrets set NAME=value`) ────
-#   SUPABASE_URL                 — Supabase project URL
+#   SUPABASE_URL                 — Supabase project URL.  Also used to fetch
+#                                  the JWKS at /auth/v1/.well-known/jwks.json
+#                                  for local JWT signature verification.
 #   SUPABASE_SERVICE_ROLE_KEY    — admin key for SECURITY DEFINER paths
 #   GOOGLE_AI_API_KEY            — Gemini OCR + sentence generation
 #   ANTHROPIC_API_KEY            — Bagrut test generation
 #   ALLOWED_ORIGIN               — comma-separated CORS origins (prod)
 #
-# ─── Optional but high-leverage: SUPABASE_JWT_SECRET ──────────────
-# When set, server.ts verifies JWTs locally (signature check) instead of
-# round-tripping to Supabase auth.getUser() per connection. Removes the
-# auth-pipeline bottleneck identified in docs/load-test-report-2026-05-21.md
-# (latency cliff at 1000→2500 concurrent sockets disappears entirely;
-# p95 connect time drops from ~3s to <100ms; per-VM ceiling rises from
-# ~1500 comfortable to ~5000+). Find the value in Supabase dashboard →
-# Settings → API → "JWT Settings" → "JWT Secret". Set with:
-#   fly secrets set SUPABASE_JWT_SECRET=<long-base64-string>
+# Local JWT verification activates automatically once SUPABASE_URL is set —
+# no additional secret is required.  See docs/load-test-report-2026-05-21.md
+# for the bottleneck this avoids; verifyToken in server.ts does the JWKS
+# fetch + cache + verify via the `jose` library.
 #
 # ─── Optional: REDIS_URL (multi-VM scaling) ───────────────────────
 # When set, server.ts attaches @socket.io/redis-adapter so socket.io
