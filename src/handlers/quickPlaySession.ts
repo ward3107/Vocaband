@@ -74,9 +74,32 @@ export async function createEnglishQuickPlaySession(
     throw new Error("Cannot create Quick Play session: no words selected");
   }
 
-  const dbWords = words.filter((w) => w.id >= 0);
-  const customWords = words.filter((w) => w.id < 0);
+  // Split selected words by SOURCE, not by ID sign, so that words
+  // sourced from the Vocabulary Library (LibrarySetsPanel) don't get
+  // mis-categorised.  When a Library word has no canonical
+  // curriculum_word_id matching ALL_WORDS, toPickerWord falls back to
+  // a 9-digit synthetic id from hashEnglishToId() AND stamps
+  // level: "Custom".  Routing by `id >= 0` previously put those words
+  // into dbWords, which writes their synthetic ids into
+  // quick_play_sessions.word_ids — but the student-side hydration
+  // filters bundled ALL_WORDS by those ids and finds nothing, so the
+  // student bounces to landing with "No words in session" even though
+  // the teacher saw words on screen.  Filtering by `level === "Custom"`
+  // routes Library-fallback words into the custom_words JSON instead,
+  // where their full english/hebrew/arabic text travels with the
+  // session and the student-side reads them as custom words.
+  const dbWords = words.filter((w) => w.id >= 0 && w.level !== "Custom");
+  const customWords = words.filter((w) => w.id < 0 || w.level === "Custom");
   const wordIds = dbWords.map((w) => w.id);
+
+  // Defence-in-depth: if both lists are empty after the filter (eg.
+  // every selected word slipped through with an unexpected shape), do
+  // NOT create the session — abort with a toast.  Same shape failure
+  // mode as `words.length === 0` but covers shape-corruption cases.
+  if (wordIds.length === 0 && customWords.length === 0) {
+    deps.showToast(deps.failedCreateSessionMsg("Selected words could not be saved (no usable ids or text). Try picking again."), "error");
+    throw new Error("Cannot create Quick Play session: no usable words after filter");
+  }
 
   const customWordsJson =
     customWords.length > 0
