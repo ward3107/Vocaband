@@ -35,6 +35,7 @@ export interface UseAppPreOverlaysDeps {
   handleCookieAccept: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleCookieCustomize: any;
+  handleCookieReject: () => void;
   qpResumeSuppress: boolean;
   ocrPendingFile: { file: File; inputRef: React.ChangeEvent<HTMLInputElement> | null } | null;
   setOcrPendingFile: React.Dispatch<
@@ -55,7 +56,7 @@ export function useAppPreOverlays(deps: UseAppPreOverlaysDeps): AppPreOverlays {
     <>
       {deps.showCookieBanner && !deps.user && (
         <Suspense fallback={null}>
-          <CookieBanner onAccept={deps.handleCookieAccept} onCustomize={deps.handleCookieCustomize} />
+          <CookieBanner onAccept={deps.handleCookieAccept} onCustomize={deps.handleCookieCustomize} onReject={deps.handleCookieReject} />
         </Suspense>
       )}
       <Suspense fallback={null}>

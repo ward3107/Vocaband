@@ -4,6 +4,7 @@ import {createRoot} from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.tsx';
 import { runSafariDiagnostics } from './utils/safariDiagnostics';
 import { requestPersistentStorage } from './utils/persistStorage';
+import { getCookieConsent } from './hooks/useCookieConsent';
 import './index.css';
 
 // Tiny pre-Sentry error buffer.
@@ -44,9 +45,18 @@ if (typeof window !== 'undefined') {
   });
 }
 
-/** Dynamic-import Sentry after first paint and replay any buffered errors. */
+/** Dynamic-import Sentry after first paint and replay any buffered errors.
+ *
+ *  Idempotent — safe to call multiple times.  Used both from the initial
+ *  bootstrap (when the user has already granted analytics consent on a
+ *  previous visit) and from the `vocaband:consent-changed` listener
+ *  installed below (when the user grants consent during this visit).
+ */
+let sentryLoadStarted = false;
 function loadSentryDeferred() {
   if (typeof window === 'undefined') return;
+  if (sentryLoadStarted) return;
+  sentryLoadStarted = true;
 
   const schedule = (cb: () => void): void => {
     const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
@@ -80,8 +90,29 @@ function loadSentryDeferred() {
     } catch {
       // Sentry chunk failed to load (blocked CDN, offline, CSP). Not
       // app-critical — keep going without it.
+      sentryLoadStarted = false;  // permit retry on next consent change
     }
   });
+}
+
+/** Wait for the user to grant analytics consent, then load Sentry.
+ *
+ *  Called from bootstrap() when the user has NOT yet accepted analytics
+ *  cookies.  The pre-Sentry error buffer keeps capturing in the
+ *  meantime, so nothing is lost if the user opts in later in the
+ *  session — the buffered events drain into Sentry the moment it
+ *  initialises.  The listener self-removes after the first opt-in.
+ */
+function waitForConsentThenLoadSentry() {
+  if (typeof window === 'undefined') return;
+  const onChange = () => {
+    const c = getCookieConsent();
+    if (c?.analytics) {
+      window.removeEventListener('vocaband:consent-changed', onChange);
+      loadSentryDeferred();
+    }
+  };
+  window.addEventListener('vocaband:consent-changed', onChange);
 }
 
 // Apply the teacher's saved display scale BEFORE React renders, so
@@ -303,7 +334,20 @@ async function bootstrap() {
   // paint — keeps the ~41 kB gz @sentry/react chunk off the DCL critical
   // path. The window listeners installed above buffer anything that
   // throws in the gap so nothing is lost. See loadSentryDeferred above.
-  loadSentryDeferred();
+  //
+  // Consent gate: ePrivacy Art. 5(3) + GDPR require explicit opt-in
+  // BEFORE telemetry runs.  If the user has already granted analytics
+  // consent on a previous visit, fire immediately; otherwise wait for
+  // the `vocaband:consent-changed` CustomEvent (emitted by
+  // useCookieConsent when the user accepts).  The pre-Sentry error
+  // buffer keeps catching events in the meantime — nothing is lost on
+  // late opt-in.
+  const consent = getCookieConsent();
+  if (consent?.analytics) {
+    loadSentryDeferred();
+  } else {
+    waitForConsentThenLoadSentry();
+  }
 
   // Ask the browser to mark our storage as persistent so an Android
   // device running low on disk doesn't wipe the SW cache + IDB queue

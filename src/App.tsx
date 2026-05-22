@@ -140,6 +140,7 @@ export default function App() {
     showCookieBanner,
     handleCookieAccept,
     handleCookieCustomize,
+    handleCookieReject,
   } = useCookieConsent();
 
   const handlePublicNavigate = (page: PublicPage) => setView(PUBLIC_PAGE_VIEW[page]);
@@ -896,7 +897,7 @@ export default function App() {
   // Pre-auth overlays (cookie banner / QP resume banner / offline
   // pill / OCR crop modal / config-error banner).  See useAppPreOverlays.
   const { cookieBannerOverlay, ocrCropModal, configErrorBanner } = useAppPreOverlays({
-    user, showCookieBanner, handleCookieAccept, handleCookieCustomize,
+    user, showCookieBanner, handleCookieAccept, handleCookieCustomize, handleCookieReject,
     qpResumeSuppress, ocrPendingFile, setOcrPendingFile, processOcrFile,
   });
 

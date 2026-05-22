@@ -5,7 +5,7 @@ import React, { useState } from "react";
 // Slide-up entry replaced with a CSS @keyframes animation defined in
 // index.css; the expansion panel uses a conditional render rather
 // than AnimatePresence's exit animation.
-import { Cookie, ChevronUp, ChevronDown, Shield, BarChart3, Settings, Check, Lock } from "lucide-react";
+import { Cookie, ChevronUp, ChevronDown, Shield, BarChart3, Settings, Check, Lock, X } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { cookieBannerT, type CookieBannerStrings } from "../locales/cookie-banner";
 
@@ -18,6 +18,7 @@ export interface CookiePreferences {
 interface CookieBannerProps {
   onAccept: () => void;
   onCustomize: (preferences: CookiePreferences) => void;
+  onReject: () => void;
 }
 
 // Category metadata that DOES NOT change between locales (id, icon,
@@ -37,15 +38,19 @@ function getCookieCategories(t: CookieBannerStrings) {
   ];
 }
 
-const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) => {
+const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize, onReject }) => {
   const { language, dir } = useLanguage();
   const t = cookieBannerT[language];
   const cookieCategories = getCookieCategories(t);
   const [isExpanded, setIsExpanded] = useState(false);
+  // Defaults OFF for non-essential — GDPR Art. 4(11) + CJEU Planet49 require
+  // active opt-in. Pre-ticking these boxes would be an invalid consent dark
+  // pattern.  The user must move a toggle ON before clicking Save, or click
+  // "Accept All" to flip them on in one action.
   const [preferences, setPreferences] = useState<CookiePreferences>({
     essential: true,
-    analytics: true,
-    functional: true,
+    analytics: false,
+    functional: false,
   });
 
   const togglePreference = (id: keyof CookiePreferences) => {
@@ -168,9 +173,16 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
             </div>
           )}
 
-        {/* Action Buttons */}
+        {/* Action Buttons.
+            Three buttons of equal weight: Customize (secondary), Reject All
+            (secondary), Accept All (primary).  EDPB Guidelines 03/2022 and
+            CNIL guidance require that rejecting be as easy as accepting —
+            same level of visual prominence + same number of clicks.  When
+            the panel is expanded, "Accept All" becomes "Save Preferences"
+            (commits whatever the user has toggled). */}
         <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full flex-shrink-0">
           <button
+            type="button"
             onClick={() => setIsExpanded(!isExpanded)}
             className="px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-lg font-black text-xs md:text-sm text-white/85 bg-white/5 hover:bg-white/10 border-2 border-white/15 hover:border-white/25 transition-all flex items-center justify-center gap-1.5 md:gap-2"
           >
@@ -187,6 +199,15 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize }) =>
                 {t.customize}
               </>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onReject()}
+            className="px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-lg font-black text-xs md:text-sm text-white bg-white/10 hover:bg-white/15 border-2 border-white/25 hover:border-white/35 transition-all flex items-center justify-center gap-2"
+          >
+            <X size={16} aria-hidden="true" />
+            {t.rejectAll}
           </button>
 
           {isExpanded ? (
