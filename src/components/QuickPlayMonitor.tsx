@@ -1588,7 +1588,7 @@ export default function QuickPlayMonitor({
                                 Bigger podium so first 3 places are
                                 clearly readable from across the room.
                                 Per teacher request 2026-04-30. */}
-          <div className={`${qrCollapsed ? '' : 'lg:col-span-8'} ${t.podiumCard} rounded-lg p-4 sm:p-6 min-[1700px]:p-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
+          <div className={`${qrCollapsed ? '' : 'lg:col-span-8'} ${t.podiumCard} rounded-lg px-4 sm:px-6 min-[1700px]:px-10 pt-10 sm:pt-14 min-[1700px]:pt-20 pb-4 sm:pb-6 min-[1700px]:pb-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
             {/* Stage atmosphere — spotlight cone from above + a low crowd
                 silhouette along the bottom edge. Both are pointer-events:none
                 and live below the podium content (z-0), so they never block
