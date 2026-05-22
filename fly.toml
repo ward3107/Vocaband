@@ -67,16 +67,26 @@ primary_region = 'fra'
   min_machines_running = 1
   processes = ['app']
 
-  # Per-VM concurrency, sized for ~5000 students + 100 teachers.
-  # 1000 soft / 2000 hard per shared-cpu-1x w/ 512 MB:
-  #   ~30 KB/socket × 2000 = 60 MB socket buffer (fits comfortably in 512 MB)
-  #   Fly wakes the next VM once a machine crosses soft_limit (1000).
-  # With `fly scale count 3` provisioned, this gives up to ~6000
-  # concurrent sockets across all VMs — enough for peak Live Challenge.
+  # Per-VM concurrency, sized for ~10,000 concurrent students after the
+  # JWKS-based local JWT verification landed (#866 / #877).  Before
+  # JWKS, every socket cost a ~300 ms Supabase auth.getUser() round-
+  # trip, so the auth pipeline saturated at ~1500 sockets/VM and the
+  # safe hard_limit was 2000.  With local JWKS verification, per-
+  # connection auth is <5 ms and the per-VM ceiling is bounded by
+  # memory (~30 KB/socket × 5000 = 150 MB, fits in 512 MB) and Node's
+  # event loop (~5000 sockets is well under saturation on shared-cpu-1x).
+  #
+  # 3500 soft / 5000 hard per shared-cpu-1x w/ 512 MB:
+  #   ~30 KB/socket × 5000 = 150 MB socket buffer (~30% of 512 MB)
+  #   Fly wakes the next VM once a machine crosses soft_limit (3500).
+  # With 2 VMs warm + auto-scale this comfortably absorbs the 10k
+  # concurrent students target documented in
+  # docs/load-test-report-2026-05-21.md.  Validated in staging
+  # (vocaband-staging-honeyed-brook-4330) at 10k connections.
   [http_service.concurrency]
     type = 'connections'
-    hard_limit = 2000
-    soft_limit = 1000
+    hard_limit = 5000
+    soft_limit = 3500
 
   # Health check.  server.ts already exposes /api/health.  `grace_period`
   # gives the Node process time to JIT-compile + open the DB pool on
