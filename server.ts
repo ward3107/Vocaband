@@ -1111,7 +1111,32 @@ async function startServer() {
     // reconnect with a fresh (or denied) token.  Cost: one
     // supabaseAdmin.auth.getUser() call per socket per 5 min — bounded
     // and acceptable at 1500 concurrent users.
-    const reverifyHandle = setInterval(async () => {
+    //
+    // ── Thundering-herd defence (C5, 2026-05-22) ────────────────────
+    // In a classroom, 30+ students connect within a ~5 s window when a
+    // teacher launches a session.  With a fixed 5-min setInterval the
+    // re-verify load is also bunched — every 5 min, the entire class
+    // hits Supabase auth.getUser() within ~5 s.  At 1500-5000 concurrent
+    // sockets per VM that's a measurable spike that competes with normal
+    // auth traffic and can latency-spike new logins.
+    //
+    // Fix: jitter the FIRST re-verify uniformly across [0, INTERVAL].
+    // Subsequent re-verifies fire every INTERVAL after that, so each
+    // socket's re-verify time is pinned to its (random) initial offset
+    // and stays uniformly distributed across each 5-min window
+    // forever.  Mean wait until first re-verify drops 5 min → 2.5 min
+    // (slightly better security; revocations caught sooner on average).
+    // Worst case "re-verify almost immediately after connect" wastes
+    // one call (the handshake already verified) — acceptable noise.
+    //
+    // Implementation: self-rescheduling setTimeout chain instead of
+    // setInterval, because the initial fire and recurring fires use
+    // different delays.  reverifyHandle is mutated on each tick so
+    // disconnect always clears the latest one.
+    const REVERIFY_INTERVAL_MS = 5 * 60 * 1000;
+    let reverifyHandle: ReturnType<typeof setTimeout> | null = null;
+
+    const runReverify = async (): Promise<void> => {
       const token = socket.handshake.auth?.token;
       if (typeof token !== "string" || token.length === 0) {
         socket.emit("forced_disconnect", { reason: "token_missing" });
@@ -1128,8 +1153,21 @@ async function startServer() {
         socket.emit("forced_disconnect", { reason: "token_revoked" });
         socket.disconnect(true);
       }
-    }, 5 * 60 * 1000);
-    socket.on("disconnect", () => clearInterval(reverifyHandle));
+    };
+
+    const scheduleReverify = (delayMs: number): void => {
+      reverifyHandle = setTimeout(async () => {
+        if (!socket.connected) return; // raced with disconnect
+        await runReverify();
+        if (socket.connected) scheduleReverify(REVERIFY_INTERVAL_MS);
+      }, delayMs);
+    };
+
+    scheduleReverify(Math.floor(Math.random() * REVERIFY_INTERVAL_MS));
+    socket.on("disconnect", () => {
+      if (reverifyHandle) clearTimeout(reverifyHandle);
+      reverifyHandle = null;
+    });
 
     // Helper: emit the reason a challenge event was rejected back to
     // the specific socket that sent it.  Previously every reject path
