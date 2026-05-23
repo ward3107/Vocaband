@@ -12,6 +12,7 @@
  * If XP costs are desired later, deduct in onPowerUp before applying.
  */
 
+import { randomInt } from "node:crypto";
 import englishWords from "an-array-of-english-words";
 import {
   DREIDEL_ALL_LETTERS,
@@ -276,11 +277,14 @@ export class DreidelEngine {
   private openAnswering(classCode: string): void {
     const state = sessions.get(classCode);
     if (!state) return;
+    // crypto.randomInt — Math.random is predictable enough that a
+    // student could (in principle) pre-compute upcoming letters; CodeQL
+    // also flags Math.random in a game-decision context as insecure.
     const letterPool = state.inSuddenDeath ? DREIDEL_SUDDEN_DEATH_LETTERS : DREIDEL_ALL_LETTERS;
-    const letter = letterPool[Math.floor(Math.random() * letterPool.length)];
+    const letter = letterPool[randomInt(letterPool.length)];
     state.currentLetter = letter;
     state.currentTopic = state.config.topicMode
-      ? DREIDEL_TOPICS[Math.floor(Math.random() * DREIDEL_TOPICS.length)]
+      ? DREIDEL_TOPICS[randomInt(DREIDEL_TOPICS.length)]
       : null;
     const seconds = state.inSuddenDeath
       ? DREIDEL_SUDDEN_DEATH_SECONDS
@@ -325,7 +329,7 @@ export class DreidelEngine {
         (p) => p.uid !== winnerUid && !p.eliminated && p.lives > 0,
       );
       if (targets.length > 0) {
-        const victim = targets[Math.floor(Math.random() * targets.length)];
+        const victim = targets[randomInt(targets.length)];
         victim.lives -= 1;
         if (victim.lives <= 0) victim.eliminated = true;
         winner.lives += 1;
@@ -437,7 +441,7 @@ function sampleWordForLetter(
   // Random scan through dictionary for a word starting with letter.
   const all = Array.from(DICTIONARY);
   for (let i = 0; i < 50; i++) {
-    const candidate = all[Math.floor(Math.random() * all.length)];
+    const candidate = all[randomInt(all.length)];
     if (candidate.startsWith(letter) && !(used?.has(candidate))) return candidate;
   }
   return null;
