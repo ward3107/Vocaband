@@ -66,7 +66,21 @@ import { MODULE_SPECS } from "./src/features/vocabagrut/lib/moduleMap";
 import type { BagrutModule, BagrutTest } from "./src/features/vocabagrut/types";
 import { synthesizeSpeechMp3 } from "./tts-common";
 import { isDevEmail } from "./src/core/dev-allowlist";
-import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload } from "./src/core/types";
+import {
+  LeaderboardEntry,
+  SOCKET_EVENTS,
+  type JoinChallengePayload,
+  type ObserveChallengePayload,
+  type DreidelCreatePayload,
+  type DreidelJoinPayload,
+  type DreidelSpinPayload,
+  type DreidelAnswerPayload,
+  type DreidelPowerUpPayload,
+  type DreidelEndPayload,
+  type DreidelState,
+  type DreidelRoundResult,
+} from "./src/core/types";
+import { DreidelEngine } from "./server/dreidel";
 import {
   CLOUDFLARE_IPV4_RANGES,
   CLOUDFLARE_IPV6_RANGES,
@@ -1066,6 +1080,23 @@ async function startServer() {
   // Reference count: how many sockets each uid has in each class (handles multi-tab)
   const socketRefCounts: Record<string, number> = {}; // key: "classCode:uid"
 
+  // ── Dreidel ─────────────────────────────────────────────────────────
+  // Live blitz mode.  State lives in DreidelEngine; we only need to know
+  // which sockets are watching which classCode for cleanup on disconnect.
+  // Reuse the existing classCode-as-room pattern so io.to(classCode)
+  // already covers both teacher observer + students.
+  const dreidelEngine = new DreidelEngine({
+    emitState: (classCode: string, state: DreidelState) => {
+      io.to(classCode).emit(SOCKET_EVENTS.DREIDEL_STATE, state);
+    },
+    emitResult: (classCode: string, result: DreidelRoundResult) => {
+      io.to(classCode).emit(SOCKET_EVENTS.DREIDEL_RESULT, result);
+    },
+    emitEnd: (classCode: string, state: DreidelState) => {
+      io.to(classCode).emit(SOCKET_EVENTS.DREIDEL_END, state);
+    },
+  });
+
   // Throttled leaderboard broadcast — batches rapid score updates so the server
   // emits at most once every BROADCAST_INTERVAL_MS per class instead of once per
   // answer.  Keeps the leaderboard snappy without flooding 40 sockets per keystroke.
@@ -1348,6 +1379,124 @@ async function startServer() {
         // Throttle: batch rapid score updates to avoid flooding sockets
         scheduleBroadcast(classCode);
       }
+    });
+
+    // ── Dreidel handlers ─────────────────────────────────────────────
+    // Same auth rules as Live Challenge: a request's classCode must match
+    // the caller's role+class (teacher owns it, student belongs to it).
+    // Word answers race; the engine sorts out who got there first.
+
+    socket.on(SOCKET_EVENTS.DREIDEL_CREATE, async ({ classCode, config }: DreidelCreatePayload) => {
+      if (!isValidClassCode(classCode) || !config || typeof config !== "object") {
+        return rejectChallenge("dreidel_create", "invalid payload");
+      }
+      if (!perUserLimiter.checkLimit(socket.data.uid)) {
+        return rejectChallenge("dreidel_create", "rate limited");
+      }
+      const userData = await getUserRoleAndClass(socket.data.uid);
+      if (!userData) return rejectChallenge("dreidel_create", "unknown user");
+      const isTeacherOwner =
+        (userData.role === "teacher" || userData.role === "admin") &&
+        (await isTeacherForClass(socket.data.uid, classCode));
+      if (!isTeacherOwner) return rejectChallenge("dreidel_create", "not class teacher");
+      // Validate the config shape so a malicious client can't run 999-life games.
+      const sanitized = {
+        startingLives: Math.max(1, Math.min(10, Math.floor(Number(config.startingLives) || 3))),
+        timerSeconds: Math.max(4, Math.min(15, Math.floor(Number(config.timerSeconds) || 8))),
+        topicMode: Boolean(config.topicMode),
+        powerUpsEnabled: Boolean(config.powerUpsEnabled),
+        suddenDeath: Boolean(config.suddenDeath),
+        stealOnFast: Boolean(config.stealOnFast),
+      };
+      socket.join(classCode);
+      socketSessions[socket.id] = { classCode, uid: socket.data.uid };
+      dreidelEngine.create(classCode, sanitized);
+    });
+
+    socket.on(SOCKET_EVENTS.DREIDEL_JOIN, async ({ classCode, uid, name }: DreidelJoinPayload) => {
+      if (!isValidClassCode(classCode) || !isValidUid(uid) || !isValidName(name)) {
+        return rejectChallenge("dreidel_join", "invalid payload");
+      }
+      if (uid !== socket.data.uid) {
+        return rejectChallenge("dreidel_join", "uid mismatch");
+      }
+      if (!perUserLimiter.checkLimit(uid)) {
+        return rejectChallenge("dreidel_join", "rate limited");
+      }
+      const userData = await getUserRoleAndClass(uid);
+      if (!userData) return rejectChallenge("dreidel_join", "unknown user");
+      const canJoinAsStudent = userData.role === "student" && userData.classCode === classCode;
+      const canJoinAsTeacher =
+        (userData.role === "teacher" || userData.role === "admin") &&
+        (await isTeacherForClass(uid, classCode));
+      if (!canJoinAsStudent && !canJoinAsTeacher) {
+        return rejectChallenge("dreidel_join", "role/class mismatch");
+      }
+      socket.join(classCode);
+      socketSessions[socket.id] = { classCode, uid };
+      // Teachers join as observers (not in player list); students become players.
+      if (canJoinAsStudent) {
+        dreidelEngine.join(classCode, uid, name, false);
+      } else {
+        const state = dreidelEngine.getState(classCode);
+        if (state) socket.emit(SOCKET_EVENTS.DREIDEL_STATE, state);
+      }
+    });
+
+    socket.on(SOCKET_EVENTS.DREIDEL_SPIN, async ({ classCode }: DreidelSpinPayload) => {
+      if (!isValidClassCode(classCode)) return rejectChallenge("dreidel_spin", "invalid payload");
+      const userData = await getUserRoleAndClass(socket.data.uid);
+      if (!userData) return rejectChallenge("dreidel_spin", "unknown user");
+      const isTeacherOwner =
+        (userData.role === "teacher" || userData.role === "admin") &&
+        (await isTeacherForClass(socket.data.uid, classCode));
+      if (!isTeacherOwner) return rejectChallenge("dreidel_spin", "not class teacher");
+      dreidelEngine.spin(classCode);
+    });
+
+    socket.on(SOCKET_EVENTS.DREIDEL_ANSWER, ({ classCode, word }: DreidelAnswerPayload) => {
+      if (!isValidClassCode(classCode) || typeof word !== "string" || word.length > 64) {
+        return rejectChallenge("dreidel_answer", "invalid payload");
+      }
+      if (!scoreUpdateLimiter.checkLimit(socket.id)) {
+        return rejectChallenge("dreidel_answer", "rate limited");
+      }
+      const session = socketSessions[socket.id];
+      if (!session || session.classCode !== classCode) {
+        return rejectChallenge("dreidel_answer", "session mismatch");
+      }
+      dreidelEngine.answer(classCode, socket.data.uid, word);
+    });
+
+    socket.on(SOCKET_EVENTS.DREIDEL_POWERUP, ({ classCode, powerUp }: DreidelPowerUpPayload) => {
+      if (!isValidClassCode(classCode) || typeof powerUp !== "string") {
+        return rejectChallenge("dreidel_powerup", "invalid payload");
+      }
+      const session = socketSessions[socket.id];
+      if (!session || session.classCode !== classCode) {
+        return rejectChallenge("dreidel_powerup", "session mismatch");
+      }
+      const state = dreidelEngine.getState(classCode);
+      if (!state?.config.powerUpsEnabled) {
+        return rejectChallenge("dreidel_powerup", "powerups disabled");
+      }
+      const result = dreidelEngine.powerUp(classCode, socket.data.uid, powerUp as "skip" | "peek" | "extraTime");
+      // Reply to the calling socket so it can render the peek hint, etc.
+      socket.emit("dreidel-powerup-result", { powerUp, ...result });
+    });
+
+    socket.on(SOCKET_EVENTS.DREIDEL_END, async ({ classCode }: DreidelEndPayload) => {
+      if (!isValidClassCode(classCode)) return rejectChallenge("dreidel_end", "invalid payload");
+      const userData = await getUserRoleAndClass(socket.data.uid);
+      if (!userData) return rejectChallenge("dreidel_end", "unknown user");
+      const isTeacherOwner =
+        (userData.role === "teacher" || userData.role === "admin") &&
+        (await isTeacherForClass(socket.data.uid, classCode));
+      if (!isTeacherOwner) return rejectChallenge("dreidel_end", "not class teacher");
+      dreidelEngine.end(classCode);
+      // Hold final state briefly so reconnecting students see results,
+      // then drop it from memory.
+      setTimeout(() => dreidelEngine.cleanup(classCode), 60_000);
     });
 
     socket.on("disconnect", () => {
