@@ -41,10 +41,14 @@ export default function PrivacySettingsView({
     try {
       // Use the export_my_data RPC instead of building the export
       // client-side.  The RPC returns the COMPLETE export (including
-      // classes_owned, consent_history, assignments_created — which
-      // the old client-side path silently dropped) and writes an
+      // classes_owned, consent_history, assignments_created, audit
+      // log entries the user is actor / target of, student / teacher
+      // profile rows, and AI usage counters) and writes an
       // audit_log entry for the access — both required under
-      // תיקון 13 / PPA accountability.
+      // תיקון 13 / PPA accountability.  Format version is bumped
+      // alongside the underlying RPC (see migration
+      // 20260522020000) so consumers can branch on
+      // `export_format_version` if the schema evolves.
       const { data, error } = await supabase.rpc('export_my_data');
       if (error) throw error;
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -75,9 +79,14 @@ export default function PrivacySettingsView({
           //     all owned classes / assignments / linked students,
           //     not just the users + progress rows that the old
           //     client-side path touched.
+          //   - Explicitly deletes student_profiles and
+          //     teacher_profiles (FK posture leaves them as orphans
+          //     otherwise — see migration 20260522020000).
+          //   - Deletes auth.users so email + login history don't
+          //     survive in the auth schema.
+          //   - Retains audit_log entries under GDPR Art. 17(3)(b)/(e)
+          //     legal-retention exemption; they age out at 730 days.
           //   - Cleans up consent_log entries for the user.
-          // The old path left orphaned classes/assignments behind
-          // for every teacher who deleted their account.
           const { error } = await supabase.rpc('delete_my_account');
           if (error) throw error;
           localStorage.removeItem('vocaband_consent_version');
