@@ -11,9 +11,23 @@ These are actions the human needs to take — no code change will cover them.
 
 ---
 
-## 🔴 OPEN — Eliminate Cloudflare Insights rotation churn (CSP hash whack-a-mole)
+## ✅ DONE — Eliminated Cloudflare Insights rotation churn
 
-**STATUS:** Open as of 2026-05-23 — 5 hash rotations in 9 days
+**RESOLVED 2026-05-23:** Operator disabled Cloudflare Browser
+Insights in the dashboard and enabled the script-less Cloudflare
+Web Analytics product instead (Option A below).  Code follow-up
+(this commit) dropped 5 rotating script hashes,
+`static.cloudflareinsights.com` from `script-src` / `script-src-elem`,
+and `cloudflareinsights.com` from `connect-src` across both
+`public/_headers` and `server.ts`.  The Network Diagnostic probe was
+re-pointed to same-origin `/cdn-cgi/trace` so it no longer depends
+on the retired allowlist entry.  Verified post-flip with
+`curl -s https://vocaband.com/ | grep cloudflareinsights` returning
+zero matches.  Sentry continues to cover client-side error
+telemetry; Web Analytics covers traffic.  The original problem
+write-up is preserved below for the audit trail.
+
+**ORIGINAL STATUS (pre-fix):** 5 hash rotations in 9 days
 (`u2tz3AO+oB` → `VxcUPwAXbsfZ` → `jsbFxr3mSLx` → `ZScbVWl2oPtsl` → 4
 of the 2026-05-22/23 variants).  Each rotation triggers a CSP
 violation in production (last reported on the OAuth callback path

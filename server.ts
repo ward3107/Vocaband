@@ -878,9 +878,10 @@ async function startServer() {
     //   * scriptSrc / scriptSrcElem — both `'unsafe-inline'` and
     //     `'unsafe-eval'` removed.  The previous inline boot-debug script
     //     was extracted to /boot-debug.js, and the production bundle has
-    //     no eval()/new Function() calls.  Cloudflare Insights auto-
-    //     injects an external <script src=...> tag, host-allowlisted
-    //     below.  *** This is the high-value XSS-defence win. ***
+    //     no eval()/new Function() calls.  (Cloudflare Insights used to
+    //     inject an external script here; retired 2026-05-23 alongside
+    //     the migration to script-less Web Analytics.)
+    //     *** This is the high-value XSS-defence win. ***
     //   * styleSrcElem — `'unsafe-inline'` KEPT.  motion/react injects
     //     <style>...</style> blocks at runtime for keyframe / spring /
     //     layout animations.  Content is dynamic so hashes don't work;
@@ -896,13 +897,16 @@ async function startServer() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
-          scriptSrcElem: ["'self'", "https://static.cloudflareinsights.com", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
+          // Cloudflare Insights retired 2026-05-23 (migrated to Web
+          // Analytics — see public/_headers comment); static.cloudflareinsights.com
+          // + cloudflareinsights.com removed from all three directives.
+          scriptSrc: ["'self'", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
+          scriptSrcElem: ["'self'", "https://ajax.cloudflare.com", "https://challenges.cloudflare.com"],
           styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           styleSrcAttr: ["'unsafe-inline'"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://auth.vocaband.com", "wss://auth.vocaband.com", "https://*.supabase.co", "wss://*.supabase.co", "https://cloudflareinsights.com", "https://api.mymemory.translated.net", ...allowedOrigins],
+          connectSrc: ["'self'", "https://auth.vocaband.com", "wss://auth.vocaband.com", "https://*.supabase.co", "wss://*.supabase.co", "https://api.mymemory.translated.net", ...allowedOrigins],
           frameSrc: ["https://accounts.google.com", "https://challenges.cloudflare.com"],
           frameAncestors: ["'none'"],
           objectSrc: ["'none'"],
