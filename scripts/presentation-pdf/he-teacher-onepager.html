@@ -270,6 +270,24 @@
     line-height: 1.2;
   }
 
+  /* ───── TEACHER TOOLS — 5-pill grid, compact ───── */
+  .teacher-tools {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  .teacher-tools .pill {
+    flex-direction: column;
+    text-align: center;
+    padding: 8px 6px;
+    gap: 3px;
+    border-color: #ddd6fe;
+    background: linear-gradient(160deg, #f5f3ff, #fdf4ff);
+    border-radius: 14px;
+  }
+  .teacher-tools .pill .em { font-size: 24pt; }
+  .teacher-tools .pill .t { font-size: 8.5pt; line-height: 1.15; }
+
   /* ───── CTA FOOTER ───── */
   .cta {
     margin: 4mm 13mm 8mm 13mm;
@@ -409,6 +427,18 @@
           <div class="h">רואים תוצאות חיות</div>
           <div class="sub">על הלוח</div>
         </div>
+      </div>
+    </div>
+
+    <!-- TEACHER TOOLS -->
+    <div>
+      <div class="section-title">כלי המורה</div>
+      <div class="teacher-tools">
+        <div class="pill"><span class="em">📺</span><div class="t">מצב הקרנה<br>למסך הכיתה</div></div>
+        <div class="pill"><span class="em">📄</span><div class="t">דף עבודה<br>להדפסה</div></div>
+        <div class="pill"><span class="em">📝</span><div class="t">ווקבגרות<br>מבחן בנוסח בגרות</div></div>
+        <div class="pill"><span class="em">🪑</span><div class="t">כיסא חם<br>מכשיר אחד בתורות</div></div>
+        <div class="pill"><span class="em">🎡</span><div class="t">גלגל המילים<br>אתגר אקראי</div></div>
       </div>
     </div>
 

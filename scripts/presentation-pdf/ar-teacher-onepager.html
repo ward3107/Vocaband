@@ -270,6 +270,24 @@
     line-height: 1.2;
   }
 
+  /* ───── TEACHER TOOLS — 5-pill grid, compact ───── */
+  .teacher-tools {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  .teacher-tools .pill {
+    flex-direction: column;
+    text-align: center;
+    padding: 8px 6px;
+    gap: 3px;
+    border-color: #ddd6fe;
+    background: linear-gradient(160deg, #f5f3ff, #fdf4ff);
+    border-radius: 14px;
+  }
+  .teacher-tools .pill .em { font-size: 24pt; }
+  .teacher-tools .pill .t { font-size: 8.5pt; line-height: 1.15; }
+
   /* ───── CTA ───── */
   .cta {
     margin: 4mm 13mm 8mm 13mm;
@@ -409,6 +427,18 @@
           <div class="h">النتائج حيّة على الشاشة</div>
           <div class="sub">أمام الصفّ</div>
         </div>
+      </div>
+    </div>
+
+    <!-- TEACHER TOOLS -->
+    <div>
+      <div class="section-title">أدوات المعلّم</div>
+      <div class="teacher-tools">
+        <div class="pill"><span class="em">📺</span><div class="t">عرض الفصل<br>على الشاشة</div></div>
+        <div class="pill"><span class="em">📄</span><div class="t">ورقة عمل<br>للطباعة</div></div>
+        <div class="pill"><span class="em">📝</span><div class="t">ووكاباجروت<br>نموذج باجروت</div></div>
+        <div class="pill"><span class="em">🪑</span><div class="t">الكرسي الساخن<br>جهاز واحد بالأدوار</div></div>
+        <div class="pill"><span class="em">🎡</span><div class="t">عجلة المفردات<br>تحدٍّ عشوائي</div></div>
       </div>
     </div>
 
