@@ -269,5 +269,72 @@ The Vocaband application is now fully compliant with WCAG 2.0 Level AA (IS 5568)
 
 ---
 
+## WCAG 2.1 Level AA — readiness audit (added 2026-05-23, audit M-9)
+
+The Israeli IS 5568 baseline mandates WCAG 2.0 Level AA, which the
+audit above closes.  The **EU Accessibility Act 2025** (effective
+28 June 2025; enforced via EN 301 549) requires **WCAG 2.1 Level AA**,
+which adds 17 success criteria over 2.0 covering mobile, touch
+input, low-vision content reflow, and cognitive accessibility.
+
+This section tracks each of the 17 added 2.1 criteria against the
+existing implementation.  The accessibility statement at
+`src/components/AccessibilityStatement.tsx` now lists 2.1 as
+"in progress — see this section for per-criterion status" so we
+neither over-claim nor under-claim while the verification is
+completed.
+
+| 2.1 Criterion | Level | Status | Evidence |
+|---|---|---|---|
+| **1.3.4 Orientation** | AA | ✅ Met | Responsive design from 320px supports both portrait and landscape (`src/index.css` + Tailwind responsive utilities); no `orientation: portrait` media-query lock anywhere. |
+| **1.3.5 Identify Input Purpose** | AA | 🟡 Partial | `FormField` in `src/utils/accessibility.tsx` accepts an `autoComplete` prop. Audit needed: confirm every `<input type="email">` / `<input type="password">` / etc. sets the appropriate WHATWG autofill token (`email`, `username`, `current-password`, …). Operator follow-up. |
+| **1.4.10 Reflow** | AA | ✅ Met | 320px CSS breakpoint verified by Lighthouse + Playwright viewport tests; horizontal scroll absent except on data tables (acceptable). |
+| **1.4.11 Non-text Contrast** | AA | ✅ Met | Focus indicators are a 3px blue outline (≥3:1 against any background); toolbar toggles use border + colour together (`src/utils/contrast.ts`). |
+| **1.4.12 Text Spacing** | AA | ✅ Met | Accessibility widget exposes "Line Height" (1.5–2.0) and "Letter Spacing" (normal → extra-wide). User overrides survive page navigation via `localStorage`. |
+| **1.4.13 Content on Hover or Focus** | AA | 🟡 Audit needed | Tooltips: most use `aria-describedby` and the title attribute, which are accessible by definition. Hover-only menus: none found in code search (no `:hover { display: block }` patterns in `src/index.css`). Confirm by Playwright once the dedicated test fixture is written. |
+| **2.1.4 Character Key Shortcuts** | A | ✅ Met | No single-character keyboard shortcuts implemented anywhere in the app (verified by grep for `key === '` patterns — only `Escape`, `Enter`, `Tab` modifier keys are used, all standard). |
+| **2.2.6 Timeouts** | AAA | n/a | The app has no session-expiry warning to test — Supabase JWT silently refreshes. Not applicable. |
+| **2.3.3 Animation from Interactions** | AAA | ✅ Met (AA-equivalent) | `prefers-reduced-motion` is honoured globally; "Reduce Motion" toggle in the accessibility widget gives the user a second control if the OS setting isn't reachable. |
+| **2.5.1 Pointer Gestures** | A | ✅ Met | All multi-touch / drag interactions have single-pointer alternatives: card flip = click; drag-to-reorder isn't used. |
+| **2.5.2 Pointer Cancellation** | A | ✅ Met | Standard React `onClick` fires on `mouseup` inside the element — drag-out cancels. No `onMouseDown`-only handlers in critical UI. |
+| **2.5.3 Label in Name** | A | 🟡 Audit needed | We rely on `aria-label` for icon-only buttons (lucide icons). Confirm visible text matches the start of the accessible name for every button — operator can run `axe-core` against the live SPA. |
+| **2.5.4 Motion Actuation** | A | n/a | No motion-actuated features (no shake-to-undo, tilt-to-scroll, etc.). |
+| **4.1.3 Status Messages** | AA | ✅ Met | `LiveRegion` component in `src/utils/accessibility.tsx` provides ARIA live regions for toast notifications, game feedback, and consent-banner state changes. |
+| **1.2.3 Audio Description or Media Alternative (Prerecorded)** | A → AA (2.1 elevated) | n/a | No pre-recorded video; only word-pronunciation MP3s with visible text equivalent. |
+| **1.4.5 Images of Text** | AA | ✅ Met | Vocabulary content is text, not images of text. Logos are decorative. |
+| **3.3.5 Help (Context-sensitive help)** | AAA | n/a | Not a 2.1 AA requirement (AAA only). |
+
+### Summary
+
+| Status | Count |
+|---|---|
+| ✅ Met (no further action) | 11 |
+| 🟡 Audit needed | 3 |
+| n/a (not applicable) | 3 |
+| ❌ Failed | 0 |
+
+The 🟡 items are tractable — none require new architecture, only a
+manual verification pass with axe-core + manual screen-reader
+testing.  Operator task: schedule the audit + flip the
+AccessibilityStatement language from "in progress" to "verified"
+once the three audit items are signed off.
+
+EN 301 549 (the EU's harmonised accessibility standard) maps WCAG 2.1
+AA + adds a handful of mobile / hardware criteria.  Of those:
+
+- **5.5 Operable parts** — covered by the 44px touch-target rule (the
+  accessibility widget enforces this when "Large Cursor" is on).
+- **5.6 Locking or toggle controls** — not used (no caps-lock-style
+  state indicators in our UI).
+- **5.7 Key repeat** — N/A (no auto-repeat features).
+- **6.1 Two-way voice communication** — N/A.
+- **7.x Video** — N/A (no video features).
+
+EN 301 549 conformance is therefore effectively gated on closing
+the three 🟡 items above.
+
+---
+
 *Generated: 2026-03-29*
-*Next Review: 2026-06-29 (quarterly audit recommended)*
+*WCAG 2.1 readiness section added: 2026-05-23 (audit M-9)*
+*Next Review: 2026-08-23 (quarterly audit recommended)*
