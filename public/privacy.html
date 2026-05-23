@@ -203,6 +203,7 @@
     <tr><td>Orphaned student accounts (no class membership)</td><td>90 days after last login</td><td>Automatic cleanup</td></tr>
     <tr><td>Audit log entries</td><td>730 days (≈ 2 years)</td><td>Automatic deletion</td></tr>
     <tr><td>Consent log entries</td><td>3650 days (≈ 10 years)</td><td>Legal requirement</td></tr>
+    <tr><td>Quick Play guest resume hint (browser local storage only — no server-side state)</td><td>90 minutes after last activity</td><td>Automatic — silently dropped by the browser when the timer expires</td></tr>
     <tr><td>Database provider platform backups (Supabase PITR / daily snapshots)</td><td>Up to 30 days</td><td>Automatic rotation by the provider</td></tr>
     <tr><td>Off-site disaster-recovery archive (encrypted weekly <code>pg_dump</code> in Cloudflare R2)</td><td>Up to 365 days (≈ 12 months)</td><td>R2 lifecycle policy — automatic deletion at 365 days</td></tr>
   </table>

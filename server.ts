@@ -185,6 +185,26 @@ if (JWKS) {
 
 // Supabase admin client — uses the service role key to verify tokens server-side
 // Only created if credentials are available.
+//
+// Call-site audit (H-4, 2026-05-23): every `supabaseAdmin.*` invocation
+// across this file falls into one of three vetted patterns:
+//   1. `supabaseAdmin.auth.getUser(token)`  — JWT verification only;
+//      no caller data is exposed.
+//   2. `supabaseAdmin.rpc("<name>", …)`     — the RPCs themselves
+//      (check_ai_quota, bump_ai_usage, log_authz_failure,
+//      audit_log_immutability_status, export_my_data, delete_my_account)
+//      apply their own SECURITY DEFINER auth + scope-narrowing
+//      predicates internally.  See supabase/migrations/ for each.
+//   3. `supabaseAdmin.from("<table>").select/insert/update`
+//      — every direct table touch is narrowed by a `.eq(...)` predicate
+//      bound to the authenticated caller's uid / teacher_uid /
+//      student_uid / session_code (verified at L311, L336, L373, L1249,
+//      L1468, L1480 of this file at the time of audit).
+//   4. `supabaseAdmin.storage.from("sound").*` — writes only, file
+//      names are numeric word IDs (no PII); see worker/index.ts
+//      H-11 audit note for read posture.
+// If a new call site is added that doesn't fit one of these patterns,
+// flag it in code review and re-run the audit before merging.
 const supabaseAdmin = hasSupabaseConfig
   ? createClient(
       process.env.SUPABASE_URL!,
