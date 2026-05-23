@@ -9,7 +9,6 @@ import {
   Presentation,
   FileText,
   BookOpen,
-  Zap,
   Gamepad2,
   ShieldCheck,
   Lock,
@@ -279,26 +278,18 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   {t.footerSchoolPptxAr}
                 </a>
               </motion.li>
-              <motion.li variants={footerItemVariant} custom={18}>
-                <a
-                  href={`/docs/teacher-guide-${language}.pdf`}
-                  download={`teacher-guide-${language}.pdf`}
-                  className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                >
-                  <BookOpen size={14} aria-hidden="true" />
-                  {tr.teacherGuideTitle}
-                </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={19}>
-                <a
-                  href={`/docs/quick-start-${language}.pdf`}
-                  download={`quick-start-${language}.pdf`}
-                  className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
-                >
-                  <Zap size={14} aria-hidden="true" />
-                  {tr.quickStartTitle}
-                </a>
-              </motion.li>
+              {(language === "he" || language === "ar") && (
+                <motion.li variants={footerItemVariant} custom={18}>
+                  <a
+                    href={`/Vocaband-Teacher-OnePager-${language.toUpperCase()}.pdf`}
+                    download={`Vocaband-Teacher-OnePager-${language.toUpperCase()}.pdf`}
+                    className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                  >
+                    <BookOpen size={14} aria-hidden="true" />
+                    {tr.teacherGuideTitle}
+                  </a>
+                </motion.li>
+              )}
               <motion.li variants={footerItemVariant} custom={20}>
                 <a
                   href={`/docs/student-guide-${language}.pdf`}

@@ -12,6 +12,8 @@ const jobs = [
   { html: 'he.html', pdf: 'Vocaband-Presentation-HE.pdf' },
   { html: 'ar.html', pdf: 'Vocaband-Presentation-AR.pdf' },
   { html: 'ar-one-pager.html', pdf: 'Vocaband-OnePager-AR.pdf' },
+  { html: 'he-teacher-onepager.html', pdf: 'Vocaband-Teacher-OnePager-HE.pdf' },
+  { html: 'ar-teacher-onepager.html', pdf: 'Vocaband-Teacher-OnePager-AR.pdf' },
 ];
 
 const browser = await chromium.launch();

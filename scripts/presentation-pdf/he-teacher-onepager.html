@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Vocaband — דף אחד למורה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&family=Rubik:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --indigo: #4f46e5;
+    --violet: #7c3aed;
+    --fuchsia: #c026d3;
+    --pink: #db2777;
+    --amber: #d97706;
+    --emerald: #059669;
+    --teal: #0d9488;
+    --ink: #1f1147;
+    --muted: #6b6792;
+    --soft: #faf5ff;
+  }
+  html, body {
+    font-family: "Heebo", "Rubik", "Arial", sans-serif;
+    color: var(--ink);
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body { font-size: 11pt; line-height: 1.4; }
+
+  .page {
+    width: 210mm;
+    height: 297mm;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ───── HERO ───── */
+  .hero {
+    background:
+      radial-gradient(circle at 85% 20%, rgba(236,72,153,.45), transparent 55%),
+      radial-gradient(circle at 8% 90%, rgba(79,70,229,.55), transparent 60%),
+      linear-gradient(135deg, #312e81 0%, #4f46e5 35%, #7c3aed 70%, #c026d3 100%);
+    color: #fff;
+    padding: 12mm 14mm 9mm 14mm;
+    position: relative;
+  }
+  .hero .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .hero .logo {
+    background: rgba(255,255,255,.18);
+    border: 1.5px solid rgba(255,255,255,.42);
+    border-radius: 12px;
+    padding: 6px 16px;
+    font-weight: 900;
+    font-size: 13pt;
+    letter-spacing: .12em;
+  }
+  .hero .date {
+    font-size: 10pt;
+    opacity: .9;
+    font-weight: 700;
+  }
+  .hero h1 {
+    font-size: 64pt;
+    font-weight: 900;
+    line-height: .9;
+    letter-spacing: -.04em;
+    margin-bottom: 6px;
+    text-shadow: 0 6px 24px rgba(0,0,0,.25);
+  }
+  .hero .tag {
+    font-size: 19pt;
+    font-weight: 800;
+    line-height: 1.2;
+    opacity: .98;
+  }
+
+  /* ───── STAT STRIP — just big numbers ───── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    background: #fff;
+    border-bottom: 2px solid #ede9fe;
+  }
+  .stat {
+    padding: 8mm 4mm;
+    text-align: center;
+    border-left: 1px solid #ede9fe;
+  }
+  .stat:last-child { border-left: none; }
+  .stat .icon {
+    font-size: 26pt;
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+  .stat .num {
+    font-size: 28pt;
+    font-weight: 900;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--indigo), var(--fuchsia));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -.03em;
+    margin-bottom: 3px;
+  }
+  .stat .lbl {
+    font-size: 10pt;
+    font-weight: 800;
+    color: var(--muted);
+  }
+
+  /* ───── MAIN BODY ───── */
+  .body {
+    padding: 7mm 13mm 0 13mm;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6mm;
+  }
+
+  .section-title {
+    font-size: 13pt;
+    font-weight: 900;
+    color: var(--ink);
+    margin-bottom: 4mm;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::before {
+    content: "";
+    width: 5px;
+    height: 22px;
+    background: linear-gradient(180deg, var(--indigo), var(--fuchsia));
+    border-radius: 3px;
+  }
+
+  /* ───── WHAT IT IS — 4 tiles ───── */
+  .what-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .what-tile {
+    background: linear-gradient(160deg, #fff, #faf5ff);
+    border: 1.5px solid #e9d5ff;
+    border-radius: 16px;
+    padding: 9px 7px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(124,58,237,.06);
+  }
+  .what-tile .em {
+    font-size: 38pt;
+    line-height: 1;
+    margin-bottom: 4px;
+    display: block;
+  }
+  .what-tile .t {
+    font-size: 11pt;
+    font-weight: 900;
+    color: var(--ink);
+    line-height: 1.15;
+  }
+
+  /* ───── HOW YOU USE IT — 3 steps ───── */
+  .steps {
+    display: grid;
+    grid-template-columns: 1fr 14px 1fr 14px 1fr;
+    align-items: stretch;
+    gap: 0;
+  }
+  .step {
+    background: linear-gradient(160deg, #ecfdf5, #f0fdfa);
+    border: 1.5px solid #a7f3d0;
+    border-radius: 16px;
+    padding: 11px 9px;
+    text-align: center;
+    position: relative;
+  }
+  .step.s2 {
+    background: linear-gradient(160deg, #eef2ff, #faf5ff);
+    border-color: #c7d2fe;
+  }
+  .step.s3 {
+    background: linear-gradient(160deg, #fff7ed, #fff1f2);
+    border-color: #fbcfe8;
+  }
+  .step .badge {
+    position: absolute;
+    top: -10px;
+    right: 50%;
+    transform: translateX(50%);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--emerald), var(--teal));
+    color: #fff;
+    font-size: 13pt;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(0,0,0,.18);
+  }
+  .step.s2 .badge { background: linear-gradient(135deg, var(--indigo), var(--violet)); }
+  .step.s3 .badge { background: linear-gradient(135deg, var(--pink), var(--fuchsia)); }
+  .step .em {
+    font-size: 40pt;
+    line-height: 1;
+    margin: 8px 0 5px;
+    display: block;
+  }
+  .step .h {
+    font-size: 11.5pt;
+    font-weight: 900;
+    color: var(--ink);
+    margin-bottom: 2px;
+    line-height: 1.2;
+  }
+  .step .sub {
+    font-size: 9pt;
+    color: var(--muted);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18pt;
+    color: var(--violet);
+    font-weight: 900;
+  }
+
+  /* ───── WHAT STUDENT SEES — 4 round icons ───── */
+  .student {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .pill {
+    background: #fff;
+    border: 1.5px solid #ede9fe;
+    border-radius: 999px;
+    padding: 7px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pill .em {
+    font-size: 22pt;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .pill .t {
+    font-size: 10pt;
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+
+  /* ───── CTA FOOTER ───── */
+  .cta {
+    margin: 4mm 13mm 8mm 13mm;
+    background: linear-gradient(135deg, var(--indigo), var(--violet) 50%, var(--fuchsia));
+    color: #fff;
+    border-radius: 18px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 10px 28px rgba(124,58,237,.32);
+  }
+  .cta .qr {
+    background: #fff;
+    border-radius: 12px;
+    padding: 7px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,.2);
+  }
+  .cta .qr svg { width: 84px; height: 84px; display: block; }
+  .cta .mid { flex: 1; text-align: center; }
+  .cta .mid .url {
+    font-size: 22pt;
+    font-weight: 900;
+    letter-spacing: -.01em;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .cta .mid .desc {
+    font-size: 11pt;
+    font-weight: 600;
+    opacity: .95;
+  }
+  .cta .right {
+    text-align: center;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(255,255,255,.4);
+    padding-right: 14px;
+  }
+  .cta .right .em { font-size: 30pt; line-height: 1; display: block; margin-bottom: 2px; }
+  .cta .right .t { font-size: 9pt; font-weight: 800; line-height: 1.15; }
+
+  .foot {
+    text-align: center;
+    font-size: 8pt;
+    color: var(--muted);
+    margin: 0 13mm 4mm 13mm;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<section class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="top">
+      <div class="logo">VOCABAND</div>
+      <div class="date">דף אחד למורה • 2026</div>
+    </div>
+    <h1>Vocaband</h1>
+    <div class="tag">אנגלית. בכל כיתה. כל יום.</div>
+  </div>
+
+  <!-- STAT STRIP -->
+  <div class="stats">
+    <div class="stat">
+      <div class="icon">📚</div>
+      <div class="num">6,482</div>
+      <div class="lbl">מילים מהמשרד</div>
+    </div>
+    <div class="stat">
+      <div class="icon">🎮</div>
+      <div class="num">15</div>
+      <div class="lbl">משחקים</div>
+    </div>
+    <div class="stat">
+      <div class="icon">⚡</div>
+      <div class="num">60s</div>
+      <div class="lbl">להתחלה</div>
+    </div>
+    <div class="stat">
+      <div class="icon">📲</div>
+      <div class="num">0</div>
+      <div class="lbl">התקנה</div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- WHAT IT IS -->
+    <div>
+      <div class="section-title">מה זה?</div>
+      <div class="what-grid">
+        <div class="what-tile">
+          <span class="em">📖</span>
+          <div class="t">אוצר מילים<br>מהמשרד</div>
+        </div>
+        <div class="what-tile">
+          <span class="em">🎲</span>
+          <div class="t">15 משחקים<br>על אותן מילים</div>
+        </div>
+        <div class="what-tile">
+          <span class="em">📊</span>
+          <div class="t">דוח חי<br>לכל תלמיד</div>
+        </div>
+        <div class="what-tile">
+          <span class="em">🇮🇱🇸🇦</span>
+          <div class="t">תרגום עברית<br>וערבית</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOW YOU USE IT -->
+    <div>
+      <div class="section-title">איך משתמשים?</div>
+      <div class="steps">
+        <div class="step">
+          <div class="badge">1</div>
+          <span class="em">📸</span>
+          <div class="h">צלמו דף מילים</div>
+          <div class="sub">או בחרו ממאגר</div>
+        </div>
+        <div class="arrow">◀</div>
+        <div class="step s2">
+          <div class="badge">2</div>
+          <span class="em">📱</span>
+          <div class="h">תלמידים סורקים QR</div>
+          <div class="sub">בלי הורדה</div>
+        </div>
+        <div class="arrow">◀</div>
+        <div class="step s3">
+          <div class="badge">3</div>
+          <span class="em">📈</span>
+          <div class="h">רואים תוצאות חיות</div>
+          <div class="sub">על הלוח</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHAT STUDENT GETS -->
+    <div>
+      <div class="section-title">מה התלמיד מקבל?</div>
+      <div class="student">
+        <div class="pill"><span class="em">🎯</span><div class="t">משחק שובה<br>במקום שינון</div></div>
+        <div class="pill"><span class="em">⭐</span><div class="t">XP ומדליות<br>על כל הצלחה</div></div>
+        <div class="pill"><span class="em">🐉</span><div class="t">דמויות וחיית<br>מחמד שמתפתחת</div></div>
+        <div class="pill"><span class="em">🏆</span><div class="t">תחרות חיה<br>בכיתה</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <div class="qr">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 31 31" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h31v31H0z"/><path stroke="#1f1147" d="M1 1.5h7m3 0h2m1 0h3m2 0h3m1 0h7M1 2.5h1m5 0h1m2 0h1m1 0h2m1 0h1m1 0h1m1 0h1m3 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m2 0h2m2 0h4m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m3 0h1m1 0h2m1 0h6m1 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h2m3 0h1m2 0h1m2 0h1m2 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m2 0h2m3 0h1m3 0h3m1 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h1m2 0h1m1 0h2m1 0h4M3 9.5h2m2 0h4m1 0h2m1 0h3m2 0h1m1 0h2m1 0h1M2 10.5h3m3 0h5m1 0h2m1 0h1m1 0h9m1 0h1M1 11.5h2m1 0h4m1 0h1m1 0h2m2 0h5m3 0h1m2 0h1m1 0h1M3 12.5h3m2 0h2m2 0h1m1 0h2m3 0h1m9 0h1M4 13.5h5m1 0h5m1 0h2m1 0h1m1 0h2m1 0h1m2 0h3M1 14.5h1m2 0h3m1 0h1m3 0h5m2 0h2m2 0h2m1 0h2m1 0h1M1 15.5h2m1 0h4m1 0h2m1 0h1m1 0h1m1 0h1m2 0h4m1 0h3m1 0h2M1 16.5h2m1 0h1m3 0h1m1 0h2m1 0h2m3 0h1m1 0h4m1 0h2m1 0h2M2 17.5h4m1 0h2m4 0h2m1 0h4m1 0h2m1 0h3m1 0h1M3 18.5h1m1 0h1m5 0h1m1 0h1m3 0h1m1 0h1m1 0h1m2 0h1m1 0h1M1 19.5h1m1 0h1m1 0h4m6 0h1m3 0h1m3 0h1m2 0h2M3 20.5h3m6 0h3m1 0h3m1 0h1m1 0h3m1 0h2M2 21.5h2m3 0h1m1 0h1m1 0h4m2 0h1m3 0h7M9 22.5h2m1 0h2m1 0h2m1 0h4m3 0h2m2 0h1M1 23.5h7m1 0h2m7 0h1m1 0h2m1 0h1m1 0h1m1 0h2M1 24.5h1m5 0h1m2 0h6m1 0h3m1 0h1m3 0h1M1 25.5h1m1 0h3m1 0h1m2 0h2m1 0h1m3 0h1m1 0h1m1 0h7m1 0h1M1 26.5h1m1 0h3m1 0h1m1 0h1m1 0h3m2 0h1m1 0h1m1 0h1m4 0h1m1 0h2M1 27.5h1m1 0h3m1 0h1m1 0h3m5 0h3m1 0h1m2 0h1m4 0h1M1 28.5h1m5 0h1m3 0h1m1 0h2m1 0h1m1 0h2m1 0h1m3 0h2m1 0h1M1 29.5h7m3 0h1m2 0h1m1 0h1m1 0h2m1 0h1m2 0h1m3 0h1"/></svg>
+    </div>
+    <div class="mid">
+      <div class="url">www.vocaband.com</div>
+      <div class="desc">סרקו עכשיו · התחילו בשיעור הקרוב</div>
+    </div>
+    <div class="right">
+      <span class="em">🎁</span>
+      <div class="t">חינם<br>לבית הספר</div>
+    </div>
+  </div>
+
+  <div class="foot">Vocaband · מאוחסן באירופה 🇪🇺 · WCAG 2.0 AA · GDPR · ללא פרסומות · ללא מכירת מידע</div>
+
+</section>
+
+</body>
+</html>

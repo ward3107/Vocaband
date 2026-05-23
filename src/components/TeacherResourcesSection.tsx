@@ -55,7 +55,6 @@ interface TeacherResourcesSectionProps {
 type CardKey =
   | "school-pitch"
   | "teacher-guide"
-  | "quick-start"
   | "student-guide"
   | "parent-letter";
 
@@ -78,7 +77,7 @@ interface PdfCardSpec {
   hrefFor: (lang: PdfLanguage) => string;
 }
 
-const SCHOOL_PITCH_LANGUAGES: ReadonlySet<PdfLanguage> = new Set(["he", "ar"]);
+const HE_AR_ONLY: ReadonlySet<PdfLanguage> = new Set(["he", "ar"]);
 
 const SCHOOL_CARDS: PdfCardSpec[] = [
   {
@@ -87,7 +86,7 @@ const SCHOOL_CARDS: PdfCardSpec[] = [
     gradient: "from-sky-500 via-blue-600 to-indigo-700",
     ring: "ring-sky-300/40",
     iconBg: "from-sky-400 to-blue-500",
-    availableLanguages: SCHOOL_PITCH_LANGUAGES,
+    availableLanguages: HE_AR_ONLY,
     hrefFor: (lang) => `/Vocaband-Presentation-${lang.toUpperCase()}.pdf`,
   },
 ];
@@ -99,15 +98,8 @@ const TEACHER_CARDS: PdfCardSpec[] = [
     gradient: "from-indigo-500 via-violet-600 to-fuchsia-600",
     ring: "ring-indigo-300/40",
     iconBg: "from-indigo-400 to-violet-500",
-    hrefFor: (lang) => `/docs/teacher-guide-${lang}.pdf`,
-  },
-  {
-    key: "quick-start",
-    emoji: "⚡",
-    gradient: "from-amber-500 via-orange-500 to-rose-500",
-    ring: "ring-amber-300/40",
-    iconBg: "from-amber-400 to-orange-500",
-    hrefFor: (lang) => `/docs/quick-start-${lang}.pdf`,
+    availableLanguages: HE_AR_ONLY,
+    hrefFor: (lang) => `/Vocaband-Teacher-OnePager-${lang.toUpperCase()}.pdf`,
   },
   {
     key: "student-guide",
@@ -131,7 +123,6 @@ function titleFor(card: PdfCardSpec, t: ReturnType<typeof useLocale>) {
   switch (card.key) {
     case "school-pitch":   return t.schoolPitchTitle;
     case "teacher-guide":  return t.teacherGuideTitle;
-    case "quick-start":    return t.quickStartTitle;
     case "student-guide":  return t.studentGuideTitle;
     case "parent-letter":  return t.parentLetterTitle;
   }
@@ -141,7 +132,6 @@ function blurbFor(card: PdfCardSpec, t: ReturnType<typeof useLocale>) {
   switch (card.key) {
     case "school-pitch":   return t.schoolPitchBlurb;
     case "teacher-guide":  return t.teacherGuideBlurb;
-    case "quick-start":    return t.quickStartBlurb;
     case "student-guide":  return t.studentGuideBlurb;
     case "parent-letter":  return t.parentLetterBlurb;
   }
