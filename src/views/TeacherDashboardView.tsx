@@ -11,6 +11,7 @@ import { performUserLogout } from "../core/supabase";
 import TeacherThemeMenu from "../components/dashboard/TeacherThemeMenu";
 import { useTeacherTheme } from "../hooks/useTeacherTheme";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
+import NetworkDiagnosticButton from "../components/dashboard/NetworkDiagnosticButton";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
 import { useCompetitionsForClassIds } from "../hooks/useCompetitions";
 import SavedTasksSection from "../components/dashboard/SavedTasksSection";
@@ -371,6 +372,15 @@ export default function TeacherDashboardView({
               </div>
             );
           })()}
+
+          {/* One-tap network status panel — opens a modal that probes
+              the four paths the app depends on (online, Vocaband API,
+              Supabase, live-game WebSocket).  Helps a teacher on flaky
+              school Wi-Fi tell us which leg is actually broken instead
+              of guessing. */}
+          <div className="mb-4 flex justify-end">
+            <NetworkDiagnosticButton />
+          </div>
 
           {/* Same launcher for both subjects — TeacherQuickActions
               renders Hebrew copy + RTL when subject==='hebrew'. The

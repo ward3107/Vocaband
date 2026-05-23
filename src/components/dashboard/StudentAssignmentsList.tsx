@@ -1,5 +1,6 @@
 import { BookOpen, RefreshCw } from "lucide-react";
 import StudentAssignmentCard from "./StudentAssignmentCard";
+import OfflineReadyBadge from "./OfflineReadyBadge";
 import type { AssignmentData, CompetitionData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
 import type { View } from "../../core/views";
@@ -33,9 +34,12 @@ export default function StudentAssignmentsList({
   const t = studentDashboardT[language];
   return (
     <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-2xl shadow-xl">
-      <h2 className="text-xl sm:text-2xl font-black mb-5 sm:mb-6 flex items-center gap-2">
-        <BookOpen className="text-blue-700" size={22} /> {t.yourAssignments}
-      </h2>
+      <div className="mb-5 sm:mb-6 flex items-center justify-between gap-3 flex-wrap">
+        <h2 className="text-xl sm:text-2xl font-black flex items-center gap-2">
+          <BookOpen className="text-blue-700" size={22} /> {t.yourAssignments}
+        </h2>
+        <OfflineReadyBadge />
+      </div>
 
       {/* Background loading indicator */}
       {studentDataLoading && (
