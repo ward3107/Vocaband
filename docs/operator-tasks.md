@@ -11,6 +11,92 @@ These are actions the human needs to take — no code change will cover them.
 
 ---
 
+## 🔴 OPEN — Eliminate Cloudflare Insights rotation churn (CSP hash whack-a-mole)
+
+**STATUS:** Open as of 2026-05-23 — 5 hash rotations in 9 days
+(`u2tz3AO+oB` → `VxcUPwAXbsfZ` → `jsbFxr3mSLx` → `ZScbVWl2oPtsl` → 4
+of the 2026-05-22/23 variants).  Each rotation triggers a CSP
+violation in production (last reported on the OAuth callback path
+`?code=...`).  PRs #882, #885, #899, and the follow-up that lands
+this entry have all been "add the new hash, retire the oldest" — a
+treadmill, not a fix.
+
+**WHY:**  Cloudflare Insights injects an inline bootstrap script into
+every HTML response.  That script's content changes per cache version
+(probably as Cloudflare rolls security updates to the beacon).  CSP
+hash allowlisting requires the exact bytes — so every rotation breaks
+production for any user whose request happens to hit the new cached
+variant before we ship the new hash.  Adding a hash inside Cloudflare's
+edge-cache rotation window is impossible by design.
+
+**HOW (pick one):**
+
+### Option A (recommended, no code) — Switch to Cloudflare Web Analytics
+
+Cloudflare offers two analytics products in the same dashboard:
+
+- **Insights** — JS beacon (`cdn-cgi/beacon/insights`), inline bootstrap,
+  rotating script.  This is what we have.
+- **Web Analytics** — server-side, no JS injection, no CSP hashes,
+  cookie-less, GDPR-friendlier.  Same dashboard UI for traffic stats.
+
+Migration is a dashboard flip:
+
+1. Cloudflare dashboard → `vocaband.com` zone → Analytics & Logs →
+   Web Analytics → enable.
+2. Same screen → Insights → disable.
+3. Once disabled, follow-up PR removes from `public/_headers`:
+   - All 5 CF Insights hashes from `script-src` + `script-src-elem`
+   - `https://static.cloudflareinsights.com` from both directives
+   - The whole "Cloudflare Insights bootstrap" comment block (lines 17-40)
+4. CSP shrinks by ~700 chars — plenty of room for future hash additions
+   for whatever else gets inlined.
+
+**Tradeoff:**  Insights gives slightly richer per-request data (the JS
+beacon can report client-side errors + page-load timings).  Web
+Analytics gives only server-observed traffic.  For Vocaband's stage
+(pilot/early), traffic stats are enough — Sentry already covers
+client-side errors.
+
+**COST:**  $0.  Both products are free.
+
+### Option B (medium effort, code) — Strip the Insights script in the Cloudflare Worker
+
+The Worker already uses `HTMLRewriter` (see worker/index.ts).  Add a
+selector that drops every `<script>` whose content matches the CF
+Insights signature.  Pseudo-code in the Worker:
+
+```ts
+new HTMLRewriter()
+  .on('script', {
+    element(el) {
+      // CF Insights bootstrap doesn't have a stable src or class;
+      // detect via the static.cloudflareinsights.com domain reference
+      // inside its body.  HTMLRewriter doesn't expose body content
+      // directly — use a text handler to inspect-and-buffer.
+      ...
+    }
+  })
+```
+
+Same effect as Option A but the operator keeps Insights enabled if
+they want the JS beacon's other features (e.g. RUM timing).  More
+fragile (CF could change the bootstrap signature) but no dashboard
+flip needed.
+
+### Option C (status quo) — Keep adding hashes by hand
+
+What we've been doing.  Each rotation = 1 PR.  Sustainable if
+rotations slow to monthly; unsustainable at the current 1-2-day pace.
+
+**DONE LOOKS LIKE:**  `_headers` has no `sha256-…` hashes for
+CF Insights, no `static.cloudflareinsights.com` host in script-src,
+and no "Cloudflare Insights bootstrap" comment block.  CSP line
+length drops back to ~1300 chars (plenty of headroom).  No CSP
+violations on the OAuth callback path for 30 consecutive days.
+
+---
+
 ## 🟡 OPEN — Migrate Gemini OCR to Vertex AI for region-pinning + no-training (H-5)
 
 **STATUS:** Open since 2026-05-23 (audit H-5 verification).
