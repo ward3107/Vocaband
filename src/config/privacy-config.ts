@@ -63,7 +63,13 @@ export const HOSTING_REGIONS = {
   cloudflare: "Global edge network",
   googleAuth: "Global (US-anchored)",
   anthropic: "United States",
-  googleCloud: "EU (europe-west) for Gemini OCR; Google-global for Text-to-Speech",
+  // Gemini OCR currently runs on the AI Studio API
+  // (generativelanguage.googleapis.com), which is NOT regionally
+  // pinned — see audit finding H-5 (2026-05-23) and the operator
+  // task "Migrate Gemini to Vertex AI" in docs/operator-tasks.md
+  // for the region-pinned + no-training migration plan.  Text-to-
+  // Speech is also Google-global on the public v1 endpoint.
+  googleCloud: "Google-global (AI Studio API; not regionally pinned — migration to Vertex AI EU pending)",
   googleFonts: "Global edge network",
   sentry: "EU (Germany) — *.ingest.de.sentry.io",
 } as const;
@@ -202,15 +208,15 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
     dataCategories: ["uploaded image bytes (typically a worksheet photo containing only English words)"],
     processorOnly: true,
     hostingRegion: HOSTING_REGIONS.googleCloud,
-    endpoint: "generativelanguage.googleapis.com",
-    notes: "Triggered only on explicit teacher action.  Image discarded after the API returns the extracted text; not stored on Vocaband infrastructure.",
+    endpoint: "generativelanguage.googleapis.com (AI Studio API)",
+    notes: "Triggered only on explicit teacher action.  Image discarded after the API returns the extracted text; not stored on Vocaband infrastructure.  CURRENT TIER (2026-05-23): AI Studio API via aistudio.google.com — Google's Pay-As-You-Go terms apply when billing is enabled in the GCP project; the free tier may use prompts for product improvement and model training.  Operator action: verify the project's billing status and enable Pay-As-You-Go before processing any data the audit cycle has not blessed for free-tier disclosure.  Migration to Vertex AI Gemini (region-pinned, no-training contract) is tracked at docs/operator-tasks.md.",
     transfer: {
-      destination: "EU (europe-west) — regionally pinned",
-      mechanism: "adequacy",
-      verificationUrl: "https://cloud.google.com/terms/data-processing-addendum",
+      destination: "Google-global (AI Studio API endpoint; US parent entity)",
+      mechanism: "dpf",
+      verificationUrl: "https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI",
       dpaUrl: "https://cloud.google.com/terms/data-processing-addendum",
       tiaRisk: "low",
-      lastReviewed: "2026-05-22",
+      lastReviewed: "2026-05-23",
     },
   },
   {
@@ -281,6 +287,7 @@ export interface SubprocessorChange {
  * tamper-evident under standard git-history inspection.
  */
 export const SUBPROCESSOR_CHANGELOG: SubprocessorChange[] = [
+  { date: "2026-05-23", vendor: "Google Cloud (Gemini API)", changeType: "region_changed", description: "Honest verification (audit H-5): the AI Studio API endpoint is Google-global, NOT regionally pinned to europe-west as previously published. Transfer mechanism reclassified from intra-EEA adequacy to EU-US DPF. Migration to Vertex AI in europe-west remains the roadmap target." },
   { date: "2026-05-22", vendor: "Google Cloud (Text-to-Speech API)", changeType: "added", description: "Disclosed as a distinct entry (previously implicit under the Google Cloud Gemini row)." },
   { date: "2026-05-22", vendor: "Sentry", changeType: "added", description: "Disclosed for the first time. Active since launch but undeclared until the C-9 audit pass; DSN points at the EU (Germany) region." },
   { date: "2026-05-04", vendor: "Render", changeType: "removed", description: "Migrated application server to Fly.io (Amsterdam) for better EU presence." },

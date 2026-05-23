@@ -11,6 +11,65 @@ These are actions the human needs to take — no code change will cover them.
 
 ---
 
+## 🟡 OPEN — Migrate Gemini OCR to Vertex AI for region-pinning + no-training (H-5)
+
+**STATUS:** Open since 2026-05-23 (audit H-5 verification).
+
+**WHY:** Today the OCR + sentence-generation features go through
+`generativelanguage.googleapis.com` (the AI Studio API).  That endpoint
+is Google-global — there is NO `europe-west` regional pinning, and the
+data-handling guarantees depend on whether the GCP project has billing
+enabled (Pay-As-You-Go terms) or is running on the free tier (which may
+use prompts for product improvement / model training).
+
+Migrating to Vertex AI Gemini (`aiplatform.googleapis.com`, e.g.
+`europe-west1`) gives us, in writing:
+
+  - regional pinning (data stays in Europe);
+  - no use of prompts for model training;
+  - the full Google Cloud DPA + the Cloud Data Processing Addendum,
+    which is what our `docs/SUBPROCESSORS.md` row claims today.
+
+**HOW:**
+
+1. In GCP console for the Vocaband project, enable the Vertex AI API.
+2. Pick a regional endpoint — `europe-west1` (Belgium) is the closest
+   in-EEA option that supports the `gemini-2.5-flash` family.  Verify
+   the chosen model is available in that region:
+   https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations
+3. Create a service account with the `Vertex AI User` role.  Download
+   the JSON key (small file, fine in `fly secrets`).
+4. `fly secrets set GOOGLE_APPLICATION_CREDENTIALS_JSON=<paste>` — the
+   server reads this at boot.
+5. Swap `@google/generative-ai` SDK calls for `@google-cloud/vertexai`
+   (or use the unified `@google/genai` SDK with `vertexai: true`).  The
+   call sites are in `server.ts` (search for `GoogleGenerativeAI`).
+6. Confirm with a single OCR test that the response shape is identical.
+7. Once confirmed in prod, update `privacy-config.ts → HOSTING_REGIONS.googleCloud`
+   back to "EU (europe-west) — regionally pinned" and bump the
+   Gemini row's `transfer.mechanism` from `dpf` to `adequacy`.
+8. Append a `region_changed` row to `SUBPROCESSOR_CHANGELOG` with the
+   migration date.
+9. `npm run gen:privacy-html` to regenerate the public page.
+
+**COST:** Vertex AI Gemini is ~10–30% more expensive per token than
+the equivalent AI Studio paid tier (free-tier is cheaper still but
+disqualifies us on the no-training requirement).  Today's OCR volume
+should remain well under USD 50/month at expected school scale.
+
+**INTERIM:** Until the migration ships, the operator must keep billing
+enabled in the GCP project so AI Studio runs under the Pay-As-You-Go
+terms (no training) instead of the free-tier terms.  This is the
+single most important interim control — verify quarterly.
+
+**DONE LOOKS LIKE:** Vertex AI is live in production, the
+`generativelanguage.googleapis.com` endpoint no longer appears in any
+server log under `[ocr]`, `[translate]`, or `[bagrut]`, and the
+SUBPROCESSORS.md transfer-register row honestly says "EU (europe-west)
+— regionally pinned" again.
+
+---
+
 ## ✅ DONE 2026-05-07 — April-28 security migration backlog
 
 Applied to production via MCP, in order:

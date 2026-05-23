@@ -97,10 +97,10 @@
 | Type | Processor |
 | Purpose | Server-side OCR of teacher-uploaded vocabulary list images |
 | Data categories | Uploaded image bytes (typically a worksheet photo containing only English words) |
-| Hosting region | EU (Google Cloud `europe-west` region) |
-| Endpoint | `generativelanguage.googleapis.com` |
+| Hosting region | **Google-global** — AI Studio API endpoint is NOT regionally pinned. Migration to Vertex AI Gemini in `europe-west` is on the operator roadmap (see `docs/operator-tasks.md`). |
+| Endpoint | `generativelanguage.googleapis.com` (AI Studio API) |
 | Trigger | Only on explicit teacher action (uploading an image to extract vocabulary) |
-| Notes | Image is sent over HTTPS and discarded after the API returns the extracted text. Not stored on Vocaband infrastructure. |
+| Notes | **API tier note (2026-05-23, audit H-5):** the current integration uses the AI Studio API key (`aistudio.google.com/apikey`).  Under Google's Pay-As-You-Go terms (billing enabled), prompts are not used for product improvement / model training.  Under the free tier, they may be.  Operator must keep billing enabled in the GCP project to honour the no-training disclosure in this row.  Image bytes are sent over HTTPS and discarded by Google after the API returns the extracted text; not stored on Vocaband infrastructure. |
 
 ### 7. Google Cloud (Text-to-Speech API)
 
@@ -168,7 +168,7 @@ Source of truth: `src/config/privacy-config.ts → THIRD_PARTY_REGISTRY[i].trans
 | Cloudflare | United States (EU PoPs serve EU traffic) | **EU-US DPF** | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt00000000K2GFAA0) | [DPA](https://www.cloudflare.com/en-gb/cloudflare-customer-dpa/) | Low | 2026-05-22 |
 | Google OAuth | United States | **EU-US DPF** | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI) | [DPA](https://cloud.google.com/terms/data-processing-addendum) | Medium (auth identity) | 2026-05-22 |
 | Anthropic (Claude API) | United States | **EU-US DPF** (zero-retention API tier) | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt0000000GnZyAAK) | [DPA](https://www.anthropic.com/legal/dpa) | Low (no personal data sent — vocabulary words only) | 2026-05-22 |
-| Google Cloud (Gemini API) | EU (europe-west, regionally pinned) | **Adequacy** (intra-EEA) | [Google Cloud Data Residency](https://cloud.google.com/terms/data-processing-addendum) | [DPA](https://cloud.google.com/terms/data-processing-addendum) | Low | 2026-05-22 |
+| Google Cloud (Gemini API) | Google-global (AI Studio API endpoint; US parent entity) | **EU-US DPF** | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI) | [DPA](https://cloud.google.com/terms/data-processing-addendum) | Low (vocabulary words + image bytes only; no student PII in payload) | 2026-05-23 |
 | Google Cloud (Text-to-Speech API) | Google-global (no regional pin) | **Not required** (no personal data — only vocabulary words) | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI) | [DPA](https://cloud.google.com/terms/data-processing-addendum) | Low | 2026-05-22 |
 | Sentry | EU (Germany) | **Adequacy** (intra-EEA via `*.ingest.de.sentry.io`) | [Sentry data residency](https://sentry.io/legal/dpa/) | [DPA](https://sentry.io/legal/dpa/) | Low (PII scrubbed pre-send) | 2026-05-22 |
 | Google Fonts | Google global edge | **EU-US DPF** | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI) | [Privacy doc](https://developers.google.com/fonts/faq/privacy) | Low (no personal data — IP + UA only on RTL pages) | 2026-05-22 |
@@ -200,6 +200,7 @@ audit trail.  Driven by the `SUBPROCESSOR_CHANGELOG` array in
 
 | Date | Vendor | Change | Description |
 |---|---|---|---|
+| 2026-05-23 | Google Cloud (Gemini API) | Region & mechanism corrected | Honest verification (audit H-5): the AI Studio API endpoint is Google-global, NOT regionally pinned to `europe-west` as previously published.  Transfer mechanism reclassified from "EU adequacy (intra-EEA)" to "EU-US DPF".  TIA risk unchanged (low — image bytes / vocabulary words, no student PII).  Vertex AI region-pinned migration tracked in `docs/operator-tasks.md`. |
 | 2026-05-22 | Google Cloud (Text-to-Speech API) | Added | Disclosed as a distinct entry (previously implicit under the Google Cloud Gemini row). |
 | 2026-05-22 | Sentry | Added | Disclosed for the first time.  Active since launch but undeclared until the C-9 audit pass; DSN points at the EU (Germany) region. |
 | 2026-05-04 | Render | Removed | Migrated application server to Fly.io (Amsterdam) for better EU presence. |
