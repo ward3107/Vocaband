@@ -10,7 +10,7 @@
  * Appears in Review step (Step 3) after words are selected.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import {
@@ -49,6 +49,9 @@ export interface GeneratedLesson {
   text: string;
   wordCount: number;
   questions: GeneratedQuestion[];
+  /** Vocab words the AI failed to use in the generated text.  Server
+   *  computes this; the modal surfaces a non-blocking toast. */
+  missingWords?: string[];
 }
 
 export interface GeneratedQuestion {
@@ -129,6 +132,71 @@ const Stepper: React.FC<StepperProps> = ({ value, onChange, min = 0, max = 50, l
     </button>
   </div>
 );
+
+// ── Question grouping (warm-up → harder) ──────────────────────────────────────
+//
+// Gemini returns questions in whatever order it feels like — even when
+// the prompt asks for a specific sequence, the model drifts.  Grouping
+// at render time means the printed worksheet always reads in a
+// consistent pedagogical order (Yes/No → True/False → MC → Fill →
+// Sentence Complete → Matching → WH → Literal → Inferential) regardless
+// of what came back from the model.
+
+const QUESTION_TYPE_ORDER: ReadonlyArray<keyof QuestionTypeConfig> = [
+  'yesNo', 'trueFalse', 'multipleChoice', 'fillBlank', 'sentenceComplete',
+  'matching', 'wh', 'literal', 'inferential',
+];
+
+function groupQuestionsByType(
+  questions: GeneratedQuestion[],
+): Array<{ type: keyof QuestionTypeConfig; partLetter: string; questions: GeneratedQuestion[] }> {
+  const buckets = new Map<string, GeneratedQuestion[]>();
+  for (const q of questions) {
+    const list = buckets.get(q.type) ?? [];
+    list.push(q);
+    buckets.set(q.type, list);
+  }
+  const groups: Array<{ type: keyof QuestionTypeConfig; partLetter: string; questions: GeneratedQuestion[] }> = [];
+  let partIdx = 0;
+  for (const type of QUESTION_TYPE_ORDER) {
+    const qs = buckets.get(type);
+    if (!qs || qs.length === 0) continue;
+    groups.push({
+      type,
+      partLetter: String.fromCharCode(65 + partIdx),
+      questions: qs,
+    });
+    partIdx++;
+  }
+  return groups;
+}
+
+// Render a reading text with vocabulary words bolded.  Case-insensitive
+// match on whole-word boundaries; preserves the original casing in the
+// output and keeps paragraph breaks intact via `whiteSpace: pre-wrap`.
+function renderTextWithBoldedVocab(
+  text: string,
+  vocabWords: ReadonlyArray<string>,
+): ReactNode {
+  if (vocabWords.length === 0) return text;
+  const escaped = vocabWords
+    .map(w => w.trim())
+    .filter(w => w.length > 0)
+    .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .sort((a, b) => b.length - a.length); // longest first so "ice cream" beats "ice"
+  if (escaped.length === 0) return text;
+  const re = new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
+  const parts: ReactNode[] = [];
+  let lastIdx = 0;
+  for (const match of text.matchAll(re)) {
+    const idx = match.index ?? 0;
+    if (idx > lastIdx) parts.push(text.slice(lastIdx, idx));
+    parts.push(<strong key={`${idx}-${match[0]}`}>{match[0]}</strong>);
+    lastIdx = idx + match[0].length;
+  }
+  if (lastIdx < text.length) parts.push(text.slice(lastIdx));
+  return parts;
+}
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
@@ -220,6 +288,12 @@ export default function AiLessonBuilder({
       });
       setGeneratedLesson(lesson);
       setShowPreview(true);
+      // Surface dropped vocab words as a non-blocking warning toast so
+      // the teacher knows whether to regenerate.  Server logged them
+      // already, but the teacher needs the signal too.
+      if (lesson.missingWords && lesson.missingWords.length > 0) {
+        showToast?.(t.missingWordsWarning(lesson.missingWords), 'info');
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : t.failedToGenerate;
       showToast?.(message, 'error');
@@ -227,6 +301,23 @@ export default function AiLessonBuilder({
       setIsGenerating(false);
     }
   }, [selectedWords, textDifficulty, textType, wordCount, questionTypes, includeAnswers, totalQuestions, onGenerate, showToast, t]);
+
+  // Memoised view-models for the preview and print blocks below.
+  // vocabEnglish drives the bold-vocab renderer; groupedQuestions
+  // reshuffles the AI's free-form question order into the fixed
+  // pedagogical sequence (warm-up → harder) used in both screens.
+  const vocabEnglish = useMemo(
+    () => selectedWords.map(w => w.english).filter(Boolean),
+    [selectedWords],
+  );
+  const groupedQuestions = useMemo(
+    () => (generatedLesson ? groupQuestionsByType(generatedLesson.questions) : []),
+    [generatedLesson],
+  );
+  const labelFor = useCallback((type: string): string => {
+    const cfg = [...COMPREHENSION_TYPES, ...EXERCISE_TYPES].find(tc => tc.key === type);
+    return cfg ? t[cfg.labelKey] : type;
+  }, [t]);
 
   // Reset when modal closes
   const handleClose = useCallback(() => {
@@ -505,45 +596,55 @@ export default function AiLessonBuilder({
                 {showPreview && (
                   <div className="prose prose-stone max-w-none">
                     <p className="text-[var(--vb-text-secondary)] whitespace-pre-wrap leading-relaxed">
-                      {generatedLesson.text}
+                      {renderTextWithBoldedVocab(generatedLesson.text, vocabEnglish)}
                     </p>
                   </div>
                 )}
               </div>
 
-              {/* Questions */}
+              {/* Questions — grouped by type in fixed pedagogical order
+                   (warm-up → harder).  Each section is its own card with
+                   a "Part X · <type> (n)" header so the teacher can see
+                   the structure at a glance. */}
               <div className="border-2 border-[var(--vb-border)] rounded-lg p-4">
                 <h3 className="font-bold text-[var(--vb-text-primary)] flex items-center gap-2 mb-3">
                   <HelpCircle className="w-5 h-5 text-violet-600" />
                   {t.questionsCountHeading(generatedLesson.questions.length)}
                 </h3>
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {generatedLesson.questions.map((q, i) => {
-                    const typeConfig = [...COMPREHENSION_TYPES, ...EXERCISE_TYPES].find(tc => tc.key === q.type);
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {groupedQuestions.map(group => {
+                    const typeConfig = [...COMPREHENSION_TYPES, ...EXERCISE_TYPES].find(tc => tc.key === group.type);
                     return (
-                      <div key={i} className="p-3 bg-[var(--vb-surface)] rounded-lg">
-                        <div className="flex items-start gap-2 mb-2">
+                      <div key={group.type}>
+                        <div className="flex items-center gap-2 mb-2">
                           {typeConfig && (
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${typeConfig.color}`}>
-                              {t[typeConfig.labelKey]}
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${typeConfig.color}`}>
+                              {typeConfig.icon}
                             </span>
                           )}
-                          <p className="font-medium text-[var(--vb-text-primary)]">{t.questionNumber(i + 1, q.question)}</p>
+                          <h4 className="font-bold text-sm text-[var(--vb-text-primary)]">
+                            {t.questionSectionHeading(group.partLetter, labelFor(group.type), group.questions.length)}
+                          </h4>
                         </div>
-                        {includeAnswers && (
-                          <p className="text-sm text-[var(--vb-text-secondary)] ml-1">
-                            <span className="font-semibold">{t.answerLabel}</span> {q.answer}
-                          </p>
-                        )}
-                        {q.options && (
-                          <div className="mt-2 ml-1 space-y-1">
-                            {q.options.map((opt, j) => (
-                              <p key={j} className="text-sm text-[var(--vb-text-secondary)]">
-                                {String.fromCharCode(65 + j)}. {opt}
-                              </p>
-                            ))}
-                          </div>
-                        )}
+                        <ol className="space-y-2 ms-2 list-decimal list-inside">
+                          {group.questions.map((q, i) => (
+                            <li key={i} className="p-2 bg-[var(--vb-surface)] rounded-md">
+                              <span className="font-medium text-[var(--vb-text-primary)]">{q.question}</span>
+                              {q.options && (
+                                <ol className="mt-1 ms-4 space-y-0.5 list-[upper-alpha] list-inside">
+                                  {q.options.map((opt, j) => (
+                                    <li key={j} className="text-sm text-[var(--vb-text-secondary)]">{opt}</li>
+                                  ))}
+                                </ol>
+                              )}
+                              {includeAnswers && (
+                                <p className="mt-1 text-xs text-[var(--vb-text-secondary)]">
+                                  <span className="font-semibold">{t.answerLabel}</span> {q.answer}
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ol>
                       </div>
                     );
                   })}
@@ -612,53 +713,75 @@ export default function AiLessonBuilder({
               </div>
             </header>
 
-            {/* Reading text */}
+            {/* Reading text — paragraph breaks come from "\n\n" in the
+                 AI response (the prompt asks for 3-5 paragraphs).
+                 `whiteSpace: pre-wrap` preserves them.  Vocab words are
+                 bolded in place so the teacher can see word coverage at
+                 a glance on the printed sheet. */}
             <section style={{ marginBottom: '2rem' }}>
               <h2 style={{ fontSize: '16pt', fontWeight: 800, marginBottom: '0.75rem' }}>
                 {t.printReadingHeading}
               </h2>
               <p style={{ fontSize: '12pt', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                {generatedLesson.text}
+                {renderTextWithBoldedVocab(generatedLesson.text, vocabEnglish)}
               </p>
             </section>
 
-            {/* Questions */}
-            <section className="vb-print-avoid-break" style={{ marginBottom: '2rem' }}>
+            {/* Questions — grouped into "Part A · Yes/No (5)" sections in
+                 fixed pedagogical order regardless of what order Gemini
+                 returned.  Numbering restarts per section (A1, A2…, B1,
+                 B2…) so the answer key below stays aligned. */}
+            <section style={{ marginBottom: '2rem' }}>
               <h2 style={{ fontSize: '16pt', fontWeight: 800, marginBottom: '0.75rem' }}>
                 {t.questionsCountHeading(generatedLesson.questions.length)}
               </h2>
-              <ol style={{ paddingLeft: '1.5rem', fontSize: '12pt', lineHeight: 1.8 }}>
-                {generatedLesson.questions.map((q, i) => (
-                  <li key={i} style={{ marginBottom: '0.85rem' }}>
-                    <div>{q.question}</div>
-                    {q.options && q.options.length > 0 && (
-                      <ol type="A" style={{ marginTop: '0.4rem', paddingLeft: '1.5rem' }}>
-                        {q.options.map((opt, j) => (
-                          <li key={j} style={{ marginBottom: '0.2rem' }}>{opt}</li>
-                        ))}
-                      </ol>
-                    )}
-                    {!q.options && (
-                      <div style={{ marginTop: '0.4rem', borderBottom: '1px solid #888', height: '1.2em' }} />
-                    )}
-                  </li>
-                ))}
-              </ol>
+              {groupedQuestions.map(group => (
+                <div key={group.type} className="vb-print-avoid-break" style={{ marginBottom: '1.25rem' }}>
+                  <h3 style={{ fontSize: '13pt', fontWeight: 700, marginBottom: '0.5rem', borderBottom: '1px solid #333', paddingBottom: '0.25rem' }}>
+                    {t.questionSectionHeading(group.partLetter, labelFor(group.type), group.questions.length)}
+                  </h3>
+                  <ol style={{ paddingLeft: '1.5rem', fontSize: '12pt', lineHeight: 1.8, margin: 0 }}>
+                    {group.questions.map((q, i) => (
+                      <li key={i} style={{ marginBottom: '0.65rem' }}>
+                        <div>{q.question}</div>
+                        {q.options && q.options.length > 0 && (
+                          <ol type="A" style={{ marginTop: '0.4rem', paddingLeft: '1.5rem' }}>
+                            {q.options.map((opt, j) => (
+                              <li key={j} style={{ marginBottom: '0.2rem' }}>{opt}</li>
+                            ))}
+                          </ol>
+                        )}
+                        {!q.options && (
+                          <div style={{ marginTop: '0.4rem', borderBottom: '1px solid #888', height: '1.2em' }} />
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
             </section>
 
-            {/* Answer key — only when teacher opted in */}
+            {/* Answer key — same grouped order so question "B3" in the
+                 worksheet maps to "B3" in the key. */}
             {includeAnswers && (
               <section className="vb-print-avoid-break vb-print-page-break" style={{ marginTop: '2rem' }}>
                 <h2 style={{ fontSize: '16pt', fontWeight: 800, marginBottom: '0.75rem', borderBottom: '2px solid #000', paddingBottom: '0.4rem' }}>
                   {t.printAnswerKey}
                 </h2>
-                <ol style={{ paddingLeft: '1.5rem', fontSize: '11pt', lineHeight: 1.7 }}>
-                  {generatedLesson.questions.map((q, i) => (
-                    <li key={i} style={{ marginBottom: '0.4rem' }}>
-                      <strong>{q.answer}</strong>
-                    </li>
-                  ))}
-                </ol>
+                {groupedQuestions.map(group => (
+                  <div key={group.type} style={{ marginBottom: '1rem' }}>
+                    <h3 style={{ fontSize: '12pt', fontWeight: 700, marginBottom: '0.35rem' }}>
+                      {t.questionSectionHeading(group.partLetter, labelFor(group.type), group.questions.length)}
+                    </h3>
+                    <ol style={{ paddingLeft: '1.5rem', fontSize: '11pt', lineHeight: 1.7, margin: 0 }}>
+                      {group.questions.map((q, i) => (
+                        <li key={i} style={{ marginBottom: '0.3rem' }}>
+                          <strong>{q.answer}</strong>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ))}
               </section>
             )}
           </div>

@@ -52,6 +52,12 @@ export interface AiLessonBuilderStrings {
   questionNumber: (i: number, q: string) => string;
   answerLabel: string;
 
+  // Grouped-by-type section header in preview & print
+  // (e.g. "Part A · Yes/No (5)").  `partLetter` is the section letter,
+  // `label` is the localised type name, `count` is the question count.
+  questionSectionHeading: (partLetter: string, label: string, count: number) => string;
+  missingWordsWarning: (missing: string[]) => string;
+
   // Footer actions
   printOrSavePdf: string;
   save: string;
@@ -111,6 +117,8 @@ export const aiLessonBuilderT: Record<Language, AiLessonBuilderStrings> = {
     questionsCountHeading: (n) => `Questions (${n})`,
     questionNumber: (i, q) => `Q${i}: ${q}`,
     answerLabel: "Answer:",
+    questionSectionHeading: (partLetter, label, count) => `Part ${partLetter} · ${label} (${count})`,
+    missingWordsWarning: (missing) => `Heads up — ${missing.length} vocabulary word${missing.length === 1 ? "" : "s"} didn't appear in the generated text: ${missing.join(", ")}. Regenerate if you want them included.`,
     printOrSavePdf: "Print / Save as PDF",
     save: "Save",
     done: "Done",
@@ -161,6 +169,8 @@ export const aiLessonBuilderT: Record<Language, AiLessonBuilderStrings> = {
     questionsCountHeading: (n) => `שאלות (${n})`,
     questionNumber: (i, q) => `ש${i}: ${q}`,
     answerLabel: "תשובה:",
+    questionSectionHeading: (partLetter, label, count) => `חלק ${partLetter} · ${label} (${count})`,
+    missingWordsWarning: (missing) => `שימו לב — ${missing.length} ${missing.length === 1 ? "מילה" : "מילים"} מאוצר המילים לא הופיעו בטקסט: ${missing.join(", ")}. אפשר ליצור מחדש כדי לכלול אותן.`,
     printOrSavePdf: "הדפסה / שמירה כ-PDF",
     save: "שמירה",
     done: "סיום",
@@ -211,6 +221,8 @@ export const aiLessonBuilderT: Record<Language, AiLessonBuilderStrings> = {
     questionsCountHeading: (n) => `الأسئلة (${n})`,
     questionNumber: (i, q) => `س${i}: ${q}`,
     answerLabel: "الإجابة:",
+    questionSectionHeading: (partLetter, label, count) => `الجزء ${partLetter} · ${label} (${count})`,
+    missingWordsWarning: (missing) => `تنبيه — ${missing.length} من كلمات المفردات لم تظهر في النص: ${missing.join("، ")}. أعد التوليد لتضمينها.`,
     printOrSavePdf: "طباعة / حفظ كـ PDF",
     save: "حفظ",
     done: "تم",
@@ -261,6 +273,8 @@ export const aiLessonBuilderT: Record<Language, AiLessonBuilderStrings> = {
     questionsCountHeading: (n) => `Questions (${n})`,
     questionNumber: (i, q) => `Q${i}: ${q}`,
     answerLabel: "Answer:",
+    questionSectionHeading: (partLetter, label, count) => `Part ${partLetter} · ${label} (${count})`,
+    missingWordsWarning: (missing) => `Heads up — ${missing.length} vocabulary word${missing.length === 1 ? "" : "s"} didn't appear in the generated text: ${missing.join(", ")}. Regenerate if you want them included.`,
     printOrSavePdf: "Print / Save as PDF",
     save: "Save",
     done: "Done",

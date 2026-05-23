@@ -447,43 +447,50 @@ function detectPromptInjection(text: string): { detected: boolean; pattern?: str
 
 // Sanitise model-returned strings before they reach the client.
 //
-// CodeQL alert #48 (Incomplete multi-character sanitization) showed that
-// stripping HTML via regex is fundamentally broken: `<<script>>` survives
-// a single `/<[^>]*>/g` pass because removing the outer brackets leaves a
-// valid `<script>`; and `>` characters can survive a loop after their
-// matching `<` was already removed.  The universally correct answer is to
-// **encode** rather than **strip**.  An entity-encoded `&lt;script&gt;` is
-// inert in every consumer: HTML parsers treat it as a text node; PDF/Word
-// libs render the entity literally; React displays it as visible text.
+// Earlier versions HTML-encoded `&`, `<`, `>`, `"`, and `'` here.  That
+// defended PDF/Word exporters that interpret AI output as markup, but
+// every consumer in this codebase renders the sanitised string as TEXT
+// in React — so `&#x27;` and `&quot;` leaked through as literal entities
+// (teachers saw `Leo&#x27;s` instead of `Leo's` in generated worksheets
+// and printed lessons).  React already escapes when rendering text, so
+// the right defence is to STRIP dangerous markup here and let any future
+// export path that interprets HTML escape at its own boundary.
 //
-// CodeQL alert #49 (Overly permissive regular expression range) required
-// explicit `\u00xx` escape sequences for control-character ranges instead
-// of literal control bytes embedded in source.
+// CodeQL alert #48 (Incomplete multi-character sanitization) is handled
+// by stripping `<…>` iteratively until the string stops shrinking — this
+// defeats `<<script>>` and similar patterns that survive a single pass.
+// Any stray `<` or `>` left after iteration is then removed as a safety
+// net.
+//
+// CodeQL alert #49 (Overly permissive regular expression range) is
+// handled by explicit `\u00xx` escape sequences in the control-char and
+// zero-width regexes below.
 //
 // Whitespace within the printable range (\t \n \r) is preserved.
 
-const AMP_RE = /&/g;
-const LT_RE = /</g;
-const GT_RE = />/g;
-const DQUOTE_RE = /"/g;
-const SQUOTE_RE = /'/g;
+const TAG_RE = /<[^<>]*>/g;
+const STRAY_BRACKET_RE = /[<>]/g;
 const JS_URI_RE = /\b(?:javascript|data|vbscript)\s*:/gi;
 const CONTROL_CHAR_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const ZERO_WIDTH_RE = /[\u200B-\u200D\u2060\uFEFF]/g;
 
 function sanitizeAiOutput(value: unknown): string {
   if (typeof value !== "string") return "";
-  return value
-    // Encode `&` first so the entities we emit below don't get re-encoded.
-    .replace(AMP_RE, "&amp;")
-    .replace(LT_RE, "&lt;")
-    .replace(GT_RE, "&gt;")
-    .replace(DQUOTE_RE, "&quot;")
-    .replace(SQUOTE_RE, "&#x27;")
+  let out = value
     .replace(JS_URI_RE, "")
     .replace(CONTROL_CHAR_RE, "")
-    .replace(ZERO_WIDTH_RE, "")
-    .trim();
+    .replace(ZERO_WIDTH_RE, "");
+  // Iteratively strip <…> until the string stops shrinking — defeats
+  // nested cases like "<<script>>" that survive a single pass.  Bounded
+  // to 10 iterations so a pathological input can't loop forever.
+  let prev: string;
+  let iter = 0;
+  do {
+    prev = out;
+    out = out.replace(TAG_RE, "");
+    iter++;
+  } while (out !== prev && iter < 10);
+  return out.replace(STRAY_BRACKET_RE, "").trim();
 }
 
 // -----------------------------------------------------------------------------
@@ -4310,14 +4317,18 @@ Text type: ${config.textType || "Create a coherent, engaging text"}
 
 PART 1: READING TEXT
 Generate a text of approximately ${targetWordCount} words that:
-- Naturally incorporates ALL the vocabulary words above
-- Is appropriate for the student level described
-- Is coherent, engaging, and well-structured
-- Has a clear beginning, middle, and end
+- Naturally incorporates ALL the vocabulary words above (every word from the list must appear at least once)
+- Is appropriate for the student level described — match sentence length and grammar to that level
+- Is coherent, engaging, and well-structured with a clear beginning, middle, and end
+- IS BROKEN INTO 3-5 PARAGRAPHS separated by blank lines (use "\\n\\n" between paragraphs in the JSON string). Never return one giant wall of text.
+- Uses regular straight quotes (") for any dialogue. Do not use smart quotes, escaped quotes, or other punctuation.
 
 PART 2: QUESTIONS
 Generate exactly ${totalQuestions} questions based on the text:
 ${questionTypeSpecs.length > 0 ? questionTypeSpecs.join("\n") : "- A mix of comprehension questions"}
+
+Return the questions in this fixed pedagogical order (warm-up → harder), grouping all questions of one type together before moving to the next:
+1. yesNo  2. trueFalse  3. multipleChoice  4. fillBlank  5. sentenceComplete  6. matching  7. wh  8. literal  9. inferential
 
 ${config.includeAnswers !== false ? "Include the correct answer for each question." : ""}
 
@@ -4443,12 +4454,33 @@ Important notes:
       // Count words in generated text
       const actualWordCount = sanitizedText.split(/\s+/).length;
 
-      console.log(`[AI Lesson] uid=${auth.uid}: generated ${actualWordCount} words, ${sanitizedQuestions.length} questions`);
+      // Word-coverage check — the prompt requires every input vocab word
+      // to appear at least once.  Log (don't fail) which words Gemini
+      // dropped so we can track the regression and surface a warning to
+      // the client.
+      const lowerText = sanitizedText.toLowerCase();
+      const missingWords: string[] = [];
+      for (const w of words) {
+        const target = (typeof w === "string" ? w : w?.english) || "";
+        const norm = target.toLowerCase().trim();
+        if (!norm) continue;
+        // Match as a whole word — `\b` doesn't work for words containing
+        // apostrophes ("don't") but a regex with word-boundary
+        // approximation is good enough here.
+        const re = new RegExp(`(^|[^a-z])${norm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`, "i");
+        if (!re.test(lowerText)) missingWords.push(target);
+      }
+      if (missingWords.length > 0) {
+        console.warn(`[AI Lesson] uid=${auth.uid}: ${missingWords.length}/${words.length} vocab words missing from generated text: ${missingWords.slice(0, 10).join(", ")}`);
+      }
+
+      console.log(`[AI Lesson] uid=${auth.uid}: generated ${actualWordCount} words, ${sanitizedQuestions.length} questions, missing=${missingWords.length}`);
 
       return res.json({
         text: sanitizedText,
         wordCount: actualWordCount,
         questions: sanitizedQuestions,
+        missingWords,
       });
     } catch (error: any) {
       console.error("[AI Lesson] generation error:", error?.message || error);

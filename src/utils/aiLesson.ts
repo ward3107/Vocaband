@@ -45,6 +45,10 @@ export interface AiLessonResponse {
     answer: string;
     options?: string[];
   }>;
+  /** Vocab words from the input that Gemini failed to use in the
+   *  generated text.  Server logs this and surfaces it so the client
+   *  can warn the teacher to regenerate.  Empty array on success. */
+  missingWords?: string[];
 }
 
 export async function generateAiLesson(
