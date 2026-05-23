@@ -27,10 +27,15 @@ interface PrivacySettingsViewProps {
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialogState>>;
   showToast: (message: string, type?: ToastType) => void;
+  /** Re-triggers the consent modal in place by clearing localStorage
+   *  acceptance and flipping needsConsent on.  Lets users review the
+   *  policy again without signing out — and gives QA a one-tap way to
+   *  see the modal again. */
+  setNeedsConsent: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export default function PrivacySettingsView({
-  user, consentModal, exitConfirmModal, setView, setUser, setConfirmDialog, showToast,
+  user, consentModal, exitConfirmModal, setView, setUser, setConfirmDialog, showToast, setNeedsConsent,
 }: PrivacySettingsViewProps) {
   const { language, dir, isRTL } = useLanguage();
   const t = privacySettingsT[language];
@@ -204,6 +209,17 @@ export default function PrivacySettingsView({
             <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">{t.fullPrivacyPolicy}</a>
             <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">{t.termsOfService}</a>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem('vocaband_consent_version');
+              setNeedsConsent(true);
+              showToast(t.toastConsentReset, "info");
+            }}
+            className="mt-3 text-blue-600 text-sm font-bold hover:underline"
+          >
+            {t.reviewConsentAgain}
+          </button>
           {localStorage.getItem('vocaband_consent_version') && (
             <button
               onClick={() => {
