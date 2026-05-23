@@ -38,6 +38,11 @@ import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
 import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
+import { lazyWithRetry } from "./utils/lazyWithRetry";
+import { LazyWrapper } from "./components/SuspenseWrapper";
+const DreidelLobbyView = lazyWithRetry(() => import("./views/DreidelLobbyView"));
+const DreidelChallengeView = lazyWithRetry(() => import("./views/DreidelChallengeView"));
+const DreidelStudentView = lazyWithRetry(() => import("./views/DreidelStudentView"));
 import { StudentDashboardSection } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
 import { renderGameRoute } from "./views/GameRoutes";
@@ -225,10 +230,15 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // --- LIVE CHALLENGE STATE ---
   // `isLiveChallenge` stays local — views set it imperatively.  The
   // socket + leaderboard are owned by useLiveChallengeSocket.
+  // Dreidel views piggyback on the same socket — auto-open when one of
+  // the dreidel routes is active so the student dashboard "Join" button
+  // doesn't need to pre-arm the connection.
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
+  const isOnDreidelView =
+    view === "dreidel-lobby" || view === "dreidel-challenge" || view === "dreidel-student";
   const { socket, socketConnected, leaderboard } = useLiveChallengeSocket({
     user,
-    isLiveChallenge,
+    isLiveChallenge: isLiveChallenge || isOnDreidelView,
   });
 
   // Teacher-side QP session + activity-launch state.  See
@@ -1106,6 +1116,51 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     onPickerOcrUpload, showToast,
   });
   if (classShowOrWorksheet) return classShowOrWorksheet;
+
+  // Dreidel — live blitz mode.  Three routes: lobby (config + class
+  // pick), challenge (teacher's projected game), student (per-player
+  // phone view).  Reuses the live-challenge socket so the connection
+  // is already open via useLiveChallengeSocket once isLiveChallenge=true.
+  if (view === "dreidel-lobby" && hasTeacherAccess(user)) {
+    return (
+      <LazyWrapper loadingMessage="Loading Dreidel...">
+        <DreidelLobbyView
+          user={user}
+          classes={visibleClasses}
+          socket={socket}
+          setView={setView}
+          setSelectedClass={setSelectedClass}
+          setIsLiveChallenge={setIsLiveChallenge}
+        />
+      </LazyWrapper>
+    );
+  }
+  if (view === "dreidel-challenge" && selectedClass && hasTeacherAccess(user)) {
+    return (
+      <LazyWrapper loadingMessage="Loading game...">
+        <DreidelChallengeView
+          selectedClass={selectedClass}
+          socket={socket}
+          socketConnected={socketConnected}
+          setView={setView}
+          setIsLiveChallenge={setIsLiveChallenge}
+        />
+      </LazyWrapper>
+    );
+  }
+  if (view === "dreidel-student" && user?.classCode) {
+    return (
+      <LazyWrapper loadingMessage="Joining Dreidel...">
+        <DreidelStudentView
+          user={user}
+          classCode={user.classCode}
+          socket={socket}
+          setView={setView}
+          setIsLiveChallenge={setIsLiveChallenge}
+        />
+      </LazyWrapper>
+    );
+  }
 
   const teacherLiveScreen = renderTeacherLiveScreens({
     view, user, selectedClass, setView, setIsLiveChallenge,
