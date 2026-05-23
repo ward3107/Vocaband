@@ -1115,7 +1115,32 @@ async function startServer() {
     // reconnect with a fresh (or denied) token.  Cost: one
     // supabaseAdmin.auth.getUser() call per socket per 5 min — bounded
     // and acceptable at 1500 concurrent users.
-    const reverifyHandle = setInterval(async () => {
+    //
+    // ── Thundering-herd defence (C5, 2026-05-22) ────────────────────
+    // In a classroom, 30+ students connect within a ~5 s window when a
+    // teacher launches a session.  With a fixed 5-min setInterval the
+    // re-verify load is also bunched — every 5 min, the entire class
+    // hits Supabase auth.getUser() within ~5 s.  At 1500-5000 concurrent
+    // sockets per VM that's a measurable spike that competes with normal
+    // auth traffic and can latency-spike new logins.
+    //
+    // Fix: jitter the FIRST re-verify uniformly across [0, INTERVAL].
+    // Subsequent re-verifies fire every INTERVAL after that, so each
+    // socket's re-verify time is pinned to its (random) initial offset
+    // and stays uniformly distributed across each 5-min window
+    // forever.  Mean wait until first re-verify drops 5 min → 2.5 min
+    // (slightly better security; revocations caught sooner on average).
+    // Worst case "re-verify almost immediately after connect" wastes
+    // one call (the handshake already verified) — acceptable noise.
+    //
+    // Implementation: self-rescheduling setTimeout chain instead of
+    // setInterval, because the initial fire and recurring fires use
+    // different delays.  reverifyHandle is mutated on each tick so
+    // disconnect always clears the latest one.
+    const REVERIFY_INTERVAL_MS = 5 * 60 * 1000;
+    let reverifyHandle: ReturnType<typeof setTimeout> | null = null;
+
+    const runReverify = async (): Promise<void> => {
       const token = socket.handshake.auth?.token;
       if (typeof token !== "string" || token.length === 0) {
         socket.emit("forced_disconnect", { reason: "token_missing" });
@@ -1132,8 +1157,21 @@ async function startServer() {
         socket.emit("forced_disconnect", { reason: "token_revoked" });
         socket.disconnect(true);
       }
-    }, 5 * 60 * 1000);
-    socket.on("disconnect", () => clearInterval(reverifyHandle));
+    };
+
+    const scheduleReverify = (delayMs: number): void => {
+      reverifyHandle = setTimeout(async () => {
+        if (!socket.connected) return; // raced with disconnect
+        await runReverify();
+        if (socket.connected) scheduleReverify(REVERIFY_INTERVAL_MS);
+      }, delayMs);
+    };
+
+    scheduleReverify(Math.floor(Math.random() * REVERIFY_INTERVAL_MS));
+    socket.on("disconnect", () => {
+      if (reverifyHandle) clearTimeout(reverifyHandle);
+      reverifyHandle = null;
+    });
 
     // Helper: emit the reason a challenge event was rejected back to
     // the specific socket that sent it.  Previously every reject path
@@ -3109,16 +3147,55 @@ Quality rules:
   // This endpoint sidesteps both by using the service role key, which
   // bypasses RLS entirely.  Safe to expose unauthenticated because QP
   // sessions are designed to be public-by-code (anyone with the QR
-  // can join), and we only return rows where is_active=true.  Rate
-  // limited to make code-guessing painful.
+  // Quick Play session lookup — anonymous probe surface, so it's exposed
+  // without auth (any phone scanning a QR or typing the projector code
+  // can join), and we only return rows where is_active=true.
+  //
+  // ── Anti-enumeration controls (C3, 2026-05-22) ─────────────────────
+  // Code format is [A-HJ-NP-Z2-9]{6} (32-char ambiguity-free alphabet
+  // over 6 positions) = ~10^9 search space.  Two layered limiters
+  // protect against brute-force enumeration:
+  //
+  //   1. qpSessionLimiter — 10 lookups/min/IP overall.  Tightened from
+  //      the previous 60/min.  Even at the old rate, exhausting 10^9
+  //      codes took ~32 years per IP, but a small botnet could shrink
+  //      that meaningfully and the GET endpoint returns student
+  //      nicknames + scores on a hit, so cutting the per-IP ceiling by
+  //      6x meaningfully widens the privacy moat.
+  //
+  //   2. qpMissCooldown — at most 3 INVALID lookups per IP per 5-min
+  //      sliding window (`skipSuccessfulRequests: true` so legit code
+  //      scans don't count).  After 3 misses the IP is hard-blocked
+  //      with a 429 until the window slides — caps malformed-code +
+  //      not-found probes at ~36/hour/IP regardless of the per-minute
+  //      ceiling.  Custom keyGenerator namespaces the Redis key under
+  //      `rl:qpmiss:<ip>` so this counter is independent of the main
+  //      qpSessionLimiter's `rl:<ip>` keyspace.
+  //
+  // Deliberately NOT in this PR — bump code length 6→8 chars (10^9 →
+  // 10^12).  At 10/min/IP the existing search space already takes
+  // centuries to exhaust per IP, so the migration cost (DB schema +
+  // RPC rewrite + every QR code re-rendered) outweighs the marginal
+  // win.  Tracked in the production-readiness audit as deferred.
   const qpSessionLimiter = createSharedRateLimit({
     windowMs: 60 * 1000,
-    max: 60, // 60 lookups/min/IP — generous for a classroom of 30
+    max: 10,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many lookups, please try again in a minute." },
   });
-  app.get("/api/quick-play/session/:code", qpSessionLimiter, async (req, res) => {
+  const qpMissCooldown = createSharedRateLimit({
+    windowMs: 5 * 60 * 1000, // 5-minute sliding window
+    max: 3,                  // at most 3 failed lookups per window
+    skipSuccessfulRequests: true,
+    standardHeaders: false,
+    legacyHeaders: false,
+    // Namespace this counter so it doesn't collide with qpSessionLimiter's
+    // per-IP keys in the shared Redis store (both use `rl:` prefix).
+    keyGenerator: (req) => `qpmiss:${ipKeyGenerator(req.ip || "unknown") || "unknown"}`,
+    message: { error: "Too many invalid session codes. Please wait a few minutes before trying again." },
+  });
+  app.get("/api/quick-play/session/:code", qpSessionLimiter, qpMissCooldown, async (req, res) => {
     // @types/express 5 widens req.params.* to string | string[]; narrow it.
     const code = typeof req.params.code === "string" ? req.params.code : "";
     // Tightened to match exactly what `generate_session_code()` produces

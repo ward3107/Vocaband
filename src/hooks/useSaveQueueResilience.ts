@@ -88,20 +88,37 @@ export function useSaveQueueResilience(
             localStorage.removeItem(key);
             continue;
           }
-          const { error } = await supabase.from('progress').insert(progress);
+          // C7 (2026-05-22): retry through the save_student_progress
+          // RPC.  Direct INSERT was REVOKEd from `authenticated` so the
+          // RPC is the only write path; same param shape as
+          // useGameState/useGameFinish use.  The RPC's internal ON
+          // CONFLICT upsert means a row that the main path already
+          // wrote returns SUCCESS (score gets greatest()'d) instead of
+          // the 23505 we used to see — so the dup-key cleanup branch
+          // below is now defensive-only.  Foreign-key (23503) violations
+          // can still surface from the word_attempts side of the RPC.
+          const { error } = await supabase.rpc('save_student_progress', {
+            p_student_name: progress.student_name,
+            p_student_uid: progress.student_uid,
+            p_assignment_id: progress.assignment_id,
+            p_class_code: progress.class_code,
+            p_score: progress.score,
+            p_mode: progress.mode,
+            p_mistakes: Array.isArray(progress.mistakes) ? progress.mistakes : [],
+            p_avatar: progress.avatar,
+          });
           if (!error) {
             localStorage.removeItem(key);
             continue;
           }
-          // The progress table has a UNIQUE constraint on
-          // (assignment_id, student_uid, mode, class_code), so retrying a
-          // row that the main upsert path already wrote returns a
-          // 23505 / "duplicate key" error.  Without this branch the
-          // localStorage entry would never get cleaned up — the same
-          // doomed INSERT would re-fire on every page load forever
-          // (a slow but real DB-spam pattern caught in the 2026-04-25
-          // request-volume audit).  Treat dup-key + foreign-key
-          // violations as "already handled, drop the retry".
+          // 23505 was the dup-key signal when this path did direct INSERT;
+          // the RPC's upsert means we no longer hit it organically, but
+          // the check stays as a belt-and-braces against legacy retry
+          // rows + the 23503 foreign-key case.  Without this branch the
+          // localStorage entry could never get cleaned up — the same
+          // doomed call would re-fire on every page load forever (a slow
+          // but real DB-spam pattern caught in the 2026-04-25
+          // request-volume audit).
           const sqlState = (error as { code?: string }).code;
           if (sqlState === '23505' || sqlState === '23503') {
             localStorage.removeItem(key);

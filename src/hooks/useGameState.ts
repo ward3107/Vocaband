@@ -424,16 +424,24 @@ export function useGameState(params: UseGameStateParams) {
           avatar: user.avatar || "\uD83E\uDD8A",
         };
 
-        const { error } = await supabase.from("progress").insert({
-          student_name: progress.studentName,
-          student_uid: progress.studentUid,
-          assignment_id: progress.assignmentId,
-          class_code: progress.classCode,
-          score: progress.score,
-          mode: progress.mode,
-          completed_at: progress.completedAt,
-          mistakes: Array.isArray(mistakes) ? mistakes : [],
-          avatar: progress.avatar,
+        // C7 (2026-05-22): route Quick Play saves through the
+        // save_student_progress SECURITY DEFINER RPC instead of a direct
+        // INSERT.  The RPC explicitly supports the QUICK_PLAY class_code
+        // exemption (caller uid != student uid is allowed) and applies
+        // the F3 score clamp + atomic upsert.  Direct INSERT into
+        // public.progress was REVOKEd from `authenticated` in the
+        // companion migration, so this path is the only one available
+        // to the client now.  Same data shape as before — completed_at
+        // is set server-side via NOW() inside the RPC.
+        const { error } = await supabase.rpc("save_student_progress", {
+          p_student_name: progress.studentName,
+          p_student_uid: progress.studentUid,
+          p_assignment_id: progress.assignmentId,
+          p_class_code: progress.classCode,
+          p_score: progress.score,
+          p_mode: progress.mode,
+          p_mistakes: Array.isArray(mistakes) ? mistakes : [],
+          p_avatar: progress.avatar,
         });
 
         if (error) {
