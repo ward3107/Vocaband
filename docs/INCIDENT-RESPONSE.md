@@ -52,6 +52,19 @@ ORDER BY s.created_at;
 -- 3. Force-logout every session (use with caution — logs out every teacher + student)
 DELETE FROM auth.sessions WHERE created_at < NOW();
 -- Then bump JWT secret in Supabase Dashboard → Settings → JWT Settings.
+
+-- 4. Privileged-action audit during the incident window.
+--    The triggers from migration 20260523000000_audit_admin_actions.sql
+--    write rows here whenever someone changes a user's role or
+--    modifies teacher_allowlist / ai_allowlist — even from the
+--    Supabase dashboard SQL editor.  Filter for these actions to
+--    spot account-takeover-then-self-promotion patterns.
+SELECT actor_uid, action, data_category, target_uid, metadata, created_at
+FROM public.audit_log
+WHERE action IN ('role_change', 'allowlist_add', 'allowlist_update', 'allowlist_remove')
+  AND created_at BETWEEN '2026-05-04 13:00:00+03'
+                     AND '2026-05-04 15:00:00+03'
+ORDER BY created_at;
 ```
 
 ---
