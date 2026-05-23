@@ -34,7 +34,7 @@ For deep technical detail, jump to the linked per-area docs.
 | `/api/features?debug=1` info leak | ✅ Sanitised | Code |
 | TLS / transport — SSL Labs grade | ✅ **A+** (was B) — TLS 1.0/1.1 disabled, HSTS preload submitted | Operator (Cloudflare) |
 | Live pen-test against staging | ⏳ Optional (DIY with OWASP ZAP) | Operator |
-| Compliance certification | ⏳ Needs lawyer | Operator |
+| Compliance certification | ✅ Lawyer-reviewed 2026-05-22 | Operator |
 | Diagnostic info-leak endpoints (`/api/version`, `/api/ocr/status`, `/api/ocr/diagnostic`) | ✅ Auth-gated 2026-05-08 | Code |
 | `/api/submit-bagrut` per-user rate limit + answer-key shape validation | ✅ Added 2026-05-08 | Code |
 | Cross-origin headers (`COOP`, `X-Permitted-Cross-Domain-Policies`) | ✅ Added 2026-05-08 | Code |
@@ -296,7 +296,7 @@ These are the things only a human can do.
 | **Live pen-test with OWASP ZAP** against a staging Supabase project | End-to-end black-box validation.  Requires writing your own consent + a staging clone. |
 | **Apply MED #5 + #6 fixes** (`quick_play_sessions` enumeration, class-RPC role check) | Lower-impact than the HIGH fixes but worth closing.  Plans in `docs/security-audit-2026-04-28.md`. |
 | **Replace motion/react inline-style runtime** with keyframe CSS classes | Last remaining CSP gap is `style-src-attr 'unsafe-inline'`, kept because motion/react writes transform/opacity to the element's `style` attribute on every animated frame. Closing it would require replacing motion/react's runtime style-setting with predefined CSS classes — week+ refactor with visual-fidelity risk on every animation. CSS-only attack surface (no JS escalation), so the residual risk is narrow. |
-| **Privacy lawyer review** for compliance certification | GDPR (EU students), COPPA (US students if any), חוק הגנת הפרטיות (Israeli MoE).  Code controls are in place; lawyer needs to certify. |
+| **Privacy lawyer review** for compliance certification | ✅ Completed 2026-05-22.  Lawyer reviewed Privacy Policy, Terms, DPA/RoPA/DPIA executive summary, and the `export_my_data` / `delete_my_account` data-subject-rights flow.  Coverage: GDPR (EU students), COPPA (US students if any), חוק הגנת הפרטיות (Israeli MoE).  Code controls were already in place; this closes the certification gap. |
 
 ---
 

@@ -143,7 +143,7 @@ is the lawyer's domain.
 | R8 | DDoS / availability | Service availability | Cloudflare absorbs at edge; Fly.io auto-scales; degraded modes have offline-cached fallback (PWA SW) | TODO | TODO | TODO |
 | R9 | Vendor sub-processor breach (Supabase / Fly / Cloudflare) | Whatever they hold | DPA in place with each; monitoring of their security advisories; quarterly review | TODO | TODO | TODO |
 | R10 | Insider misuse by Vocaband staff | All data | Two-person access to production secrets; audit log records every admin action | TODO | TODO | TODO |
-| R11 | Rights-of-data-subject not honoured | Compliance | `export_my_data()` + `delete_my_account()` self-service in privacy settings; lawyer reviewed flow on <date> | TODO | TODO | TODO |
+| R11 | Rights-of-data-subject not honoured | Compliance | `export_my_data()` + `delete_my_account()` self-service in privacy settings; lawyer reviewed flow on 2026-05-22 | TODO | TODO | TODO |
 | R12 | Loss of data integrity (silent corruption) | All data | Supabase daily backup + 30-day retention; no manual destructive operations on production | TODO | TODO | TODO |
 
 ---
