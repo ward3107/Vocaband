@@ -10,16 +10,21 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
 
 // ─── Slow-4G HTML perf plugin ──────────────────────────────────────────
-// Two production-only transforms on index.html:
+// Production-only transforms on index.html:
 //   1. Inline /public/boot.css as a <style> block to remove one render-
 //      blocking network round-trip on first paint.
-//   2. Inject <link rel="modulepreload"> hints for App-*.js,
-//      LandingPage-*.js and landing-page-*.js — the chunks every cold
-//      landing-page visit dynamically imports in series. Without these
-//      hints the browser only discovers them after parsing the entry
-//      chunk, paying RTT × 3. With them the chunks fetch in parallel
-//      with the entry, which lops 400-800 ms off the time-to-interactive
-//      on Slow 4G.
+//   2. Inline /public/boot-debug.js as a <script> block to remove the
+//      remaining pre-React network round-trip. The script is a tiny
+//      pre-React diagnostic + RTL font loader and is CSP-allowlisted by
+//      SHA-256 hash (see public/_headers). When boot-debug.js changes,
+//      recompute the hash and update _headers — same maintenance
+//      pattern as the Cloudflare Insights bootstrap inlines.
+//   3. Inject <link rel="modulepreload"> hints for App-*.js and
+//      LandingPage-*.js — the chunks every cold landing-page visit
+//      dynamically imports in series. Without these hints the browser
+//      only discovers them after parsing the entry chunk, paying RTT × 3.
+//      With them the chunks fetch in parallel with the entry, which lops
+//      400-800 ms off the time-to-interactive on Slow 4G.
 //
 // Dev mode is intentionally a no-op — the perf wins only matter under
 // production network latency, and skipping in dev keeps HMR uncluttered.
@@ -30,6 +35,12 @@ function vocabandHtmlPerf(): Plugin {
   // <style> block. This keeps dev mode working (link tag still serves
   // boot.css through Vite's middleware) and prod fast (inlined CSS).
   const BOOT_CSS_FALLBACK_LINK = '<link rel="stylesheet" href="/boot.css" />';
+
+  const INLINE_BOOT_DEBUG_MARKER = '<!-- VOCABAND_INLINE_BOOT_DEBUG -->';
+  // External <script> for boot-debug.js sits directly after the marker
+  // (or in dev, the marker is absent and the external script serves
+  // through Vite's middleware). Same pattern as boot.css above.
+  const BOOT_DEBUG_FALLBACK_SCRIPT = '<script src="/boot-debug.js"></script>';
 
   // Chunk prefixes whose `.js` outputs deserve a modulepreload hint on
   // the landing page.
@@ -92,7 +103,31 @@ function vocabandHtmlPerf(): Plugin {
           // <link> in place. Site stays correct, just one extra RTT.
         }
 
-        // 2) modulepreload hints for landing-page critical chunks.
+        // 2) Inline boot-debug.js. CSP allows this inline script via its
+        // SHA-256 hash listed in public/_headers (script-src + script-src-elem).
+        // If you edit public/boot-debug.js, recompute the hash:
+        //   openssl dgst -sha256 -binary public/boot-debug.js | openssl base64 -A
+        // and update _headers to match — otherwise the browser refuses to
+        // execute the inlined script and the pre-React error UI breaks.
+        try {
+          const bootDebugPath = path.resolve(__dirname, 'public/boot-debug.js');
+          const bootDebugJs = fs.readFileSync(bootDebugPath, 'utf8');
+          // Inline VERBATIM — no minification, no trim. The CSP hash is
+          // computed against the exact file bytes so any transform here
+          // (even whitespace) would force a hash update on every change.
+          const scriptTag = `<script data-vocaband-inlined="boot-debug">${bootDebugJs}</script>`;
+          if (next.includes(INLINE_BOOT_DEBUG_MARKER)) {
+            next = next.replace(INLINE_BOOT_DEBUG_MARKER, scriptTag);
+            next = next.replace(BOOT_DEBUG_FALLBACK_SCRIPT, '');
+          } else if (next.includes(BOOT_DEBUG_FALLBACK_SCRIPT)) {
+            next = next.replace(BOOT_DEBUG_FALLBACK_SCRIPT, scriptTag);
+          }
+        } catch {
+          // boot-debug.js missing or unreadable — fall through, leave the
+          // external <script> in place. Site stays correct, just one extra RTT.
+        }
+
+        // 3) modulepreload hints for landing-page critical chunks.
         // `ctx.bundle` is the rolldown/rollup bundle map keyed by output
         // file name (e.g. "assets/App-abc123.js"). Empty in dev (`apply:
         // 'build'` guards us from running there anyway). Look up each
@@ -205,7 +240,9 @@ export default defineConfig(() => {
             // Static SPA shell
             'index.html',
             'boot.css',
-            'boot-debug.js',
+            // boot-debug.js is inlined into index.html by vocabandHtmlPerf,
+            // so it never ships as a separate request — precaching the
+            // file is dead weight.
             'sw-error-suppress.js',
             'manifest.webmanifest',
             'favicon.ico',
@@ -361,14 +398,20 @@ export default defineConfig(() => {
               handler: 'NetworkOnly',
             },
             {
-              // The HTML shell — NEVER trust the cache first.  Short
-              // network timeout so offline boot falls back to cache
-              // quickly instead of hanging.
+              // The HTML shell — NEVER trust the cache first.  Network
+              // timeout so offline boot falls back to cache instead of
+              // hanging.  Bumped 3s → 6s after field reports that Israeli
+              // school Wi-Fi often responds in 4–5s; at 3s we aborted and
+              // either served stale cache (fine) or fell into the
+              // handlerDidError path that surfaces a 503 recovery shell on
+              // a fresh install (not fine).  6s lets the network finish on
+              // borderline-slow connections; offline visitors still get
+              // their fallback within an extra 3s of waiting.
               urlPattern: ({ request }) => request.mode === 'navigate',
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'vocaband-html',
-                networkTimeoutSeconds: 3,
+                networkTimeoutSeconds: 6,
                 expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 },
                 // Last-resort fallback when BOTH network and runtime
                 // cache miss.  Without this plugin, NetworkFirst
