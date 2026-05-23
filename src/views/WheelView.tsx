@@ -23,12 +23,13 @@
  *   4. question — single question of the picked challenge type
  *   5. done     — podium with medals + Play Again / Exit
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Trophy, ArrowRight, Volume2, X, Play, BookOpen,
   ClipboardPaste, ChevronRight, Sparkles, Disc3,
   Languages, MessageSquareQuote, CheckCircle2,
+  Camera, Loader2, AlertTriangle, Image as ImageIcon,
 } from 'lucide-react';
 import { useLanguage, type Language } from '../hooks/useLanguage';
 import { useVocabularyLazy } from '../hooks/useVocabularyLazy';
@@ -42,6 +43,8 @@ import {
   type TranslationLang,
 } from '../utils/buildQuestion';
 import PageHero from '../components/PageHero';
+import InPageCamera from '../components/InPageCamera';
+import { postOcrImage, isPostOcrImageError } from '../utils/postOcrImage';
 import { celebrate } from '../utils/celebrate';
 
 export interface WheelAssignment {
@@ -69,8 +72,9 @@ interface WheelViewProps {
 
 type Phase = 'setup' | 'spinning' | 'landed' | 'question' | 'winner' | 'done';
 type TargetLang = 'hebrew' | 'arabic';
-type SourceKind = 'paste' | 'assignment' | 'topic';
+type SourceKind = 'paste' | 'assignment' | 'topic' | 'camera';
 type ChallengeKind = 'meaning' | 'translation' | 'true-false';
+type OcrStatus = 'idle' | 'reading' | 'done' | 'error';
 
 interface PlayerScore {
   /** Stable id assigned at game start.  Slices reference players by
@@ -267,10 +271,17 @@ const STRINGS: Record<Language, {
   sourcePaste: string;
   sourceAssignment: string;
   sourceTopic: string;
+  sourceCamera: string;
   pickAssignment: string;
   pickTopic: string;
   wordsPlaceholder: string;
   wordsHint: string;
+  cameraHint: string;
+  cameraBtn: string;
+  galleryBtn: string;
+  ocrReading: string;
+  ocrError: string;
+  ocrFoundCount: (n: number) => string;
   poolTooSmall: string;
   poolHint: (count: number) => string;
   matchedHint: (matched: number, total: number) => string;
@@ -340,10 +351,17 @@ const STRINGS: Record<Language, {
     sourcePaste: 'Paste',
     sourceAssignment: 'Assignment',
     sourceTopic: 'Topic',
+    sourceCamera: 'Camera',
     pickAssignment: 'Pick an assignment',
     pickTopic: 'Pick a topic pack',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
     wordsHint: 'One English word per line. We look up the translation in the curriculum.',
+    cameraHint: 'Snap a photo of your word list. We read it and pull translations from the curriculum.',
+    cameraBtn: 'Take photo',
+    galleryBtn: 'Choose from gallery',
+    ocrReading: 'Reading words from photo…',
+    ocrError: "Couldn't read words from that photo. Try a clearer shot.",
+    ocrFoundCount: (n) => `Found ${n} word${n === 1 ? '' : 's'} in the photo`,
     poolTooSmall: 'Need at least 4 words with the chosen translation.',
     poolHint: (n) => `${n} words available`,
     matchedHint: (m, t) => t === m ? `${m} words ready` : `${m} of ${t} words found — others skipped`,
@@ -406,10 +424,17 @@ const STRINGS: Record<Language, {
     sourcePaste: 'הדבקה',
     sourceAssignment: 'מטלה',
     sourceTopic: 'נושא',
+    sourceCamera: 'מצלמה',
     pickAssignment: 'בחר מטלה',
     pickTopic: 'בחר חבילת נושא',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
     wordsHint: 'מילה אחת באנגלית בכל שורה. נחפש את התרגום באוצר המילים.',
+    cameraHint: 'צלם את רשימת המילים שלך. נקרא אותה ונשלוף תרגומים מתכנית הלימודים.',
+    cameraBtn: 'צלם תמונה',
+    galleryBtn: 'בחר מהגלריה',
+    ocrReading: 'קורא מילים מהתמונה…',
+    ocrError: 'לא הצלחנו לקרוא מילים מהתמונה. נסה תמונה ברורה יותר.',
+    ocrFoundCount: (n) => `נמצאו ${n} מילים בתמונה`,
     poolTooSmall: 'צריך לפחות 4 מילים עם התרגום שנבחר.',
     poolHint: (n) => `${n} מילים זמינות`,
     matchedHint: (m, t) => t === m ? `${m} מילים מוכנות` : `${m} מתוך ${t} מילים נמצאו — האחרות דולגו`,
@@ -472,10 +497,17 @@ const STRINGS: Record<Language, {
     sourcePaste: 'لصق',
     sourceAssignment: 'مهمة',
     sourceTopic: 'موضوع',
+    sourceCamera: 'الكاميرا',
     pickAssignment: 'اختر مهمة',
     pickTopic: 'اختر حزمة موضوع',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
     wordsHint: 'كلمة إنجليزية واحدة في كل سطر. سنبحث عن الترجمة في المفردات.',
+    cameraHint: 'التقط صورة لقائمة كلماتك. سنقرأها ونجلب الترجمات من المنهج.',
+    cameraBtn: 'التقط صورة',
+    galleryBtn: 'اختر من المعرض',
+    ocrReading: 'جارٍ قراءة الكلمات من الصورة…',
+    ocrError: 'لم نتمكن من قراءة الكلمات من هذه الصورة. جرّب صورة أوضح.',
+    ocrFoundCount: (n) => `تم العثور على ${n} كلمة في الصورة`,
     poolTooSmall: 'يلزم 4 كلمات على الأقل لها الترجمة المختارة.',
     poolHint: (n) => `${n} كلمة متاحة`,
     matchedHint: (m, t) => t === m ? `${m} كلمات جاهزة` : `تم العثور على ${m} من ${t} كلمات — تم تخطي الباقي`,
@@ -538,10 +570,17 @@ const STRINGS: Record<Language, {
     sourcePaste: 'Paste',
     sourceAssignment: 'Assignment',
     sourceTopic: 'Topic',
+    sourceCamera: 'Camera',
     pickAssignment: 'Pick an assignment',
     pickTopic: 'Pick a topic pack',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
     wordsHint: 'One English word per line. We look up the translation in the curriculum.',
+    cameraHint: 'Snap a photo of your word list. We read it and pull translations from the curriculum.',
+    cameraBtn: 'Take photo',
+    galleryBtn: 'Choose from gallery',
+    ocrReading: 'Reading words from photo…',
+    ocrError: "Couldn't read words from that photo. Try a clearer shot.",
+    ocrFoundCount: (n) => `Found ${n} word${n === 1 ? '' : 's'} in the photo`,
     poolTooSmall: 'Need at least 4 words with the chosen translation.',
     poolHint: (n) => `${n} words available`,
     matchedHint: (m, t) => t === m ? `${m} words ready` : `${m} of ${t} words found — others skipped`,
@@ -615,6 +654,16 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
   const availableTopics = useMemo(() => topicPacks ?? [], [topicPacks]);
   const [assignmentId, setAssignmentId] = useState<string | null>(availableAssignments[0]?.id ?? null);
   const [topicIdx, setTopicIdx] = useState(0);
+
+  // Camera + OCR state.  ocrWords holds the lowercased English tokens
+  // returned by /api/ocr; rawPool below looks each up in englishLookup
+  // (same path as the paste source) so unknown words are silently
+  // skipped instead of breaking the multi-choice.
+  const [showCamera, setShowCamera] = useState(false);
+  const [ocrWords, setOcrWords] = useState<string[]>([]);
+  const [ocrStatus, setOcrStatus] = useState<OcrStatus>('idle');
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [allowedChallenges, setAllowedChallenges] = useState<Set<ChallengeKind>>(
     () => new Set(ALL_CHALLENGES),
   );
@@ -652,6 +701,19 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
       const idSet = new Set(pack.ids);
       return vocab.ALL_WORDS.filter(w => idSet.has(w.id));
     }
+    if (sourceKind === 'camera') {
+      if (!englishLookup) return [];
+      const matched: Word[] = [];
+      const seenIds = new Set<number>();
+      for (const tok of ocrWords) {
+        const hit = englishLookup.get(tok.toLowerCase().trim());
+        if (hit && !seenIds.has(hit.id)) {
+          matched.push(hit);
+          seenIds.add(hit.id);
+        }
+      }
+      return matched;
+    }
     if (!englishLookup) return [];
     const matched: Word[] = [];
     const seenIds = new Set<number>();
@@ -663,7 +725,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
       }
     }
     return matched;
-  }, [vocab, sourceKind, assignmentId, availableAssignments, pastedLines, englishLookup, topicIdx, availableTopics]);
+  }, [vocab, sourceKind, assignmentId, availableAssignments, pastedLines, englishLookup, topicIdx, availableTopics, ocrWords]);
 
   // Filter to words that actually have the chosen target translation —
   // otherwise the multi-choice would surface English where it should
@@ -673,6 +735,33 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
     () => rawPool.filter(w => translationOf(w, targetLang).trim().length > 0),
     [rawPool, targetLang],
   );
+
+  // OCR a captured/uploaded image and stash the resulting English tokens
+  // in ocrWords.  rawPool above resolves them against englishLookup, so
+  // the same matched/total hint logic the paste source uses just works.
+  const handleOcrFile = useCallback(async (file: File) => {
+    setOcrStatus('reading');
+    setOcrError(null);
+    try {
+      const result = await postOcrImage(file, 'en');
+      setOcrWords(result.words);
+      setOcrStatus('done');
+    } catch (err) {
+      if (isPostOcrImageError(err)) {
+        setOcrError(err.message);
+      } else {
+        setOcrError(t.ocrError);
+      }
+      setOcrStatus('error');
+      setOcrWords([]);
+    }
+  }, [t.ocrError]);
+
+  const handleGalleryChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void handleOcrFile(file);
+    if (e.target) e.target.value = '';
+  }, [handleOcrFile]);
 
   // ── Round state ────────────────────────────────────────────────
   const [players, setPlayers] = useState<PlayerScore[]>([]);
@@ -1106,9 +1195,10 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                   <BookOpen size={14} className="text-stone-600" />
                   <p className="text-sm font-bold text-stone-700">{t.wordsLabel}</p>
                 </div>
-                <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                   {([
                     { kind: 'paste' as SourceKind, label: t.sourcePaste, Icon: ClipboardPaste, visible: true },
+                    { kind: 'camera' as SourceKind, label: t.sourceCamera, Icon: Camera, visible: true },
                     { kind: 'topic' as SourceKind, label: t.sourceTopic, Icon: Sparkles, visible: availableTopics.length > 0 },
                     { kind: 'assignment' as SourceKind, label: t.sourceAssignment, Icon: BookOpen, visible: availableAssignments.length > 0 },
                   ])
@@ -1175,12 +1265,63 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                     ))}
                   </select>
                 )}
-                {vocab && (
+                {sourceKind === 'camera' && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-stone-500">{t.cameraHint}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowCamera(true)}
+                        style={{ touchAction: 'manipulation' }}
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-stone-900 text-white font-bold text-sm active:scale-[0.98] transition"
+                      >
+                        <Camera size={16} />
+                        {t.cameraBtn}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => galleryInputRef.current?.click()}
+                        style={{ touchAction: 'manipulation' }}
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-white border-2 border-stone-200 text-stone-700 font-bold text-sm hover:border-violet-200 active:scale-[0.98] transition"
+                      >
+                        <ImageIcon size={16} />
+                        {t.galleryBtn}
+                      </button>
+                    </div>
+                    <input
+                      ref={galleryInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleGalleryChange}
+                    />
+                    {ocrStatus === 'reading' && (
+                      <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-600">
+                        <Loader2 size={14} className="animate-spin" />
+                        {t.ocrReading}
+                      </p>
+                    )}
+                    {ocrStatus === 'error' && ocrError && (
+                      <p className="flex items-start gap-1.5 text-xs font-semibold text-rose-600">
+                        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                        <span>{ocrError}</span>
+                      </p>
+                    )}
+                    {ocrStatus === 'done' && ocrWords.length > 0 && (
+                      <p className="text-xs font-semibold text-emerald-700">
+                        {t.ocrFoundCount(ocrWords.length)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {vocab && (sourceKind !== 'camera' || ocrStatus === 'done' || rawPool.length > 0) && (
                   <p className={`mt-1.5 text-xs font-semibold ${wordPool.length < 4 ? 'text-rose-600' : 'text-stone-500'}`}>
                     {wordPool.length < 4
                       ? t.poolTooSmall
                       : sourceKind === 'paste'
                       ? t.matchedHint(rawPool.length, pastedLines.length)
+                      : sourceKind === 'camera'
+                      ? t.matchedHint(rawPool.length, ocrWords.length)
                       : t.poolHint(wordPool.length)}
                   </p>
                 )}
@@ -1302,6 +1443,22 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
             </div>
           </div>
         </div>
+
+        {/* In-page camera modal — only mounted when explicitly opened so the
+            getUserMedia request doesn't fire until the teacher taps. */}
+        {showCamera && (
+          <InPageCamera
+            onCapture={(file) => {
+              setShowCamera(false);
+              void handleOcrFile(file);
+            }}
+            onCancel={() => setShowCamera(false)}
+            onUseGallery={() => {
+              setShowCamera(false);
+              galleryInputRef.current?.click();
+            }}
+          />
+        )}
       </div>
     );
   }
