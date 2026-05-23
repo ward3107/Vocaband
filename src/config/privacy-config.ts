@@ -44,12 +44,14 @@ export const DATA_PROTECTION_OFFICER = {
 // 2. Privacy policy versioning
 // ---------------------------------------------------------------------------
 
-// Bumped 2026-05-04 — sub-processor list refreshed (Render + Tesseract
-// removed; Cloudflare, Fly.io, Anthropic, Google Cloud Gemini, Google
-// Fonts added).  Bumping triggers the consent re-prompt so existing
-// users see the updated disclosure list before continuing.
-export const PRIVACY_POLICY_VERSION = "2026-05-04";  // Version 2.1 - Amendment 13 + processor list refresh
-export const TERMS_VERSION = "2026-05-04";            // Version 2.1 - bumped alongside privacy version
+// Bumped 2026-05-22 — added Sentry (EU region) and Google Cloud
+// Text-to-Speech.  Sentry was active but undeclared (audit finding
+// C-9); Text-to-Speech was implicit under the Gemini entry but is
+// a distinct API and warranted its own row.  Bumping triggers the
+// consent re-prompt so existing users see the updated disclosure list
+// before continuing.
+export const PRIVACY_POLICY_VERSION = "2026-05-22";  // Version 2.2 - Sentry + Google TTS disclosed
+export const TERMS_VERSION = "2026-05-22";            // Version 2.2 - bumped alongside privacy version
 
 // ---------------------------------------------------------------------------
 // 3. Hosting regions (for cross-border transfer disclosures)
@@ -61,8 +63,9 @@ export const HOSTING_REGIONS = {
   cloudflare: "Global edge network",
   googleAuth: "Global (US-anchored)",
   anthropic: "United States",
-  googleCloud: "EU (europe-west)",
+  googleCloud: "EU (europe-west) for Gemini OCR; Google-global for Text-to-Speech",
   googleFonts: "Global edge network",
+  sentry: "EU (Germany) — *.ingest.de.sentry.io",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -77,6 +80,44 @@ export interface ThirdPartyEntry {
   hostingRegion: string;
   endpoint: string;
   notes?: string;
+  /**
+   * Transfer-mechanism metadata.  Required for any vendor that
+   * processes EU/UK personal data outside the EEA — without it the
+   * transfer is unlawful under GDPR Chapter V + Schrems II.  Schools
+   * doing procurement review will check this for every subprocessor.
+   *
+   * Vendors that only operate inside the EU (Supabase Frankfurt,
+   * Fly.io Amsterdam, Sentry Germany) leave this `undefined` — there
+   * is no cross-border transfer to authorise.
+   */
+  transfer?: TransferInfo;
+}
+
+export interface TransferInfo {
+  /** Country / region the data is exposed to. */
+  destination: string;
+  /**
+   * The lawful transfer mechanism under GDPR Art. 45-49.
+   * - `dpf`           — vendor is certified under the EU-US Data Privacy Framework
+   * - `scc`           — Standard Contractual Clauses (2021/914)
+   * - `adequacy`      — destination has an EU adequacy decision
+   * - `consent`       — Art. 49(1)(a) explicit consent (last-resort)
+   * - `not-required`  — payload contains no personal data
+   */
+  mechanism: "dpf" | "scc" | "adequacy" | "consent" | "not-required";
+  /** Public URL where the certification / clauses can be verified. */
+  verificationUrl: string;
+  /** Link to the vendor's published Data Processing Agreement / Addendum. */
+  dpaUrl: string;
+  /**
+   * Transfer Impact Assessment (TIA) outcome.
+   * - `low`        — minimal personal data, encrypted in transit, no surveillance exposure
+   * - `medium`     — some personal data, vendor has additional safeguards (sub-processors, encryption at rest)
+   * - `high`       — sensitive personal data; supplementary measures required (encryption + access controls)
+   */
+  tiaRisk: "low" | "medium" | "high";
+  /** ISO date (YYYY-MM-DD) the transfer mechanism was last verified. */
+  lastReviewed: string;
 }
 
 /**
@@ -112,6 +153,14 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
     processorOnly: true,
     hostingRegion: HOSTING_REGIONS.cloudflare,
     endpoint: "vocaband.com, *.vocaband.com",
+    transfer: {
+      destination: "United States (parent entity); EU PoPs handle EU traffic",
+      mechanism: "dpf",
+      verificationUrl: "https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt00000000K2GFAA0",
+      dpaUrl: "https://www.cloudflare.com/en-gb/cloudflare-customer-dpa/",
+      tiaRisk: "low",
+      lastReviewed: "2026-05-22",
+    },
   },
   {
     name: "Google OAuth",
@@ -121,6 +170,14 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
     hostingRegion: HOSTING_REGIONS.googleAuth,
     endpoint: "accounts.google.com",
     notes: "Google acts as an INDEPENDENT controller for the OAuth handshake itself; processor for the email + display name passed back to Vocaband",
+    transfer: {
+      destination: "United States (Google LLC)",
+      mechanism: "dpf",
+      verificationUrl: "https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI",
+      dpaUrl: "https://cloud.google.com/terms/data-processing-addendum",
+      tiaRisk: "medium",
+      lastReviewed: "2026-05-22",
+    },
   },
   {
     name: "Anthropic (Claude API)",
@@ -130,6 +187,14 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
     hostingRegion: HOSTING_REGIONS.anthropic,
     endpoint: "api.anthropic.com",
     notes: "Triggered only on explicit teacher action.  Anthropic API tier has zero-retention policy — prompts and responses are not stored beyond the request lifetime, not used for model training. https://privacy.anthropic.com",
+    transfer: {
+      destination: "United States (Anthropic PBC)",
+      mechanism: "dpf",
+      verificationUrl: "https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt0000000GnZyAAK",
+      dpaUrl: "https://www.anthropic.com/legal/dpa",
+      tiaRisk: "low",
+      lastReviewed: "2026-05-22",
+    },
   },
   {
     name: "Google Cloud (Gemini API)",
@@ -139,6 +204,40 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
     hostingRegion: HOSTING_REGIONS.googleCloud,
     endpoint: "generativelanguage.googleapis.com",
     notes: "Triggered only on explicit teacher action.  Image discarded after the API returns the extracted text; not stored on Vocaband infrastructure.",
+    transfer: {
+      destination: "EU (europe-west) — regionally pinned",
+      mechanism: "adequacy",
+      verificationUrl: "https://cloud.google.com/terms/data-processing-addendum",
+      dpaUrl: "https://cloud.google.com/terms/data-processing-addendum",
+      tiaRisk: "low",
+      lastReviewed: "2026-05-22",
+    },
+  },
+  {
+    name: "Google Cloud (Text-to-Speech API)",
+    purpose: "Server-side generation of MP3 audio for vocabulary words (used both as a runtime fallback for teacher-uploaded custom words and as a batch generator for the base 9,159-word corpus)",
+    dataCategories: ["English vocabulary words (no personal data) — the cleaned text string sent to the synthesis API"],
+    processorOnly: true,
+    hostingRegion: "Google-global (texttospeech.googleapis.com is not regionally pinned for the public v1 endpoint)",
+    endpoint: "texttospeech.googleapis.com",
+    notes: "Triggered on teacher action (custom-word audio) or on operator action (corpus regeneration via scripts/generate-audio.ts).  No user data is sent — only the vocabulary word itself.  Generated MP3 is stored in the Supabase `sound` bucket and served to students; cleared from Google after synthesis.",
+    transfer: {
+      destination: "Google-global (United States parent entity)",
+      mechanism: "not-required",
+      verificationUrl: "https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI",
+      dpaUrl: "https://cloud.google.com/terms/data-processing-addendum",
+      tiaRisk: "low",
+      lastReviewed: "2026-05-22",
+    },
+  },
+  {
+    name: "Sentry",
+    purpose: "Application error tracking and performance monitoring (browser SPA + Node server)",
+    dataCategories: ["JavaScript error messages and stack traces (scrubbed by `src/utils/scrubPii.ts` before send: emails, JWTs, Bearer tokens, Supabase keys removed)", "browser metadata (User-Agent, viewport, URL path)", "user UID when authenticated (no email, no name — only the opaque UUID, attached via Sentry.setUser)", "session-replay snippets (DOM masked, inputs masked) when the user has not opted out"],
+    processorOnly: true,
+    hostingRegion: HOSTING_REGIONS.sentry,
+    endpoint: "o*.ingest.de.sentry.io, browser.sentry-cdn.com",
+    notes: "Sentry DSN points to the EU region (Germany) — no transatlantic transfer for error telemetry.  Before-send scrubber redacts PII on every event payload server-side (server.ts) and client-side (src/core/sentry.ts).  Sentry DPA at https://sentry.io/legal/dpa/.  Session-replay is gated by user-consent and lazy-loaded after first paint to honour the 'no telemetry before interaction' guarantee.",
   },
   {
     name: "Google Fonts",
@@ -148,8 +247,59 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
     hostingRegion: HOSTING_REGIONS.googleFonts,
     endpoint: "fonts.googleapis.com, fonts.gstatic.com",
     notes: "Latin fonts (Plus Jakarta Sans + Be Vietnam Pro) were self-hosted in the 2026-05-19 follow-up to PR #787 — they no longer touch Google.  Heebo + Fredoka are still loaded from Google Fonts but only when the visitor's language is HE or AR (lazy-injected by boot-debug.js).  Per Google's privacy doc, font request data is logged but not used for advertising or correlated to other Google services.  Self-hosting the RTL fonts is the next step.",
+    transfer: {
+      destination: "Google global edge network (US parent entity)",
+      mechanism: "dpf",
+      verificationUrl: "https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI",
+      dpaUrl: "https://developers.google.com/fonts/faq/privacy",
+      tiaRisk: "low",
+      lastReviewed: "2026-05-22",
+    },
   },
 ];
+
+// ---------------------------------------------------------------------------
+// 4b. Subprocessor change history (audit-loggable changes since launch)
+// ---------------------------------------------------------------------------
+
+export interface SubprocessorChange {
+  /** ISO date (YYYY-MM-DD) the change was published. */
+  date: string;
+  vendor: string;
+  /** Nature of the change.  Schools can subscribe to be notified of these. */
+  changeType: "added" | "removed" | "region_changed" | "scope_changed" | "mechanism_changed";
+  description: string;
+}
+
+/**
+ * Chronological log of every material change to THIRD_PARTY_REGISTRY.
+ * Used to populate the public "Subprocessor Change History" table in
+ * docs/SUBPROCESSORS.md and to honour the 30-day prior-notice promise
+ * to schools subscribed via privacy@vocaband.com.
+ *
+ * Newest entry first.  Append (never edit) so the audit trail is
+ * tamper-evident under standard git-history inspection.
+ */
+export const SUBPROCESSOR_CHANGELOG: SubprocessorChange[] = [
+  { date: "2026-05-22", vendor: "Google Cloud (Text-to-Speech API)", changeType: "added", description: "Disclosed as a distinct entry (previously implicit under the Google Cloud Gemini row)." },
+  { date: "2026-05-22", vendor: "Sentry", changeType: "added", description: "Disclosed for the first time. Active since launch but undeclared until the C-9 audit pass; DSN points at the EU (Germany) region." },
+  { date: "2026-05-04", vendor: "Render", changeType: "removed", description: "Migrated application server to Fly.io (Amsterdam) for better EU presence." },
+  { date: "2026-05-04", vendor: "Tesseract.js (in-process)", changeType: "removed", description: "Replaced by Google Cloud Gemini OCR for better accuracy." },
+  { date: "2026-05-04", vendor: "Cloudflare", changeType: "added", description: "Added on initial sub-processor list publication." },
+  { date: "2026-05-04", vendor: "Fly.io", changeType: "added", description: "Added on initial sub-processor list publication." },
+  { date: "2026-05-04", vendor: "Anthropic (Claude API)", changeType: "added", description: "Added on initial sub-processor list publication." },
+  { date: "2026-05-04", vendor: "Google Cloud (Gemini API)", changeType: "added", description: "Added on initial sub-processor list publication." },
+  { date: "2026-05-04", vendor: "Google Fonts", changeType: "added", description: "Added on initial sub-processor list publication." },
+];
+
+/**
+ * Public mailing-list address schools can subscribe to in order to
+ * receive ≥30-day prior notice of any subprocessor addition or
+ * material change.  Mirrors the change-notification promises common
+ * to enterprise SaaS DPAs.  Routes to the DPO inbox.
+ */
+export const SUBPROCESSOR_NOTIFICATION_EMAIL = DATA_PROTECTION_OFFICER.email;
+export const SUBPROCESSOR_NOTIFICATION_LEAD_TIME_DAYS = 30;
 
 // ---------------------------------------------------------------------------
 // 5. Data collection points map

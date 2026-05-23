@@ -4,7 +4,7 @@
 > pressure: at 2am, when something is on fire, this doc tells the
 > on-call exactly what to do without thinking.
 
-> Last updated 2026-05-04.
+> Last updated 2026-05-22.
 
 ---
 
@@ -25,7 +25,7 @@
 | Minute | Action | Who | Verify |
 |---|---|---|---|
 | 0-5 | **STOP THE BLEEDING.** Whatever caused the incident must be made impossible to repeat right now. Examples: rotate the leaked key, take the buggy endpoint offline, force-logout all sessions. | On-call | Confirm action via curl / DB query |
-| 5-10 | **CAPTURE EVIDENCE.** Screenshots of the error, copy of relevant logs, list of affected user IDs, timestamps. Save everything to `incidents/<date>-<short-name>/` (private repo or Drive). | On-call | Logs older than 7 days are gone (Fly.io default) — copy them NOW |
+| 5-10 | **CAPTURE EVIDENCE.** Screenshots of the error, copy of relevant logs, list of affected user IDs, timestamps. Save everything to `incidents/<date>-<short-name>/` (private repo or Drive). **Run logs through `scrubPii` before sharing outside the on-call group** — the same redactor the server uses in `installScrubbingConsole` (see `src/utils/scrubPii.ts` + `src/utils/serverLog.ts`) strips emails, JWTs, bearer tokens, and Supabase keys.  This keeps an incident-response export from itself becoming a secondary data breach. | On-call | Logs older than 7 days are gone (Fly.io default) — copy them NOW |
 | 10-15 | **NOTIFY DPO.** WhatsApp + email + phone if needed. | On-call → DPO | DPO acknowledges within 5 min |
 | 15-30 | **ASSESS BLAST RADIUS.** Run the queries below to count affected users. Form a one-paragraph factual summary: what, when, who, how. | DPO + On-call | Numbers match audit log |
 
@@ -301,28 +301,98 @@ blame to individuals — focus on the failed control.
 
 ---
 
-## Roles + contact
+## Specialised playbooks
+
+### Subprocessor / supply-chain breach
+
+A subprocessor on `docs/SUBPROCESSORS.md` (Supabase, Fly.io, Cloudflare,
+Anthropic, Google Cloud, Sentry, Google OAuth, Google Fonts) discloses
+a security incident affecting their service.
+
+1. **Classify.**  Could the breach have exposed any of OUR data given
+   the vendor's role?  Use the data categories in
+   `THIRD_PARTY_REGISTRY` entries — the categories define our blast
+   radius if they got popped.  Examples:
+   - Supabase breach → C4 (children's educational records) + auth tokens — **SEV-1**.
+   - Anthropic breach → vocabulary words only, zero-retention API — likely **SEV-3**.
+   - Sentry breach → scrubbed error events, no PII (PII scrubber runs pre-send) — **SEV-3**.
+2. **Get the vendor's disclosure in writing.**  Save their advisory
+   PDF / blog post to `incidents/<date>-<vendor>/vendor-advisory.pdf`.
+3. **Rotate any shared secrets.**  API keys, service-role keys,
+   webhook signing secrets — even if the vendor says rotation isn't
+   required.  Cheap insurance.
+4. **Trace usage in our logs.**  Run the blast-radius queries against
+   the vendor's exposure window.  If we used the affected feature in
+   that window, we're a downstream victim — full SEV-1 path applies.
+5. **Append to `SUBPROCESSOR_CHANGELOG`** (in `src/config/privacy-config.ts`)
+   with a `mechanism_changed` row if the vendor changes their transfer
+   mechanism in response, or `removed` if we decide to drop them.
+6. **Notify schools** via the privacy@ subscriber list (≥30-day
+   advance notice as promised in `docs/SUBPROCESSORS.md`) if the
+   incident causes us to add a replacement subprocessor.
+
+### Service-role key / Supabase secret compromise
+
+The Supabase service-role key OR the GOOGLE_AI_API_KEY OR the
+ANTHROPIC_API_KEY OR the SENTRY_DSN has been observed outside the
+intended scope (git history, accidentally pasted in a PR review, a
+screenshot, a public Slack channel, a public Sentry event).
+
+1. **Within 5 minutes — rotate the key.**
+   - Supabase service-role: Dashboard → Settings → API → "Roll service role secret" → copy the new value into `fly secrets set SUPABASE_SERVICE_ROLE_KEY=…` → trigger a deploy so workers pick up the new value.
+   - Google Cloud (Gemini + TTS): Console → APIs & Services → Credentials → restrict the leaked key to a denylist immediately, then create a new key and rotate via `fly secrets set GOOGLE_AI_API_KEY=…`.
+   - Anthropic: dashboard → API keys → revoke the leaked key, create a new one, rotate via `fly secrets set ANTHROPIC_API_KEY=…`.
+   - Sentry DSN: rotate in dashboard → Project Settings → Client Keys; update env on Fly + redeploy.
+2. **Within 30 minutes — invalidate live sessions** if the
+   service-role key was leaked: rotate Supabase JWT secret too (forces
+   logout of every teacher + student).  Painful but correct.
+3. **Within 1 hour — audit usage.**  Pull Cloudflare access logs and
+   Fly.io request logs covering the window from "first possible
+   exposure" → "key rotation completed".  Look for callers outside
+   our infrastructure.
+4. **Append a `git-secrets`-style pre-commit hook** if the leak was
+   via a commit, so the same class of mistake fails fast next time.
+   Until that's in place, raise the on-call paranoia level.
+5. **Notify Supabase + the affected vendor** if you have ANY reason
+   to believe the key was exploited (not just exposed).  Most
+   vendors have a "report a leaked key" form — use it.
+6. **Add to post-mortem action items**: was the key kept in
+   localStorage / a frontend bundle / a config file in the repo?
+   Move it to env vars + secrets manager if so.
+
+---
 
 | Role | Person | Contact | Backup |
 |---|---|---|---|
-| **Founder / DPO** | <fill in name> | <fill in email + phone> | n/a |
+| **Founder / DPO** | See `DATA_PROTECTION_OFFICER.name` in `src/config/privacy-config.ts` | `DATA_PROTECTION_OFFICER.email` + operator-stored phone (vault: `Vocaband Production` → `INCIDENT.md` one-pager) | Emergency-access contact on the 1Password vault |
 | **On-call engineer** | <rotation> | Slack alert | <backup person> |
 | **Privacy lawyer** | <retainer firm> | <email> | <fallback firm> |
 | **Pen-test contact** | <firm> | <email> | n/a |
 
-> ⚠️ This table must be filled in BEFORE the first incident.  Empty
-> rows are themselves a SEV-2 finding at the next quarterly review.
+> ⚠️ The "Person / Contact" cells with `<…>` placeholders must be
+> filled in BEFORE the first incident.  Empty rows are themselves a
+> SEV-2 finding at the next quarterly review.  The DPO row is
+> intentionally kept in sync with `privacy-config.ts` instead of
+> hard-coded here so the public privacy page and this runbook can't
+> drift.
 
 ---
 
 ## Quarterly tabletop exercise
 
-Every quarter, walk through this runbook against a hypothetical:
+Every quarter, walk through this runbook against a hypothetical.
+Mix tabletops that exercise the standard SEV path with ones that
+exercise the specialised playbooks above (subprocessor breach,
+key compromise).  Rotate through the list below or invent new ones
+based on the past quarter's near-misses:
 
-- Q1: A teacher reports they can see another teacher's class roster.
-- Q2: A student's progress is visible at a public URL.
-- Q3: Supabase service-role key was committed to a public gist.
-- Q4: Cloudflare reports a sustained DDoS and the origin is dropping requests.
+- A teacher reports they can see another teacher's class roster (RLS regression).
+- A student's progress is visible at a public URL (auth/share-link bug).
+- Supabase service-role key was committed to a public gist (use the **Service-role key compromise** playbook).
+- Cloudflare reports a sustained DDoS and the origin is dropping requests.
+- **Anthropic** discloses an API-key leak that may include zero-retention prompts from our org (use the **Subprocessor / supply-chain breach** playbook).
+- **Sentry** discloses an incident affecting EU project data (use the same playbook; verify scrubPii was active for the affected window).
+- A teacher account is taken over via credential-stuffing — no MFA today (containment via JWT-secret rotation + targeted password reset).
 
 Time it.  If first 30 minutes take > 30 minutes, the runbook needs work.
 

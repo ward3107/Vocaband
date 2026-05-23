@@ -1,6 +1,14 @@
 import "dotenv/config";
 import * as Sentry from "@sentry/node";
 import { scrubPii } from "./src/utils/scrubPii";
+import { installScrubbingConsole, redactEmail } from "./src/utils/serverLog";
+
+// installScrubbingConsole patches console.{log,warn,error,info,debug}
+// to run every argument through scrubPii before the underlying writer
+// (Fly.io captures stdout/stderr as a separate sink that bypasses
+// Sentry's beforeSend hook).  Same scrubber as Sentry → single source
+// of truth for what counts as PII.  Closes audit finding C-2.
+installScrubbingConsole();
 
 // Sentry init — must run BEFORE other modules so the SDK can patch them.
 // Stays disabled in dev (no DSN set locally). Tracing is off to stay
@@ -2963,7 +2971,7 @@ Quality rules:
       }));
     }
 
-    console.log(`[TTS] ${authData.email}: generated=${generated} skipped=${skipped} failed=${failed}`);
+    console.log(`[TTS] ${redactEmail(authData.email)}: generated=${generated} skipped=${skipped} failed=${failed}`);
     if (failures.length > 0) {
       console.warn(`[TTS] failures:`, failures.slice(0, 5));
     }
@@ -3010,12 +3018,12 @@ Quality rules:
       .eq("uid", authData.uid)
       .maybeSingle();
     if (userErr || !userRow) {
-      console.log(`[features] aiSentences=false: users row lookup failed for ${authData.email} (err=${userErr?.message ?? "no_row"})`);
+      console.log(`[features] aiSentences=false: users row lookup failed for ${redactEmail(authData.email)} (err=${userErr?.message ?? "no_row"})`);
       return reply(false, "user_lookup_failed");
     }
     const role = userRow.role as string | null;
     if (role !== "teacher" && role !== "admin") {
-      console.log(`[features] aiSentences=false: user is not a teacher (role=${role ?? "none"}, email=${authData.email})`);
+      console.log(`[features] aiSentences=false: user is not a teacher (role=${role ?? "none"}, email=${redactEmail(authData.email)})`);
       return reply(false, "not_teacher", { role: role ?? null });
     }
     const plan = userRow.plan as "free" | "pro" | "school" | null;
@@ -3026,10 +3034,10 @@ Quality rules:
     const isAdmin = role === "admin";
     const isDev = isDevEmail(email);
     if (!isPaid && !isTrialing && !isAdmin && !isDev) {
-      console.log(`[features] aiSentences=false: ${email} is on free plan with no trial (plan=${plan ?? "null"}, trial=${trialEndsAt ?? "null"})`);
+      console.log(`[features] aiSentences=false: ${redactEmail(email)} is on free plan with no trial (plan=${plan ?? "null"}, trial=${trialEndsAt ?? "null"})`);
       return reply(false, "not_pro", { plan, trialEndsAt });
     }
-    console.log(`[features] aiSentences=true for ${email} (plan=${plan}, trial=${trialEndsAt}, admin=${isAdmin}, dev=${isDev})`);
+    console.log(`[features] aiSentences=true for ${redactEmail(email)} (plan=${plan}, trial=${trialEndsAt}, admin=${isAdmin}, dev=${isDev})`);
     return reply(true, "ok");
   });
 

@@ -10,7 +10,7 @@
 > If you spot a difference between this doc and the source code, the
 > source code wins — file an issue and we'll re-sync.
 
-> Last updated 2026-05-04.
+> Last updated 2026-05-22.
 
 ---
 
@@ -102,7 +102,34 @@
 | Trigger | Only on explicit teacher action (uploading an image to extract vocabulary) |
 | Notes | Image is sent over HTTPS and discarded after the API returns the extracted text. Not stored on Vocaband infrastructure. |
 
-### 7. Google Fonts
+### 7. Google Cloud (Text-to-Speech API)
+
+| Field | Value |
+|---|---|
+| Type | Processor |
+| Purpose | Generate MP3 audio for vocabulary words (runtime fallback for teacher-uploaded custom words; batch generator for the base 9,159-word corpus) |
+| Data categories | The vocabulary word itself (no personal data — only the cleaned English string that gets synthesised) |
+| Hosting region | Google-global (the public `texttospeech.googleapis.com/v1` endpoint is not regionally pinned) |
+| Endpoint | `texttospeech.googleapis.com` |
+| Trigger | Teacher action (custom-word audio generation) or operator action (corpus regeneration via `scripts/generate-audio.ts`) |
+| Sub-processor agreement | Google Cloud DPA at https://cloud.google.com/terms/data-processing-addendum |
+| Notes | Synthesised MP3 is stored in the Supabase `sound` bucket and served to students; cleared from Google's side after synthesis. Uses the same `GOOGLE_AI_API_KEY` that powers Gemini OCR — no separate service-account JSON. |
+
+### 8. Sentry
+
+| Field | Value |
+|---|---|
+| Type | Processor |
+| Purpose | Application error tracking and performance monitoring (browser SPA + Node server) |
+| Data categories | JavaScript error messages and stack traces (scrubbed by `src/utils/scrubPii.ts` before send — emails, JWTs, Bearer tokens, Supabase keys removed); browser metadata (User-Agent, viewport, URL path); user UID when authenticated (no email, no name — only the opaque UUID, attached via `Sentry.setUser`); session-replay snippets (DOM masked, inputs masked) when the user has not opted out |
+| Hosting region | **EU (Germany)** — DSN points at `*.ingest.de.sentry.io` |
+| Endpoint | `o*.ingest.de.sentry.io`, `browser.sentry-cdn.com` (for lazy-loaded replay integration) |
+| Encryption at rest | Sentry-managed (AES-256) |
+| Sub-processor agreement | Sentry DPA at https://sentry.io/legal/dpa/ |
+| Access by Vocaband staff | Founder via Sentry dashboard MFA |
+| Notes | EU-region DSN means error telemetry never crosses to the US. The PII scrubber runs in Sentry's `beforeSend` hook server-side (`server.ts`) and client-side (`src/core/sentry.ts`) so any incidental email / token / key in an error payload is redacted before it leaves the user's browser or our server. Session-replay is lazy-loaded after first paint and DOM-masked by default. |
+
+### 9. Google Fonts
 
 | Field | Value |
 |---|---|
@@ -125,31 +152,96 @@
 
 ---
 
-## Cross-border transfers
+## International transfer register (GDPR Chapter V + Schrems II)
 
-All persistent data lives in the EU (Frankfurt for Supabase, Amsterdam
-for Fly.io request handling).  Transfers from EU → US occur only for:
+All **persistent** data stays inside the EU (Supabase Frankfurt,
+Fly.io Amsterdam, Sentry Germany).  The table below covers every
+**transit-only** transfer outside the EEA — what legal mechanism
+authorises it, where to verify, and the result of the per-vendor
+Transfer Impact Assessment (TIA).  Schools doing GDPR Art. 28
+procurement review can use this table as the canonical answer.
 
-- **Anthropic API calls** when a teacher uses AI features.  Anthropic
-  is a US company; transfer covered by their EU SCCs.
-- **Google OAuth handshake** when a teacher signs in with Google.
-  Google is a US company; transfer covered by EU-US Data Privacy
-  Framework (Google is certified).
+Source of truth: `src/config/privacy-config.ts → THIRD_PARTY_REGISTRY[i].transfer`.
 
-For Israeli users, EU is an "adequate" jurisdiction under both EU
-GDPR (Israel ↔ EU adequacy) and Israeli Privacy Protection Law.
+| Vendor | Destination | Mechanism | Verify | DPA | TIA risk | Last reviewed |
+|---|---|---|---|---|---|---|
+| Cloudflare | United States (EU PoPs serve EU traffic) | **EU-US DPF** | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt00000000K2GFAA0) | [DPA](https://www.cloudflare.com/en-gb/cloudflare-customer-dpa/) | Low | 2026-05-22 |
+| Google OAuth | United States | **EU-US DPF** | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI) | [DPA](https://cloud.google.com/terms/data-processing-addendum) | Medium (auth identity) | 2026-05-22 |
+| Anthropic (Claude API) | United States | **EU-US DPF** (zero-retention API tier) | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt0000000GnZyAAK) | [DPA](https://www.anthropic.com/legal/dpa) | Low (no personal data sent — vocabulary words only) | 2026-05-22 |
+| Google Cloud (Gemini API) | EU (europe-west, regionally pinned) | **Adequacy** (intra-EEA) | [Google Cloud Data Residency](https://cloud.google.com/terms/data-processing-addendum) | [DPA](https://cloud.google.com/terms/data-processing-addendum) | Low | 2026-05-22 |
+| Google Cloud (Text-to-Speech API) | Google-global (no regional pin) | **Not required** (no personal data — only vocabulary words) | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI) | [DPA](https://cloud.google.com/terms/data-processing-addendum) | Low | 2026-05-22 |
+| Sentry | EU (Germany) | **Adequacy** (intra-EEA via `*.ingest.de.sentry.io`) | [Sentry data residency](https://sentry.io/legal/dpa/) | [DPA](https://sentry.io/legal/dpa/) | Low (PII scrubbed pre-send) | 2026-05-22 |
+| Google Fonts | Google global edge | **EU-US DPF** | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI) | [Privacy doc](https://developers.google.com/fonts/faq/privacy) | Low (no personal data — IP + UA only on RTL pages) | 2026-05-22 |
+
+For Israeli users, the EU is an "adequate" jurisdiction under both
+EU GDPR (Israel ↔ EU adequacy) and Israeli Privacy Protection Law
+5741-1981.  No additional safeguards required for Israel → EU
+transfers.
+
+### TIA risk legend
+
+- **Low** — no special-category data, encrypted in transit, vendor has
+  organisational safeguards, no realistic surveillance exposure given
+  the payload.
+- **Medium** — some personal data (email, identity), but vendor has
+  supplementary measures (DPF certification, encryption at rest,
+  documented sub-processor list, breach SLAs).
+- **High** — sensitive personal data; would require additional
+  controller-side measures (e.g. column-level encryption).  None of
+  the active vendors are in this tier today.
+
+---
+
+## Subprocessor change history
+
+The newest entry is at the top.  Append-only — git history is the
+audit trail.  Driven by the `SUBPROCESSOR_CHANGELOG` array in
+`src/config/privacy-config.ts`.
+
+| Date | Vendor | Change | Description |
+|---|---|---|---|
+| 2026-05-22 | Google Cloud (Text-to-Speech API) | Added | Disclosed as a distinct entry (previously implicit under the Google Cloud Gemini row). |
+| 2026-05-22 | Sentry | Added | Disclosed for the first time.  Active since launch but undeclared until the C-9 audit pass; DSN points at the EU (Germany) region. |
+| 2026-05-04 | Render | Removed | Migrated application server to Fly.io (Amsterdam) for better EU presence. |
+| 2026-05-04 | Tesseract.js (in-process) | Removed | Replaced by Google Cloud Gemini OCR for better accuracy. |
+| 2026-05-04 | Cloudflare | Added | Added on initial sub-processor list publication. |
+| 2026-05-04 | Fly.io | Added | Added on initial sub-processor list publication. |
+| 2026-05-04 | Anthropic (Claude API) | Added | Added on initial sub-processor list publication. |
+| 2026-05-04 | Google Cloud (Gemini API) | Added | Added on initial sub-processor list publication. |
+| 2026-05-04 | Google Fonts | Added | Added on initial sub-processor list publication. |
+
+---
+
+## Subscribe to subprocessor changes
+
+Schools and parents who want **prior notice of any subprocessor
+addition or material change** can subscribe by emailing
+**[privacy@vocaband.com](mailto:privacy@vocaband.com)** with subject
+line `SUBSCRIBE`.  Vocaband commits to **at least 30 days' notice
+before activating a new subprocessor** that handles personal data,
+mirroring the change-notification clauses common to enterprise SaaS
+DPAs.  No-cost; unsubscribe with `UNSUBSCRIBE` to the same address.
+
+For automated monitoring (CI / procurement tooling), watch this file
+in the repository — every change is committed and visible in git
+history.
 
 ---
 
 ## Adding a new sub-processor
 
-1. Add an entry to `src/config/privacy-config.ts → THIRD_PARTY_REGISTRY`.
-2. Add a row to this doc.
-3. Bump `PRIVACY_POLICY_VERSION` in `privacy-config.ts` so existing
+1. Add an entry to `src/config/privacy-config.ts → THIRD_PARTY_REGISTRY`,
+   including the `transfer` block if the destination is outside the EEA.
+2. Append a row to `SUBPROCESSOR_CHANGELOG` (and to the change-history
+   table in this doc).
+3. Send the ≥30-day notice to every address on the privacy@ subscriber
+   list BEFORE the new processor goes live.
+4. Add a row to the "Active sub-processors" section in this doc.
+5. Bump `PRIVACY_POLICY_VERSION` in `privacy-config.ts` so existing
    users see the consent modal again.
-4. Update `src/components/PublicPrivacyPage.tsx` if the new processor
+6. Update `src/components/PublicPrivacyPage.tsx` if the new processor
    should be called out by name in the privacy policy.
-5. If the new processor is in a non-EU/non-Israel jurisdiction and
+7. If the new processor is in a non-EU/non-Israel jurisdiction and
    processes personal data, get legal sign-off on the transfer
    mechanism BEFORE going live.
 
@@ -158,10 +250,12 @@ GDPR (Israel ↔ EU adequacy) and Israeli Privacy Protection Law.
 ## Removing a sub-processor
 
 1. Remove the entry from `THIRD_PARTY_REGISTRY`.
-2. Move the entry from "Active" to "Inactive / removed" above with the
+2. Append a "removed" row to `SUBPROCESSOR_CHANGELOG` and to the
+   change-history table in this doc.
+3. Move the entry from "Active" to "Inactive / removed" with the
    removal date.
-3. Bump `PRIVACY_POLICY_VERSION`.
-4. Confirm with `npm run build` that no code still imports the removed
+4. Bump `PRIVACY_POLICY_VERSION`.
+5. Confirm with `npm run build` that no code still imports the removed
    processor's SDK / endpoint.
 
 ---

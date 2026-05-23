@@ -153,9 +153,24 @@ body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/bagrut_cache" \
   -d '{"cache_key":"hack","module":"B","model":"x","content":{}}')
 check "anon bagrut_cache insert is rejected" "row-level security|violates|permission denied|42501" "$body"
 
+# ─── Test 9b: anon enumerating classes (C-3 cross-tenant fix) ─────────
+# Was: classes_select USING(true) — every authenticated user could
+# list every class in the database.  Migrations 20260430_hardening_
+# and_perf.sql + 20260517125414_filter_anon_auth_round2.sql locked
+# this down to teacher_or_own-class-or-admin AND blocked anonymous
+# sessions.  Anon callers (no auth.uid()) must get an empty list —
+# no class names, no codes, no teacher_uid leaks.  schema.sql baseline
+# was aligned in the same audit pass so a fresh dev bootstrap starts
+# in the secure state.
+echo "[9b] Anon enumerating classes"
+body=$(curl -s "$SUPABASE_URL/rest/v1/classes?select=id,code,name,teacher_uid" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY")
+check "anon classes list returns empty" '^\[\]$' "$body"
+
 else
-  echo "[1-9] SKIPPED (Supabase REST anon-probe tests — see warning above)"
-  SKIP=$((SKIP+9))
+  echo "[1-9b] SKIPPED (Supabase REST anon-probe tests — see warning above)"
+  SKIP=$((SKIP+10))
 fi
 
 # ─── F2 — authenticated-student direct-UPDATE attacks ─────────────────
