@@ -1,18 +1,44 @@
 import { useCallback, useState } from 'react';
+import { supabaseUrl, supabaseAnonKey } from '../core/supabase';
 
 // Teacher-facing diagnostic that probes the exact paths the app depends on,
 // so when a school's network is misbehaving the teacher gets a concrete
 // "X is reachable, Y is not" report instead of a generic "something broke".
 //
-// Four checks:
-//   1. browser online flag        — quick sanity
-//   2. Vocaband REST API          — Cloudflare Worker → Fly.io
-//   3. Supabase (auth/db)         — auth.vocaband.com custom domain
-//   4. Live game socket           — WebSocket on the same edge
+// Each probe does the *real* thing the app does, not a synthetic substitute,
+// so a "pass" here means the corresponding feature will work right now:
 //
-// Each runs independently with its own timeout so one slow probe doesn't
-// stall the rest.  The WebSocket probe is the high-signal one for schools
-// — many filtering proxies allow HTTP/HTTPS but silently drop WS upgrades.
+//   1. Internet (general)   GET cloudflareinsights.com via no-cors — proves
+//                           the device can reach a known-public host on a
+//                           different domain than vocaband.com.  Picked
+//                           cloudflareinsights.com because it's already in
+//                           the CSP connect-src allowlist, so no security
+//                           policy change is needed.  no-cors lets *any*
+//                           response (even 404) count as a network success
+//                           — what we care about is the TCP/TLS handshake,
+//                           not the HTTP body.
+//
+//   2. Vocaband server      GET /api/health — Cloudflare Worker → Fly.io.
+//                           Fails when the school filter blocks our domain
+//                           or the Fly machine is sleeping past its boot
+//                           grace.
+//
+//   3. Student & class data POST-equivalent fetch to /auth/v1/health with
+//                           the apikey + Authorization Bearer headers the
+//                           real Supabase client sends.  The previous
+//                           implementation sent no headers and got 401
+//                           back from healthy Supabase deployments —
+//                           that's the false-positive BLOCKED state seen
+//                           on real school Wi-Fi.
+//
+//   4. Live game server     wss://<host>/socket.io/ handshake.  Probes the
+//                           full WebSocket upgrade — the high-signal check
+//                           for schools, since many filtering proxies
+//                           silently drop WS while allowing HTTPS.
+//
+// All probes share an 8s timeout so a slow proxy can complete its
+// handshake without us cutting it off prematurely (6s was borderline on
+// real school Wi-Fi).
 
 export type CheckStatus = 'idle' | 'running' | 'pass' | 'fail';
 
@@ -30,9 +56,20 @@ const INITIAL: DiagnosticResult = {
   websocket: 'idle',
 };
 
-const PROBE_TIMEOUT_MS = 6000;
+const PROBE_TIMEOUT_MS = 8000;
 
-function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+// External-internet ping target.  Already in the prod CSP connect-src so
+// adding this probe does not require a security-policy change.  no-cors
+// mode bypasses CORS preflight entirely — we don't need to read the body,
+// only learn whether the request completed at the network layer.
+const INTERNET_PING_URL = 'https://cloudflareinsights.com/cdn-cgi/rum';
+
+interface FetchOptions {
+  headers?: Record<string, string>;
+  mode?: RequestMode;
+}
+
+function fetchWithTimeout(url: string, timeoutMs: number, opts: FetchOptions = {}): Promise<Response> {
   return new Promise((resolve, reject) => {
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = window.setTimeout(() => {
@@ -43,6 +80,7 @@ function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
       method: 'GET',
       cache: 'no-store',
       signal: ctrl?.signal,
+      ...opts,
     })
       .then(r => {
         window.clearTimeout(timer);
@@ -55,10 +93,47 @@ function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
   });
 }
 
-function probeWebSocket(timeoutMs: number): Promise<boolean> {
+async function probeInternet(): Promise<CheckStatus> {
+  // OS-level signal is a fast negative.  When it says online we still do
+  // the real ping below — `navigator.onLine === true` is unreliable in
+  // captive-portal and "router up, WAN down" scenarios.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'fail';
+  try {
+    await fetchWithTimeout(INTERNET_PING_URL, PROBE_TIMEOUT_MS, { mode: 'no-cors' });
+    return 'pass';
+  } catch {
+    return 'fail';
+  }
+}
+
+async function probeApi(): Promise<CheckStatus> {
+  try {
+    const res = await fetchWithTimeout('/api/health', PROBE_TIMEOUT_MS);
+    return res.ok ? 'pass' : 'fail';
+  } catch {
+    return 'fail';
+  }
+}
+
+async function probeSupabase(): Promise<CheckStatus> {
+  try {
+    const url = `${supabaseUrl.replace(/\/$/, '')}/auth/v1/health`;
+    const res = await fetchWithTimeout(url, PROBE_TIMEOUT_MS, {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+    });
+    return res.ok ? 'pass' : 'fail';
+  } catch {
+    return 'fail';
+  }
+}
+
+function probeWebSocket(timeoutMs: number): Promise<CheckStatus> {
   return new Promise(resolve => {
     if (typeof WebSocket === 'undefined') {
-      resolve(false);
+      resolve('fail');
       return;
     }
     try {
@@ -70,27 +145,21 @@ function probeWebSocket(timeoutMs: number): Promise<boolean> {
       const ws = new WebSocket(url);
       const timer = window.setTimeout(() => {
         try { ws.close(); } catch { /* ignore */ }
-        resolve(false);
+        resolve('fail');
       }, timeoutMs);
       ws.onopen = () => {
         window.clearTimeout(timer);
         try { ws.close(); } catch { /* ignore */ }
-        resolve(true);
+        resolve('pass');
       };
       ws.onerror = () => {
         window.clearTimeout(timer);
-        resolve(false);
+        resolve('fail');
       };
     } catch {
-      resolve(false);
+      resolve('fail');
     }
   });
-}
-
-function readSupabaseUrl(): string {
-  const env = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
-  if (env.length > 0) return env;
-  return 'https://auth.vocaband.com';
 }
 
 export function useNetworkDiagnostic() {
@@ -101,25 +170,17 @@ export function useNetworkDiagnostic() {
     setRunning(true);
     setResult({ online: 'running', api: 'running', database: 'running', websocket: 'running' });
 
-    const onlineOk: CheckStatus = (typeof navigator !== 'undefined' && navigator.onLine !== false) ? 'pass' : 'fail';
-    setResult(prev => ({ ...prev, online: onlineOk }));
+    // Fire all four probes concurrently — each has its own timeout, so the
+    // slowest one bounds the modal's "Checking…" duration rather than the
+    // sum.  Promise.all because no probe depends on another.
+    const [online, api, database, websocket] = await Promise.all([
+      probeInternet(),
+      probeApi(),
+      probeSupabase(),
+      probeWebSocket(PROBE_TIMEOUT_MS),
+    ]);
 
-    const apiPromise = fetchWithTimeout('/api/health', PROBE_TIMEOUT_MS)
-      .then(r => (r.ok ? 'pass' : 'fail') as CheckStatus)
-      .catch(() => 'fail' as CheckStatus);
-
-    // Supabase exposes /auth/v1/health publicly — returns 200 with no auth.
-    const supabaseUrl = readSupabaseUrl().replace(/\/$/, '');
-    const dbPromise = fetchWithTimeout(`${supabaseUrl}/auth/v1/health`, PROBE_TIMEOUT_MS)
-      .then(r => (r.ok ? 'pass' : 'fail') as CheckStatus)
-      .catch(() => 'fail' as CheckStatus);
-
-    const wsPromise = probeWebSocket(PROBE_TIMEOUT_MS)
-      .then(ok => (ok ? 'pass' : 'fail') as CheckStatus);
-
-    const [apiStatus, dbStatus, wsStatus] = await Promise.all([apiPromise, dbPromise, wsPromise]);
-
-    setResult({ online: onlineOk, api: apiStatus, database: dbStatus, websocket: wsStatus });
+    setResult({ online, api, database, websocket });
     setRunning(false);
   }, []);
 

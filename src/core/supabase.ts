@@ -20,8 +20,11 @@ const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_Pw-mQ9L76U5T-wLdKjOkpg_GnG99X
 const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-const supabaseUrl = (envUrl && envUrl.length > 0) ? envUrl : FALLBACK_SUPABASE_URL;
-const supabaseAnonKey = (envKey && envKey.length > 0) ? envKey : FALLBACK_SUPABASE_ANON_KEY;
+// Exported so non-client modules (e.g. the network diagnostic probe) can
+// hit Supabase REST endpoints directly with the right apikey header,
+// without re-reading the env or re-importing the fallback constants.
+export const supabaseUrl = (envUrl && envUrl.length > 0) ? envUrl : FALLBACK_SUPABASE_URL;
+export const supabaseAnonKey = (envKey && envKey.length > 0) ? envKey : FALLBACK_SUPABASE_ANON_KEY;
 
 // Guard kept for true dev-shell edge cases where even the fallback is
 // somehow empty (should not happen in practice).
