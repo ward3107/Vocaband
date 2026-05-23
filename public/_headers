@@ -5,47 +5,28 @@
 # kept permissive due to motion/react runtime <style> injection):
 #   * script-src     — `'unsafe-eval'` and `'unsafe-inline'` BOTH dropped.
 #                      Production bundle has no eval/new Function.
-#                      Two classes of inline script are allowlisted by
+#                      One class of inline script is allowlisted by
 #                      SHA-256 hash:
-#                        (a) Vocaband's boot-debug.js — inlined into
-#                            index.html by vocabandHtmlPerf (vite.config.ts)
-#                            to save one cold-load RTT. When public/boot-debug.js
-#                            changes, recompute its hash with
-#                              openssl dgst -sha256 -binary public/boot-debug.js | openssl base64 -A
-#                            and replace the BOOT_DEBUG entry below.  Current:
-#                              BOOT_DEBUG (2026-05-22): jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=
-#                        (b) Cloudflare Insights bootstrap — Cloudflare auto-
-#                            injects a tiny inline script that then loads
-#                            the external static.cloudflareinsights.com
-#                            script.  Cloudflare rotates this periodically
-#                            and currently serves more than one variant —
-#                            keep every active hash in the allowlist:
-#                        2026-05-08:  cRrVW07TNPw6CwTVu0Nako6M1nwd0redd0jH+9Pue/U=
-#                        2026-05-14a: Kg6BgNpWYAx3ZohK5fDHOod813SSB3htrlMqC/RegYE=
-#                        2026-05-14b: wpdwqdJ/DWld5If3gFm26J7wuG+DgBvahjrDDEa9y70=
-#                        2026-05-14c: 7FyXG6wVUD6Ve0TF3lYseOSd0R2bWQqh6aJfKrbB1Io=
-#                        2026-05-16:  u2tz3AO+oBAKJtNgGuvmNfXpmnbjA8TTRNPNq+91mw4=  (retired 2026-05-23 — boot-debug.js hash pushed CSP over 2000-char line limit; oldest CF Insights variant dropped per rotation policy)
-#                        2026-05-17a: VxcUPwAXbsfZRn4miguT1rBLDq9Gg1p5Hr/Y/ydWun4=  (retired 2026-05-23 — 2026-05-23a/b additions pushed CSP back over 2000-char limit; this variant is now 6 days old, past the typical 1-2 week rotation window)
-#                        2026-05-17b: jsbFxr3mSLx85mPMZk3vlvNft1gFvBAJ4A6V1bv+mzE=  (retired 2026-05-23 — same reason)
-#                        2026-05-22a: ZScbVWl2oPtslrDUjXS97uAuKx/+fHiCl/TSvOiFHjg=  (retired 2026-05-23 — 2026-05-23c addition pushed CSP back over 2000-char limit; CF rotation cycle is clearly faster than 1-2 weeks — see operator-tasks.md "Eliminate Cloudflare Insights rotation churn")
-#                        2026-05-22b: sKY1gwBjIT7B9oNDzL/p0o4yh9WLDbHr5N7HW0yiap4=  (retired 2026-05-23 — A3AsJPpR addition pushed CSP over limit again; CF Insights rotation now ~daily, see operator-tasks.md)
-#                        2026-05-23a: 7y4l09npEeuSOQcxAiMksMwZM0fyVtZRTCo3ASThe9I=  (observed via curl, PR #899)
-#                        2026-05-23b: OZRGrVD4lGiDW82kz1ndBbjHmwSfVj1yE2CzxvCYkK8=  (observed in operator's browser during OAuth callback, PR #899)
-#                        2026-05-23c: mOqwRlT4mmXJcb+5WHvOXHoXoFMffFDTRMe/p6/0u60=  (5th rotation in 9 days — operator's browser, OAuth callback, PR #900)
-#                        2026-05-23d: A3AsJPpR6nofDglJ58GABdflWPgX1hA8Zuq3ycFlqew=  (6th rotation in 9 days — other-session detection, this commit)
-#                        2026-05-23a: 7y4l09npEeuSOQcxAiMksMwZM0fyVtZRTCo3ASThe9I=  (observed via curl, PR #899)
-#                        2026-05-23b: OZRGrVD4lGiDW82kz1ndBbjHmwSfVj1yE2CzxvCYkK8=  (observed in operator's browser during OAuth callback, PR #899)
-#                        2026-05-23c: mOqwRlT4mmXJcb+5WHvOXHoXoFMffFDTRMe/p6/0u60=  (5th rotation in 9 days — operator's browser, OAuth callback, PR #900)
-#                        2026-05-23d: A3AsJPpR6nofDglJ58GABdflWPgX1hA8Zuq3ycFlqew=  (6th rotation in 9 days — other-session detection, this commit)
-#                      When the console reports a violation with a new
-#                      hash, ADD it — Cloudflare may keep rotating between
-#                      multiple bootstraps for the same page.  Cloudflare's
-#                      _headers config enforces a 2000-char-per-line limit,
-#                      so when the CSP nears that ceiling drop the OLDEST
-#                      hashes from the live CSP (keep them in this history
-#                      so we have a paper trail).  Cloudflare's rotation
-#                      pattern in 2026 has been ~1-2 weeks, so anything
-#                      older than that is safe to retire.
+#                        Vocaband's boot-debug.js — inlined into
+#                        index.html by vocabandHtmlPerf (vite.config.ts)
+#                        to save one cold-load RTT. When public/boot-debug.js
+#                        changes, recompute its hash with
+#                          openssl dgst -sha256 -binary public/boot-debug.js | openssl base64 -A
+#                        and replace the BOOT_DEBUG entry below.  Current:
+#                          BOOT_DEBUG (2026-05-22): jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=
+#
+#                      (2026-05-23) Cloudflare Insights retired: the
+#                      product injected a rotating inline bootstrap
+#                      script that forced a per-rotation hash addition
+#                      to the CSP (6 rotations in 9 days, PRs #882, #885,
+#                      #899, #900, #905 and follow-ups).  Replaced by
+#                      Cloudflare Web Analytics, which counts traffic
+#                      server-side without injecting any script — no
+#                      hash treadmill, no static.cloudflareinsights.com
+#                      origin, no cloudflareinsights.com connect-src.
+#                      Removed: 5 rotating hashes + the two origins.
+#                      Sentry continues to cover client-side error
+#                      telemetry.  See docs/operator-tasks.md (closed).
 #                      *** This is the high-value XSS-defence win. ***
 #   * style-src-elem — `'unsafe-inline'` KEPT. motion/react injects
 #                      <style>...</style> blocks at runtime for animation
@@ -108,9 +89,10 @@
 #                       `script-src`, so without the host here the replay
 #                       script fails to load with "Refused to connect ...
 #                       violates connect-src" even though the script tag
-#                       itself would have been permitted.  Same pattern as
-#                       static.cloudflareinsights.com which already appears
-#                       on both directives for the same reason.
+#                       itself would have been permitted.  (The same dual-
+#                       directive pattern previously applied to
+#                       static.cloudflareinsights.com — retired 2026-05-23,
+#                       see the script-src note above.)
 
 /*
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
@@ -122,7 +104,7 @@
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cross-Origin-Resource-Policy: same-site
   X-Permitted-Cross-Domain-Policies: none
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=' 'sha256-7y4l09npEeuSOQcxAiMksMwZM0fyVtZRTCo3ASThe9I=' 'sha256-OZRGrVD4lGiDW82kz1ndBbjHmwSfVj1yE2CzxvCYkK8=' 'sha256-mOqwRlT4mmXJcb+5WHvOXHoXoFMffFDTRMe/p6/0u60=' 'sha256-A3AsJPpR6nofDglJ58GABdflWPgX1hA8Zuq3ycFlqew=' https://static.cloudflareinsights.com https://challenges.cloudflare.com https://browser.sentry-cdn.com; script-src-elem 'self' 'sha256-jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=' 'sha256-7y4l09npEeuSOQcxAiMksMwZM0fyVtZRTCo3ASThe9I=' 'sha256-OZRGrVD4lGiDW82kz1ndBbjHmwSfVj1yE2CzxvCYkK8=' 'sha256-mOqwRlT4mmXJcb+5WHvOXHoXoFMffFDTRMe/p6/0u60=' 'sha256-A3AsJPpR6nofDglJ58GABdflWPgX1hA8Zuq3ycFlqew=' https://static.cloudflareinsights.com https://challenges.cloudflare.com https://browser.sentry-cdn.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://challenges.cloudflare.com https://*.supabase.co https://*.r2.dev https://lh3.googleusercontent.com; connect-src 'self' https://auth.vocaband.com wss://auth.vocaband.com https://api.vocaband.com wss://api.vocaband.com https://vocaband.fly.dev wss://vocaband.fly.dev https://*.supabase.co wss://*.supabase.co https://static.cloudflareinsights.com https://cloudflareinsights.com https://vocaband.com wss://vocaband.com https://audio.vocaband.com https://*.r2.dev https://challenges.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://o4511016408514560.ingest.de.sentry.io https://browser.sentry-cdn.com; media-src 'self' https://auth.vocaband.com https://*.supabase.co https://*.cloudflare.com https://audio.vocaband.com https://*.r2.dev; worker-src 'self' blob:; frame-src https://accounts.google.com https://challenges.cloudflare.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=' https://challenges.cloudflare.com https://browser.sentry-cdn.com; script-src-elem 'self' 'sha256-jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=' https://challenges.cloudflare.com https://browser.sentry-cdn.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://challenges.cloudflare.com https://*.supabase.co https://*.r2.dev https://lh3.googleusercontent.com; connect-src 'self' https://auth.vocaband.com wss://auth.vocaband.com https://api.vocaband.com wss://api.vocaband.com https://vocaband.fly.dev wss://vocaband.fly.dev https://*.supabase.co wss://*.supabase.co https://vocaband.com wss://vocaband.com https://audio.vocaband.com https://*.r2.dev https://challenges.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://o4511016408514560.ingest.de.sentry.io https://browser.sentry-cdn.com; media-src 'self' https://auth.vocaband.com https://*.supabase.co https://*.cloudflare.com https://audio.vocaband.com https://*.r2.dev; worker-src 'self' blob:; frame-src https://accounts.google.com https://challenges.cloudflare.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
 
 # Cache static assets aggressively (hashed filenames)
 /assets/*

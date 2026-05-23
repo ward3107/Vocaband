@@ -8,15 +8,14 @@ import { supabaseUrl, supabaseAnonKey } from '../core/supabase';
 // Each probe does the *real* thing the app does, not a synthetic substitute,
 // so a "pass" here means the corresponding feature will work right now:
 //
-//   1. Internet (general)   GET cloudflareinsights.com via no-cors — proves
-//                           the device can reach a known-public host on a
-//                           different domain than vocaband.com.  Picked
-//                           cloudflareinsights.com because it's already in
-//                           the CSP connect-src allowlist, so no security
-//                           policy change is needed.  no-cors lets *any*
-//                           response (even 404) count as a network success
-//                           — what we care about is the TCP/TLS handshake,
-//                           not the HTTP body.
+//   1. Internet (general)   GET /cdn-cgi/trace — a tiny plaintext endpoint
+//                           served by Cloudflare's edge on every CF-fronted
+//                           hostname BEFORE the request reaches our Worker.
+//                           Same-origin (no CSP entry required), no CORS,
+//                           and the response itself proves the device
+//                           reached Cloudflare's edge — distinct from the
+//                           Vocaband server probe below, which additionally
+//                           requires the Worker → Fly.io leg.
 //
 //   2. Vocaband server      GET /api/health — Cloudflare Worker → Fly.io.
 //                           Fails when the school filter blocks our domain
@@ -58,11 +57,13 @@ const INITIAL: DiagnosticResult = {
 
 const PROBE_TIMEOUT_MS = 8000;
 
-// External-internet ping target.  Already in the prod CSP connect-src so
-// adding this probe does not require a security-policy change.  no-cors
-// mode bypasses CORS preflight entirely — we don't need to read the body,
-// only learn whether the request completed at the network layer.
-const INTERNET_PING_URL = 'https://cloudflareinsights.com/cdn-cgi/rum';
+// External-internet ping target.  `/cdn-cgi/trace` is a tiny plaintext
+// endpoint served by Cloudflare's edge on every CF-fronted hostname,
+// BEFORE the request reaches our Worker — so it proves the device can
+// reach Cloudflare at all, not just our Fly.io origin.  Same-origin
+// path, so no `connect-src` allowlist entry is required.  Returns
+// ~200 bytes with the user's IP, country, and colo.
+const INTERNET_PING_URL = '/cdn-cgi/trace';
 
 interface FetchOptions {
   headers?: Record<string, string>;
@@ -99,8 +100,8 @@ async function probeInternet(): Promise<CheckStatus> {
   // captive-portal and "router up, WAN down" scenarios.
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'fail';
   try {
-    await fetchWithTimeout(INTERNET_PING_URL, PROBE_TIMEOUT_MS, { mode: 'no-cors' });
-    return 'pass';
+    const res = await fetchWithTimeout(INTERNET_PING_URL, PROBE_TIMEOUT_MS);
+    return res.ok ? 'pass' : 'fail';
   } catch {
     return 'fail';
   }
