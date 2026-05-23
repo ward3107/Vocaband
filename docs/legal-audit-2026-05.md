@@ -1,6 +1,6 @@
 # Vocaband — Legal Audit, May 2026
 
-**Status:** Draft proposed language for lawyer review.
+**Status:** ✅ Lawyer-reviewed 2026-05-22.  See SECURITY-OVERVIEW.md and DPIA-TECHNICAL.md for the resulting compliance posture.  Original draft below preserved for the audit trail.
 **Audit date:** 2026-05-08
 **Pages audited:** Terms of Service · Privacy Policy · Security & Trust · Accessibility Statement · System Status
 **Reviewer:** AI structural review (Claude). **NOT a substitute for licensed legal counsel.**
