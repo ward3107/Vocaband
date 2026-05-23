@@ -19,7 +19,13 @@ type Args = {
   setUser: Dispatch<SetStateAction<AppUser | null>>;
   setConfirmDialog: Dispatch<SetStateAction<ConfirmDialog>>;
   showToast: ShowToast;
+  /** From #905 — hard reset of the legal consent.  Clears localStorage
+   *  acceptance and flips needsConsent so the gate appears in place
+   *  (mostly a QA + "I want to re-accept" affordance). */
   setNeedsConsent: Dispatch<SetStateAction<boolean>>;
+  /** Re-trigger the privacy-summary modal even if the user previously
+   *  ticked "Don't show this again".  Wired from App.tsx via useConsent. */
+  onReopenPrivacyReminder: () => void;
 };
 
 /**
@@ -40,6 +46,7 @@ export function renderPrivacySettingsSection(args: Args): React.ReactElement | n
         setConfirmDialog={args.setConfirmDialog}
         showToast={args.showToast}
         setNeedsConsent={args.setNeedsConsent}
+        onReopenPrivacyReminder={args.onReopenPrivacyReminder}
       />
     </LazyWrapper>
   );

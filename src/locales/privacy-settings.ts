@@ -50,6 +50,9 @@ export interface PrivacySettingsStrings {
    *  refresh their decision. */
   reviewConsentAgain: string;
   toastConsentReset: string;
+  /** Button label that re-opens the privacy-summary modal even if the
+   *  user previously ticked "Don't show this again". */
+  showPrivacySummary: string;
 
   // Rights section
   rightsTitle: string;
@@ -100,6 +103,7 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     withdrawConfirm: "Withdrawing consent will log you out. You can re-accept when you log in again. Continue?",
     reviewConsentAgain: "Review consent again",
     toastConsentReset: "Consent cleared — please review and re-accept.",
+    showPrivacySummary: "Show privacy summary",
     rightsTitle: "Your Data Rights",
     rightsIntro: "Under Israeli privacy law (PPA Amendment 13), you have the right to access, correct, and delete your personal data.",
     downloadMyData: "Download My Data (JSON)",
@@ -142,6 +146,7 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     withdrawConfirm: "ביטול ההסכמה יחתום אתכם החוצה. תוכלו לאשר שוב בכניסה הבאה. להמשיך?",
     reviewConsentAgain: "קראו והסכימו שוב",
     toastConsentReset: "ההסכמה נוקתה — אנא קראו ואשרו שוב.",
+    showPrivacySummary: "הצג תקציר פרטיות",
     rightsTitle: "הזכויות שלכם על המידע",
     rightsIntro: "על פי חוק הגנת הפרטיות הישראלי (תיקון 13), יש לכם זכות לגשת, לתקן ולמחוק את המידע האישי שלכם.",
     downloadMyData: "הורד את המידע שלי (JSON)",
@@ -184,6 +189,7 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     withdrawConfirm: "سحب الموافقة سيخرجك من الحساب. يمكنك القبول مرة أخرى عند تسجيل الدخول. متابعة؟",
     reviewConsentAgain: "اقرأ ووافق مرة أخرى",
     toastConsentReset: "تمّ مسح الموافقة — يرجى المراجعة وإعادة القبول.",
+    showPrivacySummary: "عرض ملخّص الخصوصية",
     rightsTitle: "حقوقك في البيانات",
     rightsIntro: "بموجب قانون الخصوصية الإسرائيلي (تعديل PPA رقم 13)، يحقّ لك الوصول إلى بياناتك الشخصية وتصحيحها وحذفها.",
     downloadMyData: "تنزيل بياناتي (JSON)",
@@ -226,6 +232,7 @@ export const privacySettingsT: Record<Language, PrivacySettingsStrings> = {
     withdrawConfirm: "Withdrawing consent will log you out. You can re-accept when you log in again. Continue?",
     reviewConsentAgain: "Review consent again",
     toastConsentReset: "Consent cleared — please review and re-accept.",
+    showPrivacySummary: "Show privacy summary",
     rightsTitle: "Your Data Rights",
     rightsIntro: "Under Israeli privacy law (PPA Amendment 13), you have the right to access, correct, and delete your personal data.",
     downloadMyData: "Download My Data (JSON)",

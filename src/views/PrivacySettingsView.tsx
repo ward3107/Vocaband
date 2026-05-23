@@ -27,15 +27,20 @@ interface PrivacySettingsViewProps {
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialogState>>;
   showToast: (message: string, type?: ToastType) => void;
-  /** Re-triggers the consent modal in place by clearing localStorage
-   *  acceptance and flipping needsConsent on.  Lets users review the
-   *  policy again without signing out — and gives QA a one-tap way to
-   *  see the modal again. */
+  /** From #905 — hard reset of the legal consent.  Clears localStorage
+   *  acceptance and flips needsConsent on so the gate appears in place
+   *  (no sign-out).  Useful for QA + users who want to formally
+   *  re-accept. */
   setNeedsConsent: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Reopens the privacy-summary modal in reminder mode (no required
+   *  "I agree" tick) even when the user previously ticked "Don't show
+   *  this again".  Source-of-truth lives in useConsent.reopenReminder(). */
+  onReopenPrivacyReminder: () => void;
 }
 
 export default function PrivacySettingsView({
-  user, consentModal, exitConfirmModal, setView, setUser, setConfirmDialog, showToast, setNeedsConsent,
+  user, consentModal, exitConfirmModal, setView, setUser, setConfirmDialog, showToast,
+  setNeedsConsent, onReopenPrivacyReminder,
 }: PrivacySettingsViewProps) {
   const { language, dir, isRTL } = useLanguage();
   const t = privacySettingsT[language];
@@ -209,17 +214,36 @@ export default function PrivacySettingsView({
             <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">{t.fullPrivacyPolicy}</a>
             <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">{t.termsOfService}</a>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              localStorage.removeItem('vocaband_consent_version');
-              setNeedsConsent(true);
-              showToast(t.toastConsentReset, "info");
-            }}
-            className="mt-3 text-blue-600 text-sm font-bold hover:underline"
-          >
-            {t.reviewConsentAgain}
-          </button>
+          {/* Two complementary affordances:
+              - "Show privacy summary" (primary, blue chip) — reopens the
+                informational reminder modal in reminder mode (no required
+                tick).  Source: useConsent.reopenReminder() — clears the
+                "don't show again" dismissal flag.
+              - "Review consent again" (text link) — hard reset of legal
+                consent: wipes localStorage acceptance + flips
+                needsConsent so the gate appears in place.  Useful for QA
+                and for users who want to formally re-accept without
+                signing out.  No DB write until they re-accept.  */}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={onReopenPrivacyReminder}
+              className="px-3 py-1.5 bg-blue-50 text-blue-700 font-bold rounded-lg text-sm hover:bg-blue-100 transition-all"
+            >
+              {t.showPrivacySummary}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem('vocaband_consent_version');
+                setNeedsConsent(true);
+                showToast(t.toastConsentReset, "info");
+              }}
+              className="text-blue-600 text-sm font-bold hover:underline"
+            >
+              {t.reviewConsentAgain}
+            </button>
+          </div>
           {localStorage.getItem('vocaband_consent_version') && (
             <button
               onClick={() => {
