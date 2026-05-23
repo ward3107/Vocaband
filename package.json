@@ -44,6 +44,7 @@
     "@types/canvas-confetti": "^1.9.0",
     "@types/multer": "^2.1.0",
     "@vitejs/plugin-react": "^6.0.2",
+    "an-array-of-english-words": "^2.0.0",
     "canvas-confetti": "^1.9.4",
     "client-zip": "^2.5.0",
     "csvtojson": "^2.0.14",
