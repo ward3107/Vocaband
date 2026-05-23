@@ -995,7 +995,7 @@ export default function App() {
   // Privacy-settings view (lazy-loaded). See PrivacySettingsSection.
   const privacySettings = renderPrivacySettingsSection({
     view, user, consentModal, exitConfirmModal,
-    setView, setUser, setConfirmDialog, showToast,
+    setView, setUser, setConfirmDialog, showToast, setNeedsConsent,
   });
   if (privacySettings) return privacySettings;
 

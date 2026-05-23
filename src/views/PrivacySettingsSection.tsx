@@ -19,6 +19,7 @@ type Args = {
   setUser: Dispatch<SetStateAction<AppUser | null>>;
   setConfirmDialog: Dispatch<SetStateAction<ConfirmDialog>>;
   showToast: ShowToast;
+  setNeedsConsent: Dispatch<SetStateAction<boolean>>;
 };
 
 /**
@@ -38,6 +39,7 @@ export function renderPrivacySettingsSection(args: Args): React.ReactElement | n
         setUser={args.setUser}
         setConfirmDialog={args.setConfirmDialog}
         showToast={args.showToast}
+        setNeedsConsent={args.setNeedsConsent}
       />
     </LazyWrapper>
   );
