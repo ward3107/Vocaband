@@ -9,11 +9,12 @@
 // don't re-fetch.
 //
 // Caveat on RTL: jsPDF renders glyphs left-to-right with no native bidi.
-// `fixRtl` pre-reverses RTL runs so Hebrew reads correctly.  Arabic
-// letter shaping is NOT handled — reversed Arabic still reads as
-// disconnected glyphs.
+// `fixRtl` reverses RTL runs and, for Arabic, also runs contextual
+// shaping (see ./arabicShaper) so letters use the correct positional
+// form and the connecting strokes line up.
 
 import type jsPDF from 'jspdf';
+import { shapeArabic } from './arabicShaper';
 
 export type Base64Font = { hebrew: string; arabic: string };
 
@@ -60,11 +61,25 @@ export function registerHebrewArabicFonts(doc: jsPDF, fonts: Base64Font): void {
 export const HEBREW_RE = /[\u0590-\u05FF\uFB1D-\uFB4F]/;
 export const ARABIC_RE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
 
-// Pre-reverse RTL runs so jsPDF (which writes left-to-right) renders
-// Hebrew correctly.  Process word-by-word so mixed strings like
-// "Score: 80% (סימו)" keep the Latin part untouched.
-const RTL_WORD_RE = /[֐-׿؀-ۿݐ-ݿࢠ-ࣿ]+/g;
+// Match runs of consecutive Hebrew / Arabic characters so the Latin
+// portion of mixed strings like "Score: 80% (סימו)" stays untouched.
+// Arabic ranges include the Presentation Forms blocks too in case input
+// already contains pre-shaped glyphs.  Escape syntax used here to keep
+// U+FEFF (BOM) out of the source — it trips eslint's irregular-whitespace.
+const HEBREW_RUN_RE = /[\u0590-\u05FF\uFB1D-\uFB4F]+/g;
+const ARABIC_RUN_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g;
 
 export function fixRtl(text: string): string {
-  return text.replace(RTL_WORD_RE, run => run.split('').reverse().join(''));
+  // Arabic first: shape base letters into their positional Presentation
+  // Form-B glyphs, then reverse so jsPDF's LTR write order produces RTL
+  // visual order.  Without shaping the letters render disconnected.
+  let result = text.replace(ARABIC_RUN_RE, (run) => {
+    const shaped = shapeArabic(run);
+    return Array.from(shaped).reverse().join('');
+  });
+  // Hebrew has no contextual shaping — just reverse each run.  Safe to
+  // run after Arabic since shaped Arabic now lives in FE70-FEFF, outside
+  // the Hebrew ranges.
+  result = result.replace(HEBREW_RUN_RE, (run) => Array.from(run).reverse().join(''));
+  return result;
 }
