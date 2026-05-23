@@ -26,8 +26,6 @@ import path from 'path';
 import fs from 'fs/promises';
 
 import { render } from './render.mjs';
-import { teacherGuide } from './content/teacher-guide.mjs';
-import { quickStart } from './content/quick-start.mjs';
 import { studentGuide } from './content/student-guide.mjs';
 import { parentLetter } from './content/parent-letter.mjs';
 import { privacySheet } from './content/privacy-sheet.mjs';
@@ -36,7 +34,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..', '..');
 const outDir = path.join(root, 'public', 'docs');
 
-const ALL_DOCS = [teacherGuide, quickStart, studentGuide, parentLetter, privacySheet];
+const ALL_DOCS = [studentGuide, parentLetter, privacySheet];
 const ALL_LANGS = ['en', 'he', 'ar', 'ru'];
 
 function parseArgs(argv) {

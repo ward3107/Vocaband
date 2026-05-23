@@ -32,9 +32,6 @@ export interface TeacherResourcesStrings {
   teacherGuideTitle: string;
   teacherGuideBlurb: string;
 
-  quickStartTitle: string;
-  quickStartBlurb: string;
-
   studentGuideTitle: string;
   studentGuideBlurb: string;
 
@@ -60,13 +57,9 @@ const en: TeacherResourcesStrings = {
   schoolPitchBlurb:
     "A printable slide deck for principal meetings — what students learn, how rollout works, pricing, and a privacy summary.",
 
-  teacherGuideTitle: "Teacher Guide",
+  teacherGuideTitle: "Teacher One-Pager",
   teacherGuideBlurb:
-    "The full walk-through — sign in, create a class, build assignments, run Live Challenge, read analytics.",
-
-  quickStartTitle: "Quick Start",
-  quickStartBlurb:
-    "One page. Five steps. The fastest way to get to your first lesson — perfect for the staffroom wall.",
+    "A single visual page — what Vocaband is, how a teacher uses it, in 60 seconds. Hand-out ready.",
 
   studentGuideTitle: "Student Guide",
   studentGuideBlurb:
@@ -95,13 +88,9 @@ const he: TeacherResourcesStrings = {
   schoolPitchBlurb:
     "מצגת להדפסה לפגישה עם המנהל/ת — מה התלמידים לומדים, איך מיישמים, תמחור וסיכום פרטיות.",
 
-  teacherGuideTitle: "מדריך למורה",
+  teacherGuideTitle: "דף אחד למורה",
   teacherGuideBlurb:
-    "סקירה מלאה — התחברות, יצירת כיתה, בניית מטלות, אתגר חי וקריאת נתונים.",
-
-  quickStartTitle: "מדריך מהיר",
-  quickStartBlurb:
-    "עמוד אחד, חמישה שלבים. הדרך המהירה ביותר לשיעור הראשון — מצוין לקיר חדר המורים.",
+    "סקירה ויזואלית בעמוד אחד — מה זה ואיך משתמשים, ב-60 שניות. מוכן לחלוקה.",
 
   studentGuideTitle: "מדריך לתלמיד",
   studentGuideBlurb:
@@ -130,13 +119,9 @@ const ar: TeacherResourcesStrings = {
   schoolPitchBlurb:
     "عرض شرائح للطباعة لاجتماعات الإدارة — ماذا يتعلّم الطلاب، كيف يتمّ التطبيق، الأسعار وموجز الخصوصية.",
 
-  teacherGuideTitle: "دليل المعلم",
+  teacherGuideTitle: "صفحة واحدة للمعلّم",
   teacherGuideBlurb:
-    "الجولة الكاملة — تسجيل الدخول، إنشاء الصف، بناء المهام، التحدي المباشر وقراءة التحليلات.",
-
-  quickStartTitle: "بداية سريعة",
-  quickStartBlurb:
-    "صفحة واحدة، خمس خطوات. أسرع طريق إلى أول حصة — مثالي لحائط غرفة المعلمين.",
+    "نظرة بصريّة في صفحة واحدة — ما هو وكيف يُستعمل، في 60 ثانية. جاهزة للتوزيع.",
 
   studentGuideTitle: "دليل الطالب",
   studentGuideBlurb:
