@@ -264,6 +264,7 @@ export function TeacherDashboardSection(deps: TeacherDashboardSectionDeps): Reac
         onApprovalsClick={() => { loadPendingStudents(); setView('teacher-approvals'); }}
         onWorksheetResultsClick={activeVoca === 'hebrew' ? undefined : () => setView('worksheet-attempts')}
         onLibraryClick={() => setView('vocabulary-library')}
+        onDreidelClick={activeVoca === 'hebrew' ? undefined : () => setView('dreidel-lobby')}
         onProjectAssignmentToClass={(a) => {
           setActivityNavOrigin(null);
           setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });

@@ -83,6 +83,9 @@ interface TeacherDashboardViewProps {
   /** Single entry point that opens the merged Classroom view. */
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
+  /** Dreidel Blitz — live blitz mode entry.  Optional so existing
+   *  callers keep working. */
+  onDreidelClick?: () => void;
   /** Worksheet Results — teacher-facing dashboard of attempts at
    *  shared interactive worksheets.  Optional because Hebrew teachers
    *  don't get this tile (the feature is English-Set only for now). */
@@ -159,7 +162,7 @@ export default function TeacherDashboardView({
   toasts, confirmDialog, setConfirmDialog,
   onQuickPlayClick, onClassroomClick, onApprovalsClick,
   onWorksheetResultsClick,
-  onLibraryClick,
+  onLibraryClick, onDreidelClick,
   onProjectAssignmentToClass,
   onPrintAssignmentWorksheet,
   onNewClass, onAssignClass, onDeleteClass,
@@ -395,6 +398,7 @@ export default function TeacherDashboardView({
             onApprovalsClick={onApprovalsClick}
             onWorksheetResultsClick={onWorksheetResultsClick}
             onLibraryClick={onLibraryClick}
+            onDreidelClick={onDreidelClick}
           />
 
           <TeacherClassesSection
