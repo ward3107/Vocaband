@@ -262,6 +262,7 @@ export interface LandingPageT {
   footerBestEsl: string;
   footerTerms: string;
   footerPrivacy: string;
+  footerForParents: string;
   footerSecurity: string;
   footerAccessibility: string;
   footerFaq: string;
@@ -490,6 +491,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerBestEsl: "Best ESL app — Grades 1-12",
     footerTerms: "Terms of Service",
     footerPrivacy: "Privacy Policy",
+    footerForParents: "For Parents",
     footerSecurity: "Security & Trust",
     footerAccessibility: "Accessibility",
     footerFaq: "FAQ",
@@ -718,6 +720,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerBestEsl: "האפליקציה הטובה ביותר לאנגלית — כיתות א-יב",
     footerTerms: "תנאי שימוש",
     footerPrivacy: "מדיניות פרטיות",
+    footerForParents: "להורים",
     footerSecurity: "אבטחה ואמון",
     footerAccessibility: "נגישות",
     footerFaq: "שאלות נפוצות",
@@ -946,6 +949,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerBestEsl: "أفضل تطبيق ESL — الصفوف 1-12",
     footerTerms: "شروط الخدمة",
     footerPrivacy: "سياسة الخصوصية",
+    footerForParents: "للأهل وأولياء الأمور",
     footerSecurity: "الأمان والثقة",
     footerAccessibility: "إمكانية الوصول",
     footerFaq: "الأسئلة الشائعة",
@@ -1174,6 +1178,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     footerBestEsl: "Best ESL app — Grades 1-12",
     footerTerms: "Terms of Service",
     footerPrivacy: "Privacy Policy",
+    footerForParents: "Для родителей",
     footerSecurity: "Security & Trust",
     footerAccessibility: "Accessibility",
     footerFaq: "FAQ",
