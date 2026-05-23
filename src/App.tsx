@@ -205,6 +205,8 @@ export default function App() {
 
   const [needsConsent, setNeedsConsent] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
+  const [consentMode, setConsentMode] = useState<'consent' | 'reminder'>('consent');
+  const [dontShowAgain, setDontShowAgain] = useState(false);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
   // OAuth callback state + class-switch confirmation state. See
@@ -621,8 +623,8 @@ export default function App() {
   });
 
   // Privacy-policy consent — banner gate + audit-log persistence.
-  const { checkConsent, recordConsent } = useConsent({
-    user, setNeedsConsent, setConsentChecked,
+  const { checkConsent, recordConsent, reopenReminder } = useConsent({
+    user, setNeedsConsent, setConsentChecked, setConsentMode, setDontShowAgain,
   });
 
   // OCR pipeline — photo → /api/ocr → translate → custom-word tab.
@@ -968,7 +970,9 @@ export default function App() {
   // markup lives in useAppOverlays.
   const { consentModal, exitConfirmModal, classNotFoundBanner, classSwitchModal } = useAppOverlays({
     user, needsConsent, showOnboarding,
-    consentChecked, setConsentChecked, recordConsent,
+    consentChecked, setConsentChecked,
+    consentMode, dontShowAgain, setDontShowAgain,
+    recordConsent,
     showExitConfirmModal, setShowExitConfirmModal, beginExitFlow,
     classNotFoundIntent, setClassNotFoundIntent, setView,
     pendingClassSwitch, handleConfirmClassSwitch, handleCancelClassSwitch,
@@ -995,7 +999,9 @@ export default function App() {
   // Privacy-settings view (lazy-loaded). See PrivacySettingsSection.
   const privacySettings = renderPrivacySettingsSection({
     view, user, consentModal, exitConfirmModal,
-    setView, setUser, setConfirmDialog, showToast, setNeedsConsent,
+    setView, setUser, setConfirmDialog, showToast,
+    setNeedsConsent,
+    onReopenPrivacyReminder: reopenReminder,
   });
   if (privacySettings) return privacySettings;
 

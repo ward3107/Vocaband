@@ -21,62 +21,109 @@ import { appModalsT } from "../locales/teacher/app-modals";
 import type { Language } from "../hooks/useLanguage";
 
 // ── ConsentModal ──────────────────────────────────────────────────────────
+//
+// Two modes:
+//   'consent'  — legal gate fired when the user hasn't accepted the
+//                current PRIVACY_POLICY_VERSION.  Requires the "I agree"
+//                checkbox before the primary button enables; primary
+//                action records consent in localStorage + consent_log.
+//   'reminder' — per-login informational pass shown to users who have
+//                already accepted.  No required tick, no overlay-click
+//                trap; offers a "Don't show this again" opt-out and a
+//                friendly "Got it" dismiss.  Closing this never affects
+//                the legal-consent record.
+export type ConsentModalMode = 'consent' | 'reminder';
+
 export interface ConsentModalProps {
   show: boolean;
   policyVersion: string;
+  mode: ConsentModalMode;
   consentChecked: boolean;
   onToggleChecked: (checked: boolean) => void;
+  dontShowAgain: boolean;
+  onToggleDontShowAgain: (checked: boolean) => void;
   onAccept: () => void;
 }
 
 export const ConsentModal: React.FC<ConsentModalProps> = ({
   show,
   policyVersion,
+  mode,
   consentChecked,
   onToggleChecked,
+  dontShowAgain,
+  onToggleDontShowAgain,
   onAccept,
 }) => {
   const { language, dir } = useLanguage();
   const t = appModalsT[language];
   if (!show) return null;
+
+  const isReminder = mode === 'reminder';
+  const primaryDisabled = !isReminder && !consentChecked;
+
   return (
     <div className="fixed inset-0 bg-inverse-surface/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-surface-container-lowest rounded-t-xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border-t sm:border border-surface-variant/20" dir={dir}>
-        <h2 className="text-base sm:text-lg font-black text-on-surface mb-2 font-headline">{t.consentTitle}</h2>
+        <h2 className="text-base sm:text-lg font-black text-on-surface mb-2 font-headline">
+          {isReminder ? t.consentReminderTitle : t.consentTitle}
+        </h2>
         <p className="text-on-surface-variant text-xs sm:text-sm mb-3">
-          {t.consentIntro(policyVersion)}
+          {isReminder ? t.consentReminderIntro : t.consentIntro(policyVersion)}
         </p>
         <div className="bg-surface-container-low rounded-lg p-3 mb-3 text-xs sm:text-sm text-on-surface-variant space-y-1.5">
           <p><strong>{t.consentCollectLabel}</strong>{t.consentCollectBody}</p>
           <p><strong>{t.consentTeachersLabel}</strong>{t.consentTeachersBody}</p>
           <p><strong>{t.consentUseLabel}</strong>{t.consentUseBody}</p>
+          <p><strong>{t.consentStorageLabel}</strong>{t.consentStorageBody}</p>
           <p><strong>{t.consentRightsLabel}</strong>{t.consentRightsBody}</p>
           <div className="flex gap-3 pt-1">
             <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">{t.consentFullPolicyLink}</a>
             <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">{t.consentTermsLink}</a>
           </div>
         </div>
-        <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
+
+        {/* Legal-consent checkbox: required for the gate, hidden in the
+            informational reminder pass. */}
+        {!isReminder && (
+          <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={consentChecked}
+              onChange={(e) => onToggleChecked(e.target.checked)}
+              className="mt-0.5 w-8 h-8 rounded border-outline text-primary focus:ring-primary focus:ring-2 focus:ring-offset-0"
+            />
+            <span className="text-xs sm:text-sm text-on-surface">
+              {t.consentCheckboxPrefix}
+              <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentFullPolicyLink}</a>
+              {t.consentCheckboxAnd}
+              <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentTermsLink}</a>
+              {t.consentCheckboxSuffix}
+            </span>
+          </label>
+        )}
+
+        {/* Per-login reminder opt-out — surfaced in both modes so a user
+            who's seeing the legal gate can also pre-commit to not being
+            reminded after accepting. */}
+        <label className="flex items-center gap-2.5 mb-4 cursor-pointer">
           <input
             type="checkbox"
-            checked={consentChecked}
-            onChange={(e) => onToggleChecked(e.target.checked)}
-            className="mt-0.5 w-8 h-8 rounded border-outline text-primary focus:ring-primary focus:ring-2 focus:ring-offset-0"
+            checked={dontShowAgain}
+            onChange={(e) => onToggleDontShowAgain(e.target.checked)}
+            className="w-6 h-6 rounded border-outline text-primary focus:ring-primary focus:ring-2 focus:ring-offset-0"
           />
-          <span className="text-xs sm:text-sm text-on-surface">
-            {t.consentCheckboxPrefix}
-            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentFullPolicyLink}</a>
-            {t.consentCheckboxAnd}
-            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentTermsLink}</a>
-            {t.consentCheckboxSuffix}
+          <span className="text-xs sm:text-sm text-on-surface-variant">
+            {t.consentDontShowAgain}
           </span>
         </label>
+
         <button
           onClick={onAccept}
-          disabled={!consentChecked}
-          className={`w-full py-2.5 rounded-lg font-bold transition-all text-sm font-headline ${consentChecked ? 'signature-gradient text-white hover:shadow-lg' : 'bg-surface-container text-on-surface-variant/50 cursor-not-allowed'}`}
+          disabled={primaryDisabled}
+          className={`w-full py-2.5 rounded-lg font-bold transition-all text-sm font-headline ${primaryDisabled ? 'bg-surface-container text-on-surface-variant/50 cursor-not-allowed' : 'signature-gradient text-white hover:shadow-lg'}`}
         >
-          {t.consentAccept}
+          {isReminder ? t.consentReminderOk : t.consentAccept}
         </button>
       </div>
     </div>

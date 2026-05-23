@@ -44,14 +44,13 @@ export const DATA_PROTECTION_OFFICER = {
 // 2. Privacy policy versioning
 // ---------------------------------------------------------------------------
 
-// Bumped 2026-05-22 — added Sentry (EU region) and Google Cloud
-// Text-to-Speech.  Sentry was active but undeclared (audit finding
-// C-9); Text-to-Speech was implicit under the Gemini entry but is
-// a distinct API and warranted its own row.  Bumping triggers the
-// consent re-prompt so existing users see the updated disclosure list
-// before continuing.
-export const PRIVACY_POLICY_VERSION = "2026-05-22";  // Version 2.2 - Sentry + Google TTS disclosed
-export const TERMS_VERSION = "2026-05-22";            // Version 2.2 - bumped alongside privacy version
+// Bumped 2026-05-23 — added explicit disclosure of EU hosting region
+// (Frankfurt + Amsterdam) and the automatic PII-scrubbing of server
+// logs that landed alongside the DPA/RoPA/DPIA executive summary.
+// Bumping triggers the consent re-prompt so existing users see the
+// refreshed summary before continuing.
+export const PRIVACY_POLICY_VERSION = "2026-05-23";  // Version 2.3 - EU hosting + log-scrubbing disclosed
+export const TERMS_VERSION = "2026-05-23";            // Version 2.3 - bumped alongside privacy version
 
 // ---------------------------------------------------------------------------
 // 3. Hosting regions (for cross-border transfer disclosures)
@@ -436,4 +435,6 @@ export const CLIENT_STORAGE_KEYS = {
   oauthExchangeFailed: "oauth_exchange_failed",
   /** Privacy policy consent version (localStorage) */
   consentVersion: "vocaband_consent_version",
+  /** Whether the user has opted out of the per-login privacy reminder */
+  privacyReminderDismissed: "vocaband_privacy_reminder_dismissed",
 } as const;

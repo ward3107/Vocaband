@@ -27,7 +27,10 @@ export interface UseAppOverlaysDeps {
   showOnboarding: boolean;
   consentChecked: boolean;
   setConsentChecked: React.Dispatch<React.SetStateAction<boolean>>;
-  recordConsent: () => void;
+  consentMode: 'consent' | 'reminder';
+  dontShowAgain: boolean;
+  setDontShowAgain: React.Dispatch<React.SetStateAction<boolean>>;
+  recordConsent: (opts: { mode: 'consent' | 'reminder'; dontShowAgain: boolean }) => void;
 
   showExitConfirmModal: boolean;
   setShowExitConfirmModal: React.Dispatch<React.SetStateAction<boolean>>;
@@ -60,9 +63,12 @@ export function useAppOverlays(deps: UseAppOverlaysDeps): AppOverlays {
     <ConsentModal
       show={deps.needsConsent && !!deps.user && !deps.showOnboarding}
       policyVersion={PRIVACY_POLICY_VERSION}
+      mode={deps.consentMode}
       consentChecked={deps.consentChecked}
       onToggleChecked={deps.setConsentChecked}
-      onAccept={() => deps.recordConsent()}
+      dontShowAgain={deps.dontShowAgain}
+      onToggleDontShowAgain={deps.setDontShowAgain}
+      onAccept={() => deps.recordConsent({ mode: deps.consentMode, dontShowAgain: deps.dontShowAgain })}
     />
   );
 
