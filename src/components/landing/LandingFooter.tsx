@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Accessibility,
   Activity,
+  Users,
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { landingPageT } from "../../locales/student/landing-page";
@@ -342,6 +343,26 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <ShieldCheck size={14} aria-hidden="true" />
                   {t.footerPrivacy}
                 </button>
+              </motion.li>
+              {/* "For Parents" — static HTML pages localized at build time
+                  by scripts/generate-parents-html.ts.  Plain <a> (not the
+                  onNavigate SPA router) because the parent-facing pages
+                  are intentionally framework-free and printable. */}
+              <motion.li variants={footerItemVariant} custom={17.5}>
+                <a
+                  href={
+                    language === "he" ? "/parents-he.html"
+                    : language === "ar" ? "/parents-ar.html"
+                    : language === "ru" ? "/parents-ru.html"
+                    : "/parents.html"
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
+                >
+                  <Users size={14} aria-hidden="true" />
+                  {t.footerForParents}
+                </a>
               </motion.li>
               <motion.li variants={footerItemVariant} custom={18}>
                 <button
