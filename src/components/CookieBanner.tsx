@@ -5,7 +5,7 @@ import React, { useState } from "react";
 // Slide-up entry replaced with a CSS @keyframes animation defined in
 // index.css; the expansion panel uses a conditional render rather
 // than AnimatePresence's exit animation.
-import { Cookie, ChevronUp, ChevronDown, Shield, BarChart3, Settings, Check, Lock, X } from "lucide-react";
+import { Cookie, ChevronUp, ChevronDown, Shield, BarChart3, Settings, Check, Lock, X, ExternalLink } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { cookieBannerT, type CookieBannerStrings } from "../locales/cookie-banner";
 
@@ -19,6 +19,10 @@ interface CookieBannerProps {
   onAccept: () => void;
   onCustomize: (preferences: CookiePreferences) => void;
   onReject: () => void;
+  /** Opens the full Privacy Policy page so users can read it before
+   *  choosing categories.  GDPR Art. 13 / EDPB Guidelines 03/2022:
+   *  the policy must be one click away from where consent is asked. */
+  onPrivacyPolicy?: () => void;
 }
 
 // Category metadata that DOES NOT change between locales (id, icon,
@@ -38,7 +42,7 @@ function getCookieCategories(t: CookieBannerStrings) {
   ];
 }
 
-const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize, onReject }) => {
+const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize, onReject, onPrivacyPolicy }) => {
   const { language, dir } = useLanguage();
   const t = cookieBannerT[language];
   const cookieCategories = getCookieCategories(t);
@@ -168,6 +172,31 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize, onRe
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Full privacy policy link — required by GDPR Art. 13 +
+                    EDPB Guidelines 03/2022 to sit one click from the
+                    consent prompt.  Falls back to an anchor tag when no
+                    onPrivacyPolicy handler is wired (e.g. unit tests). */}
+                <div className={`mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10`}>
+                  {onPrivacyPolicy ? (
+                    <button
+                      type="button"
+                      onClick={onPrivacyPolicy}
+                      className="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold text-violet-200 hover:text-white underline decoration-violet-400/40 hover:decoration-white/70 underline-offset-4 transition-colors"
+                    >
+                      <ExternalLink size={14} aria-hidden="true" />
+                      {t.privacyPolicyLink}
+                    </button>
+                  ) : (
+                    <a
+                      href="/privacy"
+                      className="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold text-violet-200 hover:text-white underline decoration-violet-400/40 hover:decoration-white/70 underline-offset-4 transition-colors"
+                    >
+                      <ExternalLink size={14} aria-hidden="true" />
+                      {t.privacyPolicyLink}
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
