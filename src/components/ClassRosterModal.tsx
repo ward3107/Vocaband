@@ -292,11 +292,6 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       setError(t.errorAddStudentsFirst);
       return;
     }
-    const win = window.open("", "_blank", "noopener,width=800,height=900");
-    if (!win) {
-      setError(t.errorPopupBlocked);
-      return;
-    }
     const rows = withPins
       .map(
         s =>
@@ -308,7 +303,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
     // PIN column on the correct side.
     const docDir = isRTL ? "rtl" : "ltr";
     const align = isRTL ? "right" : "left";
-    win.document.write(`<!doctype html><html lang="${language}" dir="${docDir}"><head><meta charset="utf-8"><title>${escapeHtml(t.printTitle(className))}</title>
+    const html = `<!doctype html><html lang="${language}" dir="${docDir}"><head><meta charset="utf-8"><title>${escapeHtml(t.printTitle(className))}</title>
       <style>
         body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 32px; color: #1c1917; }
         h1 { font-size: 22px; margin: 0 0 4px; }
@@ -326,9 +321,52 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       <p class="meta">${escapeHtml(t.printClassCodeLabel)} <span class="code">${escapeHtml(classCode)}</span> · vocaband.com/student?class=${escapeHtml(classCode)}</p>
       <table><thead><tr><th>${escapeHtml(t.copyNameHeader)}</th><th>${escapeHtml(t.copyPinHeader)}</th></tr></thead><tbody>${rows}</tbody></table>
       <p class="footer">${escapeHtml(t.printInstructions)}</p>
-      <script>window.addEventListener('load', () => setTimeout(() => window.print(), 200));</script>
-    </body></html>`);
-    win.document.close();
+    </body></html>`;
+
+    // Use a hidden same-window iframe instead of window.open — popup
+    // blockers (the default on mobile Chrome / Safari) silently swallow
+    // window.open in production, leaving the teacher stuck. An iframe
+    // injected into the current document is not subject to popup rules.
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.position = "fixed";
+    frame.style.right = "0";
+    frame.style.bottom = "0";
+    frame.style.width = "0";
+    frame.style.height = "0";
+    frame.style.border = "0";
+    frame.style.opacity = "0";
+    document.body.appendChild(frame);
+
+    const cleanup = () => {
+      // Defer the removal so Safari has time to actually paint and
+      // hand the document to the print pipeline before the frame is
+      // detached.
+      setTimeout(() => {
+        if (frame.parentNode) frame.parentNode.removeChild(frame);
+      }, 1000);
+    };
+
+    frame.onload = () => {
+      const cw = frame.contentWindow;
+      if (!cw) {
+        cleanup();
+        return;
+      }
+      try {
+        cw.focus();
+        cw.print();
+      } catch {
+        setError(t.errorPopupBlocked);
+      } finally {
+        cleanup();
+      }
+    };
+
+    // srcdoc writes a fresh same-origin document and fires load reliably
+    // across browsers (more so than document.open + write into the
+    // iframe's contentDocument, which Safari sometimes never settles).
+    frame.srcdoc = html;
   };
 
   const toggleReveal = (id: string) => {
