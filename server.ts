@@ -138,6 +138,22 @@ flagNonAscii('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY)
 flagNonAscii('GOOGLE_AI_API_KEY', process.env.GOOGLE_AI_API_KEY);
 flagNonAscii('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY);
 
+// Boot diagnostic: which Gemini tier are we on?  This is a one-shot
+// reminder for the operator (audit finding H-5, 2026-05-23).  We
+// don't have a way to query the GCP project's billing status from
+// here, so we just log the endpoint that's being used + the link to
+// the migration plan so it's discoverable in the boot log.  Quiet
+// in dev (no key set).
+if (process.env.GOOGLE_AI_API_KEY) {
+  console.log(
+    "[gemini] AI Studio endpoint in use (generativelanguage.googleapis.com). " +
+    "Verify Pay-As-You-Go billing is enabled in the GCP project for the no-training " +
+    "Pay-As-You-Go terms — otherwise the free-tier T&Cs (Google may train on prompts) " +
+    "apply and contradict the published SUBPROCESSORS.md row. " +
+    "Vertex AI migration plan: docs/operator-tasks.md → 'Migrate Gemini OCR to Vertex AI'."
+  );
+}
+
 // Local JWT signature + expiry verification using Supabase's published JWKS.
 // Replaces the per-connection remote round-trip to Supabase auth.getUser()
 // (~300 ms per call) with a local crypto check (<1 ms after the first JWKS
@@ -2759,7 +2775,14 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     if (!apiKey) {
       return res.status(503).json({
         error: "OCR not configured",
-        message: "GOOGLE_AI_API_KEY is not set. Get a free key from https://aistudio.google.com/apikey",
+        // Note: the AI Studio API endpoint
+        // (generativelanguage.googleapis.com) requires billing enabled
+        // for the Pay-As-You-Go terms (no model training, EU-US DPF).
+        // The free tier may use prompts for product improvement and
+        // is not aligned with our published SUBPROCESSORS.md
+        // disclosure.  Operator: ensure billing is enabled in the
+        // GCP project before unsetting this 503.
+        message: "GOOGLE_AI_API_KEY is not set. See docs/operator-tasks.md → 'Migrate Gemini OCR to Vertex AI' for the recommended setup.",
       });
     }
 
