@@ -155,6 +155,17 @@ const API_BACKEND = "https://vocaband.fly.dev";
 // Mirrors VITE_SUPABASE_URL in .env.production. Override per-environment by
 // setting `vars.SUPABASE_URL` in wrangler.jsonc if you ever cut a staging
 // project; for production the default below is correct.
+//
+// PII audit (H-11, 2026-05-23): the `sound` bucket is deliberately public
+// (read-only by anyone — students worldwide need to fetch MP3s without auth).
+// Upload paths audited:
+//   - server.ts:3049-3063  → filename = `${wordId}.mp3` (numeric vocabulary
+//                            ID, no PII)
+//   - scripts/upload-audio.ts  → same numeric-ID pattern
+// No teacher name, student name, email, class code, or other identifier
+// ever lands in a `sound/` filename or in the audio content (the audio IS
+// the vocabulary word itself, synthesised by Google Cloud TTS).  Public
+// read access is therefore acceptable.  Write access is service-role only.
 const SUPABASE_URL_DEFAULT = "https://ilbeskwldyrleltnxyrp.supabase.co";
 
 // Strip everything except letters/numbers/dashes so user-supplied topic

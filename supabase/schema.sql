@@ -10,6 +10,11 @@
 CREATE TABLE IF NOT EXISTS public.users (
   uid          TEXT PRIMARY KEY,          -- matches auth.uid()
   email        TEXT,
+  -- Three roles only.  The client-side `AppUser.role` TS union
+  -- also includes 'guest' for in-memory Quick Play participants —
+  -- guests are intentionally NOT persisted here (no `public.users`
+  -- row exists for them).  See src/core/supabase.ts AppUser type
+  -- for the architectural note.  Audit L-4 (2026-05-23).
   role         TEXT NOT NULL CHECK (role IN ('teacher', 'student', 'admin')),
   display_name TEXT NOT NULL DEFAULT '',
   class_code   TEXT,

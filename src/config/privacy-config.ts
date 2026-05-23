@@ -406,6 +406,17 @@ export const RETENTION_PERIODS = {
   /** Days to keep consent log entries (keep indefinitely — set very high) */
   consentLogDays: 3650, // 10 years
   /**
+   * Minutes a Quick Play guest's local resume hint survives before being
+   * silently dropped on the client.  Quick Play guests have no DB row to
+   * speak of — this controls only the browser-side localStorage hint that
+   * lets a student rejoin a session if the tab closed accidentally.  Set
+   * by `src/utils/qpResumeHint.ts` + `src/hooks/useQuickPlayGuestState.ts`
+   * (both use `90 * 60 * 1000 ms`).  Disclosure added in audit M-10
+   * (2026-05-23) — previously the TTL existed but was undocumented in the
+   * privacy disclosure.
+   */
+  quickPlayResumeHintMinutes: 90,
+  /**
    * Conservative upper bound for our database provider's (Supabase) platform
    * backups (PITR / daily snapshots).  Actual retention varies by plan tier
    * (Free 7d, Pro 14d, Team 28d).  Setting 30 to safely bound the disclosure.

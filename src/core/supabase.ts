@@ -134,6 +134,16 @@ export const FEATURE_FLAG_COLUMNS = 'name,enabled,enabled_for_classes,descriptio
 export interface AppUser {
   uid: string;
   email?: string;
+  /**
+   * In-memory role for the React state.  `'teacher' | 'student' | 'admin'`
+   * map 1:1 to rows in `public.users` (DB CHECK constraint enforces those
+   * three; see supabase/schema.sql).  `'guest'` is intentionally NOT in
+   * the DB CHECK — guests (Quick Play participants without an account)
+   * exist only as in-memory `AppUser` objects produced by
+   * `utils/createGuestUser.ts` and are NEVER persisted to public.users.
+   * If you find code writing a `'guest'` row to the DB, that's a bug —
+   * filter it out before .insert() / .update().  Audit L-4 (2026-05-23).
+   */
   role: 'teacher' | 'student' | 'admin' | 'guest';
   displayName: string;
   classCode?: string;
