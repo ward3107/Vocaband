@@ -85,12 +85,29 @@ export function initSentry(): void {
       // Translate/extension noise
       /chrome-extension:\/\//,
       /moz-extension:\/\//,
+      // Sentry's own serializer occasionally blows the stack on
+      // pathological payloads (circular refs, deep DOM/fiber objects).
+      // We defend against it on the input side (normalizeDepth +
+      // scrubPii cycle guard) but the recursion can still escape into
+      // String.replace during stringification — and when it does, the
+      // resulting RangeError tells us nothing about the original error.
+      "Maximum call stack size exceeded",
     ],
     denyUrls: [
       // Browser extensions
       /^chrome-extension:\/\//,
       /^moz-extension:\/\//,
     ],
+    // Cap how deep Sentry walks event payloads when normalizing.
+    // Default is 3; we raise to 5 for diagnosability but pair it with
+    // the cycle-guarded scrubPii below.  Anything deeper truncates to
+    // "[Object]" rather than recursing into a cycle and overflowing
+    // the stack inside the SDK's own serializer.
+    normalizeDepth: 5,
+    // Hard ceiling on individual string values — stops a runaway log
+    // line from feeding String.replace a megabyte-long input and
+    // amplifying any per-character work into a stack overflow.
+    maxValueLength: 4096,
     // Don't send default PII (cookies, IP). We attach the Supabase uid
     // explicitly via setSentryUser() when a teacher/student signs in.
     sendDefaultPii: false,
