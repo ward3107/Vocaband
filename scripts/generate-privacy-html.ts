@@ -269,6 +269,13 @@ const html = `<!DOCTYPE html>
 
   <h3>9.3 Parental Rights</h3>
   <p>Parents or legal guardians may exercise data subject rights on behalf of their children by contacting the school or emailing <a href="mailto:${escape(DATA_PROTECTION_OFFICER.email)}">${escape(DATA_PROTECTION_OFFICER.email)}</a> with verification of guardianship.</p>
+  <p>For a parent-facing summary of what we collect (and never collect), how to exercise rights, and a structured request form, see the dedicated parental information page:</p>
+  <ul>
+    <li><a href="/parents.html">English</a></li>
+    <li><a href="/parents-he.html">עברית (Hebrew)</a></li>
+    <li><a href="/parents-ar.html">العربية (Arabic)</a></li>
+    <li><a href="/parents-ru.html">Русский (Russian)</a></li>
+  </ul>
 
   <!-- Section 10: Security -->
   <h2>10. Security Measures</h2>
