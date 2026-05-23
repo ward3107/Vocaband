@@ -33,6 +33,9 @@ export interface CookieBannerStrings {
   savePreferences: string;
   acceptAll: string;
   rejectAll: string;
+
+  // Link to the full privacy policy page (shown in the expanded panel)
+  privacyPolicyLink: string;
 }
 
 export const cookieBannerT: Record<Language, CookieBannerStrings> = {
@@ -52,6 +55,7 @@ export const cookieBannerT: Record<Language, CookieBannerStrings> = {
     savePreferences: "Save Preferences",
     acceptAll: "Accept All",
     rejectAll: "Reject All",
+    privacyPolicyLink: "Read full Privacy Policy",
   },
   he: {
     heroMain: "אנו משתמשים בעוגיות כדי לשפר את חוויית הלמידה. בחרו איך תרצו שנשתמש בהן — עוגיות אנליטיקה ופונקציונליות כבויות כברירת מחדל עד שתאשרו.",
@@ -69,6 +73,7 @@ export const cookieBannerT: Record<Language, CookieBannerStrings> = {
     savePreferences: "שמירת העדפות",
     acceptAll: "אישור הכול",
     rejectAll: "דחיית הכול",
+    privacyPolicyLink: "קראו את מדיניות הפרטיות המלאה",
   },
   ar: {
     heroMain: "نستخدم ملفات تعريف الارتباط لتحسين تجربة التعلّم. اختر كيف نستخدمها — ملفات التحليلات والملفات الوظيفية مُعطّلة افتراضيًا حتى توافق عليها.",
@@ -86,6 +91,7 @@ export const cookieBannerT: Record<Language, CookieBannerStrings> = {
     savePreferences: "حفظ التفضيلات",
     acceptAll: "قبول الكل",
     rejectAll: "رفض الكل",
+    privacyPolicyLink: "اقرأ سياسة الخصوصية الكاملة",
   },
   ru: {
     heroMain: "Мы используем куки, чтобы улучшить ваш опыт обучения. Выберите, как мы будем их использовать — аналитические и функциональные куки отключены по умолчанию, пока вы не согласитесь.",
@@ -103,5 +109,6 @@ export const cookieBannerT: Record<Language, CookieBannerStrings> = {
     savePreferences: "Сохранить настройки",
     acceptAll: "Принять все",
     rejectAll: "Отклонить все",
+    privacyPolicyLink: "Прочитать полную Политику конфиденциальности",
   },
 };
