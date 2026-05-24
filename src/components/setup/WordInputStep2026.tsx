@@ -468,47 +468,56 @@ interface OptionCardProps {
 }
 
 const OptionCard: React.FC<OptionCardProps> = ({
-  emoji, title, subtitle, ctaText, gradient, onClick, delay, isNew
+  emoji, title, subtitle, onClick, delay, isNew
 }) => {
+  // Repainted with the new-activity SourcePickerGrid look (option D
+  // part 4): rounded-[22px] white card, frosted-gradient emoji tile
+  // at the start, title + subtitle below.  The whole card is the
+  // click target so the previous "View →" CTA badge is dropped
+  // (gradient + ctaText props kept in the interface for source
+  // compatibility but unused here).
   return (
     <motion.button
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
       onClick={onClick}
-      whileHover={{ scale: 1.02, y: -2 }}
+      whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
       type="button"
-      className="w-full bg-[var(--vb-surface)] rounded-xl shadow-md hover:shadow-xl border border-[var(--vb-border)] p-3 sm:p-6 flex flex-col items-center text-center min-h-[150px] sm:min-h-[180px] transition-shadow"
-      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+      className="w-full rounded-[22px] border border-indigo-500/[0.10] bg-white px-[18px] pb-4 pt-[18px] text-start transition-[transform,box-shadow]"
+      style={{
+        touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent' as any,
+        boxShadow:
+          '0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)',
+      }}
     >
-      {/* Icon with optional sparkle */}
-      <div className="relative">
-        <span className="text-3xl sm:text-5xl">{emoji}</span>
+      <div className="relative mb-3 inline-block">
+        <div
+          className="grid h-11 w-11 place-items-center rounded-[14px] text-[22px]"
+          style={{
+            background: 'linear-gradient(135deg, #EEF0FF, #F8E8FF)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)',
+          }}
+          aria-hidden
+        >
+          {emoji}
+        </div>
         {isNew && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1 -right-2 text-base sm:text-lg"
+            className="absolute -top-1 -end-2 text-base"
+            aria-hidden
           >
             ✨
           </motion.span>
         )}
       </div>
 
-      {/* Title */}
-      <h3 className="mt-2 sm:mt-3 text-sm sm:text-base font-bold text-[var(--vb-text-primary)] leading-tight">{title}</h3>
-
-      {/* Subtitle */}
-      <p className="mt-1 text-xs sm:text-sm text-[var(--vb-text-muted)] leading-tight">{subtitle}</p>
-
-      {/* CTA Button */}
-      <div className="mt-auto pt-3 sm:pt-4 self-center sm:self-start">
-        <span className={`inline-flex items-center gap-1 text-xs sm:text-sm font-semibold bg-gradient-to-r ${gradient} text-transparent bg-clip-text`}>
-          {ctaText}
-          <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        </span>
-      </div>
+      <div className="text-[14px] font-bold text-[#1F1147]">{title}</div>
+      <div className="mt-0.5 text-[12px] text-[#6B6388]">{subtitle}</div>
     </motion.button>
   );
 };
