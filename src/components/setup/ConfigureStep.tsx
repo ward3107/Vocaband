@@ -681,15 +681,19 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
             {t.pickModesNudge}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3">
+          // Name + instructions inputs — repainted with new design tokens
+          // (option D part 2): tiny uppercase caps-label, rounded-2xl
+          // hairline-indigo input, violet focus ring.  Same field
+          // wiring, handlers, validation as before.
+          <div className="grid grid-cols-1 gap-[18px]">
             {/* Title */}
             <div>
-              <label htmlFor="assignment-title" className="block text-xs font-bold text-[var(--vb-text-secondary)] mb-1.5">
+              <label htmlFor="assignment-title" className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#6B6388]">
                 {isAssignment ? 'Assignment title ' : 'Session title '}
                 {isAssignment ? (
-                  <span className="text-red-500">*</span>
+                  <span className="text-rose-500">*</span>
                 ) : (
-                  <span className="text-[var(--vb-text-muted)] font-normal">(optional)</span>
+                  <span className="text-[#8B85AB] font-normal normal-case tracking-normal">(optional)</span>
                 )}
               </label>
               <input
@@ -705,13 +709,13 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 placeholder={isAssignment
                   ? 'e.g., Fruits Vocabulary - Unit 5'
                   : 'e.g., Period 3 warm-up'}
-                className="w-full px-3 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all"
+                className="block w-full rounded-2xl border-[1.5px] border-indigo-500/[0.10] bg-white px-[18px] py-3 text-[14px] text-[#1F1147] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)]"
               />
             </div>
 
             {/* Instructions */}
             <div>
-              <label htmlFor="assignment-instructions" className="block text-xs font-bold text-[var(--vb-text-secondary)] mb-1.5">
+              <label htmlFor="assignment-instructions" className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#6B6388]">
                 {isAssignment ? 'Instructions for students' : 'Notes (optional)'}
               </label>
               <textarea
@@ -726,7 +730,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 }}
                 placeholder={isAssignment ? t.instructionsPlaceholderAssignment : t.instructionsPlaceholderQp}
                 rows={2}
-                className="w-full px-3 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-[var(--vb-text-primary)] placeholder:text-[var(--vb-text-muted)] transition-all overflow-y-auto"
+                className="block w-full rounded-2xl border-[1.5px] border-indigo-500/[0.10] bg-white px-[18px] py-3 text-[14px] text-[#1F1147] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] overflow-y-auto"
               />
             </div>
           </div>
@@ -960,7 +964,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 : ''
             }`}
           >
-            <label className="block text-xs text-[var(--vb-text-muted)] mb-1.5">Deadline</label>
+            <label className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#6B6388]">Deadline</label>
             <DateTimePicker
               value={assignmentDeadline || ""}
               onChange={(v) => onDeadlineChange?.(v)}
