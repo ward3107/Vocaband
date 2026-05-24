@@ -49,6 +49,8 @@ import PageHero from "../components/PageHero";
 
 const AnalyticsView = lazyWithRetry(() => import("./AnalyticsView"));
 const GradebookView = lazyWithRetry(() => import("./GradebookView"));
+import EnglishClassroomToday from "../components/classroom/v2/EnglishClassroomToday";
+import type { VocaId } from "../core/subject";
 
 type LegacyTab = "pulse" | "mastery";
 type V2Tab = "today" | "students" | "assignments" | "reports";
@@ -79,6 +81,12 @@ interface ClassroomViewProps {
    *  paths still land on something familiar. "pulse" -> "today" in v2,
    *  "mastery" -> "reports" in v2. */
   initialTab?: LegacyTab;
+  /** Active Voca for this teacher's session.  Drives the gated
+   *  redesigned Today panel.  Defaults to 'english' so legacy callers
+   *  that don't pass it keep the existing (unchanged) behaviour for
+   *  English teachers; pass 'hebrew' explicitly to suppress the new
+   *  panel on the VocaHebrew dashboard. */
+  subject?: VocaId;
 }
 
 const legacyToV2: Record<LegacyTab, V2Tab> = {
@@ -92,6 +100,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
     selectedClass, setSelectedClass, selectedWords, setSelectedWords,
     expandedStudent, setExpandedStudent, setView, showToast,
     initialTab = "pulse",
+    subject = "english",
   } = props;
   // user is consumed by GradebookView/AnalyticsView via spread props below;
   // referenced in JSX so no unused-var warning.
@@ -301,6 +310,30 @@ export default function ClassroomView(props: ClassroomViewProps) {
             }>
               {v2Tab === "today" && (
                 <div className="mt-6 space-y-5">
+                  {/* Redesigned Today panel — English-only, additive
+                      above the existing chips + Gradebook content.
+                      Lets us validate the new visual language on real
+                      teacher data without yanking the old UI out from
+                      under anyone.  Hebrew teachers fall through to
+                      the existing chrome below. */}
+                  {subject === "english" && (
+                    <EnglishClassroomToday
+                      classCode={classCode}
+                      allScores={allScores}
+                      classStudents={classStudents}
+                      onPulseClick={(bucket) => {
+                        // Tapping a pulse card jumps to the Students
+                        // tab — the closest existing surface for a
+                        // filtered roster view.  `bucket` is unused
+                        // for now (Students tab doesn't accept a
+                        // pre-filter yet); wire later when we extract
+                        // Screen 2 (Roster).
+                        void bucket;
+                        setV2Tab("students");
+                      }}
+                    />
+                  )}
+
                   {/* Stats row — three chips, dense.  ENROLLED was a fourth
                       chip but it was the same number as the "active /
                       enrolled" caption on the first chip, so teachers

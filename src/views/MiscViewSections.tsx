@@ -310,6 +310,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           setView={setView}
           showToast={showToast}
           initialTab={initialTab}
+          subject={activeVoca ?? 'english'}
         />
       </LazyWrapper>
     );
