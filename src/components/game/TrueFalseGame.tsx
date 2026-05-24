@@ -111,8 +111,11 @@ export default function TrueFalseGame({
       {/* Two giant binary buttons.  Order on the page: False (left,
           rose) ← → True (right, emerald) — matches the swipe-direction
           mapping (swipe right = True, swipe left = False) so the
-          kid's hand muscle-memory aligns with the visual position. */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          kid's hand muscle-memory aligns with the visual position.
+          dir="ltr" pins that left/right order even under HE/AR, where
+          a default grid would otherwise mirror it and break the
+          swipe-to-position mapping. */}
+      <div dir="ltr" className="grid grid-cols-2 gap-3 sm:gap-4">
         <button
           type="button"
           onClick={handleTap(false)}

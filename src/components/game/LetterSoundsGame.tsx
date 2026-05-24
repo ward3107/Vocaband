@@ -78,8 +78,10 @@ export default function LetterSoundsGame({
         </p>
       </div>
 
-      {/* Animated letter blocks */}
-      <div className="flex flex-col items-center gap-3 sm:gap-4 mb-7">
+      {/* Animated letter blocks — dir="ltr" so the English letters
+          render left-to-right (e.g. "CAT", not "TAC") even when the
+          UI is Hebrew/Arabic and the page direction is RTL. */}
+      <div dir="ltr" className="flex flex-col items-center gap-3 sm:gap-4 mb-7">
         {cleanAnswer.split(" ").map((word, wordIdx, allWords) => {
           let charOffset = 0;
           for (let j = 0; j < wordIdx; j++) charOffset += allWords[j].length + 1;
@@ -131,6 +133,7 @@ export default function LetterSoundsGame({
           <input
             autoFocus
             type="text"
+            dir="ltr"
             value={spellingInput}
             onChange={(e) => setSpellingInput(e.target.value)}
             disabled={feedback === "show-answer" || feedback === "correct"}

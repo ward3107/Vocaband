@@ -86,7 +86,10 @@ export default function SpellingGame({
     const cleanInput = spellingInput.replace(/\s/g, "");
     let globalIdx = 0;
     return (
-      <div className="flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-2 mb-4 sm:mb-6">
+      // dir="ltr" so the English letter slots (and the word groups for
+      // multi-word answers like "ice cream") always read left-to-right,
+      // even when the UI is Hebrew/Arabic and the page is dir="rtl".
+      <div dir="ltr" className="flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-2 mb-4 sm:mb-6">
         {wordGroups.map((group, gi) => (
           <div key={gi} className="flex gap-1 sm:gap-1.5">
             {group.split("").map((expectedChar) => {
@@ -170,6 +173,7 @@ export default function SpellingGame({
         autoComplete="off"
         autoCorrect="off"
         spellCheck={false}
+        dir="ltr"
         value={spellingInput}
         onChange={(e) => setSpellingInput(e.target.value)}
         disabled={isInputDisabled}

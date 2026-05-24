@@ -60,6 +60,22 @@ export interface GameActiveStrings {
   tapWordsToBuild: string;
   waitingForPlayers: string;
 
+  // FillBlankGame error states (rare — misconfigured assignment).
+  errorNoWordLoaded: string;
+  errorNoOptions: string;
+  errorNeedFourWords: string;
+
+  // MatchingModeGame + MemoryFlipGame instructions.
+  tapToMatch: string;
+  findThePairs: string;
+
+  // Parametrized aria-labels (screen-reader only).
+  ariaCardShowing: (text: string) => string;
+  ariaFaceDownCard: string;
+  ariaRemoveLetter: (ch: string) => string;
+  ariaEmptySlot: string;
+  ariaPlaceLetter: (letter: string) => string;
+
   // ShowAnswerFeedback (the amber pulse shown after 3 failed attempts).
   correctAnswerIs: string;
 
@@ -120,6 +136,16 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     listenToSentence: "Listen to sentence",
     tapWordsToBuild: "Tap words below to build the sentence",
     waitingForPlayers: "Waiting for players...",
+    errorNoWordLoaded: "No word loaded",
+    errorNoOptions: "No answer options available",
+    errorNeedFourWords: "You need at least 4 words in the assignment for this mode to work",
+    tapToMatch: "Tap a card, then tap its match",
+    findThePairs: "Find all the pairs",
+    ariaCardShowing: (text) => `Card showing ${text}`,
+    ariaFaceDownCard: "Face-down card, tap to reveal",
+    ariaRemoveLetter: (ch) => `Remove letter ${ch}`,
+    ariaEmptySlot: "Empty slot",
+    ariaPlaceLetter: (letter) => `Place letter ${letter}`,
     correctAnswerIs: "The correct answer is:",
     liveRank: "Live Rank",
     loadingGame: "Loading game...",
@@ -178,6 +204,16 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     listenToSentence: "האזן למשפט",
     tapWordsToBuild: "הקישו על המילים למטה כדי לבנות את המשפט",
     waitingForPlayers: "מחכים לשחקנים...",
+    errorNoWordLoaded: "לא נטענה מילה",
+    errorNoOptions: "אין תשובות זמינות",
+    errorNeedFourWords: "צריך לפחות 4 מילים במטלה כדי שמצב זה יעבוד",
+    tapToMatch: "הקישו על כרטיס, ואז על ההתאמה שלו",
+    findThePairs: "מצאו את כל הזוגות",
+    ariaCardShowing: (text) => `כרטיס מציג ${text}`,
+    ariaFaceDownCard: "כרטיס הפוך, הקישו כדי לחשוף",
+    ariaRemoveLetter: (ch) => `הסר את האות ${ch}`,
+    ariaEmptySlot: "משבצת ריקה",
+    ariaPlaceLetter: (letter) => `הנח את האות ${letter}`,
     correctAnswerIs: "התשובה הנכונה היא:",
     liveRank: "דירוג חי",
     loadingGame: "טוען משחק...",
@@ -236,6 +272,16 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     listenToSentence: "استمع إلى الجملة",
     tapWordsToBuild: "اضغط على الكلمات في الأسفل لتكوين الجملة",
     waitingForPlayers: "في انتظار اللاعبين...",
+    errorNoWordLoaded: "لم يتم تحميل أي كلمة",
+    errorNoOptions: "لا توجد خيارات إجابة متاحة",
+    errorNeedFourWords: "تحتاج إلى 4 كلمات على الأقل في المهمة لكي يعمل هذا الوضع",
+    tapToMatch: "اضغط على بطاقة، ثم اضغط على ما يطابقها",
+    findThePairs: "اعثر على كل الأزواج",
+    ariaCardShowing: (text) => `بطاقة تعرض ${text}`,
+    ariaFaceDownCard: "بطاقة مقلوبة، اضغط للكشف",
+    ariaRemoveLetter: (ch) => `إزالة الحرف ${ch}`,
+    ariaEmptySlot: "خانة فارغة",
+    ariaPlaceLetter: (letter) => `ضع الحرف ${letter}`,
     correctAnswerIs: "الإجابة الصحيحة هي:",
     liveRank: "الترتيب المباشر",
     loadingGame: "جارٍ تحميل اللعبة...",
@@ -294,6 +340,16 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     listenToSentence: "Listen to sentence",
     tapWordsToBuild: "Tap words below to build the sentence",
     waitingForPlayers: "Waiting for players...",
+    errorNoWordLoaded: "No word loaded",
+    errorNoOptions: "No answer options available",
+    errorNeedFourWords: "You need at least 4 words in the assignment for this mode to work",
+    tapToMatch: "Tap a card, then tap its match",
+    findThePairs: "Find all the pairs",
+    ariaCardShowing: (text) => `Card showing ${text}`,
+    ariaFaceDownCard: "Face-down card, tap to reveal",
+    ariaRemoveLetter: (ch) => `Remove letter ${ch}`,
+    ariaEmptySlot: "Empty slot",
+    ariaPlaceLetter: (letter) => `Place letter ${letter}`,
     correctAnswerIs: "The correct answer is:",
     liveRank: "Live Rank",
     loadingGame: "Loading game...",

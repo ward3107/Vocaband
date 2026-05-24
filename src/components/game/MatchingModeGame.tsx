@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
+import { useLanguage } from "../../hooks/useLanguage";
+import { gameActiveT } from "../../locales/student/game-active";
 
 type MatchItem = { id: number; text: string; type: 'english' | 'arabic' };
 type MatchSelection = { id: number; type: 'english' | 'arabic' };
@@ -33,6 +35,8 @@ export default function MatchingModeGame({
   matchingPairs, matchedIds, selectedMatch, isMatchingProcessing, onMatchClick,
   themeColor, modeLabel,
 }: MatchingModeGameProps) {
+  const { language } = useLanguage();
+  const t = gameActiveT[language];
   const themed = themeColor ? getThemeColors(themeColor) : null;
 
   const englishItems = matchingPairs.filter(p => p.type === 'english');
@@ -70,7 +74,7 @@ export default function MatchingModeGame({
         whileTap={{ scale: isMatchingProcessing || isMatched ? 1 : 0.96 }}
         onClick={() => handleClick(item)}
         disabled={isMatchingProcessing || isMatched}
-        dir="auto"
+        dir={item.type === 'english' ? 'ltr' : 'auto'}
         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         className={`relative w-full p-3 sm:p-5 rounded-xl shadow-md font-black text-base sm:text-xl h-16 sm:h-20 flex items-center justify-center text-center transition-colors duration-200 break-words ${bgClass} ${isMatchingProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
       >
@@ -93,7 +97,7 @@ export default function MatchingModeGame({
       )}
 
       <p className="text-[10px] sm:text-xs font-black text-stone-400 uppercase tracking-widest text-center">
-        Tap a card, then tap its match
+        {t.tapToMatch}
       </p>
 
       {/* Two-column layout, horizontally centered with mx-auto on

@@ -249,9 +249,9 @@ export default function ReviewGame({
         </div>
       </div>
 
-      {/* Big prompt word */}
+      {/* Big prompt word — English, always LTR. */}
       <div className="mb-2 text-center">
-        <h2 className="text-4xl sm:text-6xl font-black tracking-tight text-stone-900 dark:text-stone-100">
+        <h2 dir="ltr" className="text-4xl sm:text-6xl font-black tracking-tight text-stone-900 dark:text-stone-100">
           {question.word.english}
         </h2>
       </div>
@@ -280,6 +280,13 @@ export default function ReviewGame({
           const isPicked = picked?.id === opt.id;
           const isCorrect = opt.id === question.word.id;
           const showResult = picked != null;
+          // Render the HE/AR translation when present; fall back to the
+          // English word when a word lacks one.  Direction follows the
+          // text we actually render, so an English fallback isn't
+          // forced RTL.
+          const optTranslation = translationOf(opt, targetLanguage);
+          const optText = optTranslation || opt.english;
+          const optDir = optTranslation ? 'rtl' : 'ltr';
           let stateClasses = `bg-white border-2 ${theme.border} ${theme.hoverBg}`;
           if (showResult) {
             if (isCorrect) {
@@ -297,11 +304,11 @@ export default function ReviewGame({
               onClick={() => handlePick(opt)}
               disabled={showResult}
               type="button"
-              dir={targetLanguage === 'hebrew' || targetLanguage === 'arabic' ? 'rtl' : 'ltr'}
+              dir={optDir}
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               className={`px-4 py-4 sm:py-5 rounded-xl text-center font-black text-lg sm:text-xl transition-all shadow-sm ${stateClasses}`}
             >
-              {translationOf(opt, targetLanguage) || opt.english}
+              {optText}
             </motion.button>
           );
         })}
@@ -335,10 +342,17 @@ export default function ReviewGame({
               ? (language === 'he' ? 'נכון! המילה תחזור עוד יותר זמן ✨'
                 : language === 'ar' ? 'صحيح! ستعود الكلمة بعد فترة أطول ✨'
                 : 'Correct! Next review pushed further out ✨')
-              : (language === 'he' ? `המילה הנכונה: ${translationOf(question.word, targetLanguage)}`
-                : language === 'ar' ? `الإجابة الصحيحة: ${translationOf(question.word, targetLanguage)}`
-                : `Correct answer: ${translationOf(question.word, targetLanguage)}`)}
-            <ArrowRight size={14} className="inline ml-1" />
+              : (
+                <>
+                  {language === 'he' ? 'המילה הנכונה: ' : language === 'ar' ? 'الإجابة الصحيحة: ' : 'Correct answer: '}
+                  {/* Isolate the answer so a bidi-neutral or mixed-script
+                      value doesn't reorder against the prefix. */}
+                  <bdi dir={targetLanguage === 'hebrew' || targetLanguage === 'arabic' ? 'rtl' : 'ltr'}>
+                    {translationOf(question.word, targetLanguage)}
+                  </bdi>
+                </>
+              )}
+            <ArrowRight size={14} className="inline ms-1 rtl:-scale-x-100" />
           </motion.p>
         )}
       </AnimatePresence>
