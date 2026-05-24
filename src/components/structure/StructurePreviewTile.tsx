@@ -40,9 +40,20 @@ export const StructurePreviewTile: React.FC<StructurePreviewTileProps> = ({ kind
     <button
       type="button"
       onClick={onOpen}
-      style={{ touchAction: 'manipulation' }}
+      style={{
+        touchAction: 'manipulation',
+        background:
+          "radial-gradient(120% 100% at 0% 0%, #2A1B5C 0%, #1A0E3D 60%, #0E0828 100%)",
+        boxShadow:
+          "0 20px 50px -22px rgba(60,40,120,0.50), 0 0 0 1px rgba(255,255,255,0.06)",
+      }}
       aria-label={t.previewTileAria(kind, earned, total)}
-      className="group relative overflow-hidden rounded-2xl shadow-xl ring-1 ring-stone-900/10 bg-stone-900 text-white hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.99] transition-all text-left w-full"
+      className="group relative overflow-hidden rounded-2xl text-white hover:-translate-y-0.5 active:scale-[0.99] transition-transform text-left w-full"
+      // Live v1 dark stack — same deep purple radial used by the
+      // student joining screen + end-of-session celebration, so the
+      // structure tile reads as part of the dark-themed-when-vibrant
+      // surface family.
+      data-v1-dark="true"
     >
       {/* Embed the real scene at small size so the student sees a
           genuine peek of their progress — not a stock illustration.
@@ -74,10 +85,14 @@ export const StructurePreviewTile: React.FC<StructurePreviewTileProps> = ({ kind
             <ArrowRight size={12} />
           </span>
         </div>
-        <div className="mt-2 h-1 w-full rounded-full bg-white/15 overflow-hidden">
+        <div className="mt-2 h-1 w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.15)" }}>
           <div
-            className="h-full bg-gradient-to-r from-emerald-300 to-teal-300 transition-all"
-            style={{ width: `${progress}%` }}
+            className="h-full transition-all"
+            style={{
+              width: `${progress}%`,
+              background: "linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)",
+              boxShadow: "0 0 12px rgba(139,92,246,0.65)",
+            }}
           />
         </div>
       </div>

@@ -52,6 +52,22 @@ export const DATA_PROTECTION_OFFICER = {
 export const PRIVACY_POLICY_VERSION = "2026-05-23";  // Version 2.3 - EU hosting + log-scrubbing disclosed
 export const TERMS_VERSION = "2026-05-23";            // Version 2.3 - bumped alongside privacy version
 
+/**
+ * Student "teacher can see my plays" acknowledgement version.
+ *
+ * Bumping this number re-prompts every active student to re-affirm
+ * that they understand their teacher sees their gameplay (scores,
+ * words, time spent).  Distinct from PRIVACY_POLICY_VERSION because
+ * students see this in plain-language framing, not as legal copy,
+ * and we want to be able to bump the disclosure without forcing a
+ * full legal-policy re-prompt across the entire user base.
+ *
+ * Tracked in:
+ *   - localStorage  → CLIENT_STORAGE_KEYS.studentVisibilityVersion
+ *   - consent_log   → action = 'accept_student_visibility'
+ */
+export const STUDENT_VISIBILITY_VERSION = "2026-05-24";
+
 // ---------------------------------------------------------------------------
 // 3. Hosting regions (for cross-border transfer disclosures)
 // ---------------------------------------------------------------------------
@@ -448,4 +464,6 @@ export const CLIENT_STORAGE_KEYS = {
   consentVersion: "vocaband_consent_version",
   /** Whether the user has opted out of the per-login privacy reminder */
   privacyReminderDismissed: "vocaband_privacy_reminder_dismissed",
+  /** Student-side "teacher sees my plays" acknowledgement version */
+  studentVisibilityVersion: "vocaband_student_visibility_version",
 } as const;
