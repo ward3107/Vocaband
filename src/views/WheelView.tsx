@@ -1685,7 +1685,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                     {t.pickedHeading}
                   </p>
                   <h2 className="text-5xl sm:text-7xl font-black text-stone-900 break-words leading-tight">
-                    {pickedPlayer.name}
+                    <bdi>{pickedPlayer.name}</bdi>
                   </h2>
                   <div className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r ${pickedMeta.gradient} text-white font-black text-base shadow-md`}>
                     <span className="text-xl">{pickedMeta.emoji}</span>
@@ -1771,7 +1771,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
           </button>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="px-4 py-2 rounded-full bg-violet-100 text-violet-800 text-sm sm:text-base font-black uppercase tracking-wider truncate max-w-[40vw]">
-              {pickedPlayer.name}
+              <bdi>{pickedPlayer.name}</bdi>
             </div>
             <div className={`px-4 py-2 rounded-full bg-gradient-to-r ${pickedMeta.gradient} text-white text-sm sm:text-base font-black`}>
               {pickedMeta.emoji} {{
@@ -1780,7 +1780,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                 'true-false': t.trueFalseLabel,
               }[pickedChallenge]}
             </div>
-            <div className="px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm sm:text-base font-black">
+            <div className="px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm sm:text-base font-black" dir="ltr">
               ✓ {pickedPlayer.correct}
             </div>
           </div>
@@ -1984,7 +1984,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                   {t.eliminatedHeading}
                 </p>
                 <h2 className="text-6xl sm:text-8xl font-black break-words">
-                  {eliminationBanner}
+                  <bdi>{eliminationBanner}</bdi>
                 </h2>
                 <p className="mt-4 text-2xl font-black">{t.eliminatedSubline}</p>
               </motion.div>
@@ -2044,7 +2044,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
             className="text-6xl sm:text-8xl md:text-9xl font-black text-white break-words leading-tight"
             style={{ textShadow: '0 4px 16px rgba(0,0,0,0.3)' }}
           >
-            {winner?.name ?? ''}
+            <bdi>{winner?.name ?? ''}</bdi>
           </motion.h1>
 
           <motion.p
@@ -2063,7 +2063,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
               transition={{ delay: 1.1 }}
               className="mt-6 inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/20 backdrop-blur text-white font-black text-base"
             >
-              <span>✓ {winner.correct}</span>
+              <span dir="ltr">✓ {winner.correct}</span>
               <span className="opacity-60">·</span>
               <span>{winner.total} {t.winnerAnswered}</span>
             </motion.div>
@@ -2135,9 +2135,9 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
                   <span className="text-2xl w-8 text-center shrink-0">
                     {rank < 3 ? MEDAL[rank] : <span className="text-stone-400 text-sm font-black">#{rank + 1}</span>}
                   </span>
-                  <span className="text-base font-black text-stone-900 truncate">{p.name}</span>
+                  <span className="text-base font-black text-stone-900 truncate"><bdi>{p.name}</bdi></span>
                 </div>
-                <span className="text-base font-black text-stone-700 tabular-nums shrink-0">
+                <span className="text-base font-black text-stone-700 tabular-nums shrink-0" dir="ltr">
                   {t.scoreOf(p.correct, p.total)}
                 </span>
               </div>
@@ -2204,7 +2204,7 @@ function Scoreboard({
             <span className="flex items-center gap-1.5 min-w-0">
               <span className="text-xs w-4 text-center">{i < 3 && !p.eliminated ? MEDAL[i] : `${i + 1}`}</span>
               <span className={`font-bold truncate ${p.eliminated ? 'text-stone-500 line-through' : 'text-stone-900'}`}>
-                {p.name}
+                <bdi>{p.name}</bdi>
               </span>
               {p.eliminated && (
                 <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-100 text-rose-600">
@@ -2212,7 +2212,7 @@ function Scoreboard({
                 </span>
               )}
             </span>
-            <span className="font-black text-stone-700 tabular-nums shrink-0">
+            <span className="font-black text-stone-700 tabular-nums shrink-0" dir="ltr">
               {p.correct}/{p.total}
             </span>
           </li>

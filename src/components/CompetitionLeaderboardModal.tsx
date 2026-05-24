@@ -35,7 +35,7 @@ export default function CompetitionLeaderboardModal({
   onClose,
   onEnded,
 }: Props) {
-  const { language, dir, isRTL } = useLanguage();
+  const { language, dir } = useLanguage();
   const t = competitionsT[language];
   const { entries, loading } = useCompetitionLeaderboard(competition.id);
   const [ending, setEnding] = useState(false);
@@ -84,7 +84,7 @@ export default function CompetitionLeaderboardModal({
                 : 'bg-gradient-to-r from-stone-500 to-stone-700'
             } text-white`}
           >
-            <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {isLive ? <Crown size={20} /> : <Flag size={20} />}
                 <h2 className="text-lg font-black">
@@ -135,7 +135,7 @@ export default function CompetitionLeaderboardModal({
                         isYou
                           ? 'border-amber-400 bg-amber-50 shadow-sm'
                           : 'border-stone-100 bg-white'
-                      } ${isRTL ? 'flex-row-reverse' : ''}`}
+                      }`}
                     >
                       <span
                         className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-sm font-black ${rankClass}`}
@@ -150,7 +150,7 @@ export default function CompetitionLeaderboardModal({
                               isYou ? 'text-amber-900' : 'text-stone-900'
                             }`}
                           >
-                            {entry.studentName}
+                            <bdi>{entry.studentName}</bdi>
                           </span>
                           {isYou && (
                             <span className="ms-1 text-[10px] font-black text-amber-700 bg-amber-200/70 rounded-full px-1.5 py-0.5">

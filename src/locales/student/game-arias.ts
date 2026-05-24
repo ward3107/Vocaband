@@ -46,6 +46,11 @@ export interface GameAriasStrings {
   togglePresentation: string;
   /** AdaptiveDrawer close-details aria. */
   closeDetails: string;
+  /** QpReactionBar — the bar wrapper + per-emoji send button. */
+  sendReactionBar: string;
+  sendReactionEmoji: (emoji: string) => string;
+  /** QPAvatarPicker — per-avatar select button. */
+  selectAvatar: (avatar: string) => string;
 }
 
 export const gameAriasT: Record<Language, GameAriasStrings> = {
@@ -71,6 +76,9 @@ export const gameAriasT: Record<Language, GameAriasStrings> = {
     vocabandTitle: "Vocaband",
     togglePresentation: "Toggle presentation mode",
     closeDetails: "Close details",
+    sendReactionBar: "Send a reaction to the class screen",
+    sendReactionEmoji: (emoji) => `Send ${emoji}`,
+    selectAvatar: (avatar) => `Avatar ${avatar}`,
   },
   he: {
     replayAudio: "השמע שוב",
@@ -94,6 +102,9 @@ export const gameAriasT: Record<Language, GameAriasStrings> = {
     vocabandTitle: "Vocaband",
     togglePresentation: "החלף מצב הצגה",
     closeDetails: "סגור פרטים",
+    sendReactionBar: "שלחו תגובה למסך הכיתה",
+    sendReactionEmoji: (emoji) => `שלח ${emoji}`,
+    selectAvatar: (avatar) => `דמות ${avatar}`,
   },
   ar: {
     replayAudio: "إعادة تشغيل الصوت",
@@ -117,6 +128,9 @@ export const gameAriasT: Record<Language, GameAriasStrings> = {
     vocabandTitle: "Vocaband",
     togglePresentation: "تبديل وضع العرض",
     closeDetails: "إغلاق التفاصيل",
+    sendReactionBar: "أرسل تفاعلًا إلى شاشة الصف",
+    sendReactionEmoji: (emoji) => `أرسل ${emoji}`,
+    selectAvatar: (avatar) => `صورة ${avatar}`,
   },
   ru: {
     replayAudio: "Replay audio",
@@ -140,5 +154,8 @@ export const gameAriasT: Record<Language, GameAriasStrings> = {
     vocabandTitle: "Vocaband",
     togglePresentation: "Toggle presentation mode",
     closeDetails: "Close details",
+    sendReactionBar: "Send a reaction to the class screen",
+    sendReactionEmoji: (emoji) => `Send ${emoji}`,
+    selectAvatar: (avatar) => `Avatar ${avatar}`,
   },
 };

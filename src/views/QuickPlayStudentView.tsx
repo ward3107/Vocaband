@@ -620,9 +620,9 @@ export default function QuickPlayStudentView({
                 <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
                   <span className="text-white text-3xl sm:text-4xl font-black">Aa</span>
                 </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">Pick a language</h1>
+                <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">{qpT.pickLanguage}</h1>
                 <p className="text-sm sm:text-base text-on-surface-variant font-bold">
-                  Buttons + mode names will be in this language
+                  {qpT.pickLanguageSubtitle}
                 </p>
               </div>
 
@@ -655,7 +655,7 @@ export default function QuickPlayStudentView({
                 onClick={() => setJoinStep("form")}
                 className="mt-5 w-full py-2 text-sm text-on-surface-variant hover:text-on-surface font-bold"
               >
-                {qpIsRTL ? '→' : '←'} Back
+                {qpIsRTL ? '→' : '←'} {qpT.back}
               </button>
             </div>
           ) : !quickPlayStudentName && joinStep === "get-ready" ? (
@@ -777,6 +777,11 @@ export default function QuickPlayStudentView({
                         autoCorrect="off"
                         spellCheck={false}
                         maxLength={30}
+                        // dir="auto" so the caret + typed characters follow
+                        // the nickname's own script (English name → LTR,
+                        // Hebrew/Arabic name → RTL) instead of inheriting
+                        // the page direction.
+                        dir="auto"
                         defaultValue={quickPlayStudentName}
                         placeholder={qpLanguage === 'he' ? 'הכניסו כינוי...' : qpLanguage === 'ar' ? 'أدخل اسمك المستعار...' : 'Enter your nickname...'}
                         className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
