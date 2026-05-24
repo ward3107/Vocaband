@@ -286,6 +286,7 @@ export default function StudentGreetingCard({
             <button
               onClick={handleCopyCode}
               type="button"
+              dir="ltr"
               style={{ touchAction: 'manipulation' }}
               className="bg-white/10 hover:bg-white/20 text-white/90 font-mono font-bold px-2.5 py-0.5 rounded-full border border-white/20 inline-flex items-center gap-1 active:scale-95 transition-all"
               title={t.tapToCopyClassCode}
