@@ -18,6 +18,7 @@ import { X } from "lucide-react";
 import { supabase } from "../../../core/supabase";
 import { logAudit } from "../../../utils/audit";
 import { useLanguage } from "../../../hooks/useLanguage";
+import { useIsMobile } from "../../../hooks/useIsMobile";
 import { classRosterT } from "../../../locales/teacher/roster";
 import AddStudentRow, { TipCard } from "./AddStudentRow";
 import RosterHeader from "./RosterHeader";
@@ -78,6 +79,7 @@ export default function RosterModalV2({
   classEmoji = "🎓",
 }: Props) {
   const { language, dir, isRTL } = useLanguage();
+  const isMobile = useIsMobile();
   const t = classRosterT[language];
 
   const [rows, setRows] = useState<RawRosterRow[]>([]);
@@ -402,6 +404,7 @@ export default function RosterModalV2({
 
             <div className="px-5 sm:px-10 pt-8 sm:pt-10 pb-12">
               <RosterHeader
+                mobile={isMobile}
                 className={className}
                 classCode={classCode}
                 classEmoji={classEmoji}
@@ -425,6 +428,7 @@ export default function RosterModalV2({
               />
 
               <AddStudentRow
+                mobile={isMobile}
                 placeholder={t.addStudentPlaceholder}
                 ctaLabel={t.addButton}
                 helpText={t.addHelp}
@@ -483,6 +487,7 @@ export default function RosterModalV2({
                     <StudentCard
                       key={s.id}
                       student={s}
+                      mobile={isMobile}
                       pinRevealed={revealedIds.has(s.id)}
                       onTogglePin={() => togglePin(s.id)}
                       onResetPin={() => handleResetPin(s)}
