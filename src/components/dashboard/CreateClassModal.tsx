@@ -1,6 +1,10 @@
-import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
+import ModalShell, {
+  ModalFootSpacer,
+  ModalPrimaryButton,
+  ModalQuietButton,
+} from "../ui/ModalShell";
 
 interface CreateClassModalProps {
   show: boolean;
@@ -10,73 +14,59 @@ interface CreateClassModalProps {
   onCreate: () => void;
 }
 
+/**
+ * "Create a new class" prompt — brand-variant shell with a single
+ * name input.  Adopts ModalShell so it matches the rest of the
+ * Modals v1 dialog family.
+ */
 export default function CreateClassModal({
-  show, newClassName, setNewClassName, onCancel, onCreate,
+  show,
+  newClassName,
+  setNewClassName,
+  onCancel,
+  onCreate,
 }: CreateClassModalProps) {
   const { language, dir } = useLanguage();
   const t = teacherModalsT[language];
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newClassName.trim()) onCreate();
+  };
+
   return (
-    <AnimatePresence>
-      {show && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
-          <motion.div
-            dir={dir}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            style={{ backgroundColor: 'var(--vb-surface)' }}
-            className="rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto"
-          >
-            <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
-              {t.createTitle}
-            </h2>
-            <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
-              {t.createBlurb}
-            </p>
-            <input
-              autoFocus
-              type="text"
-              id="create-class-name"
-              name="className"
-              autoComplete="off"
-              value={newClassName}
-              onChange={(e) => setNewClassName(e.target.value)}
-              placeholder={t.classNamePlaceholder}
-              maxLength={50}
-              style={{
-                borderColor: 'var(--vb-border)',
-                color: 'var(--vb-text-primary)',
-                backgroundColor: 'var(--vb-surface)',
-              }}
-              className="w-full px-6 py-4 rounded-xl border-2 outline-none mb-6 font-bold focus:border-[var(--vb-accent)]"
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={onCancel}
-                style={{
-                  borderColor: 'var(--vb-border)',
-                  color: 'var(--vb-text-secondary)',
-                  backgroundColor: 'var(--vb-surface)',
-                }}
-                className="flex-1 py-4 rounded-xl font-bold transition-colors border-2 hover:opacity-90"
-              >
-                {t.cancel}
-              </button>
-              <button
-                onClick={onCreate}
-                style={{
-                  backgroundColor: 'var(--vb-accent)',
-                  color: 'var(--vb-accent-text)',
-                }}
-                className="flex-1 py-4 rounded-xl font-bold hover:opacity-90 transition-colors shadow-lg"
-              >
-                {t.createBtn}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    <ModalShell
+      open={show}
+      onClose={onCancel}
+      variant="brand"
+      icon="🎓"
+      title={t.createTitle}
+      subtitle={t.createBlurb}
+      dir={dir}
+      footer={
+        <>
+          <ModalQuietButton onClick={onCancel}>{t.cancel}</ModalQuietButton>
+          <ModalFootSpacer />
+          <ModalPrimaryButton onClick={onCreate} disabled={!newClassName.trim()}>
+            {t.createBtn}
+          </ModalPrimaryButton>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit}>
+        <input
+          autoFocus
+          type="text"
+          id="create-class-name"
+          name="className"
+          autoComplete="off"
+          value={newClassName}
+          onChange={(e) => setNewClassName(e.target.value)}
+          placeholder={t.classNamePlaceholder}
+          maxLength={50}
+          className="block w-full rounded-2xl border-[1.5px] border-indigo-500/[0.10] bg-white px-[18px] py-3 text-[15px] font-bold text-[#1F1147] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)]"
+        />
+      </form>
+    </ModalShell>
   );
 }

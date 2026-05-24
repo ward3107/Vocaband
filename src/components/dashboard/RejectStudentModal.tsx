@@ -1,7 +1,10 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
+import ModalShell, {
+  ModalDangerButton,
+  ModalFootSpacer,
+  ModalQuietButton,
+} from "../ui/ModalShell";
 
 interface RejectStudentModalProps {
   modal: { id: string; displayName: string } | null;
@@ -9,66 +12,52 @@ interface RejectStudentModalProps {
   onConfirm: (id: string) => void;
 }
 
+/**
+ * Reject-a-pending-student confirmation.  Same shell pattern as
+ * DeleteAssignmentModal — danger variant + tip card surfacing the
+ * "they can rejoin later" reassurance.
+ */
 export default function RejectStudentModal({ modal, onCancel, onConfirm }: RejectStudentModalProps) {
   const { language, dir } = useLanguage();
   const t = teacherModalsT[language];
   return (
-    <AnimatePresence>
-      {modal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
-          <motion.div
-            dir={dir}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            style={{ backgroundColor: 'var(--vb-surface)' }}
-            className="rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
+    <ModalShell
+      open={!!modal}
+      onClose={onCancel}
+      variant="danger"
+      icon="🚫"
+      title={t.rejectTitle}
+      dir={dir}
+      footer={
+        <>
+          <ModalQuietButton onClick={onCancel}>{t.rejectKeep}</ModalQuietButton>
+          <ModalFootSpacer />
+          <ModalDangerButton
+            onClick={() => modal && onConfirm(modal.id)}
+            disabled={!modal}
           >
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: 'var(--vb-warning-soft)', color: 'var(--vb-warning)' }}
-            >
-              <AlertTriangle size={32} />
-            </div>
-            <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
-              {t.rejectTitle}
-            </h2>
-            <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
-              {t.rejectBody(modal.displayName)}
-            </p>
-            <p
-              className="px-4 py-3 rounded-xl mb-6 font-medium border-2"
-              style={{
-                color: 'var(--vb-warning)',
-                backgroundColor: 'var(--vb-warning-soft)',
-                borderColor: 'var(--vb-warning)',
-              }}
-            >
-              {t.rejectWarn}
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={onCancel}
-                style={{
-                  backgroundColor: 'var(--vb-surface-alt)',
-                  color: 'var(--vb-text-secondary)',
-                  borderColor: 'var(--vb-border)',
-                }}
-                className="flex-1 py-4 rounded-xl font-bold hover:opacity-90 transition-all border-2"
-              >
-                {t.rejectKeep}
-              </button>
-              <button
-                onClick={() => onConfirm(modal.id)}
-                style={{ backgroundColor: 'var(--vb-warning)', color: '#ffffff' }}
-                className="flex-1 py-4 rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg"
-              >
-                {t.rejectConfirm}
-              </button>
-            </div>
-          </motion.div>
-        </div>
+            {t.rejectConfirm}
+          </ModalDangerButton>
+        </>
+      }
+    >
+      {modal && (
+        <>
+          <p className="mb-4 text-[14px] text-[#4A3B7A] leading-[1.55]">
+            {t.rejectBody(modal.displayName)}
+          </p>
+          <div
+            className="rounded-2xl px-4 py-3 text-[13px] font-semibold"
+            style={{
+              background: "rgba(240,185,108,0.18)",
+              border: "1px solid rgba(240,185,108,0.40)",
+              color: "#8B5A1A",
+            }}
+          >
+            ⚠️ {t.rejectWarn}
+          </div>
+        </>
       )}
-    </AnimatePresence>
+    </ModalShell>
   );
 }
