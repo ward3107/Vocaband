@@ -215,6 +215,13 @@ function scheduleServiceWorkerRegistration() {
 }
 
 const App = lazyWithRetry(() => import('./App.tsx'));
+
+// Dev-only short-circuit: `/dev/student-rtl-preview` renders the
+// student-dashboard widgets touched by the 2026-05-24 RTL sweep against
+// fake data so the EN / HE / AR layout can be verified without a real
+// student login.  Tree-shaken out of production by the
+// `import.meta.env.DEV` guard below.
+const StudentRtlPreview = lazyWithRetry(() => import('./dev/StudentRtlPreview'));
 // AccessibilityWidget is lazy too — it doesn't render anything on
 // public pages until the user interacts, so keeping it in the entry
 // chunk (with its motion/lucide deps) was pure dead weight on first
@@ -309,16 +316,26 @@ async function bootstrap() {
     window.history.replaceState({}, '', window.location.pathname);
   }
 
+  const isDevPreview =
+    import.meta.env.DEV &&
+    window.location.pathname === '/dev/student-rtl-preview';
+
   createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <Suspense fallback={<Loading />}>
-        <App />
-        <Suspense fallback={null}>
-          <AccessibilityWidget />
-        </Suspense>
-        <Suspense fallback={null}>
-          <GlobalOverlays />
-        </Suspense>
+        {isDevPreview ? (
+          <StudentRtlPreview />
+        ) : (
+          <>
+            <App />
+            <Suspense fallback={null}>
+              <AccessibilityWidget />
+            </Suspense>
+            <Suspense fallback={null}>
+              <GlobalOverlays />
+            </Suspense>
+          </>
+        )}
       </Suspense>
     </ErrorBoundary>,
   );
