@@ -35,24 +35,13 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   "speed-round": "red",
 };
 
-/** Short uppercase label shown in the top pill of every game.  Falls
- *  back to the gameMode string raw if a label isn't yet defined. */
-const MODE_LABEL: Record<string, string> = {
-  classic: "Classic",
-  listening: "Listening",
-  reverse: "Reverse",
-  spelling: "Spelling",
-  matching: "Matching",
-  "memory-flip": "Memory Flip",
-  "true-false": "True / False",
-  flashcards: "Flashcards",
-  scramble: "Scramble",
-  "letter-sounds": "Letter Sounds",
-  "sentence-builder": "Sentence Builder",
-  "fill-blank": "Fill in the Blank",
-  idiom: "Idiom",
-  "speed-round": "Speed Round",
-};
+/** Modes whose "show correct answer" payload is the English vocab word
+ *  itself (rather than a Hebrew/Arabic translation).  ShowAnswerFeedback
+ *  receives `dir="ltr"` for these so the answer text never inherits the
+ *  page's RTL direction when the UI is set to Hebrew or Arabic.
+ *  Other modes get `dir="auto"` and the browser bidi-isolates the
+ *  HE/AR translation correctly. */
+const ENGLISH_ANSWER_MODES = new Set(["reverse", "spelling", "scramble", "letter-sounds", "fill-blank"]);
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
 import FloatingButtons from "../components/FloatingButtons";
 import ClassicModeGame from "../components/ClassicModeGame";
@@ -189,7 +178,7 @@ export default function GameActiveView({
   const { language } = useLanguage();
   const t = gameActiveT[language];
   const modeTheme: GameThemeColor | undefined = MODE_THEME[gameMode];
-  const modeLabel = MODE_LABEL[gameMode] ?? gameMode;
+  const modeLabel = t.modeLabels[gameMode] ?? gameMode;
 
   // Warn before the tab closes mid-game.  Without this guard a stray
   // tap on the close button (or a pinch-to-go-back swipe that escapes
@@ -499,12 +488,15 @@ export default function GameActiveView({
                   value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
                 />
 
-                {/* Show correct answer after 3 failed attempts */}
+                {/* Show correct answer after 3 failed attempts.  When
+                    the rendered answer is an English vocab word we
+                    force LTR; otherwise the HE/AR translation gets
+                    `dir="auto"` so the browser handles it naturally. */}
                 {feedback === "show-answer" && (
                   <div className="absolute top-12 sm:top-16 start-0 end-0 flex justify-center pointer-events-none z-20">
                     <ShowAnswerFeedback
                       answer={gameMode === "reverse" ? currentWord?.english : currentWord?.[targetLanguage]}
-                      dir="auto"
+                      dir={ENGLISH_ANSWER_MODES.has(gameMode) ? "ltr" : "auto"}
                     />
                   </div>
                 )}

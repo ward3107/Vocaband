@@ -59,11 +59,24 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
       })()
     : "bg-stone-100 text-stone-800 hover:bg-stone-200 active:bg-stone-300";
 
+  // Resolve which string we'll actually render and what direction
+  // it should flow in.  Two modes always show the English vocab
+  // word (`reverse` and `fill-blank`); for everything else we show
+  // the Hebrew/Arabic translation, but FALL BACK to English when a
+  // custom word lacks a translation — and English text in an HE/AR
+  // RTL container must still flow LTR.  Detect the fallback case
+  // and force `dir="ltr"` whenever we end up rendering English.
+  const showsEnglish = gameMode === "reverse" || gameMode === "fill-blank";
+  const translation = option[targetLanguage] || option.arabic || option.hebrew;
+  const renderedText = showsEnglish ? option.english : (translation || option.english);
+  const fallsBackToEnglish = !showsEnglish && !translation;
+  const optionDir = showsEnglish || fallsBackToEnglish ? "ltr" : "auto";
+
   return (
     <button
       onClick={handleClick}
       disabled={isDisabled}
-      dir={gameMode === "reverse" || gameMode === "fill-blank" ? "ltr" : "auto"}
+      dir={optionDir}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
       className={`py-5 px-5 sm:py-6 sm:px-8 rounded-xl sm:rounded-2xl text-xl sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[88px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
         showCorrect
@@ -81,7 +94,7 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
     >
       {showCorrect && <span aria-hidden="true">✓</span>}
       {showAnswer && <span aria-hidden="true">→</span>}
-      <span>{gameMode === "reverse" || gameMode === "fill-blank" ? option.english : (option[targetLanguage] || option.arabic || option.hebrew || option.english)}</span>
+      <span>{renderedText}</span>
     </button>
   );
 });

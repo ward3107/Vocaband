@@ -59,6 +59,36 @@ export interface GameActiveStrings {
   listenToSentence: string;
   tapWordsToBuild: string;
   waitingForPlayers: string;
+
+  // ShowAnswerFeedback (the amber pulse shown after 3 failed attempts).
+  correctAnswerIs: string;
+
+  // LiveLeaderboardWidget heading.
+  liveRank: string;
+
+  // LazyWrapper loading messages used across GameRoutes — every
+  // student waiting for a code-split chunk sees one of these.
+  loadingGame: string;
+  loadingResults: string;
+  loadingGameModes: string;
+  loadingHebrewModes: string;
+  loadingGeneric: string;
+
+  // PowerUpToolbar button labels + aria descriptions.  Emoji stays
+  // outside the translation (the icon is universal) — only the text
+  // part is localized.
+  powerUpSkip: string;
+  powerUpHint: string;
+  powerUpFiftyFifty: string;
+  powerUpSkipAria: string;
+  powerUpHintAria: string;
+  powerUpFiftyFiftyAria: string;
+
+  /** Translated mode-label pill text shown at the top of every themed
+   *  game.  Falls back to the gameMode id raw if a label isn't yet
+   *  defined.  English-default labels under HE/AR look out of place
+   *  visually because the surrounding chrome flips to RTL. */
+  modeLabels: Record<string, string>;
 }
 
 export const gameActiveT: Record<Language, GameActiveStrings> = {
@@ -90,6 +120,35 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     listenToSentence: "Listen to sentence",
     tapWordsToBuild: "Tap words below to build the sentence",
     waitingForPlayers: "Waiting for players...",
+    correctAnswerIs: "The correct answer is:",
+    liveRank: "Live Rank",
+    loadingGame: "Loading game...",
+    loadingResults: "Loading results...",
+    loadingGameModes: "Loading game modes...",
+    loadingHebrewModes: "Loading Hebrew modes...",
+    loadingGeneric: "Loading...",
+    powerUpSkip: "Skip",
+    powerUpHint: "Hint",
+    powerUpFiftyFifty: "50/50",
+    powerUpSkipAria: "Skip this question",
+    powerUpHintAria: "Reveal the first letter",
+    powerUpFiftyFiftyAria: "Remove two wrong answers",
+    modeLabels: {
+      classic: "Classic",
+      listening: "Listening",
+      reverse: "Reverse",
+      spelling: "Spelling",
+      matching: "Matching",
+      "memory-flip": "Memory Flip",
+      "true-false": "True / False",
+      flashcards: "Flashcards",
+      scramble: "Scramble",
+      "letter-sounds": "Letter Sounds",
+      "sentence-builder": "Sentence Builder",
+      "fill-blank": "Fill in the Blank",
+      idiom: "Idiom",
+      "speed-round": "Speed Round",
+    },
   },
   he: {
     wordOfTotal: (i, n) => `מילה ${i} מתוך ${n}`,
@@ -119,6 +178,35 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     listenToSentence: "האזן למשפט",
     tapWordsToBuild: "הקישו על המילים למטה כדי לבנות את המשפט",
     waitingForPlayers: "מחכים לשחקנים...",
+    correctAnswerIs: "התשובה הנכונה היא:",
+    liveRank: "דירוג חי",
+    loadingGame: "טוען משחק...",
+    loadingResults: "טוען תוצאות...",
+    loadingGameModes: "טוען מצבי משחק...",
+    loadingHebrewModes: "טוען מצבים בעברית...",
+    loadingGeneric: "טוען...",
+    powerUpSkip: "דלג",
+    powerUpHint: "רמז",
+    powerUpFiftyFifty: "50/50",
+    powerUpSkipAria: "דלג על השאלה הזו",
+    powerUpHintAria: "חשוף את האות הראשונה",
+    powerUpFiftyFiftyAria: "הסר שתי תשובות שגויות",
+    modeLabels: {
+      classic: "קלאסי",
+      listening: "האזנה",
+      reverse: "הפוך",
+      spelling: "איות",
+      matching: "התאמה",
+      "memory-flip": "זיכרון",
+      "true-false": "נכון / לא נכון",
+      flashcards: "כרטיסיות",
+      scramble: "ערבוב אותיות",
+      "letter-sounds": "צלילי אותיות",
+      "sentence-builder": "בניית משפט",
+      "fill-blank": "השלם את החסר",
+      idiom: "ביטוי",
+      "speed-round": "סבב מהירות",
+    },
   },
   ar: {
     wordOfTotal: (i, n) => `الكلمة ${i} من ${n}`,
@@ -148,6 +236,35 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     listenToSentence: "استمع إلى الجملة",
     tapWordsToBuild: "اضغط على الكلمات في الأسفل لتكوين الجملة",
     waitingForPlayers: "في انتظار اللاعبين...",
+    correctAnswerIs: "الإجابة الصحيحة هي:",
+    liveRank: "الترتيب المباشر",
+    loadingGame: "جارٍ تحميل اللعبة...",
+    loadingResults: "جارٍ تحميل النتائج...",
+    loadingGameModes: "جارٍ تحميل أوضاع اللعب...",
+    loadingHebrewModes: "جارٍ تحميل الأوضاع العبرية...",
+    loadingGeneric: "جارٍ التحميل...",
+    powerUpSkip: "تخطَّ",
+    powerUpHint: "تلميح",
+    powerUpFiftyFifty: "50/50",
+    powerUpSkipAria: "تخطَّ هذا السؤال",
+    powerUpHintAria: "اكشف الحرف الأول",
+    powerUpFiftyFiftyAria: "احذف إجابتين خاطئتين",
+    modeLabels: {
+      classic: "كلاسيكي",
+      listening: "استماع",
+      reverse: "معكوس",
+      spelling: "إملاء",
+      matching: "مطابقة",
+      "memory-flip": "ذاكرة",
+      "true-false": "صحيح / خطأ",
+      flashcards: "بطاقات",
+      scramble: "خلط الحروف",
+      "letter-sounds": "أصوات الحروف",
+      "sentence-builder": "بناء جملة",
+      "fill-blank": "املأ الفراغ",
+      idiom: "تعبير",
+      "speed-round": "جولة سريعة",
+    },
   },
   ru: {
     wordOfTotal: (i, n) => `Word ${i} of ${n}`,
@@ -177,5 +294,34 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     listenToSentence: "Listen to sentence",
     tapWordsToBuild: "Tap words below to build the sentence",
     waitingForPlayers: "Waiting for players...",
+    correctAnswerIs: "The correct answer is:",
+    liveRank: "Live Rank",
+    loadingGame: "Loading game...",
+    loadingResults: "Loading results...",
+    loadingGameModes: "Loading game modes...",
+    loadingHebrewModes: "Loading Hebrew modes...",
+    loadingGeneric: "Loading...",
+    powerUpSkip: "Skip",
+    powerUpHint: "Hint",
+    powerUpFiftyFifty: "50/50",
+    powerUpSkipAria: "Skip this question",
+    powerUpHintAria: "Reveal the first letter",
+    powerUpFiftyFiftyAria: "Remove two wrong answers",
+    modeLabels: {
+      classic: "Classic",
+      listening: "Listening",
+      reverse: "Reverse",
+      spelling: "Spelling",
+      matching: "Matching",
+      "memory-flip": "Memory Flip",
+      "true-false": "True / False",
+      flashcards: "Flashcards",
+      scramble: "Scramble",
+      "letter-sounds": "Letter Sounds",
+      "sentence-builder": "Sentence Builder",
+      "fill-blank": "Fill in the Blank",
+      idiom: "Idiom",
+      "speed-round": "Speed Round",
+    },
   },
 };

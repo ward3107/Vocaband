@@ -16,6 +16,8 @@ import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 import type { GameMode } from '../constants/game';
 import type { LeaderboardEntry } from '../core/types';
+import type { Language } from '../hooks/useLanguage';
+import { gameActiveT } from '../locales/student/game-active';
 
 const HebrewModeSelectionView = lazyWithRetry(() => import('./HebrewModeSelectionView'));
 const GameModeSelectionView = lazyWithRetry(() => import('./GameModeSelectionView'));
@@ -30,6 +32,10 @@ export interface GameRoutesDeps {
   view: View;
   user: AppUser | null;
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
+  /** Selected UI language — used to localize Suspense loading
+   *  messages for every code-split branch.  Caller passes
+   *  `useLanguage().language`. */
+  language: Language;
 
   // Mode-selection branch
   showModeSelection: boolean;
@@ -128,7 +134,7 @@ export interface GameRoutesDeps {
 
 export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
   const {
-    view, user, setUser,
+    view, user, setUser, language,
     showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
     setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
     showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
@@ -149,13 +155,15 @@ export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
     speakWord, speak, shuffle,
   } = deps;
 
+  const tLoading = gameActiveT[language];
+
   // Mode picker — Hebrew assignments get the 4-mode native picker;
   // English ones get the full GameModeSelectionView.  Branch on the
   // assignment's subject column.
   if (view === 'game' && showModeSelection) {
     if (activeAssignment?.subject === 'hebrew') {
       return (
-        <LazyWrapper loadingMessage="Loading Hebrew modes...">
+        <LazyWrapper loadingMessage={tLoading.loadingHebrewModes}>
           <HebrewModeSelectionView
             activeAssignment={activeAssignment}
             onPickMode={(mode) => {
@@ -171,7 +179,7 @@ export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
       );
     }
     return (
-      <LazyWrapper loadingMessage="Loading game modes...">
+      <LazyWrapper loadingMessage={tLoading.loadingGameModes}>
         <GameModeSelectionView
           activeAssignment={activeAssignment}
           studentProgress={studentProgress}
@@ -188,7 +196,7 @@ export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
 
   if (isFinished) {
     return (
-      <LazyWrapper loadingMessage="Loading results...">
+      <LazyWrapper loadingMessage={tLoading.loadingResults}>
         <GameFinishedView
           user={user}
           score={score}
@@ -230,7 +238,7 @@ export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
   // Mode intro instructions with translations
   if (showModeIntro) {
     return (
-      <LazyWrapper loadingMessage="Loading...">
+      <LazyWrapper loadingMessage={tLoading.loadingGeneric}>
         <GameModeIntroView
           gameMode={gameMode}
           hasChosenLanguage={hasChosenLanguage}
@@ -255,7 +263,7 @@ export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
 
   // Default: game-active view.
   return (
-    <LazyWrapper loadingMessage="Loading game...">
+    <LazyWrapper loadingMessage={tLoading.loadingGame}>
       <GameActiveView
         user={user}
         setUser={setUser}
