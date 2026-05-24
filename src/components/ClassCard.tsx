@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Users, Trophy } from "lucide-react";
+import { Check, Copy, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Users, Trophy, Palette } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
@@ -11,6 +11,13 @@ import { teacherDashboardT } from "../locales/teacher/dashboard";
 import { competitionsT } from "../locales/competitions";
 import ShareClassLinkModal from "./ShareClassLinkModal";
 import CompetitionLeaderboardModal from "./CompetitionLeaderboardModal";
+import FrostedEmoji from "./dashboard/FrostedEmoji";
+import {
+  ACCENTS,
+  ACCENT_ORDER,
+  BRAND_GRADIENT,
+  type AccentName,
+} from "./dashboard/dashboardAccents";
 
 interface Assignment {
   id: string;
@@ -70,6 +77,20 @@ interface ClassCardProps {
    *  assignment rows whose id is in the map render a clickable
    *  "🏆 Live standings" badge that opens the leaderboard. */
   competitionsByAssignment?: Map<string, CompetitionData>;
+  /** Visual variant. `classic` (default) keeps the existing themed
+   *  card used by VocaHebrew and legacy callers.  `pastel` opts into
+   *  the redesigned English-dashboard look: accent-tinted card, frosted
+   *  emoji avatar, white/65 code chip, pill-shaped action buttons. */
+  variant?: "classic" | "pastel";
+  /** Pastel accent for the card background when `variant === 'pastel'`
+   *  AND no custom `backgroundColor` hex is set.  Ignored in classic
+   *  mode.  Caller (EnglishDashboardLayout) computes this from
+   *  `accentForClass(classId)` so every class keeps a stable tint. */
+  accent?: AccentName;
+  /** Persist a new pastel accent when the teacher picks one inside the
+   *  avatar popover.  Optional — popover hides the swatch row when not
+   *  wired. */
+  onAccentChange?: (next: AccentName) => Promise<void> | void;
 }
 
 const ClassCard: React.FC<ClassCardProps> = ({
@@ -99,8 +120,27 @@ const ClassCard: React.FC<ClassCardProps> = ({
   onToggleDropdown,
   subject = "english",
   competitionsByAssignment,
+  variant = "classic",
+  accent,
+  onAccentChange,
 }) => {
   const { language } = useLanguage();
+  const isPastel = variant === "pastel";
+  // In pastel mode the accent map drives both the card background and
+  // a single hardcoded ink colour for text + icons.  Custom hex tints
+  // (backgroundColor prop) still take precedence so a teacher's saved
+  // colour wins over the deterministic accent.
+  const accentDef = accent ? ACCENTS[accent] : null;
+  const pastelBg = isPastel && !backgroundColor && accentDef ? accentDef.bg : null;
+  // Foreground inks for elements sitting on the pastel/tinted band.
+  // Hex+alpha is widely supported and saves a colour-mix dance.
+  const pastelInk = isPastel && accentDef
+    ? {
+        primary: accentDef.ink,
+        secondary: `${accentDef.ink}CC`,
+        muted: `${accentDef.ink}99`,
+      }
+    : null;
   const [activeCompetition, setActiveCompetition] = useState<CompetitionData | null>(null);
   // Hebrew classes belong to VocaHebrew — force the card chrome to
   // Hebrew copy so a teacher with English UI still sees Hebrew on
@@ -113,7 +153,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
   // triple from the tint's luminance once and use it for every label
   // sitting on the tinted band. Untinted cards keep using CSS vars
   // so dark mode + theme switches still work.
-  const tintText = backgroundColor ? readableTextOn(backgroundColor) : null;
+  // Pastel-variant cards without a custom hex tint fall back to the
+  // hardcoded accent ink so labels stay readable on the gradient.
+  const tintText = backgroundColor
+    ? readableTextOn(backgroundColor)
+    : pastelInk;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   // Trigger + portaled menu node refs.  The menu is rendered in a portal
@@ -280,19 +324,37 @@ const ClassCard: React.FC<ClassCardProps> = ({
   return (
     <>
     <div
-      style={{
-        backgroundColor: 'var(--vb-surface)',
-        borderColor: 'var(--vb-border)',
-      }}
-      className="rounded-xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+      style={
+        isPastel
+          ? {
+              // Pastel: outer card carries the accent gradient (or
+              // custom hex tint) directly so the whole card reads as
+              // one tinted surface. No border — the soft shadow does
+              // the lifting.
+              background: backgroundColor ?? pastelBg ?? "var(--vb-surface)",
+              boxShadow:
+                "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.25)",
+            }
+          : {
+              backgroundColor: 'var(--vb-surface)',
+              borderColor: 'var(--vb-border)',
+            }
+      }
+      className={
+        isPastel
+          ? "rounded-[28px] overflow-hidden"
+          : "rounded-xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+      }
     >
       {/* Header band — wraps the school strip + class-name row so the
           per-class tint (backgroundColor prop) sits behind those two
           elements only.  Rest of the card stays neutral so the
           assignment-list dropdown keeps its alt-surface contrast and
-          long classroom names stay readable on bright tints. */}
+          long classroom names stay readable on bright tints.
+          In pastel mode the outer card already carries the tint, so
+          this inner band stays transparent. */}
       <div
-        style={backgroundColor ? { backgroundColor } : undefined}
+        style={!isPastel && backgroundColor ? { backgroundColor } : undefined}
       >
       {/* School branding strip — only rendered when set, so legacy
           classes (no school configured yet) keep their existing
@@ -322,8 +384,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
       )}
 
       {/* Header */}
-      <div className="p-5 pb-4">
-        <div className="flex items-start justify-between gap-3 mb-4">
+      <div className={isPastel ? "p-[22px]" : "p-5 pb-4"}>
+        <div className={isPastel ? "flex items-start justify-between gap-3 mb-[18px]" : "flex items-start justify-between gap-3 mb-4"}>
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {/* Class avatar — now clickable! Opens popover picker. */}
             <div className="relative" ref={avatarPickerRef}>
@@ -362,14 +424,38 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   });
                 }}
                 type="button"
-                style={{
-                  touchAction: 'manipulation',
-                  ...(avatar ? { backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' } : {}),
-                }}
-                className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'border' : 'bg-gradient-to-br from-indigo-300 to-violet-400'}`}
+                style={isPastel
+                  ? { touchAction: 'manipulation', background: 'transparent', border: 'none', padding: 0 }
+                  : {
+                      touchAction: 'manipulation',
+                      ...(avatar ? { backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' } : {}),
+                    }
+                }
+                className={
+                  isPastel
+                    ? "relative shrink-0 rounded-[18px]"
+                    : `w-11 h-11 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-all hover:scale-105 active:scale-95 ${avatar ? 'border' : 'bg-gradient-to-br from-indigo-300 to-violet-400'}`
+                }
                 title={t.changeAvatarTitle}
               >
-                {avatar ? (
+                {isPastel ? (
+                  <>
+                    <FrostedEmoji emoji={avatar || "🎓"} size={56} tone="frost" />
+                    {/* Palette badge — visual hint that the avatar tile
+                        is also the customise entry point.  Tucked at the
+                        trailing-bottom corner using `end-*` so it flips
+                        in RTL. */}
+                    <span
+                      className="absolute -bottom-0.5 -end-0.5 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-white"
+                      style={{
+                        color: pastelInk?.primary ?? '#5B21B6',
+                        boxShadow: '0 4px 10px -4px rgba(60,40,120,0.4)',
+                      }}
+                    >
+                      <Palette size={12} />
+                    </span>
+                  </>
+                ) : avatar ? (
                   <span className="text-2xl leading-none">{avatar}</span>
                 ) : (
                   <GraduationCap size={20} className="text-white" />
@@ -393,7 +479,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   className="w-72 rounded-xl border shadow-2xl p-4"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-muted)' }}>Pick avatar</span>
+                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--vb-text-muted)' }}>{t.pickAvatarHeading}</span>
                     <button
                       onClick={() => setAvatarPickerOpen(false)}
                       type="button"
@@ -402,6 +488,38 @@ const ClassCard: React.FC<ClassCardProps> = ({
                       <X size={14} style={{ color: 'var(--vb-text-muted)' }} />
                     </button>
                   </div>
+
+                  {/* Accent-colour swatch row — only shown in pastel mode
+                      AND when the caller wired `onAccentChange`.  Lets
+                      a teacher repaint the card tint without leaving
+                      the inline picker. */}
+                  {isPastel && onAccentChange && (
+                    <div className="mb-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--vb-text-muted)' }}>{t.accentColorHeading}</p>
+                      <div className="flex gap-2">
+                        {ACCENT_ORDER.map(name => {
+                          const active = accent === name;
+                          return (
+                            <button
+                              key={name}
+                              type="button"
+                              aria-label={name}
+                              onClick={async () => {
+                                await onAccentChange(name);
+                              }}
+                              className="aspect-square flex-1 rounded-xl border-0"
+                              style={{
+                                background: ACCENTS[name].bg,
+                                boxShadow: active
+                                  ? 'inset 0 0 0 2.5px #8B5CF6, 0 4px 10px -4px rgba(139,92,246,0.4)'
+                                  : 'inset 0 0 0 1px rgba(0,0,0,0.04)',
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Default option — sits inline with "Default" label so it
                       looks like a picker tile, not a giant hero preview. The
@@ -519,15 +637,27 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 <button
                   onClick={onCopyCode}
                   type="button"
-                  style={{ touchAction: 'manipulation', color: tintText?.secondary ?? 'var(--vb-text-secondary)' }}
-                  className="group inline-flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wider transition-colors hover:text-[var(--vb-accent)]"
+                  style={isPastel
+                    ? {
+                        touchAction: 'manipulation',
+                        color: tintText?.primary ?? 'var(--vb-text-secondary)',
+                        backgroundColor: 'rgba(255,255,255,0.65)',
+                        backdropFilter: 'blur(6px)',
+                        WebkitBackdropFilter: 'blur(6px)',
+                      }
+                    : { touchAction: 'manipulation', color: tintText?.secondary ?? 'var(--vb-text-secondary)' }
+                  }
+                  className={isPastel
+                    ? "group inline-flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-semibold font-mono tracking-wider transition-transform active:scale-95"
+                    : "group inline-flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wider transition-colors hover:text-[var(--vb-accent)]"
+                  }
                   title={t.copyClassCodeTitle}
                 >
                   <span>{code}</span>
                   {copiedCode === code ? (
                     <Check size={12} className="text-emerald-500" />
                   ) : (
-                    <Copy size={12} className="opacity-50 group-hover:opacity-100" />
+                    <Copy size={12} className="opacity-60 group-hover:opacity-100" />
                   )}
                 </button>
                 {studentCount !== undefined && (
@@ -581,8 +711,20 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 });
               }}
               type="button"
-              style={{ touchAction: 'manipulation', color: tintText?.muted ?? 'var(--vb-text-muted)' }}
-              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--vb-surface-alt)] hover:text-[var(--vb-text-primary)]"
+              style={isPastel
+                ? {
+                    touchAction: 'manipulation',
+                    color: tintText?.primary ?? 'var(--vb-text-muted)',
+                    backgroundColor: 'rgba(255,255,255,0.5)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                  }
+                : { touchAction: 'manipulation', color: tintText?.muted ?? 'var(--vb-text-muted)' }
+              }
+              className={isPastel
+                ? "w-9 h-9 rounded-xl flex items-center justify-center transition-transform active:scale-95"
+                : "w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--vb-surface-alt)] hover:text-[var(--vb-text-primary)]"
+              }
               aria-label={t.classOptionsAria}
             >
               <MoreVertical size={18} />
@@ -667,12 +809,23 @@ const ClassCard: React.FC<ClassCardProps> = ({
           <button
             onClick={onAssign}
             type="button"
-            style={{
-              touchAction: 'manipulation',
-              backgroundColor: 'var(--vb-accent)',
-              color: 'var(--vb-accent-text)',
-            }}
-            className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+            style={isPastel
+              ? {
+                  touchAction: 'manipulation',
+                  background: BRAND_GRADIENT,
+                  color: '#fff',
+                  boxShadow: '0 10px 22px -10px rgba(99,102,241,0.55)',
+                }
+              : {
+                  touchAction: 'manipulation',
+                  backgroundColor: 'var(--vb-accent)',
+                  color: 'var(--vb-accent-text)',
+                }
+            }
+            className={isPastel
+              ? "flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-full font-bold text-sm transition-transform active:scale-[0.98]"
+              : "flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+            }
           >
             <Zap size={15} />
             {t.newAssignment}
@@ -681,12 +834,24 @@ const ClassCard: React.FC<ClassCardProps> = ({
             <button
               onClick={onOpenRoster}
               type="button"
-              style={{
-                touchAction: 'manipulation',
-                backgroundColor: 'var(--vb-surface-alt)',
-                color: 'var(--vb-text-secondary)',
-              }}
-              className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-lg font-semibold text-sm transition-colors hover:opacity-90"
+              style={isPastel
+                ? {
+                    touchAction: 'manipulation',
+                    backgroundColor: 'rgba(255,255,255,0.7)',
+                    color: tintText?.primary ?? 'var(--vb-text-secondary)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                  }
+                : {
+                    touchAction: 'manipulation',
+                    backgroundColor: 'var(--vb-surface-alt)',
+                    color: 'var(--vb-text-secondary)',
+                  }
+              }
+              className={isPastel
+                ? "inline-flex items-center gap-1.5 py-3 px-4 rounded-full font-bold text-sm transition-transform active:scale-95"
+                : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-lg font-semibold text-sm transition-colors hover:opacity-90"
+              }
               title={t.rosterButtonTitle}
               aria-label={t.rosterButtonAria}
             >
@@ -698,12 +863,24 @@ const ClassCard: React.FC<ClassCardProps> = ({
             <button
               onClick={handleToggleAssignments}
               type="button"
-              style={{
-                touchAction: 'manipulation',
-                backgroundColor: 'var(--vb-surface-alt)',
-                color: 'var(--vb-text-secondary)',
-              }}
-              className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-lg font-semibold text-sm transition-colors hover:opacity-90"
+              style={isPastel
+                ? {
+                    touchAction: 'manipulation',
+                    backgroundColor: 'rgba(255,255,255,0.7)',
+                    color: tintText?.primary ?? 'var(--vb-text-secondary)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                  }
+                : {
+                    touchAction: 'manipulation',
+                    backgroundColor: 'var(--vb-surface-alt)',
+                    color: 'var(--vb-text-secondary)',
+                  }
+              }
+              className={isPastel
+                ? "inline-flex items-center gap-1.5 py-3 px-3 rounded-full font-bold text-sm transition-transform active:scale-95"
+                : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-lg font-semibold text-sm transition-colors hover:opacity-90"
+              }
               aria-expanded={showAssignments}
             >
               <BookOpen size={15} />
@@ -724,10 +901,15 @@ const ClassCard: React.FC<ClassCardProps> = ({
         <div
           ref={assignmentsListRef}
           style={{
-            borderColor: 'var(--vb-border)',
-            backgroundColor: 'var(--vb-surface-alt)',
+            borderColor: isPastel ? 'rgba(255,255,255,0.4)' : 'var(--vb-border)',
+            backgroundColor: isPastel ? 'rgba(255,255,255,0.55)' : 'var(--vb-surface-alt)',
+            backdropFilter: isPastel ? 'blur(8px)' : undefined,
+            WebkitBackdropFilter: isPastel ? 'blur(8px)' : undefined,
           }}
-          className="border-t px-5 py-4 space-y-2 rounded-b-xl"
+          className={isPastel
+            ? "border-t px-5 py-4 space-y-2 rounded-b-[28px]"
+            : "border-t px-5 py-4 space-y-2 rounded-b-xl"
+          }
         >
           {assignments.map((assignment) => {
             const competition = competitionsByAssignment?.get(assignment.id) ?? null;
@@ -735,12 +917,21 @@ const ClassCard: React.FC<ClassCardProps> = ({
             <div
               key={assignment.id}
               style={{
-                backgroundColor: 'var(--vb-surface)',
-                borderColor: 'var(--vb-border)',
+                // Pastel dropdown sits on a frosted white-55 surface
+                // against an accent gradient — bumping each row to
+                // solid white lifts the title out of that wash.
+                backgroundColor: isPastel ? '#fff' : 'var(--vb-surface)',
+                borderColor: isPastel ? 'rgba(255,255,255,0.6)' : 'var(--vb-border)',
               }}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border"
+              // Stack title + buttons vertically.  Six action buttons
+              // don't reliably fit beside a long assignment title on
+              // a 2-up class-card grid, and the old `sm:flex-row`
+              // layout squeezed the title column down to a 1-char
+              // vertical stack of letters.  Stacking is one extra
+              // row of vertical space but always readable.
+              className="flex flex-col gap-2 p-3 rounded-lg border min-w-0"
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <p
                   style={{ color: 'var(--vb-text-primary)' }}
                   className="font-semibold text-sm truncate"
@@ -773,7 +964,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   </button>
                 )}
               </div>
-              <div className="flex gap-1.5 flex-shrink-0">
+              {/* Buttons sit on their own row under the title (see
+                  comment on parent).  flex-wrap covers the case where
+                  even on one row the six buttons don't fit. */}
+              <div className="flex flex-wrap gap-1.5 justify-end">
                 <button
                   onClick={() => setSharingAssignment(assignment)}
                   type="button"

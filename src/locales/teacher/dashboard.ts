@@ -94,6 +94,9 @@ export interface TeacherDashboardT {
 
   // ─── ClassCard ─────────────────────────────────────────────────
   pickAvatarHeading: string;
+  /** Header above the accent-colour swatch row in the pastel
+   *  avatar popover (English dashboard only). */
+  accentColorHeading: string;
   defaultAvatarLabel: string;
   changeAvatarTitle: string;
   saving: string;
@@ -204,6 +207,7 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     emptyCta: "Create first class",
 
     pickAvatarHeading: "Pick avatar",
+    accentColorHeading: "Color",
     defaultAvatarLabel: "Default",
     changeAvatarTitle: "Change avatar",
     saving: "Saving...",
@@ -310,6 +314,7 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     emptyCta: "צור כיתה ראשונה",
 
     pickAvatarHeading: "בחר אווטאר",
+    accentColorHeading: "צבע",
     defaultAvatarLabel: "ברירת מחדל",
     changeAvatarTitle: "שנה אווטאר",
     saving: "שומר...",
@@ -416,6 +421,7 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     emptyCta: "أنشئ أول فصل",
 
     pickAvatarHeading: "اختر صورة",
+    accentColorHeading: "اللون",
     defaultAvatarLabel: "افتراضي",
     changeAvatarTitle: "تغيير الصورة",
     saving: "جارٍ الحفظ...",
@@ -522,6 +528,7 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     emptyCta: "Create first class",
 
     pickAvatarHeading: "Pick avatar",
+    accentColorHeading: "Color",
     defaultAvatarLabel: "Default",
     changeAvatarTitle: "Change avatar",
     saving: "Saving...",
