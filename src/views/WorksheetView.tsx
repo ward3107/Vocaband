@@ -21,7 +21,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, ArrowLeftRight, CheckCircle, Layers, Grid3x3, Puzzle, MessageCircle, Link, Share2 } from 'lucide-react';
+import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, ArrowLeftRight, CheckCircle, Layers, Grid3x3, Puzzle, MessageCircle, Share2 } from 'lucide-react';
 import { ShareWorksheetDialog, type ShareSource, type WorksheetLang } from '../components/ShareWorksheetDialog';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import { useLanguage } from '../hooks/useLanguage';
@@ -43,7 +43,6 @@ import { FlashcardsSheet } from '../components/worksheet/sheets/FlashcardsSheet'
 import { MatchingSheet } from '../components/worksheet/sheets/MatchingSheet';
 import { SentenceBuilderSheet } from '../components/worksheet/sheets/SentenceBuilderSheet';
 import { IdiomSheet } from '../components/worksheet/sheets/IdiomSheet';
-import { WordChainsSheet } from '../components/worksheet/sheets/WordChainsSheet';
 import { buildQuestionShapes } from '../components/worksheet/buildShapes';
 import WordPicker from '../components/setup/WordPicker';
 import type { ClassShowWordPickerWiring } from '../components/classshow/ClassShowSetup';
@@ -92,7 +91,6 @@ function buildSheetTypes(t: WorksheetStrings): Array<{ id: WorksheetSheetType; l
     { id: 'matching',            label: t.matchingLabel,            description: t.matchingDesc,         icon: <Grid3x3 size={26} />,           gradient: 'from-violet-300 to-purple-400', needsSentences: false },
     { id: 'sentence-builder',    label: t.sentenceBuilderLabel,    description: t.sentenceBuilderDesc,               icon: <Puzzle size={26} />,            gradient: 'from-teal-300 to-emerald-400', needsSentences: true },
     { id: 'idiom',               label: t.idiomLabel,              description: t.idiomDesc,                  icon: <MessageCircle size={26} />,     gradient: 'from-sky-300 to-cyan-400', needsSentences: false },
-    { id: 'word-chains',         label: t.wordChainsLabel,         description: t.wordChainsDesc,             icon: <Link size={26} />,              gradient: 'from-amber-300 to-orange-400', needsSentences: false },
   ];
 }
 
@@ -554,7 +552,7 @@ export default function WorksheetView({
             </label>
           )}
 
-          {Array.from(selectedSheetTypes).some(type => type !== 'word-list' && type !== 'flashcards' && type !== 'word-chains') && (
+          {Array.from(selectedSheetTypes).some(type => type !== 'word-list' && type !== 'flashcards') && (
             <>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
@@ -630,7 +628,6 @@ export default function WorksheetView({
                   {type === 'matching' && <MatchingSheet words={wordsForSheet} translationLang={translationLang} shape={questionShapes.matching} />}
                   {type === 'sentence-builder' && <SentenceBuilderSheet words={wordsForSheet} translationLang={translationLang} aiSentences={aiSentences} shape={questionShapes['sentence-builder']} />}
                   {type === 'idiom' && <IdiomSheet words={wordsForSheet} translationLang={translationLang} />}
-                  {type === 'word-chains' && <WordChainsSheet words={wordsForSheet} translationLang={translationLang} />}
                 </div>
               );
             })}

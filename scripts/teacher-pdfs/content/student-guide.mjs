@@ -34,7 +34,7 @@ const en = {
           { name: 'Memory Flip', desc: 'Flip cards to find pairs.' },
           { name: 'Sentence Builder', desc: 'Drag words to make a sentence.' },
         ]},
-        { type: 'p', text: 'Plus: Flashcards, Scramble, Reverse, Letter Sounds, Fill-in-the-Blank, True/False, Word Chains, Idioms, Speed Round. **Same words, fifteen different games** — pick what feels fun today.' },
+        { type: 'p', text: 'Plus: Flashcards, Scramble, Reverse, Letter Sounds, Fill-in-the-Blank, True/False, Idioms, Speed Round. **Same words, fourteen different games** — pick what feels fun today.' },
         { type: 'h3', text: 'What you earn' },
         { type: 'stats', items: [
           { big: 'XP', label: 'every correct answer' },

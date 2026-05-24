@@ -464,20 +464,20 @@ export default function GameFinishedView({
               <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle size={32} />
               </div>
-              <h3 className="text-2xl font-black mb-3 text-stone-900">Confirm Action</h3>
+              <h3 className="text-2xl font-black mb-3 text-stone-900">{tt.confirmActionTitle}</h3>
               <p className="text-stone-600 mb-8">{confirmDialog.message}</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
                   className="flex-1 py-4 bg-stone-200 text-stone-700 rounded-xl font-bold hover:bg-stone-300 transition-all border-2 border-blue-200"
                 >
-                  Cancel
+                  {tt.cancel}
                 </button>
                 <button
                   onClick={confirmDialog.onConfirm}
                   className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
                 >
-                  Confirm
+                  {tt.confirm}
                 </button>
               </div>
             </motion.div>
