@@ -119,63 +119,108 @@ export default function QuickPlaySessionEndScreen({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      style={{
+        // Live v1 dark stack — same as the joining screen so the
+        // student app feels like one continuous dark surface from
+        // login through the end-of-session recap.
+        background:
+          "radial-gradient(120% 100% at 50% 0%, #2A1B5C 0%, #1A0E3D 50%, #0E0828 100%)",
+      }}
+    >
+      {/* Decorative glow blobs — match scene 1 chrome */}
+      <div
+        className="pointer-events-none absolute -top-24 -right-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+        style={{ background: "radial-gradient(circle, rgba(139,92,246,0.35) 0%, transparent 70%)" }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -bottom-24 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+        style={{ background: "radial-gradient(circle, rgba(217,70,239,0.22) 0%, transparent 70%)" }}
+        aria-hidden
+      />
+
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
+        initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-        className="bg-white rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-2xl text-center"
+        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+        className="relative z-10 max-w-md w-full text-center"
       >
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 300 }}
-          className="text-5xl sm:text-6xl mb-3"
+          transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
+          className="text-6xl sm:text-7xl mb-3 inline-block"
+          style={{ filter: "drop-shadow(0 12px 24px rgba(240,185,108,0.5))" }}
         >
-          {isTop3 ? '🏆' : '🎉'}
+          {isTop3 ? "🥇" : "🎉"}
         </motion.div>
 
         <motion.h1
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="text-2xl sm:text-3xl font-black text-gray-900 mb-1"
+          className="text-3xl sm:text-4xl font-black tracking-[-0.02em] mb-1"
+          style={{
+            background: "linear-gradient(110deg, #FFFFFF, #DAB6FF 50%, #FFB3E0)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+          }}
         >
-          {isTop3 ? `You finished ${rankLabel(myRank!)}!` : 'Session Complete!'}
+          {isTop3 ? `You finished ${rankLabel(myRank!)}!` : "Session Complete!"}
         </motion.h1>
 
         <motion.p
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.35 }}
-          className="text-gray-500 mb-5"
+          className="text-[14px] mb-6"
+          style={{ color: "rgba(241,236,255,0.70)" }}
         >
-          Great job, <strong>{studentName}</strong>!
+          Great job, <strong style={{ color: "#F1ECFF" }}>{studentName}</strong>!
         </motion.p>
 
-        {/* My rank + score card */}
+        {/* My rank + score card — frosted dark surface with a gold accent
+            for top-3 finishers, brand-violet otherwise. */}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          transition={{ delay: 0.4, type: 'spring', stiffness: 200 }}
-          className={`rounded-xl p-5 mb-5 border-2 ${
-            isTop3
-              ? 'bg-gradient-to-br from-yellow-50 to-amber-50 border-amber-200'
-              : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100'
-          }`}
+          transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+          className="rounded-2xl p-5 mb-5"
+          style={{
+            background: isTop3 ? "rgba(240,185,108,0.16)" : "rgba(255,255,255,0.06)",
+            border: isTop3
+              ? "1px solid rgba(240,185,108,0.30)"
+              : "1px solid rgba(255,255,255,0.10)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+          }}
         >
           <div className="flex items-center justify-center gap-2 mb-1">
             {myRank && medalIcon(myRank)}
-            <div className="text-sm font-bold text-indigo-400 uppercase tracking-wider">
+            <div
+              className="text-[11px] font-extrabold uppercase tracking-[0.12em]"
+              style={{ color: isTop3 ? "#F0B96C" : "rgba(241,236,255,0.45)" }}
+            >
               {myRank !== null && totalPlayers > 0
                 ? `Rank ${myRank} of ${totalPlayers}`
-                : 'Your Final Score'}
+                : "Your Final Score"}
             </div>
           </div>
-          <div className="text-5xl sm:text-6xl font-black text-indigo-600">
+          <div
+            className="text-5xl sm:text-6xl font-black"
+            style={{ color: isTop3 ? "#F0B96C" : "#F1ECFF" }}
+          >
             {myTotalScore}
           </div>
-          <div className="text-sm text-indigo-400 font-bold mt-1">points</div>
+          <div
+            className="text-[12px] font-bold mt-1"
+            style={{ color: "rgba(241,236,255,0.45)" }}
+          >
+            points
+          </div>
         </motion.div>
 
         {/* Top-3 mini podium.  Only shown when we have leaderboard data. */}
@@ -186,7 +231,10 @@ export default function QuickPlaySessionEndScreen({
             transition={{ delay: 0.5 }}
             className="mb-5"
           >
-            <div className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
+            <div
+              className="text-[11px] font-extrabold uppercase tracking-[0.12em] mb-2"
+              style={{ color: "rgba(241,236,255,0.45)" }}
+            >
               Top of the class
             </div>
             <div className="space-y-2">
@@ -197,21 +245,53 @@ export default function QuickPlaySessionEndScreen({
                 return (
                   <div
                     key={entry.studentUid || entry.name}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg ${
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                    style={
                       isMe
-                        ? 'bg-indigo-100 ring-2 ring-indigo-400'
-                        : 'bg-gray-50'
-                    }`}
+                        ? {
+                            background:
+                              "linear-gradient(110deg, rgba(139,92,246,0.20), rgba(217,70,239,0.20))",
+                            border: "1px solid rgba(139,92,246,0.35)",
+                          }
+                        : {
+                            background: "rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.10)",
+                          }
+                    }
                   >
-                    <div className="w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center font-black text-sm">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center font-black text-sm"
+                      style={
+                        idx === 0
+                          ? { background: "#F0B96C", color: "#0E0828" }
+                          : idx === 1
+                          ? { background: "#B8B8C8", color: "#0E0828" }
+                          : { background: "#D4956B", color: "#0E0828" }
+                      }
+                    >
                       {idx + 1}
                     </div>
                     <div className="text-xl">{entry.avatar}</div>
-                    <div className="flex-1 text-left truncate font-bold text-gray-800">
+                    <div
+                      className="flex-1 text-left truncate font-bold"
+                      style={{ color: "#F1ECFF" }}
+                    >
                       {entry.name}
-                      {isMe && <span className="ml-1 text-xs text-indigo-500">(you)</span>}
+                      {isMe && (
+                        <span
+                          className="ml-1 text-xs"
+                          style={{ color: "rgba(241,236,255,0.70)" }}
+                        >
+                          (you)
+                        </span>
+                      )}
                     </div>
-                    <div className="font-black text-indigo-600">{entry.score}</div>
+                    <div
+                      className="font-black"
+                      style={{ color: "#F0B96C", fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}
+                    >
+                      {entry.score}
+                    </div>
                   </div>
                 );
               })}
@@ -219,15 +299,26 @@ export default function QuickPlaySessionEndScreen({
           </motion.div>
         )}
 
-        {/* Sign up prompt — only for guest players, kept for growth */}
+        {/* Sign-up prompt — repainted with the new fuchsia-violet
+            gradient + frosted border so it matches the daily-chest
+            hook from the Live v1 mockup. */}
         <motion.div
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.55 }}
-          className="bg-amber-50 rounded-xl p-3 mb-5 border-2 border-amber-200"
+          className="rounded-2xl p-4 mb-5 flex items-center gap-3 text-left"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(217,70,239,0.18), rgba(139,92,246,0.18))",
+            border: "1px solid rgba(217,70,239,0.30)",
+          }}
         >
-          <p className="text-amber-700 text-xs sm:text-sm font-medium">
-            {"⭐"} Sign up to save your progress, earn XP, and climb the leaderboard!
+          <div className="text-2xl shrink-0">⭐</div>
+          <p
+            className="text-[12px] sm:text-[13px] font-semibold"
+            style={{ color: "#F1ECFF" }}
+          >
+            Sign up to save your progress, earn XP, and climb the leaderboard!
           </p>
         </motion.div>
 
@@ -239,8 +330,13 @@ export default function QuickPlaySessionEndScreen({
           whileTap={{ scale: 0.98 }}
           onClick={onGoHome}
           type="button"
-          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg shadow-lg shadow-indigo-200 hover:shadow-xl transition-all"
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
+            background: "linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)",
+            boxShadow: "0 14px 30px -14px rgba(139,92,246,0.6)",
+          }}
+          className="w-full py-4 text-white rounded-full font-bold text-base sm:text-lg"
         >
           Back to Home Page
         </motion.button>
