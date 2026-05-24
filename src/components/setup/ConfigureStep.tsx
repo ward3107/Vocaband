@@ -479,65 +479,77 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 <span className="text-[11px] text-[var(--vb-text-muted)]">{section.description}</span>
               </div>
 
-              {/* Mode grid for this section */}
+              {/* Mode grid — repainted with new-design tokens (option D).
+                  Selected: vibrant gradient tile, white text, ★★☆ glyph
+                  stars, white check badge at the trailing-top corner with
+                  brand-violet glow.  Unselected: soft tinted card with
+                  colored emoji on a frosted swatch, so the rainbow stays
+                  visible at a glance but selection contrast is preserved.
+                  Animation logic unchanged. */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {section.modes.map((gameMode) => {
                   const isSelected = selectedModes.includes(gameMode.id);
+                  const tier = getModeDifficulty(gameMode.id);
+                  const meta = DIFFICULTY_META[tier];
+                  const stars = '★'.repeat(meta.stars) + '☆'.repeat(3 - meta.stars);
                   return (
                     <motion.button
                       key={gameMode.id}
                       onClick={() => toggleGameMode(gameMode.id)}
-                      whileHover={{ scale: isSelected ? 1.05 : 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      className={`relative p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 text-center ${
+                      whileHover={{ scale: isSelected ? 1.04 : 1.06, y: isSelected ? 0 : -2 }}
+                      whileTap={{ scale: 0.96 }}
+                      aria-pressed={isSelected}
+                      className={`relative flex flex-col items-center justify-center gap-1.5 rounded-[22px] border-0 px-4 py-[22px] text-center transition-shadow ${
                         isSelected
-                          ? 'border-primary bg-gradient-to-br from-primary to-primary-dim shadow-xl shadow-primary/40 scale-105'
-                          : 'border-outline/20 bg-[var(--vb-surface-alt)] hover:border-primary/40 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 hover:shadow-md'
+                          ? `bg-gradient-to-br ${gameMode.color} text-white shadow-xl`
+                          : 'text-[var(--vb-text-primary)] shadow-sm hover:shadow-md'
                       }`}
+                      style={
+                        isSelected
+                          ? { boxShadow: '0 14px 28px -14px rgba(139,92,246,0.55), 0 1px 0 rgba(255,255,255,0.4) inset' }
+                          : {
+                              background: 'rgba(255,255,255,0.96)',
+                              boxShadow:
+                                '0 1px 0 rgba(255,255,255,0.7) inset, 0 8px 20px -18px rgba(60,40,120,0.20)',
+                            }
+                      }
                     >
+                      {/* Emoji medallion — frosted swatch when unselected
+                          so the tile keeps colour cues without screaming. */}
                       <motion.div
-                        className={`text-3xl sm:text-4xl mb-2 ${isSelected ? 'drop-shadow-lg' : ''}`}
+                        className={`grid place-items-center text-[28px] leading-none ${isSelected ? 'drop-shadow-lg' : ''}`}
                         animate={isSelected ? 'bounce' : 'float'}
                         transition={{ duration: 0.3 }}
+                        style={
+                          isSelected
+                            ? undefined
+                            : {
+                                width: 48,
+                                height: 48,
+                                borderRadius: 14,
+                                background: `linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.4))`,
+                              }
+                        }
                       >
                         {gameMode.emoji}
                       </motion.div>
-                      <div className={`text-xs sm:text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-[var(--vb-text-secondary)]'}`}>
+                      <div className={`text-[13px] sm:text-sm font-bold tracking-[-0.005em] transition-colors ${isSelected ? 'text-white' : 'text-[var(--vb-text-primary)]'}`}>
                         {gameMode.name}
                       </div>
-                      {(() => {
-                        const tier = getModeDifficulty(gameMode.id);
-                        const meta = DIFFICULTY_META[tier];
-                        return (
-                          <span className="inline-flex items-center gap-0.5 mt-1">
-                            {[0, 1, 2].map(i => (
-                              <Star key={i} size={10} strokeWidth={2}
-                                className={i < meta.stars ? (isSelected ? 'text-white' : meta.starColor) : (isSelected ? 'text-white/40' : 'text-[var(--vb-border)]')}
-                                fill={i < meta.stars ? 'currentColor' : 'none'}
-                              />
-                            ))}
-                          </span>
-                        );
-                      })()}
+                      <div className={`text-[10px] uppercase tracking-[0.06em] font-extrabold ${isSelected ? 'text-white/80' : 'text-[var(--vb-text-muted)]'}`}>
+                        {stars}
+                      </div>
                       {isSelected && (
-                        <motion.div
+                        <motion.span
                           initial={{ scale: 0, rotate: -180 }}
                           animate={{ scale: 1, rotate: 0 }}
                           transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-                          className="absolute -top-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[var(--vb-surface)] flex items-center justify-center shadow-lg border-2 border-primary"
+                          className="absolute end-2.5 top-2.5 grid h-[22px] w-[22px] place-items-center rounded-full bg-white text-[12px] font-extrabold text-[#1F1147]"
+                          style={{ boxShadow: '0 4px 10px -4px rgba(0,0,0,0.2)' }}
+                          aria-hidden
                         >
-                          <Check size={14} className="text-primary" strokeWidth={3} />
-                        </motion.div>
-                      )}
-                      {isSelected && (
-                        <motion.div
-                          className="absolute inset-0 bg-white/20 rounded-xl"
-                          animate={{
-                            scale: [1, 1.05, 1],
-                            opacity: [0.3, 0.1, 0.3],
-                          }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        />
+                          <Check size={12} className="text-[#1F1147]" strokeWidth={3} />
+                        </motion.span>
                       )}
                     </motion.button>
                   );
