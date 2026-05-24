@@ -117,8 +117,12 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
   if (isLoading && missions.length === 0) {
     return (
       <div
-        className="rounded-2xl border border-white/80 shadow-sm bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 sm:p-5 animate-pulse"
-        style={{ minHeight: 180 }}
+        className="rounded-2xl border border-indigo-500/[0.10] bg-white p-4 sm:p-5 animate-pulse"
+        style={{
+          minHeight: 180,
+          boxShadow:
+            "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+        }}
         dir={dir}
       >
         <div className="h-4 w-32 bg-white/60 rounded mb-3" />
@@ -148,18 +152,34 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="rounded-2xl border border-white/80 shadow-sm bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 sm:p-5"
+      className="rounded-2xl p-4 sm:p-5 bg-white border border-indigo-500/[0.10]"
+      style={{
+        boxShadow:
+          "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+      }}
       dir={dir}
     >
       <header className="flex items-center justify-between mb-3 sm:mb-4">
-        <h3 className="text-sm sm:text-base font-black text-stone-800 flex items-center gap-2">
-          <span className="text-xl">🎯</span>
-          {t.title}
-        </h3>
+        <div>
+          <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ background: "linear-gradient(135deg,#8B5CF6,#D946EF)" }}
+            />
+            {t.title}
+          </div>
+          <h3 className="text-sm sm:text-base font-black text-[#1F1147] flex items-center gap-2">
+            <span className="text-xl" aria-hidden>🎯</span>
+            {t.title}
+          </h3>
+        </div>
         <span
-          className={`text-xs font-black px-2.5 py-1 rounded-full ${
-            allDone ? 'bg-emerald-500 text-white' : 'bg-white/70 text-stone-700'
-          }`}
+          className="text-[11px] font-extrabold px-2.5 py-1 rounded-full"
+          style={
+            allDone
+              ? { background: "linear-gradient(110deg, #3FA689, #5EC9A6)", color: "#fff" }
+              : { background: "rgba(99,102,241,0.10)", color: "#4A3B7A" }
+          }
         >
           {t.doneChip(completedCount, ordered.length)}
         </span>
