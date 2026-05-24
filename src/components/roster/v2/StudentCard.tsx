@@ -73,26 +73,37 @@ export default function StudentCard({
   const statusColor = isActive ? "text-[#2E8E60]" : "text-[#8B85AB]";
 
   return (
+    // Card uses flex-col so the action cluster always sits below the
+    // name+status row.  Old layout was a single inline row that broke
+    // on narrow card widths (≤280px) — the action buttons overlapped
+    // the student name because the actions were `shrink-0` while the
+    // title section had nothing to fall back to.  Stacking is the
+    // only layout that's robust at every grid-cell width.
     <article
-      className="relative flex items-center gap-3 sm:gap-3.5 rounded-[22px] border border-indigo-500/[0.10] bg-white px-4 sm:px-[18px] py-3.5 sm:py-4"
+      className="relative flex flex-col gap-3 rounded-[22px] border border-indigo-500/[0.10] bg-white px-4 sm:px-[18px] py-3.5 sm:py-4"
       style={{
         boxShadow:
           "0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)",
       }}
     >
-      <StudentAvatar emoji={student.emoji} accent={student.accent} size={mobile ? 40 : 44} />
+      {/* Top row — avatar + name + status. */}
+      <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+        <StudentAvatar emoji={student.emoji} accent={student.accent} size={mobile ? 40 : 44} />
 
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[15px] font-bold text-[#1F1147]">
-          {student.name}
-        </div>
-        <div className={`mt-0.5 flex items-center gap-1.5 text-[11px] font-semibold ${statusColor}`}>
-          <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotClass}`} />
-          {student.statusLabel}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-bold text-[#1F1147]">
+            {student.name}
+          </div>
+          <div className={`mt-0.5 flex items-center gap-1.5 text-[11px] font-semibold ${statusColor}`}>
+            <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotClass} shrink-0`} />
+            <span className="truncate">{student.statusLabel}</span>
+          </div>
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
+      {/* Action row — sits on its own line below so 4 buttons can fit
+          at any card width without overlapping the name. */}
+      <div className="flex items-center justify-end gap-1 flex-wrap">
         {student.pin && (
           <button
             type="button"
