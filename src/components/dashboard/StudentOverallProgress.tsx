@@ -66,16 +66,45 @@ export default function StudentOverallProgress({ studentAssignments, studentProg
   const total = studentAssignments.length;
   const { donePct } = partialModeProgress(studentAssignments, studentProgress);
 
+  // Repainted with the v1 card chrome — hairline indigo border + soft
+  // drop-shadow (same recipe as MgmtCard / EnglishDashboardLayout) so
+  // the student dashboard cards read as the same family as the
+  // teacher surfaces.  Progress fill swapped from solid blue to the
+  // brand gradient via a CSS-only fill (the native <progress> element
+  // can't accept a gradient on its ::-webkit-progress-value pseudo,
+  // so we render the fill as a positioned div inside a track).
+  const fillPct = toProgressValue(donePct);
   return (
-    <div className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-2xl shadow-sm mb-6 sm:mb-8">
-      <h3 className="text-lg sm:text-lg font-bold text-stone-800 mb-3 sm:mb-2">{t.overallProgress}</h3>
+    <div
+      className="rounded-2xl p-5 sm:p-6 mb-6 sm:mb-8 bg-white border border-indigo-500/[0.10]"
+      style={{
+        boxShadow:
+          "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+      }}
+    >
+      <h3 className="mb-3 sm:mb-2 text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147]">
+        {t.overallProgress}
+      </h3>
       <div className="flex items-center gap-3 sm:gap-4">
-        <progress
-          className="flex-1 h-5 sm:h-4 [&::-webkit-progress-bar]:bg-stone-100 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600 rounded-full overflow-hidden"
-          max={100}
-          value={toProgressValue(donePct)}
-        />
-        <span className="font-bold text-stone-500 text-sm sm:text-sm">
+        <div
+          className="relative flex-1 h-3 sm:h-3.5 rounded-full overflow-hidden"
+          role="progressbar"
+          aria-valuenow={fillPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          style={{ background: "rgba(99,102,241,0.10)" }}
+        >
+          <div
+            className="absolute inset-y-0 start-0 rounded-full transition-[width] duration-500"
+            style={{
+              width: `${fillPct}%`,
+              background:
+                "linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)",
+              boxShadow: "0 0 12px rgba(139,92,246,0.45)",
+            }}
+          />
+        </div>
+        <span className="font-mono font-extrabold tabular-nums text-sm text-[#4A3B7A]">
           {completed} / {total}
         </span>
       </div>
