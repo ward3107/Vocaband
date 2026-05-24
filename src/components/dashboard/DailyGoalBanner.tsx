@@ -65,41 +65,66 @@ export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoal
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
-          className="relative overflow-hidden rounded-xl mb-6 bg-white border border-stone-200 shadow-sm p-4 sm:p-5"
+          className="relative overflow-hidden rounded-2xl mb-6 p-4 sm:p-5 bg-white border border-indigo-500/[0.10]"
+          style={{
+            boxShadow:
+              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+          }}
         >
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* Flame glows as they approach the goal */}
+            {/* Flame glows as they approach the goal — v1 amber/coral
+                gradient when active, frosted indigo tile when idle */}
             <motion.div
               animate={{ scale: pct > 0 ? [1, 1.08, 1] : 1 }}
               transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-              className={`w-11 h-11 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center shrink-0 ${
-                pct >= 50 ? "bg-gradient-to-br from-orange-400 to-rose-500" : "bg-stone-100"
-              }`}
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-[14px] flex items-center justify-center shrink-0"
+              style={
+                pct >= 50
+                  ? {
+                      background: "linear-gradient(135deg, #F0B96C, #F08D87)",
+                      boxShadow: "0 8px 18px -10px rgba(240,141,135,0.55)",
+                    }
+                  : { background: "linear-gradient(135deg, #EEF0FF, #F8E8FF)" }
+              }
             >
               {pct >= 50 ? (
                 <Flame size={22} className="text-white fill-white" />
               ) : (
-                <Target size={22} className="text-stone-400" />
+                <Target size={22} className="text-[#8B5CF6]" />
               )}
             </motion.div>
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">{t.dailyGoal}</p>
-                <span className="text-xs font-bold text-stone-500 tabular-nums">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#6B6388]">
+                  {t.dailyGoal}
+                </p>
+                <span
+                  className="text-[11px] font-extrabold tabular-nums"
+                  style={{ color: "#4A3B7A", fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}
+                >
                   {playedToday} / {goal}
                 </span>
               </div>
-              {/* Bar */}
-              <div className="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden">
+              {/* Bar — repainted with the brand-violet glow recipe used
+                  by every other v1 progress fill in the redesign. */}
+              <div
+                className="w-full h-2.5 rounded-full overflow-hidden"
+                style={{ background: "rgba(99,102,241,0.10)" }}
+              >
                 <motion.div
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: pct / 100 }}
                   transition={{ duration: 0.7, ease: "easeOut" }}
-                  style={{ transformOrigin: 'left' }}
-                  className="h-full w-full bg-gradient-to-r from-orange-400 to-rose-500 rounded-full"
+                  style={{
+                    transformOrigin: "left",
+                    background:
+                      "linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)",
+                    boxShadow: "0 0 12px rgba(139,92,246,0.45)",
+                  }}
+                  className="h-full w-full rounded-full"
                 />
               </div>
-              <p className="text-xs sm:text-sm font-semibold text-stone-700 mt-1.5">
+              <p className="text-xs sm:text-sm font-semibold mt-1.5" style={{ color: "#4A3B7A" }}>
                 {playedToday === 0 ? t.playGameForBonus(10) : t.almostThere(goal - playedToday)}
               </p>
             </div>

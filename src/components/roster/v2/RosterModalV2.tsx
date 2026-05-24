@@ -256,6 +256,17 @@ export default function RosterModalV2({
     }
   };
 
+  // WhatsApp prefill for JUST the PIN — no class name, no instructions,
+  // no surrounding chrome.  Teachers asked for this so they can send
+  // the secret PIN alone on a separate channel from the class invite
+  // link (channel-separation pattern).  Falls back gracefully when
+  // the row has no PIN (button is hidden in that case anyway).
+  const handleSharePinWhatsApp = (s: RosterStudentV2) => {
+    if (!s.pin) return;
+    const url = `https://wa.me/?text=${encodeURIComponent(s.pin)}`;
+    window.open(url, "_blank", "noopener");
+  };
+
   const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(classCode);
@@ -477,6 +488,7 @@ export default function RosterModalV2({
                       onResetPin={() => handleResetPin(s)}
                       onDelete={() => handleDelete(s)}
                       onCopyLink={() => handleCopyLink(s)}
+                      onSharePinWhatsApp={() => handleSharePinWhatsApp(s)}
                       labels={{
                         pin: t.showPin,
                         copyLinkAria: t.copyLinkLabel,
@@ -485,6 +497,7 @@ export default function RosterModalV2({
                         deleteAria: t.removeAria(s.name),
                         deleteLabel: t.removeTitle,
                         moreAria: t.moreActionsAria,
+                        sharePinAria: t.sharePinAria(s.name),
                       }}
                     />
                   ))}
