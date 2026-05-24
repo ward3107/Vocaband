@@ -1,7 +1,6 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
+import ModalShell, { ModalDangerButton, ModalFootSpacer, ModalQuietButton } from "../ui/ModalShell";
 
 export interface ConfirmDialogState {
   show: boolean;
@@ -14,51 +13,44 @@ interface ConfirmDialogProps {
   setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialogState>>;
 }
 
+/**
+ * Generic confirm dialog used across the teacher dashboard for
+ * destructive prompts (Delete this? · Remove student? · Reset PIN?
+ * etc.).  Adopts the shared ModalShell from the Modals v1 design
+ * system so every dialog in the app shares one chrome instead of
+ * one-off layouts per modal.
+ */
 export default function ConfirmDialog({ confirmDialog, setConfirmDialog }: ConfirmDialogProps) {
   const { language, dir } = useLanguage();
   const t = teacherModalsT[language];
+
+  const close = () =>
+    setConfirmDialog({ show: false, message: "", onConfirm: () => { /* no-op */ } });
+
   return (
-    <AnimatePresence>
-      {confirmDialog.show && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50"
-        >
-          <motion.div
-            dir={dir}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-[var(--vb-surface)] rounded-2xl p-8 max-w-md w-full shadow-2xl text-center"
+    <ModalShell
+      open={confirmDialog.show}
+      onClose={close}
+      variant="danger"
+      icon="⚠️"
+      title={t.confirmActionTitle}
+      dir={dir}
+      footer={
+        <>
+          <ModalQuietButton onClick={close}>{t.cancel}</ModalQuietButton>
+          <ModalFootSpacer />
+          <ModalDangerButton
+            onClick={() => {
+              confirmDialog.onConfirm();
+              close();
+            }}
           >
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: 'var(--vb-warning-soft)', color: 'var(--vb-warning)' }}
-            >
-              <AlertTriangle size={32} />
-            </div>
-            <h3 className="text-2xl font-black mb-3 text-[var(--vb-text-primary)]">{t.confirmActionTitle}</h3>
-            <p className="text-[var(--vb-text-secondary)] mb-8">{confirmDialog.message}</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
-                className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold hover:bg-[var(--vb-border)] transition-all border-2 border-[var(--vb-border)]"
-              >
-                {t.cancel}
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                style={{ backgroundColor: 'var(--vb-danger)', color: '#ffffff' }}
-                className="flex-1 py-4 rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg"
-              >
-                {t.confirmBtn}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+            {t.confirmBtn}
+          </ModalDangerButton>
+        </>
+      }
+    >
+      <p className="text-[14px] text-[#4A3B7A] leading-[1.55]">{confirmDialog.message}</p>
+    </ModalShell>
   );
 }
