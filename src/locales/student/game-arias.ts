@@ -4,7 +4,7 @@
  * sentence", "Submit word", etc.
  *
  * Pulled out so individual game files (SpeedRound, SentenceBuilder,
- * Scramble, Review, Relations, Flashcards, WordChains, Idiom,
+ * Scramble, Review, Relations, Flashcards, Idiom,
  * ClassShowQuestion, AdaptedModes) don't each redefine the same
  * inline EN/HE/AR map.
  *

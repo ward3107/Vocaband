@@ -101,13 +101,13 @@ export function useGameModeSetup(params: UseGameModeSetupParams): void {
       gameMode !== 'sentence-builder' && gameMode !== 'matching' &&
       gameMode !== 'memory-flip' &&
       gameMode !== 'fill-blank' && gameMode !== 'letter-sounds' &&
-      // Self-contained modes own their question pool (idioms, chain
-      // words, the speed-round queue) and trigger their own TTS at
-      // the right beat.  Without this guard the global auto-speak
-      // pipes SET_2_WORDS[0] every render — students hear a word
-      // unrelated to what's on screen and assume their taps "did
-      // something" but didn't progress the game.
-      gameMode !== 'idiom' && gameMode !== 'word-chains' &&
+      // Self-contained modes own their question pool (idioms, the
+      // speed-round queue) and trigger their own TTS at the right
+      // beat.  Without this guard the global auto-speak pipes
+      // SET_2_WORDS[0] every render — students hear a word unrelated
+      // to what's on screen and assume their taps "did something" but
+      // didn't progress the game.
+      gameMode !== 'idiom' &&
       gameMode !== 'speed-round' && gameMode !== 'class-minute'
     ) {
       // Only speak if this is a different word than the last one we spoke

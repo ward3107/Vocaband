@@ -1,11 +1,10 @@
 /**
  * RelationsGame — "pick the synonym" / "pick the antonym" mode.
  *
- * Self-contained mode (similar to WordChainsGame, IdiomGame,
- * SpeedRoundGame): doesn't slot into the per-question orchestration
- * GameActiveView uses for Classic / Listening because the question
- * source is the curated `RELATIONS` dataset, not the assignment
- * word pool.
+ * Self-contained mode (similar to IdiomGame, SpeedRoundGame):
+ * doesn't slot into the per-question orchestration GameActiveView
+ * uses for Classic / Listening because the question source is the
+ * curated `RELATIONS` dataset, not the assignment word pool.
  *
  * Round structure:
  *   1. Pick N random entries from RELATIONS (default 10).

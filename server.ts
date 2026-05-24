@@ -1,4 +1,11 @@
 import "dotenv/config";
+// `dotenv/config` only loads `.env`. Vite reads `.env.local` automatically;
+// mirror that here so a single dev .env.local file feeds both the frontend
+// (Vite) and the backend (this server). Override so .env.local wins on
+// any collision — matches Vite's precedence and avoids the "I changed the
+// key but the server still reads the old one" footgun.
+import { config as loadDotenv } from "dotenv";
+loadDotenv({ path: ".env.local", override: true });
 import * as Sentry from "@sentry/node";
 import { scrubPii } from "./src/utils/scrubPii";
 import { installScrubbingConsole, redactEmail } from "./src/utils/serverLog";
@@ -3308,11 +3315,37 @@ Quality rules:
     keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
   });
 
-  const DIFFICULTY_DESCRIPTIONS: Record<number, string> = {
-    1: "Simple 3-5 word sentences. Present tense. Basic SVO structure.",
-    2: "5-7 word sentences. Past/present tense. Common vocabulary.",
-    3: "7-10 word sentences. Relative clauses. Mixed tenses.",
-    4: "10-15 word sentences. Complex grammar. Conditionals.",
+  // Per-level constraints. Each entry is split into a one-line spec (the
+  // hard rule the AI must obey) and a paired GOOD example. Examples are
+  // load-bearing — earlier versions of this prompt described difficulty
+  // in prose but showed 8-11-word past-tense examples to every level, so
+  // Claude treated "Beginner" as "Elementary" and teachers got Elementary
+  // sentences regardless of slider position.
+  const DIFFICULTY_SPECS: Record<number, { label: string; rule: string; example: string; banned: string }> = {
+    1: {
+      label: "Beginner",
+      rule: "EXACTLY 3-5 words. Present tense only. One clause. Subject-verb-object.",
+      example: 'Word "apple" → "I eat a red apple."',
+      banned: "No past/future tense, no contractions (don’t / can’t / it’s), no \"and / but / because\" joining clauses, no questions.",
+    },
+    2: {
+      label: "Elementary",
+      rule: "EXACTLY 5-7 words. Present or simple past. One clause. Common vocabulary only.",
+      example: 'Word "apple" → "My sister ate the red apple."',
+      banned: "No subordinate clauses (when/while/because/although), no questions, no future or perfect tense.",
+    },
+    3: {
+      label: "Intermediate",
+      rule: "EXACTLY 7-10 words. Mixed tenses including future. One subordinate clause allowed.",
+      example: 'Word "apple" → "We picked apples in the orchard last weekend."',
+      banned: "No conditionals (if/would), no passive voice, no questions.",
+    },
+    4: {
+      label: "Advanced",
+      rule: "EXACTLY 10-15 words. Complex grammar permitted including conditionals, passive voice, modal verbs.",
+      example: 'Word "apple" → "If she had not eaten the apple, the cake would have been ruined."',
+      banned: "Still no questions. Vocabulary must stay grade-9 appropriate, not adult literature.",
+    },
   };
 
   // ────────────────────────────────────────────────────────────────────────
@@ -3984,22 +4017,18 @@ Return JSON: an array, one item per word, each with { word, distractors: [string
           max_tokens: 1024,
           system: `You generate English sentences for Israeli EFL students (grades 4-9) used in vocabulary practice games.  Output is consumed by two modes: Sentence Builder (student rebuilds the sentence from shuffled words) and Fill in the Blank (the target word is removed and the student picks it from a 4-option list).  Both modes need the SAME quality from a sentence — the target word must fit naturally and the rest of the sentence must hint at it.
 
-Difficulty: ${DIFFICULTY_DESCRIPTIONS[diff]}
+CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-violated rule; obey its word count strictly.
 
-CRITICAL RULES — every sentence must satisfy ALL of these:
-1. The target word appears EXACTLY as given (same form, same spelling, no inflection).
-2. The target word fits the sentence NATURALLY — it is the obvious word for that slot.  If the sentence reads weirdly with the word inserted, REWRITE the sentence around the word.
-3. The surrounding words give CONTEXT for the target word — a student reading the sentence with the word removed should be able to guess it from the rest.
-4. Concrete and visual — avoid abstract metaphors or idioms.  Vocabulary level for grades 4-9.
-5. One sentence per line, no numbering, no quotes, no extra text.
-
-Examples of good vs bad sentences:
-- Word "apple"  GOOD: "I ate a sweet red apple after lunch."  (context: ate, sweet, red, lunch all hint at a fruit)
-- Word "apple"  BAD:  "The apple was important to me."  (no context — could be any noun)
-- Word "run"    GOOD: "Every morning I run two kilometres in the park."  (context: morning, park, kilometres hint at exercise)
-- Word "run"    BAD:  "The run was nice yesterday."  (no context)
-- Word "happy"  GOOD: "The children were so happy when they opened their presents."  (context: children, presents hint at an emotion of joy)
-- Word "happy"  BAD:  "He felt happy."  (too short, no context)`,
+1. DIFFICULTY = ${DIFFICULTY_SPECS[diff].label}. ${DIFFICULTY_SPECS[diff].rule}
+   BANNED at this level: ${DIFFICULTY_SPECS[diff].banned}
+   Example at this level: ${DIFFICULTY_SPECS[diff].example}
+2. The target word appears EXACTLY as given (same form, same spelling, no inflection).
+3. The target word fits the sentence NATURALLY — it is the obvious word for that slot. If the sentence reads weirdly with the word inserted, REWRITE the sentence around the word.
+4. The surrounding words give CONTEXT for the target word — a student reading the sentence with the word removed should be able to guess it from the rest.
+5. Statements only — never write a question. Question word order is awkward in Sentence Builder.
+6. Do NOT reuse any OTHER word from the input batch inside the sentence. The blank must be uniquely answerable; if two batch words both fit, the question is broken.
+7. Concrete and visual — avoid abstract metaphors or idioms. Vocabulary level for grades 4-9.
+8. One sentence per line, no numbering, no quotes, no extra text.`,
           messages: [{ role: "user", content: `Generate one sentence for each word:\n${uncachedWords.join("\n")}` }],
         });
 
