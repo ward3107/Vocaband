@@ -77,8 +77,9 @@ export default function StudentStatsRow({
         transition={{ duration: 0.3 }}
         className="relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 text-white shadow-lg shadow-orange-500/20"
       >
-        {/* Decorative emoji medallion */}
-        <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full bg-white/15 flex items-center justify-center text-7xl select-none pointer-events-none">
+        {/* Decorative emoji medallion — `-end-4` so the disc flips to
+            the leading edge in RTL and never sits over the headline. */}
+        <div className="absolute -top-4 -end-4 w-28 h-28 rounded-full bg-white/15 flex items-center justify-center text-7xl select-none pointer-events-none">
           ☀️
         </div>
 
@@ -111,8 +112,9 @@ export default function StudentStatsRow({
         transition={{ duration: 0.3, delay: 0.05 }}
         className="relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-emerald-400 via-teal-400 to-cyan-500 text-white shadow-lg shadow-teal-500/20"
       >
-        {/* Decorative emoji medallion */}
-        <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full bg-white/15 flex items-center justify-center text-7xl select-none pointer-events-none">
+        {/* Decorative emoji medallion — `-end-4` so the disc flips to
+            the leading edge in RTL. */}
+        <div className="absolute -top-4 -end-4 w-28 h-28 rounded-full bg-white/15 flex items-center justify-center text-7xl select-none pointer-events-none">
           🎯
         </div>
 

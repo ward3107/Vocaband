@@ -205,12 +205,12 @@ export default function StudentAccountLoginView({
         }}
       >
         <div
-          className="pointer-events-none absolute -top-24 -right-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+          className="pointer-events-none absolute -top-24 -end-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
           style={{ background: "radial-gradient(circle, rgba(139,92,246,0.35) 0%, transparent 70%)" }}
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute -bottom-24 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+          className="pointer-events-none absolute -bottom-24 -start-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
           style={{ background: "radial-gradient(circle, rgba(217,70,239,0.22) 0%, transparent 70%)" }}
           aria-hidden
         />

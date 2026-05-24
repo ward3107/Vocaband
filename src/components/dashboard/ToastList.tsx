@@ -67,7 +67,7 @@ export default function ToastList({ toasts }: ToastListProps) {
                 <button
                   onClick={toast.action.onClick}
                   type="button"
-                  className="ml-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition-transform active:scale-95"
+                  className="ms-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition-transform active:scale-95"
                   style={{
                     background: "linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)",
                     color: "#FFFFFF",

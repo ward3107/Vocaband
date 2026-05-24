@@ -110,7 +110,7 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
                   {theme.name}
                 </span>
                 {selected && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-stone-900 ring-2 ring-white" aria-hidden="true" />
+                  <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-stone-900 ring-2 ring-white" aria-hidden="true" />
                 )}
               </button>
             );
@@ -144,7 +144,7 @@ export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThem
                   {theme.name}
                 </span>
                 {selected && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-stone-900 ring-2 ring-white" aria-hidden="true" />
+                  <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-stone-900 ring-2 ring-white" aria-hidden="true" />
                 )}
               </button>
             );
