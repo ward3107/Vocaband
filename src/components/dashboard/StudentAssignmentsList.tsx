@@ -32,25 +32,50 @@ export default function StudentAssignmentsList({
 }: StudentAssignmentsListProps) {
   const { language } = useLanguage();
   const t = studentDashboardT[language];
+  // Repainted with v1 chrome — hairline indigo border + soft shadow,
+  // section-label eyebrow (violet dot + uppercase) above the title,
+  // brand-violet accent on the BookOpen glyph instead of blue-700.
   return (
-    <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-2xl shadow-xl">
+    <div
+      className="rounded-2xl p-5 sm:p-8 bg-white border border-indigo-500/[0.10]"
+      style={{
+        boxShadow:
+          "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+      }}
+    >
       <div className="mb-5 sm:mb-6 flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-xl sm:text-2xl font-black flex items-center gap-2">
-          <BookOpen className="text-blue-700" size={22} /> {t.yourAssignments}
-        </h2>
+        <div>
+          <div className="mb-1.5 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ background: "linear-gradient(135deg,#8B5CF6,#D946EF)" }}
+            />
+            {t.yourAssignments}
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black tracking-[-0.01em] text-[#1F1147] flex items-center gap-2">
+            <BookOpen className="text-[#8B5CF6]" size={22} /> {t.yourAssignments}
+          </h2>
+        </div>
         <OfflineReadyBadge />
       </div>
 
-      {/* Background loading indicator */}
+      {/* Background loading indicator — repainted to match the v1
+          tip / status callouts used elsewhere in the redesign. */}
       {studentDataLoading && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center gap-2 animate-pulse">
-          <RefreshCw className="text-blue-700 animate-spin" size={16} />
-          <span className="text-blue-800 font-bold text-sm">{t.loadingAssignments}</span>
+        <div
+          className="mb-4 flex items-center gap-2 rounded-2xl px-4 py-3 animate-pulse"
+          style={{
+            background: "rgba(99,102,241,0.08)",
+            border: "1px solid rgba(99,102,241,0.18)",
+          }}
+        >
+          <RefreshCw className="text-[#8B5CF6] animate-spin" size={16} />
+          <span className="text-[#4A3B7A] font-bold text-sm">{t.loadingAssignments}</span>
         </div>
       )}
 
       {studentAssignments.length === 0 && !studentDataLoading ? (
-        <p className="text-stone-400 italic text-center py-10 text-base sm:text-sm">
+        <p className="text-[#8B85AB] italic text-center py-10 text-base sm:text-sm">
           {t.noAssignmentsYet}
         </p>
       ) : (
