@@ -1,4 +1,5 @@
 import StudentOnboarding from "../components/StudentOnboarding";
+import StudentVisibilityConsent from "../components/StudentVisibilityConsent";
 import { useState } from "react";
 import FloatingButtons from "../components/FloatingButtons";
 import StudentTopBar from "../components/dashboard/StudentTopBar";
@@ -233,6 +234,14 @@ export default function StudentDashboardView({
         {consentModal}
         {exitConfirmModal}
         {classSwitchModal}
+        {/* Student-side "your teacher sees your plays" disclosure.
+            Hard gate — blocks the dashboard until the student ticks
+            the acknowledgement.  Quiet thereafter unless we bump
+            STUDENT_VISIBILITY_VERSION.  Hidden for guests since they
+            don't have a uid we can attach the consent_log row to. */}
+        {!user?.isGuest && (
+          <StudentVisibilityConsent studentUid={user?.uid ?? null} />
+        )}
         {showStudentOnboarding && (
           <StudentOnboarding
             userName={user.displayName}
