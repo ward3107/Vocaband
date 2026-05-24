@@ -1,7 +1,7 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Check, Copy, MessageCircle } from "lucide-react";
+import { Check, Copy, MessageCircle } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
+import ModalShell, { ModalPrimaryButton } from "../ui/ModalShell";
 
 interface ClassCreatedModalProps {
   createdClassCode: string | null;
@@ -11,95 +11,100 @@ interface ClassCreatedModalProps {
   onDone: () => void;
 }
 
+/**
+ * "Class created!" success modal — success-variant shell with the
+ * generated join code as the visual hero and Copy + WhatsApp share
+ * buttons under it.  Footer single CTA dismisses the modal.
+ */
 export default function ClassCreatedModal({
-  createdClassCode, createdClassName, copiedCode, setCopiedCode, onDone,
+  createdClassCode,
+  createdClassName,
+  copiedCode,
+  setCopiedCode,
+  onDone,
 }: ClassCreatedModalProps) {
   const { language, dir } = useLanguage();
   const t = teacherModalsT[language];
+
   return (
-    <AnimatePresence>
+    <ModalShell
+      open={!!createdClassCode}
+      onClose={onDone}
+      variant="success"
+      icon="🎉"
+      title={language === "he" ? "הכיתה נוצרה!" : language === "ar" ? "تم إنشاء الصف!" : "Class created!"}
+      subtitle={
+        language === "he"
+          ? "שתפו את הקוד הזה עם התלמידים"
+          : language === "ar"
+            ? "شارك هذا الرمز مع طلابك"
+            : "Share this code with your students so they can join."
+      }
+      dir={dir}
+      footer={<ModalPrimaryButton onClick={onDone} className="w-full justify-center">{t.doneBtn}</ModalPrimaryButton>}
+    >
       {createdClassCode && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-          <motion.div
-            dir={dir}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            style={{ backgroundColor: 'var(--vb-surface)' }}
-            className="rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center max-h-[90vh] overflow-y-auto"
+        <>
+          {/* Big join-code hero — frosted mint surface so the eye
+              lands on the 8-char code first. */}
+          <div
+            className="rounded-2xl px-6 py-7 mb-5 text-center"
+            style={{
+              background: "linear-gradient(135deg, rgba(94,201,166,0.18), rgba(63,166,137,0.10))",
+              border: "1px solid rgba(94,201,166,0.30)",
+            }}
           >
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{
-                backgroundColor: 'var(--vb-accent-soft)',
-                color: 'var(--vb-accent)',
-              }}
+            <p
+              className="text-5xl font-mono font-black tracking-[0.25em]"
+              style={{ color: "#1F5A4A" }}
             >
-              <CheckCircle2 size={32} />
-            </div>
-            <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
-              Class Created!
-            </h2>
-            <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
-              Share this code with your students so they can join.
+              {createdClassCode}
             </p>
+          </div>
 
-            <div
-              className="p-6 rounded-2xl border-2 mb-6 relative overflow-hidden"
-              style={{
-                backgroundColor: 'var(--vb-accent-soft)',
-                borderColor: 'var(--vb-border)',
-              }}
-            >
-              <p
-                className="text-5xl font-mono font-black tracking-widest relative z-10"
-                style={{ color: 'var(--vb-accent)' }}
-              >
-                {createdClassCode}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(t.classCardCopyMsg(createdClassName, createdClassCode));
-                  setCopiedCode(createdClassCode);
-                  setTimeout(() => setCopiedCode(null), 2000);
-                }}
-                style={{
-                  backgroundColor: 'var(--vb-surface-alt)',
-                  color: 'var(--vb-text-primary)',
-                  borderColor: 'var(--vb-border)',
-                }}
-                className="py-4 rounded-xl font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 hover:scale-105 border-2"
-              >
-                {copiedCode === createdClassCode
-                  ? <Check size={20} style={{ color: 'var(--vb-accent)' }} />
-                  : <Copy size={20} />
-                }
-                <span>{language === 'he' ? 'העתק' : language === 'ar' ? 'نسخ' : 'Copy'}</span>
-              </button>
-              <a
-                href={`https://wa.me/?text=${encodeURIComponent(createdClassCode || "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="py-4 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 hover:scale-105 shadow-lg"
-              >
-                <MessageCircle size={20} />
-                <span>{t.whatsAppShort}</span>
-              </a>
-            </div>
-
+          <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={onDone}
-              style={{ color: 'var(--vb-text-secondary)' }}
-              className="w-full py-4 font-bold hover:opacity-80 rounded-xl transition-all"
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(t.classCardCopyMsg(createdClassName, createdClassCode));
+                setCopiedCode(createdClassCode);
+                setTimeout(() => setCopiedCode(null), 2000);
+              }}
+              style={{
+                touchAction: "manipulation",
+                WebkitTapHighlightColor: "transparent" as never,
+                background: "#FFFFFF",
+                border: "1px solid rgba(99,102,241,0.10)",
+                color: "#1F1147",
+                boxShadow: "0 4px 14px -8px rgba(99,102,241,0.3)",
+              }}
+              className="flex items-center justify-center gap-2 rounded-2xl py-3 text-[14px] font-bold transition-transform active:scale-95"
             >
-              {t.doneBtn}
+              {copiedCode === createdClassCode ? (
+                <Check size={18} className="text-emerald-500" />
+              ) : (
+                <Copy size={18} />
+              )}
+              <span>{language === "he" ? "העתק" : language === "ar" ? "نسخ" : "Copy"}</span>
             </button>
-          </motion.div>
-        </div>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(t.classCardCopyMsg(createdClassName, createdClassCode))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                touchAction: "manipulation",
+                WebkitTapHighlightColor: "transparent" as never,
+                background: "#25D366",
+                boxShadow: "0 10px 22px -10px rgba(37,211,102,0.55)",
+              }}
+              className="flex items-center justify-center gap-2 rounded-2xl py-3 text-[14px] font-bold text-white transition-transform active:scale-95"
+            >
+              <MessageCircle size={18} />
+              <span>{t.whatsAppShort}</span>
+            </a>
+          </div>
+        </>
       )}
-    </AnimatePresence>
+    </ModalShell>
   );
 }

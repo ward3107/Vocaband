@@ -1,7 +1,10 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
+import ModalShell, {
+  ModalDangerButton,
+  ModalFootSpacer,
+  ModalQuietButton,
+} from "../ui/ModalShell";
 
 interface DeleteAssignmentModalProps {
   modal: { id: string; title: string } | null;
@@ -9,66 +12,51 @@ interface DeleteAssignmentModalProps {
   onConfirm: (id: string, title: string) => void;
 }
 
+/**
+ * Delete confirmation for a single assignment row.  Adopts the shared
+ * ModalShell so it matches every other danger-variant prompt in the app.
+ */
 export default function DeleteAssignmentModal({ modal, onCancel, onConfirm }: DeleteAssignmentModalProps) {
   const { language, dir } = useLanguage();
   const t = teacherModalsT[language];
   return (
-    <AnimatePresence>
-      {modal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">
-          <motion.div
-            dir={dir}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            style={{ backgroundColor: 'var(--vb-surface)' }}
-            className="rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
+    <ModalShell
+      open={!!modal}
+      onClose={onCancel}
+      variant="danger"
+      icon="🗑️"
+      title={t.delAssignTitle}
+      dir={dir}
+      footer={
+        <>
+          <ModalQuietButton onClick={onCancel}>{t.delAssignKeep}</ModalQuietButton>
+          <ModalFootSpacer />
+          <ModalDangerButton
+            onClick={() => modal && onConfirm(modal.id, modal.title)}
+            disabled={!modal}
           >
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: 'var(--vb-danger-soft)', color: 'var(--vb-danger)' }}
-            >
-              <AlertTriangle size={32} />
-            </div>
-            <h2 className="text-2xl font-black mb-2" style={{ color: 'var(--vb-text-primary)' }}>
-              {t.delAssignTitle}
-            </h2>
-            <p className="mb-6" style={{ color: 'var(--vb-text-secondary)' }}>
-              {t.delAssignBody(modal.title)}
-            </p>
-            <p
-              className="px-4 py-3 rounded-xl mb-6 font-medium border-2"
-              style={{
-                color: 'var(--vb-warning)',
-                backgroundColor: 'var(--vb-warning-soft)',
-                borderColor: 'var(--vb-warning)',
-              }}
-            >
-              {t.delAssignWarn}
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={onCancel}
-                style={{
-                  borderColor: 'var(--vb-border)',
-                  color: 'var(--vb-text-secondary)',
-                  backgroundColor: 'var(--vb-surface)',
-                }}
-                className="flex-1 py-4 rounded-xl font-bold transition-colors border-2 hover:opacity-90"
-              >
-                {t.delAssignKeep}
-              </button>
-              <button
-                onClick={() => onConfirm(modal.id, modal.title)}
-                style={{ backgroundColor: 'var(--vb-danger)', color: '#ffffff' }}
-                className="flex-1 py-4 rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg"
-              >
-                {t.delAssignConfirm}
-              </button>
-            </div>
-          </motion.div>
-        </div>
+            {t.delAssignConfirm}
+          </ModalDangerButton>
+        </>
+      }
+    >
+      {modal && (
+        <>
+          <p className="mb-4 text-[14px] text-[#4A3B7A] leading-[1.55]">
+            {t.delAssignBody(modal.title)}
+          </p>
+          <div
+            className="rounded-2xl px-4 py-3 text-[13px] font-semibold"
+            style={{
+              background: "rgba(240,185,108,0.18)",
+              border: "1px solid rgba(240,185,108,0.40)",
+              color: "#8B5A1A",
+            }}
+          >
+            ⚠️ {t.delAssignWarn}
+          </div>
+        </>
       )}
-    </AnimatePresence>
+    </ModalShell>
   );
 }

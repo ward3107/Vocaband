@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, QrCode, LogOut, Volume2, VolumeX,
   ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause,
-  Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap, ZapOff, Plus, Trophy
+  Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap, ZapOff, Plus
 } from 'lucide-react';
 import { getXpTitle } from '../constants/game';
 import { Howl } from 'howler';
@@ -362,18 +362,60 @@ function SessionResultsModal({
         initial={{ scale: 0.85, opacity: 0, y: 30 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 220, damping: 22 }}
-        className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl shadow-2xl px-6 py-8 sm:px-10 sm:py-12 max-w-3xl w-full border border-white/10 flex flex-col items-center gap-6"
+        className="relative text-white rounded-3xl shadow-2xl px-6 py-8 sm:px-10 sm:py-12 max-w-3xl w-full overflow-hidden flex flex-col items-center gap-6"
+        style={{
+          // Live v1 dark stack — deeper than the legacy slate-900
+          // surface so the gold gradient masked title actually pops
+          // and the violet/fuchsia glow blobs read as the same family
+          // as the student app screens.
+          background:
+            "radial-gradient(120% 100% at 0% 0%, #2A1B5C 0%, #1A0E3D 60%, #0E0828 100%)",
+          border: "1px solid rgba(255,255,255,0.10)",
+        }}
       >
+        {/* Decorative glow blobs — match the student joining + end
+            screens so the projector celebration reads as the same
+            visual family. */}
+        <div
+          className="pointer-events-none absolute -top-24 -right-12 w-[28rem] h-[28rem] rounded-full blur-3xl"
+          style={{ background: "radial-gradient(circle, rgba(139,92,246,0.42) 0%, transparent 65%)" }}
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-32 left-1/3 w-[28rem] h-[28rem] rounded-full blur-3xl"
+          style={{ background: "radial-gradient(circle, rgba(217,70,239,0.28) 0%, transparent 65%)" }}
+          aria-hidden
+        />
+
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.1, duration: 0.4 }}
-          className="flex flex-col items-center gap-2"
+          className="relative z-10 flex flex-col items-center gap-2"
         >
-          <Trophy size={56} className="text-amber-300 drop-shadow-lg" />
-          <h2 className="font-headline font-black text-3xl sm:text-5xl text-center tracking-tight">Great Job, Everyone!</h2>
+          <div
+            className="text-6xl sm:text-7xl"
+            style={{ filter: "drop-shadow(0 12px 30px rgba(240,185,108,0.5))" }}
+            aria-hidden
+          >
+            🏆
+          </div>
+          <h2
+            className="font-headline font-black text-4xl sm:text-6xl text-center tracking-[-0.03em] leading-none"
+            style={{
+              background: "linear-gradient(110deg, #FFFFFF, #DAB6FF 50%, #FFB3E0)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            Great Job, Everyone!
+          </h2>
           {topStudents[0] && (
-            <p className="font-label text-base sm:text-xl text-amber-200 italic">
+            <p
+              className="font-label text-base sm:text-xl italic"
+              style={{ color: "#F0B96C" }}
+            >
               🥇 Winner — <span className="font-black">{topStudents[0].name}</span>
             </p>
           )}
@@ -413,23 +455,62 @@ function SessionResultsModal({
           })}
         </div>
 
-        {/* Class stats */}
+        {/* Class stats — frosted dark surfaces with the amber Live v1
+            accent on the class-total figure. */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2, duration: 0.4 }}
-          className="grid grid-cols-3 gap-3 sm:gap-6 w-full max-w-md text-center"
+          className="relative z-10 grid grid-cols-3 gap-3 sm:gap-6 w-full max-w-md text-center"
         >
-          <div className="rounded-xl bg-white/5 px-3 py-2 sm:py-3 border border-white/5">
-            <p className="font-label text-[10px] sm:text-xs uppercase tracking-widest opacity-60">Players</p>
+          <div
+            className="rounded-2xl px-3 py-2.5 sm:py-3.5"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
+            <p
+              className="font-label text-[10px] sm:text-xs uppercase tracking-[0.12em] font-extrabold"
+              style={{ color: "rgba(241,236,255,0.45)" }}
+            >
+              Players
+            </p>
             <p className="font-headline font-black text-xl sm:text-3xl tabular-nums">{totalStudents}</p>
           </div>
-          <div className="rounded-xl bg-white/5 px-3 py-2 sm:py-3 border border-white/5">
-            <p className="font-label text-[10px] sm:text-xs uppercase tracking-widest opacity-60">Class total</p>
-            <p className="font-headline font-black text-xl sm:text-3xl tabular-nums text-amber-200">{classTotal}</p>
+          <div
+            className="rounded-2xl px-3 py-2.5 sm:py-3.5"
+            style={{
+              background: "rgba(240,185,108,0.16)",
+              border: "1px solid rgba(240,185,108,0.30)",
+            }}
+          >
+            <p
+              className="font-label text-[10px] sm:text-xs uppercase tracking-[0.12em] font-extrabold"
+              style={{ color: "#F0B96C" }}
+            >
+              Class total
+            </p>
+            <p
+              className="font-headline font-black text-xl sm:text-3xl tabular-nums"
+              style={{ color: "#F0B96C" }}
+            >
+              {classTotal}
+            </p>
           </div>
-          <div className="rounded-xl bg-white/5 px-3 py-2 sm:py-3 border border-white/5">
-            <p className="font-label text-[10px] sm:text-xs uppercase tracking-widest opacity-60">Average</p>
+          <div
+            className="rounded-2xl px-3 py-2.5 sm:py-3.5"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
+            <p
+              className="font-label text-[10px] sm:text-xs uppercase tracking-[0.12em] font-extrabold"
+              style={{ color: "rgba(241,236,255,0.45)" }}
+            >
+              Average
+            </p>
             <p className="font-headline font-black text-xl sm:text-3xl tabular-nums">{average}</p>
           </div>
         </motion.div>
@@ -442,7 +523,11 @@ function SessionResultsModal({
           transition={{ delay: 1.5, duration: 0.4 }}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
-          className="mt-2 inline-flex items-center justify-center gap-2 px-8 py-3 sm:px-10 sm:py-4 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-headline font-black text-base sm:text-xl shadow-lg shadow-emerald-500/40 hover:shadow-emerald-500/60 transition-shadow"
+          className="relative z-10 mt-2 inline-flex items-center justify-center gap-2 px-8 py-3 sm:px-10 sm:py-4 rounded-full text-white font-headline font-black text-base sm:text-xl"
+          style={{
+            background: "linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)",
+            boxShadow: "0 14px 30px -14px rgba(139,92,246,0.6)",
+          }}
         >
           Close Session
         </motion.button>
