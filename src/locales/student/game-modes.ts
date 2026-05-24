@@ -32,7 +32,6 @@ export type GameModeId =
   | "reverse"
   | "letter-sounds"
   | "sentence-builder"
-  | "word-chains"
   | "speed-round";
 
 export interface GameModeStrings {
@@ -118,11 +117,6 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "Tap words in the right order to build the sentence.",
         tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"],
       },
-      "word-chains": {
-        name: "Word Chains",
-        desc: "Build a chain from your class words — each one starts with the last letter of the previous.",
-        tooltip: ["Only words from your class list count", "Each word must start with the last letter shown", "Keep the chain going as long as you can!"],
-      },
       "speed-round": {
         name: "Speed Round",
         desc: "60 seconds, as many words as you can. Wrong answers cost 1 second!",
@@ -197,11 +191,6 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "בונה משפטים",
         desc: "הקש על המילים בסדר הנכון לבניית המשפט.",
         tooltip: ["המילים מעורבבות", "הקש עליהן בסדר הנכון", "בנה את המשפט נכון!"],
-      },
-      "word-chains": {
-        name: "שרשרת מילים",
-        desc: "בנה שרשרת מהמילים של הכיתה שלך — כל מילה מתחילה באות האחרונה של הקודמת.",
-        tooltip: ["רק מילים מהרשימה של הכיתה נחשבות", "כל מילה חייבת להתחיל באות האחרונה המוצגת", "המשך את השרשרת כמה שיותר!"],
       },
       "speed-round": {
         name: "סבב מהיר",
@@ -278,11 +267,6 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "اضغط على الكلمات بالترتيب الصحيح لبناء الجملة.",
         tooltip: ["الكلمات مختلطة", "اضغط عليها بالترتيب الصحيح", "ابن الجملة بشكل صحيح!"],
       },
-      "word-chains": {
-        name: "سلسلة الكلمات",
-        desc: "ابنِ سلسلة من كلمات صفّك — كل كلمة تبدأ بآخر حرف من الكلمة السابقة.",
-        tooltip: ["تُحتسب فقط الكلمات من قائمة صفّك", "يجب أن تبدأ كل كلمة بالحرف الأخير المعروض", "أكمل السلسلة لأطول وقت ممكن!"],
-      },
       "speed-round": {
         name: "جولة سريعة",
         desc: "60 ثانية، أكبر عدد ممكن من الكلمات. الإجابة الخاطئة تكلفك ثانية!",
@@ -357,11 +341,6 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "Sentence Builder",
         desc: "Tap words in the right order to build the sentence.",
         tooltip: ["Words are shuffled", "Tap them in the correct order", "Build the sentence correctly!"],
-      },
-      "word-chains": {
-        name: "Word Chains",
-        desc: "Build a chain from your class words — each one starts with the last letter of the previous.",
-        tooltip: ["Only words from your class list count", "Each word must start with the last letter shown", "Keep the chain going as long as you can!"],
       },
       "speed-round": {
         name: "Speed Round",

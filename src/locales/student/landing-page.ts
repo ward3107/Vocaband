@@ -81,7 +81,6 @@ export interface LandingPageT {
     letters: string;
     sentence: string;
     fillBlank: string;
-    wordChains: string;
     idiom: string;
     speedRound: string;
   };
@@ -337,7 +336,6 @@ export const landingPageT: Record<Language, LandingPageT> = {
       letters: "Letters",
       sentence: "Sentence",
       fillBlank: "Fill Blank",
-      wordChains: "Chains",
       idiom: "Idioms",
       speedRound: "Speed",
     },
@@ -566,7 +564,6 @@ export const landingPageT: Record<Language, LandingPageT> = {
       letters: "אותיות",
       sentence: "משפטים",
       fillBlank: "מלא חסר",
-      wordChains: "שרשרת",
       idiom: "ניבים",
       speedRound: "מהיר",
     },
@@ -795,7 +792,6 @@ export const landingPageT: Record<Language, LandingPageT> = {
       letters: "حروف",
       sentence: "جمل",
       fillBlank: "املأ الفراغ",
-      wordChains: "سلسلة",
       idiom: "تعابير",
       speedRound: "سرعة",
     },
@@ -1024,7 +1020,6 @@ export const landingPageT: Record<Language, LandingPageT> = {
       letters: "Letters",
       sentence: "Sentence",
       fillBlank: "Fill Blank",
-      wordChains: "Chains",
       idiom: "Idioms",
       speedRound: "Speed",
     },

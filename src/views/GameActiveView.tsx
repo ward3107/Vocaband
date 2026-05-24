@@ -27,9 +27,6 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // and the option button accents.  The dashed slot box stays
   // lime regardless (it's the mode signature).
   "fill-blank": "lime",
-  // Word Chains = orange.  Free-text typing mode where the student
-  // types a word starting with the previous word's last letter.
-  "word-chains": "orange",
   // Idiom = sky.  Multi-choice mode where students pick the figurative
   // meaning of an English idiom from a hand-curated dataset.
   idiom: "sky",
@@ -53,7 +50,6 @@ const MODE_LABEL: Record<string, string> = {
   "letter-sounds": "Letter Sounds",
   "sentence-builder": "Sentence Builder",
   "fill-blank": "Fill in the Blank",
-  "word-chains": "Word Chains",
   idiom: "Idiom",
   "speed-round": "Speed Round",
 };
@@ -72,7 +68,6 @@ import SentenceBuilderGame from "../components/game/SentenceBuilderGame";
 import FillBlankGame from "../components/game/FillBlankGame";
 import SpellingGame from "../components/game/SpellingGame";
 import ScrambleGame from "../components/game/ScrambleGame";
-import WordChainsGame from "../components/game/WordChainsGame";
 import IdiomGame from "../components/game/IdiomGame";
 import SpeedRoundGame from "../components/game/SpeedRoundGame";
 import ReviewGame from "../components/game/ReviewGame";
@@ -127,8 +122,8 @@ interface GameActiveViewProps {
   leaderboard: Record<string, LeaderboardEntry>;
   isFinished: boolean;
   handleExitGame: () => void;
-  /** Persist a final score for self-contained modes (Word Chains, Idiom,
-   *  Speed Round) that don't go through the per-question saveScore path
+  /** Persist a final score for self-contained modes (Idiom, Speed Round)
+   *  that don't go through the per-question saveScore path
    *  that Classic / Listening / etc. trigger from their answer handlers.
    *  Pass the second arg to bypass the per-word cap when the mode's
    *  scoring isn't tied to gameWords.length. */
@@ -164,25 +159,23 @@ export default function GameActiveView({
   handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap,
   handleSentenceCheck, speakWord, speak, shuffle,
 }: GameActiveViewProps) {
-  // Self-contained modes (Word Chains, Idiom, Speed Round) don't go
-  // through the per-question scoring path that Classic / Listening /
-  // etc. use to trigger saveScore on the last correct answer.  Each
-  // mode emits its own raw round score on End, and this helper
-  // normalizes it to the 0-100 scale the progress + XP infrastructure
-  // expects, then runs saveScore (with maxScoreOverride: 100 to bypass
-  // the per-word cap) before bouncing back to mode selection.
+  // Self-contained modes (Idiom, Speed Round) don't go through the
+  // per-question scoring path that Classic / Listening / etc. use to
+  // trigger saveScore on the last correct answer.  Each mode emits
+  // its own raw round score on End, and this helper normalizes it to
+  // the 0-100 scale the progress + XP infrastructure expects, then
+  // runs saveScore (with maxScoreOverride: 100 to bypass the per-word
+  // cap) before bouncing back to mode selection.
   //
   // Per-mode normalization:
   //   - Idiom: correctCount × 10 (10 questions, 10 points each = 0-100)
-  //   - Word Chains: chainLength × 10, capped at 100 (10-chain = perfect)
   //   - Speed Round: rawPoints × 5, capped at 100 (20 points = perfect)
   // These mappings are intentionally generous so a strong run reads as
   // ≥80 and triggers a streak day; tunable in a follow-up once we have
   // pilot data on average scores.
-  const finishSelfContainedMode = async (rawScore: number, mode: 'idiom' | 'word-chains' | 'speed-round' | 'class-minute') => {
+  const finishSelfContainedMode = async (rawScore: number, mode: 'idiom' | 'speed-round' | 'class-minute') => {
     let normalized: number;
     if (mode === 'idiom') normalized = Math.min(100, Math.max(0, rawScore) * 10);
-    else if (mode === 'word-chains') normalized = Math.min(100, Math.max(0, rawScore) * 10);
     else /* speed-round, class-minute — same SpeedRoundGame mechanics */ normalized = Math.min(100, Math.max(0, rawScore) * 5);
     try {
       await saveScore(normalized, 100);
@@ -226,7 +219,7 @@ export default function GameActiveView({
   // chrome pieces show stale data from the fallback `gameWords` pool
   // and push the mode's own UI below the fold on mobile.
   const isSelfContainedMode =
-    gameMode === 'idiom' || gameMode === 'word-chains' ||
+    gameMode === 'idiom' ||
     gameMode === 'speed-round' || gameMode === 'class-minute';
 
   const renderModeContent = () => {
@@ -307,20 +300,6 @@ export default function GameActiveView({
           gameWordsCount={gameWords.length}
           onAnswer={handleAnswer}
           themeColor={modeTheme}
-        />
-      );
-    }
-    if (gameMode === "word-chains") {
-      // Self-contained free-text mode: student types a word starting
-      // with the previous word's last letter.  Score = chain length.
-      // finishSelfContainedMode normalizes (chain × 10, cap 100), runs
-      // saveScore, then bounces back to mode selection.
-      return (
-        <WordChainsGame
-          gameWords={gameWords}
-          themeColor={modeTheme ?? "orange"}
-          speak={speakWord}
-          onFinish={(score) => { finishSelfContainedMode(score, 'word-chains'); }}
         />
       );
     }
@@ -436,8 +415,8 @@ export default function GameActiveView({
     // page in Quick Play: the device's safe-area inset (home indicator
     // / iOS browser chrome) plus the QpReactionBar pill that docks at
     // bottom-3/4. Without the reserve, the last row of game UI (e.g.
-    // Spelling's Check button, Word Chains' input row) sits under the
-    // reaction bar and is unreachable on phones.
+    // Spelling's Check button) sits under the reaction bar and is
+    // unreachable on phones.
     <div
       className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] font-sans max-w-7xl mx-auto`}>
       {saveError && (

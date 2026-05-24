@@ -114,7 +114,6 @@ const LandingStudents: React.FC = () => {
                         { emoji: "🔡", nameKey: "letters" },
                         { emoji: "🧩", nameKey: "sentence" },
                         { emoji: "📝", nameKey: "fillBlank" },
-                        { emoji: "🔗", nameKey: "wordChains" },
                         { emoji: "🗯️", nameKey: "idiom" },
                         { emoji: "⏱️", nameKey: "speedRound" },
                       ].map((mode) => (

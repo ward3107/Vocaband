@@ -3,10 +3,10 @@
  * (English word → 4 translation options) presented as fast as the
  * student can answer them, with combo bonuses for streaks.
  *
- * Self-contained mode (similar to WordChainsGame and IdiomGame):
- * doesn't slot into the per-question orchestration GameActiveView
- * uses for Classic / Listening because Speed Round generates its
- * own question stream and runs its own timer loop.
+ * Self-contained mode (similar to IdiomGame): doesn't slot into
+ * the per-question orchestration GameActiveView uses for Classic /
+ * Listening because Speed Round generates its own question stream
+ * and runs its own timer loop.
  *
  * Mechanics:
  *   - 60-second countdown starts on first render
