@@ -14,15 +14,20 @@ import CompetitionLeaderboardModal from "../CompetitionLeaderboardModal";
 
 const DEFAULT_MODES = ALL_GAME_MODES;
 
-// Per-card accent palette — rotates so the dashboard feels colourful instead
-// of uniform, but each card stays internally consistent.
+// Per-card accent palette — rotates so the dashboard feels colourful
+// instead of uniform, but each card stays internally consistent.
+// Repainted to use the Student App v1 tamed-rainbow palette
+// (violet · blue · mint · amber · coral · pink) instead of the older
+// flat blue/purple/emerald/amber/rose/cyan picks — same family as
+// the redesigned vocabulary library set cards so a student's
+// dashboard and library look like the same product.
 const ACCENTS = [
-  { bg: "bg-gradient-to-br from-blue-50 to-indigo-50",        ring: "stroke-blue-500",     cta: "bg-gradient-to-r from-blue-500 to-indigo-600",    strip: "from-blue-500 to-indigo-600",     text: "text-blue-700",     chip: "bg-blue-100 text-blue-700" },
-  { bg: "bg-gradient-to-br from-purple-50 to-fuchsia-50",     ring: "stroke-purple-500",   cta: "bg-gradient-to-r from-purple-500 to-fuchsia-600", strip: "from-purple-500 to-fuchsia-600",  text: "text-purple-700",   chip: "bg-purple-100 text-purple-700" },
-  { bg: "bg-gradient-to-br from-emerald-50 to-teal-50",       ring: "stroke-emerald-500",  cta: "bg-gradient-to-r from-emerald-500 to-teal-600",   strip: "from-emerald-500 to-teal-600",    text: "text-emerald-700",  chip: "bg-emerald-100 text-emerald-700" },
-  { bg: "bg-gradient-to-br from-amber-50 to-orange-50",       ring: "stroke-amber-500",    cta: "bg-gradient-to-r from-amber-500 to-orange-600",   strip: "from-amber-500 to-orange-600",    text: "text-amber-700",    chip: "bg-amber-100 text-amber-700" },
-  { bg: "bg-gradient-to-br from-rose-50 to-pink-50",          ring: "stroke-rose-500",     cta: "bg-gradient-to-r from-rose-500 to-pink-600",      strip: "from-rose-500 to-pink-600",       text: "text-rose-700",     chip: "bg-rose-100 text-rose-700" },
-  { bg: "bg-gradient-to-br from-cyan-50 to-sky-50",           ring: "stroke-cyan-500",     cta: "bg-gradient-to-r from-cyan-500 to-sky-600",       strip: "from-cyan-500 to-sky-600",        text: "text-cyan-700",     chip: "bg-cyan-100 text-cyan-700" },
+  { bg: "bg-gradient-to-br from-violet-50 to-fuchsia-50",  ring: "stroke-violet-500",  cta: "bg-gradient-to-r from-indigo-500 to-violet-600",  strip: "from-indigo-500 to-violet-600",  text: "text-violet-700",  chip: "bg-violet-100 text-violet-700" },
+  { bg: "bg-gradient-to-br from-sky-50 to-indigo-50",      ring: "stroke-sky-500",     cta: "bg-gradient-to-r from-sky-500 to-blue-600",        strip: "from-sky-500 to-blue-600",        text: "text-sky-700",     chip: "bg-sky-100 text-sky-700" },
+  { bg: "bg-gradient-to-br from-emerald-50 to-teal-50",    ring: "stroke-emerald-500", cta: "bg-gradient-to-r from-emerald-500 to-teal-600",    strip: "from-emerald-500 to-teal-600",    text: "text-emerald-700", chip: "bg-emerald-100 text-emerald-700" },
+  { bg: "bg-gradient-to-br from-amber-50 to-orange-50",    ring: "stroke-amber-500",   cta: "bg-gradient-to-r from-amber-500 to-orange-600",    strip: "from-amber-500 to-orange-600",    text: "text-amber-700",   chip: "bg-amber-100 text-amber-700" },
+  { bg: "bg-gradient-to-br from-rose-50 to-pink-50",       ring: "stroke-rose-500",    cta: "bg-gradient-to-r from-rose-500 to-pink-600",       strip: "from-rose-500 to-pink-600",       text: "text-rose-700",    chip: "bg-rose-100 text-rose-700" },
+  { bg: "bg-gradient-to-br from-fuchsia-50 to-pink-50",    ring: "stroke-fuchsia-500", cta: "bg-gradient-to-r from-fuchsia-500 to-pink-600",    strip: "from-fuchsia-500 to-pink-600",    text: "text-fuchsia-700", chip: "bg-fuchsia-100 text-fuchsia-700" },
 ];
 
 interface StudentAssignmentCardProps {
