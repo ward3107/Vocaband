@@ -171,12 +171,6 @@ const ClassCard: React.FC<ClassCardProps> = ({
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const showAssignments = openDropdownClassId === code;
 
-  // Inline name editing state
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editedName, setEditedName] = useState(name);
-  const [savingName, setSavingName] = useState(false);
-  const nameInputRef = useRef<HTMLInputElement>(null);
-
   // Avatar picker popover state.  The popover is portaled to body
   // (same pattern as the ⋮ menu) so it escapes the card's
   // overflow-hidden clip and the dashboard's stacking context — the
@@ -202,19 +196,6 @@ const ClassCard: React.FC<ClassCardProps> = ({
   // teacher expands it (otherwise it often opens below the fold and the
   // click looks like it did nothing).
   const assignmentsListRef = useRef<HTMLDivElement>(null);
-
-  // Reset edited name when prop changes
-  useEffect(() => {
-    setEditedName(name);
-  }, [name]);
-
-  // Focus input when editing starts
-  useEffect(() => {
-    if (isEditingName && nameInputRef.current) {
-      nameInputRef.current.focus();
-      nameInputRef.current.select();
-    }
-  }, [isEditingName]);
 
   // Bring the assignments dropdown into view the first render after it
   // opens. `block: 'nearest'` only scrolls if needed, so if the list is
@@ -258,30 +239,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
     };
   }, [avatarPickerOpen]);
 
-  const handleNameSave = async () => {
-    const trimmed = editedName.trim();
-    if (!trimmed || trimmed === name || savingName) {
-      setEditedName(name);
-      setIsEditingName(false);
-      return;
-    }
-    setSavingName(true);
-    try {
-      await onNameChange?.(trimmed);
-      setIsEditingName(false);
-    } finally {
-      setSavingName(false);
-    }
-  };
-
-  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleNameSave();
-    } else if (e.key === 'Escape') {
-      setEditedName(name);
-      setIsEditingName(false);
-    }
-  };
+  /* Inline name editing was removed — name changes now go through
+     the Edit Class modal opened from the kebab menu.  The
+     `onNameChange` prop is still exposed in the interface for source
+     compatibility but the card no longer calls it. */
+  void onNameChange;
 
   const handleAvatarPick = async (newAvatar: string | null) => {
     setAvatarPickerOpen(false);
@@ -592,46 +554,17 @@ const ClassCard: React.FC<ClassCardProps> = ({
             </div>
 
             <div className="min-w-0 flex-1">
-              {/* Class name — inline editable */}
-              {isEditingName && onNameChange ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={nameInputRef}
-                    type="text"
-                    id={`class-rename-${code}`}
-                    name="className"
-                    autoComplete="off"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    onKeyDown={handleNameKeyDown}
-                    onBlur={handleNameSave}
-                    maxLength={60}
-                    placeholder={t.classNamePlaceholder}
-                    style={{ color: 'var(--vb-text-primary)', backgroundColor: 'var(--vb-surface-alt)' }}
-                    className="flex-1 text-lg sm:text-xl font-bold leading-tight border-2 border-[var(--vb-accent)] rounded-lg px-2 py-1 outline-none"
-                    disabled={savingName}
-                  />
-                  {savingName && <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>Saving...</span>}
-                </div>
-              ) : (
-                <button
-                  onClick={() => onNameChange && setIsEditingName(true)}
-                  type="button"
-                  style={{ touchAction: 'manipulation' }}
-                  className="group text-left w-full"
-                  title={onNameChange ? t.clickToEditNameTitle : undefined}
-                >
-                  <h3
-                    style={{ color: tintText?.primary ?? 'var(--vb-text-primary)' }}
-                    className="text-lg sm:text-xl font-bold leading-tight truncate transition-colors flex items-center gap-2 group-hover:text-[var(--vb-accent)]"
-                  >
-                    <span className="truncate">{name}</span>
-                    {onNameChange && (
-                      <Pencil size={14} className="opacity-0 group-hover:opacity-40 transition-opacity shrink-0" />
-                    )}
-                  </h3>
-                </button>
-              )}
+              {/* Class name — read-only on the card.  Renaming flows
+                  through the Edit Class modal opened from the kebab
+                  menu (teachers asked us to remove the inline-click
+                  edit affordance because mis-taps led to accidental
+                  rename-mode entries). */}
+              <h3
+                style={{ color: tintText?.primary ?? 'var(--vb-text-primary)' }}
+                className="text-lg sm:text-xl font-bold leading-tight truncate"
+              >
+                {name}
+              </h3>
 
               <div className="flex items-center gap-2 mt-1">
                 <button
@@ -759,17 +692,10 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     Edit class
                   </button>
                 )}
-                {onOpenRoster && (
-                  <button
-                    onClick={() => { onOpenRoster(); setMenuOpen(false); }}
-                    type="button"
-                    style={{ color: 'var(--vb-text-secondary)' }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
-                  >
-                    <Users size={14} className="text-fuchsia-600" />
-                    Manage roster
-                  </button>
-                )}
+                {/* "Manage roster" used to live here — removed in
+                    favour of the dedicated Roster button on the
+                    primary action row, so teachers have one obvious
+                    path instead of two. */}
                 <button
                   onClick={() => { setShareModalOpen(true); setMenuOpen(false); }}
                   type="button"

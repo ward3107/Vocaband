@@ -11,6 +11,12 @@ export interface ClassRosterStrings {
   title: string;
   classCodePrefix: string;
   closeAria: string;
+  /** Label rendered above the title in the v2 redesign, "{prefix} · {className}". */
+  sectionLabelPrefix: string;
+  /** Per-row "Copy join link" — both label inside the kebab menu and aria. */
+  copyLinkLabel: string;
+  /** Aria label for the kebab/overflow menu trigger on a student card. */
+  moreActionsAria: string;
 
   // Add student section
   addStudentLabel: string;
@@ -98,6 +104,9 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     title: "Class roster",
     classCodePrefix: "",
     closeAria: "Close",
+    sectionLabelPrefix: "Class",
+    copyLinkLabel: "Copy join link",
+    moreActionsAria: "More actions",
     addStudentLabel: "Add student",
     addStudentPlaceholder: 'e.g. "Yossi K" (first name + last initial)',
     addButton: "Add",
@@ -158,6 +167,9 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     title: "רשימת הכיתה",
     classCodePrefix: "",
     closeAria: "סגירה",
+    sectionLabelPrefix: "כיתה",
+    copyLinkLabel: "העתק קישור הצטרפות",
+    moreActionsAria: "פעולות נוספות",
     addStudentLabel: "הוספת תלמיד",
     addStudentPlaceholder: 'לדוגמה: "יוסי כ" (שם פרטי + אות ראשונה של שם המשפחה)',
     addButton: "הוסף",
@@ -221,6 +233,9 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     title: "قائمة الصف",
     classCodePrefix: "",
     closeAria: "إغلاق",
+    sectionLabelPrefix: "الصف",
+    copyLinkLabel: "انسخ رابط الانضمام",
+    moreActionsAria: "إجراءات إضافية",
     addStudentLabel: "إضافة طالب",
     addStudentPlaceholder: 'مثال: "يوسي ك" (الاسم الأول + أول حرف من اسم العائلة)',
     addButton: "إضافة",
@@ -284,6 +299,9 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     title: "Class roster",
     classCodePrefix: "",
     closeAria: "Close",
+    sectionLabelPrefix: "Class",
+    copyLinkLabel: "Copy join link",
+    moreActionsAria: "More actions",
     addStudentLabel: "Add student",
     addStudentPlaceholder: 'e.g. "Yossi K" (first name + last initial)',
     addButton: "Add",

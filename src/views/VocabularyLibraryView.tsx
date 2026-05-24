@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { motion, AnimatePresence } from "motion/react";
 import { BookMarked, FolderPlus, Plus, FileText, Folder, Clock, Sparkles, ChevronRight, ChevronLeft, Home, FolderInput } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
+import { THUMB_GRADIENTS, gradientFor } from "../components/vocabulary-library/v2/constants";
 import { useLanguage } from "../hooks/useLanguage";
 import { vocabularyLibraryT, type VocabularyLibraryStrings } from "../locales/teacher/vocabulary-library";
 import { hasTeacherAccess, type AppUser, type ClassData } from "../core/supabase";
@@ -523,12 +524,20 @@ function SetCard({
   onOpen: () => void;
   onMove: () => void;
 }) {
-  const gradient = set.color ? undefined : "from-fuchsia-500 via-pink-500 to-rose-500";
+  // Repainted with the v2 vocabulary-library SetCard look: tamed-
+  // rainbow thumbnail with floating word-count chip + drop-shadowed
+  // emoji, white footer with title.  Per-set custom `color` hex still
+  // wins so teacher-picked colours survive the redesign.
+  const thumbBg = set.color ?? THUMB_GRADIENTS[gradientFor(set.id ?? set.name)];
   return (
     <motion.div
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
-      className="relative rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden"
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      className="relative rounded-[22px] bg-white overflow-hidden border border-indigo-500/[0.10]"
+      style={{
+        boxShadow:
+          "0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)",
+      }}
     >
       <button
         type="button"
@@ -537,14 +546,24 @@ function SetCard({
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       >
         <div
-          className={`h-20 ${set.color ? "" : `bg-gradient-to-br ${gradient}`} flex items-center justify-center`}
-          style={set.color ? { background: set.color } : undefined}
+          className="relative grid place-items-center"
+          style={{ height: 110, background: thumbBg }}
         >
-          <span className="text-3xl">{set.emoji ?? "📄"}</span>
+          <span
+            className="absolute end-3 top-3 rounded-full border border-white/40 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-white backdrop-blur-md"
+            style={{ background: "rgba(255,255,255,0.22)" }}
+          >
+            {t.wordsCount(set.wordCount)}
+          </span>
+          <span
+            className="text-[44px]"
+            style={{ filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.18))" }}
+          >
+            {set.emoji ?? "📄"}
+          </span>
         </div>
-        <div className="p-4 pe-12">
-          <h4 className="font-bold text-slate-900 line-clamp-1">{set.name}</h4>
-          <p className="text-xs text-slate-500 mt-1">{t.wordsCount(set.wordCount)}</p>
+        <div className="px-4 pb-4 pt-3.5 pe-12">
+          <div className="truncate text-[14px] font-bold text-[#1F1147]">{set.name}</div>
         </div>
       </button>
       <CardMoveButton onMove={onMove} ariaLabel={t.moveAria} />
@@ -563,12 +582,18 @@ function CollectionCard({
   onOpen: () => void;
   onMove: () => void;
 }) {
-  const gradient = collection.color ? undefined : "from-amber-400 via-orange-500 to-rose-500";
+  // Same chrome as SetCard — keeps adjacent set + collection cards
+  // visually coherent inside a mixed grid.
+  const thumbBg = collection.color ?? THUMB_GRADIENTS[gradientFor(collection.id ?? collection.name)];
   return (
     <motion.div
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
-      className="relative rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden"
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      className="relative rounded-[22px] bg-white overflow-hidden border border-indigo-500/[0.10]"
+      style={{
+        boxShadow:
+          "0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)",
+      }}
     >
       <button
         type="button"
@@ -577,15 +602,22 @@ function CollectionCard({
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       >
         <div
-          className={`h-20 ${collection.color ? "" : `bg-gradient-to-br ${gradient}`} flex items-center justify-center`}
-          style={collection.color ? { background: collection.color } : undefined}
+          className="relative grid place-items-center"
+          style={{ height: 110, background: thumbBg }}
         >
-          <span className="text-3xl">{collection.emoji ?? "📁"}</span>
+          <span
+            className="text-[44px]"
+            style={{ filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.18))" }}
+          >
+            {collection.emoji ?? "📁"}
+          </span>
         </div>
-        <div className="p-4 pe-12">
-          <h4 className="font-bold text-slate-900 line-clamp-1">{collection.name}</h4>
+        <div className="px-4 pb-4 pt-3.5 pe-12">
+          <div className="truncate text-[14px] font-bold text-[#1F1147]">{collection.name}</div>
           {collection.description ? (
-            <p className="text-xs text-slate-500 mt-1 line-clamp-2">{collection.description}</p>
+            <p className="mt-1 line-clamp-2 text-[11px] font-semibold text-[#8B85AB]">
+              {collection.description}
+            </p>
           ) : null}
         </div>
       </button>

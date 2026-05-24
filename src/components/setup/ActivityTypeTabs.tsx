@@ -68,14 +68,21 @@ const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
     ]),
   ];
 
+  // Brand-aligned constants — mirror dashboardAccents.ts.  Inlined
+  // because this is the only place outside src/components/dashboard/
+  // that paints them today.
+  const BRAND_GRADIENT = 'linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)';
+  const BRAND_GLOW = '0 8px 18px -10px rgba(139,92,246,0.6)';
+
   return (
     <div className="mb-5 sm:mb-6" dir={isRTL ? 'rtl' : undefined}>
-      <p
-        className="text-[11px] sm:text-xs font-bold uppercase tracking-widest mb-2 px-1"
-        style={{ color: 'var(--vb-text-muted)' }}
-      >
+      <div className="mb-2 flex items-center gap-2 px-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+        <span
+          className="inline-block h-1.5 w-1.5 rounded-full"
+          style={{ background: 'linear-gradient(135deg,#8B5CF6,#D946EF)' }}
+        />
         {tw.activityTabsEyebrow}
-      </p>
+      </div>
 
       {/* Horizontal scroller for narrow viewports — the 5 pills don't
           fit on a 360px phone otherwise. Centered when there's room. */}
@@ -92,18 +99,24 @@ const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
                   onSwitch(tab.id);
                 }}
                 aria-pressed={isActive}
-                style={{
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent',
-                  backgroundColor: isActive ? undefined : 'var(--vb-surface)',
-                  borderColor: 'var(--vb-border)',
-                  color: isActive ? '#fff' : 'var(--vb-text-primary)',
-                }}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold border shadow-sm whitespace-nowrap transition-all ${
-                  isActive
-                    ? `${tab.activeBg} border-transparent shadow-md`
-                    : 'hover:opacity-90 active:scale-[0.97]'
-                }`}
+                style={isActive
+                  ? {
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      background: BRAND_GRADIENT,
+                      borderColor: 'transparent',
+                      color: '#fff',
+                      boxShadow: BRAND_GLOW,
+                    }
+                  : {
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      backgroundColor: 'var(--vb-surface)',
+                      borderColor: 'var(--vb-border)',
+                      color: 'var(--vb-text-primary)',
+                    }
+                }
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold border whitespace-nowrap transition-transform active:scale-[0.97]"
               >
                 <span className={isActive ? 'text-white' : tab.iconColor}>{tab.icon}</span>
                 {tab.label}

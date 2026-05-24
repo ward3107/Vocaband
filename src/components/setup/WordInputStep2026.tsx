@@ -267,17 +267,39 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
       animate={{ opacity: 1, y: 0 }}
       className="mb-8"
     >
-      <div className="bg-[var(--vb-surface)] rounded-xl shadow-lg border-2 border-indigo-100 overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4">
-          <div className="flex items-center gap-2 text-white">
-            <Sparkles className="w-5 h-5" />
-            <span className="font-bold text-lg">✨ {TEXT.pasteTitle}</span>
+      {/* Paste card — repainted with new-activity design (option D
+          part 3).  Rounded-[24px] white card, violet-gradient header
+          with frosted ✨ medallion, hairline-indigo textarea with
+          violet focus glow.  All textarea behaviour (autocomplete,
+          caret-sync, spell-check, autoCorrect) intact. */}
+      <div
+        className="bg-white rounded-[24px] overflow-hidden border border-indigo-500/[0.10]"
+        style={{
+          boxShadow: '0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)',
+        }}
+      >
+        {/* Header — violet→fuchsia gradient with frosted medallion. */}
+        <div
+          className="flex items-center gap-3 px-[22px] py-[18px] text-white"
+          style={{ background: 'linear-gradient(110deg, #7B61D6, #9F87F2)' }}
+        >
+          <div
+            className="grid h-9 w-9 place-items-center rounded-xl text-[18px]"
+            style={{
+              background: 'rgba(255,255,255,0.22)',
+              border: '1px solid rgba(255,255,255,0.35)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+            }}
+            aria-hidden
+          >
+            ✨
           </div>
+          <div className="text-[15px] font-extrabold tracking-[-0.01em]">{TEXT.pasteTitle}</div>
         </div>
 
         {/* Input Area */}
-        <div className="p-6">
+        <div className="px-[22px] py-5">
           <textarea
             ref={textareaRef}
             value={text}
@@ -303,7 +325,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
             spellCheck={!isDesktop}
             autoCorrect={isDesktop ? 'off' : 'on'}
             autoCapitalize="off"
-            className="w-full min-h-32 p-4 border border-[var(--vb-border)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 text-[var(--vb-text-secondary)] placeholder:text-[var(--vb-text-muted)] leading-relaxed"
+            className="block w-full min-h-[96px] resize-y rounded-2xl border-[1.5px] border-indigo-500/[0.10] bg-white px-[18px] py-3.5 text-[14px] text-[#1F1147] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] leading-relaxed"
             style={{ textAlign: 'left' }}
           />
 
@@ -446,47 +468,56 @@ interface OptionCardProps {
 }
 
 const OptionCard: React.FC<OptionCardProps> = ({
-  emoji, title, subtitle, ctaText, gradient, onClick, delay, isNew
+  emoji, title, subtitle, onClick, delay, isNew
 }) => {
+  // Repainted with the new-activity SourcePickerGrid look (option D
+  // part 4): rounded-[22px] white card, frosted-gradient emoji tile
+  // at the start, title + subtitle below.  The whole card is the
+  // click target so the previous "View →" CTA badge is dropped
+  // (gradient + ctaText props kept in the interface for source
+  // compatibility but unused here).
   return (
     <motion.button
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
       onClick={onClick}
-      whileHover={{ scale: 1.02, y: -2 }}
+      whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
       type="button"
-      className="w-full bg-[var(--vb-surface)] rounded-xl shadow-md hover:shadow-xl border border-[var(--vb-border)] p-3 sm:p-6 flex flex-col items-center text-center min-h-[150px] sm:min-h-[180px] transition-shadow"
-      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+      className="w-full rounded-[22px] border border-indigo-500/[0.10] bg-white px-[18px] pb-4 pt-[18px] text-start transition-[transform,box-shadow]"
+      style={{
+        touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent' as any,
+        boxShadow:
+          '0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)',
+      }}
     >
-      {/* Icon with optional sparkle */}
-      <div className="relative">
-        <span className="text-3xl sm:text-5xl">{emoji}</span>
+      <div className="relative mb-3 inline-block">
+        <div
+          className="grid h-11 w-11 place-items-center rounded-[14px] text-[22px]"
+          style={{
+            background: 'linear-gradient(135deg, #EEF0FF, #F8E8FF)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)',
+          }}
+          aria-hidden
+        >
+          {emoji}
+        </div>
         {isNew && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1 -right-2 text-base sm:text-lg"
+            className="absolute -top-1 -end-2 text-base"
+            aria-hidden
           >
             ✨
           </motion.span>
         )}
       </div>
 
-      {/* Title */}
-      <h3 className="mt-2 sm:mt-3 text-sm sm:text-base font-bold text-[var(--vb-text-primary)] leading-tight">{title}</h3>
-
-      {/* Subtitle */}
-      <p className="mt-1 text-xs sm:text-sm text-[var(--vb-text-muted)] leading-tight">{subtitle}</p>
-
-      {/* CTA Button */}
-      <div className="mt-auto pt-3 sm:pt-4 self-center sm:self-start">
-        <span className={`inline-flex items-center gap-1 text-xs sm:text-sm font-semibold bg-gradient-to-r ${gradient} text-transparent bg-clip-text`}>
-          {ctaText}
-          <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        </span>
-      </div>
+      <div className="text-[14px] font-bold text-[#1F1147]">{title}</div>
+      <div className="mt-0.5 text-[12px] text-[#6B6388]">{subtitle}</div>
     </motion.button>
   );
 };

@@ -46,11 +46,17 @@ function classifyAccuracy(correct: number, total: number): 'none' | 'rose' | 'am
   return 'rose';
 }
 
+// Background + border + readable text colour per accuracy bucket.
+// Text colour matters because each chip now shows the actual word
+// label inside — `title=` alone wasn't enough (teachers wouldn't
+// know to hover and the hover-only label was the bug we're fixing).
+// Amber uses dark text because the gradient is bright yellow-orange;
+// rose + green carry white text on their saturated gradients.
 const DOT_CLASSES: Record<'none' | 'rose' | 'amber' | 'green', string> = {
-  none:  'bg-[var(--vb-surface-alt)] border-[var(--vb-text-muted)]',
-  rose:  'bg-gradient-to-br from-rose-400 to-rose-600 border-rose-700 shadow-rose-300/40',
-  amber: 'bg-gradient-to-br from-amber-300 to-amber-500 border-amber-600 shadow-amber-300/40',
-  green: 'bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-700 shadow-emerald-300/40',
+  none:  'bg-[var(--vb-surface-alt)] border-[var(--vb-text-muted)] text-[var(--vb-text-muted)]',
+  rose:  'bg-gradient-to-br from-rose-400 to-rose-600 border-rose-700 shadow-rose-300/40 text-white',
+  amber: 'bg-gradient-to-br from-amber-300 to-amber-500 border-amber-600 shadow-amber-300/40 text-amber-950',
+  green: 'bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-700 shadow-emerald-300/40 text-white',
 };
 
 export default function MasteryHeatmap({ rows, getLabel, title }: MasteryHeatmapProps) {
@@ -132,13 +138,22 @@ export default function MasteryHeatmap({ rows, getLabel, title }: MasteryHeatmap
               initial={{ opacity: 0, scale: 0.6 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: Math.min(i * 0.008, 0.6), type: 'spring', stiffness: 300, damping: 18 }}
-              whileHover={{ scale: 1.2, zIndex: 5 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.05, zIndex: 5 }}
+              whileTap={{ scale: 0.95 }}
               title={tooltip}
               aria-label={tooltip}
-              className={`w-5 h-5 rounded-md border shadow-sm transition-shadow ${DOT_CLASSES[kind]} focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-400`}
+              className={`px-2 py-1 rounded-md border shadow-sm transition-shadow text-[11px] font-bold leading-none ${DOT_CLASSES[kind]} focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-400`}
               style={{ touchAction: 'manipulation' }}
-            />
+            >
+              <span className="inline-flex items-center gap-1">
+                {label}
+                {stats.total > 0 && (
+                  <span className="opacity-80 font-semibold text-[10px]">
+                    {pct}%
+                  </span>
+                )}
+              </span>
+            </motion.button>
           );
         })}
       </div>

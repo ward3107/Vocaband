@@ -11,6 +11,7 @@ import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import ClassRosterModal from '../components/ClassRosterModal';
+import RosterModalV2 from '../components/roster/v2/RosterModalV2';
 import SvgArrowLeftRight from '../components/svg/SvgArrowLeftRight';
 import { logAudit } from '../utils/audit';
 import {
@@ -326,12 +327,26 @@ export function TeacherDashboardSection(deps: TeacherDashboardSectionDeps): Reac
         onWizardSkip={() => skipTeacherOnboarding({ setUser })}
       />
       {rosterModalClass && (
-        <ClassRosterModal
-          open={!!rosterModalClass}
-          onClose={() => setRosterModalClass(null)}
-          classCode={rosterModalClass.code}
-          className={rosterModalClass.name}
-        />
+        /* English-subject classes get the redesigned RosterModalV2
+           (pastel chrome, kebab actions, frosted code chip).  Hebrew
+           classes keep the legacy ClassRosterModal so the VocaHebrew
+           dashboard surface stays untouched. */
+        (rosterModalClass.subject ?? 'english') === 'english' ? (
+          <RosterModalV2
+            open={!!rosterModalClass}
+            onClose={() => setRosterModalClass(null)}
+            classCode={rosterModalClass.code}
+            className={rosterModalClass.name}
+            classEmoji={rosterModalClass.avatar ?? '🎓'}
+          />
+        ) : (
+          <ClassRosterModal
+            open={!!rosterModalClass}
+            onClose={() => setRosterModalClass(null)}
+            classCode={rosterModalClass.code}
+            className={rosterModalClass.name}
+          />
+        )
       )}
     </LazyWrapper>
   );

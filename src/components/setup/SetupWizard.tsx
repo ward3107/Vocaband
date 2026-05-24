@@ -30,35 +30,45 @@ interface StepperProps {
   mode: WizardMode;
 }
 
+// Brand gradient matches dashboardAccents.ts so the wizard stepper
+// reads as the same family as the redesigned dashboard / classroom /
+// roster surfaces.  Kept inline (no shared import) because this file
+// is a leaf component the rest of the wizard mounts as-is.
+const STEPPER_BRAND_GRADIENT = 'linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)';
+const STEPPER_DONE_FILL = '#4DBA8A';
+
 const Stepper = memo(({ currentStep, mode }: StepperProps) => {
   const { language } = useLanguage();
   const t = teacherWizardsT[language];
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-3 mb-7 sm:mb-8">
+    <div className="flex items-center justify-center gap-2.5 sm:gap-3 mb-7 sm:mb-8">
       {[1, 2, 3].map((step) => {
         const stepNum = step as 1 | 2 | 3;
         const isCompleted = stepNum < currentStep;
         const isCurrent = stepNum === currentStep;
         const isOptional = mode === 'quick-play' && stepNum === 2;
 
+        // Repainted to match the new-activity design tokens:
+        // done = mint fill + check, active = brand-gradient pill with
+        // soft violet glow, pending = white circle with hairline
+        // indigo border + muted ink.
+        const dotStyle: React.CSSProperties = isCompleted
+          ? { background: STEPPER_DONE_FILL, border: '2px solid ' + STEPPER_DONE_FILL, color: '#fff' }
+          : isCurrent
+          ? {
+              background: STEPPER_BRAND_GRADIENT,
+              border: '2px solid transparent',
+              color: '#fff',
+              boxShadow: '0 8px 18px -10px rgba(139,92,246,0.6)',
+            }
+          : { background: '#fff', border: '2px solid rgba(99,102,241,0.10)', color: '#6B6388' };
+
         return (
           <React.Fragment key={step}>
             <div className="flex flex-col items-center">
               <div
-                style={
-                  isCompleted
-                    ? undefined
-                    : isCurrent
-                    ? undefined
-                    : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)', borderColor: 'var(--vb-border)' }
-                }
-                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                  isCompleted
-                    ? 'bg-emerald-500 text-white'
-                    : isCurrent
-                    ? 'bg-indigo-600 text-white shadow-sm ring-4 ring-indigo-100'
-                    : 'border'
-                }`}
+                style={dotStyle}
+                className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full text-[14px] font-extrabold transition-all"
               >
                 {isCompleted ? '✓' : step}
               </div>
@@ -67,11 +77,13 @@ const Stepper = memo(({ currentStep, mode }: StepperProps) => {
               )}
             </div>
             {step < 3 && (
-              <div
-                style={step < currentStep ? undefined : { backgroundColor: 'var(--vb-border)' }}
-                className={`w-8 sm:w-14 h-0.5 rounded-full ${
-                  step < currentStep ? 'bg-emerald-500' : ''
-                }`}
+              <span
+                className="block h-0.5 w-10 sm:w-14 rounded-[2px]"
+                style={{
+                  background: step < currentStep
+                    ? `linear-gradient(90deg, ${STEPPER_DONE_FILL}, #8B5CF6)`
+                    : 'rgba(99,102,241,0.10)',
+                }}
               />
             )}
           </React.Fragment>
@@ -455,14 +467,18 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
         onLogout={onLogout}
       />
 
-      {/* Vocabagrut-style hero — anchors the wizard with the same
-          gradient + frosted-medallion identity the Vocabagrut, dashboard,
-          and Free Resources tabs use. */}
+      {/* Hero — repainted with the indigo→violet→fuchsia brand
+          gradient so the wizard reads as the same family as the
+          redesigned dashboard / classroom / roster surfaces (the
+          previous default indigo→violet→fuchsia stop was fine; the
+          named `gradient` prop just makes that explicit and future-
+          proofs against PageHero default drift). */}
       <PageHero
         icon={<HeroIcon size={32} className="text-white" />}
         eyebrow={stepEyebrow}
         title={heroTitle}
         subtitle={heroSubtitle}
+        gradient="from-indigo-500 via-violet-500 to-fuchsia-500"
       />
 
       <div className="mx-auto px-3 sm:px-4 md:px-6 pt-6 sm:pt-8 max-w-5xl">

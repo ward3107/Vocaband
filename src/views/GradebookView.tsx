@@ -919,6 +919,11 @@ export default function GradebookView({
                 ? () => openRewardFor(drillStudent)
                 : undefined
             }
+            onCertificate={
+              drillStudent
+                ? () => setCertificateFor(drillStudent)
+                : undefined
+            }
             onReteach={
               drillStudent && onReteach
                 ? (wordIds) => onReteach(drillStudent.classCode, wordIds)

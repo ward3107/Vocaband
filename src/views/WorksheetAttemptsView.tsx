@@ -22,14 +22,12 @@ import {
   ChevronRight,
   ChevronUp,
   ClipboardList,
-  Clock,
   Inbox,
   Loader2,
   QrCode,
   Send,
   Target,
   Trash2,
-  Users,
 } from "lucide-react";
 import { supabase } from "../core/supabase";
 import type { AppUser } from "../core/supabase";
@@ -42,6 +40,8 @@ import {
 } from "../components/ShareWorksheetDialog";
 import { extractMisses, type Answer } from "../worksheet/types";
 import PageHero from "../components/PageHero";
+import WorksheetRowV2 from "../components/worksheet-results/v2/WorksheetRowV2";
+import { tagColorForFormat } from "../components/worksheet-results/v2/constants";
 
 type WorksheetFormat = "matching" | "quiz" | "fillblank" | "listening";
 
@@ -398,74 +398,43 @@ const WorksheetList: React.FC<{
           // teacher's sort by recency still surfaces worksheets where
           // students are actively practicing, not just initially solving.
           const childAttempts = children.flatMap((c) => attemptsBySlug.get(c.slug) ?? []);
-          const completedCount = att.filter((a) => a.completed_at).length;
-          const practiceCount = childAttempts.filter((a) => a.completed_at).length;
+          const completedAttempts = att.filter((a) => a.completed_at);
+          const completedCount = completedAttempts.length;
           const latest =
             [...att, ...childAttempts]
               .filter((a) => a.completed_at)
               .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""))[0]
               ?.completed_at ?? null;
+          // Ring shows the average score percentage across completed
+          // attempts so the visual cue is "how well did the class do"
+          // rather than just "how many took it" (which the title row
+          // already says).  Falls back to 0 when nobody completed yet.
+          const avgPct =
+            completedAttempts.length > 0
+              ? Math.round(
+                  completedAttempts.reduce(
+                    (sum, a) => sum + (a.total > 0 ? (a.score / a.total) * 100 : 0),
+                    0,
+                  ) / completedAttempts.length,
+                )
+              : 0;
           return (
-            <motion.button
+            <WorksheetRowV2
               key={w.slug}
-              type="button"
-              whileHover={{ scale: 1.005 }}
-              whileTap={{ scale: 0.995 }}
-              onClick={() => onSelect(w.slug)}
-              style={{
-                touchAction: "manipulation",
-                WebkitTapHighlightColor: "transparent",
-                backgroundColor: "var(--vb-surface)",
-                borderColor: "var(--vb-border)",
+              record={{
+                id: w.slug,
+                title: w.topic_name,
+                modeLabel: w.format,
+                modeTagColor: tagColorForFormat(w.format),
+                completedCount,
+                timeLabel: latest ? formatRelative(latest) : "—",
+                completionPercent: avgPct,
+                archived: !!w.archived_at,
+                archivedLabel: "Archived",
               }}
-              className="w-full text-left rounded-lg px-3 py-2.5 sm:px-4 border shadow-sm hover:shadow-md transition-all"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <h3 className="text-sm sm:text-base font-bold text-[var(--vb-text-primary)] truncate">
-                      {w.topic_name}
-                    </h3>
-                    {w.archived_at && (
-                      <span
-                        style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
-                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] uppercase tracking-wide font-bold shrink-0"
-                      >
-                        <Archive size={9} /> Archived
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-x-2 flex-wrap text-[11px] text-[var(--vb-text-muted)]">
-                    <span className="uppercase tracking-wider font-bold text-violet-500">
-                      {w.format}
-                    </span>
-                    <span aria-hidden>·</span>
-                    <span className="inline-flex items-center gap-0.5" title={`${completedCount} ${completedCount === 1 ? "submission" : "submissions"}`}>
-                      <Users size={11} />
-                      {completedCount}
-                    </span>
-                    {practiceCount > 0 && (
-                      <span className="inline-flex items-center gap-0.5 text-fuchsia-600 font-bold" title={`${practiceCount} ${practiceCount === 1 ? "practice round" : "practice rounds"}`}>
-                        <Target size={11} />
-                        {practiceCount}
-                      </span>
-                    )}
-                    {latest && (
-                      <span className="inline-flex items-center gap-0.5">
-                        <Clock size={11} />
-                        {formatRelative(latest)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-lg sm:text-xl font-black text-violet-600 tabular-nums leading-none">
-                    {completedCount}
-                  </span>
-                  <ChevronRight size={16} className="text-[var(--vb-text-muted)]" />
-                </div>
-              </div>
-            </motion.button>
+              studentsCount={(done) => String(done)}
+              onClick={() => onSelect(w.slug)}
+            />
           );
         })}
       </div>

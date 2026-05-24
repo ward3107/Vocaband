@@ -49,6 +49,8 @@ import PageHero from "../components/PageHero";
 
 const AnalyticsView = lazyWithRetry(() => import("./AnalyticsView"));
 const GradebookView = lazyWithRetry(() => import("./GradebookView"));
+import EnglishClassroomToday from "../components/classroom/v2/EnglishClassroomToday";
+import type { VocaId } from "../core/subject";
 
 type LegacyTab = "pulse" | "mastery";
 type V2Tab = "today" | "students" | "assignments" | "reports";
@@ -79,6 +81,12 @@ interface ClassroomViewProps {
    *  paths still land on something familiar. "pulse" -> "today" in v2,
    *  "mastery" -> "reports" in v2. */
   initialTab?: LegacyTab;
+  /** Active Voca for this teacher's session.  Drives the gated
+   *  redesigned Today panel.  Defaults to 'english' so legacy callers
+   *  that don't pass it keep the existing (unchanged) behaviour for
+   *  English teachers; pass 'hebrew' explicitly to suppress the new
+   *  panel on the VocaHebrew dashboard. */
+  subject?: VocaId;
 }
 
 const legacyToV2: Record<LegacyTab, V2Tab> = {
@@ -92,6 +100,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
     selectedClass, setSelectedClass, selectedWords, setSelectedWords,
     expandedStudent, setExpandedStudent, setView, showToast,
     initialTab = "pulse",
+    subject = "english",
   } = props;
   // user is consumed by GradebookView/AnalyticsView via spread props below;
   // referenced in JSX so no unused-var warning.
@@ -301,60 +310,68 @@ export default function ClassroomView(props: ClassroomViewProps) {
             }>
               {v2Tab === "today" && (
                 <div className="mt-6 space-y-5">
-                  {/* Stats row — three chips, dense.  ENROLLED was a fourth
-                      chip but it was the same number as the "active /
-                      enrolled" caption on the first chip, so teachers
-                      saw the roster size twice in a row.  Folded into
-                      the active-students caption instead. */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <StatChip
-                      value={`${todayStats.activeStudents}/${todayStats.rosterSize || "—"}`}
-                      label={t.statActiveLabel}
-                      tone="indigo"
-                      tooltip={t.statActiveTooltip}
+                  {subject === "english" ? (
+                    /* English path: redesigned Today panel REPLACES
+                       the legacy chips + Gradebook content.  The new
+                       panel computes the same stats + pulse + chart
+                       from the same underlying scores so nothing is
+                       lost — just rendered in the new visual style. */
+                    <EnglishClassroomToday
+                      classCode={classCode}
+                      allScores={allScores}
+                      classStudents={classStudents}
+                      /* No onPulseClick yet — wire only after the
+                         Students tab accepts a bucket filter, so
+                         tapping a card lands on the *matching*
+                         students instead of the unfiltered roster
+                         (which felt like a misroute). */
                     />
-                    <StatChip
-                      value={todayStats.avgScore == null ? "—" : `${todayStats.avgScore}%`}
-                      label={t.statAvgScoreLabel}
-                      score={todayStats.avgScore ?? undefined}
-                      tone={todayStats.avgScore == null ? "stone" : undefined}
-                      tooltip={t.statAvgScoreTooltip}
-                    />
-                    <StatChip
-                      value={todayStats.playsThisWeek}
-                      label={t.statPlaysLabel}
-                      tone="violet"
-                      tooltip={t.statPlaysTooltip}
-                    />
-                  </div>
+                  ) : (
+                    <>
+                      {/* Hebrew path: legacy chips + Gradebook.
+                          ENROLLED was a fourth chip but it duplicated
+                          the "active / enrolled" caption on the first
+                          chip, so it was folded in. */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <StatChip
+                          value={`${todayStats.activeStudents}/${todayStats.rosterSize || "—"}`}
+                          label={t.statActiveLabel}
+                          tone="indigo"
+                          tooltip={t.statActiveTooltip}
+                        />
+                        <StatChip
+                          value={todayStats.avgScore == null ? "—" : `${todayStats.avgScore}%`}
+                          label={t.statAvgScoreLabel}
+                          score={todayStats.avgScore ?? undefined}
+                          tone={todayStats.avgScore == null ? "stone" : undefined}
+                          tooltip={t.statAvgScoreTooltip}
+                        />
+                        <StatChip
+                          value={todayStats.playsThisWeek}
+                          label={t.statPlaysLabel}
+                          tone="violet"
+                          tooltip={t.statPlaysTooltip}
+                        />
+                      </div>
 
-                  {/* The existing pulse cards + activity chart come from
-                      GradebookView, sliced via the sections prop. Class
-                      selection is controlled so switching tabs doesn't
-                      lose the teacher's pick.  Export button is hidden
-                      here (CSV + PDF now live exclusively on the Reports
-                      tab per teacher feedback). */}
-                  <GradebookView
-                    user={user}
-                    allScores={allScores}
-                    teacherAssignments={teacherAssignments}
-                    classStudents={classStudents}
-                    classes={classes}
-                    expandedStudent={expandedStudent}
-                    setExpandedStudent={setExpandedStudent}
-                    setView={setView}
-                    showToast={showToast}
-                    embedded
-                    sections={["pulse", "activity"]}
-                    hideExport
-                    selectedClassCode={classCode}
-                    onSelectedClassChange={setClassCode}
-                  />
-                  {/* "Suggestions for today" action list was removed 2026-04-24 —
-                      teachers found it cluttered the Today view and its three
-                      inactive-student / most-missed-word / incomplete-assignment
-                      rules already surface via the Students / Reports / Assignments
-                      tabs directly. */}
+                      <GradebookView
+                        user={user}
+                        allScores={allScores}
+                        teacherAssignments={teacherAssignments}
+                        classStudents={classStudents}
+                        classes={classes}
+                        expandedStudent={expandedStudent}
+                        setExpandedStudent={setExpandedStudent}
+                        setView={setView}
+                        showToast={showToast}
+                        embedded
+                        sections={["pulse", "activity"]}
+                        hideExport
+                        selectedClassCode={classCode}
+                        onSelectedClassChange={setClassCode}
+                      />
+                    </>
+                  )}
                 </div>
               )}
               {v2Tab === "students" && (
