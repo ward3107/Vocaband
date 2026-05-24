@@ -209,9 +209,9 @@ export default function RelationsGame({
         {promptLabel}
       </div>
 
-      {/* Big base word */}
+      {/* Big base word — English, always LTR. */}
       <div className="mb-2 text-center">
-        <h2 className="text-4xl sm:text-6xl font-black tracking-tight text-stone-900 dark:text-stone-100">
+        <h2 dir="ltr" className="text-4xl sm:text-6xl font-black tracking-tight text-stone-900 dark:text-stone-100">
           {current.base}
         </h2>
       </div>
@@ -275,18 +275,25 @@ export default function RelationsGame({
             <p className={`font-black text-sm sm:text-base mb-2 ${picked === current.answer ? 'text-emerald-700' : 'text-rose-700'}`} dir={dir}>
               {picked === current.answer
                 ? (language === 'he' ? 'נכון! 🎉' : language === 'ar' ? 'صحيح! 🎉' : 'Correct! 🎉')
-                : (language === 'he' ? `התשובה הנכונה: ${current.answer}`
-                  : language === 'ar' ? `الإجابة الصحيحة: ${current.answer}`
-                  : `Correct answer: ${current.answer}`)}
+                : (
+                  <>
+                    {language === 'he' ? 'התשובה הנכונה: ' : language === 'ar' ? 'الإجابة الصحيحة: ' : 'Correct answer: '}
+                    {/* The answer is an English word — isolate LTR so it
+                        doesn't reorder against the HE/AR prefix. */}
+                    <bdi dir="ltr">{current.answer}</bdi>
+                  </>
+                )}
             </p>
             {/* All valid answers — extra learning even when they got it right */}
             <p className="text-xs sm:text-sm text-stone-700 leading-snug" dir={dir}>
-              <span className="text-stone-500 uppercase tracking-widest text-[10px] mr-2">
+              <span className="text-stone-500 uppercase tracking-widest text-[10px] me-2">
                 {current.type === 'synonym'
                   ? (language === 'he' ? 'נרדפות' : language === 'ar' ? 'مرادفات' : 'Synonyms')
                   : (language === 'he' ? 'הפוכות' : language === 'ar' ? 'متضادات' : 'Antonyms')}
               </span>
-              <span className="font-bold">{current.validAnswers.join(', ')}</span>
+              {/* Comma-separated English list — isolate LTR so the commas
+                  don't jump to the wrong side under RTL. */}
+              <bdi dir="ltr" className="font-bold">{current.validAnswers.join(', ')}</bdi>
             </p>
           </motion.div>
         )}

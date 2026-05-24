@@ -315,9 +315,9 @@ export default function SpeedRoundGame({
           : "Translate this word"}
       </p>
 
-      {/* Big prompt word */}
+      {/* Big prompt word — English, always LTR. */}
       <div className="mb-2 text-center">
-        <h2 className="text-4xl sm:text-6xl font-black tracking-tight text-stone-900 dark:text-stone-100">
+        <h2 dir="ltr" className="text-4xl sm:text-6xl font-black tracking-tight text-stone-900 dark:text-stone-100">
           {question.word.english}
         </h2>
       </div>
@@ -348,6 +348,12 @@ export default function SpeedRoundGame({
           const isPicked = picked?.id === opt.id;
           const isCorrect = opt.id === question.word.id;
           const showResult = picked != null;
+          // Direction follows the rendered text: HE/AR translation is
+          // RTL, but a missing-translation English fallback must stay
+          // LTR so it doesn't reverse inside an RTL button.
+          const optTranslation = translationOf(opt, targetLanguage);
+          const optText = optTranslation || opt.english;
+          const optDir = optTranslation ? "rtl" : "ltr";
           let stateClasses = `bg-white border-2 ${theme.border} ${theme.hoverBg}`;
           if (showResult) {
             if (isCorrect) {
@@ -365,11 +371,11 @@ export default function SpeedRoundGame({
               onClick={() => handlePick(opt)}
               disabled={showResult}
               type="button"
-              dir={targetLanguage === "hebrew" || targetLanguage === "arabic" ? "rtl" : "ltr"}
+              dir={optDir}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className={`px-4 py-4 sm:py-5 rounded-xl text-center font-black text-lg sm:text-xl transition-all shadow-sm ${stateClasses}`}
             >
-              {translationOf(opt, targetLanguage) || opt.english}
+              {optText}
             </motion.button>
           );
         })}

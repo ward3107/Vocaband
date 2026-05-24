@@ -66,8 +66,8 @@ export default function SentenceBuilderGame({
   if (sentences.length === 0) {
     return (
       <div className="text-center p-8">
-        <p className="text-stone-400 text-lg">No sentences were added to this assignment.</p>
-        <p className="text-stone-400 text-sm mt-2">Ask your teacher to add sentences.</p>
+        <p className="text-stone-400 text-lg">{t.noSentencesAdded}</p>
+        <p className="text-stone-400 text-sm mt-2">{t.askTeacherToAddSentences}</p>
       </div>
     );
   }
@@ -104,7 +104,7 @@ export default function SentenceBuilderGame({
           <Volume2 size={40} className={themed ? themed.pillText : "text-stone-700"} />
         </button>
         <p className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.25em] ${themed ? themed.pillText : "text-stone-500"}`}>
-          Sentence {sentenceIndex + 1} / {sentences.length}
+          {t.sentenceCounter(sentenceIndex + 1, sentences.length)}
         </p>
       </div>
 
@@ -121,7 +121,7 @@ export default function SentenceBuilderGame({
       >
         {builtSentence.length === 0 && (
           <span className="text-stone-400 text-sm sm:text-base italic w-full text-center">
-            Tap words below to build the sentence
+            {t.tapWordsToBuild}
           </span>
         )}
         <AnimatePresence>

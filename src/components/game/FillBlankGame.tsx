@@ -4,6 +4,7 @@ import type { AssignmentData } from "../../core/supabase";
 import AnswerOptionButton from "../AnswerOptionButton";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
 import { useLanguage } from "../../hooks/useLanguage";
+import { gameActiveT } from "../../locales/student/game-active";
 
 interface FillBlankGameProps {
   activeAssignment: AssignmentData | null;
@@ -80,14 +81,15 @@ const FillBlankGame = React.memo(({
   gameWordsCount, onAnswer, themeColor,
 }: FillBlankGameProps) => {
   const { language } = useLanguage();
+  const t = gameActiveT[language];
   const themed = themeColor ? getThemeColors(themeColor) : null;
   const sentences = (activeAssignment as AssignmentData & { sentences?: string[] })?.sentences?.filter(s => s.trim()) || [];
 
   if (sentences.length === 0) {
     return (
       <div className="text-center p-8">
-        <p className="text-stone-400 text-lg">No sentences were added to this assignment.</p>
-        <p className="text-stone-400 text-sm mt-2">Ask your teacher to add sentences.</p>
+        <p className="text-stone-400 text-lg">{t.noSentencesAdded}</p>
+        <p className="text-stone-400 text-sm mt-2">{t.askTeacherToAddSentences}</p>
       </div>
     );
   }
@@ -95,7 +97,7 @@ const FillBlankGame = React.memo(({
   if (!currentWord) {
     return (
       <div className="text-center p-8 bg-red-50 rounded-xl">
-        <p className="text-red-600 font-black">[!] Error: No word loaded</p>
+        <p className="text-red-600 font-black">{t.errorNoWordLoaded}</p>
       </div>
     );
   }
@@ -103,8 +105,8 @@ const FillBlankGame = React.memo(({
   if (options.length === 0) {
     return (
       <div className="text-center p-8 bg-amber-50 rounded-xl">
-        <p className="text-amber-600 font-black">[!] Error: No answer options available</p>
-        <p className="text-sm text-amber-500 mt-2">You need at least 4 words in the assignment for this mode to work</p>
+        <p className="text-amber-600 font-black">{t.errorNoOptions}</p>
+        <p className="text-sm text-amber-500 mt-2">{t.errorNeedFourWords}</p>
       </div>
     );
   }
@@ -127,13 +129,17 @@ const FillBlankGame = React.memo(({
   return (
     <div className="max-w-xl mx-auto px-2 space-y-4 sm:space-y-5">
       <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-[0.25em] text-center">
-        Sentence {currentIndex + 1} / {gameWordsCount}
+        {t.sentenceCounter(currentIndex + 1, gameWordsCount)}
       </p>
 
       {/* Hero sentence card -- generous padding, theme-tinted, big
           readable text.  The blank is rendered inline as a slot
-          box that sits on the same line as the surrounding text. */}
+          box that sits on the same line as the surrounding text.
+          dir="ltr" so the English sentence fragments around the blank
+          read left-to-right (and end punctuation stays on the right)
+          even when the UI is Hebrew/Arabic. */}
       <div
+        dir="ltr"
         className={`min-h-[100px] sm:min-h-[120px] rounded-2xl p-5 sm:p-7 text-lg sm:text-2xl font-bold text-stone-800 leading-relaxed text-center break-words ${
           themed
             ? `border-2 ${themed.border} ${themed.cardBg}`
