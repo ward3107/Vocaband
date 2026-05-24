@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { shapeArabic } from '../lib/arabicShaper';
+import { fixRtl } from '../lib/pdfFonts';
 
 // Helper: build a string from a list of Unicode codepoints.  Tests stay
 // readable when comparing against specific Presentation Form-B glyphs.
@@ -69,5 +70,42 @@ describe('shapeArabic', () => {
   it('passes through letters outside the supported alphabet', () => {
     // Persian Peh (U+067E) isn't in our table — should round-trip as-is.
     expect(shapeArabic('پ')).toBe('پ');
+  });
+});
+
+describe('fixRtl', () => {
+  it('reverses multi-word Arabic phrases as a whole unit', () => {
+    // "في الخارج" (abroad) — the first logical word must end up on the
+    // RIGHT of the rendered LTR string so the visual RTL reading order
+    // matches the source.  Verify by checking the boundary glyphs: the
+    // shaped jeem of "الخارج" (last logical word) leads, the shaped feh
+    // of "في" (first logical word) trails.  Without the multi-word
+    // regex these would be reversed, producing wrong reading order.
+    const out = fixRtl('في الخارج');
+    // Leading char is the isolated jeem (U+FE9D) — last letter of word 2.
+    expect(out.codePointAt(0)).toBe(0xFE9D);
+    // Trailing char is the initial feh (U+FED3) — first letter of word 1.
+    expect(out.codePointAt(out.length - 1)).toBe(0xFED3);
+    // Embedded space survives at the original word boundary, now between
+    // the two reversed words.
+    expect(out).toContain(' ');
+  });
+
+  it('reverses multi-word Hebrew phrases as a whole unit', () => {
+    // "שלום עולם" (hello world).  Logical first word "שלום" must end up
+    // on the right of the LTR output, second word "עולם" on the left.
+    expect(fixRtl('שלום עולם')).toBe('םלוע םולש');
+  });
+
+  it('preserves Latin context around a multi-word RTL phrase', () => {
+    // The greedy RTL run consumes the inter-word space but stops at the
+    // ASCII letters — so "Hello" stays put.
+    expect(fixRtl('Hello שלום עולם')).toBe('Hello םלוע םולש');
+  });
+
+  it('leaves single-word RTL behaviour unchanged', () => {
+    // Sanity check that the broadened regex still works the same way
+    // for the common single-word case.
+    expect(fixRtl('שלום')).toBe('םולש');
   });
 });

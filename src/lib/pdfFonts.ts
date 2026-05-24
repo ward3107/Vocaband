@@ -61,13 +61,18 @@ export function registerHebrewArabicFonts(doc: jsPDF, fonts: Base64Font): void {
 export const HEBREW_RE = /[\u0590-\u05FF\uFB1D-\uFB4F]/;
 export const ARABIC_RE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
 
-// Match runs of consecutive Hebrew / Arabic characters so the Latin
-// portion of mixed strings like "Score: 80% (סימו)" stays untouched.
-// Arabic ranges include the Presentation Forms blocks too in case input
+// Match runs of Hebrew / Arabic words — including the ASCII / NBSP
+// spaces between adjacent RTL words so multi-word phrases like
+// "في الخارج" or "מגוון של" reverse as one unit.  Reversing each word
+// in isolation left the first logical word on the LEFT instead of the
+// RIGHT under jsPDF's LTR layout, flipping the reading order of the
+// phrase.  The run still starts and ends on an RTL char so leading /
+// trailing whitespace from surrounding Latin text stays untouched.
+// Arabic ranges include the Presentation Forms blocks in case input
 // already contains pre-shaped glyphs.  Escape syntax used here to keep
 // U+FEFF (BOM) out of the source — it trips eslint's irregular-whitespace.
-const HEBREW_RUN_RE = /[\u0590-\u05FF\uFB1D-\uFB4F]+/g;
-const ARABIC_RUN_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g;
+const HEBREW_RUN_RE = /[\u0590-\u05FF\uFB1D-\uFB4F]+(?:[ \u00A0]+[\u0590-\u05FF\uFB1D-\uFB4F]+)*/g;
+const ARABIC_RUN_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+(?:[ \u00A0]+[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+)*/g;
 
 export function fixRtl(text: string): string {
   // Arabic first: shape base letters into their positional Presentation
