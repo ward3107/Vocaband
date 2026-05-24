@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, MoreVertical, RefreshCw, Trash2, Eye, EyeOff } from "lucide-react";
+import { Copy, MessageCircle, MoreVertical, RefreshCw, Trash2, Eye, EyeOff } from "lucide-react";
 import StudentAvatar from "./StudentAvatar";
 import type { StudentAccent } from "./constants";
 
@@ -27,6 +27,11 @@ interface StudentCardProps {
   onResetPin?: () => void;
   onDelete?: () => void;
   onCopyLink?: () => void;
+  /** Open WhatsApp with JUST the PIN as the message text — no class
+   *  name, no surrounding instructions.  Teachers asked for this so
+   *  they can send the secret PIN alone on a different channel than
+   *  the class invite link. */
+  onSharePinWhatsApp?: () => void;
   /** Localised labels for the small kebab-menu actions and PIN chip. */
   labels: {
     pin: string;
@@ -36,6 +41,7 @@ interface StudentCardProps {
     deleteAria: string;
     deleteLabel: string;
     moreAria: string;
+    sharePinAria: string;
   };
 }
 
@@ -57,6 +63,7 @@ export default function StudentCard({
   onResetPin,
   onDelete,
   onCopyLink,
+  onSharePinWhatsApp,
   labels,
 }: StudentCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -96,6 +103,23 @@ export default function StudentCard({
           >
             {pinRevealed ? <EyeOff size={12} /> : <Eye size={12} />}
             {pinRevealed ? student.pin : labels.pin}
+          </button>
+        )}
+        {student.pin && onSharePinWhatsApp && (
+          <button
+            type="button"
+            onClick={onSharePinWhatsApp}
+            aria-label={labels.sharePinAria}
+            title={labels.sharePinAria}
+            style={{
+              touchAction: "manipulation",
+              WebkitTapHighlightColor: "transparent",
+              background: "#25D366",
+              boxShadow: "0 6px 14px -8px rgba(37,211,102,0.55)",
+            }}
+            className="grid h-8 w-8 place-items-center rounded-[10px] border-0 text-white transition-transform active:scale-95"
+          >
+            <MessageCircle size={14} />
           </button>
         )}
         {!mobile && onCopyLink && (
