@@ -374,7 +374,7 @@ export default function RosterModalV2({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           dir={dir}
-          className="fixed inset-0 z-[60] bg-slate-950/40 backdrop-blur-sm flex items-stretch sm:items-start justify-center overflow-y-auto"
+          className="fixed inset-0 z-[60] bg-slate-950/40 backdrop-blur-sm flex items-stretch sm:items-center justify-center sm:p-4"
           onClick={onClose}
         >
           <motion.div
@@ -383,7 +383,7 @@ export default function RosterModalV2({
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.2 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full sm:my-6 sm:mx-4 sm:max-w-5xl bg-white sm:rounded-[28px] shadow-2xl overflow-hidden"
+            className="relative flex w-full max-h-full flex-col overflow-hidden bg-white shadow-2xl sm:max-h-[92vh] sm:max-w-5xl sm:rounded-[28px]"
             style={{
               background:
                 "radial-gradient(140% 100% at 100% 0%, #F3EBFF 0%, #F6F4FF 40%, #FAF7FF 100%)",
@@ -402,7 +402,7 @@ export default function RosterModalV2({
               <X size={18} />
             </button>
 
-            <div className="px-5 sm:px-10 pt-8 sm:pt-10 pb-12">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-10 pt-8 sm:pt-10 pb-12">
               <RosterHeader
                 mobile={isMobile}
                 className={className}
