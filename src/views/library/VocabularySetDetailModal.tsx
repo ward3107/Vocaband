@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Sparkles, Printer, Send, Pencil, Trash2, Loader2, ListChecks, RefreshCcw } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { loadHebrewArabicFonts, registerHebrewArabicFonts, fixRtl } from "../../lib/pdfFonts";
+import { loadHebrewArabicFonts, registerHebrewArabicFonts, fixRtl, disableJsPdfArabicProcessor } from "../../lib/pdfFonts";
 import { useLanguage } from "../../hooks/useLanguage";
 import { setDetailT, type SetDetailStrings } from "../../locales/teacher/vocabulary-library-detail";
 import {
@@ -613,6 +613,11 @@ async function buildAndDownloadPdf({
   t: SetDetailStrings;
 }): Promise<void> {
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  // jsPDF auto-subscribes its own (incorrect for our use) Arabic shaper to
+  // every doc's preProcessText event. Disable it so our pre-shaped PF-B
+  // text from fixRtl() survives intact instead of being decomposed back
+  // to base U+06xx letters.
+  disableJsPdfArabicProcessor(pdf);
   const pageWidth = pdf.internal.pageSize.getWidth();
   const margin = 18;
 

@@ -39,7 +39,6 @@ import { FlashcardsSheet } from './sheets/FlashcardsSheet';
 import { MatchingSheet } from './sheets/MatchingSheet';
 import { SentenceBuilderSheet } from './sheets/SentenceBuilderSheet';
 import { IdiomSheet } from './sheets/IdiomSheet';
-import { WordChainsSheet } from './sheets/WordChainsSheet';
 import type { Word } from '../../data/vocabulary';
 import { worksheetStrings } from '../../locales/student/worksheet';
 import type { QuestionShapes } from './buildShapes';
@@ -55,8 +54,7 @@ export type WorksheetSheetType =
   | 'flashcards'
   | 'matching'
   | 'sentence-builder'
-  | 'idiom'
-  | 'word-chains';
+  | 'idiom';
 
 interface WorksheetProps {
   sheetType: WorksheetSheetType;
@@ -120,17 +118,16 @@ function getSheetLabel(type: WorksheetSheetType, t: any): string {
     'matching': 'matchingLabel',
     'sentence-builder': 'sentenceBuilderLabel',
     'idiom': 'idiomLabel',
-    'word-chains': 'wordChainsLabel',
   };
   return t[labelMap[type]] || type;
 }
 
 /** Sheet types where a per-word row in the consolidated answer key
  *  doesn't make sense.  Word list and flashcards have no "answer".
- *  Word chains has no canonical answer.  Sentence builder + fill-blank
- *  render their own variable-length content via dedicated rows. */
+ *  Sentence builder + fill-blank render their own variable-length
+ *  content via dedicated rows. */
 function hasPerWordAnswer(type: WorksheetSheetType): boolean {
-  return type !== 'word-list' && type !== 'flashcards' && type !== 'word-chains';
+  return type !== 'word-list' && type !== 'flashcards';
 }
 
 /** Returns the correct answer cell content for a given sheet type
@@ -281,7 +278,6 @@ export default function Worksheet({
       {sheetType === 'matching' && <MatchingSheet words={words} translationLang={translationLang} shape={shapes?.matching} />}
       {sheetType === 'sentence-builder' && <SentenceBuilderSheet words={words} translationLang={translationLang} aiSentences={aiSentences} shape={shapes?.['sentence-builder']} />}
       {sheetType === 'idiom' && <IdiomSheet words={words} translationLang={translationLang} />}
-      {sheetType === 'word-chains' && <WordChainsSheet words={words} translationLang={translationLang} />}
 
       {/* Compact Consolidated Answer Key - only on the last worksheet.
           Defaults to flowing inline below the questions; when

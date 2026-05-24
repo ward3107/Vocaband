@@ -48,8 +48,7 @@ export type ClassShowMode =
   | 'memory-flip'
   | 'sentence-builder'
   | 'idiom'
-  | 'speed-round'
-  | 'word-chains';
+  | 'speed-round';
 
 export interface ClassShowWordSource {
   /** Stable label shown in the picker. */
@@ -95,9 +94,9 @@ interface ClassShowSetupProps {
   onTranslationLangChange: (lang: TranslationLang) => void;
 }
 
-// Idioms + Word Chains are intentionally excluded from Class Show — they
-// don't translate well to the projected single-screen-for-the-whole-class
-// format and they're available in the student game flow.
+// Idioms are intentionally excluded from Class Show — it doesn't
+// translate well to the projected single-screen-for-the-whole-class
+// format and is available in the student game flow.
 const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: React.ReactNode; gradient: string }> = [
   { id: 'classic',          nameKey: 'modeClassic',         icon: <Layers size={26} />,         gradient: 'from-indigo-300 to-violet-400' },
   { id: 'listening',        nameKey: 'modeListening',       icon: <Headphones size={26} />,     gradient: 'from-sky-300 to-cyan-400' },

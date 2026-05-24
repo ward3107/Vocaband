@@ -1,7 +1,7 @@
 /**
  * IdiomGame — pick the correct figurative meaning of an English idiom.
  *
- * Self-contained mode (similar to WordChainsGame): doesn't slot into
+ * Self-contained mode (similar to SpeedRoundGame): doesn't slot into
  * the per-question orchestration GameActiveView uses for Classic /
  * Listening because the question source is the idiom dataset, not
  * the assignment word pool.

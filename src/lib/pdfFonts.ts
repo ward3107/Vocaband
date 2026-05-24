@@ -57,8 +57,57 @@ export function registerHebrewArabicFonts(doc: jsPDF, fonts: Base64Font): void {
   doc.addFont('NotoSansArabic-Regular.ttf', 'Arabic', 'normal');
 }
 
+// jsPDF ships TWO text processors that auto-subscribe to every new doc
+// instance and mangle our pre-shaped Arabic:
+//
+//   1. preProcessText  → processArabic (jspdf.es.js ~L10106)
+//      Decomposes our Presentation Forms-B back to base U+06xx letters
+//      and applies its own shaping algorithm. The result is disconnected
+//      base letters in the wrong order (e.g. "من" → "نم").
+//
+//   2. postProcessText → bidiEngineFunction (jspdf.es.js ~L22733)
+//      Runs Unicode bidi reorder on the text. Since fixRtl already
+//      reversed each RTL run for jsPDF's LTR write order, this bidi pass
+//      un-reverses them — defeating the whole fix.
+//
+// There's also `utf8EscapeFunction` on postProcessText that handles the
+// actual UTF-8 → PDF stream encoding. We MUST keep that one or no
+// non-ASCII glyph writes at all.
+//
+// Strategy: match handlers by function-source substring. Vite/esbuild
+// strips function names from jsPDF's bundled module (every fn.name comes
+// through as ''), but string literals inside function bodies survive any
+// minifier. Each killable handler contains a unique identifier:
+//   - processArabic / parseArabic → "arabicSubstitionA" (jsPDF's typo'd
+//     lookup-table name; nothing else references it)
+//   - bidiEngineFunction         → "doBidiReorder" (the BidiEngine method)
+//   - utf8EscapeFunction (KEEP)  → contains "utf8TextFunction"; never
+//     matched by killSignatures so it survives.
+export function disableJsPdfArabicProcessor(doc: jsPDF): void {
+  const events = (doc.internal as unknown as {
+    events: {
+      getTopics: () => Record<string, Record<string, [(...args: unknown[]) => unknown, boolean]>>;
+      unsubscribe: (t: string) => boolean;
+    };
+  }).events;
+  const topics = events.getTopics();
+  const killSignatures = ['arabicSubstitionA', 'doBidiReorder'];
+  (['preProcessText', 'postProcessText'] as const).forEach((topicName) => {
+    const subs = topics[topicName];
+    if (!subs) return;
+    Object.entries(subs).forEach(([token, entry]) => {
+      const fn = entry[0];
+      if (typeof fn !== 'function') return;
+      const src = fn.toString();
+      if (killSignatures.some((s) => src.includes(s))) {
+        events.unsubscribe(token);
+      }
+    });
+  });
+}
+
 // Detect script in a string so callers can pick the right font.
-export const HEBREW_RE = /[\u0590-\u05FF\uFB1D-\uFB4F]/;
+export const HEBREW_RE = /[֐-׿יִ-ﭏ]/;
 export const ARABIC_RE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
 
 // Match runs of Hebrew / Arabic words — including the ASCII / NBSP
@@ -71,8 +120,8 @@ export const ARABIC_RE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
 // Arabic ranges include the Presentation Forms blocks in case input
 // already contains pre-shaped glyphs.  Escape syntax used here to keep
 // U+FEFF (BOM) out of the source — it trips eslint's irregular-whitespace.
-const HEBREW_RUN_RE = /[\u0590-\u05FF\uFB1D-\uFB4F]+(?:[ \u00A0]+[\u0590-\u05FF\uFB1D-\uFB4F]+)*/g;
-const ARABIC_RUN_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+(?:[ \u00A0]+[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+)*/g;
+const HEBREW_RUN_RE = /[֐-׿יִ-ﭏ]+(?:[  ]+[֐-׿יִ-ﭏ]+)*/g;
+const ARABIC_RUN_RE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]+(?:[  ]+[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]+)*/g;
 
 export function fixRtl(text: string): string {
   // Arabic first: shape base letters into their positional Presentation

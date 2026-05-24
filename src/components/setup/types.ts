@@ -30,7 +30,6 @@ export const GAME_MODE_LEVELS: Record<string, GameModeDef[]> = {
     { id: 'reverse', name: 'Reverse', emoji: '🔁', color: 'from-amber-400 to-amber-500' },
     { id: 'scramble', name: 'Scramble', emoji: '🔤', color: 'from-yellow-400 to-yellow-500' },
     { id: 'fill-blank', name: 'Fill in the Blank', emoji: '✏️', color: 'from-lime-400 to-lime-500' },
-    { id: 'word-chains', name: 'Word Chains', emoji: '🔗', color: 'from-orange-400 to-amber-500' },
   ],
   mastery: [
     { id: 'sentence-builder', name: 'Sentence Builder', emoji: '📝', color: 'from-rose-400 to-rose-500' },
@@ -73,7 +72,6 @@ export const MODE_DIFFICULTY: Record<string, ModeDifficulty> = {
   spelling:         'hard',      // Pure recall + exact spelling
   'sentence-builder': 'hard',    // Vocab + grammar + syntax
   'fill-blank':     'hard',      // Read sentence in L2, infer missing word from context
-  'word-chains':    'hard',      // Free-text typing chained on previous letter
 };
 
 export const DIFFICULTY_META: Record<ModeDifficulty, {
@@ -141,7 +139,7 @@ export interface AssignmentModeSection {
 const SECTION_MODE_ORDER: Record<AssignmentModeSection['id'], string[]> = {
   easy:   ['flashcards', 'matching', 'classic', 'memory-flip', 'true-false'],
   medium: ['listening', 'reverse', 'speed-round'],
-  hard:   ['scramble', 'letter-sounds', 'spelling', 'word-chains'],
+  hard:   ['scramble', 'letter-sounds', 'spelling'],
   ai:     ['sentence-builder', 'fill-blank'],
 };
 

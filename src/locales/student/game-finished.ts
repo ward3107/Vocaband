@@ -44,6 +44,10 @@ export interface GameFinishedT {
   getCertificate: string;
   preparingCertificate: string;
   certificateUnavailable: string;
+  /** Confirmation dialog (e.g. "Are you sure you want to leave?"). */
+  confirmActionTitle: string;
+  cancel: string;
+  confirm: string;
 }
 
 export const gameFinishedT: Record<Language, GameFinishedT> = {
@@ -84,6 +88,9 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     getCertificate: "Get my certificate",
     preparingCertificate: "Preparing your certificate…",
     certificateUnavailable: "Couldn't load your stats. Try again in a moment.",
+    confirmActionTitle: "Confirm Action",
+    cancel: "Cancel",
+    confirm: "Confirm",
   },
 
   he: {
@@ -123,6 +130,9 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     getCertificate: "קבל את התעודה שלי",
     preparingCertificate: "מכין את התעודה שלך…",
     certificateUnavailable: "לא הצלחנו לטעון את הנתונים שלך. נסה שוב בעוד רגע.",
+    confirmActionTitle: "אישור פעולה",
+    cancel: "ביטול",
+    confirm: "אישור",
   },
 
   ar: {
@@ -162,6 +172,9 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     getCertificate: "احصل على شهادتي",
     preparingCertificate: "جاري تحضير شهادتك…",
     certificateUnavailable: "تعذر تحميل إحصاءاتك. حاول مرة أخرى بعد لحظة.",
+    confirmActionTitle: "تأكيد الإجراء",
+    cancel: "إلغاء",
+    confirm: "تأكيد",
   },
 
   ru: {
@@ -201,5 +214,8 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     getCertificate: "Get my certificate",
     preparingCertificate: "Preparing your certificate…",
     certificateUnavailable: "Couldn't load your stats. Try again in a moment.",
+    confirmActionTitle: "Confirm Action",
+    cancel: "Cancel",
+    confirm: "Confirm",
   },
 };

@@ -41,7 +41,6 @@ export interface ClassShowStrings {
   modeSentenceBuilder: string;
   modeIdiom: string;
   modeSpeedRound: string;
-  modeWordChains: string;
   // Adapted-mode hints
   spellingHint: string;
   scrambleHint: string;
@@ -103,7 +102,6 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeSentenceBuilder: 'Sentence Builder',
     modeIdiom: 'Idioms',
     modeSpeedRound: 'Speed Round',
-    modeWordChains: 'Word Chains',
     spellingHint: 'Type each letter as the class calls it out',
     scrambleHint: 'Class shouts the answer · tap any letter to reveal',
     matchingHint: 'Tap an English word, then its translation',
@@ -157,7 +155,6 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeSentenceBuilder: 'בנה משפט',
     modeIdiom: 'ביטויים',
     modeSpeedRound: 'סבב מהיר',
-    modeWordChains: 'שרשרת מילים',
     spellingHint: 'הקלד כל אות שהכיתה קוראת',
     scrambleHint: 'הכיתה אומרת את התשובה · לחץ אות להצגה',
     matchingHint: 'לחץ מילה באנגלית ואז את התרגום',
@@ -211,7 +208,6 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeSentenceBuilder: 'ابن جملة',
     modeIdiom: 'التعابير',
     modeSpeedRound: 'جولة سريعة',
-    modeWordChains: 'سلاسل الكلمات',
     spellingHint: 'اكتب كل حرف كما يقوله الصف',
     scrambleHint: 'الصف يقول الإجابة · اضغط أي حرف للكشف',
     matchingHint: 'اضغط كلمة إنجليزية ثم ترجمتها',
@@ -265,7 +261,6 @@ export const classShowStrings: Record<Language, ClassShowStrings> = {
     modeSentenceBuilder: 'Sentence Builder',
     modeIdiom: 'Idioms',
     modeSpeedRound: 'Speed Round',
-    modeWordChains: 'Word Chains',
     spellingHint: 'Type each letter as the class calls it out',
     scrambleHint: 'Class shouts the answer · tap any letter to reveal',
     matchingHint: 'Tap an English word, then its translation',

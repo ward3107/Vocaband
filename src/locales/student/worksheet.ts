@@ -44,8 +44,6 @@ export interface WorksheetStrings {
   sentenceBuilderDesc: string;
   idiomLabel: string;
   idiomDesc: string;
-  wordChainsLabel: string;
-  wordChainsDesc: string;
 
   // AI Sentence Generation
   aiSentenceGeneration: string;
@@ -120,8 +118,6 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     sentenceBuilderDesc: 'Unscramble sentences',
     idiomLabel: 'Idioms',
     idiomDesc: 'Match each idiom with its meaning',
-    wordChainsLabel: 'Word Chains',
-    wordChainsDesc: 'Connect each pair of words',
     aiSentenceGeneration: 'AI Sentence Generation',
     generatingSentences: 'Generating sentences...',
     sentencesGenerated: (n) => `${n} sentences generated`,
@@ -184,8 +180,6 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     sentenceBuilderDesc: 'סדר מחדש את המשפטים',
     idiomLabel: 'ביטויים',
     idiomDesc: 'התאם כל ביטוי למשמעותו',
-    wordChainsLabel: 'שרשרת מילים',
-    wordChainsDesc: 'חבר כל זוג מילים',
     aiSentenceGeneration: 'יצירת משפטים בבינה מלאכותית',
     generatingSentences: 'יוצר משפטים...',
     sentencesGenerated: (n) => `${n} משפטים נוצרו`,
@@ -248,8 +242,6 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     sentenceBuilderDesc: 'رتب الجمل من جديد',
     idiomLabel: 'التعابير',
     idiomDesc: 'طابق كل تعبير مع معناه',
-    wordChainsLabel: 'سلاسل الكلمات',
-    wordChainsDesc: 'اربط كل زوج من الكلمات',
     aiSentenceGeneration: 'إنشاء الجمل بالذكاء الاصطناعي',
     generatingSentences: 'جارٍ إنشاء الجمل...',
     sentencesGenerated: (n) => `${n} جمل تم إنشاؤها`,
@@ -312,8 +304,6 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     sentenceBuilderDesc: 'Unscramble sentences',
     idiomLabel: 'Idioms',
     idiomDesc: 'Match each idiom with its meaning',
-    wordChainsLabel: 'Word Chains',
-    wordChainsDesc: 'Connect each pair of words',
     aiSentenceGeneration: 'AI Sentence Generation',
     generatingSentences: 'Generating sentences...',
     sentencesGenerated: (n) => `${n} sentences generated`,
