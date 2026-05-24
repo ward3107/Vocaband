@@ -8,8 +8,7 @@
  * don't render.
  */
 import { useCallback, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { X, FolderInput, Loader2, Check, Home } from "lucide-react";
+import { FolderInput, Loader2, Check, Home } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import {
   updateCollection,
@@ -18,6 +17,11 @@ import {
   type VocabularySet,
 } from "../../core/vocabularyLibrary";
 import type { VocabularyLibraryStrings } from "../../locales/teacher/vocabulary-library";
+import ModalShell, {
+  ModalFootSpacer,
+  ModalPrimaryButton,
+  ModalQuietButton,
+} from "../../components/ui/ModalShell";
 
 type MovableItem =
   | { kind: "collection"; collection: VocabularyCollection }
@@ -114,126 +118,87 @@ export default function MoveItemModal({
   }, [busy, destinationId, currentParentId, item, itemName, onClose, onMoved, showToast, t]);
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        dir={dir}
-        className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t.moveModalTitle(itemName)}
-      >
-        <motion.div
-          initial={{ y: 24, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 24, opacity: 0 }}
-          transition={{ type: "spring", damping: 24, stiffness: 240 }}
-          className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[80vh] flex flex-col overflow-hidden"
+    <ModalShell
+      open
+      onClose={onClose}
+      variant="brand"
+      icon="📁"
+      title={t.moveModalTitle(itemName)}
+      subtitle={t.moveCurrentLocation(currentParentName)}
+      dir={dir}
+      closeAriaLabel={t.moveCancel}
+      footer={
+        <>
+          <ModalQuietButton onClick={onClose} disabled={busy}>
+            {t.moveCancel}
+          </ModalQuietButton>
+          <ModalFootSpacer />
+          <ModalPrimaryButton
+            onClick={handleConfirm}
+            disabled={busy || destinationId === currentParentId}
+          >
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderInput className="w-4 h-4" />}
+            {t.moveConfirm}
+          </ModalPrimaryButton>
+        </>
+      }
+    >
+      <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#6B6388]">
+        {t.movePickFolder}
+      </p>
+
+      <div className="space-y-1.5">
+        {/* Root option */}
+        <button
+          type="button"
+          onClick={() => setDestinationId(null)}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+          className={`w-full ${isRTL ? "text-right" : "text-left"} rounded-2xl border p-3 flex items-center gap-3 transition-all ${
+            destinationId === null
+              ? "border-[#8B5CF6] bg-[rgba(139,92,246,0.06)] shadow-sm"
+              : "border-indigo-500/[0.10] bg-white hover:border-[#8B5CF6]/40"
+          }`}
         >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-5 py-4 flex items-center justify-between gap-3 text-white shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <FolderInput className="w-5 h-5 shrink-0" />
-              <span className="font-bold truncate">{t.moveModalTitle(itemName)}</span>
-            </div>
+          <span
+            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+              destinationId === null ? "border-[#8B5CF6] bg-[#8B5CF6]" : "border-[#C7C2DD]"
+            }`}
+          >
+            {destinationId === null && <Check className="w-3 h-3 text-white" />}
+          </span>
+          <Home className="w-5 h-5 text-[#8B85AB] shrink-0" />
+          <span className="font-semibold text-sm text-[#1F1147]">{t.moveToRoot}</span>
+        </button>
+
+        {/* Every other collection */}
+        {eligible.map((c) => {
+          const active = destinationId === c.id;
+          return (
             <button
+              key={c.id}
               type="button"
-              onClick={onClose}
-              aria-label={t.moveCancel}
-              className="p-1.5 -mr-1.5 rounded-full hover:bg-white/15"
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="px-5 sm:px-6 py-3 border-b border-slate-200 bg-slate-50">
-            <p className="text-xs text-slate-600">{t.moveCurrentLocation(currentParentName)}</p>
-          </div>
-
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 space-y-1">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 px-2 pb-1">
-              {t.movePickFolder}
-            </p>
-
-            {/* Root option */}
-            <button
-              type="button"
-              onClick={() => setDestinationId(null)}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`w-full ${isRTL ? "text-right" : "text-left"} rounded-xl border p-3 flex items-center gap-3 transition-all ${
-                destinationId === null
-                  ? "border-orange-500 bg-orange-50 shadow-sm"
-                  : "border-slate-200 bg-white hover:border-slate-300"
+              onClick={() => setDestinationId(c.id)}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+              className={`w-full ${isRTL ? "text-right" : "text-left"} rounded-2xl border p-3 flex items-center gap-3 transition-all ${
+                active
+                  ? "border-[#8B5CF6] bg-[rgba(139,92,246,0.06)] shadow-sm"
+                  : "border-indigo-500/[0.10] bg-white hover:border-[#8B5CF6]/40"
               }`}
             >
               <span
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                  destinationId === null ? "border-orange-600 bg-orange-600" : "border-slate-300"
+                  active ? "border-[#8B5CF6] bg-[#8B5CF6]" : "border-[#C7C2DD]"
                 }`}
               >
-                {destinationId === null && <Check className="w-3 h-3 text-white" />}
+                {active && <Check className="w-3 h-3 text-white" />}
               </span>
-              <Home className="w-5 h-5 text-slate-500 shrink-0" />
-              <span className="font-semibold text-sm text-slate-900">{t.moveToRoot}</span>
+              <span className="text-xl shrink-0" aria-hidden>{c.emoji ?? "📁"}</span>
+              <span className="font-semibold text-sm text-[#1F1147] truncate min-w-0">{c.name}</span>
             </button>
-
-            {/* Every other collection */}
-            {eligible.map((c) => {
-              const active = destinationId === c.id;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setDestinationId(c.id)}
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`w-full ${isRTL ? "text-right" : "text-left"} rounded-xl border p-3 flex items-center gap-3 transition-all ${
-                    active
-                      ? "border-orange-500 bg-orange-50 shadow-sm"
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
-                >
-                  <span
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      active ? "border-orange-600 bg-orange-600" : "border-slate-300"
-                    }`}
-                  >
-                    {active && <Check className="w-3 h-3 text-white" />}
-                  </span>
-                  <span className="text-xl shrink-0" aria-hidden>{c.emoji ?? "📁"}</span>
-                  <span className="font-semibold text-sm text-slate-900 truncate min-w-0">{c.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Footer */}
-          <div className="border-t border-slate-200 bg-slate-50 px-5 sm:px-6 py-3 flex items-center justify-end gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={busy}
-              className="text-sm font-semibold text-slate-600 hover:underline disabled:opacity-50"
-            >
-              {t.moveCancel}
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={busy || destinationId === currentParentId}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-orange-600 text-white font-bold text-sm hover:bg-orange-700 disabled:opacity-50"
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            >
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderInput className="w-4 h-4" />}
-              {t.moveConfirm}
-            </button>
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+          );
+        })}
+      </div>
+    </ModalShell>
   );
 }
 

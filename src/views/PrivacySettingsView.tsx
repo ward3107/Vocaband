@@ -126,20 +126,51 @@ export default function PrivacySettingsView({
   };
 
   return (
-    <div dir={dir} className="min-h-screen bg-stone-100 p-4 sm:p-6">
+    <div
+      dir={dir}
+      className="min-h-screen p-4 sm:p-6"
+      style={{
+        // Settings v1 page chrome — soft violet radial-from-top
+        // gradient matches the rest of the redesigned teacher
+        // surfaces (dashboard, classroom, roster, library).
+        background:
+          "radial-gradient(140% 100% at 100% 0%, #F3EBFF 0%, #F6F4FF 40%, #FAF7FF 100%)",
+      }}
+    >
       {consentModal}
       {exitConfirmModal}
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setView(hasTeacherAccess(user) ? "teacher-dashboard" : "student-dashboard")} className="text-stone-500 hover:text-stone-700 font-bold flex items-center gap-1">
-            <ChevronRight className={isRTL ? "" : "rotate-180"} size={18} /> {t.back}
+        <div className="flex items-center gap-3 mb-2">
+          <button
+            onClick={() => setView(hasTeacherAccess(user) ? "teacher-dashboard" : "student-dashboard")}
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/[0.10] bg-white/70 px-3.5 py-2 text-[13px] font-semibold text-[#4A3B7A] backdrop-blur-sm hover:text-[#8B5CF6]"
+          >
+            <ChevronRight className={isRTL ? "" : "rotate-180"} size={14} /> {t.back}
           </button>
-          <h1 className="text-2xl font-black text-stone-900">{t.pageTitle}</h1>
+        </div>
+        <div className="mb-6 mt-3">
+          <div className="mb-2 flex items-center gap-2.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ background: "linear-gradient(135deg,#8B5CF6,#D946EF)" }}
+            />
+            {t.pageTitle}
+          </div>
+          <h1 className="m-0 text-[28px] sm:text-[32px] font-extrabold leading-none tracking-[-0.025em] text-[#1F1147]">
+            {t.pageTitle}
+          </h1>
         </div>
 
         {/* Profile Info (editable name) */}
-        <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
-          <h2 className="font-bold text-stone-800 mb-3">{t.profileTitle}</h2>
+        <div
+          className="bg-white rounded-2xl p-5 mb-4 border border-indigo-500/[0.10]"
+          style={{
+            boxShadow:
+              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+          }}
+        >
+          <h2 className="text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147] mb-3 pb-2 border-b border-indigo-500/[0.10]">{t.profileTitle}</h2>
           <div className="space-y-2 text-sm text-stone-600">
             <p><strong>{t.role}</strong> {user.role}</p>
             <div className="flex items-center gap-2">
@@ -173,8 +204,14 @@ export default function PrivacySettingsView({
         </div>
 
         {/* What data we store */}
-        <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
-          <h2 className="font-bold text-stone-800 mb-3">{t.whatDataTitle}</h2>
+        <div
+          className="bg-white rounded-2xl p-5 mb-4 border border-indigo-500/[0.10]"
+          style={{
+            boxShadow:
+              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+          }}
+        >
+          <h2 className="text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147] mb-3 pb-2 border-b border-indigo-500/[0.10]">{t.whatDataTitle}</h2>
           <div className="space-y-3">
             {DATA_COLLECTION_POINTS
               .filter(p => p.role === user.role || p.role === "both")
@@ -190,8 +227,14 @@ export default function PrivacySettingsView({
         </div>
 
         {/* Third-party services */}
-        <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
-          <h2 className="font-bold text-stone-800 mb-3">{t.thirdPartyTitle}</h2>
+        <div
+          className="bg-white rounded-2xl p-5 mb-4 border border-indigo-500/[0.10]"
+          style={{
+            boxShadow:
+              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+          }}
+        >
+          <h2 className="text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147] mb-3 pb-2 border-b border-indigo-500/[0.10]">{t.thirdPartyTitle}</h2>
           <div className="space-y-3">
             {THIRD_PARTY_REGISTRY.map((tp, i) => (
               <div key={i} className="text-sm border-b border-stone-100 pb-2 last:border-0">
@@ -204,8 +247,14 @@ export default function PrivacySettingsView({
         </div>
 
         {/* Consent status */}
-        <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
-          <h2 className="font-bold text-stone-800 mb-3">{t.consentStatusTitle}</h2>
+        <div
+          className="bg-white rounded-2xl p-5 mb-4 border border-indigo-500/[0.10]"
+          style={{
+            boxShadow:
+              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+          }}
+        >
+          <h2 className="text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147] mb-3 pb-2 border-b border-indigo-500/[0.10]">{t.consentStatusTitle}</h2>
           <div className="text-sm text-stone-600 space-y-1">
             <p><strong>{t.currentPolicyVersion}</strong> {PRIVACY_POLICY_VERSION}</p>
             <p><strong>{t.yourAcceptedVersion}</strong> {localStorage.getItem('vocaband_consent_version') || t.notYetAccepted}</p>
@@ -275,8 +324,14 @@ export default function PrivacySettingsView({
         </div>
 
         {/* Data export & deletion */}
-        <div className="bg-white rounded-xl p-5 shadow-sm mb-4">
-          <h2 className="font-bold text-stone-800 mb-3">{t.rightsTitle}</h2>
+        <div
+          className="bg-white rounded-2xl p-5 mb-4 border border-indigo-500/[0.10]"
+          style={{
+            boxShadow:
+              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+          }}
+        >
+          <h2 className="text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147] mb-3 pb-2 border-b border-indigo-500/[0.10]">{t.rightsTitle}</h2>
           <p className="text-sm text-stone-500 mb-4">{t.rightsIntro}</p>
           <div className="flex flex-wrap gap-3">
             <button
