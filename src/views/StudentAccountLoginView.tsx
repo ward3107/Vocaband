@@ -192,10 +192,28 @@ export default function StudentAccountLoginView({
 
   return (
     <>
-      <div className="h-screen overflow-hidden bg-gradient-to-br from-indigo-900 via-violet-900 to-fuchsia-900 relative">
-        {/* Soft decorative glow */}
-        <div className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-fuchsia-500/20 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl" aria-hidden />
+      {/* Live-mode dark palette — repainted to match the Live v1
+          mockup's "Joining" scene (#0E0828 → #1A0E3D → #2A1B5C
+          radial).  Decorative violet + fuchsia glow blobs mirror the
+          mockup's positioning so the student app feels like the same
+          surface students see on the projector. */}
+      <div
+        className="h-screen overflow-hidden relative"
+        style={{
+          background:
+            "radial-gradient(120% 100% at 50% 0%, #2A1B5C 0%, #1A0E3D 50%, #0E0828 100%)",
+        }}
+      >
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+          style={{ background: "radial-gradient(circle, rgba(139,92,246,0.35) 0%, transparent 70%)" }}
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-24 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+          style={{ background: "radial-gradient(circle, rgba(217,70,239,0.22) 0%, transparent 70%)" }}
+          aria-hidden
+        />
 
         <div className="relative z-10 h-screen flex flex-col overflow-hidden">
             <header className="flex items-center justify-between px-4 sm:px-6 py-4">
@@ -302,7 +320,17 @@ export default function StudentAccountLoginView({
                       {t.classCodeLabel}
                     </label>
 
-                    <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-xl p-4 shadow-inner">
+                    {/* Code-box wrapper — brand gradient kept (kids
+                        recognise it from the projector) but with the
+                        Live v1 violet glow ring added so it pops on
+                        the deeper dark page chrome behind it. */}
+                    <div
+                      className="bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-xl p-4"
+                      style={{
+                        boxShadow:
+                          "inset 0 1px 0 rgba(255,255,255,0.20), 0 0 0 4px rgba(139,92,246,0.22), 0 18px 40px -20px rgba(217,70,239,0.45)",
+                      }}
+                    >
                       {renderCodeBoxes()}
                     </div>
                     <input
