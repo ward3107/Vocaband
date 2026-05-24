@@ -46,7 +46,7 @@ export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoal
           exit={{ opacity: 0, scale: 0.96 }}
           className="relative overflow-hidden rounded-xl mb-6 bg-gradient-to-r from-emerald-500 to-teal-500 p-4 sm:p-5 shadow-md shadow-emerald-500/20"
         >
-          <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 bg-yellow-300/30 rounded-full blur-2xl" />
+          <div className="pointer-events-none absolute -top-10 -end-10 w-40 h-40 bg-yellow-300/30 rounded-full blur-2xl" />
           <div className="relative flex items-center gap-3 sm:gap-4">
             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shrink-0">
               <CheckCircle2 size={22} className="text-white" />

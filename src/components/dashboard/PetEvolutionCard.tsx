@@ -155,7 +155,7 @@ export default function PetEvolutionCard({ state, isLoading }: PetEvolutionCardP
           >
             {stage.emoji}
           </motion.div>
-          <div className="absolute -bottom-1 -right-1 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white shadow flex items-center justify-center text-base sm:text-lg" aria-hidden>
+          <div className="absolute -bottom-1 -end-1 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white shadow flex items-center justify-center text-base sm:text-lg" aria-hidden>
             {moodMeta.emoji}
           </div>
         </div>

@@ -262,7 +262,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
                 onClick={() => dismiss(r)}
                 disabled={isDismissing}
                 aria-label={t.dismissRewardAria}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors disabled:opacity-50"
+                className="absolute top-3 end-3 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors disabled:opacity-50"
               >
                 <X size={16} />
               </button>

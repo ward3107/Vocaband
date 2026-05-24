@@ -52,7 +52,7 @@ export default function SavedTasksSection({
           Saved templates
         </h2>
         <span
-          className="ml-1 inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-sm font-bold"
+          className="ms-1 inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-sm font-bold"
           style={{ backgroundColor: 'var(--vb-accent-soft)', color: 'var(--vb-accent)' }}
         >
           {tasks.length}

@@ -157,9 +157,11 @@ export default function StudentGreetingCard({
       transition={{ duration: 0.45, ease: "easeOut" }}
       className={`relative overflow-hidden rounded-2xl sm:rounded-2xl mb-6 bg-gradient-to-br ${titleGradient} p-5 sm:p-7 shadow-xl shadow-violet-500/20`}
     >
-      {/* Soft glow blobs in the background — pure decoration */}
-      <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 bg-pink-400/30 rounded-full blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 bg-cyan-400/25 rounded-full blur-3xl" />
+      {/* Soft glow blobs in the background — pure decoration.
+          Uses logical -end / -start so the blobs flip to the
+          correct corners when the UI is in HE/AR (RTL). */}
+      <div className="pointer-events-none absolute -top-20 -end-20 w-64 h-64 bg-pink-400/30 rounded-full blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -start-24 w-72 h-72 bg-cyan-400/25 rounded-full blur-3xl" />
 
       {/* TITLE BANNER — fabulous trophy ribbon centred above everything
           else when a title is equipped.  Mirrors IdentityHero's banner
@@ -201,7 +203,7 @@ export default function StudentGreetingCard({
             {user.avatar || '🦊'}
           </div>
           {streak > 0 && (
-            <div className="absolute -bottom-1.5 -right-1.5 bg-gradient-to-br from-orange-400 to-rose-500 text-white text-xs font-black px-2 py-1 rounded-full shadow-md flex items-center gap-1 border-2 border-white">
+            <div className="absolute -bottom-1.5 -end-1.5 bg-gradient-to-br from-orange-400 to-rose-500 text-white text-xs font-black px-2 py-1 rounded-full shadow-md flex items-center gap-1 border-2 border-white">
               <Flame size={12} className="fill-white" />
               {streak}
             </div>
@@ -359,7 +361,7 @@ export default function StudentGreetingCard({
           >
             <ShoppingBag size={16} />
             Shop
-            <span className="ml-0.5 inline-flex items-center gap-0.5 bg-yellow-300 text-rose-700 text-[9px] font-black px-1.5 py-0.5 rounded-full border border-white/50">
+            <span className="ms-0.5 inline-flex items-center gap-0.5 bg-yellow-300 text-rose-700 text-[9px] font-black px-1.5 py-0.5 rounded-full border border-white/50">
               NEW
             </span>
           </button>

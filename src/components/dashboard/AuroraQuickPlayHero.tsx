@@ -39,7 +39,7 @@ export default function AuroraQuickPlayHero({
         boxShadow:
           "0 20px 50px -22px rgba(99,102,241,0.55), 0 8px 22px -10px rgba(217,70,239,0.35)",
       }}
-      className="group relative w-full overflow-hidden rounded-[32px] px-6 py-6 sm:px-9 sm:py-8 text-white text-left active:scale-[0.99] transition-transform mb-6"
+      className="group relative w-full overflow-hidden rounded-[32px] px-6 py-6 sm:px-9 sm:py-8 text-white text-start active:scale-[0.99] transition-transform mb-6"
     >
       {/* Top-end corner blob */}
       <div
