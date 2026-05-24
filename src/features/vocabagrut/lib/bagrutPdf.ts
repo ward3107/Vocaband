@@ -16,6 +16,7 @@ import {
   loadHebrewArabicFonts,
   registerHebrewArabicFonts,
   fixRtl,
+  disableJsPdfArabicProcessor,
 } from '../../../lib/pdfFonts';
 import type { BagrutTest, BagrutSection, BagrutQuestion } from '../types';
 import { MODULE_SPECS } from './moduleMap';
@@ -38,6 +39,10 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
   const fonts = await loadHebrewArabicFonts().catch(() => null);
 
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  // Strip jsPDF's built-in Arabic shaper + bidi reorder so our pre-shaped
+  // PF-B text from fixRtl() survives the render pipeline. See
+  // pdfFonts.ts:disableJsPdfArabicProcessor for the full rationale.
+  disableJsPdfArabicProcessor(doc);
   if (fonts) registerHebrewArabicFonts(doc, fonts);
 
   const spec = MODULE_SPECS[test.module];
