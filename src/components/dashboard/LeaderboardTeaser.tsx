@@ -73,34 +73,54 @@ export default function LeaderboardTeaser({
   const ahead = myIndex > 0 ? rows[myIndex - 1] : null;
   const gap = ahead ? Math.max(0, ahead.xp - currentXp) : 0;
 
+  // Rank-coloured badge gradient — gold for 1st, silver for 2nd,
+  // bronze for 3rd, brand violet otherwise.  Same family as the
+  // podium colours used by QuickPlaySessionEndScreen.
+  const rankStyle: React.CSSProperties =
+    myRank === 1
+      ? { background: "linear-gradient(135deg, #F0CC78, #D89B3F)" }
+      : myRank === 2
+        ? { background: "linear-gradient(135deg, #DCDCE8, #A8A8C0)" }
+        : myRank === 3
+          ? { background: "linear-gradient(135deg, #E6B58A, #C58054)" }
+          : { background: "linear-gradient(135deg, #6366F1, #8B5CF6)" };
+
   return (
     <motion.button
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       onClick={() => setView('global-leaderboard')}
       type="button"
-      style={{ touchAction: 'manipulation' }}
-      className="w-full bg-white rounded-xl border border-stone-200 shadow-sm hover:shadow-md hover:border-stone-300 active:scale-[0.99] transition-all p-4 sm:p-5 mb-6 text-left flex items-center gap-3 sm:gap-4"
+      style={{
+        touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent' as never,
+        boxShadow:
+          "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+      }}
+      className="w-full mb-6 rounded-2xl border border-indigo-500/[0.10] bg-white p-4 sm:p-5 text-left flex items-center gap-3 sm:gap-4 hover:-translate-y-0.5 active:scale-[0.99] transition-transform"
     >
       {/* Rank badge */}
-      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
-        myRank === 1
-          ? 'bg-gradient-to-br from-yellow-400 to-amber-500'
-          : myRank === 2
-          ? 'bg-gradient-to-br from-stone-300 to-stone-400'
-          : myRank === 3
-          ? 'bg-gradient-to-br from-orange-400 to-amber-600'
-          : 'bg-gradient-to-br from-indigo-500 to-violet-600'
-      }`}>
-        <span className="text-xl sm:text-2xl font-black text-white tabular-nums">#{myRank}</span>
+      <div
+        className="w-12 h-12 sm:w-14 sm:h-14 rounded-[14px] flex items-center justify-center shrink-0"
+        style={{
+          ...rankStyle,
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 8px 18px -10px rgba(60,40,120,0.45)",
+        }}
+      >
+        <span
+          className="text-xl sm:text-2xl font-black text-white tabular-nums"
+          style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}
+        >
+          #{myRank}
+        </span>
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 mb-0.5">
-          <TrendingUp size={12} className="text-indigo-500" />
-          <span className="text-[10px] sm:text-xs font-bold text-stone-500 uppercase tracking-widest">{t.classRank}</span>
+        <div className="mb-1 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+          <TrendingUp size={12} />
+          {t.classRank}
         </div>
-        <p className="text-sm sm:text-base font-bold text-stone-900 leading-snug">
+        <p className="text-sm sm:text-base font-bold leading-snug" style={{ color: "#1F1147" }}>
           {myRank === 1
             ? t.topOfClass
             : ahead
@@ -109,7 +129,7 @@ export default function LeaderboardTeaser({
         </p>
       </div>
 
-      <ChevronRight size={20} className="text-stone-300 shrink-0" />
+      <ChevronRight size={20} className="text-[#8B5CF6] opacity-55 shrink-0 rtl:-scale-x-100" />
     </motion.button>
   );
 }
