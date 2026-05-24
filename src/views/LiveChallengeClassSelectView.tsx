@@ -79,9 +79,9 @@ export default function LiveChallengeClassSelectView({
                     <Zap className="text-on-primary-container" size={24} />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-on-surface">{cls.name}</h3>
+                    <h3 className="text-xl font-black text-on-surface"><bdi>{cls.name}</bdi></h3>
                     <p className="text-on-surface-variant text-sm font-medium">
-                      {t.codeLabel} <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-mono font-bold ml-1">{cls.code}</span>
+                      {t.codeLabel} <span dir="ltr" className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-mono font-bold ms-1">{cls.code}</span>
                     </p>
                   </div>
                 </div>

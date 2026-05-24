@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Trophy, Medal, Award } from 'lucide-react';
 import { supabase } from '../core/supabase';
+import { useLanguage } from '../hooks/useLanguage';
+import { quickPlayT } from '../locales/student/quick-play';
 
 interface QuickPlaySessionEndScreenProps {
   studentName: string;
@@ -68,6 +70,8 @@ export default function QuickPlaySessionEndScreen({
   studentUid,
   onGoHome,
 }: QuickPlaySessionEndScreenProps) {
+  const { language, dir } = useLanguage();
+  const t = quickPlayT[language];
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(Boolean(sessionId));
 
@@ -104,13 +108,6 @@ export default function QuickPlaySessionEndScreen({
   const myTotalScore = myRankIndex >= 0 ? leaderboard[myRankIndex].score : finalScore;
   const isTop3 = myRank !== null && myRank <= 3;
 
-  const rankLabel = (rank: number) => {
-    if (rank === 1) return '1st';
-    if (rank === 2) return '2nd';
-    if (rank === 3) return '3rd';
-    return `${rank}th`;
-  };
-
   const medalIcon = (rank: number) => {
     if (rank === 1) return <Trophy size={32} className="text-yellow-500" />;
     if (rank === 2) return <Medal size={28} className="text-gray-400" />;
@@ -120,6 +117,7 @@ export default function QuickPlaySessionEndScreen({
 
   return (
     <div
+      dir={dir}
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
       style={{
         // Live v1 dark stack — same as the joining screen so the
@@ -169,7 +167,7 @@ export default function QuickPlaySessionEndScreen({
             color: "transparent",
           }}
         >
-          {isTop3 ? `You finished ${rankLabel(myRank!)}!` : "Session Complete!"}
+          {isTop3 ? t.youFinishedRank(myRank!) : t.sessionComplete}
         </motion.h1>
 
         <motion.p
@@ -179,7 +177,7 @@ export default function QuickPlaySessionEndScreen({
           className="text-[14px] mb-6"
           style={{ color: "rgba(241,236,255,0.70)" }}
         >
-          Great job, <strong style={{ color: "#F1ECFF" }}>{studentName}</strong>!
+          {t.greatJobPrefix}<strong style={{ color: "#F1ECFF" }}><bdi>{studentName}</bdi></strong>!
         </motion.p>
 
         {/* My rank + score card — frosted dark surface with a gold accent
@@ -205,13 +203,14 @@ export default function QuickPlaySessionEndScreen({
               style={{ color: isTop3 ? "#F0B96C" : "rgba(241,236,255,0.45)" }}
             >
               {myRank !== null && totalPlayers > 0
-                ? `Rank ${myRank} of ${totalPlayers}`
-                : "Your Final Score"}
+                ? t.rankOfTotal(myRank, totalPlayers)
+                : t.yourFinalScore}
             </div>
           </div>
           <div
             className="text-5xl sm:text-6xl font-black"
             style={{ color: isTop3 ? "#F0B96C" : "#F1ECFF" }}
+            dir="ltr"
           >
             {myTotalScore}
           </div>
@@ -219,7 +218,7 @@ export default function QuickPlaySessionEndScreen({
             className="text-[12px] font-bold mt-1"
             style={{ color: "rgba(241,236,255,0.45)" }}
           >
-            points
+            {t.points}
           </div>
         </motion.div>
 
@@ -235,7 +234,7 @@ export default function QuickPlaySessionEndScreen({
               className="text-[11px] font-extrabold uppercase tracking-[0.12em] mb-2"
               style={{ color: "rgba(241,236,255,0.45)" }}
             >
-              Top of the class
+              {t.topOfClass}
             </div>
             <div className="space-y-2">
               {top3.map((entry, idx) => {
@@ -273,22 +272,23 @@ export default function QuickPlaySessionEndScreen({
                     </div>
                     <div className="text-xl">{entry.avatar}</div>
                     <div
-                      className="flex-1 text-left truncate font-bold"
+                      className="flex-1 text-start truncate font-bold"
                       style={{ color: "#F1ECFF" }}
                     >
-                      {entry.name}
+                      <bdi>{entry.name}</bdi>
                       {isMe && (
                         <span
-                          className="ml-1 text-xs"
+                          className="ms-1 text-xs"
                           style={{ color: "rgba(241,236,255,0.70)" }}
                         >
-                          (you)
+                          {t.youMarker}
                         </span>
                       )}
                     </div>
                     <div
                       className="font-black"
                       style={{ color: "#F0B96C", fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}
+                      dir="ltr"
                     >
                       {entry.score}
                     </div>
@@ -306,7 +306,7 @@ export default function QuickPlaySessionEndScreen({
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.55 }}
-          className="rounded-2xl p-4 mb-5 flex items-center gap-3 text-left"
+          className="rounded-2xl p-4 mb-5 flex items-center gap-3 text-start"
           style={{
             background:
               "linear-gradient(135deg, rgba(217,70,239,0.18), rgba(139,92,246,0.18))",
@@ -318,7 +318,7 @@ export default function QuickPlaySessionEndScreen({
             className="text-[12px] sm:text-[13px] font-semibold"
             style={{ color: "#F1ECFF" }}
           >
-            Sign up to save your progress, earn XP, and climb the leaderboard!
+            {t.signUpToSave}
           </p>
         </motion.div>
 
@@ -338,7 +338,7 @@ export default function QuickPlaySessionEndScreen({
           }}
           className="w-full py-4 text-white rounded-full font-bold text-base sm:text-lg"
         >
-          Back to Home Page
+          {t.backToHomePage}
         </motion.button>
       </motion.div>
     </div>
