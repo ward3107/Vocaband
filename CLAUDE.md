@@ -46,7 +46,7 @@ Gameplay loop:
 
 ```
 src/
-  App.tsx                      — ~5800 lines, the orchestrator. Keep additions surgical.
+  App.tsx                      — ~1200 lines, the orchestrator. Most logic lives in views/, hooks/, and section components — keep it that way.
   core/
     supabase.ts                — client init, type definitions (AppUser, ClassData, etc.)
     views.ts                   — View and ShopTab unions — import these, don't redeclare
