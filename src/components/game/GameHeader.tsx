@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { Trophy, Languages } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
+import { gameActiveT } from "../../locales/student/game-active";
 
 interface GameHeaderProps {
   score: number;
@@ -31,6 +33,8 @@ const STREAK_STYLES = {
 export default function GameHeader({
   score, xp, streak, targetLanguage, setTargetLanguage, onExit,
 }: GameHeaderProps) {
+  const { language } = useLanguage();
+  const t = gameActiveT[language];
   const tier = streakTier(streak);
   const s = STREAK_STYLES[tier];
   return (
@@ -38,10 +42,12 @@ export default function GameHeader({
       <div className="flex items-center gap-1.5 sm:gap-4 flex-wrap">
         <div className="bg-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl shadow-sm flex items-center gap-1.5">
           <Trophy className="text-amber-500" size={16} />
-          <span className="font-black text-stone-800 text-sm sm:text-base">{score}</span>
+          <span className="font-black text-stone-800 text-sm sm:text-base" dir="ltr">{score}</span>
         </div>
         <div className="bg-blue-50 px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5">
-          <span className="text-blue-700 font-bold text-[10px] sm:text-xs uppercase tracking-widest">XP: {xp}</span>
+          {/* XP token is a brand label, not translated; force LTR so
+              "XP: 42" never becomes "42 :XP" under RTL chrome. */}
+          <span className="text-blue-700 font-bold text-[10px] sm:text-xs uppercase tracking-widest" dir="ltr">XP: {xp}</span>
         </div>
         {streak > 0 && (
           <motion.div
@@ -54,7 +60,10 @@ export default function GameHeader({
             style={{ transformOrigin: 'center' }}
             className={`relative px-3 sm:px-4 py-2 rounded-xl flex items-center gap-2 ${s.chip} ${s.glow}`}
           >
-            <span className={`font-bold text-xs uppercase tracking-widest ${s.text}`}>{s.emoji} {streak}</span>
+            {/* Emoji + number kept together as an LTR atom so the
+                flame leads the count even when the surrounding chrome
+                is RTL. */}
+            <span className={`font-bold text-xs uppercase tracking-widest ${s.text}`} dir="ltr">{s.emoji} {streak}</span>
             {tier === 'blazing' && (
               <motion.span
                 aria-hidden
@@ -77,7 +86,7 @@ export default function GameHeader({
         <button
           onClick={onExit}
           className="signature-gradient text-white px-4 py-2 rounded-lg font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-lg"
-        >Exit</button>
+        >{t.exit}</button>
       </div>
     </div>
   );

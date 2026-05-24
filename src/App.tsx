@@ -1177,7 +1177,7 @@ export default function App() {
   return (
     <>
       {renderGameRoute({
-        view, user, setUser,
+        view, user, setUser, language: appLanguage,
         showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
         setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
         showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
