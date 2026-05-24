@@ -38,6 +38,7 @@ import ReportsDashboard from "../components/classroom/ReportsDashboard";
 import TopStrugglingWords from "../components/classroom/TopStrugglingWords";
 import AttendanceTable from "../components/classroom/AttendanceTable";
 import { useLanguage } from "../hooks/useLanguage";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { teacherClassroomT } from "../locales/teacher/classroom";
 import { teacherViewsT } from "../locales/teacher/views";
 import { useFirstTimeGuide } from "../hooks/useFirstTimeGuide";
@@ -107,6 +108,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
   void user;
 
   const { language, dir } = useLanguage();
+  const isMobile = useIsMobile();
   const t = teacherClassroomT[language];
   const tViews = teacherViewsT[language];
   const guide = useFirstTimeGuide("classroom");
@@ -317,6 +319,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
                        from the same underlying scores so nothing is
                        lost — just rendered in the new visual style. */
                     <EnglishClassroomToday
+                      mobile={isMobile}
                       classCode={classCode}
                       allScores={allScores}
                       classStudents={classStudents}
