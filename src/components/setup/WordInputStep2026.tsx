@@ -267,17 +267,39 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
       animate={{ opacity: 1, y: 0 }}
       className="mb-8"
     >
-      <div className="bg-[var(--vb-surface)] rounded-xl shadow-lg border-2 border-indigo-100 overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-300 to-violet-400 px-6 py-4">
-          <div className="flex items-center gap-2 text-white">
-            <Sparkles className="w-5 h-5" />
-            <span className="font-bold text-lg">✨ {TEXT.pasteTitle}</span>
+      {/* Paste card — repainted with new-activity design (option D
+          part 3).  Rounded-[24px] white card, violet-gradient header
+          with frosted ✨ medallion, hairline-indigo textarea with
+          violet focus glow.  All textarea behaviour (autocomplete,
+          caret-sync, spell-check, autoCorrect) intact. */}
+      <div
+        className="bg-white rounded-[24px] overflow-hidden border border-indigo-500/[0.10]"
+        style={{
+          boxShadow: '0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)',
+        }}
+      >
+        {/* Header — violet→fuchsia gradient with frosted medallion. */}
+        <div
+          className="flex items-center gap-3 px-[22px] py-[18px] text-white"
+          style={{ background: 'linear-gradient(110deg, #7B61D6, #9F87F2)' }}
+        >
+          <div
+            className="grid h-9 w-9 place-items-center rounded-xl text-[18px]"
+            style={{
+              background: 'rgba(255,255,255,0.22)',
+              border: '1px solid rgba(255,255,255,0.35)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+            }}
+            aria-hidden
+          >
+            ✨
           </div>
+          <div className="text-[15px] font-extrabold tracking-[-0.01em]">{TEXT.pasteTitle}</div>
         </div>
 
         {/* Input Area */}
-        <div className="p-6">
+        <div className="px-[22px] py-5">
           <textarea
             ref={textareaRef}
             value={text}
@@ -303,7 +325,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
             spellCheck={!isDesktop}
             autoCorrect={isDesktop ? 'off' : 'on'}
             autoCapitalize="off"
-            className="w-full min-h-32 p-4 border border-[var(--vb-border)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 text-[var(--vb-text-secondary)] placeholder:text-[var(--vb-text-muted)] leading-relaxed"
+            className="block w-full min-h-[96px] resize-y rounded-2xl border-[1.5px] border-indigo-500/[0.10] bg-white px-[18px] py-3.5 text-[14px] text-[#1F1147] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] leading-relaxed"
             style={{ textAlign: 'left' }}
           />
 
