@@ -13,6 +13,7 @@ import { useTeacherTheme } from "../hooks/useTeacherTheme";
 import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
 import NetworkDiagnosticButton from "../components/dashboard/NetworkDiagnosticButton";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
+import EnglishDashboardLayout from "../components/dashboard/EnglishDashboardLayout";
 import { useCompetitionsForClassIds } from "../hooks/useCompetitions";
 import SavedTasksSection from "../components/dashboard/SavedTasksSection";
 import CreateClassModal from "../components/dashboard/CreateClassModal";
@@ -300,19 +301,20 @@ export default function TeacherDashboardView({
           extraTrailing={headerExtra}
         />
 
-        {/* Vocabagrut-style hero — full-bleed gradient block keeps
-            the welcome screen visually consistent with the assignment
-            and Vocabagrut creation flows.  Emerald→teal here (not the
-            default indigo→violet→fuchsia) so the welcome banner reads
-            as a different surface from the violet Quick Play CTA card
-            directly below it — teachers were confusing the two. */}
-        <PageHero
-          icon={<Sparkles size={32} className="text-white" />}
-          eyebrow={greeting}
-          title={t.heroLine(firstName)}
-          subtitle={t.heroSubtitle}
-          gradient="from-emerald-500 via-teal-500 to-cyan-500"
-        />
+        {/* Greeting hero — kept for VocaHebrew (its dashboard hasn't
+            been redesigned yet).  English path skips it because the
+            redesigned EnglishDashboardLayout below already opens with
+            its own violet Aurora hero; stacking two big gradient
+            bands felt redundant. */}
+        {subject !== "english" && (
+          <PageHero
+            icon={<Sparkles size={32} className="text-white" />}
+            eyebrow={greeting}
+            title={t.heroLine(firstName)}
+            subtitle={t.heroSubtitle}
+            gradient="from-emerald-500 via-teal-500 to-cyan-500"
+          />
+        )}
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
 
@@ -382,44 +384,79 @@ export default function TeacherDashboardView({
             <NetworkDiagnosticButton />
           </div>
 
-          {/* Same launcher for both subjects — TeacherQuickActions
-              renders Hebrew copy + RTL when subject==='hebrew'. The
-              tile callbacks are passed through unchanged; subject-aware
-              routing inside each flow (Worksheet, Class Show, etc.) is
-              the responsibility of the caller and the destination view. */}
-          <TeacherQuickActions
-            subject={subject}
-            pendingStudentsCount={pendingStudentsCount}
-            onQuickPlayClick={onQuickPlayClick}
-            onClassroomClick={onClassroomClick}
-            onApprovalsClick={onApprovalsClick}
-            onWorksheetResultsClick={onWorksheetResultsClick}
-            onLibraryClick={onLibraryClick}
-          />
+          {/* English dashboard gets the redesigned layout (Aurora hero
+              + pastel class cards).  VocaHebrew keeps its existing
+              TeacherQuickActions + TeacherClassesSection untouched.
+              The split is intentional so the Hebrew product surface
+              stays stable while the English side rolls out the new
+              visual language. */}
+          {subject === "english" ? (
+            <EnglishDashboardLayout
+              language={effectiveLanguage}
+              isRTL={dir === "rtl"}
+              classes={classes}
+              teacherAssignments={teacherAssignments}
+              competitionsByAssignment={competitionsByAssignment}
+              pendingStudentsCount={pendingStudentsCount}
+              copiedCode={copiedCode}
+              setCopiedCode={setCopiedCode}
+              openDropdownClassId={openDropdownClassId}
+              setOpenDropdownClassId={setOpenDropdownClassId}
+              onQuickPlayClick={onQuickPlayClick}
+              onClassroomClick={onClassroomClick}
+              onApprovalsClick={onApprovalsClick}
+              onWorksheetResultsClick={onWorksheetResultsClick}
+              onLibraryClick={onLibraryClick}
+              onNewClass={onNewClass}
+              onAssignClass={onAssignClass}
+              onDeleteClass={onDeleteClass}
+              onEditClass={onEditClass}
+              onOpenRoster={onOpenRoster}
+              onNameChange={onNameChange}
+              onAvatarChange={onAvatarChange}
+              onEditAssignment={onEditAssignment}
+              onDuplicateAssignment={onDuplicateAssignment}
+              onDeleteAssignment={onDeleteAssignment}
+              onProjectAssignmentToClass={onProjectAssignmentToClass}
+              onPrintAssignmentWorksheet={onPrintAssignmentWorksheet}
+            />
+          ) : (
+            <>
+              <TeacherQuickActions
+                subject={subject}
+                pendingStudentsCount={pendingStudentsCount}
+                onQuickPlayClick={onQuickPlayClick}
+                onClassroomClick={onClassroomClick}
+                onApprovalsClick={onApprovalsClick}
+                onWorksheetResultsClick={onWorksheetResultsClick}
+                onLibraryClick={onLibraryClick}
+              />
 
-          <TeacherClassesSection
-            subject={subject}
-            classes={classes}
-            teacherAssignments={teacherAssignments}
-            competitionsByAssignment={competitionsByAssignment}
-            copiedCode={copiedCode}
-            setCopiedCode={setCopiedCode}
-            openDropdownClassId={openDropdownClassId}
-            setOpenDropdownClassId={setOpenDropdownClassId}
-            onNewClass={onNewClass}
-            onAssign={onAssignClass}
-            onDeleteClass={onDeleteClass}
-            onEditClass={onEditClass}
-            onOpenRoster={onOpenRoster}
-            onNameChange={onNameChange}
-            onAvatarChange={onAvatarChange}
-            onEditAssignment={onEditAssignment}
-            onDuplicateAssignment={onDuplicateAssignment}
-            onDeleteAssignment={onDeleteAssignment}
-            onProjectAssignmentToClass={onProjectAssignmentToClass}
-            onPrintAssignmentWorksheet={onPrintAssignmentWorksheet}
-            isDark={dashboardTheme.dark}
-          />
+              <TeacherClassesSection
+                subject={subject}
+                classes={classes}
+                teacherAssignments={teacherAssignments}
+                competitionsByAssignment={competitionsByAssignment}
+                copiedCode={copiedCode}
+                setCopiedCode={setCopiedCode}
+                openDropdownClassId={openDropdownClassId}
+                setOpenDropdownClassId={setOpenDropdownClassId}
+                onNewClass={onNewClass}
+                onAssign={onAssignClass}
+                onDeleteClass={onDeleteClass}
+                onEditClass={onEditClass}
+                onOpenRoster={onOpenRoster}
+                onNameChange={onNameChange}
+                onAvatarChange={onAvatarChange}
+                onEditAssignment={onEditAssignment}
+                onDuplicateAssignment={onDuplicateAssignment}
+                onDeleteAssignment={onDeleteAssignment}
+                onProjectAssignmentToClass={onProjectAssignmentToClass}
+                onPrintAssignmentWorksheet={onPrintAssignmentWorksheet}
+                isDark={dashboardTheme.dark}
+              />
+            </>
+          )}
 
           {savedTasks && onUseSavedTask && onTogglePinSavedTask && onRemoveSavedTask && (
             <SavedTasksSection
