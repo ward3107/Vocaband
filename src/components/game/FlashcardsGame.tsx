@@ -90,7 +90,7 @@ export default function FlashcardsGame({
             }`}
             style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}
           >
-            <h2 className="text-5xl sm:text-6xl font-black text-stone-900 text-center break-words mb-6">
+            <h2 dir="ltr" className="text-5xl sm:text-6xl font-black text-stone-900 text-center break-words mb-6">
               {englishText}
             </h2>
             <button

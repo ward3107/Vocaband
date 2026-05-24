@@ -72,11 +72,16 @@ function readHint(): ResumeHint | null {
   }
 }
 
-function relativeMinutes(joinedAt: number): string {
+interface AgoFormatters {
+  minAgo: (n: number) => string;
+  hoursMinAgo: (h: number, m: number) => string;
+}
+
+function relativeMinutes(joinedAt: number, fmt: AgoFormatters): string {
   const diffMin = Math.max(1, Math.round((Date.now() - joinedAt) / 60000));
-  if (diffMin < 60) return `${diffMin} min ago`;
+  if (diffMin < 60) return fmt.minAgo(diffMin);
   const hours = Math.floor(diffMin / 60);
-  return `${hours}h ${diffMin % 60}m ago`;
+  return fmt.hoursMinAgo(hours, diffMin % 60);
 }
 
 export interface QuickPlayResumeBannerProps {
@@ -87,12 +92,12 @@ export interface QuickPlayResumeBannerProps {
 }
 
 export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBannerProps) {
-  const { language } = useLanguage();
+  const { language, dir } = useLanguage();
   const tQp = language === "he"
-    ? { welcome: "ברוכים השבים!", hadScore: (n: number) => <>היה לכם <strong className="text-emerald-700">{n} נקודות</strong></>, gameStarted: "המשחק התחיל", resume: "המשך", dismiss: "סגירה", startOver: "התחל מחדש" }
+    ? { welcome: "ברוכים השבים!", hadScore: (n: number) => <>היה לכם <strong className="text-emerald-700">{n} נקודות</strong></>, gameStarted: "המשחק התחיל", resume: "המשך", dismiss: "סגירה", startOver: "התחל מחדש", minAgo: (n: number) => `לפני ${n} דק׳`, hoursMinAgo: (h: number, m: number) => `לפני ${h} שע׳ ${m} דק׳`, recently: "לאחרונה" }
     : language === "ar"
-    ? { welcome: "مرحباً بعودتك!", hadScore: (n: number) => <>كان لديك <strong className="text-emerald-700">{n} نقطة</strong></>, gameStarted: "بدأت اللعبة", resume: "استئناف", dismiss: "إغلاق", startOver: "ابدأ من جديد" }
-    : { welcome: "Welcome back!", hadScore: (n: number) => <>You had <strong className="text-emerald-700">{n} points</strong></>, gameStarted: "Your game started", resume: "Resume", dismiss: "Dismiss", startOver: "Start over" };
+    ? { welcome: "مرحباً بعودتك!", hadScore: (n: number) => <>كان لديك <strong className="text-emerald-700">{n} نقطة</strong></>, gameStarted: "بدأت اللعبة", resume: "استئناف", dismiss: "إغلاق", startOver: "ابدأ من جديد", minAgo: (n: number) => `قبل ${n} د`, hoursMinAgo: (h: number, m: number) => `قبل ${h} س ${m} د`, recently: "مؤخرًا" }
+    : { welcome: "Welcome back!", hadScore: (n: number) => <>You had <strong className="text-emerald-700">{n} points</strong></>, gameStarted: "Your game started", resume: "Resume", dismiss: "Dismiss", startOver: "Start over", minAgo: (n: number) => `${n} min ago`, hoursMinAgo: (h: number, m: number) => `${h}h ${m}m ago`, recently: "recently" };
   const [hint, setHint] = useState<ResumeHint | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -123,10 +128,11 @@ export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBanne
   const avatar = hint.avatar || "🎮";
   const name = hint.name;
   const score = hint.lastScore ?? 0;
-  const ago = hint.joinedAt ? relativeMinutes(hint.joinedAt) : "recently";
+  const ago = hint.joinedAt ? relativeMinutes(hint.joinedAt, tQp) : tQp.recently;
 
   return (
     <div
+      dir={dir}
       className="fixed top-3 inset-x-3 sm:top-4 sm:start-auto sm:end-4 sm:max-w-md z-[9985]"
       role="alert"
       aria-live="polite"
@@ -138,7 +144,7 @@ export default function QuickPlayResumeBanner({ suppress }: QuickPlayResumeBanne
           <div className="p-4 flex items-center gap-3">
             <div className="text-4xl shrink-0">{avatar}</div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-stone-900 text-sm truncate">{name}</p>
+              <p className="font-bold text-stone-900 text-sm truncate"><bdi>{name}</bdi></p>
               <p className="text-xs text-stone-500 mt-0.5">
                 {score > 0
                   ? <>{tQp.hadScore(score)} · {ago}</>

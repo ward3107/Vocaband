@@ -187,9 +187,9 @@ export default function IdiomGame({
         </div>
       </div>
 
-      {/* Idiom phrase — large, with replay-audio chip below */}
+      {/* Idiom phrase — English, always LTR. */}
       <div className="mb-2 text-center">
-        <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-stone-900 dark:text-stone-100">
+        <h2 dir="ltr" className="text-3xl sm:text-5xl font-black tracking-tight text-stone-900 dark:text-stone-100">
           {current.english}
         </h2>
       </div>
@@ -251,7 +251,10 @@ export default function IdiomGame({
               <span className={`inline-block w-7 h-7 ${isRtl ? "ml-2" : "mr-2"} rounded-full bg-stone-100 text-stone-700 text-xs font-black leading-7 text-center`}>
                 {String.fromCharCode(65 + i)}
               </span>
-              {opt.text}
+              {/* <bdi> auto-isolates the option text: HE/AR meanings flow
+                  RTL, an English-fallback meaning flows LTR — without
+                  reordering against the A/B/C marker. */}
+              <bdi>{opt.text}</bdi>
             </motion.button>
           );
         })}
@@ -285,10 +288,10 @@ export default function IdiomGame({
               </button>
             </div>
             <p className="text-stone-800 font-bold text-sm sm:text-base leading-snug mb-2" dir={dir}>
-              <span className="text-stone-500 text-xs uppercase tracking-widest mr-2">
+              <span className="text-stone-500 text-xs uppercase tracking-widest me-2">
                 {language === "he" ? "משמעות" : language === "ar" ? "المعنى" : "Meaning"}
               </span>
-              {localizedMeaning}
+              <bdi>{localizedMeaning}</bdi>
             </p>
             <p className="italic text-stone-700 text-sm leading-snug" dir="ltr">
               "{current.example}"

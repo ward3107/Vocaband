@@ -93,6 +93,28 @@
 #                       directive pattern previously applied to
 #                       static.cloudflareinsights.com — retired 2026-05-23,
 #                       see the script-src note above.)
+#
+# 2026-05-24 — www host added to connect-src:
+#   * connect-src     — `https://www.vocaband.com` + `wss://www.vocaband.com`
+#                       ADDED, mirroring the apex `vocaband.com` pair that
+#                       directly precedes them.  The Worker 301-redirects
+#                       www→apex for HTML navigations (worker/index.ts), but
+#                       Cloudflare Workers Assets serves static files (incl.
+#                       /sw.js) on the www host WITHOUT invoking the Worker,
+#                       so a Workbox service worker can be — and, for anyone
+#                       who visited before the www→apex redirect existed,
+#                       still is — registered on www.vocaband.com.  That SW
+#                       re-fetches the HTML shell via the Fetch API, which is
+#                       governed by connect-src (same mechanism as the
+#                       sentry-cdn note above), and the policy listed only the
+#                       apex host.  Symptom in the wild: opening a www URL
+#                       carrying a query string (e.g. the ?lang=he hreflang
+#                       alternate Google indexes) died with "Connecting to
+#                       'https://www.vocaband.com/index.html' violates …
+#                       connect-src", the SW fetch rejected as "Failed to
+#                       fetch", and the navigation fell to a browser error
+#                       page.  Allowing the www host lets that SW fetch
+#                       resolve so the www→apex redirect can complete.
 
 /*
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
@@ -104,7 +126,7 @@
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cross-Origin-Resource-Policy: same-site
   X-Permitted-Cross-Domain-Policies: none
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=' https://challenges.cloudflare.com https://browser.sentry-cdn.com; script-src-elem 'self' 'sha256-jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=' https://challenges.cloudflare.com https://browser.sentry-cdn.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://challenges.cloudflare.com https://*.supabase.co https://*.r2.dev https://lh3.googleusercontent.com; connect-src 'self' https://auth.vocaband.com wss://auth.vocaband.com https://api.vocaband.com wss://api.vocaband.com https://vocaband.fly.dev wss://vocaband.fly.dev https://*.supabase.co wss://*.supabase.co https://vocaband.com wss://vocaband.com https://audio.vocaband.com https://*.r2.dev https://challenges.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://o4511016408514560.ingest.de.sentry.io https://browser.sentry-cdn.com; media-src 'self' https://auth.vocaband.com https://*.supabase.co https://*.cloudflare.com https://audio.vocaband.com https://*.r2.dev; worker-src 'self' blob:; frame-src https://accounts.google.com https://challenges.cloudflare.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=' https://challenges.cloudflare.com https://browser.sentry-cdn.com; script-src-elem 'self' 'sha256-jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=' https://challenges.cloudflare.com https://browser.sentry-cdn.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://challenges.cloudflare.com https://*.supabase.co https://*.r2.dev https://lh3.googleusercontent.com; connect-src 'self' https://auth.vocaband.com wss://auth.vocaband.com https://api.vocaband.com wss://api.vocaband.com https://vocaband.fly.dev wss://vocaband.fly.dev https://*.supabase.co wss://*.supabase.co https://vocaband.com wss://vocaband.com https://www.vocaband.com wss://www.vocaband.com https://audio.vocaband.com https://*.r2.dev https://challenges.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://o4511016408514560.ingest.de.sentry.io https://browser.sentry-cdn.com; media-src 'self' https://auth.vocaband.com https://*.supabase.co https://*.cloudflare.com https://audio.vocaband.com https://*.r2.dev; worker-src 'self' blob:; frame-src https://accounts.google.com https://challenges.cloudflare.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
 
 # Cache static assets aggressively (hashed filenames)
 /assets/*

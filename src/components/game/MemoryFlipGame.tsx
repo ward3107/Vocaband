@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Brain } from "lucide-react";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
+import { useLanguage } from "../../hooks/useLanguage";
+import { gameActiveT } from "../../locales/student/game-active";
 
 type MatchItem = { id: number; text: string; type: 'english' | 'arabic' };
 type MatchSelection = { id: number; type: 'english' | 'arabic' };
@@ -57,6 +59,8 @@ export default function MemoryFlipGame({
   matchingPairs, matchedIds, selectedMatch, isMatchingProcessing, onMatchClick,
   themeColor, modeLabel,
 }: MemoryFlipGameProps) {
+  const { language } = useLanguage();
+  const t = gameActiveT[language];
   const themed = themeColor ? getThemeColors(themeColor) : null;
 
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
@@ -132,7 +136,7 @@ export default function MemoryFlipGame({
       )}
 
       <p className="text-[10px] sm:text-xs font-black text-stone-400 uppercase tracking-widest text-center">
-        Find all the pairs
+        {t.findThePairs}
       </p>
 
       <motion.div
@@ -168,8 +172,8 @@ export default function MemoryFlipGame({
                   type="button"
                   onClick={() => handleTap(item)}
                   disabled={isMatchingProcessing || isMatched}
-                  dir="auto"
-                  aria-label={faceUp ? `Card showing ${item.text}` : "Face-down card, tap to reveal"}
+                  dir={item.type === 'english' ? 'ltr' : 'auto'}
+                  aria-label={faceUp ? t.ariaCardShowing(item.text) : t.ariaFaceDownCard}
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                   className="relative w-full aspect-[3/4] cursor-pointer disabled:cursor-default"
                 >

@@ -1,4 +1,6 @@
 import { motion } from 'motion/react';
+import { useLanguage } from '../hooks/useLanguage';
+import { quickPlayT } from '../locales/student/quick-play';
 
 interface QuickPlayKickedScreenProps {
   onGoHome: () => void;
@@ -9,8 +11,10 @@ export default function QuickPlayKickedScreen({
   onGoHome,
   onRejoin,
 }: QuickPlayKickedScreenProps) {
+  const { language, dir } = useLanguage();
+  const t = quickPlayT[language];
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-4">
+    <div dir={dir} className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-4">
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -32,7 +36,7 @@ export default function QuickPlayKickedScreen({
           transition={{ delay: 0.3 }}
           className="text-2xl sm:text-3xl font-black text-gray-900 mb-3"
         >
-          You've been removed
+          {t.kickedTitle}
         </motion.h1>
         <motion.p
           initial={{ y: 10, opacity: 0 }}
@@ -40,8 +44,8 @@ export default function QuickPlayKickedScreen({
           transition={{ delay: 0.4 }}
           className="text-gray-500 mb-6 text-sm sm:text-base leading-relaxed"
         >
-          Your teacher removed you from this Quick Play session.
-          {onRejoin && ' If this was a mistake, you can rejoin with a different name.'}
+          {t.kickedBody}
+          {onRejoin && t.kickedRejoinHint}
         </motion.p>
 
         {/* Rejoin button — only when we still have the session context to
@@ -59,7 +63,7 @@ export default function QuickPlayKickedScreen({
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg shadow-lg shadow-indigo-200 hover:shadow-xl transition-all mb-3"
           >
-            Rejoin with a different name
+            {t.rejoinDifferentName}
           </motion.button>
         )}
 
@@ -78,7 +82,7 @@ export default function QuickPlayKickedScreen({
               : 'w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg shadow-lg shadow-indigo-200 hover:shadow-xl transition-all'
           }
         >
-          {onRejoin ? 'Leave Quick Play' : 'Back to Home Page'}
+          {onRejoin ? t.leaveQuickPlay : t.backToHomePage}
         </motion.button>
       </motion.div>
     </div>

@@ -182,7 +182,7 @@ export default function ScrambleGame({
           type="button"
           onClick={() => handleSlotTap(i)}
           disabled={isLocked || !filled}
-          aria-label={filled ? `Remove letter ${ch}` : "Empty slot"}
+          aria-label={filled ? t.ariaRemoveLetter(ch) : t.ariaEmptySlot}
           className={`w-9 h-12 sm:w-12 sm:h-14 rounded-lg border-2 flex items-center justify-center font-black text-lg sm:text-2xl uppercase transition-colors ${slotClass} ${filled && !isLocked ? "cursor-pointer active:scale-95" : "cursor-default"}`}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
@@ -252,7 +252,7 @@ export default function ScrambleGame({
                 whileTap={!used && !isLocked ? { scale: 0.9 } : undefined}
                 onClick={() => handleTileTap(idx)}
                 disabled={used || isLocked || isFull}
-                aria-label={`Place letter ${letter}`}
+                aria-label={t.ariaPlaceLetter(letter)}
                 className={`w-12 h-14 sm:w-14 sm:h-16 rounded-xl border-2 font-black text-2xl sm:text-3xl uppercase shadow-md transition-shadow ${
                   used
                     ? "bg-stone-100 border-stone-200 text-stone-400 cursor-not-allowed"

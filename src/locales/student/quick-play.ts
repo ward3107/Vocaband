@@ -20,6 +20,10 @@ export interface QuickPlayStrings {
   back: string;
   reconnecting: string;
 
+  // Language-picker step (shown before gameplay starts).
+  pickLanguage: string;
+  pickLanguageSubtitle: string;
+
   // Loading + escape
   loadingSession: string;
   cancelAndGoBack: string;
@@ -49,12 +53,37 @@ export interface QuickPlayStrings {
   toastTeacherEnded: string;
   toastConnectionLost: string;
   toastCantJoinLeaderboard: string;
+
+  // QuickPlayKickedScreen
+  kickedTitle: string;
+  kickedBody: string;
+  /** Appended (with a leading space) only when a rejoin path exists. */
+  kickedRejoinHint: string;
+  rejoinDifferentName: string;
+  backToHomePage: string;
+
+  // QuickPlaySessionEndScreen
+  sessionComplete: string;
+  /** Builds the celebratory headline incl. the localized rank ordinal
+   *  (English "1st/2nd/3rd", HE/AR "place N"). */
+  youFinishedRank: (rank: number) => string;
+  /** "Great job, " — the LTR-isolated name + "!" is appended inline. */
+  greatJobPrefix: string;
+  rankOfTotal: (rank: number, total: number) => string;
+  yourFinalScore: string;
+  points: string;
+  topOfClass: string;
+  /** "(you)" marker next to the current player on the mini podium. */
+  youMarker: string;
+  signUpToSave: string;
 }
 
 export const quickPlayT: Record<Language, QuickPlayStrings> = {
   en: {
     back: "Back",
     reconnecting: "Reconnecting…",
+    pickLanguage: "Pick a language",
+    pickLanguageSubtitle: "Buttons + mode names will be in this language",
     loadingSession: "Loading Quick Play session…",
     cancelAndGoBack: "Cancel and go back",
     welcomeBackPrefix: "Welcome back, ",
@@ -76,10 +105,26 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     toastTeacherEnded: "🎉 Your teacher ended the game. Nice playing!",
     toastConnectionLost: "📡 Can't reach the game. Refresh the page and try again.",
     toastCantJoinLeaderboard: "🤔 Couldn't join the scoreboard. Tap to try again.",
+    kickedTitle: "You've been removed",
+    kickedBody: "Your teacher removed you from this Quick Play session.",
+    kickedRejoinHint: " If this was a mistake, you can rejoin with a different name.",
+    rejoinDifferentName: "Rejoin with a different name",
+    backToHomePage: "Back to Home Page",
+    sessionComplete: "Session Complete!",
+    youFinishedRank: (rank) => `You finished ${rank === 1 ? "1st" : rank === 2 ? "2nd" : rank === 3 ? "3rd" : `${rank}th`}!`,
+    greatJobPrefix: "Great job, ",
+    rankOfTotal: (rank, total) => `Rank ${rank} of ${total}`,
+    yourFinalScore: "Your Final Score",
+    points: "points",
+    topOfClass: "Top of the class",
+    youMarker: "(you)",
+    signUpToSave: "Sign up to save your progress, earn XP, and climb the leaderboard!",
   },
   he: {
     back: "חזרה",
     reconnecting: "מתחבר מחדש…",
+    pickLanguage: "בחרו שפה",
+    pickLanguageSubtitle: "הכפתורים ושמות המצבים יוצגו בשפה זו",
     loadingSession: "טוען את המשחק…",
     cancelAndGoBack: "ביטול וחזרה",
     welcomeBackPrefix: "ברוכים השבים, ",
@@ -101,10 +146,26 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     toastTeacherEnded: "🎉 המורה סיים את המשחק. כל הכבוד!",
     toastConnectionLost: "📡 אין חיבור למשחק. רעננו את הדף ונסו שוב.",
     toastCantJoinLeaderboard: "🤔 לא הצלחנו להוסיף ללוח המובילים. נסו שוב.",
+    kickedTitle: "הוסרת מהמשחק",
+    kickedBody: "המורה הסיר אותך ממשחק המהיר הזה.",
+    kickedRejoinHint: " אם זו הייתה טעות, אפשר להצטרף מחדש עם שם אחר.",
+    rejoinDifferentName: "הצטרפות מחדש עם שם אחר",
+    backToHomePage: "חזרה לדף הבית",
+    sessionComplete: "המשחק הסתיים!",
+    youFinishedRank: (rank) => `סיימת במקום ${rank}!`,
+    greatJobPrefix: "כל הכבוד, ",
+    rankOfTotal: (rank, total) => `מקום ${rank} מתוך ${total}`,
+    yourFinalScore: "הניקוד הסופי שלך",
+    points: "נקודות",
+    topOfClass: "מובילי הכיתה",
+    youMarker: "(אתה)",
+    signUpToSave: "הירשמו כדי לשמור את ההתקדמות, לצבור XP ולטפס בלוח המובילים!",
   },
   ar: {
     back: "رجوع",
     reconnecting: "يتم إعادة الاتصال…",
+    pickLanguage: "اختر لغة",
+    pickLanguageSubtitle: "ستظهر الأزرار وأسماء الأوضاع بهذه اللغة",
     loadingSession: "يتم تحميل اللعب السريع…",
     cancelAndGoBack: "إلغاء والرجوع",
     welcomeBackPrefix: "مرحبًا بعودتك، ",
@@ -126,10 +187,26 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     toastTeacherEnded: "🎉 أنهى معلّمك اللعبة. أحسنت!",
     toastConnectionLost: "📡 تعذّر الوصول إلى اللعبة. حدّث الصفحة وحاول مجددًا.",
     toastCantJoinLeaderboard: "🤔 تعذّر الانضمام إلى لوحة النتائج. حاول مجددًا.",
+    kickedTitle: "تمت إزالتك",
+    kickedBody: "أزالك معلّمك من جلسة اللعب السريع هذه.",
+    kickedRejoinHint: " إذا كان ذلك خطأً، يمكنك الانضمام مجددًا باسم مختلف.",
+    rejoinDifferentName: "انضم مجددًا باسم مختلف",
+    backToHomePage: "العودة إلى الصفحة الرئيسية",
+    sessionComplete: "انتهت الجلسة!",
+    youFinishedRank: (rank) => `أنهيت في المركز ${rank}!`,
+    greatJobPrefix: "أحسنت، ",
+    rankOfTotal: (rank, total) => `المركز ${rank} من ${total}`,
+    yourFinalScore: "نتيجتك النهائية",
+    points: "نقاط",
+    topOfClass: "متصدّرو الصف",
+    youMarker: "(أنت)",
+    signUpToSave: "سجّل لحفظ تقدّمك وكسب نقاط الخبرة والصعود في لوحة المتصدّرين!",
   },
   ru: {
     back: "Назад",
     reconnecting: "Переподключение…",
+    pickLanguage: "Pick a language",
+    pickLanguageSubtitle: "Buttons + mode names will be in this language",
     loadingSession: "Загрузка быстрой игры…",
     cancelAndGoBack: "Отменить и вернуться",
     welcomeBackPrefix: "С возвращением, ",
@@ -151,5 +228,19 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     toastTeacherEnded: "🎉 Учитель завершил игру. Молодец!",
     toastConnectionLost: "📡 Нет связи с игрой. Обнови страницу и попробуй снова.",
     toastCantJoinLeaderboard: "🤔 Не удалось присоединиться к таблице. Попробуй ещё раз.",
+    kickedTitle: "You've been removed",
+    kickedBody: "Your teacher removed you from this Quick Play session.",
+    kickedRejoinHint: " If this was a mistake, you can rejoin with a different name.",
+    rejoinDifferentName: "Rejoin with a different name",
+    backToHomePage: "Back to Home Page",
+    sessionComplete: "Session Complete!",
+    youFinishedRank: (rank) => `You finished ${rank === 1 ? "1st" : rank === 2 ? "2nd" : rank === 3 ? "3rd" : `${rank}th`}!`,
+    greatJobPrefix: "Great job, ",
+    rankOfTotal: (rank, total) => `Rank ${rank} of ${total}`,
+    yourFinalScore: "Your Final Score",
+    points: "points",
+    topOfClass: "Top of the class",
+    youMarker: "(you)",
+    signUpToSave: "Sign up to save your progress, earn XP, and climb the leaderboard!",
   },
 };

@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { QUICK_PLAY_AVATAR_GROUPS } from "../constants/avatars";
 import QPAvatar from "./QPAvatar";
 import { useLanguage } from "../hooks/useLanguage";
+import { gameAriasT } from "../locales/student/game-arias";
 
 interface AvatarPickerProps {
   selected: string;
@@ -81,6 +82,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
 
   const label = LABEL[language] ?? LABEL.en;
   const scrollHint = SCROLL_HINT[language] ?? SCROLL_HINT.en;
+  const tAria = gameAriasT[language];
 
   return (
     <div>
@@ -133,7 +135,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
                     : "bg-surface-container hover:bg-surface-container-high text-on-surface"
                 }`}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
-                aria-label={`Avatar ${av}`}
+                aria-label={tAria.selectAvatar(av)}
                 aria-pressed={isSelected}
               >
                 <QPAvatar value={av} iconSize={22} className="text-xl sm:text-2xl" />

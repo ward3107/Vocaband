@@ -32,6 +32,7 @@ import {
 import { supabase } from "../core/supabase";
 import type { AppUser } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { shareWorksheetT } from "../locales/teacher/share-worksheet";
 import { WorksheetShareCard } from "../components/WorksheetShareCard";
 import {
@@ -355,6 +356,7 @@ const WorksheetList: React.FC<{
   activeCount,
   archivedCount,
 }) => {
+  const isMobile = useIsMobile();
   // Filter chips render whenever the teacher has at least one archived
   // worksheet — until then there's nothing to switch between.
   const showFilter = archivedCount > 0 || filter === "archived";
@@ -421,6 +423,7 @@ const WorksheetList: React.FC<{
           return (
             <WorksheetRowV2
               key={w.slug}
+              mobile={isMobile}
               record={{
                 id: w.slug,
                 title: w.topic_name,

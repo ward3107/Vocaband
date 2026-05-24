@@ -115,8 +115,11 @@ export default function StudentStatsRow({
         transition={{ duration: 0.3, delay: 0.05 }}
         className="relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-emerald-400 via-teal-400 to-cyan-500 text-white shadow-lg shadow-teal-500/20"
       >
-        {/* Decorative emoji medallion — `-end-4` so the disc flips to
-            the leading edge in RTL. */}
+        {/* Decorative emoji medallion — logical `-end-8` so the disc
+            tucks into the leading-edge corner (right in LTR, left in
+            RTL) without overlapping the big headline number. Bumped
+            from `-end-4` after QA showed the disc was clipping the
+            "+" / "8" digit at tablet widths. */}
         <div className="absolute -top-8 -end-8 w-28 h-28 rounded-full bg-white/15 flex items-center justify-center text-7xl select-none pointer-events-none">
           🎯
         </div>

@@ -1208,7 +1208,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
         >
           <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600 mb-3">{t.passTo}</p>
           <h2 className="text-5xl sm:text-7xl font-black text-stone-900 mb-4 break-words">
-            {player.name}
+            <bdi>{player.name}</bdi>
           </h2>
           <p className="text-base font-bold text-stone-600 mb-8">
             {t.passToTurn(questionNumber, questionsPerPlayer)}
@@ -1253,12 +1253,12 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
         {/* Status strip — full width, slightly bigger pills */}
         <div className="w-full flex items-center justify-between gap-3" dir={dir}>
           <div className="px-4 py-2 rounded-full bg-orange-100 text-orange-800 text-sm sm:text-base font-black uppercase tracking-wider truncate max-w-[40%]">
-            {player.name}
+            <bdi>{player.name}</bdi>
           </div>
           <div className="px-4 py-2 rounded-full bg-stone-100 text-stone-700 text-sm sm:text-base font-black">
             {t.questionOf(questionNumber, questionsPerPlayer)}
           </div>
-          <div className="px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm sm:text-base font-black">
+          <div className="px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm sm:text-base font-black" dir="ltr">
             ✓ {player.correct}
           </div>
         </div>
@@ -1291,6 +1291,11 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
             const isPicked = picked?.id === opt.id;
             const isCorrect = opt.id === question.word.id;
             const showResult = picked != null;
+            // Direction follows the rendered text: HE/AR translation is
+            // RTL, a missing-translation English fallback stays LTR.
+            const optTranslation = translationOf(opt, targetLang);
+            const optText = optTranslation || opt.english;
+            const thisOptDir = optTranslation ? optionDir : 'ltr';
             let cls = 'bg-white border-4 border-stone-200 hover:border-orange-300 text-stone-900';
             if (showResult) {
               if (isCorrect) {
@@ -1308,11 +1313,11 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                 onClick={() => handleAnswer(opt)}
                 disabled={showResult}
                 type="button"
-                dir={optionDir}
+                dir={thisOptDir}
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 className={`h-full px-4 py-4 rounded-2xl text-center font-black text-3xl sm:text-5xl md:text-6xl leading-tight transition-all shadow-md break-words flex items-center justify-center ${cls}`}
               >
-                <span>{translationOf(opt, targetLang) || opt.english}</span>
+                <span>{optText}</span>
               </motion.button>
             );
           })}
@@ -1332,7 +1337,12 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
             >
               {picked.id === question.word.id
                 ? t.correct
-                : `${t.wrong} ${t.correctAnswer} ${translationOf(question.word, targetLang)}`}
+                : (
+                  <>
+                    {t.wrong} {t.correctAnswer}{' '}
+                    <bdi dir={optionDir}>{translationOf(question.word, targetLang)}</bdi>
+                  </>
+                )}
               <ArrowRight size={16} className={`inline ms-1 ${isRTL ? 'rotate-180' : ''}`} />
             </motion.p>
           )}
@@ -1376,9 +1386,9 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
                   <span className="text-2xl w-8 text-center shrink-0">
                     {rank < 3 ? MEDAL[rank] : <span className="text-stone-400 text-sm font-black">#{rank + 1}</span>}
                   </span>
-                  <span className="text-base font-black text-stone-900 truncate">{p.name}</span>
+                  <span className="text-base font-black text-stone-900 truncate"><bdi>{p.name}</bdi></span>
                 </div>
-                <span className="text-base font-black text-stone-700 tabular-nums shrink-0">
+                <span className="text-base font-black text-stone-700 tabular-nums shrink-0" dir="ltr">
                   {t.scoreOf(p.correct, p.total)}
                 </span>
               </div>
