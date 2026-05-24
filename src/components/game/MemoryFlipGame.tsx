@@ -65,6 +65,28 @@ export default function MemoryFlipGame({
 
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
 
+  // ── Vanish-after-match (2026-05-24 fix) ──────────────────────────
+  // Matched cards used to STAY on the board forever with a green
+  // ring — students complained the grid never shrank.  Now we lag
+  // a `vanishedIds` set behind `matchedIds` by ~700 ms so the
+  // emerald celebration ring is visible briefly, then the
+  // AnimatePresence wrapper picks up the removal and runs the
+  // existing pop-and-shrink exit animation.  Wrong-match cards
+  // still flip back face-down via the existing revealedKeys logic.
+  const [vanishedIds, setVanishedIds] = useState<Set<number>>(new Set());
+  useEffect(() => {
+    const newlyMatched = matchedIds.filter((id) => !vanishedIds.has(id));
+    if (newlyMatched.length === 0) return;
+    const t = setTimeout(() => {
+      setVanishedIds((prev) => {
+        const next = new Set(prev);
+        newlyMatched.forEach((id) => next.add(id));
+        return next;
+      });
+    }, 700);
+    return () => clearTimeout(t);
+  }, [matchedIds, vanishedIds]);
+
   // Watch the processing flag.  When it transitions from true to
   // false, the parent's "wrong pair" animation just finished — flip
   // any non-matched revealed cards back face-down.  Adds a 100ms
@@ -125,7 +147,9 @@ export default function MemoryFlipGame({
         className="w-full max-w-2xl grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3"
       >
         <AnimatePresence>
-          {matchingPairs.map((item) => {
+          {matchingPairs
+            .filter((item) => !vanishedIds.has(item.id))
+            .map((item) => {
             const key = `${item.id}-${item.type}`;
             const faceUp = isFaceUp(item);
             const isMatched = matchedIds.includes(item.id);

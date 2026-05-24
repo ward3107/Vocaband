@@ -156,6 +156,7 @@ const STUDENT_STRINGS: Record<Language, {
   classCodeLabel: string;
   hint: string;
   keepPlaying: string;
+  logOut: string;
   switchClass: string;
 }> = {
   en: {
@@ -163,6 +164,7 @@ const STUDENT_STRINGS: Record<Language, {
     classCodeLabel: 'Your class code:',
     hint: "Scan the QR or open your teacher's link to come back.",
     keepPlaying: 'Keep playing',
+    logOut: 'Log out',
     switchClass: 'Switch class',
   },
   he: {
@@ -170,6 +172,7 @@ const STUDENT_STRINGS: Record<Language, {
     classCodeLabel: 'קוד הכיתה שלך:',
     hint: 'סרוק את הקוד או פתח את הקישור של המורה כדי לחזור.',
     keepPlaying: 'המשך לשחק',
+    logOut: 'התנתקות',
     switchClass: 'החלף כיתה',
   },
   ar: {
@@ -177,6 +180,7 @@ const STUDENT_STRINGS: Record<Language, {
     classCodeLabel: 'رمز صفك:',
     hint: 'امسح رمز QR أو افتح رابط معلمك للعودة.',
     keepPlaying: 'تابع اللعب',
+    logOut: 'تسجيل الخروج',
     switchClass: 'تغيير الصف',
   },
   ru: {
@@ -184,6 +188,7 @@ const STUDENT_STRINGS: Record<Language, {
     classCodeLabel: 'Your class code:',
     hint: "Scan the QR or open your teacher's link to come back.",
     keepPlaying: 'Keep playing',
+    logOut: 'Log out',
     switchClass: 'Switch class',
   },
 };
@@ -229,6 +234,23 @@ export const ExitConfirmModal: React.FC<ExitConfirmModalProps> = ({
             className="w-full py-4 rounded-xl font-black text-white bg-gradient-to-r from-orange-500 to-rose-500 shadow-lg active:scale-[0.98] transition-all text-base mb-3"
           >
             {t.keepPlaying}
+          </button>
+          {/* Explicit Log Out button — promoted from the previous
+              "Switch class" text link because students reported the
+              tiny link wasn't readable as a real sign-out affordance.
+              Both buttons end up calling onLeave (signs out via
+              supabase.auth.signOut), but the framing matters:
+                · "Log out" — I'm done, get me out of the game
+                · "Switch class" — sign out + the kid expects to type
+                  a different class code on the next login.
+              Both routes land on the student login screen anyway. */}
+          <button
+            onClick={onLeave}
+            type="button"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+            className="w-full py-3 rounded-xl font-bold text-stone-700 bg-white border-2 border-stone-200 hover:border-stone-300 active:scale-[0.98] transition-all text-sm mb-2"
+          >
+            {t.logOut}
           </button>
           <button
             onClick={onLeave}
