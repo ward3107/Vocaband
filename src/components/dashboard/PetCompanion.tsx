@@ -77,7 +77,7 @@ export default function PetCompanion({
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.92 }}
         style={{ touchAction: 'manipulation' }}
-        className={`fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${glow} shadow-lg flex items-center justify-center border-2 border-white`}
+        className={`fixed bottom-20 end-4 sm:bottom-6 sm:end-6 z-40 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${glow} shadow-lg flex items-center justify-center border-2 border-white`}
         aria-label={t.openPetCompanion}
         title={currentStage.stage}
       >
@@ -93,7 +93,7 @@ export default function PetCompanion({
           <motion.span
             animate={{ scale: [1, 1.25, 1] }}
             transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute top-0 right-0 w-4 h-4 rounded-full bg-rose-500 border-2 border-white"
+            className="absolute top-0 end-0 w-4 h-4 rounded-full bg-rose-500 border-2 border-white"
           />
         )}
         {/* Ambient pulse ring */}
@@ -109,14 +109,14 @@ export default function PetCompanion({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', stiffness: 240, damping: 20 }}
-            className="fixed bottom-40 right-4 sm:bottom-28 sm:right-6 z-40 w-[calc(100vw-2rem)] sm:w-80 bg-white rounded-xl border border-stone-200 shadow-xl p-4"
+            className="fixed bottom-40 end-4 sm:bottom-28 sm:end-6 z-40 w-[calc(100vw-2rem)] sm:w-80 bg-white rounded-xl border border-stone-200 shadow-xl p-4"
             dir={dir}
           >
             <button
               onClick={() => setOpen(false)}
               type="button"
               aria-label={t.close}
-              className="absolute top-3 right-3 w-7 h-7 rounded-full hover:bg-stone-100 flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors"
+              className="absolute top-3 end-3 w-7 h-7 rounded-full hover:bg-stone-100 flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors"
             >
               <X size={14} />
             </button>
@@ -142,9 +142,9 @@ export default function PetCompanion({
                 animate={{ scale: 1 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
-                className="w-full mb-3 relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-4 text-left text-white shadow-md"
+                className="w-full mb-3 relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-4 text-start text-white shadow-md"
               >
-                <div aria-hidden className="pointer-events-none absolute -top-4 -right-4 w-20 h-20 bg-yellow-200/40 rounded-full blur-2xl" />
+                <div aria-hidden className="pointer-events-none absolute -top-4 -end-4 w-20 h-20 bg-yellow-200/40 rounded-full blur-2xl" />
                 <div className="relative flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-white/25 backdrop-blur-sm flex items-center justify-center">
                     <Gift size={18} className="text-white" />

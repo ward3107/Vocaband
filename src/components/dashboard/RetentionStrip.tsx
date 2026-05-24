@@ -54,14 +54,14 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-4 text-left text-white"
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-4 text-start text-white"
           style={{
             touchAction: 'manipulation',
             boxShadow:
               "0 14px 30px -14px rgba(240,141,135,0.55), 0 1px 0 rgba(255,255,255,0.45) inset",
           }}
         >
-          <div aria-hidden className="pointer-events-none absolute -top-6 -right-6 w-24 h-24 bg-yellow-200/40 rounded-full blur-2xl" />
+          <div aria-hidden className="pointer-events-none absolute -top-6 -end-6 w-24 h-24 bg-yellow-200/40 rounded-full blur-2xl" />
           <div className="relative flex items-center gap-3">
             <motion.div
               animate={{ rotate: [-5, 5, -5], scale: [1, 1.05, 1] }}
@@ -89,7 +89,7 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 p-4 text-left text-white"
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 p-4 text-start text-white"
           style={{
             touchAction: 'manipulation',
             boxShadow:

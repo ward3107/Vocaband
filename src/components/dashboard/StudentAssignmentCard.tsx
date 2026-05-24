@@ -150,8 +150,10 @@ export default function StudentAssignmentCard({
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
       className={`${isLocked ? 'bg-stone-100 grayscale-[0.5]' : accent.bg} p-4 sm:p-5 rounded-2xl border border-white/80 shadow-sm ${isLocked ? 'cursor-not-allowed opacity-75' : 'hover:shadow-md cursor-pointer active:scale-[0.99]'} transition-all relative overflow-hidden`}
     >
-      {/* Colored left strip */}
-      <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${isLocked ? 'from-stone-400 to-stone-500' : accent.strip}`} />
+      {/* Colored leading strip — uses `start-0` so it flips to the
+          right edge in RTL (Hebrew / Arabic) and never overlaps the
+          card content. */}
+      <div className={`absolute top-0 start-0 w-1.5 h-full bg-gradient-to-b ${isLocked ? 'from-stone-400 to-stone-500' : accent.strip}`} />
 
       {/* LOCKED banner — takes priority over MASTERED */}
       {isLocked && (
@@ -159,7 +161,7 @@ export default function StudentAssignmentCard({
           initial={{ scale: 0, rotate: -20 }}
           animate={{ scale: 1, rotate: -8 }}
           transition={{ type: "spring", stiffness: 200, damping: 14, delay: 0.4 }}
-          className="absolute top-2 right-2 bg-gradient-to-r from-stone-700 to-stone-900 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-1"
+          className="absolute top-2 end-2 bg-gradient-to-r from-stone-700 to-stone-900 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-1"
         >
           <Lock size={10} />
           MAXED
@@ -172,7 +174,7 @@ export default function StudentAssignmentCard({
           initial={{ scale: 0, rotate: -20 }}
           animate={{ scale: 1, rotate: -8 }}
           transition={{ type: "spring", stiffness: 200, damping: 14, delay: 0.4 }}
-          className="absolute top-2 right-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-1"
+          className="absolute top-2 end-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-1"
         >
           <Sparkles size={10} className="fill-white" />
           MASTERED
@@ -187,7 +189,7 @@ export default function StudentAssignmentCard({
         <div className="flex-1 min-w-0">
           <h3 className="text-base sm:text-lg font-black text-stone-900 leading-tight truncate">
             {assignment.subject === "hebrew" && (
-              <span className="inline-block mr-1.5 text-[10px] tracking-[0.2em] uppercase font-black text-blue-700 bg-blue-100 rounded-full px-2 py-0.5 align-middle">
+              <span className="inline-block me-1.5 text-[10px] tracking-[0.2em] uppercase font-black text-blue-700 bg-blue-100 rounded-full px-2 py-0.5 align-middle">
                 📖 עברית
               </span>
             )}

@@ -97,7 +97,7 @@ export default function LeaderboardTeaser({
         boxShadow:
           "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
       }}
-      className="w-full mb-6 rounded-2xl border border-indigo-500/[0.10] bg-white p-4 sm:p-5 text-left flex items-center gap-3 sm:gap-4 hover:-translate-y-0.5 active:scale-[0.99] transition-transform"
+      className="w-full mb-6 rounded-2xl border border-indigo-500/[0.10] bg-white p-4 sm:p-5 text-start flex items-center gap-3 sm:gap-4 hover:-translate-y-0.5 active:scale-[0.99] transition-transform"
     >
       {/* Rank badge */}
       <div

@@ -45,7 +45,7 @@ export default function TeacherQuickActions({
           type="button"
           onClick={onQuickPlayClick}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className={`group relative w-full rounded-2xl p-6 sm:p-8 ${isHebrew ? "text-right" : "text-left"} overflow-hidden transition-all hover:shadow-xl active:scale-[0.99] mb-6`}
+          className="group relative w-full rounded-2xl p-6 sm:p-8 text-start overflow-hidden transition-all hover:shadow-xl active:scale-[0.99] mb-6"
           data-tour="quick-play"
         >
           {/* Animated gradient background */}
@@ -222,11 +222,11 @@ const CompactActionCard: React.FC<CompactActionCardProps> = ({
         backgroundColor: 'var(--vb-surface)',
         borderColor: 'var(--vb-border)',
       }}
-      className={`group relative w-full rounded-xl p-4 ${isHebrew ? "text-right" : "text-left"} border shadow-sm hover:shadow-md active:scale-[0.99] transition-all`}
+      className="group relative w-full rounded-xl p-4 text-start border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
     >
       {badge != null && badge > 0 && (
         <span
-          className={`absolute top-3 ${isHebrew ? "left-3" : "right-3"} text-white text-xs font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center shadow-sm`}
+          className="absolute top-3 end-3 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center shadow-sm"
           style={{ backgroundColor: 'var(--vb-danger)' }}
         >
           {badge}

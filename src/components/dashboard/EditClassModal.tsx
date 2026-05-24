@@ -321,7 +321,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                 <span style={{ color: 'var(--vb-text-muted)' }} className="text-[10px] font-black uppercase">—</span>
                 {backgroundColor === null && (
                   <span
-                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center shadow-sm"
+                    className="absolute -top-1 -end-1 w-4 h-4 rounded-full flex items-center justify-center shadow-sm"
                     style={{ backgroundColor: 'var(--vb-accent)' }}
                   >
                     <CheckCircle2 size={10} style={{ color: 'var(--vb-accent-text)' }} />
@@ -345,7 +345,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                   >
                     {selected && (
                       <span
-                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center shadow-sm"
+                        className="absolute -top-1 -end-1 w-4 h-4 rounded-full flex items-center justify-center shadow-sm"
                         style={{ backgroundColor: 'var(--vb-accent)' }}
                       >
                         <CheckCircle2 size={10} style={{ color: 'var(--vb-accent-text)' }} />
@@ -381,7 +381,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               </button>
             </div>
 
-            <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1 -mr-1">
+            <div className="space-y-3 max-h-[40vh] overflow-y-auto pe-1 -me-1">
               {CLASS_AVATAR_GROUPS.map(group => {
                 const localizedLabel = ({
                   School:  { he: 'בית ספר', ar: 'مدرسة' },
@@ -421,7 +421,7 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
                           {em}
                           {selected && (
                             <span
-                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center shadow-sm"
+                              className="absolute -top-1 -end-1 w-4 h-4 rounded-full flex items-center justify-center shadow-sm"
                               style={{ backgroundColor: 'var(--vb-accent)' }}
                             >
                               <CheckCircle2 size={10} style={{ color: 'var(--vb-accent-text)' }} />

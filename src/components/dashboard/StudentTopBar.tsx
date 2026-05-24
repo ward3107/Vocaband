@@ -52,7 +52,7 @@ export default function StudentTopBar({ onRequestLogout }: StudentTopBarProps = 
         {langOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setLangOpen(false)} />
-            <div className="absolute top-full mt-1 right-0 z-50 bg-white rounded-lg shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
+            <div className="absolute top-full mt-1 end-0 z-50 bg-white rounded-lg shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
               {langs.map(lng => (
                 <button
                   key={lng}
