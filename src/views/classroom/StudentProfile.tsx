@@ -20,7 +20,7 @@
  * pure and easy to render from multiple entry points.
  */
 import { useCallback, useMemo, type ReactNode } from "react";
-import { Gift, ChartBar, AlertTriangle, Trophy, History, Sparkles } from "lucide-react";
+import { Gift, ChartBar, AlertTriangle, Trophy, History, Sparkles, Award } from "lucide-react";
 import AdaptiveDrawer from "../../components/classroom/AdaptiveDrawer";
 import MasteryHeatmap, { type MasteryRow } from "../gradebook/MasteryHeatmap";
 import {
@@ -50,6 +50,11 @@ interface StudentProfileProps {
   /** Called when the teacher taps the 🎁 Reward button in the header.
    *  Parent opens its existing TeacherRewardModal with the right student. */
   onReward?: () => void;
+  /** Called when the teacher taps the 🏅 Certificate button in the
+   *  header.  Parent opens its existing CertificateModal with this
+   *  student's rolled-up stats.  Optional — the button is hidden when
+   *  the caller hasn't wired it. */
+  onCertificate?: () => void;
   /** Called when the teacher taps "Reteach these words" in the sticky
    *  bottom bar.  Receives the IDs of the student's most-missed words.
    *  Parent is expected to navigate to the Create-Assignment wizard
@@ -77,7 +82,7 @@ const textColor = (s: number): string => {
 };
 
 export default function StudentProfile({
-  open, onClose, student, scores, masteryRows, teacherAssignments, onReward, onReteach,
+  open, onClose, student, scores, masteryRows, teacherAssignments, onReward, onCertificate, onReteach,
 }: StudentProfileProps) {
   const { language } = useLanguage();
   const t = teacherDrilldownsT[language];
@@ -189,22 +194,41 @@ export default function StudentProfile({
       subtitle={headerSubtitle}
       avatar={student?.avatar}
       headerRight={
-        onReward && student?.uid ? (
-          <button
-            type="button"
-            onClick={onReward}
-            className="px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-1.5 shrink-0 transition-colors hover:opacity-90"
-            style={{
-              touchAction: "manipulation",
-              WebkitTapHighlightColor: "transparent" as never,
-              backgroundColor: 'var(--vb-warning-soft)',
-              color: 'var(--vb-warning)',
-            }}
-            aria-label={t.rewardAria(student.name)}
-          >
-            <Gift size={16} />
-            {t.rewardBtn}
-          </button>
+        student ? (
+          <div className="flex items-center gap-2 shrink-0">
+            {onCertificate && (
+              <button
+                type="button"
+                onClick={onCertificate}
+                className="px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-1.5 transition-colors hover:opacity-90 bg-orange-100 text-orange-700"
+                style={{
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent" as never,
+                }}
+                aria-label={t.certificateAria(student.name)}
+              >
+                <Award size={16} />
+                <span className="hidden sm:inline">{t.certificateBtn}</span>
+              </button>
+            )}
+            {onReward && student.uid && (
+              <button
+                type="button"
+                onClick={onReward}
+                className="px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-1.5 transition-colors hover:opacity-90"
+                style={{
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent" as never,
+                  backgroundColor: 'var(--vb-warning-soft)',
+                  color: 'var(--vb-warning)',
+                }}
+                aria-label={t.rewardAria(student.name)}
+              >
+                <Gift size={16} />
+                <span className="hidden sm:inline">{t.rewardBtn}</span>
+              </button>
+            )}
+          </div>
         ) : null
       }
     >

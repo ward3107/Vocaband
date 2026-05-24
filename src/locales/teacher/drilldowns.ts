@@ -38,6 +38,12 @@ export interface TeacherDrilldownsT {
   rewardBtn: string;
   /** "Reward {name}" — aria. */
   rewardAria: (name: string) => string;
+  /** Header-button label for "open the certificate modal" — visible on
+   *  the StudentProfile drawer next to Reward.  Short ("Certificate")
+   *  because the button is a chip, not a CTA. */
+  certificateBtn: string;
+  /** "Certificate for {name}" — aria. */
+  certificateAria: (name: string) => string;
   noPlaysTitle: string;
   /** "{name} hasn't played any assignments yet..." */
   noPlaysBody: (name: string) => string;
@@ -131,6 +137,8 @@ export const teacherDrilldownsT: Record<Language, TeacherDrilldownsT> = {
     studentHeaderSubtitle: (plays, date) => `${plays} ${plays === 1 ? "play" : "plays"} · last ${date}`,
     rewardBtn: "Reward",
     rewardAria: (name) => `Reward ${name}`,
+    certificateBtn: "Certificate",
+    certificateAria: (name) => `Certificate for ${name}`,
     noPlaysTitle: "No plays yet",
     noPlaysBody: (name) => `${name} hasn't played any assignments yet. Their stats will appear here as soon as they start.`,
     statAvgScoreLabel: "avg score",
@@ -218,6 +226,8 @@ export const teacherDrilldownsT: Record<Language, TeacherDrilldownsT> = {
     studentHeaderSubtitle: (plays, date) => `${plays} ${plays === 1 ? "משחק" : "משחקים"} · אחרון ${date}`,
     rewardBtn: "תגמול",
     rewardAria: (name) => `תגמל את ${name}`,
+    certificateBtn: "תעודה",
+    certificateAria: (name) => `תעודה ל־${name}`,
     noPlaysTitle: "אין משחקים עדיין",
     noPlaysBody: (name) => `${name} עדיין לא שיחק/ה במשימות. הסטטיסטיקות יופיעו ברגע שיתחיל/תתחיל.`,
     statAvgScoreLabel: "ציון ממוצע",
@@ -307,6 +317,8 @@ export const teacherDrilldownsT: Record<Language, TeacherDrilldownsT> = {
     studentHeaderSubtitle: (plays, date) => `${plays} ${plays === 1 ? "لعبة" : "لعبات"} · آخر ${date}`,
     rewardBtn: "مكافأة",
     rewardAria: (name) => `كافِئ ${name}`,
+    certificateBtn: "شهادة",
+    certificateAria: (name) => `شهادة لـ ${name}`,
     noPlaysTitle: "لا توجد لعبات بعد",
     noPlaysBody: (name) => `${name} لم يلعب أي واجبات بعد. ستظهر إحصائياته هنا فور بدء اللعب.`,
     statAvgScoreLabel: "متوسط الدرجة",
@@ -396,6 +408,8 @@ export const teacherDrilldownsT: Record<Language, TeacherDrilldownsT> = {
     studentHeaderSubtitle: (plays, date) => `${plays} ${plays === 1 ? "play" : "plays"} · last ${date}`,
     rewardBtn: "Reward",
     rewardAria: (name) => `Reward ${name}`,
+    certificateBtn: "Certificate",
+    certificateAria: (name) => `Certificate for ${name}`,
     noPlaysTitle: "No plays yet",
     noPlaysBody: (name) => `${name} hasn't played any assignments yet. Their stats will appear here as soon as they start.`,
     statAvgScoreLabel: "avg score",

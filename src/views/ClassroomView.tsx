@@ -320,16 +320,11 @@ export default function ClassroomView(props: ClassroomViewProps) {
                       classCode={classCode}
                       allScores={allScores}
                       classStudents={classStudents}
-                      onPulseClick={(bucket) => {
-                        // Tapping a pulse card jumps to the Students
-                        // tab — the closest existing surface for a
-                        // filtered roster view.  `bucket` is unused
-                        // for now (Students tab doesn't accept a
-                        // pre-filter yet); wire later when we extract
-                        // Screen 2 (Roster).
-                        void bucket;
-                        setV2Tab("students");
-                      }}
+                      /* No onPulseClick yet — wire only after the
+                         Students tab accepts a bucket filter, so
+                         tapping a card lands on the *matching*
+                         students instead of the unfiltered roster
+                         (which felt like a misroute). */
                     />
                   ) : (
                     <>
