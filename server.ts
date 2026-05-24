@@ -25,7 +25,14 @@ Sentry.init({
     "AbortError",
     /^Request aborted/,
     /^socket hang up/,
+    // See src/core/sentry.ts — Sentry's own normalizer can overflow on
+    // pathological payloads; the resulting RangeError carries none of
+    // the original error's information.
+    "Maximum call stack size exceeded",
   ],
+  // Same guard as the SPA — see comment in src/core/sentry.ts.
+  normalizeDepth: 5,
+  maxValueLength: 4096,
   // Defensive PII scrubber for incidental leaks — see
   // `src/utils/scrubPii.ts`.  Strips emails, JWTs, Bearer tokens,
   // Supabase keys, and the value of any sensitive-named header /

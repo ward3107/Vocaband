@@ -63,21 +63,41 @@ function scrubString(value: string): string {
     .replace(SUPABASE_KEY_RE, "[supabase-key]");
 }
 
-export function scrubPii<T>(value: T): T;
-export function scrubPii(value: unknown): unknown {
+// Defence against pathological inputs that previously crashed
+// Sentry's beforeSend with `Maximum call stack size exceeded`:
+//   - circular references (DOM events, React fibers, Supabase client
+//     internals occasionally end up in breadcrumb payloads)
+//   - extreme nesting that exhausts the stack before any cycle is hit
+// MAX_DEPTH mirrors Sentry's default normalizeDepth so anything we
+// don't walk would have been truncated by Sentry anyway.
+const MAX_DEPTH = 8;
+
+function scrub(value: unknown, seen: WeakSet<object>, depth: number): unknown {
   if (typeof value === "string") return scrubString(value);
-  if (Array.isArray(value)) return value.map(item => scrubPii(item));
+  if (depth >= MAX_DEPTH) return "[depth-limit]";
+  if (Array.isArray(value)) {
+    if (seen.has(value)) return "[circular]";
+    seen.add(value);
+    return value.map(item => scrub(item, seen, depth + 1));
+  }
   if (value && typeof value === "object") {
+    if (seen.has(value)) return "[circular]";
+    seen.add(value);
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
       if (REDACT_KEY_RE.test(k)) {
         out[k] = "[redacted]";
       } else {
-        out[k] = scrubPii(v);
+        out[k] = scrub(v, seen, depth + 1);
       }
     }
     return out;
   }
   // Numbers, booleans, null, undefined — pass through unchanged.
   return value;
+}
+
+export function scrubPii<T>(value: T): T;
+export function scrubPii(value: unknown): unknown {
+  return scrub(value, new WeakSet(), 0);
 }

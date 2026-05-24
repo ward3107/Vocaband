@@ -113,6 +113,44 @@ describe('scrubPii — object keys', () => {
   });
 });
 
+describe('scrubPii — pathological inputs', () => {
+  it('handles a circular object reference without overflowing the stack', () => {
+    type Node = { name: string; self?: Node };
+    const node: Node = { name: 'teacher@vocaband.com' };
+    node.self = node;
+    const out = scrubPii(node) as { name: string; self: unknown };
+    expect(out.name).toBe('[email]');
+    expect(out.self).toBe('[circular]');
+  });
+
+  it('handles a circular array reference', () => {
+    const arr: unknown[] = ['user@vocaband.com'];
+    arr.push(arr);
+    const out = scrubPii(arr) as unknown[];
+    expect(out[0]).toBe('[email]');
+    expect(out[1]).toBe('[circular]');
+  });
+
+  it('caps deeply nested objects rather than recursing forever', () => {
+    type Deep = { next?: Deep; leaf?: string };
+    const root: Deep = {};
+    let cur: Deep = root;
+    for (let i = 0; i < 50; i++) {
+      cur.next = {};
+      cur = cur.next;
+    }
+    cur.leaf = 'leaf-value';
+    // Should not throw RangeError.
+    const out = scrubPii(root);
+    // Walk down until we hit the depth-limit marker.
+    let probe: unknown = out;
+    for (let i = 0; i < 20 && probe && typeof probe === 'object' && 'next' in probe; i++) {
+      probe = (probe as { next: unknown }).next;
+    }
+    expect(probe).toBe('[depth-limit]');
+  });
+});
+
 describe('scrubPii — Sentry event shape', () => {
   it('handles a realistic Sentry exception payload', () => {
     const event = {
