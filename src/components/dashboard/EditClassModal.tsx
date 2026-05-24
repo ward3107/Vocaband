@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, GraduationCap, Palette, School } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../../constants/game";
 import type { ClassData } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
+import ModalShell, {
+  ModalFootSpacer,
+  ModalPrimaryButton,
+  ModalQuietButton,
+} from "../ui/ModalShell";
 
 // Curated palette of pastel/soft tints that look good behind the class
 // card chrome (subtle, age-appropriate, friendly).  Teachers pick one
@@ -120,26 +124,33 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
   };
 
   return (
-    <AnimatePresence>
-      {klass && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-[100]">
-          <motion.div
-            dir={dir}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            style={{ backgroundColor: 'var(--vb-surface)' }}
-            className="rounded-2xl p-6 sm:p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
+    <ModalShell
+      open={!!klass}
+      onClose={onClose}
+      variant="brand"
+      icon="✏️"
+      title={t.editTitle}
+      subtitle={t.editBlurb}
+      dir={dir}
+      wide
+      zIndex={100}
+      footer={
+        <>
+          <ModalQuietButton onClick={onClose} disabled={saving}>
+            {t.cancel}
+          </ModalQuietButton>
+          <ModalFootSpacer />
+          <ModalPrimaryButton
+            onClick={handleSave}
+            disabled={!valid || !dirty || saving}
           >
-            <div className="mb-5">
-              <h2 className="text-2xl font-black" style={{ color: 'var(--vb-text-primary)' }}>
-                {t.editTitle}
-              </h2>
-              <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>
-                {t.editBlurb}
-              </p>
-            </div>
-
+            {saving ? t.saving : t.saveChanges}
+          </ModalPrimaryButton>
+        </>
+      }
+    >
+      {klass && (
+        <>
             {/* Name */}
             <label
               htmlFor="edit-class-name"
@@ -425,42 +436,8 @@ export default function EditClassModal({ klass, onClose, onSave }: EditClassModa
               })}
             </div>
 
-            {/* Actions */}
-            <div
-              className="flex gap-3 mt-6 pt-4 border-t"
-              style={{ borderColor: 'var(--vb-border)' }}
-            >
-              <button
-                onClick={onClose}
-                disabled={saving}
-                type="button"
-                style={{
-                  touchAction: 'manipulation',
-                  borderColor: 'var(--vb-border)',
-                  color: 'var(--vb-text-secondary)',
-                  backgroundColor: 'var(--vb-surface)',
-                }}
-                className="flex-1 py-3 rounded-xl font-bold transition-colors border-2 disabled:opacity-50 hover:opacity-90"
-              >
-                {t.cancel}
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={!valid || !dirty || saving}
-                type="button"
-                style={{
-                  touchAction: 'manipulation',
-                  backgroundColor: 'var(--vb-accent)',
-                  color: 'var(--vb-accent-text)',
-                }}
-                className="flex-1 py-3 rounded-xl font-black hover:opacity-90 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? t.saving : t.saveChanges}
-              </button>
-            </div>
-          </motion.div>
-        </div>
+        </>
       )}
-    </AnimatePresence>
+    </ModalShell>
   );
 }
