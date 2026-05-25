@@ -792,6 +792,25 @@ html[dir="rtl"] .rtl-flip {
   animation: shine 1.5s ease-in-out;
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer {
+    animation: none;
+  }
+}
+
 /* =============================================================================
    Accessibility Utilities (WCAG 2.0 AA / IS 5568)
    ============================================================================= */

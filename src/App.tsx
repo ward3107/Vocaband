@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useRef, useCallback } from "react";
+import React, { useState, useMemo, useRef, useCallback, Suspense } from "react";
 import type { View } from "./core/views";
+import { lazyWithRetry } from "./utils/lazyWithRetry";
 import { getEntitledVocas } from "./core/subject";
 import type { Word } from "./data/vocabulary";
 import { useVocabularyLazyWithDefaults } from "./hooks/useVocabularyLazy";
@@ -60,8 +61,11 @@ import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
 import { useQuickPlayEvents } from "./hooks/useQuickPlayEvents";
 import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useGameModeSetup } from "./hooks/useGameModeSetup";
-import QpReactionBar from "./components/QpReactionBar";
-import QuickPlayHelpButton from "./components/QuickPlayHelpButton";
+// Lazy — these render only mid-Quick-Play, and they pull in motion/react.
+// Keeping them off App's eager import graph drops the ~42 kB gz motion
+// bundle from the cold first-paint (landing) critical path.
+const QpReactionBar = lazyWithRetry(() => import("./components/QpReactionBar"));
+const QuickPlayHelpButton = lazyWithRetry(() => import("./components/QuickPlayHelpButton"));
 import { useDashboardPolling } from "./hooks/useDashboardPolling";
 import { useAssignmentAutoPopulate } from "./hooks/useAssignmentAutoPopulate";
 import { useSaveQueueResilience } from "./hooks/useSaveQueueResilience";
@@ -1197,15 +1201,21 @@ export default function App() {
         handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap, handleSentenceCheck,
         speakWord, speak, shuffle,
       })}
-      {showQpReactionBar && <QpReactionBar sendReaction={quickPlaySocket.sendReaction} />}
+      {showQpReactionBar && (
+        <Suspense fallback={null}>
+          <QpReactionBar sendReaction={quickPlaySocket.sendReaction} />
+        </Suspense>
+      )}
       {showQpHelpButton && (
-        <QuickPlayHelpButton
-          onAlertTeacher={() => quickPlaySocket.sendReaction('🙋')}
-          onLeave={() => {
-            cleanupQuickPlayGuest();
-            setView('public-landing');
-          }}
-        />
+        <Suspense fallback={null}>
+          <QuickPlayHelpButton
+            onAlertTeacher={() => quickPlaySocket.sendReaction('🙋')}
+            onLeave={() => {
+              cleanupQuickPlayGuest();
+              setView('public-landing');
+            }}
+          />
+        </Suspense>
       )}
     </>
   );
