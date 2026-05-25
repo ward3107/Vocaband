@@ -119,7 +119,7 @@ export async function handleDbError(
 // constant lists exactly the columns the matching mapper below reads.
 // ---------------------------------------------------------------------------
 export const USER_COLUMNS =
-  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at,subject,guides_seen';
+  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at,subject,guides_seen,school_id';
 export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar,subject,school_name,school_logo_url,background_color';
 export const ASSIGNMENT_COLUMNS =
   'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at,subject';
@@ -144,7 +144,7 @@ export interface AppUser {
    * If you find code writing a `'guest'` row to the DB, that's a bug —
    * filter it out before .insert() / .update().  Audit L-4 (2026-05-23).
    */
-  role: 'teacher' | 'student' | 'admin' | 'guest';
+  role: 'teacher' | 'student' | 'admin' | 'manager' | 'guest';
   displayName: string;
   classCode?: string;
   avatar?: string;
@@ -198,6 +198,11 @@ export interface AppUser {
    *  array (the DB default) means no guides have been dismissed yet —
    *  every guide will auto-show once.  Students ignore this field. */
   guidesSeen?: string[];
+  /** School this user belongs to (teachers + managers).  NULL for users not
+   *  attached to a school, and for students (a student's school is implied
+   *  by their class).  Drives the manager dashboard's tenant scope.  See
+   *  migration 20260623000000_school_manager.sql. */
+  schoolId?: string | null;
   // (Parent Weekly Digest fields lived here until 2026-05-18 — removed
   // alongside the schema in migration
   // 20260618000000_drop_parent_digest_stub.sql.)
@@ -228,6 +233,53 @@ export function hasAdminAccess<T extends { role?: string }>(
   user: T | null | undefined
 ): user is T & { role: 'admin' } {
   return user?.role === 'admin';
+}
+
+/** School-manager (principal) gate.  Kept SEPARATE from hasTeacherAccess on
+ *  purpose: a manager must NOT inherit teacher-only behaviours (live
+ *  challenge, vocab library, XP-on-finish, etc.) — they only get the
+ *  read-only oversight dashboard.  Tenant data is enforced server-side by
+ *  the manager_* RLS clauses; this is purely the UI routing gate. */
+export function hasManagerAccess<T extends { role?: string }>(
+  user: T | null | undefined
+): user is T & { role: 'manager' } {
+  return user?.role === 'manager';
+}
+
+// ---------------------------------------------------------------------------
+// School-manager dashboard payload (see public.manager_overview RPC).
+// ---------------------------------------------------------------------------
+export interface ManagerTeacherRow {
+  uid: string;
+  display_name: string;
+  email: string | null;
+  class_count: number;
+  student_count: number;
+  active_students_7d: number;
+  /** ISO timestamp of the most recent student activity, or null if none. */
+  last_activity: string | null;
+}
+
+export interface ManagerOverview {
+  school: { id: string; name: string } | null;
+  totals: {
+    teachers: number;
+    classes: number;
+    students: number;
+    active_students_7d: number;
+    games_7d: number;
+    total_xp: number;
+  };
+  teachers: ManagerTeacherRow[];
+}
+
+/** Fetch the manager dashboard payload.  Returns null when the caller is not
+ *  a manager (or the RPC reports an error), so the view can show an empty
+ *  state instead of leaking that other schools exist. */
+export async function fetchManagerOverview(): Promise<ManagerOverview | null> {
+  const { data, error } = await supabase.rpc('manager_overview');
+  if (error || !data || (data as { error?: string }).error) return null;
+  return data as ManagerOverview;
 }
 
 export interface ClassData {
@@ -352,6 +404,7 @@ export function mapUser(row: any): AppUser {
     trialEndsAt: row.trial_ends_at ?? null,
     subject: row.subject === 'hebrew' ? 'hebrew' : 'english',
     guidesSeen: row.guides_seen ?? [],
+    schoolId: row.school_id ?? null,
   };
 }
 
@@ -403,6 +456,7 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
     ...(u.trialEndsAt !== undefined && { trial_ends_at: u.trialEndsAt }),
     ...(u.subject !== undefined && { subject: u.subject }),
     ...(u.guidesSeen !== undefined && { guides_seen: u.guidesSeen }),
+    ...(u.schoolId !== undefined && { school_id: u.schoolId }),
   };
 }
 

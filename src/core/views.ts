@@ -18,6 +18,10 @@ export type View =
   | "student-account-login"
   | "student-pending-approval"
   | "landing"
+  // School-manager (principal) read-only oversight dashboard.
+  // See src/views/ManagerDashboardView.tsx + migration
+  // 20260623000000_school_manager.sql.
+  | "manager-dashboard"
   | "game"
   | "teacher-dashboard"
   | "teacher-approvals"

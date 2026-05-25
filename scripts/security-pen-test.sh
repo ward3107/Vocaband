@@ -168,9 +168,30 @@ body=$(curl -s "$SUPABASE_URL/rest/v1/classes?select=id,code,name,teacher_uid" \
   -H "Authorization: Bearer $ANON_KEY")
 check "anon classes list returns empty" '^\[\]$' "$body"
 
+# ─── Test 9c: anon enumerating schools (school-manager tenant layer) ──
+# The schools table (migration 20260623000000_school_manager.sql) has a
+# SELECT policy scoped to admin / the caller's own school — anon callers
+# (no auth.uid()) must get an empty list, never a roster of school names.
+echo "[9c] Anon enumerating schools"
+body=$(curl -s "$SUPABASE_URL/rest/v1/schools?select=id,name" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY")
+check "anon schools list returns empty" '^\[\]$' "$body"
+
+# ─── Test 9d: anon inserting into schools ─────────────────────────────
+# schools has NO insert policy (operator-managed via service role), so a
+# client INSERT must be rejected by RLS.
+echo "[9d] Anon inserting into schools"
+body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/schools" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"hacker-school"}')
+check "anon schools insert is rejected" "row-level security|violates|permission denied|42501" "$body"
+
 else
-  echo "[1-9b] SKIPPED (Supabase REST anon-probe tests — see warning above)"
-  SKIP=$((SKIP+10))
+  echo "[1-9d] SKIPPED (Supabase REST anon-probe tests — see warning above)"
+  SKIP=$((SKIP+12))
 fi
 
 # ─── F2 — authenticated-student direct-UPDATE attacks ─────────────────
@@ -249,6 +270,34 @@ if [[ -n "${STUDENT_JWT:-}" ]]; then
 else
   echo
   echo "── F2 / F1 authenticated tests skipped (set STUDENT_JWT to run) ──"
+fi
+
+# ─── School-manager cross-tenant isolation (authenticated) ────────────
+# Verifies the manager RLS clauses in 20260623000000_school_manager.sql:
+# a principal must see ONLY their own school's data.  Requires a
+# MANAGER_JWT (an authenticated manager session token) and a class CODE
+# that belongs to a DIFFERENT school (OTHER_SCHOOL_CLASS_CODE).  To run:
+#   MANAGER_JWT=<token> OTHER_SCHOOL_CLASS_CODE=ABC123 ./scripts/security-pen-test.sh
+if [[ -n "${MANAGER_JWT:-}" && -n "${OTHER_SCHOOL_CLASS_CODE:-}" ]]; then
+  echo
+  echo "── School-manager cross-tenant isolation (authenticated manager) ──"
+
+  # 23. Manager reading another school's class by code → must be empty.
+  echo "[23] Manager reads a foreign school's class ($OTHER_SCHOOL_CLASS_CODE)"
+  body=$(curl -s "$SUPABASE_URL/rest/v1/classes?select=id,code,name&code=eq.$OTHER_SCHOOL_CLASS_CODE" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $MANAGER_JWT")
+  check "manager cannot read a foreign school's class" '^\[\]$' "$body"
+
+  # 24. Manager reading another school's progress by class_code → empty.
+  echo "[24] Manager reads a foreign school's progress ($OTHER_SCHOOL_CLASS_CODE)"
+  body=$(curl -s "$SUPABASE_URL/rest/v1/progress?select=id&class_code=eq.$OTHER_SCHOOL_CLASS_CODE" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $MANAGER_JWT")
+  check "manager cannot read a foreign school's progress" '^\[\]$' "$body"
+else
+  echo
+  echo "── School-manager isolation tests skipped (set MANAGER_JWT + OTHER_SCHOOL_CLASS_CODE to run) ──"
 fi
 
 # ─── App-server pen-tests ─────────────────────────────────────────────
