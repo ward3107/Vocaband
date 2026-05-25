@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Palette, Tv2 } from "lucide-react";
+import { Palette, Tv2, X } from "lucide-react";
 import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
+import { usePresentationPrompt } from "../hooks/usePresentationPrompt";
 import TeacherOnboardingWizard from "../components/onboarding/TeacherOnboardingWizard";
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
@@ -23,7 +24,7 @@ import DeleteAssignmentModal from "../components/dashboard/DeleteAssignmentModal
 import RejectStudentModal from "../components/dashboard/RejectStudentModal";
 import ToastList, { type Toast } from "../components/dashboard/ToastList";
 import ConfirmDialog, { type ConfirmDialogState } from "../components/dashboard/ConfirmDialog";
-import { useLanguage } from "../hooks/useLanguage";
+import { useLanguage, type Language } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import { useFirstTimeGuide } from "../hooks/useFirstTimeGuide";
 import FirstTimeGuide from "../components/onboarding/FirstTimeGuide";
@@ -208,6 +209,11 @@ export default function TeacherDashboardView({
   // When the flag is OFF, `adaptiveEnabled` is false and the toggle
   // button is hidden so existing teachers see no UI change.
   const adaptiveTheme = useAdaptiveTheme();
+
+  // Heuristic projector nudge — offers Presentation Mode when the
+  // display looks like a projector / large external screen. Never
+  // auto-enables; the teacher decides.
+  const presentationPrompt = usePresentationPrompt(adaptiveTheme.presentationMode);
 
   // ─── First-rating prompt gate ─────────────────────────────────────
   // Show the rating modal when the teacher has meaningfully USED the
@@ -542,15 +548,24 @@ export default function TeacherDashboardView({
         <Palette size={20} />
       </button>
 
-      {/* Presentation Mode toggle — feature-flagged.  Sits just left
-          of the theme picker button so the teacher can flip the
-          screen into projector-friendly typography (1.4× font scale,
-          stronger weight, no decorative shadows) before walking to
-          the projector and back.  Hidden entirely when the
-          `adaptiveTheme` feature flag is OFF — existing teachers see
-          no UI change. */}
-      {adaptiveTheme.adaptiveEnabled && (
-        <button
+      {/* Projector nudge — appears when the display looks like a
+          projector / large external screen and Presentation Mode is
+          off. Gentle and dismissible; enabling flips into
+          projector-friendly typography (bigger text, higher contrast,
+          no decorative shadows). */}
+      {presentationPrompt.show && (
+        <ProjectorPromptBanner
+          language={language}
+          onEnable={() => adaptiveTheme.setPresentationMode(true)}
+          onDismiss={presentationPrompt.dismiss}
+        />
+      )}
+
+      {/* Presentation Mode toggle — persistent control so a teacher can
+          flip the screen into projector-friendly typography (1.4× font
+          scale, higher contrast, no decorative shadows) and back at any
+          time, independent of the projector nudge above. */}
+      <button
           type="button"
           onClick={adaptiveTheme.togglePresentationMode}
           title={adaptiveTheme.presentationMode
@@ -569,7 +584,6 @@ export default function TeacherDashboardView({
         >
           <Tv2 size={20} />
         </button>
-      )}
       {showThemeMenu && (
         <TeacherThemeMenu user={user} setUser={setUser} onClose={() => setShowThemeMenu(false)} />
       )}
@@ -609,5 +623,88 @@ export default function TeacherDashboardView({
         />
       )}
     </>
+  );
+}
+
+const PROJECTOR_PROMPT_COPY: Record<
+  "en" | "he" | "ar",
+  { title: string; body: string; enable: string; dismiss: string }
+> = {
+  en: {
+    title: "Projecting to your class?",
+    body: "Turn on Presentation Mode for bigger text and higher contrast.",
+    enable: "Turn on",
+    dismiss: "Not now",
+  },
+  he: {
+    title: "מקרינים לכיתה?",
+    body: "הפעילו מצב הצגה לטקסט גדול יותר וניגודיות גבוהה.",
+    enable: "הפעלה",
+    dismiss: "לא עכשיו",
+  },
+  ar: {
+    title: "تعرض على الصف؟",
+    body: "فعّل وضع العرض لنص أكبر وتباين أعلى.",
+    enable: "تفعيل",
+    dismiss: "ليس الآن",
+  },
+};
+
+function ProjectorPromptBanner({
+  language,
+  onEnable,
+  onDismiss,
+}: {
+  language: Language;
+  onEnable: () => void;
+  onDismiss: () => void;
+}) {
+  const copy =
+    PROJECTOR_PROMPT_COPY[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
+  const dir = language === "he" || language === "ar" ? "rtl" : "ltr";
+  return (
+    <div
+      dir={dir}
+      role="dialog"
+      aria-label={copy.title}
+      className="fixed inset-x-3 bottom-3 sm:inset-x-auto sm:right-6 sm:bottom-24 sm:max-w-sm z-40 rounded-2xl border-2 border-indigo-200 bg-[var(--vb-surface-elevated)] p-4 shadow-xl"
+    >
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white flex items-center justify-center">
+          <Tv2 size={20} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-[var(--vb-text-primary)]">{copy.title}</p>
+          <p className="text-sm text-[var(--vb-text-secondary)] mt-0.5">{copy.body}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label={copy.dismiss}
+          className="shrink-0 text-[var(--vb-text-muted)] hover:text-[var(--vb-text-primary)] p-1 rounded-lg"
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+        >
+          <X size={18} />
+        </button>
+      </div>
+      <div className="flex gap-2 mt-3">
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="flex-1 py-2 rounded-lg border border-[var(--vb-border)] text-[var(--vb-text-secondary)] font-bold text-sm hover:bg-[var(--vb-surface-alt)] transition-colors"
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+        >
+          {copy.dismiss}
+        </button>
+        <button
+          type="button"
+          onClick={onEnable}
+          className="flex-1 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-sm hover:shadow-lg transition-all"
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+        >
+          {copy.enable}
+        </button>
+      </div>
+    </div>
   );
 }

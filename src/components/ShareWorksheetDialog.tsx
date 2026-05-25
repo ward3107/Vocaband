@@ -16,6 +16,7 @@ import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Share2, X, Loader2, Check, CheckCircle2, Plus, Sparkles, TriangleAlert } from "lucide-react";
 import { supabase } from "../core/supabase";
+import type { Word } from "../data/vocabulary";
 import { FILLBLANK_SENTENCES } from "../data/sentence-bank-fillblank";
 import { useLanguage } from "../hooks/useLanguage";
 import { shareWorksheetT } from "../locales/teacher/share-worksheet";
@@ -40,6 +41,13 @@ export type WorksheetLang = "en" | "he" | "ar" | "ru";
 export interface ShareSource {
   topicName: string;
   wordIds: number[];
+  // Full word records for the pool, when the caller has them. Needed so
+  // off-curriculum words (negative ids from paste / OCR / manual entry)
+  // can be persisted into the worksheet — they don't exist in ALL_WORDS,
+  // so without their text the solver resolves them to nothing and every
+  // exercise auto-skips. Callers that only ever share curriculum words
+  // (e.g. Free Resources topics) can omit this.
+  words?: Word[];
 }
 
 interface Props {
@@ -285,6 +293,18 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
       const settings: Record<string, unknown> = { language: lang };
       if (Object.keys(aiSentences).length > 0) {
         settings.sentences = aiSentences;
+      }
+      // Persist off-curriculum words (negative ids) so the solver can
+      // resolve them — they're absent from ALL_WORDS, so a worksheet
+      // built from custom words would otherwise auto-skip every
+      // exercise. Scoped to the worksheet's actual pool and to custom
+      // ids only; curriculum words resolve client-side without help.
+      const poolIds = new Set(uniqueIds);
+      const customWords = (source.words ?? []).filter(
+        (w) => w.id < 0 && poolIds.has(w.id),
+      );
+      if (customWords.length > 0) {
+        settings.customWords = customWords;
       }
       // Per-device fingerprint lets an anonymous mint be revoked later
       // from the same browser via revoke_my_worksheet(). The server

@@ -443,6 +443,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             setShareSource({
               topicName: (isAssignment ? assignmentTitle : '').trim() || 'Vocabulary worksheet',
               wordIds: selectedWords.map((w) => w.id),
+              words: selectedWords,
             })
           }
           className="w-full mb-3 py-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold border-2 border-emerald-200 flex items-center justify-center gap-2 transition-all"

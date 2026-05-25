@@ -281,10 +281,16 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
     if (document.getElementById(id)) return;
     const style = document.createElement('style');
     style.id = id;
+    // font-size composes the a11y base (--a11y-font-size) with the
+    // display multiplier (--vb-font-scale, raised by Presentation Mode)
+    // so projector scaling still applies even when this widget's
+    // injected rule wins the cascade over the one in index.css. The
+    // multiplier is 1 outside Presentation Mode, so student/default
+    // behaviour is unchanged.
     style.textContent = `
-      html { font-size: var(--a11y-font-size, 16px) !important; }
+      html { font-size: calc(var(--a11y-font-size, 16px) * var(--vb-font-scale, 1)) !important; }
       body {
-        font-size: var(--a11y-font-size, 16px) !important;
+        font-size: calc(var(--a11y-font-size, 16px) * var(--vb-font-scale, 1)) !important;
         line-height: var(--a11y-line-height, 1.5) !important;
         letter-spacing: var(--a11y-letter-spacing, 0em) !important;
       }

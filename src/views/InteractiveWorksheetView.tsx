@@ -470,6 +470,7 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
         initialResults={results}
         onProgress={handleProgress}
         aiSentences={row.settings?.sentences}
+        customWords={row.settings?.customWords}
       />
     </Shell>
   );

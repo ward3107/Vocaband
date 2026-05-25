@@ -33,21 +33,26 @@ interface Props {
   // interactive_worksheets row). Merged with the static
   // FILLBLANK_SENTENCES bank by the sentence-dependent exercises.
   aiSentences?: Record<string, string>;
+  // Off-curriculum words (settings.customWords) keyed into the lookup so
+  // exercises can resolve the negative ids that paste / OCR / manual
+  // entry assign. Without these, a worksheet built from custom words
+  // resolves to an empty word list and every exercise auto-skips.
+  customWords?: Word[];
 }
 
 // Local lookup so each exercise doesn't pay the O(n) cost of filtering
 // ALL_WORDS itself.  The word bundle (~6.5k entries) is already loaded
-// statically, so building this once per render is cheap.
-const wordById = (() => {
+// statically, so building this once is cheap.
+const BASE_WORD_BY_ID = (() => {
   const map = new Map<number, Word>();
   for (const w of ALL_WORDS) map.set(w.id, w);
   return map;
 })();
 
-const resolveWords = (ids: number[]): Word[] => {
+const resolveWords = (ids: number[], lookup: Map<number, Word>): Word[] => {
   const out: Word[] = [];
   for (const id of ids) {
-    const w = wordById.get(id);
+    const w = lookup.get(id);
     if (w) out.push(w);
   }
   return out;
@@ -69,10 +74,19 @@ export const WorksheetRunner: React.FC<Props> = ({
   initialResults = [],
   onProgress,
   aiSentences,
+  customWords,
 }) => {
   // Stable identity for the empty case so the SentencesContext value
   // doesn't tear consumers' useMemo when the prop is omitted.
   const sentences = aiSentences ?? EMPTY_SENTENCES;
+  // Overlay custom words onto the static curriculum lookup so the
+  // runner can resolve the negative ids that off-curriculum words use.
+  const lookup = useMemo(() => {
+    if (!customWords || customWords.length === 0) return BASE_WORD_BY_ID;
+    const merged = new Map(BASE_WORD_BY_ID);
+    for (const w of customWords) merged.set(w.id, w);
+    return merged;
+  }, [customWords]);
   const [idx, setIdx] = useState(initialIdx);
   const [results, setResults] = useState<ExerciseResult[]>(initialResults);
   // When set, the runner is showing a "skipping" placeholder for the
@@ -85,7 +99,10 @@ export const WorksheetRunner: React.FC<Props> = ({
   const handledIdxRef = useRef<number>(-1);
 
   const current = exercises[idx];
-  const words = useMemo(() => (current ? resolveWords(current.word_ids) : []), [current]);
+  const words = useMemo(
+    () => (current ? resolveWords(current.word_ids, lookup) : []),
+    [current, lookup],
+  );
 
   const handleComplete = (result: ExerciseResult) => {
     if (handledIdxRef.current === idx) return;
