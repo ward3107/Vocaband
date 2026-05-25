@@ -108,7 +108,13 @@ export function useGameModeSetup(params: UseGameModeSetupParams): void {
       // to what's on screen and assume their taps "did something" but
       // didn't progress the game.
       gameMode !== 'idiom' &&
-      gameMode !== 'speed-round' && gameMode !== 'class-minute'
+      gameMode !== 'speed-round' && gameMode !== 'class-minute' &&
+      // Review (spaced repetition) self-fetches its own question queue
+      // and speaks each word on load. Without this guard the global
+      // auto-speak also fires the unrelated fallback word from
+      // gameWords[currentIndex] on top — the student hears two
+      // different words.
+      gameMode !== 'review'
     ) {
       // Only speak if this is a different word than the last one we spoke
       if (lastSpokenWordRef.current !== currentWord.id) {
