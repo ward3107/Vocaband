@@ -39,18 +39,22 @@ export default function DevInfraPanel() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    // Both endpoints sit behind requireAuthenticatedTeacher, so the
+    // admin's access token must ride along — without it /api/version
+    // 401s and r.json() parses the error body into a shape with no
+    // `env`, which then crashes the Object.entries() below.
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
     try {
-      const v = await fetch("/api/version").then((r) => r.json());
-      setVersion(v as VersionInfo);
+      const r = await fetch("/api/version", { headers: authHeaders });
+      setVersion(r.ok ? ((await r.json()) as VersionInfo) : null);
     } catch {
       setVersion(null);
     }
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      const f = await fetch("/api/features", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }).then((r) => r.json());
-      setAiEnabled(!!(f as { aiSentences?: boolean }).aiSentences);
+      const r = await fetch("/api/features", { headers: authHeaders });
+      const f = r.ok ? ((await r.json()) as { aiSentences?: boolean }) : null;
+      setAiEnabled(f ? !!f.aiSentences : null);
     } catch {
       setAiEnabled(null);
     }
@@ -96,7 +100,7 @@ export default function DevInfraPanel() {
       <div className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-3">
         <div className="text-white/80 font-black text-sm">Server config</div>
         <div className="flex flex-wrap gap-2">
-          {version &&
+          {version?.env &&
             Object.entries(version.env).map(([k, v]) => (
               <span
                 key={k}
