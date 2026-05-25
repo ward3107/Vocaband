@@ -3,439 +3,180 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Vocaband — Teacher Dashboard Features</title>
+<title>Vocaband — Teacher Dashboard</title>
 <style>
-  :root {
-    --hero1:#4f46e5; --hero2:#7c3aed; --hero3:#d946ef;
-    --shop1:#d946ef; --shop2:#ec4899; --shop3:#f43f5e;
-    --xp1:#f59e0b; --xp2:#f97316; --xp3:#f43f5e;
+  :root{
+    --hero1:#8b5cf6; --hero2:#a855f7; --hero3:#d946ef;
+    --shop1:#ec4899; --shop2:#f43f5e;
+    --xp1:#f59e0b; --xp2:#f97316;
     --prog1:#10b981; --prog2:#14b8a6;
-    --ink:#1e1b2e; --muted:#6b6880; --bg:#f6f5fb; --card:#ffffff;
-    --ring: 0 10px 30px -12px rgba(79,70,229,.35);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans Hebrew", "Noto Sans Arabic", sans-serif;
+    --ink:#1e1b2e; --muted:#6b6880; --bg:#0e0b1d; --card:#ffffff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Hebrew","Noto Sans Arabic",sans-serif;
   }
-  * { box-sizing: border-box; margin:0; padding:0; }
-  body { background:var(--bg); color:var(--ink); line-height:1.55; -webkit-font-smoothing:antialiased; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#0e0b1d;color:var(--ink);-webkit-font-smoothing:antialiased;overflow:hidden;}
+  svg{width:1em;height:1em;display:block;}
 
-  /* ---------- Language switcher ---------- */
-  .langbar {
-    position:sticky; top:0; z-index:50;
-    display:flex; gap:8px; justify-content:center; align-items:center;
-    padding:10px; background:rgba(246,245,251,.85); backdrop-filter:blur(10px);
-    border-bottom:1px solid rgba(124,58,237,.10);
+  /* deck shell */
+  .deck{position:fixed;inset:0;}
+  .slide{
+    position:absolute;inset:0;display:none;flex-direction:column;
+    padding:5vh 6vw;background:#f6f5fb;overflow:auto;
   }
-  .langbar button {
-    border:0; cursor:pointer; font-size:15px; font-weight:700;
-    padding:8px 18px; border-radius:999px; color:var(--muted); background:transparent;
-    transition:all .18s ease;
-  }
-  .langbar button.active {
-    color:#fff; background:linear-gradient(135deg,var(--hero1),var(--hero2),var(--hero3));
-    box-shadow:var(--ring);
-  }
-  .langbar button:not(.active):hover { background:rgba(124,58,237,.08); color:var(--hero2); }
+  .slide.active{display:flex;animation:fade .35s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
 
-  /* ---------- Hero ---------- */
-  .hero {
-    position:relative; overflow:hidden; color:#fff; text-align:center;
-    padding:64px 22px 72px;
-    background:linear-gradient(135deg,var(--hero1),var(--hero2) 55%,var(--hero3));
-  }
-  .hero::after {
-    content:""; position:absolute; inset:0;
-    background:radial-gradient(circle at 20% 20%, rgba(255,255,255,.18), transparent 40%),
-               radial-gradient(circle at 80% 30%, rgba(255,255,255,.12), transparent 35%);
-    pointer-events:none;
-  }
-  .hero .badge {
-    display:inline-block; font-size:13px; font-weight:700; letter-spacing:.08em;
-    text-transform:uppercase; padding:6px 14px; border-radius:999px;
-    background:rgba(255,255,255,.18); margin-bottom:18px;
-  }
-  .hero h1 { font-size:clamp(32px,6vw,56px); font-weight:800; line-height:1.05; margin-bottom:14px; }
-  .hero p { font-size:clamp(16px,2.4vw,21px); max-width:680px; margin:0 auto; opacity:.95; }
+  /* top controls */
+  .controls{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;justify-content:space-between;
+    align-items:center;padding:10px 16px;pointer-events:none;}
+  .langbar{display:flex;gap:6px;pointer-events:auto;background:rgba(255,255,255,.9);backdrop-filter:blur(8px);
+    padding:5px;border-radius:999px;box-shadow:0 6px 20px -10px rgba(0,0,0,.4);}
+  .langbar button{border:0;cursor:pointer;font-size:13px;font-weight:700;padding:6px 14px;border-radius:999px;
+    color:var(--muted);background:transparent;transition:.15s;}
+  .langbar button.active{color:#fff;background:linear-gradient(135deg,var(--hero1),var(--hero3));}
+  .counter{pointer-events:auto;background:rgba(255,255,255,.9);backdrop-filter:blur(8px);font-weight:700;
+    font-size:13px;color:var(--muted);padding:7px 14px;border-radius:999px;}
 
-  /* ---------- Stats strip ---------- */
-  .stats {
-    display:flex; flex-wrap:wrap; gap:14px; justify-content:center;
-    max-width:980px; margin:-38px auto 10px; padding:0 18px; position:relative; z-index:2;
-  }
-  .stat {
-    flex:1 1 180px; background:var(--card); border-radius:20px; padding:20px 18px; text-align:center;
-    box-shadow:0 14px 40px -20px rgba(30,27,46,.35); border:1px solid rgba(124,58,237,.07);
-  }
-  .stat .num { font-size:34px; font-weight:800; background:linear-gradient(135deg,var(--hero1),var(--shop1));
-    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
-  .stat .lbl { font-size:14px; color:var(--muted); font-weight:600; margin-top:2px; }
+  /* nav arrows */
+  .arrow{position:fixed;top:50%;transform:translateY(-50%);z-index:60;width:46px;height:46px;border:0;cursor:pointer;
+    border-radius:50%;background:rgba(255,255,255,.92);box-shadow:0 8px 24px -10px rgba(0,0,0,.5);
+    display:grid;place-items:center;font-size:22px;color:var(--hero2);}
+  .arrow.prev{left:14px;} .arrow.next{right:14px;}
+  .arrow:hover{background:#fff;}
 
-  /* ---------- Sections ---------- */
-  .wrap { max-width:1080px; margin:0 auto; padding:46px 18px; }
-  .section-head { text-align:center; margin:34px 0 22px; }
-  .section-head .kicker {
-    font-size:13px; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
-    color:var(--shop1);
-  }
-  .section-head h2 { font-size:clamp(24px,4vw,34px); font-weight:800; margin-top:4px; }
-  .section-head p { color:var(--muted); max-width:600px; margin:8px auto 0; font-size:16px; }
+  /* title slide */
+  .title-slide{background:linear-gradient(135deg,#3b0764,#6d28d9 50%,#a21caf);color:#fff;
+    align-items:center;justify-content:center;text-align:center;}
+  .brand{display:flex;align-items:center;gap:16px;margin-bottom:26px;}
+  .brand .mark{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;
+    background:linear-gradient(135deg,#8b5cf6,#a855f7,#d946ef);box-shadow:0 12px 40px -10px rgba(217,70,239,.7);}
+  .brand .mark span{font-family:"Arial Black",Arial,sans-serif;font-weight:900;font-style:italic;
+    font-size:48px;color:#fff;transform:rotate(8deg);}
+  .brand .wd{font-size:30px;font-weight:800;letter-spacing:.02em;}
+  .title-slide h1{font-size:clamp(34px,6vw,62px);font-weight:800;line-height:1.05;max-width:14ch;}
+  .title-slide p{font-size:clamp(16px,2.3vw,22px);max-width:60ch;margin-top:16px;opacity:.94;}
+  .stats{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:38px;}
+  .stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:18px;
+    padding:16px 22px;min-width:140px;}
+  .stat .num{font-size:34px;font-weight:800;}
+  .stat .lbl{font-size:13px;opacity:.85;font-weight:600;}
 
-  /* ---------- Feature cards ---------- */
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:18px; }
-  .card {
-    background:var(--card); border-radius:22px; padding:24px 22px;
-    border:1px solid rgba(124,58,237,.08);
-    box-shadow:0 10px 30px -18px rgba(30,27,46,.3);
-    transition:transform .18s ease, box-shadow .18s ease;
-  }
-  .card:hover { transform:translateY(-4px); box-shadow:0 22px 44px -22px rgba(79,70,229,.45); }
-  .card .ico {
-    width:56px; height:56px; border-radius:16px; display:grid; place-items:center;
-    font-size:28px; margin-bottom:14px; color:#fff;
-    background:linear-gradient(135deg,var(--hero1),var(--hero3));
-  }
-  .card h3 { font-size:19px; font-weight:800; margin-bottom:7px; }
-  .card p { font-size:15px; color:var(--muted); }
+  /* content slide header */
+  .shead{margin-bottom:22px;}
+  .shead .kicker{font-size:13px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--shop1);}
+  .shead h2{font-size:clamp(26px,4vw,40px);font-weight:800;margin-top:4px;color:var(--ink);}
+  .shead .sub{color:var(--muted);font-size:clamp(15px,2vw,19px);margin-top:6px;}
 
-  /* per-group accent colors */
-  .g-hubs  .ico { background:linear-gradient(135deg,var(--hero1),var(--hero3)); }
-  .g-class .ico { background:linear-gradient(135deg,var(--prog1),var(--prog2)); }
-  .g-act   .ico { background:linear-gradient(135deg,var(--xp1),var(--xp3)); }
-  .g-live  .ico { background:linear-gradient(135deg,var(--shop1),var(--shop3)); }
-  .g-set   .ico { background:linear-gradient(135deg,#6366f1,#0ea5e9); }
+  /* feature cards */
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));align-content:start;}
+  .card{background:var(--card);border-radius:20px;padding:20px;border:1px solid rgba(124,58,237,.08);
+    box-shadow:0 12px 30px -20px rgba(30,27,46,.4);}
+  .card .ico{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:26px;
+    color:#fff;margin-bottom:13px;}
+  .card h3{font-size:18px;font-weight:800;margin-bottom:6px;color:var(--ink);}
+  .card p{font-size:14.5px;color:var(--muted);line-height:1.5;}
+  .g-hubs .ico{background:linear-gradient(135deg,var(--hero1),var(--hero3));}
+  .g-class .ico{background:linear-gradient(135deg,var(--prog1),var(--prog2));}
+  .g-act .ico{background:linear-gradient(135deg,var(--xp1),var(--xp2));}
+  .g-live .ico{background:linear-gradient(135deg,var(--shop1),var(--shop2));}
+  .g-set .ico{background:linear-gradient(135deg,#6366f1,#0ea5e9);}
 
-  /* ---------- Game modes ---------- */
-  .modes { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; }
-  .mode {
-    background:var(--card); border-radius:16px; padding:16px;
-    display:flex; gap:12px; align-items:flex-start;
-    border:1px solid rgba(124,58,237,.08); box-shadow:0 8px 22px -16px rgba(30,27,46,.3);
-  }
-  .mode .me { font-size:26px; flex:0 0 auto; }
-  .mode b { display:block; font-size:15px; }
-  .mode span { font-size:13.5px; color:var(--muted); }
+  /* modes */
+  .modes{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));align-content:start;}
+  .mode{background:var(--card);border-radius:14px;padding:13px 15px;display:flex;gap:11px;align-items:center;
+    border:1px solid rgba(124,58,237,.08);box-shadow:0 8px 20px -16px rgba(30,27,46,.4);}
+  .mode .me{font-size:22px;color:var(--hero2);flex:0 0 auto;}
+  .mode b{display:block;font-size:14.5px;color:var(--ink);}
+  .mode span{font-size:12.5px;color:var(--muted);}
 
-  /* ---------- Closing ---------- */
-  .closing {
-    margin-top:40px; text-align:center; color:#fff; border-radius:28px; padding:48px 24px;
-    background:linear-gradient(135deg,var(--shop1),var(--shop2),var(--shop3));
-  }
-  .closing h2 { font-size:clamp(24px,4vw,34px); font-weight:800; margin-bottom:10px; }
-  .closing p { max-width:600px; margin:0 auto; font-size:17px; opacity:.96; }
-
-  footer { text-align:center; color:var(--muted); font-size:13px; padding:28px; }
+  /* closing */
+  .close-slide{background:linear-gradient(135deg,var(--shop1),#be123c,#7c3aed);color:#fff;
+    align-items:center;justify-content:center;text-align:center;}
+  .close-slide h2{font-size:clamp(30px,5vw,52px);font-weight:800;max-width:16ch;}
+  .close-slide p{font-size:clamp(16px,2.3vw,22px);max-width:62ch;margin-top:16px;opacity:.95;}
+  .close-slide .brand{margin-top:30px;}
 
   /* RTL */
-  [dir="rtl"] .card .ico { margin-left:auto; }
-  [dir="rtl"] .mode { flex-direction:row-reverse; text-align:right; }
+  [dir="rtl"] .card .ico{margin-inline-start:0;}
+  [dir="rtl"] .mode{flex-direction:row-reverse;text-align:right;}
+  [dir="rtl"] .arrow.prev{left:auto;right:14px;}
+  [dir="rtl"] .arrow.next{right:auto;left:14px;}
 
-  @media (max-width:520px){ .hero{padding:48px 18px 60px;} .stat .num{font-size:28px;} }
+  /* PRINT → one slide per page (perfect for Save as PDF) */
+  @page{size:1280px 720px;margin:0;}
+  @media print{
+    body{overflow:visible;}
+    .controls,.arrow{display:none !important;}
+    .deck{position:static;}
+    .slide{display:flex !important;position:relative;inset:auto;width:1280px;height:720px;
+      page-break-after:always;break-after:page;overflow:hidden;animation:none;}
+    .grid,.modes{overflow:hidden;}
+  }
 </style>
 </head>
 <body>
-
-<nav class="langbar" id="langbar">
-  <button data-lang="en" class="active">English</button>
-  <button data-lang="he">עברית</button>
-  <button data-lang="ar">العربية</button>
-</nav>
-
-<header class="hero">
-  <span class="badge" id="hero-badge">VOCABAND</span>
-  <h1 id="hero-title">Everything a teacher can do</h1>
-  <p id="hero-sub">A simple tour of the teacher dashboard — built for English teachers in Israeli schools, grades 4–9.</p>
-</header>
-
-<section class="stats" id="stats"></section>
-
-<main class="wrap" id="content"></main>
-
-<div class="wrap" style="padding-top:0;">
-  <div class="closing">
-    <h2 id="close-title">Less prep. More learning.</h2>
-    <p id="close-sub">One app to plan lessons, run live games, print worksheets, and see exactly how every student is doing — in English, Hebrew, and Arabic.</p>
+<div class="controls">
+  <div class="langbar" id="langbar">
+    <button data-lang="en" class="active">English</button>
+    <button data-lang="he">עברית</button>
+    <button data-lang="ar">العربية</button>
   </div>
+  <div class="counter" id="counter">1 / 8</div>
 </div>
-
-<footer id="footer">Vocaband · Teacher Dashboard Overview</footer>
+<button class="arrow prev" id="prev" aria-label="Previous">‹</button>
+<button class="arrow next" id="next" aria-label="Next">›</button>
+<div class="deck" id="deck"></div>
 
 <script>
-const DATA = {
-  en: {
-    dir:"ltr", badge:"VOCABAND",
-    heroTitle:"Everything a teacher can do",
-    heroSub:"A simple tour of the teacher dashboard — built for English teachers in Israeli schools, grades 4–9.",
-    stats:[
-      {num:"24", lbl:"Teacher tools"},
-      {num:"14", lbl:"Student game modes"},
-      {num:"3", lbl:"Languages (EN · HE · AR)"},
-      {num:"4–9", lbl:"School grades"}
-    ],
-    closeTitle:"Less prep. More learning.",
-    closeSub:"One app to plan lessons, run live games, print worksheets, and see exactly how every student is doing — in English, Hebrew, and Arabic.",
-    footer:"Vocaband · Teacher Dashboard Overview",
-    modesTitle:"And the games students play",
-    modesSub:"When building an activity, the teacher picks one or more of these 14 games.",
-    groups:[
-      { cls:"g-hubs", kicker:"The basics", title:"The main dashboard", sub:"The first buttons a teacher sees.",
-        features:[
-          {icon:"⚡", title:"Quick Play", desc:"Start a game in seconds. The app shows a QR code, students scan it, and play — no setup, no logins."},
-          {icon:"🎓", title:"Classroom analytics", desc:"See who needs help now, which words are hardest, and a full record for every student. Export to Excel or a report."},
-          {icon:"🙋", title:"Approvals", desc:"Students asking to join wait here. Let them in or turn them away with one tap."},
-          {icon:"📋", title:"Worksheet results", desc:"Shared an online worksheet? See who finished it and what score they got — even students outside the class."},
-          {icon:"📚", title:"Vocabulary library", desc:"Build word lists once and reuse them in any class. No re-typing, ever."}
-        ]},
-      { cls:"g-class", kicker:"Set up", title:"Managing your classes", sub:"Each class is its own card.",
-        features:[
-          {icon:"➕", title:"Create a class", desc:"One step to make a class. Get a short join code students type or scan to enter."},
-          {icon:"✏️", title:"Edit a class", desc:"Rename it, change its color, and add the school name and logo so worksheets look official."},
-          {icon:"🔗", title:"Share a class", desc:"Invite students by code, link, QR, WhatsApp, or a printable classroom poster."},
-          {icon:"👥", title:"Roster & PINs", desc:"Add students, reset a login PIN, or print the whole list — great for younger classes."},
-          {icon:"🗑️", title:"Delete a class", desc:"Remove a class you no longer need. The app asks first so nothing goes by accident."}
-        ]},
-      { cls:"g-act", kicker:"Plan", title:"Creating activities", sub:"Build the homework and games students play.",
-        features:[
-          {icon:"📝", title:"New activity", desc:"A simple wizard: pick the words, pick the games, set a deadline, share with the class."},
-          {icon:"🔤", title:"5 ways to add words", desc:"Ministry sets, a photo of the textbook, pasted text, an uploaded file, or AI help."},
-          {icon:"🔁", title:"Edit · duplicate · delete", desc:"Reuse a setup for another group, tweak the words, or remove a finished task."},
-          {icon:"📤", title:"Share a link", desc:"Send a direct link to one activity — perfect for a class group chat."}
-        ]},
-      { cls:"g-live", kicker:"Together", title:"Whole-class & projector tools", sub:"Play together on the board or on paper.",
-        features:[
-          {icon:"📺", title:"Class Show", desc:"Project a game on the board. The class answers together — no phones needed."},
-          {icon:"🪑", title:"Hot Seat", desc:"Pass one tablet around so each student takes a turn. Great when not everyone has a phone."},
-          {icon:"🎡", title:"Vocab Wheel", desc:"Spin to pick a random student and a random challenge. Keeps everyone alert."},
-          {icon:"🏆", title:"Live Challenge", desc:"The whole class races on the same words with a live leaderboard and winners' podium."},
-          {icon:"🖨️", title:"Printable worksheet", desc:"Turn a word list into a PDF worksheet. Works with no internet and no projector."},
-          {icon:"📄", title:"Vocabagrut", desc:"Generate a Bagrut-style mock exam from your own words to prepare older students."}
-        ]},
-      { cls:"g-set", kicker:"Helpers", title:"Settings & handy extras", sub:"Small tools that save time.",
-        features:[
-          {icon:"📌", title:"Saved tasks", desc:"Save an activity as a template and reuse it with one tap. Pin your favorites on top."},
-          {icon:"🎨", title:"Dashboard theme", desc:"Pick a color theme that suits you, including light and dark."},
-          {icon:"📽️", title:"Presentation mode", desc:"Switch to bigger, bolder text that reads clearly from the back of the room."},
-          {icon:"📶", title:"Network check", desc:"One tap tests the school Wi-Fi and shows exactly what's not connecting."}
-        ]}
-    ],
-    modes:[
-      ["🎯","Classic","See the word, hear it, pick the translation."],
-      ["🎧","Listening","Hear the word (text hidden), choose the meaning."],
-      ["⌨️","Spelling","See the translation, type the English word."],
-      ["🔗","Matching","Match each word to its translation."],
-      ["🧠","Memory Flip","Flip cards to find the matching pairs."],
-      ["✅","True / False","Decide if a pair matches — think fast!"],
-      ["🃏","Flashcards","Review at your own pace, flip for the answer."],
-      ["🔀","Word Scramble","Unscramble the mixed-up letters."],
-      ["🔄","Reverse","See Hebrew/Arabic, pick the English word."],
-      ["🔡","Letter Sounds","Hear each letter's sound, then type the word."],
-      ["🧩","Sentence Builder","Tap words in order to build a sentence."],
-      ["✏️","Fill the Blank","Read a sentence, tap the missing word."],
-      ["💬","Idiom","See an idiom, pick the meaning that matches."],
-      ["⏱️","Speed Round","60 seconds — answer as fast as you can!"]
-    ]
-  },
+const IC = {"armchair":"<path d=\"M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3\" /> <path d=\"M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z\" /> <path d=\"M5 18v2\" /> <path d=\"M19 18v2\" />","bookmark":"<path d=\"M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z\" />","brain":"<path d=\"M12 18V5\" /> <path d=\"M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4\" /> <path d=\"M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5\" /> <path d=\"M17.997 5.125a4 4 0 0 1 2.526 5.77\" /> <path d=\"M18 18a4 4 0 0 0 2-7.464\" /> <path d=\"M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517\" /> <path d=\"M6 18a4 4 0 0 1-2-7.464\" /> <path d=\"M6.003 5.125a4 4 0 0 0-2.526 5.77\" />","case-lower":"<path d=\"M10 9v7\" /> <path d=\"M14 6v10\" /> <circle cx=\"17.5\" cy=\"12.5\" r=\"3.5\" /> <circle cx=\"6.5\" cy=\"12.5\" r=\"3.5\" />","check-circle":"<path d=\"M21.801 10A10 10 0 1 1 17 3.335\" /> <path d=\"m9 11 3 3L22 4\" />","clipboard-list":"<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"M12 11h4\" /> <path d=\"M12 16h4\" /> <path d=\"M8 11h.01\" /> <path d=\"M8 16h.01\" />","disc-3":"<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M6 12c0-1.7.7-3.2 1.8-4.2\" /> <circle cx=\"12\" cy=\"12\" r=\"2\" /> <path d=\"M18 12c0 1.7-.7 3.2-1.8 4.2\" />","file-spreadsheet":"<path d=\"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z\" /> <path d=\"M14 2v5a1 1 0 0 0 1 1h5\" /> <path d=\"M8 13h2\" /> <path d=\"M14 13h2\" /> <path d=\"M8 17h2\" /> <path d=\"M14 17h2\" />","file-text":"<path d=\"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z\" /> <path d=\"M14 2v5a1 1 0 0 0 1 1h5\" /> <path d=\"M10 9H8\" /> <path d=\"M16 13H8\" /> <path d=\"M16 17H8\" />","gamepad-2":"<line x1=\"6\" x2=\"10\" y1=\"11\" y2=\"11\" /> <line x1=\"8\" x2=\"8\" y1=\"9\" y2=\"13\" /> <line x1=\"15\" x2=\"15.01\" y1=\"12\" y2=\"12\" /> <line x1=\"18\" x2=\"18.01\" y1=\"10\" y2=\"10\" /> <path d=\"M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z\" />","graduation-cap":"<path d=\"M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z\" /> <path d=\"M22 10v6\" /> <path d=\"M6 12.5V16a6 3 0 0 0 12 0v-3.5\" />","headphones":"<path d=\"M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3\" />","keyboard":"<path d=\"M10 8h.01\" /> <path d=\"M12 12h.01\" /> <path d=\"M14 8h.01\" /> <path d=\"M16 12h.01\" /> <path d=\"M18 8h.01\" /> <path d=\"M6 8h.01\" /> <path d=\"M7 16h10\" /> <path d=\"M8 12h.01\" /> <rect width=\"20\" height=\"16\" x=\"2\" y=\"4\" rx=\"2\" />","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\" /> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\" /> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\" />","library":"<path d=\"m16 6 4 14\" /> <path d=\"M12 6v14\" /> <path d=\"M8 8v12\" /> <path d=\"M4 4v16\" />","link-2":"<path d=\"M9 17H7A5 5 0 0 1 7 7h2\" /> <path d=\"M15 7h2a5 5 0 1 1 0 10h-2\" /> <line x1=\"8\" x2=\"16\" y1=\"12\" y2=\"12\" />","maximize":"<path d=\"M8 3H5a2 2 0 0 0-2 2v3\" /> <path d=\"M21 8V5a2 2 0 0 0-2-2h-3\" /> <path d=\"M3 16v3a2 2 0 0 0 2 2h3\" /> <path d=\"M16 21h3a2 2 0 0 0 2-2v-3\" />","message-circle":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\" /> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\" /> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\" /> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\" /> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\" />","pencil-line":"<path d=\"M13 21h8\" /> <path d=\"m15 5 4 4\" /> <path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" />","pencil":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />","plus":"<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />","printer":"<path d=\"M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\" /> <path d=\"M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6\" /> <rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\" />","puzzle":"<path d=\"M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z\" />","repeat":"<path d=\"m17 2 4 4-4 4\" /> <path d=\"M3 11v-1a4 4 0 0 1 4-4h14\" /> <path d=\"m7 22-4-4 4-4\" /> <path d=\"M21 13v1a4 4 0 0 1-4 4H3\" />","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" />","send":"<path d=\"M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z\" /> <path d=\"m21.854 2.147-10.94 10.939\" />","share-2":"<circle cx=\"18\" cy=\"5\" r=\"3\" /> <circle cx=\"6\" cy=\"12\" r=\"3\" /> <circle cx=\"18\" cy=\"19\" r=\"3\" /> <line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\" /> <line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\" />","shuffle":"<path d=\"m18 14 4 4-4 4\" /> <path d=\"m18 2 4 4-4 4\" /> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\" /> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\" /> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\" />","timer":"<line x1=\"10\" x2=\"14\" y1=\"2\" y2=\"2\" /> <line x1=\"12\" x2=\"15\" y1=\"14\" y2=\"11\" /> <circle cx=\"12\" cy=\"14\" r=\"8\" />","trash-2":"<path d=\"M10 11v6\" /> <path d=\"M14 11v6\" /> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /> <path d=\"M3 6h18\" /> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","trophy":"<path d=\"M10 14.66v1.626a2 2 0 0 1-.976 1.696A5 5 0 0 0 7 21.978\" /> <path d=\"M14 14.66v1.626a2 2 0 0 0 .976 1.696A5 5 0 0 1 17 21.978\" /> <path d=\"M18 9h1.5a1 1 0 0 0 0-5H18\" /> <path d=\"M4 22h16\" /> <path d=\"M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z\" /> <path d=\"M6 9H4.5a1 1 0 0 1 0-5H6\" />","tv-2":"<path d=\"M7 21h10\" /> <rect width=\"20\" height=\"14\" x=\"2\" y=\"3\" rx=\"2\" />","type":"<path d=\"M12 4v16\" /> <path d=\"M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2\" /> <path d=\"M9 20h6\" />","user-check":"<path d=\"m16 11 2 2 4-4\" /> <path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" />","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" />","wifi":"<path d=\"M12 20h.01\" /> <path d=\"M2 8.82a15 15 0 0 1 20 0\" /> <path d=\"M5 12.859a10 10 0 0 1 14 0\" /> <path d=\"M8.5 16.429a5 5 0 0 1 7 0\" />","zap":"<path d=\"M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z\" />"};
+const DATA = {"en":{"dir":"ltr","heroTitle":"Everything a teacher can do","heroSub":"A simple tour of the Vocaband teacher dashboard — built for English teachers in Israeli schools, grades 4–9.","stats":[["24","Teacher tools"],["14","Student game modes"],["3","Languages · EN·HE·AR"],["4–9","School grades"]],"closeTitle":"Less prep. More learning.","closeSub":"One app to plan lessons, run live games, print worksheets, and see exactly how every student is doing — in English, Hebrew, and Arabic.","footer":"Vocaband · Teacher Dashboard Overview","modesTitle":"And the games students play","modesSub":"When building an activity, the teacher picks one or more of these 14 games.","nav":{"prev":"Back","next":"Next"},"groups":[{"cls":"g-hubs","kicker":"The basics","title":"The main dashboard","sub":"The first buttons a teacher sees.","features":[["zap","Quick Play","Start a game in seconds. The app shows a QR code, students scan it and play — no setup, no logins."],["brain","Classroom analytics","See who needs help now, which words are hardest, and a full record for every student. Export to Excel or a report."],["user-check","Approvals","Students asking to join wait here. Let them in or turn them away with one tap."],["clipboard-list","Worksheet results","Shared an online worksheet? See who finished it and their score — even students outside the class."],["library","Vocabulary library","Build word lists once and reuse them in any class. No re-typing, ever."]]},{"cls":"g-class","kicker":"Set up","title":"Managing your classes","sub":"Each class is its own card.","features":[["plus","Create a class","One step to make a class. Get a short join code students type or scan to enter."],["pencil","Edit a class","Rename it, change its color, and add the school name and logo so worksheets look official."],["share-2","Share a class","Invite students by code, link, QR, WhatsApp, or a printable classroom poster."],["users","Roster & PINs","Add students, reset a login PIN, or print the whole list — great for younger classes."],["trash-2","Delete a class","Remove a class you no longer need. The app asks first so nothing goes by accident."]]},{"cls":"g-act","kicker":"Plan","title":"Creating activities","sub":"Build the homework and games students play.","features":[["file-text","New activity","A simple wizard: pick the words, pick the games, set a deadline, share with the class."],["type","5 ways to add words","Ministry sets, a photo of the textbook, pasted text, an uploaded file, or AI help."],["repeat","Edit · duplicate · delete","Reuse a setup for another group, tweak the words, or remove a finished task."],["link-2","Share a link","Send a direct link to one activity — perfect for a class group chat."]]},{"cls":"g-live","kicker":"Together","title":"Whole-class & projector tools","sub":"Play together on the board or on paper.","features":[["tv-2","Class Show","Project a game on the board. The class answers together — no phones needed."],["armchair","Hot Seat","Pass one tablet around so each student takes a turn. Great when not everyone has a phone."],["disc-3","Vocab Wheel","Spin to pick a random student and a random challenge. Keeps everyone alert."],["trophy","Live Challenge","The whole class races on the same words with a live leaderboard and winners' podium."],["printer","Printable worksheet","Turn a word list into a PDF worksheet. Works with no internet and no projector."],["file-spreadsheet","Vocabagrut","Generate a Bagrut-style mock exam from your own words to prepare older students."]]},{"cls":"g-set","kicker":"Helpers","title":"Settings & handy extras","sub":"Small tools that save time.","features":[["bookmark","Saved tasks","Save an activity as a template and reuse it with one tap. Pin your favorites on top."],["palette","Dashboard theme","Pick a color theme that suits you, including light and dark."],["maximize","Presentation mode","Switch to bigger, bolder text that reads clearly from the back of the room."],["wifi","Network check","One tap tests the school Wi-Fi and shows exactly what's not connecting."]]}],"modes":[["gamepad-2","Classic","See the word, hear it, pick the translation."],["headphones","Listening","Hear the word (text hidden), choose the meaning."],["keyboard","Spelling","See the translation, type the English word."],["link-2","Matching","Match each word to its translation."],["brain","Memory Flip","Flip cards to find the matching pairs."],["check-circle","True / False","Decide if a pair matches — think fast!"],["layers","Flashcards","Review at your own pace, flip for the answer."],["shuffle","Word Scramble","Unscramble the mixed-up letters."],["rotate-ccw","Reverse","See Hebrew/Arabic, pick the English word."],["case-lower","Letter Sounds","Hear each letter's sound, then type the word."],["puzzle","Sentence Builder","Tap words in order to build a sentence."],["pencil-line","Fill the Blank","Read a sentence, tap the missing word."],["message-circle","Idiom","See an idiom, pick the meaning that matches."],["timer","Speed Round","60 seconds — answer as fast as you can!"]]},"he":{"dir":"rtl","heroTitle":"כל מה שמורה יכול לעשות","heroSub":"סיור פשוט בלוח הבקרה של Vocaband — נבנה למורי אנגלית בבתי ספר בישראל, כיתות ד׳–ט׳.","stats":[["24","כלים למורה"],["14","מצבי משחק"],["3","שפות · EN·HE·AR"],["ד׳–ט׳","שכבות גיל"]],"closeTitle":"פחות הכנה. יותר למידה.","closeSub":"אפליקציה אחת לתכנון שיעורים, משחקים חיים, הדפסת דפי עבודה וראייה מדויקת של ההתקדמות של כל תלמיד — באנגלית, עברית וערבית.","footer":"Vocaband · סקירת לוח הבקרה למורה","modesTitle":"והמשחקים שהתלמידים משחקים","modesSub":"בעת בניית פעילות, המורה בוחר אחד או יותר מ-14 המשחקים האלה.","nav":{"prev":"חזרה","next":"הבא"},"groups":[{"cls":"g-hubs","kicker":"הבסיס","title":"לוח הבקרה הראשי","sub":"הכפתורים הראשונים שהמורה רואה.","features":[["zap","משחק מהיר","מתחילים משחק בכמה שניות. האפליקציה מציגה קוד QR, התלמידים סורקים ומשחקים — בלי הכנה ובלי התחברות."],["brain","ניתוח כיתתי","רואים מי זקוק לעזרה עכשיו, אילו מילים הכי קשות, ורשומה מלאה לכל תלמיד. ייצוא לאקסל או לדוח."],["user-check","אישורים","תלמידים שמבקשים להצטרף ממתינים כאן. מאשרים או דוחים בלחיצה אחת."],["clipboard-list","תוצאות דף עבודה","שיתפתם דף עבודה מקוון? רואים מי השלים ואיזה ציון קיבל — גם תלמידים מחוץ לכיתה."],["library","ספריית אוצר מילים","בונים רשימת מילים פעם אחת ומשתמשים בה בכל כיתה. בלי להקליד מחדש."]]},{"cls":"g-class","kicker":"הגדרה","title":"ניהול הכיתות","sub":"כל כיתה היא כרטיס משלה.","features":[["plus","יצירת כיתה","צעד אחד ליצירת כיתה. מקבלים קוד הצטרפות קצר שהתלמידים מקלידים או סורקים."],["pencil","עריכת כיתה","שינוי שם וצבע, והוספת שם בית הספר והלוגו כדי שדפי העבודה ייראו רשמיים."],["share-2","שיתוף כיתה","מזמינים תלמידים בקוד, קישור, QR, וואטסאפ, או פוסטר כיתתי להדפסה."],["users","רשימה ו-PINs","מוסיפים תלמידים, מאפסים PIN, או מדפיסים את כל הרשימה — מצוין לכיתות צעירות."],["trash-2","מחיקת כיתה","מסירים כיתה שכבר אינה נחוצה. האפליקציה מבקשת אישור כדי שדבר לא יימחק בטעות."]]},{"cls":"g-act","kicker":"תכנון","title":"יצירת פעילויות","sub":"בונים את שיעורי הבית והמשחקים.","features":[["file-text","פעילות חדשה","אשף פשוט: בוחרים מילים, בוחרים משחקים, קובעים תאריך הגשה ומשתפים עם הכיתה."],["type","5 דרכים להוסיף מילים","מאגרי משרד החינוך, צילום של הספר, הדבקת טקסט, העלאת קובץ, או עזרת AI."],["repeat","עריכה · שכפול · מחיקה","שימוש חוזר בתבנית לקבוצה אחרת, שינוי מילים, או הסרת משימה שהסתיימה."],["link-2","שיתוף קישור","שולחים קישור ישיר למשימה אחת — מושלם לקבוצת הכיתה."]]},{"cls":"g-live","kicker":"ביחד","title":"כלים לכיתה ולמקרן","sub":"משחקים יחד על הלוח או על נייר.","features":[["tv-2","מצב כיתה","מקרינים משחק על הלוח. הכיתה עונה יחד — בלי טלפונים."],["armchair","הכיסא החם","מעבירים טאבלט אחד כך שכל תלמיד מקבל תור. מצוין כשלא לכולם יש טלפון."],["disc-3","גלגל המילים","סיבוב בוחר תלמיד אקראי ואתגר אקראי. שומר על כולם דרוכים."],["trophy","אתגר חי","כל הכיתה מתחרה על אותן מילים עם לוח תוצאות חי ופודיום מנצחים."],["printer","דף עבודה להדפסה","הופכים רשימת מילים ל-PDF. עובד בלי אינטרנט ובלי מקרן."],["file-spreadsheet","Vocabagrut","יוצרים מבחן בסגנון בגרות מהמילים שלכם להכנת תלמידים בוגרים."]]},{"cls":"g-set","kicker":"עזרים","title":"הגדרות ותוספות שימושיות","sub":"כלים קטנים שחוסכים זמן.","features":[["bookmark","משימות שמורות","שומרים פעילות כתבנית ומשתמשים בה בלחיצה אחת. מצמידים מועדפים למעלה."],["palette","ערכת נושא","בוחרים ערכת צבעים שמתאימה לכם, כולל בהיר וכהה."],["maximize","מצב מצגת","מעבר לטקסט גדול וברור שנקרא היטב מאחורי הכיתה."],["wifi","בדיקת רשת","לחיצה אחת בודקת את ה-Wi-Fi של בית הספר ומראה מה לא מתחבר."]]}],"modes":[["gamepad-2","קלאסי","רואים את המילה, שומעים, בוחרים תרגום."],["headphones","האזנה","שומעים את המילה (טקסט מוסתר), בוחרים משמעות."],["keyboard","איות","רואים תרגום, מקלידים את המילה באנגלית."],["link-2","התאמה","מתאימים כל מילה לתרגום שלה."],["brain","זיכרון","הופכים כרטיסיות כדי למצוא זוגות."],["check-circle","נכון / לא נכון","מחליטים אם הזוג מתאים — מהר!"],["layers","כרטיסיות","חוזרים בקצב אישי, הופכים לתשובה."],["shuffle","ערבוב מילים","מסדרים את האותיות המעורבבות."],["rotate-ccw","הפוך","רואים עברית/ערבית, בוחרים אנגלית."],["case-lower","צלילי אותיות","שומעים כל אות, ואז מקלידים את המילה."],["puzzle","בניית משפט","מקישים מילים בסדר לבניית משפט."],["pencil-line","השלמת חסר","קוראים משפט, מקישים על המילה החסרה."],["message-circle","ניבים","רואים ניב, בוחרים את המשמעות."],["timer","סבב מהיר","60 שניות — עונים כמה שיותר מהר!"]]},"ar":{"dir":"rtl","heroTitle":"كل ما يستطيع المعلم فعله","heroSub":"جولة بسيطة في لوحة تحكم Vocaband — مصمّمة لمعلمي الإنجليزية في المدارس الإسرائيلية، الصفوف 4–9.","stats":[["24","أدوات للمعلم"],["14","نمط لعب"],["3","لغات · EN·HE·AR"],["4–9","الصفوف"]],"closeTitle":"تحضير أقل. تعلّم أكثر.","closeSub":"تطبيق واحد لتخطيط الدروس وتشغيل ألعاب مباشرة وطباعة أوراق العمل ورؤية أداء كل طالب بدقة — بالإنجليزية والعبرية والعربية.","footer":"Vocaband · نظرة عامة على لوحة تحكم المعلم","modesTitle":"والألعاب التي يلعبها الطلاب","modesSub":"عند بناء نشاط، يختار المعلم واحدة أو أكثر من هذه الألعاب الـ14.","nav":{"prev":"السابق","next":"التالي"},"groups":[{"cls":"g-hubs","kicker":"الأساسيات","title":"لوحة التحكم الرئيسية","sub":"أول الأزرار التي يراها المعلم.","features":[["zap","لعب سريع","ابدأ لعبة في ثوانٍ. يعرض التطبيق رمز QR، يمسحه الطلاب ويلعبون — دون إعداد ودون تسجيل دخول."],["brain","تحليلات الصف","شاهد من يحتاج مساعدة الآن، وأصعب الكلمات، وسجلاً كاملاً لكل طالب. صدّره إلى إكسل أو تقرير."],["user-check","الموافقات","الطلاب الراغبون في الانضمام ينتظرون هنا. اقبلهم أو ارفضهم بنقرة واحدة."],["clipboard-list","نتائج ورقة العمل","شاركت ورقة عمل عبر الإنترنت؟ شاهد من أكملها ودرجته — حتى الطلاب من خارج الصف."],["library","مكتبة المفردات","أنشئ قوائم الكلمات مرة واحدة وأعد استخدامها في أي صف. دون إعادة كتابة أبداً."]]},{"cls":"g-class","kicker":"الإعداد","title":"إدارة صفوفك","sub":"كل صف بطاقة مستقلة.","features":[["plus","إنشاء صف","خطوة واحدة لإنشاء صف. احصل على رمز انضمام قصير يكتبه الطلاب أو يمسحونه."],["pencil","تعديل صف","غيّر الاسم واللون، وأضف اسم المدرسة وشعارها لتبدو أوراق العمل رسمية."],["share-2","مشاركة صف","ادعُ الطلاب برمز، أو رابط، أو QR، أو واتساب، أو ملصق صفّي للطباعة."],["users","القائمة ورموز PIN","أضف طلاباً، أو أعد تعيين رمز PIN، أو اطبع القائمة كاملة — رائع للصفوف الصغيرة."],["trash-2","حذف صف","أزل صفاً لم تعد بحاجته. يطلب التطبيق تأكيداً حتى لا يُحذف شيء بالخطأ."]]},{"cls":"g-act","kicker":"التخطيط","title":"إنشاء الأنشطة","sub":"ابنِ الواجبات والألعاب التي يلعبها الطلاب.","features":[["file-text","نشاط جديد","معالج بسيط: اختر الكلمات، اختر الألعاب، حدّد موعداً، وشاركه مع الصف."],["type","5 طرق لإضافة الكلمات","مجموعات الوزارة، صورة للكتاب، نص ملصوق، ملف مرفوع، أو مساعدة الذكاء الاصطناعي."],["repeat","تعديل · نسخ · حذف","أعد استخدام إعداد لمجموعة أخرى، أو عدّل الكلمات، أو احذف مهمة منتهية."],["link-2","مشاركة رابط","أرسل رابطاً مباشراً لنشاط واحد — مثالي لمجموعة الصف."]]},{"cls":"g-live","kicker":"معاً","title":"أدوات الصف وجهاز العرض","sub":"العبوا معاً على السبورة أو الورق.","features":[["tv-2","عرض الصف","اعرض لعبة على السبورة. يجيب الصف معاً — دون هواتف."],["armchair","الكرسي الساخن","مرّر جهازاً واحداً ليأخذ كل طالب دوره. رائع عندما لا يملك الجميع هاتفاً."],["disc-3","عجلة المفردات","دورة تختار طالباً عشوائياً وتحدياً عشوائياً. تبقي الجميع متيقظين."],["trophy","التحدي المباشر","يتسابق الصف كله على الكلمات نفسها مع لوحة صدارة حية ومنصة فائزين."],["printer","ورقة عمل للطباعة","حوّل قائمة كلمات إلى PDF. تعمل دون إنترنت ودون جهاز عرض."],["file-spreadsheet","Vocabagrut","أنشئ نموذج اختبار بنمط الباجروت من كلماتك لتحضير الطلاب الأكبر."]]},{"cls":"g-set","kicker":"مساعدات","title":"الإعدادات وإضافات مفيدة","sub":"أدوات صغيرة توفّر الوقت.","features":[["bookmark","المهام المحفوظة","احفظ نشاطاً كقالب وأعد استخدامه بنقرة. ثبّت المفضلة في الأعلى."],["palette","سمة اللوحة","اختر سمة ألوان تناسبك، بما في ذلك الفاتح والداكن."],["maximize","وضع العرض","بدّل إلى نص أكبر وأوضح يُقرأ بسهولة من آخر الصف."],["wifi","فحص الشبكة","نقرة واحدة تختبر شبكة المدرسة وتُظهر ما لا يتصل بالضبط."]]}],"modes":[["gamepad-2","كلاسيكي","شاهد الكلمة، اسمعها، اختر الترجمة."],["headphones","استماع","اسمع الكلمة (النص مخفي)، اختر المعنى."],["keyboard","تهجئة","شاهد الترجمة، اكتب الكلمة الإنجليزية."],["link-2","مطابقة","طابق كل كلمة مع ترجمتها."],["brain","الذاكرة","اقلب البطاقات لإيجاد الأزواج."],["check-circle","صح / خطأ","قرّر إن كان الزوج متطابقاً — بسرعة!"],["layers","بطاقات","راجع بإيقاعك، اقلب لرؤية الإجابة."],["shuffle","ترتيب الحروف","رتّب الحروف المبعثرة."],["rotate-ccw","معكوس","شاهد العبرية/العربية، اختر الإنجليزية."],["case-lower","أصوات الحروف","اسمع كل حرف، ثم اكتب الكلمة."],["puzzle","بناء الجملة","انقر الكلمات بالترتيب لبناء جملة."],["pencil-line","املأ الفراغ","اقرأ جملة، انقر الكلمة الناقصة."],["message-circle","تعبير اصطلاحي","شاهد تعبيراً، اختر المعنى المطابق."],["timer","جولة سريعة","60 ثانية — أجب بأسرع ما يمكن!"]]}};
+function ic(k){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(IC[k]||"")+'</svg>';}
 
-  he: {
-    dir:"rtl", badge:"VOCABAND",
-    heroTitle:"כל מה שמורה יכול לעשות",
-    heroSub:"סיור פשוט בלוח הבקרה של המורה — נבנה למורי אנגלית בבתי ספר בישראל, כיתות ד׳–ט׳.",
-    stats:[
-      {num:"24", lbl:"כלים למורה"},
-      {num:"14", lbl:"מצבי משחק לתלמיד"},
-      {num:"3", lbl:"שפות (אנגלית · עברית · ערבית)"},
-      {num:"ד׳–ט׳", lbl:"שכבות גיל"}
-    ],
-    closeTitle:"פחות הכנה. יותר למידה.",
-    closeSub:"אפליקציה אחת לתכנון שיעורים, משחקים חיים, הדפסת דפי עבודה, וראייה מדויקת של ההתקדמות של כל תלמיד — באנגלית, עברית וערבית.",
-    footer:"Vocaband · סקירת לוח הבקרה למורה",
-    modesTitle:"והמשחקים שהתלמידים משחקים",
-    modesSub:"בעת בניית פעילות, המורה בוחר אחד או יותר מ-14 המשחקים האלה.",
-    groups:[
-      { cls:"g-hubs", kicker:"הבסיס", title:"לוח הבקרה הראשי", sub:"הכפתורים הראשונים שהמורה רואה.",
-        features:[
-          {icon:"⚡", title:"משחק מהיר", desc:"מתחילים משחק בכמה שניות. האפליקציה מציגה קוד QR, התלמידים סורקים ומשחקים — בלי הכנה ובלי התחברות."},
-          {icon:"🎓", title:"ניתוח כיתתי", desc:"רואים מי זקוק לעזרה עכשיו, אילו מילים הכי קשות, ורשומה מלאה לכל תלמיד. ייצוא לאקסל או לדוח."},
-          {icon:"🙋", title:"אישורים", desc:"תלמידים שמבקשים להצטרף ממתינים כאן. מאשרים או דוחים בלחיצה אחת."},
-          {icon:"📋", title:"תוצאות דף עבודה", desc:"שיתפתם דף עבודה מקוון? רואים מי השלים ואיזה ציון קיבל — גם תלמידים מחוץ לכיתה."},
-          {icon:"📚", title:"ספריית אוצר מילים", desc:"בונים רשימת מילים פעם אחת ומשתמשים בה בכל כיתה. בלי להקליד מחדש."}
-        ]},
-      { cls:"g-class", kicker:"הגדרה", title:"ניהול הכיתות", sub:"כל כיתה היא כרטיס משלה.",
-        features:[
-          {icon:"➕", title:"יצירת כיתה", desc:"צעד אחד ליצירת כיתה. מקבלים קוד הצטרפות קצר שהתלמידים מקלידים או סורקים."},
-          {icon:"✏️", title:"עריכת כיתה", desc:"שינוי שם וצבע, והוספת שם בית הספר והלוגו כדי שדפי העבודה ייראו רשמיים."},
-          {icon:"🔗", title:"שיתוף כיתה", desc:"מזמינים תלמידים בקוד, קישור, QR, וואטסאפ, או פוסטר כיתתי להדפסה."},
-          {icon:"👥", title:"רשימה ו-PINs", desc:"מוסיפים תלמידים, מאפסים PIN, או מדפיסים את כל הרשימה — מצוין לכיתות צעירות."},
-          {icon:"🗑️", title:"מחיקת כיתה", desc:"מסירים כיתה שכבר אינה נחוצה. האפליקציה מבקשת אישור כדי שדבר לא יימחק בטעות."}
-        ]},
-      { cls:"g-act", kicker:"תכנון", title:"יצירת פעילויות", sub:"בונים את שיעורי הבית והמשחקים.",
-        features:[
-          {icon:"📝", title:"פעילות חדשה", desc:"אשף פשוט: בוחרים מילים, בוחרים משחקים, קובעים תאריך הגשה, ומשתפים עם הכיתה."},
-          {icon:"🔤", title:"5 דרכים להוסיף מילים", desc:"מאגרי משרד החינוך, צילום של הספר, הדבקת טקסט, העלאת קובץ, או עזרת AI."},
-          {icon:"🔁", title:"עריכה · שכפול · מחיקה", desc:"שימוש חוזר בתבנית לקבוצה אחרת, שינוי מילים, או הסרת משימה שהסתיימה."},
-          {icon:"📤", title:"שיתוף קישור", desc:"שולחים קישור ישיר למשימה אחת — מושלם לקבוצת הכיתה."}
-        ]},
-      { cls:"g-live", kicker:"ביחד", title:"כלים לכיתה ולמקרן", sub:"משחקים יחד על הלוח או על נייר.",
-        features:[
-          {icon:"📺", title:"מצב כיתה", desc:"מקרינים משחק על הלוח. הכיתה עונה יחד — בלי טלפונים."},
-          {icon:"🪑", title:"הכיסא החם", desc:"מעבירים טאבלט אחד כך שכל תלמיד מקבל תור. מצוין כשלא לכולם יש טלפון."},
-          {icon:"🎡", title:"גלגל המילים", desc:"סיבוב בוחר תלמיד אקראי ואתגר אקראי. שומר על כולם דרוכים."},
-          {icon:"🏆", title:"אתגר חי", desc:"כל הכיתה מתחרה על אותן מילים עם לוח תוצאות חי ופודיום מנצחים."},
-          {icon:"🖨️", title:"דף עבודה להדפסה", desc:"הופכים רשימת מילים ל-PDF. עובד בלי אינטרנט ובלי מקרן."},
-          {icon:"📄", title:"Vocabagrut", desc:"יוצרים מבחן בסגנון בגרות מהמילים שלכם להכנת תלמידים בוגרים."}
-        ]},
-      { cls:"g-set", kicker:"עזרים", title:"הגדרות ותוספות שימושיות", sub:"כלים קטנים שחוסכים זמן.",
-        features:[
-          {icon:"📌", title:"משימות שמורות", desc:"שומרים פעילות כתבנית ומשתמשים בה בלחיצה אחת. מצמידים מועדפים למעלה."},
-          {icon:"🎨", title:"ערכת נושא", desc:"בוחרים ערכת צבעים שמתאימה לכם, כולל בהיר וכהה."},
-          {icon:"📽️", title:"מצב מצגת", desc:"מעבר לטקסט גדול וברור שנקרא היטב מאחורי הכיתה."},
-          {icon:"📶", title:"בדיקת רשת", desc:"לחיצה אחת בודקת את ה-Wi-Fi של בית הספר ומראה מה לא מתחבר."}
-        ]}
-    ],
-    modes:[
-      ["🎯","קלאסי","רואים את המילה, שומעים, בוחרים תרגום."],
-      ["🎧","האזנה","שומעים את המילה (טקסט מוסתר), בוחרים משמעות."],
-      ["⌨️","איות","רואים תרגום, מקלידים את המילה באנגלית."],
-      ["🔗","התאמה","מתאימים כל מילה לתרגום שלה."],
-      ["🧠","זיכרון","הופכים כרטיסיות כדי למצוא זוגות."],
-      ["✅","נכון / לא נכון","מחליטים אם הזוג מתאים — מהר!"],
-      ["🃏","כרטיסיות","חוזרים בקצב אישי, הופכים לתשובה."],
-      ["🔀","ערבוב מילים","מסדרים את האותיות המעורבבות."],
-      ["🔄","הפוך","רואים עברית/ערבית, בוחרים אנגלית."],
-      ["🔡","צלילי אותיות","שומעים כל אות, ואז מקלידים את המילה."],
-      ["🧩","בניית משפט","מקישים מילים בסדר לבניית משפט."],
-      ["✏️","השלמת חסר","קוראים משפט, מקישים על המילה החסרה."],
-      ["💬","ניבים","רואים ניב, בוחרים את המשמעות."],
-      ["⏱️","סבב מהיר","60 שניות — עונים כמה שיותר מהר!"]
-    ]
-  },
+const brand = '<div class="brand"><div class="mark"><span>V</span></div><div class="wd">Vocaband</div></div>';
+let slides=[], idx=0, lang="en";
 
-  ar: {
-    dir:"rtl", badge:"VOCABAND",
-    heroTitle:"كل ما يستطيع المعلم فعله",
-    heroSub:"جولة بسيطة في لوحة تحكم المعلم — مصمّمة لمعلمي الإنجليزية في المدارس الإسرائيلية، الصفوف 4–9.",
-    stats:[
-      {num:"24", lbl:"أدوات للمعلم"},
-      {num:"14", lbl:"نمط لعب للطالب"},
-      {num:"3", lbl:"لغات (إنجليزي · عبري · عربي)"},
-      {num:"4–9", lbl:"الصفوف الدراسية"}
-    ],
-    closeTitle:"تحضير أقل. تعلّم أكثر.",
-    closeSub:"تطبيق واحد لتخطيط الدروس، وتشغيل ألعاب مباشرة، وطباعة أوراق العمل، ورؤية أداء كل طالب بدقة — بالإنجليزية والعبرية والعربية.",
-    footer:"Vocaband · نظرة عامة على لوحة تحكم المعلم",
-    modesTitle:"والألعاب التي يلعبها الطلاب",
-    modesSub:"عند بناء نشاط، يختار المعلم واحدة أو أكثر من هذه الألعاب الـ14.",
-    groups:[
-      { cls:"g-hubs", kicker:"الأساسيات", title:"لوحة التحكم الرئيسية", sub:"أول الأزرار التي يراها المعلم.",
-        features:[
-          {icon:"⚡", title:"لعب سريع", desc:"ابدأ لعبة في ثوانٍ. يعرض التطبيق رمز QR، يمسحه الطلاب ويلعبون — دون إعداد ودون تسجيل دخول."},
-          {icon:"🎓", title:"تحليلات الصف", desc:"شاهد من يحتاج مساعدة الآن، وأصعب الكلمات، وسجلاً كاملاً لكل طالب. صدّره إلى إكسل أو تقرير."},
-          {icon:"🙋", title:"الموافقات", desc:"الطلاب الراغبون في الانضمام ينتظرون هنا. اقبلهم أو ارفضهم بنقرة واحدة."},
-          {icon:"📋", title:"نتائج ورقة العمل", desc:"شاركت ورقة عمل عبر الإنترنت؟ شاهد من أكملها ودرجته — حتى الطلاب من خارج الصف."},
-          {icon:"📚", title:"مكتبة المفردات", desc:"أنشئ قوائم الكلمات مرة واحدة وأعد استخدامها في أي صف. دون إعادة كتابة أبداً."}
-        ]},
-      { cls:"g-class", kicker:"الإعداد", title:"إدارة صفوفك", sub:"كل صف بطاقة مستقلة.",
-        features:[
-          {icon:"➕", title:"إنشاء صف", desc:"خطوة واحدة لإنشاء صف. احصل على رمز انضمام قصير يكتبه الطلاب أو يمسحونه."},
-          {icon:"✏️", title:"تعديل صف", desc:"غيّر الاسم واللون، وأضف اسم المدرسة وشعارها لتبدو أوراق العمل رسمية."},
-          {icon:"🔗", title:"مشاركة صف", desc:"ادعُ الطلاب برمز، أو رابط، أو QR، أو واتساب، أو ملصق صفّي للطباعة."},
-          {icon:"👥", title:"القائمة ورموز PIN", desc:"أضف طلاباً، أو أعد تعيين رمز PIN، أو اطبع القائمة كاملة — رائع للصفوف الصغيرة."},
-          {icon:"🗑️", title:"حذف صف", desc:"أزل صفاً لم تعد بحاجته. يطلب التطبيق تأكيداً حتى لا يُحذف شيء بالخطأ."}
-        ]},
-      { cls:"g-act", kicker:"التخطيط", title:"إنشاء الأنشطة", sub:"ابنِ الواجبات والألعاب التي يلعبها الطلاب.",
-        features:[
-          {icon:"📝", title:"نشاط جديد", desc:"معالج بسيط: اختر الكلمات، اختر الألعاب، حدّد موعداً، وشاركه مع الصف."},
-          {icon:"🔤", title:"5 طرق لإضافة الكلمات", desc:"مجموعات الوزارة، صورة للكتاب، نص ملصوق، ملف مرفوع، أو مساعدة الذكاء الاصطناعي."},
-          {icon:"🔁", title:"تعديل · نسخ · حذف", desc:"أعد استخدام إعداد لمجموعة أخرى، أو عدّل الكلمات، أو احذف مهمة منتهية."},
-          {icon:"📤", title:"مشاركة رابط", desc:"أرسل رابطاً مباشراً لنشاط واحد — مثالي لمجموعة الصف."}
-        ]},
-      { cls:"g-live", kicker:"معاً", title:"أدوات الصف وجهاز العرض", sub:"العبوا معاً على السبورة أو الورق.",
-        features:[
-          {icon:"📺", title:"عرض الصف", desc:"اعرض لعبة على السبورة. يجيب الصف معاً — دون هواتف."},
-          {icon:"🪑", title:"الكرسي الساخن", desc:"مرّر جهازاً واحداً ليأخذ كل طالب دوره. رائع عندما لا يملك الجميع هاتفاً."},
-          {icon:"🎡", title:"عجلة المفردات", desc:"دورة تختار طالباً عشوائياً وتحدياً عشوائياً. تبقي الجميع متيقظين."},
-          {icon:"🏆", title:"التحدي المباشر", desc:"يتسابق الصف كله على الكلمات نفسها مع لوحة صدارة حية ومنصة فائزين."},
-          {icon:"🖨️", title:"ورقة عمل للطباعة", desc:"حوّل قائمة كلمات إلى PDF. تعمل دون إنترنت ودون جهاز عرض."},
-          {icon:"📄", title:"Vocabagrut", desc:"أنشئ نموذج اختبار بنمط الباجروت من كلماتك لتحضير الطلاب الأكبر."}
-        ]},
-      { cls:"g-set", kicker:"مساعدات", title:"الإعدادات وإضافات مفيدة", sub:"أدوات صغيرة توفّر الوقت.",
-        features:[
-          {icon:"📌", title:"المهام المحفوظة", desc:"احفظ نشاطاً كقالب وأعد استخدامه بنقرة. ثبّت المفضلة في الأعلى."},
-          {icon:"🎨", title:"سمة اللوحة", desc:"اختر سمة ألوان تناسبك، بما في ذلك الفاتح والداكن."},
-          {icon:"📽️", title:"وضع العرض", desc:"بدّل إلى نص أكبر وأوضح يُقرأ بسهولة من آخر الصف."},
-          {icon:"📶", title:"فحص الشبكة", desc:"نقرة واحدة تختبر شبكة المدرسة وتُظهر ما لا يتصل بالضبط."}
-        ]}
-    ],
-    modes:[
-      ["🎯","كلاسيكي","شاهد الكلمة، اسمعها، اختر الترجمة."],
-      ["🎧","استماع","اسمع الكلمة (النص مخفي)، اختر المعنى."],
-      ["⌨️","تهجئة","شاهد الترجمة، اكتب الكلمة الإنجليزية."],
-      ["🔗","مطابقة","طابق كل كلمة مع ترجمتها."],
-      ["🧠","الذاكرة","اقلب البطاقات لإيجاد الأزواج."],
-      ["✅","صح / خطأ","قرّر إن كان الزوج متطابقاً — بسرعة!"],
-      ["🃏","بطاقات","راجع بإيقاعك، اقلب لرؤية الإجابة."],
-      ["🔀","ترتيب الحروف","رتّب الحروف المبعثرة."],
-      ["🔄","معكوس","شاهد العبرية/العربية، اختر الإنجليزية."],
-      ["🔡","أصوات الحروف","اسمع كل حرف، ثم اكتب الكلمة."],
-      ["🧩","بناء الجملة","انقر الكلمات بالترتيب لبناء جملة."],
-      ["✏️","املأ الفراغ","اقرأ جملة، انقر الكلمة الناقصة."],
-      ["💬","تعبير اصطلاحي","شاهد تعبيراً، اختر المعنى المطابق."],
-      ["⏱️","جولة سريعة","60 ثانية — أجب بأسرع ما يمكن!"]
-    ]
-  }
-};
-
-function render(lang){
-  const d = DATA[lang];
-  document.documentElement.lang = lang;
-  document.documentElement.dir = d.dir;
-
-  document.getElementById("hero-badge").textContent = d.badge;
-  document.getElementById("hero-title").textContent = d.heroTitle;
-  document.getElementById("hero-sub").textContent = d.heroSub;
-  document.getElementById("close-title").textContent = d.closeTitle;
-  document.getElementById("close-sub").textContent = d.closeSub;
-  document.getElementById("footer").textContent = d.footer;
-
-  document.getElementById("stats").innerHTML = d.stats.map(s =>
-    `<div class="stat"><div class="num">${s.num}</div><div class="lbl">${s.lbl}</div></div>`
-  ).join("");
-
-  let html = "";
-  d.groups.forEach(g => {
-    html += `<div class="section-head">
-        <div class="kicker">${g.kicker}</div>
-        <h2>${g.title}</h2>
-        <p>${g.sub}</p>
-      </div>
-      <div class="grid ${g.cls}">` +
-      g.features.map(f =>
-        `<div class="card"><div class="ico">${f.icon}</div><h3>${f.title}</h3><p>${f.desc}</p></div>`
-      ).join("") +
-      `</div>`;
+function build(l){
+  const d=DATA[l];
+  document.documentElement.lang=l; document.documentElement.dir=d.dir;
+  const S=[];
+  // 1 title
+  S.push('<section class="slide title-slide">'+brand+'<h1>'+d.heroTitle+'</h1><p>'+d.heroSub+'</p>'+
+    '<div class="stats">'+d.stats.map(s=>'<div class="stat"><div class="num">'+s[0]+'</div><div class="lbl">'+s[1]+'</div></div>').join('')+'</div></section>');
+  // group slides
+  d.groups.forEach(g=>{
+    S.push('<section class="slide '+g.cls+'">'+
+      '<div class="shead"><div class="kicker">'+g.kicker+'</div><h2>'+g.title+'</h2><div class="sub">'+g.sub+'</div></div>'+
+      '<div class="grid">'+g.features.map(f=>'<div class="card"><div class="ico">'+ic(f[0])+'</div><h3>'+f[1]+'</h3><p>'+f[2]+'</p></div>').join('')+'</div></section>');
   });
+  // modes slide
+  S.push('<section class="slide">'+
+    '<div class="shead"><div class="kicker">THE FUN PART</div><h2>'+d.modesTitle+'</h2><div class="sub">'+d.modesSub+'</div></div>'+
+    '<div class="modes">'+d.modes.map(m=>'<div class="mode"><div class="me">'+ic(m[0])+'</div><div><b>'+m[1]+'</b><span>'+m[2]+'</span></div></div>').join('')+'</div></section>');
+  // closing
+  S.push('<section class="slide close-slide"><h2>'+d.closeTitle+'</h2><p>'+d.closeSub+'</p>'+brand+'</section>');
 
-  // game modes
-  html += `<div class="section-head">
-      <div class="kicker">🎮</div>
-      <h2>${d.modesTitle}</h2>
-      <p>${d.modesSub}</p>
-    </div>
-    <div class="modes">` +
-    d.modes.map(m =>
-      `<div class="mode"><div class="me">${m[0]}</div><div><b>${m[1]}</b><span>${m[2]}</span></div></div>`
-    ).join("") +
-    `</div>`;
-
-  document.getElementById("content").innerHTML = html;
+  document.getElementById("deck").innerHTML=S.join('');
+  slides=[...document.querySelectorAll(".slide")];
+  if(idx>=slides.length) idx=slides.length-1;
+  show(idx);
 }
-
-document.getElementById("langbar").addEventListener("click", e => {
-  const btn = e.target.closest("button");
-  if(!btn) return;
-  document.querySelectorAll("#langbar button").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
-  render(btn.dataset.lang);
+function show(i){
+  idx=Math.max(0,Math.min(i,slides.length-1));
+  slides.forEach((s,n)=>s.classList.toggle("active",n===idx));
+  document.getElementById("counter").textContent=(idx+1)+" / "+slides.length;
+}
+document.getElementById("next").onclick=()=>show(idx+1);
+document.getElementById("prev").onclick=()=>show(idx-1);
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowRight"||e.key===" "||e.key==="PageDown"){e.preventDefault();show(idx+1);}
+  if(e.key==="ArrowLeft"||e.key==="PageUp"){e.preventDefault();show(idx-1);}
 });
-
-render("en");
+document.getElementById("langbar").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  document.querySelectorAll("#langbar button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); lang=b.dataset.lang; build(lang);
+});
+build("en");
 </script>
 </body>
 </html>
