@@ -271,27 +271,62 @@ export interface ManagerTeacherRow {
   last_activity: string | null;
 }
 
+export interface ManagerClassRow {
+  id: string;
+  name: string;
+  code: string;
+  teacher_name: string | null;
+  students: number;
+  avg_score: number | null;
+  completion: number;
+  active_7d: number;
+  last_activity: string | null;
+}
+/** A {day,value} point used by every console time-series chart. */
+export interface DayPoint { d: string; active?: number; games?: number; }
+
 export interface ManagerOverview {
   school: { id: string; name: string } | null;
-  totals: {
-    teachers: number;
-    classes: number;
-    students: number;
-    active_students_7d: number;
-    games_7d: number;
-    total_xp: number;
-  };
+  totals: { teachers: number; classes: number; students: number; active_students_7d: number; games_7d: number; total_xp: number };
   teachers: ManagerTeacherRow[];
+  engagement14: DayPoint[];
+  students_by_class: { name: string; value: number }[];
+  xp_by_teacher: { name: string; xp: number }[];
+  classes: ManagerClassRow[];
+}
+export interface ManagerEngagement {
+  active30: { d: string; active: number }[];
+  games14: { d: string; games: number }[];
+  dow: { dow: number; plays: number }[];
+  modes: { mode: string; plays: number }[];
+}
+export interface ManagerTeacherDetail {
+  teacher: { uid: string; display_name: string; email: string | null; classes: number; students: number; active_7d: number; xp: number };
+  activity14: { d: string; active: number }[];
+  per_class: { name: string; students: number }[];
+  top_students: { name: string; xp: number }[];
+}
+export interface ManagerClassDetail {
+  class: { id: string; name: string; code: string; teacher_name: string | null; students: number; avg_score: number | null; active_7d: number };
+  score_dist: { band: string; n: number }[];
+  activity14: { d: string; active: number }[];
+  assignments: { title: string; completion: number }[];
 }
 
-/** Fetch the manager dashboard payload.  Returns null when the caller is not
- *  a manager (or the RPC reports an error), so the view can show an empty
- *  state instead of leaking that other schools exist. */
-export async function fetchManagerOverview(): Promise<ManagerOverview | null> {
-  const { data, error } = await supabase.rpc('manager_overview');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function callManagerRpc<T>(fn: string, args?: Record<string, any>): Promise<T | null> {
+  const { data, error } = await supabase.rpc(fn, args);
   if (error || !data || (data as { error?: string }).error) return null;
-  return data as ManagerOverview;
+  return data as T;
 }
+
+/** Each fetcher returns null when the caller isn't a manager / lacks access
+ *  (the RPC self-scopes server-side), so views show an empty state rather
+ *  than leaking that other schools or out-of-school rows exist. */
+export const fetchManagerOverview = () => callManagerRpc<ManagerOverview>('manager_overview');
+export const fetchManagerEngagement = () => callManagerRpc<ManagerEngagement>('manager_engagement');
+export const fetchManagerTeacherDetail = (uid: string) => callManagerRpc<ManagerTeacherDetail>('manager_teacher_detail', { p_uid: uid });
+export const fetchManagerClassDetail = (classId: string) => callManagerRpc<ManagerClassDetail>('manager_class_detail', { p_class_id: classId });
 
 export interface ClassData {
   id: string;

@@ -36,7 +36,7 @@ const HebrewComingSoonView = lazyWithRetry(() => import('./HebrewComingSoonView'
 const GlobalLeaderboardView = lazyWithRetry(() => import('./GlobalLeaderboardView'));
 const TeacherApprovalsView = lazyWithRetry(() => import('./TeacherApprovalsView'));
 const AdminSecurityView = lazyWithRetry(() => import('./AdminSecurityView'));
-const ManagerDashboardView = lazyWithRetry(() => import('./ManagerDashboardView'));
+const ManagerConsoleView = lazyWithRetry(() => import('./ManagerConsoleView'));
 const WorksheetAttemptsView = lazyWithRetry(() => import('./WorksheetAttemptsView'));
 const ClassroomView = lazyWithRetry(() => import('./ClassroomView'));
 const LiveChallengeClassSelectView = lazyWithRetry(() => import('./LiveChallengeClassSelectView'));
@@ -256,12 +256,12 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
   }
 
   if (view === 'manager-dashboard') {
-    // School-manager (principal) read-only dashboard.  Data is fetched via
-    // the school-scoped manager_overview RPC inside the view; a non-manager
-    // landing here by URL sees the empty state (no cross-school leak).
+    // School-manager (principal) read-only console.  Data is fetched via the
+    // school-scoped manager_* RPCs inside the view; a non-manager landing here
+    // by URL sees the empty state (no cross-school leak).
     return (
-      <LazyWrapper loadingMessage="Loading school dashboard...">
-        <ManagerDashboardView user={user} setView={setView} setUser={setUser} />
+      <LazyWrapper loadingMessage="Loading school console...">
+        <ManagerConsoleView user={user} setView={setView} setUser={setUser} />
       </LazyWrapper>
     );
   }
