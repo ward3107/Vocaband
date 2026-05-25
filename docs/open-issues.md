@@ -4,6 +4,42 @@ Tracking known issues with their diagnosis status.
 
 ---
 
+## Feature — School Manager (principal) dashboard (2026-05-25)
+
+**Status:** Code shipped on `claude/compassionate-goldberg-qNWvm`. Adds a
+read-only school-principal role + dashboard. New migration
+`20260623000000_school_manager.sql`: a `schools` table, `users.school_id`,
+`role='manager'` in the CHECK, school-scoped RLS (`is_manager`,
+`manager_school`, `manager_classes`), and a `manager_overview()` aggregate RPC.
+Frontend: `hasManagerAccess` + `school_id` on `AppUser`, the `manager-dashboard`
+view, auth-restore + view-guard routing, and `src/views/ManagerDashboardView.tsx`
+(KPI tiles, teacher roster, dormant-class flags, EN/HE/AR + RTL). Login reuses
+the existing teacher card — a manager is distinguished purely by `role`.
+
+**Blocker — operator action required:** apply migration
+`20260623000000_school_manager.sql` to the production (EU) Supabase. Until
+applied, `manager_overview` doesn't exist and the dashboard shows its empty
+state; no existing teacher/student flow is affected (the migration only adds
+objects + widens the `users.role` CHECK).
+
+**Provisioning quirk (by design):** a principal's first sign-in mints a
+`role='teacher'` row (a `users` row can't exist before their `auth.uid()`
+does), so the operator flips `role='manager'` + sets `school_id` *after* that
+first login. Full steps in `docs/teacher-access.md` → "Granting school-manager
+access". Never use `role='admin'` as a shortcut — admin reads every school.
+
+**Next steps / follow-ups (none blocking):**
+- Smoke-test end-to-end once the migration is live: provision a test school +
+  manager, confirm they see only that school's teachers/classes/progress.
+- Run the new pen-test isolation checks with a real manager token:
+  `MANAGER_JWT=… OTHER_SCHOOL_CLASS_CODE=… ./scripts/security-pen-test.sh`
+  (tests 9c/9d run anon in CI already).
+- Drill-down is summary-only in v1 (per-teacher rollups). A click-through into
+  a single class's gradebook (reusing `ClassCard` read-only) is a v2 candidate.
+- No automated tests yet for `manager_overview` or the routing branch.
+
+---
+
 ## Quick Play — student-side UX findings (2026-05-19)
 
 **Status:** Logged from a session-long walkthrough with the operator. Several pain points were observed in real classrooms over the last 2 weeks. Top 5 items shipping in the same session that logged this; the rest are queued.
