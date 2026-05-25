@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 // motion/react removed — was ~43 kB gz. CookieBanner is the first
 // thing first-time visitors see, so its dependency on motion put the
 // chunk on the cold-paint path even after LandingPage was de-animated.
-// Slide-up entry replaced with a CSS @keyframes animation defined in
-// index.css; the expansion panel uses a conditional render rather
-// than AnimatePresence's exit animation.
+// Entry uses CSS @keyframes (cookie-backdrop-in / cookie-modal-in)
+// defined in index.css; the expansion panel uses a conditional render
+// rather than AnimatePresence's exit animation.
 import { Cookie, ChevronUp, ChevronDown, Shield, BarChart3, Settings, Check, Lock, X, ExternalLink } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { cookieBannerT, type CookieBannerStrings } from "../locales/cookie-banner";
@@ -69,35 +69,65 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize, onRe
     onCustomize(preferences);
   };
 
+  // Lock background scroll while the banner is open so the page behind
+  // is fully inert — the user can't scroll or interact with anything
+  // until they make a consent choice.
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   return (
-    <div className="fixed bottom-0 left-0 w-full z-[100] px-3 pb-4 md:px-8 md:pb-12 pointer-events-none">
+    <div
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-3 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cookie-banner-heading"
+    >
+      {/* Full-screen backdrop — captures every click/tap so nothing
+          behind the banner is interactive. It is intentionally NOT
+          dismissable: the visitor must pick a button. */}
       <div
-        className="max-w-4xl mx-auto bg-slate-900/95 backdrop-blur-2xl p-4 md:p-8 rounded-2xl md:rounded-2xl shadow-[0_25px_70px_-15px_rgba(139,92,246,0.4)] pointer-events-auto border border-white/15 max-h-[85vh] md:max-h-none flex flex-col"
+        className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm cookie-backdrop-in"
+        aria-hidden="true"
+      />
+
+      <div
+        className="cookie-modal-in relative w-full max-w-lg bg-slate-900/95 backdrop-blur-2xl p-5 sm:p-7 rounded-3xl shadow-[0_25px_70px_-15px_rgba(139,92,246,0.55)] border border-white/15 max-h-[90vh] flex flex-col"
         dir={dir}
       >
-        {/* Header Row */}
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 mb-3 md:mb-4 flex-shrink-0">
-          {/* Cookie icon — gradient pill matching the brand signature
-              gradient (indigo → violet → fuchsia). */}
-          <div className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-lg md:rounded-xl bg-gradient-to-br from-violet-500/30 via-fuchsia-500/25 to-pink-500/30 border border-white/15 flex items-center justify-center text-violet-200 shadow-lg shadow-violet-500/20">
-            <Cookie size={24} className="md:hidden" aria-hidden="true" />
-            <Cookie size={28} className="hidden md:block" aria-hidden="true" />
+        {/* Header — centred icon medallion + copy. */}
+        <div className="flex flex-col items-center text-center gap-3 mb-4 flex-shrink-0">
+          {/* Cookie icon — gradient medallion matching the brand
+              signature gradient (indigo → violet → fuchsia). */}
+          <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-violet-500/30 via-fuchsia-500/25 to-pink-500/30 border border-white/15 flex items-center justify-center text-violet-200 shadow-lg shadow-violet-500/25">
+            <Cookie size={30} aria-hidden="true" />
           </div>
 
-          <div className="flex-1 text-center md:text-left">
-            <p className="text-white/90 font-bold text-xs md:text-base leading-relaxed">
+          <div className="flex-1">
+            <h2
+              id="cookie-banner-heading"
+              className="text-lg sm:text-xl font-black font-headline text-white mb-1.5"
+            >
+              {t.title}
+            </h2>
+            <p className="text-white/80 font-medium text-xs sm:text-sm leading-relaxed">
               {t.heroMain}
             </p>
-            <p className="hidden md:block text-white/50 text-xs mt-1 font-medium">
+            <p className="text-white/45 text-[11px] sm:text-xs mt-2 font-medium">
               {t.heroSub}
             </p>
           </div>
         </div>
 
-        {/* Expandable Customization Panel - scrollable on mobile */}
+        {/* Expandable Customization Panel — flex-grow scrollable region
+            so it never pushes the action buttons out of the modal. */}
         {isExpanded && (
-            <div className="overflow-hidden flex-shrink-0">
-              <div className="mb-4 md:mb-6 p-3 md:p-6 bg-white/5 rounded-lg md:rounded-xl border border-white/10 overflow-y-auto max-h-[40vh] md:max-h-none">
+            <div className="overflow-hidden flex-1 min-h-0 flex flex-col">
+              <div className="mb-4 p-3 md:p-5 bg-white/5 rounded-xl border border-white/10 overflow-y-auto flex-1 min-h-0">
                 <h3 className="text-base md:text-lg font-black font-headline mb-3 md:mb-4 text-white">
                   {t.preferencesTitle}
                 </h3>
@@ -203,61 +233,62 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize, onRe
           )}
 
         {/* Action Buttons.
-            Three buttons of equal weight: Customize (secondary), Reject All
-            (secondary), Accept All (primary).  EDPB Guidelines 03/2022 and
-            CNIL guidance require that rejecting be as easy as accepting —
-            same level of visual prominence + same number of clicks.  When
-            the panel is expanded, "Accept All" becomes "Save Preferences"
-            (commits whatever the user has toggled). */}
-        <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full flex-shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-lg font-black text-xs md:text-sm text-white/85 bg-white/5 hover:bg-white/10 border-2 border-white/15 hover:border-white/25 transition-all flex items-center justify-center gap-1.5 md:gap-2"
-          >
-            {isExpanded ? (
-              <>
-                <ChevronUp size={16} className="md:hidden" aria-hidden="true" />
-                <ChevronUp size={18} className="hidden md:block" aria-hidden="true" />
-                {t.less}
-              </>
-            ) : (
-              <>
-                <ChevronDown size={16} className="md:hidden" aria-hidden="true" />
-                <ChevronDown size={18} className="hidden md:block" aria-hidden="true" />
-                {t.customize}
-              </>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onReject()}
-            className="px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-lg font-black text-xs md:text-sm text-white bg-white/10 hover:bg-white/15 border-2 border-white/25 hover:border-white/35 transition-all flex items-center justify-center gap-2"
-          >
-            <X size={16} aria-hidden="true" />
-            {t.rejectAll}
-          </button>
-
+            Accept All is the primary full-width CTA. Reject All sits
+            directly beside Customize with equal visual weight and the
+            same single-click cost — EDPB Guidelines 03/2022 + CNIL
+            guidance require that rejecting be as easy as accepting.
+            When the panel is expanded, "Accept All" becomes
+            "Save Preferences" (commits whatever the user has toggled). */}
+        <div className="flex flex-col gap-2.5 w-full flex-shrink-0">
           {isExpanded ? (
             <button
               type="button"
               onClick={() => handleSavePreferences()}
-              className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-lg font-black text-xs md:text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
+              className="signature-gradient w-full px-6 py-3.5 rounded-xl font-black text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
             >
-              <Check size={16} aria-hidden="true" />
+              <Check size={18} aria-hidden="true" />
               {t.savePreferences}
             </button>
           ) : (
             <button
               type="button"
               onClick={() => onAccept()}
-              className="signature-gradient px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-lg font-black text-xs md:text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
+              className="signature-gradient w-full px-6 py-3.5 rounded-xl font-black text-sm text-white shadow-[0_8px_30px_rgba(139,92,246,0.45)] hover:shadow-[0_12px_40px_rgba(139,92,246,0.6)] transition-shadow flex items-center justify-center gap-2"
             >
-              <Check size={16} aria-hidden="true" />
+              <Check size={18} aria-hidden="true" />
               {t.acceptAll}
             </button>
           )}
+
+          <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={() => onReject()}
+              className="flex-1 px-4 py-3.5 rounded-xl font-black text-sm text-white bg-white/10 hover:bg-white/15 border-2 border-white/25 hover:border-white/35 transition-all flex items-center justify-center gap-2"
+            >
+              <X size={16} aria-hidden="true" />
+              {t.rejectAll}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              aria-expanded={isExpanded}
+              className="flex-1 px-4 py-3.5 rounded-xl font-black text-sm text-white/85 bg-white/5 hover:bg-white/10 border-2 border-white/15 hover:border-white/25 transition-all flex items-center justify-center gap-1.5"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp size={16} aria-hidden="true" />
+                  {t.less}
+                </>
+              ) : (
+                <>
+                  <ChevronDown size={16} aria-hidden="true" />
+                  {t.customize}
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

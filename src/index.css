@@ -721,6 +721,40 @@ html[dir="rtl"] .rtl-flip {
   animation-name: fade-in;
 }
 
+/* Cookie banner entrance — backdrop fades in, modal slides + scales up.
+   Defined here (not via motion/react) to keep the consent banner off
+   the cold-paint dependency chain; see CookieBanner.tsx. */
+@keyframes cookie-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cookie-backdrop-in {
+  animation: cookie-backdrop-in 0.3s ease-out forwards;
+}
+
+@keyframes cookie-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cookie-modal-in {
+  animation: cookie-modal-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cookie-backdrop-in,
+  .cookie-modal-in {
+    animation: none;
+  }
+}
+
 /* Glass panel effect for overlays and cards */
 .glass-panel {
   background: rgba(255, 245, 238, 0.7);

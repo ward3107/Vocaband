@@ -12,6 +12,7 @@ import type { Language } from "../hooks/useLanguage";
 
 export interface CookieBannerStrings {
   // Header copy
+  title: string;
   heroMain: string;
   heroSub: string;
 
@@ -40,6 +41,7 @@ export interface CookieBannerStrings {
 
 export const cookieBannerT: Record<Language, CookieBannerStrings> = {
   en: {
+    title: "Your privacy, your choice",
     heroMain: "We use cookies to enhance your learning experience. Choose how you'd like us to use them — analytics and functional cookies are off by default until you accept.",
     heroSub: "EU-hosted • No third-party trackers • You can change this anytime in Privacy Settings.",
     preferencesTitle: "Cookie Preferences",
@@ -58,6 +60,7 @@ export const cookieBannerT: Record<Language, CookieBannerStrings> = {
     privacyPolicyLink: "Read full Privacy Policy",
   },
   he: {
+    title: "הפרטיות שלכם, הבחירה שלכם",
     heroMain: "אנו משתמשים בעוגיות כדי לשפר את חוויית הלמידה. בחרו איך תרצו שנשתמש בהן — עוגיות אנליטיקה ופונקציונליות כבויות כברירת מחדל עד שתאשרו.",
     heroSub: "אירוח באירופה • ללא מעקבי צד שלישי • אפשר לשנות בכל עת בהגדרות הפרטיות.",
     preferencesTitle: "העדפות עוגיות",
@@ -76,6 +79,7 @@ export const cookieBannerT: Record<Language, CookieBannerStrings> = {
     privacyPolicyLink: "קראו את מדיניות הפרטיות המלאה",
   },
   ar: {
+    title: "خصوصيتك، اختيارك",
     heroMain: "نستخدم ملفات تعريف الارتباط لتحسين تجربة التعلّم. اختر كيف نستخدمها — ملفات التحليلات والملفات الوظيفية مُعطّلة افتراضيًا حتى توافق عليها.",
     heroSub: "مستضاف في أوروبا • لا متتبّعات طرف ثالث • يمكنك التغيير في أي وقت من إعدادات الخصوصية.",
     preferencesTitle: "تفضيلات ملفات تعريف الارتباط",
@@ -94,6 +98,7 @@ export const cookieBannerT: Record<Language, CookieBannerStrings> = {
     privacyPolicyLink: "اقرأ سياسة الخصوصية الكاملة",
   },
   ru: {
+    title: "Ваша приватность — ваш выбор",
     heroMain: "Мы используем куки, чтобы улучшить ваш опыт обучения. Выберите, как мы будем их использовать — аналитические и функциональные куки отключены по умолчанию, пока вы не согласитесь.",
     heroSub: "Хостинг в ЕС • Без сторонних трекеров • Это можно изменить в настройках конфиденциальности в любой момент.",
     preferencesTitle: "Настройки куки",
