@@ -46,9 +46,11 @@ interface VocaPickerViewProps {
   /** Called when the teacher taps a card.  App.tsx persists the
    *  choice for this session and routes into the right dashboard. */
   onPickVoca: (voca: VocaId) => void;
+  /** Admin-only: open the Developer Dashboard (cost, entitlements, health). */
+  onOpenDeveloper?: () => void;
 }
 
-export default function VocaPickerView({ user, onPickVoca }: VocaPickerViewProps) {
+export default function VocaPickerView({ user, onPickVoca, onOpenDeveloper }: VocaPickerViewProps) {
   const { dir } = useLanguage();
   const entitled = getEntitledVocas(user);
   const cards = VOCA_CARDS.filter((c) => entitled.includes(c.id));
@@ -111,6 +113,21 @@ export default function VocaPickerView({ user, onPickVoca }: VocaPickerViewProps
             </motion.button>
           ))}
         </div>
+
+        {onOpenDeveloper && (
+          <motion.button
+            type="button"
+            onClick={onOpenDeveloper}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            whileTap={{ scale: 0.97 }}
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            className="mt-8 mx-auto flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-bold text-sm transition-all"
+          >
+            🛠️ Developer Dashboard
+          </motion.button>
+        )}
       </div>
     </div>
   );
