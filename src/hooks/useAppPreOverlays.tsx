@@ -36,9 +36,6 @@ export interface UseAppPreOverlaysDeps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleCookieCustomize: any;
   handleCookieReject: () => void;
-  /** Opens the public Privacy Policy view from inside the cookie
-   *  banner's customize panel. */
-  onCookiePrivacyPolicy?: () => void;
   qpResumeSuppress: boolean;
   ocrPendingFile: { file: File; inputRef: React.ChangeEvent<HTMLInputElement> | null } | null;
   setOcrPendingFile: React.Dispatch<
@@ -63,7 +60,6 @@ export function useAppPreOverlays(deps: UseAppPreOverlaysDeps): AppPreOverlays {
             onAccept={deps.handleCookieAccept}
             onCustomize={deps.handleCookieCustomize}
             onReject={deps.handleCookieReject}
-            onPrivacyPolicy={deps.onCookiePrivacyPolicy}
           />
         </Suspense>
       )}

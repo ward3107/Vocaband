@@ -900,7 +900,6 @@ export default function App() {
   // pill / OCR crop modal / config-error banner).  See useAppPreOverlays.
   const { cookieBannerOverlay, ocrCropModal, configErrorBanner } = useAppPreOverlays({
     user, showCookieBanner, handleCookieAccept, handleCookieCustomize, handleCookieReject,
-    onCookiePrivacyPolicy: () => handlePublicNavigate("privacy"),
     qpResumeSuppress, ocrPendingFile, setOcrPendingFile, processOcrFile,
   });
 
