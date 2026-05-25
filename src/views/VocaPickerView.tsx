@@ -9,7 +9,7 @@
  * "which Voca am I working in this session?".
  */
 import { motion } from "motion/react";
-import type { AppUser } from "../core/supabase";
+import { performUserLogout, type AppUser } from "../core/supabase";
 import { getEntitledVocas, type VocaId } from "../core/subject";
 import { useLanguage } from "../hooks/useLanguage";
 
@@ -114,20 +114,34 @@ export default function VocaPickerView({ user, onPickVoca, onOpenDeveloper }: Vo
           ))}
         </div>
 
-        {onOpenDeveloper && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mt-8 flex flex-wrap items-center justify-center gap-3"
+        >
+          {onOpenDeveloper && (
+            <motion.button
+              type="button"
+              onClick={onOpenDeveloper}
+              whileTap={{ scale: 0.97 }}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-bold text-sm transition-all"
+            >
+              🛠️ Developer Dashboard
+            </motion.button>
+          )}
+
           <motion.button
             type="button"
-            onClick={onOpenDeveloper}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
+            onClick={() => performUserLogout()}
             whileTap={{ scale: 0.97 }}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="mt-8 mx-auto flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-bold text-sm transition-all"
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-bold text-sm transition-all"
           >
-            🛠️ Developer Dashboard
+            🚪 Log out
           </motion.button>
-        )}
+        </motion.div>
       </div>
     </div>
   );
