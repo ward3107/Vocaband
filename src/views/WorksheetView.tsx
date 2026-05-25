@@ -645,6 +645,7 @@ export default function WorksheetView({
               setShareSource({
                 topicName: title.trim() || 'Vocabulary worksheet',
                 wordIds: wordsForSheet.map((w) => w.id),
+                words: wordsForSheet,
               })
             }
             disabled={wordsForSheet.length === 0}
