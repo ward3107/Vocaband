@@ -123,7 +123,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION public.check_user_update_allowed IS
-  'TRUE only if role, class_code, plan, trial_ends_at AND school_id on the proposed row match the existing values for this uid -- i.e. the caller is not self-promoting or self-assigning to a (paid) school. Used by the users_update RLS WITH CHECK. service_role bypasses RLS, so Stripe/admin/operator writes are unaffected.';
+  'TRUE only if role, class_code, plan, trial_ends_at AND school_id on the proposed row match the existing values for this uid -- i.e. the caller is not self-promoting or self-assigning to a (paid) school. Used by the users_update RLS WITH CHECK. service_role bypasses RLS, so operator/admin writes are unaffected.';
 
 CREATE POLICY users_update ON public.users
   AS PERMISSIVE FOR UPDATE TO public
@@ -141,7 +141,7 @@ CREATE POLICY users_update ON public.users
   );
 
 COMMENT ON POLICY users_update ON public.users IS
-  'Owner may edit own row; admins may edit any. Caller cannot self-change role, class_code, plan, trial_ends_at, or school_id -- all pinned by check_user_update_allowed. School assignment + paywall changes go through service_role (operator/admin/Stripe), which bypasses RLS.';
+  'Owner may edit own row; admins may edit any. Caller cannot self-change role, class_code, plan, trial_ends_at, or school_id -- all pinned by check_user_update_allowed. School assignment + paywall changes are set on service_role only (the operator does it manually -- there is no automatic payment integration), which bypasses RLS.';
 
 -- ─── 4. Forbid self-assigning a school on INSERT ────────────────────
 -- A fresh sign-up must not stamp itself into a school (which would inherit that
@@ -163,7 +163,7 @@ CREATE POLICY users_insert ON public.users
   );
 
 COMMENT ON POLICY users_insert ON public.users IS
-  'Sign-up may only create a Free-tier row, a trial ending within 31 days, and NO school_id. Longer trials, paid plans, and school assignment must be set by service_role (operator/admin/Stripe).';
+  'Sign-up may only create a Free-tier row, a trial ending within 31 days, and NO school_id. Longer trials, paid plans, and school assignment must be set by service_role (the operator, manually).';
 
 COMMIT;
 

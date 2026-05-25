@@ -23,10 +23,13 @@ export type EffectivePlan = "free" | "pro" | "school";
 /**
  * What plan should this teacher experience RIGHT NOW?
  *
- * - `school` if the school explicitly bought a license for them
- * - `pro` if they paid OR they're inside the 30-day trial window
  * - `pro` if their email is in the developer allowlist (DEV_EMAILS)
  * - `pro` if they have the `admin` role (developer / operator)
+ * - `school` if their own plan is a school license, OR they belong to a school
+ *   whose license is active (a paid school or an unexpired school-wide trial) —
+ *   "whole school = all Pro", mirrors is_pro_or_trialing() in the DB and
+ *   requireProTeacher on the server
+ * - `pro` if they paid OR they're inside their own 30-day trial window
  * - `free` otherwise
  *
  * Students always read as `free` — plan only applies to teachers,
@@ -41,6 +44,16 @@ export function getEffectivePlan(user: AppUser | null | undefined): EffectivePla
   if (user.role === "admin") return "pro";
   if (user.role !== "teacher") return "free";
   if (user.plan === "school") return "school";
+  // Whole-school license: a teacher in a paid school (or one on a school-wide
+  // trial) inherits Pro even when their own plan is free. schoolPlan /
+  // schoolTrialEndsAt are attached at load time by fetchUserProfile.
+  if (user.schoolPlan === "school") return "school";
+  if (
+    user.schoolTrialEndsAt &&
+    new Date(user.schoolTrialEndsAt).getTime() > Date.now()
+  ) {
+    return "school";
+  }
   if (user.plan === "pro") return "pro";
   if (user.trialEndsAt && new Date(user.trialEndsAt).getTime() > Date.now()) {
     return "pro";
