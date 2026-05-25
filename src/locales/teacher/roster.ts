@@ -89,6 +89,9 @@ export interface ClassRosterStrings {
   sharePinTitle: string;
   shareLinkAria: (name: string) => string;
   sharePinAria: (name: string) => string;
+  // Click-to-copy the bare PIN chip
+  copyPinTitle: string;
+  copyPinAria: (name: string) => string;
   // Share-sheet body templates
   inviteShareTitle: (className: string) => string;
   inviteShareMessage: (studentName: string, className: string, url: string) => string;
@@ -154,6 +157,8 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     sharePinTitle: "Share PIN (separately!)",
     shareLinkAria: (name) => `Share invite link for ${name}`,
     sharePinAria: (name) => `Share PIN for ${name}`,
+    copyPinTitle: "Copy PIN",
+    copyPinAria: (name) => `Copy PIN for ${name}`,
     inviteShareTitle: (className) => `Vocaband — ${className}`,
     inviteShareMessage: (studentName, className, url) =>
       `Hi ${studentName}! Your Vocaband class "${className}" is waiting 🎮\nTap to join: ${url}\nYour teacher will share your secret PIN separately.`,
@@ -220,6 +225,8 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     sharePinTitle: "שיתוף PIN (בנפרד!)",
     shareLinkAria: (name) => `שיתוף קישור הצטרפות עבור ${name}`,
     sharePinAria: (name) => `שיתוף PIN עבור ${name}`,
+    copyPinTitle: "העתק PIN",
+    copyPinAria: (name) => `העתק PIN עבור ${name}`,
     inviteShareTitle: (className) => `Vocaband — ${className}`,
     inviteShareMessage: (studentName, className, url) =>
       `Hi ${studentName}! Your Vocaband class "${className}" is waiting 🎮\nTap to join: ${url}\nYour teacher will share your secret PIN separately.`,
@@ -286,6 +293,8 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     sharePinTitle: "مشاركة PIN (بشكل منفصل!)",
     shareLinkAria: (name) => `مشاركة رابط الانضمام لـ ${name}`,
     sharePinAria: (name) => `مشاركة PIN لـ ${name}`,
+    copyPinTitle: "نسخ PIN",
+    copyPinAria: (name) => `نسخ PIN لـ ${name}`,
     inviteShareTitle: (className) => `Vocaband — ${className}`,
     inviteShareMessage: (studentName, className, url) =>
       `Hi ${studentName}! Your Vocaband class "${className}" is waiting 🎮\nTap to join: ${url}\nYour teacher will share your secret PIN separately.`,
@@ -349,6 +358,8 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     sharePinTitle: "Share PIN (separately!)",
     shareLinkAria: (name) => `Share invite link for ${name}`,
     sharePinAria: (name) => `Share PIN for ${name}`,
+    copyPinTitle: "Copy PIN",
+    copyPinAria: (name) => `Copy PIN for ${name}`,
     inviteShareTitle: (className) => `Vocaband — ${className}`,
     inviteShareMessage: (studentName, className, url) =>
       `Hi ${studentName}! Your Vocaband class "${className}" is waiting 🎮\nTap to join: ${url}\nYour teacher will share your secret PIN separately.`,

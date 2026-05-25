@@ -67,6 +67,9 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [allRevealed, setAllRevealed] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
+  // Tracks which student's PIN was just copied via the click-to-copy
+  // PIN chip, so that row shows a brief checkmark.  Null when none.
+  const [copiedPinId, setCopiedPinId] = useState<string | null>(null);
   // Set when the per-row Share button copied to the clipboard (because
   // navigator.share was unavailable or the user dismissed it).  Drives
   // the brief "Copied — paste it into a message" toast.
@@ -259,6 +262,22 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
     try {
       await navigator.clipboard.writeText(text);
       flashCopied();
+    } catch {
+      setError(t.shareFailedToast);
+    }
+  };
+
+  // Click-to-copy a single PIN.  Copies ONLY the bare PIN (not the full
+  // share message) so the teacher can paste it wherever they like.  The
+  // PIN is only clickable once revealed, so this never leaks a hidden
+  // PIN to the clipboard by accident.
+  const handleCopyPin = async (s: RosterStudent) => {
+    if (!s.pin) return;
+    setError(null);
+    try {
+      await navigator.clipboard.writeText(s.pin);
+      setCopiedPinId(s.id);
+      setTimeout(() => setCopiedPinId(prev => (prev === s.id ? null : prev)), 1800);
     } catch {
       setError(t.shareFailedToast);
     }
@@ -537,12 +556,17 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                           <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                             {s.pin ? (
                               isRevealed ? (
-                                <span
-                                  className="font-mono font-black text-base tracking-[0.15em] px-3 py-1.5 rounded-lg select-all"
+                                <button
+                                  onClick={() => handleCopyPin(s)}
+                                  type="button"
+                                  title={t.copyPinTitle}
+                                  aria-label={t.copyPinAria(s.displayName)}
+                                  className="font-mono font-black text-base tracking-[0.15em] px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5 hover:brightness-95 active:scale-[0.97] transition-all cursor-pointer"
                                   style={{ color: 'var(--vb-info)', backgroundColor: 'var(--vb-info-soft)' }}
                                 >
+                                  {copiedPinId === s.id ? <Check size={13} /> : <Copy size={13} />}
                                   {s.pin}
-                                </span>
+                                </button>
                               ) : (
                                 <button
                                   onClick={() => toggleReveal(s.id)}
