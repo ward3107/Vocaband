@@ -1,0 +1,140 @@
+import { useCallback, useEffect, useState } from "react";
+import { RefreshCw, GitCommit, Clock, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
+import { supabase } from "../../core/supabase";
+
+interface VersionInfo {
+  commit: string;
+  nodeEnv: string;
+  uptimeSeconds: number;
+  env: Record<string, boolean>;
+  timestamp: string;
+}
+
+// Provider consoles for the stack documented in CLAUDE.md — navigation only.
+const CONSOLES: { label: string; url: string }[] = [
+  { label: "Supabase", url: "https://supabase.com/dashboard/projects" },
+  { label: "Cloudflare", url: "https://dash.cloudflare.com" },
+  { label: "Fly.io", url: "https://fly.io/dashboard" },
+  { label: "Vercel", url: "https://vercel.com/dashboard" },
+];
+
+const ENV_LABELS: Record<string, string> = {
+  hasAnthropicKey: "Anthropic key",
+  hasSupabaseUrl: "Supabase URL",
+  hasSupabaseServiceKey: "Supabase service key",
+  hasAllowedOrigin: "Allowed origin",
+};
+
+function uptime(secs: number): string {
+  const d = Math.floor(secs / 86400);
+  const h = Math.floor((secs % 86400) / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+export default function DevInfraPanel() {
+  const [version, setVersion] = useState<VersionInfo | null>(null);
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const v = await fetch("/api/version").then((r) => r.json());
+      setVersion(v as VersionInfo);
+    } catch {
+      setVersion(null);
+    }
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const f = await fetch("/api/features", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }).then((r) => r.json());
+      setAiEnabled(!!(f as { aiSentences?: boolean }).aiSentences);
+    } catch {
+      setAiEnabled(null);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data-fetch effect; matches existing convention (AdminSecurityView etc.)
+    void refresh();
+  }, [refresh]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-sm font-bold flex items-center gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+        </button>
+      </div>
+
+      <div className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-3">
+        <div className="flex items-center gap-2 text-white/80 font-black text-sm">
+          <GitCommit className="w-4 h-4" /> Deployment
+        </div>
+        {version ? (
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <span className="text-white/40">Commit</span>
+            <span className="text-white font-mono truncate">{version.commit}</span>
+            <span className="text-white/40">Env</span>
+            <span className="text-white font-bold">{version.nodeEnv}</span>
+            <span className="text-white/40 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Uptime</span>
+            <span className="text-white font-bold">{uptime(version.uptimeSeconds)}</span>
+          </div>
+        ) : (
+          <p className="text-white/40 text-sm">Version endpoint unreachable.</p>
+        )}
+      </div>
+
+      <div className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-3">
+        <div className="text-white/80 font-black text-sm">Server config</div>
+        <div className="flex flex-wrap gap-2">
+          {version &&
+            Object.entries(version.env).map(([k, v]) => (
+              <span
+                key={k}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                  v ? "bg-emerald-500/15 text-emerald-200" : "bg-rose-500/15 text-rose-200"
+                }`}
+              >
+                {v ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                {ENV_LABELS[k] ?? k}
+              </span>
+            ))}
+          {aiEnabled !== null && (
+            <span
+              className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                aiEnabled ? "bg-emerald-500/15 text-emerald-200" : "bg-white/10 text-white/50"
+              }`}
+            >
+              {aiEnabled ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+              AI features (you)
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {CONSOLES.map((c) => (
+          <a
+            key={c.label}
+            href={c.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 p-4 flex items-center justify-between text-white font-bold text-sm"
+          >
+            {c.label}
+            <ExternalLink className="w-4 h-4 text-white/40" />
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
