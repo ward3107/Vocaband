@@ -12,7 +12,6 @@ export interface DevOverview {
   admins: number;
   classes: number;
   schools: number;
-  signups_7d: number;
   ai_cost_micro_today: number;
   ai_cost_micro_7d: number;
   ai_cost_micro_30d: number;

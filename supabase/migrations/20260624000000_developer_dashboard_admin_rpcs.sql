@@ -55,8 +55,25 @@ SET search_path = pg_catalog, public, auth
 AS $$
 DECLARE
   result JSONB;
+  v_cost_today BIGINT := 0;
+  v_cost_7d    BIGINT := 0;
+  v_cost_30d   BIGINT := 0;
+  v_calls_30d  BIGINT := 0;
 BEGIN
   PERFORM public.assert_admin();
+
+  -- ai_usage_counters may not be deployed yet (its migration is independent).
+  -- plpgsql plans this block lazily, so the guard keeps us from referencing a
+  -- missing relation; absence simply yields zero spend.
+  IF to_regclass('public.ai_usage_counters') IS NOT NULL THEN
+    SELECT
+      COALESCE(sum(cost_micro_usd) FILTER (WHERE day_bucket = current_date), 0),
+      COALESCE(sum(cost_micro_usd) FILTER (WHERE day_bucket > current_date - 7), 0),
+      COALESCE(sum(cost_micro_usd) FILTER (WHERE day_bucket > current_date - 30), 0),
+      COALESCE(sum(count)          FILTER (WHERE day_bucket > current_date - 30), 0)
+    INTO v_cost_today, v_cost_7d, v_cost_30d, v_calls_30d
+    FROM public.ai_usage_counters;
+  END IF;
 
   SELECT jsonb_build_object(
     'teachers',  (SELECT count(*) FROM public.users WHERE role = 'teacher'),
@@ -65,16 +82,10 @@ BEGIN
     'admins',    (SELECT count(*) FROM public.users WHERE role = 'admin'),
     'classes',   (SELECT count(*) FROM public.classes),
     'schools',   (SELECT count(*) FROM public.schools),
-    'signups_7d',(SELECT count(*) FROM public.users
-                  WHERE created_at IS NOT NULL AND created_at > now() - interval '7 days'),
-    'ai_cost_micro_today', COALESCE((SELECT sum(cost_micro_usd) FROM public.ai_usage_counters
-                  WHERE day_bucket = current_date), 0),
-    'ai_cost_micro_7d',    COALESCE((SELECT sum(cost_micro_usd) FROM public.ai_usage_counters
-                  WHERE day_bucket > current_date - 7), 0),
-    'ai_cost_micro_30d',   COALESCE((SELECT sum(cost_micro_usd) FROM public.ai_usage_counters
-                  WHERE day_bucket > current_date - 30), 0),
-    'ai_calls_30d',        COALESCE((SELECT sum(count) FROM public.ai_usage_counters
-                  WHERE day_bucket > current_date - 30), 0)
+    'ai_cost_micro_today', v_cost_today,
+    'ai_cost_micro_7d',    v_cost_7d,
+    'ai_cost_micro_30d',   v_cost_30d,
+    'ai_calls_30d',        v_calls_30d
   ) INTO result;
 
   RETURN result;
@@ -96,6 +107,17 @@ DECLARE
   v_since DATE := current_date - v_days;
 BEGIN
   PERFORM public.assert_admin();
+
+  -- See admin_dashboard_overview: degrade to empty breakdowns when the
+  -- ai_usage_counters table isn't deployed yet.
+  IF to_regclass('public.ai_usage_counters') IS NULL THEN
+    RETURN jsonb_build_object(
+      'days', v_days,
+      'by_day', '[]'::jsonb,
+      'by_action', '[]'::jsonb,
+      'top_teachers', '[]'::jsonb
+    );
+  END IF;
 
   SELECT jsonb_build_object(
     'days', v_days,
