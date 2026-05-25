@@ -13,6 +13,13 @@
 CREATE TABLE IF NOT EXISTS public.schools (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name        TEXT NOT NULL CHECK (char_length(name) > 0 AND char_length(name) < 200),
+  -- Billing: 'free' = no license (members keep their own plan); 'school' = an
+  -- active license that makes every member user Pro, derived through
+  -- is_pro_or_trialing().  trial_ends_at gives an optional school-wide Pro
+  -- trial.  Operator/service-role only -- schools has no client write policy.
+  -- See migration 20260624000000_school_license_propagates_pro.sql.
+  plan          TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'school')),
+  trial_ends_at TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

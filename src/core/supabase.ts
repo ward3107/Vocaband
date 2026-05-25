@@ -203,6 +203,17 @@ export interface AppUser {
    *  by their class).  Drives the manager dashboard's tenant scope.  See
    *  migration 20260623000000_school_manager.sql. */
   schoolId?: string | null;
+  /** Plan of the school this user belongs to, fetched alongside the user at
+   *  load time (see fetchUserProfile). Lets getEffectivePlan() grant Pro to
+   *  every teacher in a paid school WITHOUT touching the teacher's own plan.
+   *  undefined when the user has no school, or when the school billing columns
+   *  aren't readable yet (e.g. before the migration is applied) — in which case
+   *  the teacher just falls back to their own plan. The server enforces the
+   *  real entitlement regardless, so this is a UI convenience only. */
+  schoolPlan?: 'free' | 'school' | null;
+  /** School-wide Pro trial expiry, when the school is trialing rather than on a
+   *  paid license. While > now(), every member reads as Pro. */
+  schoolTrialEndsAt?: string | null;
   // (Parent Weekly Digest fields lived here until 2026-05-18 — removed
   // alongside the schema in migration
   // 20260618000000_drop_parent_digest_stub.sql.)
@@ -427,11 +438,41 @@ export async function fetchUserProfile(
       .select(USER_COLUMNS)
       .eq('uid', uid)
       .maybeSingle();
-    if (userRow) return mapUser(userRow);
+    if (userRow) {
+      const user = mapUser(userRow);
+      await attachSchoolPlan(user);
+      return user;
+    }
     if (!error) return null;
     if (attempt < retries) await new Promise((r) => setTimeout(r, 500));
   }
   return null;
+}
+
+/**
+ * If the user belongs to a school, fetch that school's plan + trial and stash
+ * them on the user so getEffectivePlan() can grant Pro to every teacher in a
+ * paid school. Best-effort: any error — including the billing columns not
+ * existing yet, before migration 20260624000000 is applied — leaves the fields
+ * unset and the teacher falls back to their own plan. The server still enforces
+ * the real entitlement, so this is purely a UI convenience and must never break
+ * the login path. RLS lets a user read their own school row (schools_select).
+ */
+async function attachSchoolPlan(user: AppUser): Promise<void> {
+  if (!user.schoolId) return;
+  try {
+    const { data, error } = await supabase
+      .from('schools')
+      .select('plan,trial_ends_at')
+      .eq('id', user.schoolId)
+      .maybeSingle();
+    if (!error && data) {
+      user.schoolPlan = (data.plan as 'free' | 'school' | null) ?? null;
+      user.schoolTrialEndsAt = (data.trial_ends_at as string | null) ?? null;
+    }
+  } catch {
+    // best-effort only — ignore and fall back to the user's own plan
+  }
 }
 
 export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {

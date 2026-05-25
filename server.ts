@@ -17,6 +17,11 @@ import { installScrubbingConsole, redactEmail } from "./src/utils/serverLog";
 // of truth for what counts as PII.  Closes audit finding C-2.
 installScrubbingConsole();
 
+// Shape of the embedded `schools(plan, trial_ends_at)` relation on a users
+// row (service-role select). Used by the Pro gates to inherit a school's
+// license — see is_pro_or_trialing() / migration 20260624000000.
+type SchoolPlanRel = { plan?: string | null; trial_ends_at?: string | null };
+
 // Sentry init — must run BEFORE other modules so the SDK can patch them.
 // Stays disabled in dev (no DSN set locally). Tracing is off to stay
 // within the free-tier 10k events/month budget; flip tracesSampleRate
@@ -2695,7 +2700,7 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     try {
       const { data, error } = await supabaseAdmin
         .from("users")
-        .select("plan, trial_ends_at, role, email")
+        .select("plan, trial_ends_at, role, email, schools(plan, trial_ends_at)")
         .eq("uid", baseAuth.uid)
         .maybeSingle();
       if (error || !data) {
@@ -2711,7 +2716,16 @@ ${JSON.stringify(uncachedOriginalCase)}`;
       const trialEndsAt = data.trial_ends_at as string | null;
       const role = data.role as string | null;
       const email = data.email as string | null;
-      const isPaid = plan === "pro" || plan === "school";
+      // Whole-school license: a member of a paid (or school-trialing) school
+      // inherits Pro, mirroring the school branch in is_pro_or_trialing().
+      // Embedded via the schools(...) relation on the service-role select above.
+      const schoolRel = (data as { schools?: SchoolPlanRel | SchoolPlanRel[] | null }).schools ?? null;
+      const school = Array.isArray(schoolRel) ? schoolRel[0] : schoolRel;
+      const schoolPaid =
+        !!school &&
+        (school.plan === "school" ||
+          (!!school.trial_ends_at && new Date(school.trial_ends_at).getTime() > Date.now()));
+      const isPaid = plan === "pro" || plan === "school" || schoolPaid;
       const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
       const isAdmin = role === "admin";
       const isDev = isDevEmail(email);
@@ -3172,7 +3186,7 @@ Quality rules:
     }
     const { data: userRow, error: userErr } = await supabaseAdmin
       .from("users")
-      .select("plan, trial_ends_at, role, email")
+      .select("plan, trial_ends_at, role, email, schools(plan, trial_ends_at)")
       .eq("uid", authData.uid)
       .maybeSingle();
     if (userErr || !userRow) {
@@ -3187,7 +3201,15 @@ Quality rules:
     const plan = userRow.plan as "free" | "pro" | "school" | null;
     const trialEndsAt = userRow.trial_ends_at as string | null;
     const email = (userRow.email as string | null) ?? authData.email;
-    const isPaid = plan === "pro" || plan === "school";
+    // Whole-school license: a member of a paid (or school-trialing) school
+    // inherits Pro, mirroring the school branch in is_pro_or_trialing().
+    const schoolRel = (userRow as { schools?: SchoolPlanRel | SchoolPlanRel[] | null }).schools ?? null;
+    const school = Array.isArray(schoolRel) ? schoolRel[0] : schoolRel;
+    const schoolPaid =
+      !!school &&
+      (school.plan === "school" ||
+        (!!school.trial_ends_at && new Date(school.trial_ends_at).getTime() > Date.now()));
+    const isPaid = plan === "pro" || plan === "school" || schoolPaid;
     const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
     const isAdmin = role === "admin";
     const isDev = isDevEmail(email);
