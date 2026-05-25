@@ -4,7 +4,7 @@
 > continuity"). MoE vendor questionnaire asks for RTO/RPO targets and a
 > restore procedure. This doc is the answer.
 >
-> Last updated 2026-05-18.
+> Last updated 2026-05-25.
 
 ---
 
@@ -16,6 +16,11 @@
 | **RTO — Tier A** (read-only restore) | **≤ 4 hours** | Within 4 h we can have a read-only Supabase clone live for forensic / lawyer access. |
 | **RTO — Tier B** (full service back) | **≤ 24 hours** | Within 24 h teachers + students can log in and resume play on the restored database. |
 | **RTO — Tier C** (full feature parity, including AI features) | **≤ 72 hours** | Within 72 h every endpoint (OCR, Gemini sentence gen, etc.) is back. |
+
+> **RPO caveat:** the ≤ 24 h figure assumes Supabase's own daily backups
+> are usable (Scenarios A–D). In the catastrophic case where the entire
+> Supabase project is lost (Scenario E), recovery falls back to the weekly
+> off-site R2 backup, so RPO there is **≤ 7 days**.
 
 These targets are deliberately conservative for our scale (≤10k users).
 Tighter targets would require Supabase Pro PITR + hot-standby Fly.io
@@ -95,15 +100,34 @@ which doubles infra cost. Revisit when paid traffic begins.
 
 ### Scenario E — Complete loss of Supabase project (account closure, mass deletion)
 
-This is the worst case. Mitigation depends on having an off-Supabase backup.
+This is the worst case — and it is now covered by an off-Supabase backup.
 
-**Currently:** Supabase backups live on Supabase. If Supabase loses the project entirely (account closure, billing dispute, region failure), backups are also gone.
+**Mitigation (IMPLEMENTED):** `.github/workflows/backup-supabase-weekly.yml`
+runs every Sunday 03:00 UTC, `pg_dump`s the `public` + `auth` schemas
+(custom format), compresses, and uploads to the Cloudflare R2 bucket
+`vocaband-backups` under `db-backups/<year>/`, retained ~365 days. Because
+R2 is a separate provider, this survives total loss of the Supabase project.
+Storage objects are mirrored separately by `scripts/mirror-supabase-to-r2.ts`.
 
-**Mitigation (operator TODO):**
-- Schedule a weekly `pg_dump` to Cloudflare R2 (we already have an R2 bucket).
-- Script: `scripts/mirror-supabase-to-r2.ts` exists for storage; need a sibling script for the DB.
+**Recover:**
 
-**Until the off-Supabase backup exists, RTO for Scenario E is "we can't" — disclose this honestly in the MoE questionnaire.** Closing this gap is item #6 in `docs/OPERATOR-PLAYBOOK-MOE.md`.
+1. Create a fresh Supabase project.
+2. Run `scripts/restore-from-r2-backup.sh` with `SUPABASE_DB_URL_TARGET`
+   pointed at the new project. It auto-selects the latest R2 backup and its
+   built-in guard refuses a production-looking target.
+3. Cut over clients exactly as in Scenario A step 4 (update
+   `VITE_SUPABASE_URL`/`KEY` in Cloudflare, `SUPABASE_SERVICE_ROLE_KEY` on
+   Fly.io, and the `auth.vocaband.com` CNAME).
+
+**Caveat — confirm it is actually armed.** The workflow only runs once the
+one-time operator setup is done (5 GitHub Actions secrets + the
+`vocaband-backups` R2 bucket; see the checklist in the workflow header).
+Verify under repo → Actions → "Weekly Supabase backup → R2" that recent
+runs are green. Until that is confirmed, treat Scenario E recovery as
+unproven and disclose accordingly in the MoE questionnaire.
+
+**RPO for this scenario:** ≤ 7 days (weekly cadence), vs ≤ 24 h for the
+Supabase-native daily backups used in Scenarios A–D.
 
 ---
 
@@ -112,10 +136,11 @@ This is the worst case. Mitigation depends on having an off-Supabase backup.
 The plan only works if backups are real. Verify quarterly:
 
 1. **Supabase**: Dashboard → Database → Backups → confirm the most recent daily snapshot < 24 h old.
-2. **Restore drill** (every 6 months): trigger a restore into a *staging* project, verify a known row exists, then delete the staging project.
-3. **R2 storage**: confirm `scripts/mirror-supabase-to-r2.ts` ran in the last 7 days (audit the R2 bucket's last-modified timestamp).
-4. **Fly.io secrets**: confirm `fly secrets list -a vocaband` returns the expected key names (no missing, no extras).
-5. File results in `docs/postmortems/<YYYY-Q?>-dr-drill.md`.
+2. **Off-site DB backup**: confirm `.github/workflows/backup-supabase-weekly.yml` has a green run in the last 7 days (repo → Actions) and the latest object exists in R2 under `db-backups/<year>/`.
+3. **Restore drill** (every 6 months): trigger a restore into a *staging* project, verify a known row exists, then delete the staging project.
+4. **R2 storage**: confirm `scripts/mirror-supabase-to-r2.ts` ran in the last 7 days (audit the R2 bucket's last-modified timestamp).
+5. **Fly.io secrets**: confirm `fly secrets list -a vocaband` returns the expected key names (no missing, no extras).
+6. File results in `docs/postmortems/<YYYY-Q?>-dr-drill.md`.
 
 ---
 
@@ -153,12 +178,16 @@ the detailed factual report once you have it.
 
 | Gap | Risk | Plan |
 |---|---|---|
-| Off-Supabase DB backups | Catastrophic loss if Supabase loses the project | Add `scripts/backup-pg-to-r2.ts` cron (operator playbook §6) |
 | Multi-region Fly.io | Region outage = full service down | Defer — single-region is acceptable at our scale |
 | Real-time replication / hot-standby | Sub-minute RPO | Defer until MoE catalog requirement |
 | Tested production restore | RTO is theoretical, not measured | Run a Q1 drill on staging before claiming RTO in the MoE questionnaire |
 
-Disclose all four explicitly in the MoE vendor questionnaire — partial
+> The off-Supabase DB backup that used to sit here is now implemented
+> (`.github/workflows/backup-supabase-weekly.yml`, see Scenario E). It still
+> needs its one-time operator setup confirmed (GitHub secrets + R2 bucket)
+> and a real restore drill before its RTO is treated as proven.
+
+Disclose all three explicitly in the MoE vendor questionnaire — partial
 honesty beats overpromising.
 
 ---
