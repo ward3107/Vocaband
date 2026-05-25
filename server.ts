@@ -2747,6 +2747,108 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     }
   }
 
+  // Admin-only gate for the Developer Dashboard's server-side endpoints.
+  // Builds on requireAuthenticatedTeacher (which already allows teacher|admin)
+  // and narrows to role='admin'.
+  async function requireAdmin(req: express.Request, res: express.Response): Promise<{ uid: string } | null> {
+    const baseAuth = await requireAuthenticatedTeacher(req, res);
+    if (!baseAuth) return null;
+    if (!supabaseAdmin) {
+      res.status(503).json({ error: "Supabase not configured" });
+      return null;
+    }
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("users")
+        .select("role")
+        .eq("uid", baseAuth.uid)
+        .maybeSingle();
+      if (error || (data?.role as string | undefined) !== "admin") {
+        logAuthzFailure(req, req.originalUrl || req.url, "requireAdmin_not_admin", {
+          metadata: { uid: baseAuth.uid, observed_role: (data?.role as string) ?? null },
+        });
+        res.status(403).json({ error: "Forbidden" });
+        return null;
+      }
+      return baseAuth;
+    } catch (err) {
+      console.error("[requireAdmin] exception:", err);
+      res.status(500).json({ error: "Role lookup failed" });
+      return null;
+    }
+  }
+
+  // Real provider spend for the Developer Dashboard's "Live billing" card.
+  // Secrets live ONLY here (server-side env), never in the client bundle:
+  //   - ANTHROPIC_ADMIN_KEY  → Anthropic Usage & Cost Admin API
+  //   - (Google billing is not wired yet — needs a BigQuery billing export)
+  // Each provider returns {configured:false} when its key is absent, so the
+  // panel shows setup steps instead of a fake number.
+  async function fetchAnthropicCost(days: number): Promise<Record<string, unknown>> {
+    const key = process.env.ANTHROPIC_ADMIN_KEY;
+    if (!key) return { configured: false };
+    const ending = new Date();
+    const starting = new Date(ending.getTime() - days * 86_400_000);
+    const url = new URL("https://api.anthropic.com/v1/organizations/cost_report");
+    url.searchParams.set("starting_at", starting.toISOString());
+    url.searchParams.set("ending_at", ending.toISOString());
+    url.searchParams.set("bucket_width", "1d");
+    url.searchParams.set("limit", "31");
+    try {
+      const r = await fetch(url, {
+        headers: { "x-api-key": key, "anthropic-version": "2023-06-01" },
+      });
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        return { configured: true, ok: false, status: r.status, message: text.slice(0, 200) };
+      }
+      const body = await r.json();
+      // The cost report nests dollar amounts under result rows. We sum every
+      // numeric "amount" field rather than hard-coding the row shape, so this
+      // keeps working if the schema shifts. Validate against a live admin key.
+      let total = 0;
+      const walk = (n: unknown): void => {
+        if (n == null) return;
+        if (Array.isArray(n)) {
+          n.forEach(walk);
+          return;
+        }
+        if (typeof n === "object") {
+          for (const [k, v] of Object.entries(n as Record<string, unknown>)) {
+            if (k === "amount" && (typeof v === "string" || typeof v === "number")) {
+              const num = typeof v === "number" ? v : parseFloat(v);
+              if (!Number.isNaN(num)) total += num;
+            } else {
+              walk(v);
+            }
+          }
+        }
+      };
+      walk(body);
+      return { configured: true, ok: true, costUsd: Math.round(total * 100) / 100 };
+    } catch (err) {
+      return { configured: true, ok: false, message: (err as Error).message };
+    }
+  }
+
+  async function fetchGoogleCost(_days: number): Promise<Record<string, unknown>> {
+    // Real Gemini spend lives in Cloud Billing, queryable only through a
+    // BigQuery billing export + a service account — a heavier setup we haven't
+    // wired. Report not-configured so the panel shows the setup steps.
+    return {
+      configured: false,
+      reason: "Needs Cloud Billing → BigQuery export + service-account credentials",
+    };
+  }
+
+  app.get("/api/admin/provider-billing", async (req, res) => {
+    if (!(await requireAdmin(req, res))) return;
+    const parsed = parseInt(String(req.query.days ?? "30"), 10);
+    const days = Math.min(Math.max(Number.isFinite(parsed) ? parsed : 30, 1), 365);
+    const [anthropic, google] = await Promise.all([fetchAnthropicCost(days), fetchGoogleCost(days)]);
+    res.json({ days, anthropic, google });
+  });
+
   app.get("/api/ocr/status", async (req, res) => {
     if (!(await requireAuthenticatedTeacher(req, res))) return;
     const key = process.env.GOOGLE_AI_API_KEY || "";

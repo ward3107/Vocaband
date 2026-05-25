@@ -1388,8 +1388,10 @@ export default function QuickPlayMonitor({
 
       {/* ─── TopAppBar (glass header) ─────────────────────────────────────── */}
       <header className={`${t.headerBg} backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full sticky top-0 z-50 px-3 sm:px-8 py-2 sm:py-4 transition-colors duration-500`}>
-        {/* Top row: logo + theme dots */}
-        <div className="flex justify-between items-center">
+        {/* Top row: logo + theme dots.  Wraps on narrow phones so the
+            theme-picker pill drops to its own line instead of being
+            clipped off the right edge. */}
+        <div className="flex flex-wrap justify-between items-center gap-x-2 gap-y-2">
           <button
             onClick={() => {
               if (musicRef.current) { musicRef.current.stop(); musicRef.current.unload(); musicRef.current = null; }

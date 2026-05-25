@@ -37,6 +37,7 @@ const GlobalLeaderboardView = lazyWithRetry(() => import('./GlobalLeaderboardVie
 const TeacherApprovalsView = lazyWithRetry(() => import('./TeacherApprovalsView'));
 const AdminSecurityView = lazyWithRetry(() => import('./AdminSecurityView'));
 const ManagerConsoleView = lazyWithRetry(() => import('./ManagerConsoleView'));
+const DeveloperDashboardView = lazyWithRetry(() => import('./DeveloperDashboardView'));
 const WorksheetAttemptsView = lazyWithRetry(() => import('./WorksheetAttemptsView'));
 const ClassroomView = lazyWithRetry(() => import('./ClassroomView'));
 const LiveChallengeClassSelectView = lazyWithRetry(() => import('./LiveChallengeClassSelectView'));
@@ -130,6 +131,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
         <VocaPickerView
           user={user!}
           onPickVoca={(voca) => { setActiveVoca(voca); setView('teacher-dashboard'); }}
+          onOpenDeveloper={user?.role === 'admin' ? () => setView('developer-dashboard') : undefined}
         />
       </LazyWrapper>
     );
@@ -274,6 +276,17 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
     return (
       <LazyWrapper loadingMessage="Loading security log...">
         <AdminSecurityView setView={setView} />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'developer-dashboard') {
+    // Admin-only control hub. The view itself re-checks hasAdminAccess and the
+    // backing admin_* RPCs re-check is_admin() server-side, so a non-admin
+    // landing here sees the "admins only" gate, not data.
+    return (
+      <LazyWrapper loadingMessage="Loading developer dashboard...">
+        <DeveloperDashboardView user={user} setView={setView} showToast={showToast} />
       </LazyWrapper>
     );
   }

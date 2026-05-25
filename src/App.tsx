@@ -924,14 +924,6 @@ export default function App() {
     onPublicNavigate: handlePublicNavigate,
     onTeacherOAuth: () => navigateToTeacherLogin(setView),
     onStudentLogin: () => navigateToStudentLogin(setView),
-    onJoinWithCode: (code: string) => {
-      // Pre-seed the class-code state, then route to the student login.
-      // StudentAccountLoginView keeps a non-empty studentLoginClassCode
-      // rather than re-reading the URL, so this lands the student on the
-      // name picker with the code already filled.
-      setStudentLoginClassCode(code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20));
-      navigateToStudentLogin(setView);
-    },
     configErrorBanner,
     cookieBannerOverlay,
   });

@@ -40,6 +40,10 @@ export type View =
   // Admin-only audit dashboard for authz-failure events
   // (security-audit-framework module 02, item #11).
   | "admin-security"
+  // Admin-only Developer Dashboard — AI cost, entitlements (teacher/AI/plan/
+  // school), system health, and infra in one place. Backed by the admin RPCs
+  // in supabase/migrations/20260624000000_developer_dashboard_admin_rpcs.sql.
+  | "developer-dashboard"
   | "quick-play-setup"
   | "quick-play-teacher-monitor"
   | "quick-play-student"
