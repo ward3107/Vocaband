@@ -151,7 +151,10 @@ export default function StudentAccountLoginView({
     const chars = studentLoginClassCode.split('').slice(0, CODE_LENGTH);
     const caret = Math.min(chars.length, CODE_LENGTH - 1);
     return (
-      <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+      // Always LTR: a class code is alphanumeric and reads left-to-right
+      // even when the UI is Hebrew/Arabic. Without this the flex row
+      // inherits the page's RTL dir and the slots fill backwards.
+      <div dir="ltr" className="flex items-center justify-center gap-1.5 sm:gap-2">
         {Array.from({ length: CODE_LENGTH }).map((_, i) => {
           const ch = chars[i] ?? '';
           const isCaret = i === caret && ch === '';
