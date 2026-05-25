@@ -300,6 +300,21 @@ function canonicalizeHost(): boolean {
 // onAuthStateChange INITIAL_SESSION event fires with no session and the
 // teacher sees the landing page again (the infamous "login twice" bug).
 async function bootstrap() {
+  // Short class-join link fallback: the Worker normally 302-redirects
+  // /j/<CODE> → /student?class=<CODE> at the edge, but a cached SPA
+  // shell (offline / Service Worker) or the local dev server never hits
+  // the Worker.  Rewrite the path here before React reads the route so
+  // resolveInitialView + StudentAccountLoginView see the canonical
+  // ?class= form and pre-fill the code.
+  const joinMatch = window.location.pathname.match(/^\/j\/([A-Za-z0-9]{3,20})$/);
+  if (joinMatch) {
+    window.history.replaceState(
+      {},
+      '',
+      `/student?class=${encodeURIComponent(joinMatch[1].toUpperCase())}`,
+    );
+  }
+
   const params = new URLSearchParams(window.location.search);
   if (params.has('code')) {
     const { supabase } = await import('./core/supabase');

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Check, Copy, X, Link2, MessageCircle, Printer } from "lucide-react";
+import { Check, Copy, X, Link2, MessageCircle, Printer, GraduationCap, Users } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import type { Language } from "../hooks/useLanguage";
@@ -140,6 +140,19 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  // LMS share launchers.  Both Google Classroom and Microsoft Teams
+  // expose a no-auth "share" URL that opens their composer with the
+  // link pre-filled, so the teacher posts the join link as an
+  // assignment/announcement in one click — the ideal channel for a
+  // no-phone computer lab where students open the LMS on the same
+  // device and just click through (the link carries ?class=, so the
+  // code is pre-filled at login).
+  const openShare = (shareUrl: string) => {
+    window.open(shareUrl, "_blank", "noopener,noreferrer");
+  };
+  const classroomUrl = `https://classroom.google.com/share?url=${encodeURIComponent(url)}&title=${encodeURIComponent(className)}`;
+  const teamsUrl = `https://teams.microsoft.com/share?href=${encodeURIComponent(url)}&msgText=${encodeURIComponent(className)}&preview=true`;
 
   const handleCopy = async (value: string, kind: "link" | "code") => {
     try {
@@ -292,6 +305,32 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                     {t.shareClassLinkDone}
                   </button>
                 )}
+              </div>
+
+              {/* Post-to-LMS row — Google Classroom + Microsoft Teams.
+                  The primary path for a no-phone computer lab: the link
+                  lands in the app students already have open on their
+                  laptop, so they click straight through to the
+                  code-prefilled login. */}
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => openShare(classroomUrl)}
+                  type="button"
+                  style={{ touchAction: "manipulation" }}
+                  className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97] transition-all"
+                >
+                  <GraduationCap size={15} />
+                  {t.shareGoogleClassroom}
+                </button>
+                <button
+                  onClick={() => openShare(teamsUrl)}
+                  type="button"
+                  style={{ touchAction: "manipulation" }}
+                  className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.97] transition-all"
+                >
+                  <Users size={15} />
+                  {t.shareTeams}
+                </button>
               </div>
 
               {/* Printable poster — only for the canonical class-share

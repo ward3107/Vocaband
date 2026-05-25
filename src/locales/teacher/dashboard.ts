@@ -105,6 +105,8 @@ export interface TeacherDashboardT {
   copyClassCodeTitle: string;
   classOptionsAria: string;
   shareWhatsApp: string;
+  shareGoogleClassroom: string;
+  shareTeams: string;
   copyClassCode: string;
   printPoster: string;
   shareClassLink: string;
@@ -216,6 +218,8 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     copyClassCodeTitle: "Copy class code",
     classOptionsAria: "Class options",
     shareWhatsApp: "Share via WhatsApp",
+    shareGoogleClassroom: "Post to Google Classroom",
+    shareTeams: "Post to Microsoft Teams",
     copyClassCode: "Copy class code",
     printPoster: "Print classroom poster",
     shareClassLink: "Share class link & QR",
@@ -323,6 +327,8 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     copyClassCodeTitle: "העתק קוד כיתה",
     classOptionsAria: "אפשרויות כיתה",
     shareWhatsApp: "שתף בוואטסאפ",
+    shareGoogleClassroom: "פרסם ב-Google Classroom",
+    shareTeams: "פרסם ב-Microsoft Teams",
     copyClassCode: "העתק קוד כיתה",
     printPoster: "הדפס פוסטר לכיתה",
     shareClassLink: "שתף קישור וקוד QR",
@@ -430,6 +436,8 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     copyClassCodeTitle: "انسخ رمز الفصل",
     classOptionsAria: "خيارات الفصل",
     shareWhatsApp: "شارك عبر واتساب",
+    shareGoogleClassroom: "انشر في Google Classroom",
+    shareTeams: "انشر في Microsoft Teams",
     copyClassCode: "انسخ رمز الفصل",
     printPoster: "اطبع ملصق الفصل",
     shareClassLink: "شارك رابط ورمز QR للفصل",
@@ -537,6 +545,8 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     copyClassCodeTitle: "Copy class code",
     classOptionsAria: "Class options",
     shareWhatsApp: "Share via WhatsApp",
+    shareGoogleClassroom: "Post to Google Classroom",
+    shareTeams: "Post to Microsoft Teams",
     copyClassCode: "Copy class code",
     printPoster: "Print classroom poster",
     shareClassLink: "Share class link & QR",
