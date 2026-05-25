@@ -110,11 +110,15 @@ interface LandingPageProps {
   onTeacherLogin: () => void;
   onTryDemo?: () => void;
   isAuthenticated?: boolean;
+  /** Jump straight to the student login with the class code pre-filled,
+   *  skipping the /student detour.  Used by the hero quick-join box. */
+  onJoinWithCode?: (code: string) => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated, onJoinWithCode }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = landingPageT[language];
+  const [heroCode, setHeroCode] = useState("");
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
@@ -315,6 +319,51 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     <span className="relative z-10">{t.heroCtaStudent}</span>
                     <LogIn size={26} strokeWidth={2.5} className="relative z-10 opacity-90 group-hover:translate-x-1 transition-transform" />
                   </button>
+
+                  {/* Quick class-code entry — the Kahoot-style fast path
+                      for no-phone computer labs: a student who already
+                      has the code (on the board / a printed slip) types
+                      it here and lands straight on the name picker,
+                      skipping the /student screen. The big Student
+                      button above still works for kids who'll type the
+                      code on the next screen. */}
+                  {onJoinWithCode && (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const code = heroCode.trim();
+                        if (code.length >= 3) onJoinWithCode(code);
+                      }}
+                      className="w-full sm:w-auto flex flex-col gap-2 items-stretch sm:items-start"
+                    >
+                      <span className="text-sm font-bold text-white/70 px-1" dir={dir}>
+                        {t.heroCodePrompt}
+                      </span>
+                      <div className="flex items-stretch gap-2">
+                        <input
+                          value={heroCode}
+                          onChange={(e) =>
+                            setHeroCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))
+                          }
+                          inputMode="text"
+                          autoComplete="off"
+                          autoCapitalize="characters"
+                          spellCheck={false}
+                          placeholder={t.heroCodePlaceholder}
+                          aria-label={t.heroCodePlaceholder}
+                          className="flex-1 sm:w-44 px-4 py-3 rounded-xl bg-white/95 text-stone-900 font-black tracking-[0.2em] text-lg placeholder:text-stone-400 placeholder:tracking-normal placeholder:font-semibold focus:outline-none focus:ring-4 focus:ring-amber-300/60"
+                        />
+                        <button
+                          type="submit"
+                          disabled={heroCode.trim().length < 3}
+                          style={{ touchAction: "manipulation" }}
+                          className="px-6 py-3 rounded-xl font-black text-lg text-white bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-2 ring-amber-300/50 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all"
+                        >
+                          {t.heroCodeJoin}
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
 
                 {/* Hero trust strip — factual claims only.

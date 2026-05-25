@@ -47,6 +47,11 @@ export interface LandingPageT {
   heroSubtitle: string;
   heroCtaStart: string;
   heroCtaStudent: string;
+  // Quick class-code entry shown beneath the hero student CTA — lets a
+  // student who already has the code jump straight to the name picker.
+  heroCodePrompt: string;
+  heroCodePlaceholder: string;
+  heroCodeJoin: string;
   heroPlayItWord: string;
   heroLearnItWord: string;
   heroTrustCurriculum: string;
@@ -305,6 +310,9 @@ export const landingPageT: Record<Language, LandingPageT> = {
       "The vocabulary game students worldwide actually want to play — and the easiest classroom tool teachers will use all year.",
     heroCtaStart: "Get Started Free",
     heroCtaStudent: "I'm a student → enter class code",
+    heroCodePrompt: "Already have a class code?",
+    heroCodePlaceholder: "Class code",
+    heroCodeJoin: "Join",
     heroPlayItWord: "Play it",
     heroLearnItWord: "Learn it",
     heroTrustCurriculum: "MoE-Aligned Curriculum",
@@ -533,6 +541,9 @@ export const landingPageT: Record<Language, LandingPageT> = {
       "משחק אוצר מילים שתלמידים בכל העולם באמת רוצים לשחק — וכלי הכיתה הקל ביותר שמורים ישתמשו בו לאורך כל השנה.",
     heroCtaStart: "התחילו בחינם",
     heroCtaStudent: "אני תלמיד ← הזינו קוד כיתה",
+    heroCodePrompt: "כבר יש לכם קוד כיתה?",
+    heroCodePlaceholder: "קוד כיתה",
+    heroCodeJoin: "הצטרפו",
     heroPlayItWord: "שחקו אותה",
     heroLearnItWord: "למדו אותה",
     heroTrustCurriculum: "מותאם לתוכנית משרד החינוך",
@@ -761,6 +772,9 @@ export const landingPageT: Record<Language, LandingPageT> = {
       "لعبة المفردات التي يريد الطلاب حول العالم أن يلعبوها فعلاً — وأسهل أداة صفية سيستخدمها المعلمون طوال العام.",
     heroCtaStart: "ابدأ مجانًا",
     heroCtaStudent: "أنا طالب ← أدخل رمز الفصل",
+    heroCodePrompt: "هل لديك رمز الفصل؟",
+    heroCodePlaceholder: "رمز الفصل",
+    heroCodeJoin: "انضم",
     heroPlayItWord: "العبها",
     heroLearnItWord: "تعلمها",
     heroTrustCurriculum: "متوافق مع منهج وزارة التربية",
@@ -989,6 +1003,9 @@ export const landingPageT: Record<Language, LandingPageT> = {
       "The vocabulary game students worldwide actually want to play — and the easiest classroom tool teachers will use all year.",
     heroCtaStart: "Get Started Free",
     heroCtaStudent: "I'm a student → enter class code",
+    heroCodePrompt: "Already have a class code?",
+    heroCodePlaceholder: "Class code",
+    heroCodeJoin: "Join",
     heroPlayItWord: "Play it",
     heroLearnItWord: "Learn it",
     heroTrustCurriculum: "MoE-Aligned Curriculum",

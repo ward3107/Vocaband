@@ -53,6 +53,7 @@ export interface PublicViewsProps {
   onPublicNavigate: (page: PublicNavigatePage) => void;
   onTeacherOAuth: () => void;
   onStudentLogin: () => void;
+  onJoinWithCode: (code: string) => void;
   configErrorBanner: ReactNode;
   cookieBannerOverlay: ReactNode;
 }
@@ -67,6 +68,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
     onPublicNavigate,
     onTeacherOAuth,
     onStudentLogin,
+    onJoinWithCode,
     configErrorBanner,
     cookieBannerOverlay,
   } = props;
@@ -95,6 +97,7 @@ export function renderPublicView(props: PublicViewsProps): ReactNode | null {
         onNavigate={handleNavigate}
         onTeacherOAuth={onTeacherOAuth}
         onStudentLogin={onStudentLogin}
+        onJoinWithCode={onJoinWithCode}
         isAuthenticated={!!user}
       />
     );
@@ -241,6 +244,7 @@ function LandingPageWithScrollRestore({
   onNavigate,
   onTeacherOAuth,
   onStudentLogin,
+  onJoinWithCode,
   isAuthenticated,
 }: {
   configErrorBanner: ReactNode;
@@ -250,6 +254,7 @@ function LandingPageWithScrollRestore({
   onNavigate: (page: PublicNavigatePage) => void;
   onTeacherOAuth: () => void;
   onStudentLogin: () => void;
+  onJoinWithCode: (code: string) => void;
   isAuthenticated: boolean;
 }) {
   useEffect(() => {
@@ -275,6 +280,7 @@ function LandingPageWithScrollRestore({
         onNavigate={onNavigate}
         onGetStarted={onStudentLogin}
         onTeacherLogin={onTeacherOAuth}
+        onJoinWithCode={onJoinWithCode}
         onTryDemo={() => setShowDemo(true)}
         isAuthenticated={isAuthenticated}
       />
