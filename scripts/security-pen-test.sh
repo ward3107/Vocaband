@@ -310,6 +310,24 @@ if [[ -n "${MANAGER_JWT:-}" && -n "${OTHER_SCHOOL_CLASS_CODE:-}" ]]; then
     -H "apikey: $ANON_KEY" \
     -H "Authorization: Bearer $MANAGER_JWT")
   check "manager cannot read a foreign school's progress" '^\[\]$' "$body"
+
+  # 25-26. Console drill-down RPCs must refuse a foreign teacher/class.
+  # Requires OTHER_SCHOOL_TEACHER_UID + OTHER_SCHOOL_CLASS_ID (rows in a school
+  # the manager does NOT belong to). Both must return {"error":"not_in_school"}.
+  if [[ -n "${OTHER_SCHOOL_TEACHER_UID:-}" ]]; then
+    echo "[25] Manager opens a foreign teacher via manager_teacher_detail"
+    body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/manager_teacher_detail" \
+      -H "apikey: $ANON_KEY" -H "Authorization: Bearer $MANAGER_JWT" -H "Content-Type: application/json" \
+      -d "{\"p_uid\":\"$OTHER_SCHOOL_TEACHER_UID\"}")
+    check "manager_teacher_detail refuses a foreign teacher" 'not_in_school' "$body"
+  fi
+  if [[ -n "${OTHER_SCHOOL_CLASS_ID:-}" ]]; then
+    echo "[26] Manager opens a foreign class via manager_class_detail"
+    body=$(curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/manager_class_detail" \
+      -H "apikey: $ANON_KEY" -H "Authorization: Bearer $MANAGER_JWT" -H "Content-Type: application/json" \
+      -d "{\"p_class_id\":\"$OTHER_SCHOOL_CLASS_ID\"}")
+    check "manager_class_detail refuses a foreign class" 'not_in_school' "$body"
+  fi
 else
   echo
   echo "── School-manager isolation tests skipped (set MANAGER_JWT + OTHER_SCHOOL_CLASS_CODE to run) ──"

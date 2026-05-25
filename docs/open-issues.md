@@ -4,23 +4,28 @@ Tracking known issues with their diagnosis status.
 
 ---
 
-## Feature — School Manager (principal) dashboard (2026-05-25)
+## Feature — School Manager (principal) Console (2026-05-25)
 
-**Status:** Code shipped on `claude/compassionate-goldberg-qNWvm`. Adds a
-read-only school-principal role + dashboard. New migration
-`20260623000000_school_manager.sql`: a `schools` table, `users.school_id`,
-`role='manager'` in the CHECK, school-scoped RLS (`is_manager`,
-`manager_school`, `manager_classes`), and a `manager_overview()` aggregate RPC.
-Frontend: `hasManagerAccess` + `school_id` on `AppUser`, the `manager-dashboard`
-view, auth-restore + view-guard routing, and `src/views/ManagerDashboardView.tsx`
-(KPI tiles, teacher roster, dormant-class flags, EN/HE/AR + RTL). Login reuses
-the existing teacher card — a manager is distinguished purely by `role`.
+**Status:** Shipped on `claude/compassionate-goldberg-qNWvm`. Read-only
+school-principal role + a full sidebar console (Overview · Teachers · Classes ·
+Engagement) with `recharts` graphs and click-through teacher/class drill-downs,
+EN/HE/AR + RTL.
 
-**Blocker — operator action required:** apply migration
-`20260623000000_school_manager.sql` to the production (EU) Supabase. Until
-applied, `manager_overview` doesn't exist and the dashboard shows its empty
-state; no existing teacher/student flow is affected (the migration only adds
-objects + widens the `users.role` CHECK).
+Two migrations, **both applied + verified on prod (`vocaband-eu`)**:
+- `20260623000000_school_manager.sql` — `schools` table, `users.school_id`,
+  `role='manager'`, school-scoped RLS (`is_manager` / `manager_school` /
+  `manager_classes` + the `_select` policy clauses preserving the live anon-block
+  and QUICK_PLAY branches).
+- `20260623000001_manager_console.sql` — aggregate RPCs `manager_overview`
+  (totals + roster + 14-day series + classes), `manager_engagement` (30-day
+  trend / games / day-of-week / modes), `manager_teacher_detail`,
+  `manager_class_detail`. Detail RPCs verify the teacher/class is in the
+  caller's school (foreign ⇒ `{"error":"not_in_school"}`, validated).
+
+Frontend: `hasManagerAccess` + `school_id` on `AppUser`, typed RPC fetchers,
+`src/views/ManagerConsoleView.tsx`, routing via the `manager-dashboard` view.
+The v1 `ManagerDashboardView` was replaced by the console. Login reuses the
+existing teacher card — a manager is distinguished purely by `role`.
 
 **Provisioning quirk (by design):** a principal's first sign-in mints a
 `role='teacher'` row (a `users` row can't exist before their `auth.uid()`
@@ -29,14 +34,14 @@ first login. Full steps in `docs/teacher-access.md` → "Granting school-manager
 access". Never use `role='admin'` as a shortcut — admin reads every school.
 
 **Next steps / follow-ups (none blocking):**
-- Smoke-test end-to-end once the migration is live: provision a test school +
-  manager, confirm they see only that school's teachers/classes/progress.
-- Run the new pen-test isolation checks with a real manager token:
-  `MANAGER_JWT=… OTHER_SCHOOL_CLASS_CODE=… ./scripts/security-pen-test.sh`
-  (tests 9c/9d run anon in CI already).
-- Drill-down is summary-only in v1 (per-teacher rollups). A click-through into
-  a single class's gradebook (reusing `ClassCard` read-only) is a v2 candidate.
-- No automated tests yet for `manager_overview` or the routing branch.
+- Provision a real principal to use it live (school name + principal email +
+  teacher emails).
+- Optional deeper pen-test with a real manager token:
+  `MANAGER_JWT=… OTHER_SCHOOL_CLASS_CODE=… OTHER_SCHOOL_TEACHER_UID=… OTHER_SCHOOL_CLASS_ID=… ./scripts/security-pen-test.sh`
+  (anon checks 9c/9d run in CI already).
+- `avg_score` surfaces on the raw 0–1000 game scale; consider normalizing to a
+  percentage in the UI.
+- No automated tests yet for the console RPCs or the routing branch.
 
 ---
 
