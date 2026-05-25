@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Bot, RefreshCw, CloudOff } from "lucide-react";
-import { callAdminRpc, fmtUsd, fmtNum, type DevAiUsage } from "./devShared";
+import { callAdminRpc, adminApiGet, fmtUsd, fmtNum, type DevAiUsage, type ProviderBilling } from "./devShared";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -25,15 +25,20 @@ const ACTION_LABELS: Record<string, string> = {
 export default function DevAiCostPanel({ showToast }: Props) {
   const [days, setDays] = useState<number>(30);
   const [data, setData] = useState<DevAiUsage | null>(null);
+  const [billing, setBilling] = useState<ProviderBilling | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- async data-fetch effect; matches existing convention (AdminSecurityView etc.)
     setLoading(true);
-    void callAdminRpc<DevAiUsage>("admin_ai_usage", { p_days: days }, showToast).then((res) => {
+    void Promise.all([
+      callAdminRpc<DevAiUsage>("admin_ai_usage", { p_days: days }, showToast),
+      adminApiGet<ProviderBilling>(`/api/admin/provider-billing?days=${days}`),
+    ]).then(([usage, bill]) => {
       if (cancelled) return;
-      setData(res);
+      setData(usage);
+      setBilling(bill);
       setLoading(false);
     });
     return () => {
@@ -115,18 +120,40 @@ export default function DevAiCostPanel({ showToast }: Props) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="rounded-2xl p-5 bg-white/5 border border-dashed border-white/20"
+        className="rounded-2xl p-5 bg-white/5 border border-white/10 space-y-4"
       >
-        <div className="flex items-center gap-2 text-white/70 font-black text-sm mb-2">
-          <CloudOff className="w-4 h-4" /> Live provider billing — not configured
+        <div className="flex items-center gap-2 text-white/70 font-black text-sm">
+          <CloudOff className="w-4 h-4" /> Live provider billing
         </div>
-        <p className="text-white/50 text-xs leading-relaxed">
-          The numbers above are per-call estimates. To show real billed dollars, wire two sources:
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-white/60 text-sm font-bold">Anthropic</span>
+          {!billing ? (
+            <span className="text-white/30 text-xs">…</span>
+          ) : billing.anthropic.configured && billing.anthropic.ok ? (
+            <span className="text-emerald-300 font-black">${(billing.anthropic.costUsd ?? 0).toFixed(2)}</span>
+          ) : billing.anthropic.configured ? (
+            <span className="text-rose-300 text-xs font-bold text-right max-w-[60%]">
+              Error {billing.anthropic.status ?? ""}: {billing.anthropic.message ?? "request failed"}
+            </span>
+          ) : (
+            <span className="text-white/40 text-xs text-right">
+              Set <code className="text-white/70">ANTHROPIC_ADMIN_KEY</code> on the server
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-white/60 text-sm font-bold">Google (Gemini)</span>
+          <span className="text-white/40 text-xs text-right max-w-[60%]">
+            {billing?.google.configured ? "configured" : billing?.google.reason ?? "Needs BigQuery billing export"}
+          </span>
+        </div>
+
+        <p className="text-white/30 text-[11px] leading-relaxed border-t border-white/10 pt-3">
+          Real billed dollars from the providers. Anthropic needs an admin API key; Google needs a Cloud
+          Billing → BigQuery export + service account. Until set, the per-call estimate above is your best guide.
         </p>
-        <ul className="text-white/50 text-xs list-disc list-inside mt-2 space-y-1">
-          <li>Google Cloud (Gemini): set up a Cloud Billing → BigQuery export + a service account with <code className="text-white/70">billing.viewer</code>.</li>
-          <li>Anthropic: create an admin API key and read the Usage &amp; Cost Admin API.</li>
-        </ul>
       </motion.div>
     </div>
   );
