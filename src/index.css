@@ -144,6 +144,28 @@
   --vb-shadow-elevated: none;
 }
 
+/* Light-theme contrast boost for projection: projectors wash out faint
+   greys, so pull secondary/muted text and borders toward the
+   foreground. Scoped to non-dark themes — a dark dashboard needs the
+   opposite direction, so it keeps the size bump only. */
+:root.vb-presentation:not([data-theme-dark="true"]) {
+  --vb-text-secondary: #292524;
+  --vb-text-muted: #57534e;
+  --vb-border: #d6d3d1;
+  --vb-border-strong: #78716c;
+}
+
+/* Root font-size = the teacher's chosen accessibility scale
+   (--a11y-font-size, written by useUiScale) × the active display
+   multiplier (--vb-font-scale, raised to 1.4 by .vb-presentation).
+   Every rem-based Tailwind size scales off this. The two inputs are
+   separate variables so they compose instead of fighting over one
+   inline value; !important beats the UA's default `html { font-size:
+   medium }`. */
+html {
+  font-size: calc(var(--a11y-font-size, 16px) * var(--vb-font-scale, 1)) !important;
+}
+
 /* When prefers-reduced-motion is set, disable theme transitions. */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -322,6 +322,19 @@ export default {
       return Response.redirect(target, 301);
     }
 
+    // Short class-join link: /j/<CODE> → /student?class=<CODE>.  Gives
+    // teachers a tiny, dictate-able URL (vocaband.com/j/ABC12345) for
+    // no-phone computer labs where students type the address by hand —
+    // far fewer typos than the full /student?class= query string.  The
+    // student lands on the class-code-prefilled login (name picker +
+    // PIN).  302 (not 301): this is a convenience alias, not a permanent
+    // canonical, so we don't want it baked into browser caches forever.
+    const joinMatch = url.pathname.match(/^\/j\/([A-Za-z0-9]{3,20})$/);
+    if (joinMatch) {
+      const code = joinMatch[1].toUpperCase();
+      return Response.redirect(`https://vocaband.com/student?class=${encodeURIComponent(code)}`, 302);
+    }
+
     // Edge-handled routes (run on the Worker, NOT proxied). These must come
     // before the /api/* proxy fallthrough or they'll be forwarded to Fly.io
     // and return a 404.

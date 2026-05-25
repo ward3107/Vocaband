@@ -41,7 +41,43 @@ const failedWordKeys = new Set<AudioCacheKey>() // Track words that failed to lo
 
 // Motivational sounds removed - these are now no-ops
 let currentMotivational: HowlType | null = null
-const onMotivationalEndListeners: Array<() => void> = []
+
+// ── Pronunciation speed (student-adjustable) ──────────────────────────────────
+// Both the recorded MP3s and the browser-TTS fallback honour this.
+// Default 'slow' for clarity — a student is usually hearing the word for
+// the first time; the in-game toggle flips to 'normal' for confident
+// readers. Browsers preserve pitch on <audio>.playbackRate, so 0.82×
+// sounds slower without the chipmunk effect.
+export type PronunciationSpeed = 'slow' | 'normal'
+const PRONUNCIATION_SPEED_KEY = 'vocaband_pronunciation_speed'
+const SPEED_RATES: Record<PronunciationSpeed, { mp3: number; tts: number }> = {
+  slow: { mp3: 0.82, tts: 0.65 },
+  normal: { mp3: 1.0, tts: 0.9 },
+}
+let pronunciationSpeed: PronunciationSpeed = (() => {
+  try {
+    return localStorage.getItem(PRONUNCIATION_SPEED_KEY) === 'normal' ? 'normal' : 'slow'
+  } catch {
+    return 'slow'
+  }
+})()
+export const getPronunciationSpeed = (): PronunciationSpeed => pronunciationSpeed
+export const setPronunciationSpeed = (speed: PronunciationSpeed): void => {
+  pronunciationSpeed = speed
+  ttsSettings.rate = SPEED_RATES[speed].tts
+  try {
+    localStorage.setItem(PRONUNCIATION_SPEED_KEY, speed)
+  } catch { /* private mode / storage disabled */ }
+}
+
+// Same-word replay guard. Auto-speak effects, card re-mounts, and the
+// howler load path can each re-fire speak() for the same word within a
+// few hundred ms — the student then hears it twice. A pronunciation
+// helper never needs to replay the identical word that fast, and a
+// deliberate re-tap is always slower than this window.
+const SAME_WORD_DEBOUNCE_MS = 350
+let lastSpokenAt = 0
+let lastSpokenKeyForDebounce: AudioCacheKey | null = null
 
 // ── Voice Selection for High-Quality TTS ──────────────────────────────────────
 // Cache the selected voice per language so the same one is reused across
@@ -415,6 +451,15 @@ export const useAudio = (options: UseAudioOptions = {}) => {
 
     const key = audioKey(lang, wordId)
 
+    // Swallow a rapid repeat of the same word so it never plays twice
+    // (see SAME_WORD_DEBOUNCE_MS). Different words advance normally.
+    const nowTs = Date.now()
+    if (lastSpokenKeyForDebounce === key && nowTs - lastSpokenAt < SAME_WORD_DEBOUNCE_MS) {
+      return
+    }
+    lastSpokenKeyForDebounce = key
+    lastSpokenAt = nowTs
+
     // Check both the local variable and window object (for console commands)
     const currentForceTTSMode = forceTTSMode || (typeof window !== 'undefined' && (window as any).__forceTTSMode);
 
@@ -483,7 +528,6 @@ export const useAudio = (options: UseAudioOptions = {}) => {
 
     // Remove old event handlers before adding new ones (prevents duplicates)
     sound.off('playerror')
-    sound.off('play')
     sound.off('loaderror')
 
     // Add error handler for playback failures - fall back to TTS
@@ -494,22 +538,24 @@ export const useAudio = (options: UseAudioOptions = {}) => {
       }
     }
 
-    // Log successful audio playback for debugging (MP3 files don't use TTS voices)
-    const handleAudioPlay = () => {
-    }
-
     sound.on('playerror', handleAudioError)
-    sound.on('play', handleAudioPlay)
     // If the MP3 404s (common for freshly-created custom words whose audio the
     // backend is still generating), play browser TTS immediately so the student
     // isn't left with silence on their first tap.
     sound.on('loaderror', handleAudioError)
 
+    // Honour the student's chosen pronunciation speed. Set on every play
+    // so toggling slow/normal mid-game takes effect on the next word.
+    try { sound.rate(SPEED_RATES[pronunciationSpeed].mp3) } catch { /* rate unsupported */ }
+
     if (sound.state() === 'loaded') {
       sound.play()
     } else {
+      // The Howl is created with preload:true, so it's already loading.
+      // The old code also called sound.load() here, which raced that
+      // in-flight load and could fire playback twice — play once on the
+      // load already running.
       sound.once('load', () => sound.play())
-      sound.load()
     }
   }
 
@@ -624,7 +670,7 @@ export const useAudio = (options: UseAudioOptions = {}) => {
 
 // ── TTS Settings (adjustable via console) ───────────────────────────────────
 let ttsSettings = {
-  rate: 0.7,           // Slower for clarity (0.5 = very slow, 1.0 = normal)
+  rate: SPEED_RATES[pronunciationSpeed].tts, // driven by the pronunciation-speed setting (slow default)
   pitch: 1.0,          // Pitch (0 to 2, 1 = normal)
   volume: 1.0,         // Volume (0 to 1)
   cleanText: true,     // Remove grammatical markers like (n), (v)

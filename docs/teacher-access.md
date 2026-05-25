@@ -103,3 +103,51 @@ WHERE lower(email) = lower('teacher@school.edu');
 - **Email casing.** Both tables are plain TEXT — `Teacher@School.edu` ≠ `teacher@school.edu`. Always `lower(...)`.
 - **OCR has no separate allowlist.** If teacher's role is correct, OCR works. No additional row.
 - **`ai_allowlist` table missing?** Migration is `20260417120000_ai_sentence_builder.sql`. Run it first.
+
+---
+
+## Granting school-manager (principal) access
+
+A **manager** is a read-only overseer of one school: they see every teacher,
+class, student, and engagement metric *in their own school only* — distinct
+from `admin`, which sees the whole app. Schema lives in migration
+`20260623000000_school_manager.sql` (`schools` table + `users.school_id` +
+`role='manager'` + school-scoped RLS). There is **no self-serve school
+onboarding** — the operator provisions everything below.
+
+```sql
+-- 1. Create the school (note the returned id).
+INSERT INTO public.schools (name) VALUES ('Example High') RETURNING id;
+
+-- 2. Allowlist the principal's email so they can sign in via the teacher login.
+INSERT INTO public.teacher_allowlist (email)
+VALUES (lower('head@example.com')) ON CONFLICT (email) DO NOTHING;
+
+-- 3. Principal signs in once with Google/OTP. This mints a role='teacher' row
+--    (and lands them on the teacher dashboard for that one session).
+
+-- 4. Flip them to manager and attach the school.
+UPDATE public.users
+SET role = 'manager', school_id = '<school-uuid-from-step-1>'
+WHERE lower(email) = lower('head@example.com');
+
+-- 5. Attach the school's teachers (a class's school is derived from its
+--    teacher, so you only set school_id on teacher rows, never on classes).
+UPDATE public.users
+SET school_id = '<school-uuid-from-step-1>'
+WHERE lower(email) IN (lower('alice@example.com'), lower('bob@example.com'));
+```
+
+The principal signs out/in once more after step 4 to refresh their JWT, then
+lands on the **Principal dashboard** (`manager-dashboard` view). All data is
+served by the `manager_overview()` RPC, which self-scopes to their school.
+
+**Gotchas**
+
+- **First login is always a teacher.** A `public.users` row can't exist before
+  the user's first auth (uid must match `auth.uid()`), so the role flip in
+  step 4 happens *after* their first sign-in. Expected, not a bug.
+- **Managers are read-only (v1).** No write policies — they can't edit a
+  teacher's classes or assignments. Promote/demote is just the `role` column.
+- **Privacy.** Never give a real principal `role='admin'` as a shortcut — admin
+  reads *every* school. Use `manager` so RLS confines them to their own.

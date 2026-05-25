@@ -35,16 +35,11 @@ function read(): UiScale {
 function applyToDocument(scale: UiScale) {
   if (typeof document === 'undefined') return;
   const px = SCALE_TO_PX[scale];
-  // Set on documentElement (html) with !important so it beats any
-  // late-loading Tailwind/UA reset that re-anchors `html { font-size:
-  // 16px }`.  Using setProperty + 'important' instead of
-  // `.style.fontSize = ...` because the latter doesn't accept the
-  // priority flag and a normal-priority inline style still loses to
-  // an !important rule from a stylesheet.
-  document.documentElement.style.setProperty('font-size', `${px}px`, 'important');
-  // Also write the CSS custom property declared in index.css so any
-  // stylesheet that reads var(--a11y-font-size) picks the new value
-  // up automatically.
+  // Drive the root font-size through the --a11y-font-size custom
+  // property only. The `html { font-size: calc(--a11y-font-size *
+  // --vb-font-scale) !important }` rule in index.css consumes it, which
+  // lets Presentation Mode's --vb-font-scale multiplier compose on top
+  // instead of being clobbered by an inline font-size value.
   document.documentElement.style.setProperty('--a11y-font-size', `${px}px`);
 }
 

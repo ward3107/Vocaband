@@ -394,6 +394,16 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
             // Verify session is still active
             const loadSaved = async () => {
               const { data: { session: existingSession } } = await supabase.auth.getSession();
+              // Don't hijack a real login. Quick Play guests are anonymous
+              // auth users; an authenticated, non-anonymous session means a
+              // teacher/student is signing in via email or OAuth on this
+              // browser, so the leftover guest marker is stale and auth
+              // restore owns the routing. Resuming here would setUser(guest)
+              // + setView("game") and flash a Quick Play round (the session's
+              // full word list) over their dashboard.
+              if (existingSession?.user && !existingSession.user.is_anonymous) {
+                return;
+              }
               if (!existingSession) await supabase.auth.signInAnonymously().catch(() => {});
 
               const { data } = await supabase

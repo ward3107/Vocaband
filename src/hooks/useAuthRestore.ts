@@ -21,6 +21,7 @@ import {
   supabase,
   isSupabaseConfigured,
   hasTeacherAccess,
+  hasManagerAccess,
   mapClass,
   mapAssignment,
   mapProgress,
@@ -320,6 +321,13 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                   setView("teacher-dashboard");
                 }
               }
+            }
+          } else if (hasManagerAccess(userData)) {
+            // School manager (principal) — read-only oversight dashboard.
+            // No teacher data load: their data comes from the school-scoped
+            // manager_overview RPC inside ManagerDashboardView.
+            if (!shouldPreserveView("teacher", currentViewRef.current)) {
+              setView("manager-dashboard");
             }
           } else if (userData.role === "student" && userData.classCode) {
             const code = userData.classCode;

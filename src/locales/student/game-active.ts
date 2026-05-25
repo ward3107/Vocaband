@@ -51,6 +51,13 @@ export interface GameActiveStrings {
   // GameView chrome (added Phase 1 i18n)
   exit: string;
   playPronunciation: string;
+  /** Aria-label + tooltip prefix for the pronunciation-speed toggle in
+   *  the game header. */
+  pronunciationSpeed: string;
+  /** Toggle button label when pronunciation is set to the slow preset. */
+  speedSlow: string;
+  /** Toggle button label when pronunciation is set to the normal preset. */
+  speedNormal: string;
   trueWithMark: string;
   falseWithMark: string;
   noSentencesAdded: string;
@@ -128,6 +135,9 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     swipeHint: "Swipe right for True, left for False",
     exit: "Exit",
     playPronunciation: "Play pronunciation",
+    pronunciationSpeed: "Pronunciation speed",
+    speedSlow: "Slow",
+    speedNormal: "Normal",
     trueWithMark: "True ✓",
     falseWithMark: "False ✗",
     noSentencesAdded: "No sentences were added to this assignment.",
@@ -196,6 +206,9 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     swipeHint: "החליקו ימינה לנכון, שמאלה לא נכון",
     exit: "יציאה",
     playPronunciation: "השמע הגייה",
+    pronunciationSpeed: "מהירות הגייה",
+    speedSlow: "איטי",
+    speedNormal: "רגיל",
     trueWithMark: "נכון ✓",
     falseWithMark: "לא נכון ✗",
     noSentencesAdded: "לא נוספו משפטים למטלה הזו.",
@@ -264,6 +277,9 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     swipeHint: "اسحب يمينًا لصحيح، يسارًا لخطأ",
     exit: "خروج",
     playPronunciation: "تشغيل النطق",
+    pronunciationSpeed: "سرعة النطق",
+    speedSlow: "بطيء",
+    speedNormal: "عادي",
     trueWithMark: "صحيح ✓",
     falseWithMark: "خطأ ✗",
     noSentencesAdded: "لم تُضف جمل إلى هذه المهمة.",
@@ -332,6 +348,9 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     swipeHint: "Swipe right for True, left for False",
     exit: "Exit",
     playPronunciation: "Play pronunciation",
+    pronunciationSpeed: "Pronunciation speed",
+    speedSlow: "Slow",
+    speedNormal: "Normal",
     trueWithMark: "True ✓",
     falseWithMark: "False ✗",
     noSentencesAdded: "No sentences were added to this assignment.",

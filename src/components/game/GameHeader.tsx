@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Languages } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { gameActiveT } from "../../locales/student/game-active";
+import { getPronunciationSpeed, setPronunciationSpeed, type PronunciationSpeed } from "../../hooks/useAudio";
 
 interface GameHeaderProps {
   score: number;
@@ -37,6 +39,16 @@ export default function GameHeader({
   const t = gameActiveT[language];
   const tier = streakTier(streak);
   const s = STREAK_STYLES[tier];
+
+  // Pronunciation speed lives as a module-level setting in useAudio (so
+  // every speak() call reads it without prop-threading); mirror it in
+  // local state purely to re-render this button's label on toggle.
+  const [speed, setSpeed] = useState<PronunciationSpeed>(getPronunciationSpeed());
+  const toggleSpeed = () => {
+    const next: PronunciationSpeed = speed === "slow" ? "normal" : "slow";
+    setPronunciationSpeed(next);
+    setSpeed(next);
+  };
   return (
     <div className="w-full max-w-4xl flex flex-wrap justify-between items-center gap-1 mb-1.5 sm:mb-6">
       <div className="flex items-center gap-1.5 sm:gap-4 flex-wrap">
@@ -76,6 +88,17 @@ export default function GameHeader({
         )}
       </div>
       <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={toggleSpeed}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="flex items-center gap-1.5 bg-white px-3 sm:px-4 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors"
+          aria-label={t.pronunciationSpeed}
+          title={`${t.pronunciationSpeed}: ${speed === "slow" ? t.speedSlow : t.speedNormal}`}
+        >
+          <span className="text-base leading-none" aria-hidden>{speed === "slow" ? "🐢" : "🐇"}</span>
+          <span className="text-xs font-bold text-stone-600">{speed === "slow" ? t.speedSlow : t.speedNormal}</span>
+        </button>
         <button
           onClick={() => setTargetLanguage(targetLanguage === "hebrew" ? "arabic" : "hebrew")}
           className="flex items-center gap-2 bg-white px-3 sm:px-4 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors"

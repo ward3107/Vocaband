@@ -10,7 +10,7 @@ interface GlobalLeaderboardEntry {
 }
 
 interface GlobalLeaderboardViewProps {
-  userRole: "teacher" | "student" | "admin" | "guest" | undefined;
+  userRole: "teacher" | "student" | "admin" | "manager" | "guest" | undefined;
   setView: React.Dispatch<React.SetStateAction<View>>;
   globalLeaderboard: GlobalLeaderboardEntry[];
 }

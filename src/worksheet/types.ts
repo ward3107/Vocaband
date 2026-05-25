@@ -108,6 +108,14 @@ export interface WorksheetSettings {
   // solver merges these with the static bank so the exercise has
   // material to run instead of auto-skipping.
   sentences?: Record<string, string>;
+  // Off-curriculum words (paste / OCR / manual entry) carry negative,
+  // Date.now()-derived ids that don't exist in ALL_WORDS. The worksheet
+  // row only stores numeric word_ids, so without persisting the actual
+  // text here the solver can't resolve them — every exercise would
+  // auto-skip with "no questions" because the student-side ALL_WORDS
+  // lookup misses. Populated at mint time by ShareWorksheetDialog and
+  // merged into the runner's word lookup so custom-word worksheets play.
+  customWords?: Word[];
 }
 
 // Aggregate score across all exercises.  The total-out-of-100 is what

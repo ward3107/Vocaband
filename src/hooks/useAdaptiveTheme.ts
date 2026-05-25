@@ -78,9 +78,12 @@ export function useAdaptiveTheme(): UseAdaptiveTheme {
 
   // Apply the class on mount + whenever state flips.  Persisted to
   // localStorage so a teacher's "I'm projecting" choice survives
-  // navigation between teacher views.
+  // navigation between teacher views.  Presentation Mode is NOT gated by
+  // the adaptive feature flag — it's a finished, generally-available
+  // projector aid; the flag only guards the unfinished adaptive-theme
+  // experiments.
   useEffect(() => {
-    applyPresentationClass(presentationMode && adaptiveEnabled);
+    applyPresentationClass(presentationMode);
     try {
       if (presentationMode) {
         localStorage.setItem(PRESENTATION_KEY, "true");
