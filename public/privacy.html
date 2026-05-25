@@ -10,7 +10,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy Policy - Vocaband</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; color: #1c1917; line-height: 1.7; }
+    *, *::before, *::after { box-sizing: border-box; }
+    /* overflow-x:hidden is the safety net — the real fix is the cell
+       wrapping below, which lets the wide tables shrink to the viewport
+       instead of forcing the whole page to scroll sideways on mobile. */
+    html, body { overflow-x: hidden; }
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; width: 100%; margin: 0 auto; padding: 2rem 1.5rem; color: #1c1917; line-height: 1.7; }
     h1 { font-size: 2rem; margin-bottom: 0.5rem; }
     h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #e7e5e4; padding-bottom: 0.5rem; color: #1e40af; }
     h3 { font-size: 1rem; margin-top: 1.5rem; color: #374151; }
@@ -18,13 +23,16 @@
     .meta strong { color: #1c1917; }
     ul, ol { padding-left: 1.5rem; }
     li { margin-bottom: 0.5rem; }
-    a { color: #2563eb; }
-    code { background: #f3f4f6; padding: 0.1rem 0.35rem; border-radius: 0.25rem; font-size: 0.85em; }
+    a { color: #2563eb; overflow-wrap: anywhere; }
+    code { background: #f3f4f6; padding: 0.1rem 0.35rem; border-radius: 0.25rem; font-size: 0.85em; overflow-wrap: anywhere; }
     .back { display: inline-block; margin-bottom: 1.5rem; color: #78716c; text-decoration: none; font-size: 0.875rem; }
     .back:hover { color: #1c1917; }
     .highlight { background: #f0f9ff; padding: 1rem 1.5rem; border-radius: 0.5rem; border-left: 4px solid #2563eb; margin: 1rem 0; }
-    .table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
-    .table th, .table td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left; vertical-align: top; }
+    .table { width: 100%; max-width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+    /* anywhere (not break-word) so long URLs/endpoints reduce the cell's
+       min-content width — break-word alone leaves auto-layout tables wide
+       enough to overflow on narrow screens. */
+    .table th, .table td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
     .table th { background: #f9fafb; }
   </style>
 </head>
