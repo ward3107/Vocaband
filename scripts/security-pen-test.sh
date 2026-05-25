@@ -267,6 +267,21 @@ if [[ -n "${STUDENT_JWT:-}" ]]; then
     -H "Prefer: return=representation" \
     -d '{"plan": "pro", "trial_ends_at": "2099-01-01"}')
   check "authed UPDATE users.plan is still rejected (F1)" "row-level security|violates|42501" "$body"
+
+  # 22b. Paywall bypass via school self-assign (school-license Pro inheritance).
+  #      A school license makes every member user Pro (migration
+  #      20260624000000_school_license_propagates_pro.sql), so users.school_id
+  #      is billing-sensitive and pinned by check_user_update_allowed. A user
+  #      must NOT be able to attach themselves to a (paid) school and inherit
+  #      its Pro.
+  echo "[22b] Authed user tries direct UPDATE users.school_id (school-Pro bypass)"
+  body=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/users?uid=eq.STUDENT_UID_PLACEHOLDER" \
+    -H "apikey: $ANON_KEY" \
+    -H "Authorization: Bearer $STUDENT_JWT" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d '{"school_id": "00000000-0000-0000-0000-000000000001"}')
+  check "authed UPDATE users.school_id is rejected" "row-level security|violates|42501" "$body"
 else
   echo
   echo "── F2 / F1 authenticated tests skipped (set STUDENT_JWT to run) ──"
