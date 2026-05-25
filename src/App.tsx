@@ -93,6 +93,7 @@ import { useGameModeMechanicsState } from "./hooks/useGameModeMechanicsState";
 import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
 import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
 import { resolveInitialView } from "./utils/resolveInitialView";
+import { hasRestorableSession } from "./utils/hasRestorableSession";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { isPublicView, shouldPreserveView } from "./utils/authViews";
@@ -113,7 +114,12 @@ export default function App() {
 
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Start the loading spinner ONLY when a session might actually be
+  // restorable. A fresh visitor (no token, no OAuth handoff, no saved
+  // login) skips it so the public landing paints on the first frame
+  // instead of blocking on supabase.auth.getSession(). useAuthRestore
+  // still runs either way; it just no-ops setLoading(false) here.
+  const [loading, setLoading] = useState(hasRestorableSession);
   const [studentDataLoading] = useState(false);
   // Detect Quick Play session from URL synchronously so it takes
   // priority over auth redirects.
