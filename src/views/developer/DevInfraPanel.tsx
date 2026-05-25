@@ -44,7 +44,7 @@ export default function DevInfraPanel() {
     // 401s and r.json() parses the error body into a shape with no
     // `env`, which then crashes the Object.entries() below.
     const token = (await supabase.auth.getSession()).data.session?.access_token;
-    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+    const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     try {
       const r = await fetch("/api/version", { headers: authHeaders });
       setVersion(r.ok ? ((await r.json()) as VersionInfo) : null);
