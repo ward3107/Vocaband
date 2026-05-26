@@ -2,7 +2,7 @@
 
 > Hybrid go-to-market pricing for Vocaband's first 12-24 months.
 > **Public face**: individual teacher prices ARE published on landing
-> (Free + Pro at ₪290/yr or ₪29/mo, with a 30-day no-card trial).
+> (Free + Pro at ₪290/yr or ₪29/mo, with a 14-day no-card trial).
 > **Schools** still have NO public price — a "Get a quote" CTA opens
 > the inquiry modal so every school deal is sized to the school.
 >
@@ -78,7 +78,7 @@ tier — most schools land here):
 | Free | **₪0 forever** — 1 class, 30 students, all 11 modes, MoE word sets, HE/AR | ✅ Public on landing |
 | Annual Pro | **290 NIS / year** (~24 NIS/mo equivalent) | ✅ Public on landing |
 | Monthly Pro | **29 NIS / month** | ✅ Public on landing |
-| Pro trial | **30 days free, no card required, auto-downgrades to Free** | ✅ Public on landing |
+| Pro trial | **14 days free, no card required, auto-downgrades to Free** | ✅ Public on landing |
 | Founding-100 (after free year) | **14.50 NIS/mo or ~145 NIS/year** lifetime | 🔒 Private — only for the founding cohort |
 
 ### What's included at each level
@@ -194,7 +194,7 @@ Public checkout (3-tier landing pricing card) waits until you have
 After the freemium decision, the landing page now publishes:
 
 - ✅ **Free tier card** — ₪0 forever, 1 class / 30 students / all 11 modes
-- ✅ **Pro tier card** — ₪290/yr or ₪29/mo, 30-day trial, "Most popular" badge
+- ✅ **Pro tier card** — ₪290/yr or ₪29/mo, 14-day trial, "Most popular" badge
 - ✅ **Schools tier card** — no price, "Get a quote" → opens `SchoolInquiryModal`
 - ✅ "Individual teacher? Get in touch" smaller mailto in footer (back-channel for solo teachers who hesitate at Pro)
 
