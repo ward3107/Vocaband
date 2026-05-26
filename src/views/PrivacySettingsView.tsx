@@ -261,7 +261,7 @@ export default function PrivacySettingsView({
           </div>
           <div className="flex gap-3 mt-4">
             <button type="button" onClick={() => setView('public-privacy')} className="text-blue-600 text-sm font-bold hover:underline">{t.fullPrivacyPolicy}</button>
-            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">{t.termsOfService}</a>
+            <button type="button" onClick={() => setView('public-terms')} className="text-blue-600 text-sm font-bold hover:underline">{t.termsOfService}</button>
           </div>
           {/* Two complementary affordances:
               - "Show privacy summary" (primary, blue chip) — reopens the

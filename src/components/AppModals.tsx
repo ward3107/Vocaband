@@ -79,7 +79,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
           <p><strong>{t.consentRightsLabel}</strong>{t.consentRightsBody}</p>
           <div className="flex gap-3 pt-1">
             <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">{t.consentFullPolicyLink}</a>
-            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">{t.consentTermsLink}</a>
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">{t.consentTermsLink}</a>
           </div>
         </div>
 
@@ -97,7 +97,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
               {t.consentCheckboxPrefix}
               <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentFullPolicyLink}</a>
               {t.consentCheckboxAnd}
-              <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentTermsLink}</a>
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentTermsLink}</a>
               {t.consentCheckboxSuffix}
             </span>
           </label>
