@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Palette, Tv2, X } from "lucide-react";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
 import { usePresentationPrompt } from "../hooks/usePresentationPrompt";
-import TeacherOnboardingWizard from "../components/onboarding/TeacherOnboardingWizard";
+// Lazy — pulls in motion/react and only opens for brand-new teachers.
+const TeacherOnboardingWizard = lazyWithRetry(() => import("../components/onboarding/TeacherOnboardingWizard"));
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import TopAppBar from "../components/TopAppBar";
 import PageHero from "../components/PageHero";
@@ -288,13 +290,18 @@ export default function TeacherDashboardView({
             so it doesn't re-fire on a different device.  Skipping
             also flips the flag so the wizard never re-appears for
             this teacher; "Open my dashboard" on step 4 also dismisses. */}
-        {onWizardComplete && onWizardSkip && (
-          <TeacherOnboardingWizard
-            open={user?.onboardedAt == null && classes.length === 0}
-            teacherDisplayName={user?.displayName}
-            onComplete={onWizardComplete}
-            onSkip={onWizardSkip}
-          />
+        {onWizardComplete && onWizardSkip && user?.onboardedAt == null && classes.length === 0 && (
+          // Gate the lazy mount on the open condition so established
+          // teachers never fetch the wizard chunk; local null-fallback
+          // Suspense avoids flashing a spinner while it loads.
+          <Suspense fallback={null}>
+            <TeacherOnboardingWizard
+              open
+              teacherDisplayName={user?.displayName}
+              onComplete={onWizardComplete}
+              onSkip={onWizardSkip}
+            />
+          </Suspense>
         )}
 
         <TopAppBar
