@@ -9,6 +9,7 @@ loadDotenv({ path: ".env.local", override: true });
 import * as Sentry from "@sentry/node";
 import { scrubPii } from "./src/utils/scrubPii";
 import { installScrubbingConsole, redactEmail } from "./src/utils/serverLog";
+import { createSign } from "node:crypto";
 
 // installScrubbingConsole patches console.{log,warn,error,info,debug}
 // to run every argument through scrubPii before the underlying writer
@@ -2831,14 +2832,79 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     }
   }
 
-  async function fetchGoogleCost(_days: number): Promise<Record<string, unknown>> {
-    // Real Gemini spend lives in Cloud Billing, queryable only through a
-    // BigQuery billing export + a service account — a heavier setup we haven't
-    // wired. Report not-configured so the panel shows the setup steps.
-    return {
-      configured: false,
-      reason: "Needs Cloud Billing → BigQuery export + service-account credentials",
-    };
+  // Google exposes no simple "spend" REST endpoint — the supported path for
+  // Gemini/Cloud cost is a Cloud Billing → BigQuery export, then a query over
+  // the export table. We do that with a read-only service account, minting our
+  // own OAuth2 access token from a self-signed JWT (no SDK, no new dep). Config
+  // lives ONLY in server env:
+  //   GOOGLE_BILLING_SA_KEY    base64 of the service-account JSON key
+  //   GOOGLE_BILLING_BQ_TABLE  `project.dataset.gcp_billing_export_v1_XXXXXX`
+  async function googleAccessToken(sa: { client_email: string; private_key: string }): Promise<string> {
+    const now = Math.floor(Date.now() / 1000);
+    const seg = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+    const signingInput = `${seg({ alg: "RS256", typ: "JWT" })}.${seg({
+      iss: sa.client_email,
+      scope: "https://www.googleapis.com/auth/bigquery.readonly",
+      aud: "https://oauth2.googleapis.com/token",
+      iat: now,
+      exp: now + 3600,
+    })}`;
+    const signature = createSign("RSA-SHA256").update(signingInput).sign(sa.private_key, "base64url");
+    const r = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion: `${signingInput}.${signature}`,
+      }),
+    });
+    if (!r.ok) throw new Error(`OAuth token exchange failed (${r.status})`);
+    const j = (await r.json()) as { access_token?: string };
+    if (!j.access_token) throw new Error("OAuth response had no access_token");
+    return j.access_token;
+  }
+
+  async function fetchGoogleCost(days: number): Promise<Record<string, unknown>> {
+    const rawKey = process.env.GOOGLE_BILLING_SA_KEY;
+    const table = process.env.GOOGLE_BILLING_BQ_TABLE;
+    if (!rawKey || !table) {
+      return {
+        configured: false,
+        reason: "Set GOOGLE_BILLING_SA_KEY + GOOGLE_BILLING_BQ_TABLE (Cloud Billing → BigQuery export)",
+      };
+    }
+    try {
+      const sa = JSON.parse(Buffer.from(rawKey, "base64").toString("utf8")) as {
+        client_email: string;
+        private_key: string;
+        project_id: string;
+      };
+      const token = await googleAccessToken(sa);
+      // `table` is an operator-set Fly secret (never user input) and `days` is
+      // already clamped to 1..365 by the caller, so this interpolation can't be
+      // attacker-influenced. Sum gross cost across the export window.
+      const sql =
+        `SELECT SUM(cost) AS total FROM \`${table}\` ` +
+        `WHERE usage_start_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${days} DAY)`;
+      const r = await fetch(
+        `https://bigquery.googleapis.com/bigquery/v2/projects/${encodeURIComponent(sa.project_id)}/queries`,
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          body: JSON.stringify({ query: sql, useLegacySql: false, timeoutMs: 20_000 }),
+        },
+      );
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        return { configured: true, ok: false, status: r.status, message: text.slice(0, 200) };
+      }
+      const body = (await r.json()) as { rows?: { f: { v: string | null }[] }[] };
+      const raw = body.rows?.[0]?.f?.[0]?.v;
+      const total = raw == null ? 0 : parseFloat(raw);
+      return { configured: true, ok: true, costUsd: Math.round((Number.isNaN(total) ? 0 : total) * 100) / 100 };
+    } catch (err) {
+      return { configured: true, ok: false, message: (err as Error).message };
+    }
   }
 
   app.get("/api/admin/provider-billing", async (req, res) => {
@@ -2847,6 +2913,92 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     const days = Math.min(Math.max(Number.isFinite(parsed) ? parsed : 30, 1), 365);
     const [anthropic, google] = await Promise.all([fetchAnthropicCost(days), fetchGoogleCost(days)]);
     res.json({ days, anthropic, google });
+  });
+
+  // Full inventory of every external service this project wires, for the
+  // Developer Dashboard's "Connected services" panel. Status is derived from
+  // server-side env presence + the same Redis signal /api/health/redis uses.
+  // No secrets are returned — only booleans, a one-line role, and a console URL.
+  app.get("/api/admin/integrations", async (req, res) => {
+    if (!(await requireAdmin(req, res))) return;
+    const has = (v?: string) => !!(v && v.trim());
+    let supaRef: string | null = null;
+    try {
+      supaRef = new URL(process.env.SUPABASE_URL || "").host.split(".")[0] || null;
+    } catch {
+      supaRef = null;
+    }
+    const flyApp = process.env.FLY_APP_NAME || "vocaband";
+    const flyRegion = process.env.FLY_REGION || "fra";
+    const redisHealth =
+      redisAdapterStatus === "attached" ? "active" : redisAdapterStatus === "failed" ? "degraded" : "off";
+
+    const services = [
+      {
+        id: "supabase",
+        name: "Supabase",
+        category: "Database",
+        role: "Postgres + RLS, Auth (Google OAuth), Storage",
+        status: has(process.env.SUPABASE_SERVICE_ROLE_KEY) && has(process.env.SUPABASE_URL) ? "active" : "not_configured",
+        detail: supaRef ? `project ${supaRef} · EU` : "service key / URL missing",
+        consoleUrl: supaRef ? `https://supabase.com/dashboard/project/${supaRef}` : "https://supabase.com/dashboard/projects",
+      },
+      {
+        id: "fly",
+        name: "Fly.io",
+        category: "Compute",
+        role: "Express API + socket.io (Live Challenge, Quick Play)",
+        status: "active",
+        detail: `region ${flyRegion} · up ${Math.floor(process.uptime() / 3600)}h`,
+        consoleUrl: `https://fly.io/apps/${flyApp}`,
+      },
+      {
+        id: "cloudflare",
+        name: "Cloudflare",
+        category: "Edge / CDN",
+        role: "Worker (serves SPA, proxies /api + /socket.io), R2 audio CDN",
+        status: "active",
+        detail: has(process.env.CLOUDFLARE_INGRESS_ONLY) ? "ingress-only enforced" : "Worker + R2",
+        consoleUrl: "https://dash.cloudflare.com",
+      },
+      {
+        id: "sentry",
+        name: "Sentry",
+        category: "Observability",
+        role: "Error + performance monitoring (browser + server)",
+        status: has(process.env.SENTRY_DSN) ? "active" : "partial",
+        detail: has(process.env.SENTRY_DSN) ? "server + client" : "client only (build-time fallback DSN)",
+        consoleUrl: "https://sentry.io",
+      },
+      {
+        id: "gemini",
+        name: "Google Gemini",
+        category: "AI",
+        role: "Gemini Flash — OCR, sentence/topic generation, translation",
+        status: has(process.env.GOOGLE_AI_API_KEY) ? "active" : "not_configured",
+        detail: has(process.env.GOOGLE_BILLING_BQ_TABLE) ? "key set · live billing wired" : "key set · billing via estimate",
+        consoleUrl: "https://console.cloud.google.com/billing",
+      },
+      {
+        id: "anthropic",
+        name: "Anthropic",
+        category: "AI",
+        role: "Claude Haiku — Bagrut test generation",
+        status: has(process.env.ANTHROPIC_API_KEY) ? "active" : "not_configured",
+        detail: has(process.env.ANTHROPIC_ADMIN_KEY) ? "key set · live billing wired" : "key set · no admin billing key",
+        consoleUrl: "https://console.anthropic.com",
+      },
+      {
+        id: "redis",
+        name: "Redis (Upstash)",
+        category: "Cache",
+        role: "Rate limiting + socket.io fan-out across VMs",
+        status: redisHealth,
+        detail: has(process.env.REDIS_URL) ? `adapter ${redisAdapterStatus}` : "optional · not set (single-VM ok)",
+        consoleUrl: "https://console.upstash.com",
+      },
+    ];
+    res.json({ generatedAt: new Date().toISOString(), services });
   });
 
   app.get("/api/ocr/status", async (req, res) => {

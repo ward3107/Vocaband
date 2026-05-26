@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, GitCommit, Clock, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
+import { RefreshCw, GitCommit, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "../../core/supabase";
+import DevIntegrationsSection from "./DevIntegrationsSection";
 
 interface VersionInfo {
   commit: string;
@@ -9,14 +10,6 @@ interface VersionInfo {
   env: Record<string, boolean>;
   timestamp: string;
 }
-
-// Provider consoles for the stack documented in CLAUDE.md — navigation only.
-const CONSOLES: { label: string; url: string }[] = [
-  { label: "Supabase", url: "https://supabase.com/dashboard/projects" },
-  { label: "Cloudflare", url: "https://dash.cloudflare.com" },
-  { label: "Fly.io", url: "https://fly.io/dashboard" },
-  { label: "Vercel", url: "https://vercel.com/dashboard" },
-];
 
 const ENV_LABELS: Record<string, string> = {
   hasAnthropicKey: "Anthropic key",
@@ -125,20 +118,7 @@ export default function DevInfraPanel() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {CONSOLES.map((c) => (
-          <a
-            key={c.label}
-            href={c.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 p-4 flex items-center justify-between text-white font-bold text-sm"
-          >
-            {c.label}
-            <ExternalLink className="w-4 h-4 text-white/40" />
-          </a>
-        ))}
-      </div>
+      <DevIntegrationsSection />
     </div>
   );
 }
