@@ -584,9 +584,24 @@ export default defineConfig(() => {
               id.includes('node_modules/react-dom/') ||
               id.includes('node_modules/scheduler/')
             ) return 'react-vendor';
-            // motion/framer-motion — used everywhere, but big enough
-            // (~40 kB gz) to deserve its own cache key.
-            if (id.includes('node_modules/motion/') || id.includes('node_modules/framer-motion/')) return 'motion';
+            // motion/framer-motion — deliberately NOT force-chunked.
+            //
+            // React's jsx-runtime is CommonJS (react/jsx-runtime.js ->
+            // cjs/react-jsx-runtime.production.js). When motion got its own
+            // manualChunk, rolldown's CJS interop made that motion chunk the
+            // canonical holder of jsx/jsxs, so EVERY JSX-using page (incl.
+            // the public landing) had to statically import the ~42 kB motion
+            // chunk just to render — it sat on the cold first-paint path and
+            // resisted every attempt to pin jsx-runtime elsewhere (rolldown
+            // overrides manualChunks for CJS-interop modules).
+            //
+            // Letting rolldown auto-split motion instead: jsx-runtime settles
+            // into react-vendor (where it belongs, +0.1 kB), and motion lands
+            // in a single shared chunk pulled in ONLY by the lazy views that
+            // animate. No duplication, total weight unchanged, and motion is
+            // off the landing critical path. (The lazy boundaries in App.tsx /
+            // TeacherDashboard* are what keep eager importers from dragging it
+            // back on.)
             // supabase-js was already a chunk via natural splitting
             // but pin it so the chunk name is stable across builds.
             if (id.includes('node_modules/@supabase/')) return 'supabase';
