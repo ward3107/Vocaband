@@ -277,6 +277,11 @@ const RootApp = lazyWithRetry(() =>
 // student login.  Tree-shaken out of production by the
 // `import.meta.env.DEV` guard below.
 const StudentRtlPreview = lazyWithRetry(() => import('./dev/StudentRtlPreview'));
+// Dev-only short-circuit: `/dev/teacher-affordances` mounts the
+// teacher-dashboard floating circles + trial banner with fake AppUser
+// data so the projector / theme / plan-status surfaces can be
+// inspected without logging in as a real teacher.
+const TeacherAffordancesPreview = lazyWithRetry(() => import('./dev/TeacherAffordancesPreview'));
 // AccessibilityWidget is lazy too — it doesn't render anything on
 // public pages until the user interacts, so keeping it in the entry
 // chunk (with its motion/lucide deps) was pure dead weight on first
@@ -386,15 +391,16 @@ async function bootstrap() {
     window.history.replaceState({}, '', window.location.pathname);
   }
 
-  const isDevPreview =
-    import.meta.env.DEV &&
-    window.location.pathname === '/dev/student-rtl-preview';
+  const devPath = import.meta.env.DEV ? window.location.pathname : '';
+  const isStudentRtlPreview = devPath === '/dev/student-rtl-preview';
+  const isTeacherAffordancesPreview = devPath === '/dev/teacher-affordances';
+  const isDevPreview = isStudentRtlPreview || isTeacherAffordancesPreview;
 
   createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <Suspense fallback={<Loading />}>
         {isDevPreview ? (
-          <StudentRtlPreview />
+          isTeacherAffordancesPreview ? <TeacherAffordancesPreview /> : <StudentRtlPreview />
         ) : (
           <>
             <RootApp />
