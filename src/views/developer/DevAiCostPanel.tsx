@@ -1,7 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Bot, RefreshCw, CloudOff } from "lucide-react";
-import { callAdminRpc, adminApiGet, fmtUsd, fmtNum, type DevAiUsage, type ProviderBilling } from "./devShared";
+import { callAdminRpc, adminApiGet, fmtUsd, fmtNum, type DevAiUsage, type ProviderBilling, type ProviderCost } from "./devShared";
+
+/** One provider's real billed spend, or its setup hint when no admin key is set. */
+function BillingRow({ label, cost, setupHint }: { label: string; cost?: ProviderCost; setupHint: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-white/60 text-sm font-bold">{label}</span>
+      {!cost ? (
+        <span className="text-white/30 text-xs">…</span>
+      ) : cost.configured && cost.ok ? (
+        <span className="text-emerald-300 font-black">${(cost.costUsd ?? 0).toFixed(2)}</span>
+      ) : cost.configured ? (
+        <span className="text-rose-300 text-xs font-bold text-right max-w-[60%]">
+          Error {cost.status ?? ""}: {cost.message ?? "request failed"}
+        </span>
+      ) : (
+        <span className="text-white/40 text-xs text-right max-w-[60%]">{setupHint}</span>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -126,29 +146,21 @@ export default function DevAiCostPanel({ showToast }: Props) {
           <CloudOff className="w-4 h-4" /> Live provider billing
         </div>
 
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-white/60 text-sm font-bold">Anthropic</span>
-          {!billing ? (
-            <span className="text-white/30 text-xs">…</span>
-          ) : billing.anthropic.configured && billing.anthropic.ok ? (
-            <span className="text-emerald-300 font-black">${(billing.anthropic.costUsd ?? 0).toFixed(2)}</span>
-          ) : billing.anthropic.configured ? (
-            <span className="text-rose-300 text-xs font-bold text-right max-w-[60%]">
-              Error {billing.anthropic.status ?? ""}: {billing.anthropic.message ?? "request failed"}
-            </span>
-          ) : (
-            <span className="text-white/40 text-xs text-right">
+        <BillingRow
+          label="Anthropic"
+          cost={billing?.anthropic}
+          setupHint={
+            <>
               Set <code className="text-white/70">ANTHROPIC_ADMIN_KEY</code> on the server
-            </span>
-          )}
-        </div>
+            </>
+          }
+        />
 
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-white/60 text-sm font-bold">Google (Gemini)</span>
-          <span className="text-white/40 text-xs text-right max-w-[60%]">
-            {billing?.google.configured ? "configured" : billing?.google.reason ?? "Needs BigQuery billing export"}
-          </span>
-        </div>
+        <BillingRow
+          label="Google Cloud (Gemini)"
+          cost={billing?.google}
+          setupHint={billing?.google.reason ?? "Needs BigQuery billing export"}
+        />
 
         <p className="text-white/30 text-[11px] leading-relaxed border-t border-white/10 pt-3">
           Real billed dollars from the providers. Anthropic needs an admin API key; Google needs a Cloud

@@ -47,10 +47,35 @@ export interface DevSchool {
   managers: string[];
 }
 
+export interface ProviderCost {
+  configured: boolean;
+  ok?: boolean;
+  costUsd?: number;
+  status?: number;
+  message?: string;
+  reason?: string;
+}
+
 export interface ProviderBilling {
   days: number;
-  anthropic: { configured: boolean; ok?: boolean; costUsd?: number; status?: number; message?: string };
-  google: { configured: boolean; reason?: string };
+  anthropic: ProviderCost;
+  google: ProviderCost;
+}
+
+/** One row of the "Connected services" inventory (admin_integrations endpoint). */
+export interface DevIntegration {
+  id: string;
+  name: string;
+  category: string;
+  role: string;
+  status: "active" | "partial" | "degraded" | "off" | "not_configured";
+  detail: string;
+  consoleUrl: string;
+}
+
+export interface DevIntegrations {
+  generatedAt: string;
+  services: DevIntegration[];
 }
 
 /** micro-USD (1 = $0.000001) → "$1.23". */
