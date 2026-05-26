@@ -109,12 +109,15 @@ export default function DevEntitlementsSection({ showToast }: Props) {
               ))}
             </select>
 
-            {it.allowlisted && (
+            {it.role !== "admin" && it.role !== "manager" && (
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void run("admin_remove_teacher", { p_email: it.email }, "Removed from allowlist")}
-                title="Remove from teacher allowlist"
+                onClick={() => {
+                  if (!window.confirm(`Remove ${it.email} as a teacher? They lose teacher access and drop off the roster — their classes/data are kept.`)) return;
+                  void run("admin_remove_teacher", { p_email: it.email }, "Teacher removed");
+                }}
+                title="Remove teacher (revoke access)"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 className="p-2 rounded-xl bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
               >
