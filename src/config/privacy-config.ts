@@ -466,8 +466,4 @@ export const CLIENT_STORAGE_KEYS = {
   privacyReminderDismissed: "vocaband_privacy_reminder_dismissed",
   /** Student-side "teacher sees my plays" acknowledgement version */
   studentVisibilityVersion: "vocaband_student_visibility_version",
-  /** Teacher dismissed the "looks like you're projecting?" prompt.
-   *  Cleared when the user enters fullscreen so the offer can reappear
-   *  on the strong "about to present" signal. */
-  projectorPromptDismissed: "vocaband_projector_prompt_dismissed",
 } as const;

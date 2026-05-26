@@ -1,8 +1,11 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Palette, Tv2, X } from "lucide-react";
+import { Palette, Tv2 } from "lucide-react";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
-import { usePresentationPrompt } from "../hooks/usePresentationPrompt";
+// usePresentationPrompt removed — the heuristic prompt was noisy and
+// fired false positives on regular desktop monitors.  Replaced by
+// fullscreen-auto-enable (see useEffect below) + the persistent Tv2
+// toggle in the bottom-right corner.
 // Lazy — pulls in motion/react and only opens for brand-new teachers.
 const TeacherOnboardingWizard = lazyWithRetry(() => import("../components/onboarding/TeacherOnboardingWizard"));
 import DashboardOnboarding from "../components/DashboardOnboarding";
@@ -26,7 +29,7 @@ import DeleteAssignmentModal from "../components/dashboard/DeleteAssignmentModal
 import RejectStudentModal from "../components/dashboard/RejectStudentModal";
 import ToastList, { type Toast } from "../components/dashboard/ToastList";
 import ConfirmDialog, { type ConfirmDialogState } from "../components/dashboard/ConfirmDialog";
-import { useLanguage, type Language } from "../hooks/useLanguage";
+import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import { useFirstTimeGuide } from "../hooks/useFirstTimeGuide";
 import FirstTimeGuide from "../components/onboarding/FirstTimeGuide";
@@ -212,10 +215,21 @@ export default function TeacherDashboardView({
   // button is hidden so existing teachers see no UI change.
   const adaptiveTheme = useAdaptiveTheme();
 
-  // Heuristic projector nudge — offers Presentation Mode when the
-  // display looks like a projector / large external screen. Never
-  // auto-enables; the teacher decides.
-  const presentationPrompt = usePresentationPrompt(adaptiveTheme.presentationMode);
+  // Auto-enable Presentation Mode the moment the teacher actually
+  // enters fullscreen (F11 right before class is the clearest "I'm
+  // about to project this" signal we can detect from the browser).
+  // Auto-disables on exit so the regular dashboard returns to its
+  // normal typography afterwards.  The persistent Tv2 button in the
+  // bottom-right corner remains the manual control for cases where
+  // a teacher wants Presentation Mode without going fullscreen.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onFullscreen = () => {
+      adaptiveTheme.setPresentationMode(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFullscreen);
+    return () => document.removeEventListener("fullscreenchange", onFullscreen);
+  }, [adaptiveTheme]);
 
   // ─── First-rating prompt gate ─────────────────────────────────────
   // Show the rating modal when the teacher has meaningfully USED the
@@ -331,65 +345,52 @@ export default function TeacherDashboardView({
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
 
-          {/* Pro trial / upgrade banner.
-              - Trialing free teacher: amber gradient, "X days left" + Upgrade CTA.
-              - Free teacher post-trial: gray banner, "Trial ended" + Upgrade CTA.
-              - Paid Pro / School / no-plan-data teacher: nothing — no banner.
+          {/* Compact Pro-trial / upgrade chip.  Right-aligned pill —
+              ~6× lighter than the previous full-width banner.
+              - Trialing free teacher: amber pill with "X days of Pro
+                left" + tiny Upgrade link.
+              - Free teacher post-trial: slate pill with "Trial ended"
+                + tiny Upgrade link.
+              - Paid Pro / School / admin / dev allowlist: nothing.
               The CTA is a mailto until Stripe Payment Links are wired
               (see docs/PRICING-MODEL.md Status section). */}
           {(() => {
             const trialing = isTrialing(user);
-            // Bail only for users who are entitled to Pro via PAID
-            // mechanisms (paid Pro plan, school license, admin, dev
-            // allowlist).  isPro() returns true during the 14-day trial
-            // too, so the previous `if (isPro) return null` was
-            // swallowing the trial countdown banner for every trialing
-            // teacher — they never saw "X days of Pro left".
+            // Bail only for users entitled via PAID mechanisms (paid
+            // plan, school license, admin, dev allowlist).  isPro()
+            // returns true during trial too, so this guard is
+            // intentionally `isPro && !trialing` — trialing teachers
+            // need to reach the countdown chip below.
             if (isPro(user) && !trialing) return null;
             const daysLeft = getTrialDaysLeft(user);
-            // user.role==='teacher' && !isPro && !isTrialing → expired free.
-            // For grandfathered teachers without trial_ends_at the UI also
-            // falls into the expired branch, which is the right outcome:
-            // their migration-set trial has either expired or they were
-            // never trialing in the first place.
             if (trialing && daysLeft !== null) {
               return (
-                <div className="mb-6 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-amber-500/20 p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap">
-                  <div className="w-11 h-11 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-                    <Sparkles size={20} className="text-white" />
+                <div className="mb-4 flex justify-end">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm shadow-orange-500/30">
+                    <Sparkles size={14} className="flex-shrink-0" />
+                    <span>{t.trialBannerActive(daysLeft)}</span>
+                    <a
+                      href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
+                      className="inline-flex items-center gap-1 rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-bold hover:bg-white/40 transition-colors"
+                    >
+                      <Crown size={12} /> {t.trialBannerActiveCta}
+                    </a>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm sm:text-base font-bold">
-                      {t.trialBannerActive(daysLeft)}
-                    </p>
-                  </div>
-                  <a
-                    href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
-                    className="px-4 py-2 rounded-lg bg-white text-orange-600 font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
-                  >
-                    <Crown size={16} />
-                    {t.trialBannerActiveCta}
-                  </a>
                 </div>
               );
             }
             return (
-              <div className="mb-6 rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 shadow-lg p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap border border-white/10">
-                <div className="w-11 h-11 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-                  <Crown size={20} className="text-amber-400" />
+              <div className="mb-4 flex justify-end">
+                <div className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm">
+                  <Crown size={14} className="text-amber-400 flex-shrink-0" />
+                  <span>{t.trialBannerExpired}</span>
+                  <a
+                    href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
+                    className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-[11px] font-bold hover:from-amber-400 hover:to-orange-400 transition-colors"
+                  >
+                    <Crown size={12} /> {t.trialBannerExpiredCta}
+                  </a>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm sm:text-base font-bold">
-                    {t.trialBannerExpired}
-                  </p>
-                </div>
-                <a
-                  href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm shadow hover:shadow-lg transition-all flex items-center gap-1.5 flex-shrink-0"
-                >
-                  <Crown size={16} />
-                  {t.trialBannerExpiredCta}
-                </a>
               </div>
             );
           })()}
@@ -561,19 +562,6 @@ export default function TeacherDashboardView({
         <Palette size={20} />
       </button>
 
-      {/* Projector nudge — appears when the display looks like a
-          projector / large external screen and Presentation Mode is
-          off. Gentle and dismissible; enabling flips into
-          projector-friendly typography (bigger text, higher contrast,
-          no decorative shadows). */}
-      {presentationPrompt.show && (
-        <ProjectorPromptBanner
-          language={language}
-          onEnable={() => adaptiveTheme.setPresentationMode(true)}
-          onDismiss={presentationPrompt.dismiss}
-        />
-      )}
-
       {/* Presentation Mode toggle — persistent control so a teacher can
           flip the screen into projector-friendly typography (1.4× font
           scale, higher contrast, no decorative shadows) and back at any
@@ -639,85 +627,3 @@ export default function TeacherDashboardView({
   );
 }
 
-const PROJECTOR_PROMPT_COPY: Record<
-  "en" | "he" | "ar",
-  { title: string; body: string; enable: string; dismiss: string }
-> = {
-  en: {
-    title: "Projecting to your class?",
-    body: "Turn on Presentation Mode for bigger text and higher contrast.",
-    enable: "Turn on",
-    dismiss: "Not now",
-  },
-  he: {
-    title: "מקרינים לכיתה?",
-    body: "הפעילו מצב הצגה לטקסט גדול יותר וניגודיות גבוהה.",
-    enable: "הפעלה",
-    dismiss: "לא עכשיו",
-  },
-  ar: {
-    title: "تعرض على الصف؟",
-    body: "فعّل وضع العرض لنص أكبر وتباين أعلى.",
-    enable: "تفعيل",
-    dismiss: "ليس الآن",
-  },
-};
-
-function ProjectorPromptBanner({
-  language,
-  onEnable,
-  onDismiss,
-}: {
-  language: Language;
-  onEnable: () => void;
-  onDismiss: () => void;
-}) {
-  const copy =
-    PROJECTOR_PROMPT_COPY[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
-  const dir = language === "he" || language === "ar" ? "rtl" : "ltr";
-  return (
-    <div
-      dir={dir}
-      role="dialog"
-      aria-label={copy.title}
-      className="fixed inset-x-3 bottom-3 sm:inset-x-auto sm:right-6 sm:bottom-24 sm:max-w-sm z-40 rounded-2xl border-2 border-indigo-200 bg-[var(--vb-surface-elevated)] p-4 shadow-xl"
-    >
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white flex items-center justify-center">
-          <Tv2 size={20} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-[var(--vb-text-primary)]">{copy.title}</p>
-          <p className="text-sm text-[var(--vb-text-secondary)] mt-0.5">{copy.body}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onDismiss}
-          aria-label={copy.dismiss}
-          className="shrink-0 text-[var(--vb-text-muted)] hover:text-[var(--vb-text-primary)] p-1 rounded-lg"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-        >
-          <X size={18} />
-        </button>
-      </div>
-      <div className="flex gap-2 mt-3">
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="flex-1 py-2 rounded-lg border border-[var(--vb-border)] text-[var(--vb-text-secondary)] font-bold text-sm hover:bg-[var(--vb-surface-alt)] transition-colors"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-        >
-          {copy.dismiss}
-        </button>
-        <button
-          type="button"
-          onClick={onEnable}
-          className="flex-1 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-sm hover:shadow-lg transition-all"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-        >
-          {copy.enable}
-        </button>
-      </div>
-    </div>
-  );
-}
