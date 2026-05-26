@@ -202,15 +202,15 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize, onRe
 
                 {/* Full privacy policy link — required by GDPR Art. 13 +
                     EDPB Guidelines 03/2022 to sit one click from the
-                    consent prompt.  Opens the static policy in a NEW TAB
-                    (matching the consent modal + Privacy Settings links):
-                    the banner is a scroll-locked modal, so an in-app SPA
-                    nav would just render the policy *behind* the banner
-                    and look like nothing happened.  A new tab lets the
-                    user read it without losing their consent choice. */}
+                    consent prompt.  Opens the designed React policy
+                    page (/privacy SPA route) in a NEW TAB: the banner is
+                    a scroll-locked modal, so an in-app SPA nav would just
+                    render the policy *behind* the banner and look like
+                    nothing happened.  A new tab lets the user read it
+                    without losing their consent choice. */}
                 <div className={`mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10`}>
                   <a
-                    href="/privacy.html"
+                    href="/privacy"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold text-violet-200 hover:text-white underline decoration-violet-400/40 hover:decoration-white/70 underline-offset-4 transition-colors"

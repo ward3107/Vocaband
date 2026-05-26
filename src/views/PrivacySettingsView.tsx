@@ -260,7 +260,7 @@ export default function PrivacySettingsView({
             <p><strong>{t.yourAcceptedVersion}</strong> {localStorage.getItem('vocaband_consent_version') || t.notYetAccepted}</p>
           </div>
           <div className="flex gap-3 mt-4">
-            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">{t.fullPrivacyPolicy}</a>
+            <button type="button" onClick={() => setView('public-privacy')} className="text-blue-600 text-sm font-bold hover:underline">{t.fullPrivacyPolicy}</button>
             <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm font-bold hover:underline">{t.termsOfService}</a>
           </div>
           {/* Two complementary affordances:

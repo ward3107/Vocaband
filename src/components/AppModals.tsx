@@ -78,7 +78,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
           <p><strong>{t.consentStorageLabel}</strong>{t.consentStorageBody}</p>
           <p><strong>{t.consentRightsLabel}</strong>{t.consentRightsBody}</p>
           <div className="flex gap-3 pt-1">
-            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">{t.consentFullPolicyLink}</a>
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">{t.consentFullPolicyLink}</a>
             <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary text-xs font-bold hover:underline">{t.consentTermsLink}</a>
           </div>
         </div>
@@ -95,7 +95,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
             />
             <span className="text-xs sm:text-sm text-on-surface">
               {t.consentCheckboxPrefix}
-              <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentFullPolicyLink}</a>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentFullPolicyLink}</a>
               {t.consentCheckboxAnd}
               <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">{t.consentTermsLink}</a>
               {t.consentCheckboxSuffix}
