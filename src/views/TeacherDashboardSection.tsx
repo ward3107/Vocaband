@@ -6,12 +6,14 @@
  * Behaviour preserved exactly.  Closure deps from App's render scope
  * (state, setters, sibling-hook helpers) come in via a deps bag.
  */
-import { type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
-import ClassRosterModal from '../components/ClassRosterModal';
-import RosterModalV2 from '../components/roster/v2/RosterModalV2';
+// Lazy — both pull in motion/react and only mount when a roster modal is
+// opened. Loading them eagerly put motion on the cold first-paint path.
+const ClassRosterModal = lazyWithRetry(() => import('../components/ClassRosterModal'));
+const RosterModalV2 = lazyWithRetry(() => import('../components/roster/v2/RosterModalV2'));
 import SvgArrowLeftRight from '../components/svg/SvgArrowLeftRight';
 import { logAudit } from '../utils/audit';
 import {
@@ -330,23 +332,27 @@ export function TeacherDashboardSection(deps: TeacherDashboardSectionDeps): Reac
         /* English-subject classes get the redesigned RosterModalV2
            (pastel chrome, kebab actions, frosted code chip).  Hebrew
            classes keep the legacy ClassRosterModal so the VocaHebrew
-           dashboard surface stays untouched. */
-        (rosterModalClass.subject ?? 'english') === 'english' ? (
-          <RosterModalV2
-            open={!!rosterModalClass}
-            onClose={() => setRosterModalClass(null)}
-            classCode={rosterModalClass.code}
-            className={rosterModalClass.name}
-            classEmoji={rosterModalClass.avatar ?? '🎓'}
-          />
-        ) : (
-          <ClassRosterModal
-            open={!!rosterModalClass}
-            onClose={() => setRosterModalClass(null)}
-            classCode={rosterModalClass.code}
-            className={rosterModalClass.name}
-          />
-        )
+           dashboard surface stays untouched.  Local Suspense (null
+           fallback) so loading the lazy modal chunk doesn't flash the
+           full-screen LazyWrapper spinner over the dashboard. */
+        <Suspense fallback={null}>
+          {(rosterModalClass.subject ?? 'english') === 'english' ? (
+            <RosterModalV2
+              open={!!rosterModalClass}
+              onClose={() => setRosterModalClass(null)}
+              classCode={rosterModalClass.code}
+              className={rosterModalClass.name}
+              classEmoji={rosterModalClass.avatar ?? '🎓'}
+            />
+          ) : (
+            <ClassRosterModal
+              open={!!rosterModalClass}
+              onClose={() => setRosterModalClass(null)}
+              classCode={rosterModalClass.code}
+              className={rosterModalClass.name}
+            />
+          )}
+        </Suspense>
       )}
     </LazyWrapper>
   );

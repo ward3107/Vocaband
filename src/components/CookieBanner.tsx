@@ -19,10 +19,6 @@ interface CookieBannerProps {
   onAccept: () => void;
   onCustomize: (preferences: CookiePreferences) => void;
   onReject: () => void;
-  /** Opens the full Privacy Policy page so users can read it before
-   *  choosing categories.  GDPR Art. 13 / EDPB Guidelines 03/2022:
-   *  the policy must be one click away from where consent is asked. */
-  onPrivacyPolicy?: () => void;
 }
 
 // Category metadata that DOES NOT change between locales (id, icon,
@@ -42,7 +38,7 @@ function getCookieCategories(t: CookieBannerStrings) {
   ];
 }
 
-const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize, onReject, onPrivacyPolicy }) => {
+const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize, onReject }) => {
   const { language, dir } = useLanguage();
   const t = cookieBannerT[language];
   const cookieCategories = getCookieCategories(t);
@@ -206,27 +202,22 @@ const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onCustomize, onRe
 
                 {/* Full privacy policy link — required by GDPR Art. 13 +
                     EDPB Guidelines 03/2022 to sit one click from the
-                    consent prompt.  Falls back to an anchor tag when no
-                    onPrivacyPolicy handler is wired (e.g. unit tests). */}
+                    consent prompt.  Opens the static policy in a NEW TAB
+                    (matching the consent modal + Privacy Settings links):
+                    the banner is a scroll-locked modal, so an in-app SPA
+                    nav would just render the policy *behind* the banner
+                    and look like nothing happened.  A new tab lets the
+                    user read it without losing their consent choice. */}
                 <div className={`mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10`}>
-                  {onPrivacyPolicy ? (
-                    <button
-                      type="button"
-                      onClick={onPrivacyPolicy}
-                      className="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold text-violet-200 hover:text-white underline decoration-violet-400/40 hover:decoration-white/70 underline-offset-4 transition-colors"
-                    >
-                      <ExternalLink size={14} aria-hidden="true" />
-                      {t.privacyPolicyLink}
-                    </button>
-                  ) : (
-                    <a
-                      href="/privacy"
-                      className="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold text-violet-200 hover:text-white underline decoration-violet-400/40 hover:decoration-white/70 underline-offset-4 transition-colors"
-                    >
-                      <ExternalLink size={14} aria-hidden="true" />
-                      {t.privacyPolicyLink}
-                    </a>
-                  )}
+                  <a
+                    href="/privacy.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold text-violet-200 hover:text-white underline decoration-violet-400/40 hover:decoration-white/70 underline-offset-4 transition-colors"
+                  >
+                    <ExternalLink size={14} aria-hidden="true" />
+                    {t.privacyPolicyLink}
+                  </a>
                 </div>
               </div>
             </div>

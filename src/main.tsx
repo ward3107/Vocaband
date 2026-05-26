@@ -5,6 +5,9 @@ import ErrorBoundary from './ErrorBoundary.tsx';
 import { runSafariDiagnostics } from './utils/safariDiagnostics';
 import { requestPersistentStorage } from './utils/persistStorage';
 import { getCookieConsent } from './hooks/useCookieConsent';
+import { resolveInitialView } from './utils/resolveInitialView';
+import { isPublicView } from './utils/authViews';
+import { hasRestorableSession } from './utils/hasRestorableSession';
 import './index.css';
 
 // Tiny pre-Sentry error buffer.
@@ -240,7 +243,33 @@ function scheduleServiceWorkerRegistration() {
   }
 }
 
-const App = lazyWithRetry(() => import('./App.tsx'));
+/**
+ * Decide whether to boot into the lightweight public shell (no auth
+ * machinery) vs the full app. Only pure logged-out visitors on a public
+ * view qualify; anyone with a session, a Quick Play link, or a non-public
+ * initial route gets the full App so nothing about the authenticated
+ * experience changes. All three checks are synchronous and supabase-free.
+ */
+function startInPublicShell(): boolean {
+  try {
+    if (new URLSearchParams(window.location.search).get('session')) return false;
+    if (hasRestorableSession()) return false;
+    return isPublicView(resolveInitialView());
+  } catch {
+    return false;
+  }
+}
+
+// Single lazy root whose import target is chosen at first render. Deciding
+// inside the dynamic-import factory (rather than a `cond ? <App/> :
+// <PublicShell/>` ternary in JSX) keeps the unused half out of the entry's
+// STATIC graph — and therefore out of Vite's index.html modulepreload. A
+// static <App /> reference would get preloaded regardless of the runtime
+// branch, dragging the ~50 kB supabase client back onto the landing.
+// PublicShell itself lazy-imports App when a login hands off.
+const RootApp = lazyWithRetry(() =>
+  startInPublicShell() ? import('./PublicShell.tsx') : import('./App.tsx'),
+);
 
 // Dev-only short-circuit: `/dev/student-rtl-preview` renders the
 // student-dashboard widgets touched by the 2026-05-24 RTL sweep against
@@ -368,7 +397,7 @@ async function bootstrap() {
           <StudentRtlPreview />
         ) : (
           <>
-            <App />
+            <RootApp />
             <Suspense fallback={null}>
               <AccessibilityWidget />
             </Suspense>

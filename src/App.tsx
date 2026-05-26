@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useRef, useCallback } from "react";
+import React, { useState, useMemo, useRef, useCallback, Suspense } from "react";
 import type { View } from "./core/views";
+import { lazyWithRetry } from "./utils/lazyWithRetry";
 import { getEntitledVocas } from "./core/subject";
 import type { Word } from "./data/vocabulary";
 import { useVocabularyLazyWithDefaults } from "./hooks/useVocabularyLazy";
@@ -60,8 +61,11 @@ import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
 import { useQuickPlayEvents } from "./hooks/useQuickPlayEvents";
 import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useGameModeSetup } from "./hooks/useGameModeSetup";
-import QpReactionBar from "./components/QpReactionBar";
-import QuickPlayHelpButton from "./components/QuickPlayHelpButton";
+// Lazy — these render only mid-Quick-Play, and they pull in motion/react.
+// Keeping them off App's eager import graph drops the ~42 kB gz motion
+// bundle from the cold first-paint (landing) critical path.
+const QpReactionBar = lazyWithRetry(() => import("./components/QpReactionBar"));
+const QuickPlayHelpButton = lazyWithRetry(() => import("./components/QuickPlayHelpButton"));
 import { useDashboardPolling } from "./hooks/useDashboardPolling";
 import { useAssignmentAutoPopulate } from "./hooks/useAssignmentAutoPopulate";
 import { useSaveQueueResilience } from "./hooks/useSaveQueueResilience";
@@ -89,6 +93,7 @@ import { useGameModeMechanicsState } from "./hooks/useGameModeMechanicsState";
 import { useDeepLinkUrlParams } from "./hooks/useDeepLinkUrlParams";
 import { useTargetLanguageState } from "./hooks/useTargetLanguageState";
 import { resolveInitialView } from "./utils/resolveInitialView";
+import { hasRestorableSession } from "./utils/hasRestorableSession";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { isPublicView, shouldPreserveView } from "./utils/authViews";
@@ -98,7 +103,7 @@ import { buildCleanupSessionData, buildCleanupQuickPlayGuest } from "./handlers/
 
 type ConfirmDialog = { show: boolean; message: string; onConfirm: () => void };
 
-export default function App() {
+export default function App({ initialView }: { initialView?: View } = {}) {
   // Initialize game debugger
   const gameDebug = getGameDebugger();
   // Language-aware toast text — picked up at render time so a teacher
@@ -109,13 +114,20 @@ export default function App() {
 
   // --- AUTH & NAVIGATION STATE ---
   const [user, setUser] = useState<AppUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Start the loading spinner ONLY when a session might actually be
+  // restorable. A fresh visitor (no token, no OAuth handoff, no saved
+  // login) skips it so the public landing paints on the first frame
+  // instead of blocking on supabase.auth.getSession(). useAuthRestore
+  // still runs either way; it just no-ops setLoading(false) here.
+  const [loading, setLoading] = useState(hasRestorableSession);
   const [studentDataLoading] = useState(false);
   // Detect Quick Play session from URL synchronously so it takes
   // priority over auth redirects.
   const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
 
-  const [view, setView] = useState<View>(resolveInitialView);
+  // `initialView` is supplied when PublicShell hands off (e.g. a login
+  // click) so App opens directly on that view; otherwise resolve from URL.
+  const [view, setView] = useState<View>(() => initialView ?? resolveInitialView());
   const [activeVoca, setActiveVoca] = useActiveVocaState();
 
   // First-time-guide persistence (teacher-only) wired through a hook
@@ -900,7 +912,6 @@ export default function App() {
   // pill / OCR crop modal / config-error banner).  See useAppPreOverlays.
   const { cookieBannerOverlay, ocrCropModal, configErrorBanner } = useAppPreOverlays({
     user, showCookieBanner, handleCookieAccept, handleCookieCustomize, handleCookieReject,
-    onCookiePrivacyPolicy: () => handlePublicNavigate("privacy"),
     qpResumeSuppress, ocrPendingFile, setOcrPendingFile, processOcrFile,
   });
 
@@ -1197,15 +1208,21 @@ export default function App() {
         handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap, handleSentenceCheck,
         speakWord, speak, shuffle,
       })}
-      {showQpReactionBar && <QpReactionBar sendReaction={quickPlaySocket.sendReaction} />}
+      {showQpReactionBar && (
+        <Suspense fallback={null}>
+          <QpReactionBar sendReaction={quickPlaySocket.sendReaction} />
+        </Suspense>
+      )}
       {showQpHelpButton && (
-        <QuickPlayHelpButton
-          onAlertTeacher={() => quickPlaySocket.sendReaction('🙋')}
-          onLeave={() => {
-            cleanupQuickPlayGuest();
-            setView('public-landing');
-          }}
-        />
+        <Suspense fallback={null}>
+          <QuickPlayHelpButton
+            onAlertTeacher={() => quickPlaySocket.sendReaction('🙋')}
+            onLeave={() => {
+              cleanupQuickPlayGuest();
+              setView('public-landing');
+            }}
+          />
+        </Suspense>
       )}
     </>
   );

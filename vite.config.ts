@@ -63,8 +63,13 @@ function vocabandHtmlPerf(): Plugin {
   // landing-page-*, PublicNav-*, FloatingButtons-* deliberately
   // skipped — they're smaller chunks whose RTT savings are modest
   // and they ride App's parallel-import wave once App resolves.
+  // NOTE: logged-out visitors on a public view now boot the lightweight
+  // PublicShell (see main.tsx), so the landing critical chunk is
+  // PublicShell-*, not App-*. App + supabase are kept OFF the landing
+  // modulepreload entirely (see build.modulePreload.resolveDependencies)
+  // and load on-demand only when a visitor logs in or has a session.
   const PRELOAD_CHUNK_PREFIXES = [
-    'App-',
+    'PublicShell-',
     'LandingPage-',
   ];
 
@@ -546,6 +551,20 @@ export default defineConfig(() => {
       },
     },
     build: {
+      modulePreload: {
+        // Keep App + the supabase client OUT of the auto-injected
+        // modulepreload graph. The landing now boots PublicShell (which
+        // is supabase-free); preloading App/supabase in the shared static
+        // <head> would force every public visitor to download ~106 kB gz
+        // they don't need on first paint. They load on-demand when a
+        // visitor logs in or restores a session — one extra RTT on a
+        // deliberate action, in exchange for a much lighter cold landing.
+        resolveDependencies(_filename, deps) {
+          return deps.filter(
+            (dep) => !/\/App-[\w-]+\.js$/.test(dep) && !/\/supabase-[\w-]+\.js$/.test(dep),
+          );
+        },
+      },
       // Motion was previously filtered out of the HTML modulepreload
       // list while we were removing motion.div usage from LandingPage.
       // The filter is now removed: rolldown wraps react/jsx-runtime
@@ -584,9 +603,24 @@ export default defineConfig(() => {
               id.includes('node_modules/react-dom/') ||
               id.includes('node_modules/scheduler/')
             ) return 'react-vendor';
-            // motion/framer-motion — used everywhere, but big enough
-            // (~40 kB gz) to deserve its own cache key.
-            if (id.includes('node_modules/motion/') || id.includes('node_modules/framer-motion/')) return 'motion';
+            // motion/framer-motion — deliberately NOT force-chunked.
+            //
+            // React's jsx-runtime is CommonJS (react/jsx-runtime.js ->
+            // cjs/react-jsx-runtime.production.js). When motion got its own
+            // manualChunk, rolldown's CJS interop made that motion chunk the
+            // canonical holder of jsx/jsxs, so EVERY JSX-using page (incl.
+            // the public landing) had to statically import the ~42 kB motion
+            // chunk just to render — it sat on the cold first-paint path and
+            // resisted every attempt to pin jsx-runtime elsewhere (rolldown
+            // overrides manualChunks for CJS-interop modules).
+            //
+            // Letting rolldown auto-split motion instead: jsx-runtime settles
+            // into react-vendor (where it belongs, +0.1 kB), and motion lands
+            // in a single shared chunk pulled in ONLY by the lazy views that
+            // animate. No duplication, total weight unchanged, and motion is
+            // off the landing critical path. (The lazy boundaries in App.tsx /
+            // TeacherDashboard* are what keep eager importers from dragging it
+            // back on.)
             // supabase-js was already a chunk via natural splitting
             // but pin it so the chunk name is stable across builds.
             if (id.includes('node_modules/@supabase/')) return 'supabase';
