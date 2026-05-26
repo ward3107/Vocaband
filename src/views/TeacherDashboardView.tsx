@@ -338,8 +338,14 @@ export default function TeacherDashboardView({
               The CTA is a mailto until Stripe Payment Links are wired
               (see docs/PRICING-MODEL.md Status section). */}
           {(() => {
-            if (isPro(user)) return null;
             const trialing = isTrialing(user);
+            // Bail only for users who are entitled to Pro via PAID
+            // mechanisms (paid Pro plan, school license, admin, dev
+            // allowlist).  isPro() returns true during the 14-day trial
+            // too, so the previous `if (isPro) return null` was
+            // swallowing the trial countdown banner for every trialing
+            // teacher — they never saw "X days of Pro left".
+            if (isPro(user) && !trialing) return null;
             const daysLeft = getTrialDaysLeft(user);
             // user.role==='teacher' && !isPro && !isTrialing → expired free.
             // For grandfathered teachers without trial_ends_at the UI also
