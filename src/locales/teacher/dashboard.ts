@@ -27,6 +27,13 @@ export interface TeacherDashboardT {
   trialBannerExpired: string;
   trialBannerExpiredCta: string;
 
+  // ─── Plan-state card in the Management grid ─────────────────────
+  planCardTrialTitle: string;
+  planCardTrialDesc: (daysLeft: number) => string;
+  planCardFreeTitle: string;
+  planCardFreeDesc: string;
+  planCardTooltip: string;
+
   // ─── Theme picker trigger ───────────────────────────────────────
   changeThemeTitle: string;
 
@@ -152,6 +159,12 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     trialBannerExpired: "Your Pro trial has ended.",
     trialBannerExpiredCta: "Upgrade to Pro",
 
+    planCardTrialTitle: "Pro trial",
+    planCardTrialDesc: (daysLeft) => `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left · Upgrade`,
+    planCardFreeTitle: "Free plan",
+    planCardFreeDesc: "Upgrade to unlock Pro features",
+    planCardTooltip: "View your plan and upgrade options",
+
     changeThemeTitle: "Change dashboard theme",
 
     quickActionsHeading: "Quick actions",
@@ -260,6 +273,12 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     trialBannerActiveCta: "שדרגו ל־Pro",
     trialBannerExpired: "תקופת הניסיון של Pro הסתיימה.",
     trialBannerExpiredCta: "שדרגו ל־Pro",
+
+    planCardTrialTitle: "ניסיון Pro",
+    planCardTrialDesc: (daysLeft) => `${daysLeft === 1 ? 'נותר יום אחד' : `נותרו ${daysLeft} ימים`} · שדרוג`,
+    planCardFreeTitle: "תוכנית חינמית",
+    planCardFreeDesc: "שדרגו כדי לפתוח את כל היכולות של Pro",
+    planCardTooltip: "צפו בתוכנית שלכם ובאפשרויות השדרוג",
 
     changeThemeTitle: "החלפת ערכת נושא",
 
@@ -370,6 +389,12 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     trialBannerExpired: "انتهت تجربة Pro الخاصة بك.",
     trialBannerExpiredCta: "ترقية إلى Pro",
 
+    planCardTrialTitle: "تجربة Pro",
+    planCardTrialDesc: (daysLeft) => `${daysLeft === 1 ? 'يوم واحد متبقي' : `${daysLeft} أيام متبقية`} · ترقية`,
+    planCardFreeTitle: "الخطة المجانية",
+    planCardFreeDesc: "ترقية لفتح ميزات Pro",
+    planCardTooltip: "اعرض خطتك وخيارات الترقية",
+
     changeThemeTitle: "تغيير سمة لوحة التحكم",
 
     quickActionsHeading: "إجراءات سريعة",
@@ -478,6 +503,12 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     trialBannerActiveCta: "Upgrade to Pro",
     trialBannerExpired: "Your Pro trial has ended.",
     trialBannerExpiredCta: "Upgrade to Pro",
+
+    planCardTrialTitle: "Pro trial",
+    planCardTrialDesc: (daysLeft) => `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left · Upgrade`,
+    planCardFreeTitle: "Free plan",
+    planCardFreeDesc: "Upgrade to unlock Pro features",
+    planCardTooltip: "View your plan and upgrade options",
 
     changeThemeTitle: "Change dashboard theme",
 

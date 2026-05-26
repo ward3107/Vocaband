@@ -62,7 +62,7 @@ export default function TeacherAffordancesPreview() {
       >
         <div className="max-w-2xl mx-auto">
           <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 mb-4 text-xs font-bold text-amber-900">
-            DEV preview — pick a plan scenario to see the new compact trial chip (top-right). The projector prompt has been removed; the live dashboard now auto-enables Presentation Mode on F11 / fullscreen.
+            DEV preview — trial/free state now lives as a card in the Management grid on the real dashboard (not previewed here). The projector prompt has been removed; the live dashboard auto-enables Presentation Mode on F11 / fullscreen.
           </div>
 
           {/* Scenario picker */}

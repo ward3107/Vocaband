@@ -36,9 +36,9 @@ import FirstTimeGuide from "../components/onboarding/FirstTimeGuide";
 import { teacherGuidesT } from "../locales/teacher/guides";
 import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
 import type { VocaId } from "../core/subject";
+import { Sparkles } from "lucide-react";
 import type { SavedTask } from "../hooks/useSavedTasks";
 import { isTrialing, isPro, getTrialDaysLeft } from "../core/plan";
-import { Sparkles, Crown } from "lucide-react";
 
 interface TeacherDashboardViewProps {
   user: AppUser;
@@ -345,55 +345,10 @@ export default function TeacherDashboardView({
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
 
-          {/* Compact Pro-trial / upgrade chip.  Right-aligned pill —
-              ~6× lighter than the previous full-width banner.
-              - Trialing free teacher: amber pill with "X days of Pro
-                left" + tiny Upgrade link.
-              - Free teacher post-trial: slate pill with "Trial ended"
-                + tiny Upgrade link.
-              - Paid Pro / School / admin / dev allowlist: nothing.
-              The CTA is a mailto until Stripe Payment Links are wired
-              (see docs/PRICING-MODEL.md Status section). */}
-          {(() => {
-            const trialing = isTrialing(user);
-            // Bail only for users entitled via PAID mechanisms (paid
-            // plan, school license, admin, dev allowlist).  isPro()
-            // returns true during trial too, so this guard is
-            // intentionally `isPro && !trialing` — trialing teachers
-            // need to reach the countdown chip below.
-            if (isPro(user) && !trialing) return null;
-            const daysLeft = getTrialDaysLeft(user);
-            if (trialing && daysLeft !== null) {
-              return (
-                <div className="mb-4 flex justify-end">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm shadow-orange-500/30">
-                    <Sparkles size={14} className="flex-shrink-0" />
-                    <span>{t.trialBannerActive(daysLeft)}</span>
-                    <a
-                      href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
-                      className="inline-flex items-center gap-1 rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-bold hover:bg-white/40 transition-colors"
-                    >
-                      <Crown size={12} /> {t.trialBannerActiveCta}
-                    </a>
-                  </div>
-                </div>
-              );
-            }
-            return (
-              <div className="mb-4 flex justify-end">
-                <div className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm">
-                  <Crown size={14} className="text-amber-400 flex-shrink-0" />
-                  <span>{t.trialBannerExpired}</span>
-                  <a
-                    href="mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro"
-                    className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-[11px] font-bold hover:from-amber-400 hover:to-orange-400 transition-colors"
-                  >
-                    <Crown size={12} /> {t.trialBannerExpiredCta}
-                  </a>
-                </div>
-              </div>
-            );
-          })()}
+          {/* Plan / trial state lives in the Management grid card now
+              (see TeacherQuickActions `plan` prop).  The previous
+              top-of-page chip was loud + duplicated by the Management
+              card; removed to keep a single upgrade surface. */}
 
           {/* One-tap network status panel — opens a modal that probes
               the four paths the app depends on (online, Vocaband API,
@@ -450,6 +405,25 @@ export default function TeacherDashboardView({
                 onApprovalsClick={onApprovalsClick}
                 onWorksheetResultsClick={onWorksheetResultsClick}
                 onLibraryClick={onLibraryClick}
+                plan={(() => {
+                  // Same `isPro && !trialing` guard as the previous top-
+                  // of-page chip: paid Pro / school / admin / dev
+                  // allowlist see no card.  Trialing teachers see the
+                  // amber "Pro trial · N days left" card; expired or
+                  // grandfathered teachers see the slate "Free plan"
+                  // card.
+                  const trialing = isTrialing(user);
+                  if (isPro(user) && !trialing) return undefined;
+                  const daysLeft = getTrialDaysLeft(user);
+                  const onUpgradeClick = () => {
+                    window.location.href =
+                      "mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro";
+                  };
+                  if (trialing && daysLeft !== null) {
+                    return { state: "trialing" as const, daysLeft, onUpgradeClick };
+                  }
+                  return { state: "free" as const, onUpgradeClick };
+                })()}
               />
 
               <TeacherClassesSection
