@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, MessageCircle, MoreVertical, RefreshCw, Trash2, Eye, EyeOff } from "lucide-react";
+import { Copy, Key, MessageCircle, MoreVertical, RefreshCw, Trash2, Eye, EyeOff } from "lucide-react";
 import StudentAvatar from "./StudentAvatar";
 import type { StudentAccent } from "./constants";
 
@@ -27,6 +27,12 @@ interface StudentCardProps {
   onResetPin?: () => void;
   onDelete?: () => void;
   onCopyLink?: () => void;
+  /** Copy ONLY the 6-char PIN to clipboard.  Top-row affordance so the
+   *  most common teacher action (paste the PIN for a student) is one
+   *  tap.  Teachers reported the previous behaviour — where the only
+   *  copy button wrote a multi-line invite message — pasted the wrong
+   *  thing into the student-side PIN input. */
+  onCopyPin?: () => void;
   /** Open WhatsApp with JUST the PIN as the message text — no class
    *  name, no surrounding instructions.  Teachers asked for this so
    *  they can send the secret PIN alone on a different channel than
@@ -36,6 +42,9 @@ interface StudentCardProps {
   labels: {
     pin: string;
     copyLinkAria: string;
+    copyLinkLabel: string;
+    copyPinAria: string;
+    copyPinTitle: string;
     resetPinAria: string;
     resetPinLabel: string;
     deleteAria: string;
@@ -63,6 +72,7 @@ export default function StudentCard({
   onResetPin,
   onDelete,
   onCopyLink,
+  onCopyPin,
   onSharePinWhatsApp,
   labels,
 }: StudentCardProps) {
@@ -133,18 +143,19 @@ export default function StudentCard({
             <MessageCircle size={14} />
           </button>
         )}
-        {!mobile && onCopyLink && (
+        {student.pin && onCopyPin && (
           <button
             type="button"
-            onClick={onCopyLink}
-            aria-label={labels.copyLinkAria}
+            onClick={onCopyPin}
+            aria-label={labels.copyPinAria}
+            title={labels.copyPinTitle}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             className="grid h-8 w-8 place-items-center rounded-[10px] border-0 bg-indigo-500/[0.06] text-[#4A3B7A] hover:bg-indigo-500/[0.12]"
           >
-            <Copy size={14} />
+            <Key size={14} />
           </button>
         )}
-        {(onResetPin || onDelete) && (
+        {(onResetPin || onDelete || onCopyLink) && (
           <div className="relative">
             <button
               type="button"
@@ -182,7 +193,7 @@ export default function StudentCard({
                       {labels.resetPinLabel}
                     </button>
                   )}
-                  {onCopyLink && mobile && (
+                  {onCopyLink && (
                     <button
                       type="button"
                       onClick={() => {
@@ -193,7 +204,7 @@ export default function StudentCard({
                       className="flex w-full items-center gap-2 px-3 py-2 text-start hover:bg-indigo-500/[0.06]"
                     >
                       <Copy size={14} className="text-[#8B5CF6]" />
-                      {labels.copyLinkAria}
+                      {labels.copyLinkLabel}
                     </button>
                   )}
                   {onDelete && (

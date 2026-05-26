@@ -269,6 +269,19 @@ export default function RosterModalV2({
     window.open(url, "_blank", "noopener");
   };
 
+  // Copy ONLY the 6-char PIN to the clipboard.  Top-row affordance so
+  // a teacher pasting into the student-side PIN input gets just the
+  // digits and not the multi-line invite message handleCopyLink writes.
+  const handleCopyPin = async (s: RosterStudentV2) => {
+    if (!s.pin) return;
+    try {
+      await navigator.clipboard.writeText(s.pin);
+      flashToast(t.shareCopiedToast);
+    } catch {
+      setError(t.errorClipboardUnavailable);
+    }
+  };
+
   const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(classCode);
@@ -493,10 +506,14 @@ export default function RosterModalV2({
                       onResetPin={() => handleResetPin(s)}
                       onDelete={() => handleDelete(s)}
                       onCopyLink={() => handleCopyLink(s)}
+                      onCopyPin={() => handleCopyPin(s)}
                       onSharePinWhatsApp={() => handleSharePinWhatsApp(s)}
                       labels={{
                         pin: t.showPin,
                         copyLinkAria: t.copyLinkLabel,
+                        copyLinkLabel: t.copyLinkLabel,
+                        copyPinAria: t.copyPinAria(s.name),
+                        copyPinTitle: t.copyPinTitle,
                         resetPinAria: t.resetPinAria(s.name),
                         resetPinLabel: t.resetPinTitle,
                         deleteAria: t.removeAria(s.name),

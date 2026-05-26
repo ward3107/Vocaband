@@ -47,6 +47,13 @@ export function resolveInitialView(): View {
   if (window.location.pathname === '/privacy') {
     return 'public-privacy';
   }
+  // `/terms` mirrors `/privacy` — opens the designed React TermsPage
+  // instead of the bare static `/terms.html`.  Same rationale: the
+  // consent modal + Privacy Settings link here so the policy renders
+  // in a new tab with full chrome.
+  if (window.location.pathname === '/terms') {
+    return 'public-terms';
+  }
   // Classroom-poster QR code / teacher-shared invite link.  When the URL
   // carries a `?class=XXX` parameter and there's no already-active session,
   // skip the landing page and drop the visitor straight on the
