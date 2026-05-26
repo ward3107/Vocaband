@@ -11,11 +11,11 @@ export default function DevDatabasePanel({ showToast }: Props) {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h3 className="text-white/80 font-black text-sm uppercase tracking-widest">Teachers &amp; entitlements</h3>
+        <h3 className="text-white/80 font-black text-base uppercase tracking-widest">Teachers &amp; entitlements</h3>
         <DevEntitlementsSection showToast={showToast} />
       </section>
       <section className="space-y-3">
-        <h3 className="text-white/80 font-black text-sm uppercase tracking-widest">Schools</h3>
+        <h3 className="text-white/80 font-black text-base uppercase tracking-widest">Schools</h3>
         <DevSchoolsSection showToast={showToast} />
       </section>
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Bot, RefreshCw, CloudOff } from "lucide-react";
-import { callAdminRpc, adminApiGet, fmtUsd, fmtNum, type DevAiUsage, type ProviderBilling, type ProviderCost } from "./devShared";
+import { callAdminRpcCached, adminApiGet, fmtUsd, fmtNum, type DevAiUsage, type ProviderBilling, type ProviderCost } from "./devShared";
 
 /** One provider's real billed spend, or its setup hint when no admin key is set. */
 function BillingRow({ label, cost, setupHint }: { label: string; cost?: ProviderCost; setupHint: ReactNode }) {
@@ -53,7 +53,7 @@ export default function DevAiCostPanel({ showToast }: Props) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- async data-fetch effect; matches existing convention (AdminSecurityView etc.)
     setLoading(true);
     void Promise.all([
-      callAdminRpc<DevAiUsage>("admin_ai_usage", { p_days: days }, showToast),
+      callAdminRpcCached<DevAiUsage>("admin_ai_usage", { p_days: days }, showToast),
       adminApiGet<ProviderBilling>(`/api/admin/provider-billing?days=${days}`),
     ]).then(([usage, bill]) => {
       if (cancelled) return;
@@ -78,7 +78,7 @@ export default function DevAiCostPanel({ showToast }: Props) {
               type="button"
               onClick={() => setDays(r)}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+              className={`px-4 py-2 rounded-xl font-bold text-base transition-all ${
                 days === r ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "bg-white/5 text-white/70 hover:bg-white/10"
               }`}
             >
@@ -90,21 +90,21 @@ export default function DevAiCostPanel({ showToast }: Props) {
       </div>
 
       <div className="rounded-2xl p-6 bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white shadow-lg shadow-orange-500/20">
-        <div className="flex items-center gap-2 text-white/80 text-xs font-black tracking-widest uppercase mb-1">
+        <div className="flex items-center gap-2 text-white/80 text-sm font-black tracking-widest uppercase mb-1">
           <Bot className="w-4 h-4" /> Estimated AI spend · {days}d
         </div>
-        <div className="text-4xl font-black">{fmtUsd(total)}</div>
-        <p className="text-white/70 text-xs font-bold mt-1">
+        <div className="text-5xl font-black">{fmtUsd(total)}</div>
+        <p className="text-white/70 text-sm font-bold mt-1">
           Per-call estimate from ai_usage_counters. Not the provider bill — see below.
         </p>
       </div>
 
       <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
-        <div className="px-5 py-3 font-black text-white/80 text-sm">By action</div>
+        <div className="px-5 py-3 font-black text-white/80 text-base">By action</div>
         {(data?.by_action ?? []).length === 0 ? (
-          <p className="px-5 pb-4 text-white/40 text-sm">No usage in this window.</p>
+          <p className="px-5 pb-4 text-white/40 text-base">No usage in this window.</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-base">
             <tbody>
               {(data?.by_action ?? []).map((a) => (
                 <tr key={a.action} className="border-t border-white/5">
@@ -119,11 +119,11 @@ export default function DevAiCostPanel({ showToast }: Props) {
       </div>
 
       <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
-        <div className="px-5 py-3 font-black text-white/80 text-sm">Top teachers</div>
+        <div className="px-5 py-3 font-black text-white/80 text-base">Top teachers</div>
         {(data?.top_teachers ?? []).length === 0 ? (
-          <p className="px-5 pb-4 text-white/40 text-sm">No usage in this window.</p>
+          <p className="px-5 pb-4 text-white/40 text-base">No usage in this window.</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-base">
             <tbody>
               {(data?.top_teachers ?? []).map((t) => (
                 <tr key={t.teacher_uid} className="border-t border-white/5">
@@ -142,7 +142,7 @@ export default function DevAiCostPanel({ showToast }: Props) {
         animate={{ opacity: 1 }}
         className="rounded-2xl p-5 bg-white/5 border border-white/10 space-y-4"
       >
-        <div className="flex items-center gap-2 text-white/70 font-black text-sm">
+        <div className="flex items-center gap-2 text-white/70 font-black text-base">
           <CloudOff className="w-4 h-4" /> Live provider billing
         </div>
 
@@ -162,7 +162,7 @@ export default function DevAiCostPanel({ showToast }: Props) {
           setupHint={billing?.google.reason ?? "Needs BigQuery billing export"}
         />
 
-        <p className="text-white/30 text-[11px] leading-relaxed border-t border-white/10 pt-3">
+        <p className="text-white/30 text-xs leading-relaxed border-t border-white/10 pt-3">
           Real billed dollars from the providers. Anthropic needs an admin API key; Google needs a Cloud
           Billing → BigQuery export + service account. Until set, the per-call estimate above is your best guide.
         </p>

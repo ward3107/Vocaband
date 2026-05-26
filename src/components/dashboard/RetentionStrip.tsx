@@ -45,7 +45,11 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
 
   return (
     <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {/* Daily chest — priority card, first to catch the eye */}
+      {/* Daily chest — priority card, first to catch the eye.  Darker
+          gradient stops (amber-500 → orange-600 → rose-600) so white
+          text clears the WCAG AA contrast bar against the lightest
+          (amber) end of the gradient.  The original amber-400 start
+          had ~1.5:1 contrast with white. */}
       {dailyChestAvailable && (
         <motion.button
           onClick={handleDaily}
@@ -54,28 +58,28 @@ export default function RetentionStrip({ retention, onGrantXp }: RetentionStripP
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-4 text-start text-white"
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600 p-4 text-start text-white"
           style={{
             touchAction: 'manipulation',
             boxShadow:
-              "0 14px 30px -14px rgba(240,141,135,0.55), 0 1px 0 rgba(255,255,255,0.45) inset",
+              "0 14px 30px -14px rgba(220,90,80,0.55), 0 1px 0 rgba(255,255,255,0.45) inset",
           }}
         >
-          <div aria-hidden className="pointer-events-none absolute -top-6 -end-6 w-24 h-24 bg-yellow-200/40 rounded-full blur-2xl" />
+          <div aria-hidden className="pointer-events-none absolute -top-6 -end-6 w-24 h-24 bg-amber-300/25 rounded-full blur-2xl" />
           <div className="relative flex items-center gap-3">
             <motion.div
               animate={{ rotate: [-5, 5, -5], scale: [1, 1.05, 1] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-12 h-12 rounded-xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-2xl"
+              className="w-12 h-12 rounded-xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-2xl border border-white/30"
             >
               🎁
             </motion.div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/85">{t.dailyChest}</p>
-              <p className="font-black text-sm">{t.claimTodaysReward}</p>
-              <p className="text-xs text-white/90">{t.bonusXpStreakKeeper}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-white">{t.dailyChest}</p>
+              <p className="font-black text-sm text-white">{t.claimTodaysReward}</p>
+              <p className="text-xs text-white/95">{t.bonusXpStreakKeeper}</p>
             </div>
-            <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 font-black text-sm border border-white/30">{t.openButton}</div>
+            <div className="shrink-0 bg-white/25 backdrop-blur-sm rounded-lg px-3 py-2 font-black text-sm text-white border border-white/40">{t.openButton}</div>
           </div>
         </motion.button>
       )}

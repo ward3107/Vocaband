@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { School, Plus, UserCog } from "lucide-react";
-import { callAdminRpc, type DevSchool } from "./devShared";
+import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevSchool } from "./devShared";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -14,7 +14,7 @@ export default function DevSchoolsSection({ showToast }: Props) {
   const [busy, setBusy] = useState(false);
 
   const reload = useCallback(async () => {
-    const res = await callAdminRpc<DevSchool[]>("admin_list_schools", {}, showToast);
+    const res = await callAdminRpcCached<DevSchool[]>("admin_list_schools", {}, showToast);
     if (res) setSchools(res);
   }, [showToast]);
 
@@ -30,6 +30,8 @@ export default function DevSchoolsSection({ showToast }: Props) {
       setBusy(false);
       if (res) {
         showToast(ok, "success");
+        invalidateAdminRpcCache("admin_list_schools");
+        invalidateAdminRpcCache("admin_dashboard_overview");
         await reload();
       }
       return !!res;
@@ -50,26 +52,26 @@ export default function DevSchoolsSection({ showToast }: Props) {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="New school name"
-          className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:border-indigo-400"
+          className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-indigo-400"
         />
         <button
           type="submit"
           disabled={busy}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm flex items-center gap-2"
+          className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Create
         </button>
       </form>
 
       <div className="rounded-2xl bg-white/5 border border-white/10 divide-y divide-white/5">
-        {schools.length === 0 && <p className="px-5 py-4 text-white/40 text-sm">No schools yet.</p>}
+        {schools.length === 0 && <p className="px-5 py-4 text-white/40 text-base">No schools yet.</p>}
         {schools.map((s) => (
           <div key={s.id} className="px-5 py-3 flex items-center gap-3">
             <School className="w-5 h-5 text-indigo-300 shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="text-white font-bold text-sm truncate">{s.name}</div>
-              <div className="text-white/40 text-[11px]">
+              <div className="text-white font-bold text-base truncate">{s.name}</div>
+              <div className="text-white/40 text-xs">
                 {s.teachers} staff · {s.students} students
                 {s.managers.length > 0 && ` · manager: ${s.managers.join(", ")}`}
               </div>
@@ -89,7 +91,7 @@ export default function DevSchoolsSection({ showToast }: Props) {
         }}
         className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3"
       >
-        <div className="flex items-center gap-2 text-white/70 font-black text-xs uppercase tracking-widest">
+        <div className="flex items-center gap-2 text-white/70 font-black text-sm uppercase tracking-widest">
           <UserCog className="w-4 h-4" /> Assign a manager
         </div>
         <input
@@ -97,13 +99,13 @@ export default function DevSchoolsSection({ showToast }: Props) {
           value={mgrEmail}
           onChange={(e) => setMgrEmail(e.target.value)}
           placeholder="manager@school.edu (must have signed in once)"
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:border-indigo-400"
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-indigo-400"
         />
         <div className="flex gap-2">
           <select
             value={mgrSchool}
             onChange={(e) => setMgrSchool(e.target.value)}
-            className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm"
+            className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base"
           >
             <option value="" className="bg-slate-800">Select school…</option>
             {schools.map((s) => (
@@ -114,7 +116,7 @@ export default function DevSchoolsSection({ showToast }: Props) {
             type="submit"
             disabled={busy || !mgrEmail.trim() || !mgrSchool}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm"
+            className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-base"
           >
             Assign
           </button>

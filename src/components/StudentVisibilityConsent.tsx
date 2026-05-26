@@ -311,6 +311,13 @@ export default function StudentVisibilityConsent({ studentUid, onAccepted }: Stu
       dir={dir}
       wide
       zIndex={120}
+      // Use the available vertical space (viewport minus header/footer
+      // chrome + outer padding) so the disclosure fits on one screen
+      // without an internal scrollbar on desktop or mobile.  Pair with
+      // a tighter body padding so iPhone-SE-class screens (667px tall)
+      // also fit the full disclosure.
+      bodyMaxHeight="calc(100vh - 150px)"
+      bodyClassName="px-5 sm:px-6 py-3 sm:py-4 text-[14px] leading-[1.55] overflow-y-auto"
       footer={
         <ModalPrimaryButton
           onClick={accept}
@@ -321,22 +328,22 @@ export default function StudentVisibilityConsent({ studentUid, onAccepted }: Stu
         </ModalPrimaryButton>
       }
     >
-      <p className="mb-4 text-[14px] font-semibold" style={{ color: "#1F1147" }}>
+      <p className="mb-2 text-[11px] font-semibold" style={{ color: "#1F1147" }}>
         {t.intro}
       </p>
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
         {t.bullets.map((b, i) => (
           <div
             key={i}
-            className="flex items-start gap-3 rounded-2xl p-3.5"
+            className="flex items-start gap-2 rounded-xl p-2"
             style={{
               background: "rgba(99,102,241,0.04)",
               border: "1px solid rgba(99,102,241,0.10)",
             }}
           >
             <div
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] text-[20px]"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px] text-[14px]"
               style={{
                 background: "linear-gradient(135deg, #EEF0FF, #F8E8FF)",
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9)",
@@ -346,10 +353,10 @@ export default function StudentVisibilityConsent({ studentUid, onAccepted }: Stu
               {b.emoji}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-extrabold text-[#1F1147] leading-snug">
+              <div className="text-[11.5px] font-extrabold text-[#1F1147] leading-tight">
                 {b.title}
               </div>
-              <div className="mt-0.5 text-[12px] text-[#4A3B7A] leading-[1.5]">
+              <div className="mt-0.5 text-[10.5px] text-[#4A3B7A] leading-[1.35]">
                 {b.body}
               </div>
             </div>
@@ -358,7 +365,7 @@ export default function StudentVisibilityConsent({ studentUid, onAccepted }: Stu
       </div>
 
       <label
-        className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5"
+        className="mt-2.5 flex cursor-pointer items-start gap-2 rounded-xl px-3 py-2"
         style={{
           background: checked ? "rgba(94,201,166,0.12)" : "rgba(99,102,241,0.06)",
           border: checked
@@ -370,9 +377,9 @@ export default function StudentVisibilityConsent({ studentUid, onAccepted }: Stu
           type="checkbox"
           checked={checked}
           onChange={(e) => setChecked(e.target.checked)}
-          className="mt-0.5 h-5 w-5 shrink-0 rounded border-indigo-500/30 text-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6] focus:ring-offset-0"
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-indigo-500/30 text-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6] focus:ring-offset-0"
         />
-        <span className="text-[13px] font-bold text-[#1F1147] leading-snug">
+        <span className="text-[11.5px] font-bold text-[#1F1147] leading-snug">
           {t.checkbox}
         </span>
       </label>

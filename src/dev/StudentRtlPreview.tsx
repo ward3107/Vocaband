@@ -24,6 +24,8 @@ import RetentionStrip from "../components/dashboard/RetentionStrip";
 import PetEvolutionCard from "../components/dashboard/PetEvolutionCard";
 import PetCompanion from "../components/dashboard/PetCompanion";
 import StudentVisibilityConsent from "../components/StudentVisibilityConsent";
+import NextUpCard from "../components/dashboard/NextUpCard";
+import DailyPracticeRow from "../components/dashboard/DailyPracticeRow";
 import { CLIENT_STORAGE_KEYS } from "../config/privacy-config";
 
 const FAKE_USER: AppUser = {
@@ -134,6 +136,17 @@ export default function StudentRtlPreview() {
             onShopClick={() => {}}
           />
 
+          <SectionLabel>Next up</SectionLabel>
+          <NextUpCard
+            studentAssignments={FAKE_ASSIGNMENTS}
+            studentProgress={FAKE_PROGRESS}
+            userUid={FAKE_USER.uid}
+            setActiveAssignment={() => {}}
+            setAssignmentWords={() => {}}
+            setView={() => {}}
+            setShowModeSelection={() => {}}
+          />
+
           <SectionLabel>Stats</SectionLabel>
           <StudentStatsRow
             xp={FAKE_USER.xp ?? 0}
@@ -142,11 +155,22 @@ export default function StudentRtlPreview() {
             studentProgress={FAKE_PROGRESS}
           />
 
-          <SectionLabel>Daily goal</SectionLabel>
-          <DailyGoalBanner studentProgress={FAKE_PROGRESS} goal={3} />
+          <SectionLabel>Daily goal (now tappable)</SectionLabel>
+          <DailyGoalBanner
+            studentProgress={FAKE_PROGRESS}
+            goal={3}
+            onPlay={() => alert('Banner tapped → would launch next assignment')}
+          />
 
           <SectionLabel>Retention</SectionLabel>
           <RetentionStrip retention={FAKE_RETENTION} onGrantXp={() => {}} />
+
+          <SectionLabel>Daily practice (collapsed trio)</SectionLabel>
+          <DailyPracticeRow
+            review={{ dueCount: 12, isLoading: false, onStart: () => {} }}
+            classMinute={{ doneToday: false, streak: 4, isLoading: false, onStart: () => {} }}
+            idioms={{ onStart: () => {} }}
+          />
 
           <SectionLabel>Assignments</SectionLabel>
           <div className="space-y-3">
@@ -179,6 +203,7 @@ export default function StudentRtlPreview() {
         <PetCompanion
           xp={FAKE_USER.xp ?? 0}
           displayName={FAKE_USER.displayName}
+          streak={FAKE_USER.streak ?? 0}
           currentStage={PET_MILESTONES[2]}
           nextStage={PET_MILESTONES[3]}
           claimableMilestone={null}

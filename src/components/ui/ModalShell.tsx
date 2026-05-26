@@ -44,6 +44,16 @@ interface ModalShellProps {
   zIndex?: number;
   /** Accessibility label for the close button.  Defaults to "Close". */
   closeAriaLabel?: string;
+  /** Override the body's max-height.  Default "60vh" keeps long
+   *  modals scrollable; pass a calc()/larger value when the modal
+   *  must fit on one screen without internal scroll. */
+  bodyMaxHeight?: string;
+  /** Override the body wrapper className.  Useful when the default
+   *  px-5 sm:px-6 py-5 sm:py-[22px] padding eats too much vertical
+   *  room for a one-screen modal.  When provided, the caller is
+   *  responsible for the full className (text color/size, padding,
+   *  overflow). */
+  bodyClassName?: string;
 }
 
 const HEADER_GRADIENT: Record<ModalVariant, string> = {
@@ -66,6 +76,8 @@ export default function ModalShell({
   dir,
   zIndex = 50,
   closeAriaLabel = "Close",
+  bodyMaxHeight = "60vh",
+  bodyClassName,
 }: ModalShellProps) {
   // Esc-to-close — matches the legacy modal conventions across the app.
   useEffect(() => {
@@ -159,8 +171,11 @@ export default function ModalShell({
 
             {/* Body */}
             <div
-              className="px-5 sm:px-6 py-5 sm:py-[22px] text-[14px] leading-[1.55] overflow-y-auto"
-              style={{ color: "#4A3B7A", maxHeight: "60vh" }}
+              className={
+                bodyClassName ??
+                "px-5 sm:px-6 py-5 sm:py-[22px] text-[14px] leading-[1.55] overflow-y-auto"
+              }
+              style={{ color: "#4A3B7A", maxHeight: bodyMaxHeight }}
             >
               {children}
             </div>

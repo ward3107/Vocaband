@@ -1,6 +1,4 @@
 import StudentOnboarding from "../components/StudentOnboarding";
-import StudentVisibilityConsent from "../components/StudentVisibilityConsent";
-import { useState } from "react";
 import FloatingButtons from "../components/FloatingButtons";
 import StudentTopBar from "../components/dashboard/StudentTopBar";
 import StudentGreetingCard from "../components/dashboard/StudentGreetingCard";
@@ -11,31 +9,22 @@ import LeaderboardTeaser from "../components/dashboard/LeaderboardTeaser";
 import PetCompanion from "../components/dashboard/PetCompanion";
 import RetentionStrip from "../components/dashboard/RetentionStrip";
 import ActiveBoostersStrip from "../components/dashboard/ActiveBoostersStrip";
-import PowerUpsStrip from "../components/dashboard/PowerUpsStrip";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
-import StudentOverallProgress from "../components/dashboard/StudentOverallProgress";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
+import NextUpCard from "../components/dashboard/NextUpCard";
+import DailyPracticeRow from "../components/dashboard/DailyPracticeRow";
 import { useCompetitionsForClass } from "../hooks/useCompetitions";
 import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
 import { useDailyMissions } from "../hooks/useDailyMissions";
-import PetEvolutionCard from "../components/dashboard/PetEvolutionCard";
-import { usePetEvolution } from "../hooks/usePetEvolution";
-import ReviewQueueCard from "../components/dashboard/ReviewQueueCard";
-import ClassMinuteCard from "../components/dashboard/ClassMinuteCard";
-import IdiomsBonusCard from "../components/dashboard/IdiomsBonusCard";
 import { useDueReviews } from "../hooks/useDueReviews";
-import { StructureKindPicker } from "../components/structure/StructureKindPicker";
-import { TodayStrip } from "../components/structure/TodayStrip";
-import { IdentityHero } from "../components/structure/IdentityHero";
-import { ShopSquare } from "../components/structure/ShopSquare";
-import { StructurePreviewTile } from "../components/structure/StructurePreviewTile";
-import { StructureDetailModal } from "../components/structure/StructureDetailModal";
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import type { RetentionState } from "../hooks/useRetention";
-import type { StructureState } from "../hooks/useStructure";
+import { ALL_WORDS } from "../data/vocabulary";
+import { pickNextAssignment } from "../utils/pickNextAssignment";
+import React from "react";
 
 interface StudentDashboardViewProps {
   user: AppUser;
@@ -101,30 +90,11 @@ interface StudentDashboardViewProps {
       | { ok: true; displayName: string }
       | { ok: false; code: string; message: string }
     >;
-  /** Structure-progression state from `useStructure(user.uid)`.  Optional
-   *  so the legacy dashboard branch (the one production ships when
-   *  VITE_STRUCTURE_UX is unset) doesn't need a stub.  Without this prop
-   *  declaration the bundle was free-referencing a `structure` identifier
-   *  inside the gated block — a ReferenceError waited dormant until any
-   *  build flipped the flag (or any minifier/compiler choice ran the
-   *  branch eagerly).  Threading it through the props makes the
-   *  dependency explicit.  See `useStructure.ts`. */
-  structure?: StructureState;
-  /** Slot keys that just unlocked — pulsed on the structure detail
-   *  modal so the student sees what they earned.  Same dormant-bug
-   *  story as `structure` above; declaring the prop here closes the
-   *  free-reference. */
-  celebrateStructureKeys?: string[];
   /** Triggered when the student taps the top-bar logout button.  App.tsx
    *  routes this to the soft-landing exit-confirm modal so a stray tap
    *  doesn't sign them out instantly. */
   onRequestLogout?: () => void;
 }
-
-// Feature flag — set VITE_STRUCTURE_UX=true to enable the Phase 1
-// structure-progression dashboard. Default false so the existing
-// legacy dashboard is what production ships until we're ready.
-const STRUCTURE_UX_ENABLED = import.meta.env.VITE_STRUCTURE_UX === 'true';
 
 export default function StudentDashboardView({
   user, xp, streak, badges,
@@ -136,21 +106,12 @@ export default function StudentDashboardView({
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
   retention, onGrantXp, onGrantReward, onApplyServerRewards, boosters,
   onRenameDisplayName,
-  structure,
-  celebrateStructureKeys = [],
   onStartReview,
   onStartClassMinute,
   onStartIdioms,
   onRequestLogout,
 }: StudentDashboardViewProps) {
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
-
-  // Controls the fullscreen detail modal for the student's structure
-  // (garden / city / rocket / castle).  Declared here at the top of
-  // the component — NOT inside the STRUCTURE_UX branch — so hook
-  // order stays stable regardless of whether the flag is on or the
-  // structure prop is provided.
-  const [showStructureDetail, setShowStructureDetail] = useState(false);
 
   // Classroom competitions wrapping any of this student's assignments.
   // Cheap query (one row per assignment that has competition mode on);
@@ -161,16 +122,31 @@ export default function StudentDashboardView({
     competitions.map((c) => [c.assignmentId, c] as const),
   );
 
+  // Same picker NextUpCard uses internally — re-derived here so other
+  // surfaces (DailyGoalBanner, etc.) can launch the same target on tap.
+  // Null when nothing is eligible, in which case dependent CTAs hide.
+  const nextPick = pickNextAssignment(studentAssignments, studentProgress, user.uid);
+  const launchNextAssignment = nextPick
+    ? () => {
+        const filteredWords =
+          nextPick.assignment.words ||
+          ALL_WORDS.filter((w) => nextPick.assignment.wordIds.includes(w.id));
+        setActiveAssignment(nextPick.assignment);
+        setAssignmentWords(filteredWords);
+        React.startTransition(() => {
+          setView("game");
+          setShowModeSelection(true);
+        });
+        if (typeof window !== "undefined") {
+          requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+        }
+      }
+    : undefined;
+
   // Daily missions — three rotating tasks per user-local calendar day.
   // Hook only fires for authenticated students; guests + Quick-Play
   // shouldn't see the card (no schema-bound XP loop).
   const dailyMissions = useDailyMissions({
-    enabled: Boolean(user?.role === 'student' && !user?.isGuest),
-  });
-
-  // Activity-driven pet — grows with distinct days played, decays
-  // after a 3-day grace period.  Same gating as missions.
-  const petEvolution = usePetEvolution({
     enabled: Boolean(user?.role === 'student' && !user?.isGuest),
   });
 
@@ -224,264 +200,7 @@ export default function StudentDashboardView({
     ? 'bg-gradient-to-b from-violet-50 via-stone-50 to-white'
     : activeThemeConfig.colors.bg;
 
-  // ── STRUCTURE UX (Phase 1 — feature-flagged) ──────────────────────
-  // Simpler composition: StructureKindPicker (first-run) + TodayStrip
-  // + StructureHero + StudentAssignmentsList. No widget soup.
-  if (STRUCTURE_UX_ENABLED && structure) {
-    const showPicker = structure.kind === null;
-    return (
-      <div className={`min-h-screen ${bgClass} p-4 sm:p-6`}>
-        {consentModal}
-        {exitConfirmModal}
-        {classSwitchModal}
-        {/* Student-side "your teacher sees your plays" disclosure.
-            Hard gate — blocks the dashboard until the student ticks
-            the acknowledgement.  Quiet thereafter unless we bump
-            STUDENT_VISIBILITY_VERSION.  Hidden for guests since they
-            don't have a uid we can attach the consent_log row to. */}
-        {!user?.isGuest && (
-          <StudentVisibilityConsent studentUid={user?.uid ?? null} />
-        )}
-        {showStudentOnboarding && (
-          <StudentOnboarding
-            userName={user.displayName}
-            onComplete={() => setShowStudentOnboarding(false)}
-          />
-        )}
-        <StructureKindPicker
-          open={showPicker}
-          onPick={(k) => structure.chooseKind(k)}
-        />
-        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-          {classNotFoundBanner}
-          <RewardInboxCard
-            userUid={user.uid}
-            onServerRewardsArrived={({ xpToAdd, badgesToAppend }) => {
-              onApplyServerRewards({ xpToAdd, badgesToAppend });
-            }}
-          />
-
-          {/* ── IDENTITY HERO (full-width, prominent) ───────────────
-              Big avatar medallion wrapped in the equipped frame's
-              ring, first name, title badge, XP + streak.  Primary
-              job: make "who I am + what I've equipped" instantly
-              readable at the top of the screen. */}
-          <IdentityHero user={user} xp={xp} streak={streak} />
-
-          {/* ── Inventory strips ─────────────────────────────────
-              What the student owns + what's active.  Previously
-              rendered only on the legacy dashboard; restored here
-              so purchases made in the shop actually show up on
-              the main screen:
-                * ActiveBoostersStrip — 2×XP / Weekend Warrior /
-                  Streak Freeze count / Lucky Charm count
-                * PowerUpsStrip — Skip / 50-50 / Reveal Letter
-                  inventory counts (new component — these had no
-                  display anywhere before this)
-                * BadgesStrip — earned badges carousel
-              Each strip hides itself when empty, so a brand-new
-              student with no purchases sees a clean hero + garden
-              without clutter. */}
-          <ActiveBoostersStrip {...boosters} />
-          <PowerUpsStrip powerUps={user.powerUps} />
-
-          {/* ── Activity pet — grows with distinct days played, decays
-              past a 3-day grace period.  Sits above the structure +
-              shop pair so the student lands on the streak prompt
-              before exploring deeper widgets.  Real students only. */}
-          {(user?.role === 'student' && !user?.isGuest) && (
-            <PetEvolutionCard
-              state={petEvolution.state}
-              isLoading={petEvolution.isLoading}
-            />
-          )}
-
-          {/* ── Structure preview + Shop side-by-side ─────────────
-              Garden / City / Rocket / Castle renders as a compact
-              tappable preview on the left (opens the fullscreen
-              detail modal when tapped).  Shop on the right.  Both
-              stack on mobile.  Frees vertical room below for
-              Today strip + Assignments. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-            {structure.kind ? (
-              <StructurePreviewTile
-                kind={structure.kind}
-                slots={structure.slots}
-                onOpen={() => setShowStructureDetail(true)}
-              />
-            ) : (
-              /* Picker hasn't fired yet — render a placeholder slot so
-                 the shop tile doesn't slide across the full width. */
-              <div className="rounded-2xl bg-stone-100 min-h-[200px]" aria-hidden />
-            )}
-            <ShopSquare xp={xp} onOpen={() => setView('shop')} />
-          </div>
-
-          {/* ── Class Minute — daily 60-second drill ────────────── */}
-          {onStartClassMinute && (
-            <div className="mb-4">
-              <ClassMinuteCard
-                doneToday={classMinuteDoneToday}
-                streak={classMinuteStreak}
-                isLoading={studentDataLoading}
-                onStart={onStartClassMinute}
-              />
-            </div>
-          )}
-
-          {/* ── Spaced Repetition queue card ──────────────────────
-              Surfaces today's due-for-review words and routes the
-              student straight into the Review mode (bypasses the
-              mode picker).  Only renders when the parent supplied
-              an onStartReview callback (gated to authenticated
-              real students above). */}
-          {onStartReview && (
-            <div className="mb-4">
-              <ReviewQueueCard
-                dueCount={dueReviews.dueCount}
-                isLoading={dueReviews.isLoading}
-                onStart={onStartReview}
-              />
-            </div>
-          )}
-
-          {/* ── Idioms bonus tile ──────────────────────────────────
-              Standalone game — runs on a curated idiom dataset, not
-              the teacher's assignment words.  Lives on the dashboard
-              (instead of the assignment mode picker) because it has
-              no connection to per-assignment progress.  Bypasses mode
-              selection + intro, same pattern as the cards above. */}
-          {onStartIdioms && (
-            <div className="mb-4">
-              <IdiomsBonusCard onStart={onStartIdioms} />
-            </div>
-          )}
-
-          <TodayStrip
-            user={user}
-            xp={xp}
-            streak={streak}
-            studentAssignments={studentAssignments}
-            studentProgress={studentProgress}
-            onPlayNextAssignment={(a) => {
-              setActiveAssignment(a);
-              setAssignmentWords(a.words ?? []);
-              setShowModeSelection(true);
-              setView('game');
-            }}
-            onPractice={() => setView('shop')}
-          />
-
-          {/* ── Daily missions — three rotating mission types that
-              refresh once per user-local calendar day.  Renders only
-              for authenticated students (the hook is gated above). */}
-          {(user?.role === 'student' && !user?.isGuest) && (
-            <DailyMissionsCard
-              missions={dailyMissions.missions}
-              isLoading={dailyMissions.isLoading}
-            />
-          )}
-
-          {/* ── Earned badges ──────────────────────────────────────
-              Collection of achievements (auto-awarded + teacher-
-              awarded).  Hides itself when the student has none,
-              so day-one students don't see an empty strip. */}
-          {badges.length > 0 && <BadgesStrip earned={badges} />}
-
-          <StudentAssignmentsList
-            studentAssignments={studentAssignments}
-            studentProgress={studentProgress}
-            studentDataLoading={studentDataLoading}
-            userUid={user.uid}
-            competitionsByAssignment={competitionsByAssignment}
-            setActiveAssignment={setActiveAssignment}
-            setAssignmentWords={setAssignmentWords}
-            setView={setView}
-            setShowModeSelection={setShowModeSelection}
-          />
-
-          {/* Mock Bagrut exams entry — only renders the inline tile;
-              the listing + take-test view live in VocabagrutShell. */}
-          <button
-            type="button"
-            onClick={() => setView("vocabagrut")}
-            style={{
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent',
-              backgroundColor: 'var(--vb-surface)',
-              borderColor: 'var(--vb-border)',
-            }}
-            className="group relative w-full rounded-xl p-4 text-start border shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0">
-                <span className="text-white text-lg font-black">B</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 style={{ color: 'var(--vb-text-primary)' }} className="text-sm font-bold leading-tight mb-0.5">
-                  Mock Bagrut exams
-                </h3>
-                <p style={{ color: 'var(--vb-text-secondary)' }} className="text-xs leading-snug">
-                  Practice the real Bagrut paper format
-                </p>
-              </div>
-              <svg className="w-4 h-4 shrink-0" style={{ color: 'var(--vb-text-muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </button>
-        </div>
-
-        {/* ── Structure detail modal ─────────────────────────────
-            Lifted out of the main column so the overlay sits on top
-            of everything (including PetCompanion).  Only renders
-            when the student taps the preview tile. */}
-        {structure.kind && (
-          <StructureDetailModal
-            open={showStructureDetail}
-            onClose={() => setShowStructureDetail(false)}
-            kind={structure.kind}
-            slots={structure.slots}
-            nextLocked={structure.nextLocked}
-            celebrateKeys={celebrateStructureKeys}
-            masteryProgress={structure.masteryProgress}
-          />
-        )}
-
-        {/* Pet companion — keeps the egg/fox/dragon progression visible.
-            Lives as a floating bubble on the right so it doesn't compete
-            with the structure hero.  Clicking it opens the evolution +
-            claim-reward card (grants XP / cosmetics on milestone). */}
-        <PetCompanion
-          xp={xp}
-          displayName={user.displayName}
-          currentStage={retention.currentPetStage}
-          nextStage={retention.nextPetStage}
-          claimableMilestone={retention.claimablePetMilestone}
-          onClaim={(milestone) => {
-            if (milestone.reward.kind === 'xp' && typeof milestone.reward.value === 'number') {
-              onGrantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
-            } else {
-              onGrantReward(milestone.reward.kind, milestone.reward.value);
-            }
-            retention.claimPetMilestone(milestone);
-          }}
-        />
-
-        <FloatingButtons
-          showBackToTop={false}
-          shareLevel={{
-            displayName: user.displayName,
-            xp,
-            title: getXpTitle(xp).title,
-            emoji: getXpTitle(xp).emoji,
-          }}
-        />
-      </div>
-    );
-  }
-
-  // ── LEGACY DASHBOARD (default until flag flips in Phase 4) ────────
+  // ── DASHBOARD RENDER ──────────────────────────────────────────────
   return (
     <div className={`min-h-screen ${bgClass} p-4 sm:p-6`}>
       {consentModal}
@@ -518,6 +237,20 @@ export default function StudentDashboardView({
           onShopClick={() => setView("shop")}
           onRenameDisplayName={onRenameDisplayName}
         />
+        {/* Primary CTA — surfaces the single most-relevant assignment
+            (in-progress > unstarted > replayable) directly under the
+            greeting so the student always lands on a "do this now"
+            action above the fold. Hides itself when nothing eligible
+            (all locked or no assignments yet). */}
+        <NextUpCard
+          studentAssignments={studentAssignments}
+          studentProgress={studentProgress}
+          userUid={user.uid}
+          setActiveAssignment={setActiveAssignment}
+          setAssignmentWords={setAssignmentWords}
+          setView={setView}
+          setShowModeSelection={setShowModeSelection}
+        />
         <StudentStatsRow
           xp={xp}
           streak={streak}
@@ -526,40 +259,33 @@ export default function StudentDashboardView({
         />
         <ActiveBoostersStrip {...boosters} />
         <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
-        {/* ── Spaced-Repetition Review Queue ────────────────────
-            Same card the STRUCTURE_UX branch renders at line 332.
-            Duplicated here because the legacy branch is the
-            production-default render path — without this mount,
-            students never see the "X words due for review" tile
-            even though useDueReviews already runs. Drop one of
-            the two when STRUCTURE_UX flips on for everyone. */}
-        {onStartReview && (
-          <ReviewQueueCard
-            dueCount={dueReviews.dueCount}
-            isLoading={dueReviews.isLoading}
-            onStart={onStartReview}
+        {/* ── Daily Practice row ────────────────────────────────
+            Collapses Review · Class Minute · Idioms into one
+            compact 3-up row instead of three full-width cards. */}
+        <DailyPracticeRow
+          review={onStartReview ? {
+            dueCount: dueReviews.dueCount,
+            isLoading: dueReviews.isLoading,
+            onStart: onStartReview,
+          } : undefined}
+          classMinute={onStartClassMinute ? {
+            doneToday: classMinuteDoneToday,
+            streak: classMinuteStreak,
+            isLoading: studentDataLoading,
+            onStart: onStartClassMinute,
+          } : undefined}
+          idioms={onStartIdioms ? { onStart: onStartIdioms } : undefined}
+        />
+        {/* ── Daily missions — three rotating tasks per user-local
+            calendar day.  Gated to real students (the hook returns
+            empty for guests + non-students). */}
+        {(user?.role === 'student' && !user?.isGuest) && (
+          <DailyMissionsCard
+            missions={dailyMissions.missions}
+            isLoading={dailyMissions.isLoading}
           />
         )}
-        {/* ── Class Minute — daily 60-second drill ──────────────
-            Same card the STRUCTURE_UX branch renders; legacy is
-            the production-default render path. Drop one of the
-            two when STRUCTURE_UX flips on for everyone. */}
-        {onStartClassMinute && (
-          <ClassMinuteCard
-            doneToday={classMinuteDoneToday}
-            streak={classMinuteStreak}
-            isLoading={studentDataLoading}
-            onStart={onStartClassMinute}
-          />
-        )}
-        {/* ── Idioms bonus tile ──────────────────────────────────
-            Mirrors the STRUCTURE_UX branch above; legacy is the
-            production-default render path. Drop one of the two
-            when STRUCTURE_UX flips on for everyone. */}
-        {onStartIdioms && (
-          <IdiomsBonusCard onStart={onStartIdioms} />
-        )}
-        <DailyGoalBanner studentProgress={studentProgress} />
+        <DailyGoalBanner studentProgress={studentProgress} onPlay={launchNextAssignment} />
         <LeaderboardTeaser
           classCode={user.classCode}
           currentStudentUid={user.uid}
@@ -571,15 +297,12 @@ export default function StudentDashboardView({
             "broken" instead of "you haven't earned any yet".  Mirrors
             the modern-dashboard guard at line 224. */}
         {badges.length > 0 && <BadgesStrip earned={badges} />}
-        <StudentOverallProgress
-          studentAssignments={studentAssignments}
-          studentProgress={studentProgress}
-        />
         <StudentAssignmentsList
           studentAssignments={studentAssignments}
           studentProgress={studentProgress}
           studentDataLoading={studentDataLoading}
           userUid={user.uid}
+          competitionsByAssignment={competitionsByAssignment}
           setActiveAssignment={setActiveAssignment}
           setAssignmentWords={setAssignmentWords}
           setView={setView}
@@ -589,6 +312,7 @@ export default function StudentDashboardView({
       <PetCompanion
         xp={xp}
         displayName={user.displayName}
+        streak={streak}
         currentStage={retention.currentPetStage}
         nextStage={retention.nextPetStage}
         claimableMilestone={retention.claimablePetMilestone}

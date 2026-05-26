@@ -9,6 +9,11 @@ interface DailyGoalBannerProps {
   studentProgress: ProgressData[];
   /** How many games must be played today to hit the goal. */
   goal?: number;
+  /** When provided, the pending banner becomes tappable.  The handler
+   *  should launch the same target as NextUpCard so the banner's copy
+   *  ("1 more to go!") stops feeling like dead information.  The hit
+   *  state never wires this — they already did it. */
+  onPlay?: () => void;
 }
 
 /**
@@ -22,7 +27,7 @@ interface DailyGoalBannerProps {
  * per (mode, assignment) is what `progress` already gives us, so we can
  * trust raw count.
  */
-export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoalBannerProps) {
+export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay }: DailyGoalBannerProps) {
   const { language } = useLanguage();
   const t = studentDashboardT[language];
   const { playedToday, pct, hit } = useMemo(() => {
@@ -65,11 +70,20 @@ export default function DailyGoalBanner({ studentProgress, goal = 1 }: DailyGoal
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
-          className="relative overflow-hidden rounded-2xl mb-6 p-4 sm:p-5 bg-white border border-indigo-500/[0.10]"
+          whileHover={onPlay ? { scale: 1.005 } : undefined}
+          whileTap={onPlay ? { scale: 0.99 } : undefined}
+          onClick={onPlay}
+          role={onPlay ? "button" : undefined}
+          tabIndex={onPlay ? 0 : undefined}
+          onKeyDown={onPlay ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlay(); } } : undefined}
           style={{
             boxShadow:
               "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            cursor: onPlay ? 'pointer' : undefined,
           }}
+          className="relative overflow-hidden rounded-2xl mb-6 p-4 sm:p-5 bg-white border border-indigo-500/[0.10] transition-shadow hover:shadow-md"
         >
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Flame glows as they approach the goal — v1 amber/coral
