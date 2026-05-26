@@ -214,6 +214,10 @@ export interface AppUser {
   /** School-wide Pro trial expiry, when the school is trialing rather than on a
    *  paid license. While > now(), every member reads as Pro. */
   schoolTrialEndsAt?: string | null;
+  /** Display name of the school this user belongs to (fetched alongside
+   *  schoolPlan in attachSchoolPlan). Surfaced on the dashboard plan card so a
+   *  school-licensed teacher sees their school name as confirmation. */
+  schoolName?: string | null;
   // (Parent Weekly Digest fields lived here until 2026-05-18 — removed
   // alongside the schema in migration
   // 20260618000000_drop_parent_digest_stub.sql.)
@@ -498,12 +502,13 @@ async function attachSchoolPlan(user: AppUser): Promise<void> {
   try {
     const { data, error } = await supabase
       .from('schools')
-      .select('plan,trial_ends_at')
+      .select('name,plan,trial_ends_at')
       .eq('id', user.schoolId)
       .maybeSingle();
     if (!error && data) {
       user.schoolPlan = (data.plan as 'free' | 'school' | null) ?? null;
       user.schoolTrialEndsAt = (data.trial_ends_at as string | null) ?? null;
+      user.schoolName = (data.name as string | null) ?? null;
     }
   } catch {
     // best-effort only — ignore and fall back to the user's own plan

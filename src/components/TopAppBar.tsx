@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChevronLeft, X } from "lucide-react";
+import { ChevronLeft, X, Crown } from "lucide-react";
 import UiScaleControl from "./dashboard/UiScaleControl";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useLanguage } from "../hooks/useLanguage";
@@ -30,6 +30,13 @@ interface TopAppBarProps {
    *  the teacher dashboard to host the Voca switcher button so it
    *  doesn't have to float over the header with fixed positioning. */
   extraTrailing?: React.ReactNode;
+  /** Optional plan pill rendered next to the teacher name so every
+   *  teacher sees their plan at a glance — Free / Trial · Nd / Pro /
+   *  School.  Omit for non-teacher contexts (student dashboards etc). */
+  planBadge?: {
+    label: string;
+    tone: "free" | "trial" | "pro" | "school";
+  };
 }
 
 /**
@@ -61,6 +68,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   onLogout,
   showScaleControl = false,
   extraTrailing,
+  planBadge,
 }) => {
   const { language } = useLanguage();
   // Localised back / exit fallbacks — parents can still pass an
@@ -156,7 +164,18 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         {userName && (
           <div className="hidden sm:flex flex-col items-end">
             <span className="text-xs text-on-surface-variant font-medium">Welcome back,</span>
-            <span className="text-sm font-bold text-on-surface">{userName}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-on-surface">{userName}</span>
+              {planBadge && <PlanBadge {...planBadge} />}
+            </div>
+          </div>
+        )}
+        {/* Mobile-only pill — desktop renders it inline next to the
+            userName above.  Visible everywhere else (sm:hidden) so a
+            teacher on a phone still sees their plan at a glance. */}
+        {planBadge && (
+          <div className="sm:hidden">
+            <PlanBadge {...planBadge} />
           </div>
         )}
         {onLogout && (
@@ -178,6 +197,32 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         </div>
       </div>
     </header>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PlanBadge — small uppercase pill rendered next to the teacher name.
+   Four tones map 1:1 to the plan card colour palette so the brand
+   language stays consistent across surfaces.
+────────────────────────────────────────────────────────────────────────────────── */
+const PLAN_BADGE_TONES: Record<
+  NonNullable<TopAppBarProps["planBadge"]>["tone"],
+  string
+> = {
+  free:   "bg-amber-100 text-amber-900 ring-amber-300",
+  trial:  "bg-amber-200 text-amber-950 ring-amber-400",
+  pro:    "bg-emerald-100 text-emerald-900 ring-emerald-300",
+  school: "bg-indigo-100 text-indigo-900 ring-indigo-300",
+};
+
+const PlanBadge: React.FC<NonNullable<TopAppBarProps["planBadge"]>> = ({ label, tone }) => {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider ring-1 whitespace-nowrap ${PLAN_BADGE_TONES[tone]}`}
+    >
+      <Crown size={10} className="shrink-0" />
+      {label}
+    </span>
   );
 };
 
