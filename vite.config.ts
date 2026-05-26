@@ -63,8 +63,13 @@ function vocabandHtmlPerf(): Plugin {
   // landing-page-*, PublicNav-*, FloatingButtons-* deliberately
   // skipped — they're smaller chunks whose RTT savings are modest
   // and they ride App's parallel-import wave once App resolves.
+  // NOTE: logged-out visitors on a public view now boot the lightweight
+  // PublicShell (see main.tsx), so the landing critical chunk is
+  // PublicShell-*, not App-*. App + supabase are kept OFF the landing
+  // modulepreload entirely (see build.modulePreload.resolveDependencies)
+  // and load on-demand only when a visitor logs in or has a session.
   const PRELOAD_CHUNK_PREFIXES = [
-    'App-',
+    'PublicShell-',
     'LandingPage-',
   ];
 
@@ -546,6 +551,20 @@ export default defineConfig(() => {
       },
     },
     build: {
+      modulePreload: {
+        // Keep App + the supabase client OUT of the auto-injected
+        // modulepreload graph. The landing now boots PublicShell (which
+        // is supabase-free); preloading App/supabase in the shared static
+        // <head> would force every public visitor to download ~106 kB gz
+        // they don't need on first paint. They load on-demand when a
+        // visitor logs in or restores a session — one extra RTT on a
+        // deliberate action, in exchange for a much lighter cold landing.
+        resolveDependencies(_filename, deps) {
+          return deps.filter(
+            (dep) => !/\/App-[\w-]+\.js$/.test(dep) && !/\/supabase-[\w-]+\.js$/.test(dep),
+          );
+        },
+      },
       // Motion was previously filtered out of the HTML modulepreload
       // list while we were removing motion.div usage from LandingPage.
       // The filter is now removed: rolldown wraps react/jsx-runtime

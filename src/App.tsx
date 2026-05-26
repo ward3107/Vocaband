@@ -103,7 +103,7 @@ import { buildCleanupSessionData, buildCleanupQuickPlayGuest } from "./handlers/
 
 type ConfirmDialog = { show: boolean; message: string; onConfirm: () => void };
 
-export default function App() {
+export default function App({ initialView }: { initialView?: View } = {}) {
   // Initialize game debugger
   const gameDebug = getGameDebugger();
   // Language-aware toast text — picked up at render time so a teacher
@@ -125,7 +125,9 @@ export default function App() {
   // priority over auth redirects.
   const quickPlaySessionParam = new URLSearchParams(window.location.search).get('session');
 
-  const [view, setView] = useState<View>(resolveInitialView);
+  // `initialView` is supplied when PublicShell hands off (e.g. a login
+  // click) so App opens directly on that view; otherwise resolve from URL.
+  const [view, setView] = useState<View>(() => initialView ?? resolveInitialView());
   const [activeVoca, setActiveVoca] = useActiveVocaState();
 
   // First-time-guide persistence (teacher-only) wired through a hook
