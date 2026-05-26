@@ -287,7 +287,7 @@ export default function TeacherDashboardView({
 
   return (
     <>
-      <div dir={dir} className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-12`}>
+      <div dir={dir} className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-36 sm:pb-20`}>
         {consentModal}
         {exitConfirmModal}
 
