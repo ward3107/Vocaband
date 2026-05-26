@@ -130,21 +130,24 @@ export default function TeacherAffordancesPreview() {
           <div className="h-[60vh]" />
         </div>
 
-        {/* === Floating theme circle (bottom-right, mirrors live) === */}
+        {/* === Floating theme circle (bottom-end, mirrors live) === */}
         <button
           type="button"
           aria-label="Change theme (preview)"
-          className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-30 w-12 h-12 rounded-full border border-stone-200 bg-white shadow-lg flex items-center justify-center text-[#4A3B7A]"
+          className="fixed bottom-5 end-5 sm:bottom-6 sm:end-6 z-30 w-12 h-12 rounded-full border border-stone-200 bg-white shadow-lg flex items-center justify-center text-[#4A3B7A]"
         >
           <Palette size={20} />
         </button>
 
-        {/* === Floating projector circle (bottom-right, mirrors live) === */}
+        {/* === Floating projector circle — stacked ABOVE the theme
+             circle on mobile (`bottom-20 end-5`), beside it on desktop
+             (`sm:end-[5.5rem]`).  Stacking on mobile prevents the two
+             circles from crowding the bottom-end corner. === */}
         <button
           type="button"
           onClick={() => setPresentationOn((v) => !v)}
           aria-label="Toggle presentation mode (preview)"
-          className="fixed bottom-5 right-20 sm:bottom-6 sm:right-[5.5rem] z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center"
+          className="fixed bottom-20 end-5 sm:bottom-6 sm:end-[5.5rem] z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center"
           style={{
             background: presentationOn ? "#6366F1" : "#FFFFFF",
             color: presentationOn ? "#FFFFFF" : "#4A3B7A",

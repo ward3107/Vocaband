@@ -531,7 +531,7 @@ export default function TeacherDashboardView({
           color: 'var(--vb-text-primary)',
           borderColor: 'var(--vb-border)',
         }}
-        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        className="fixed bottom-5 end-5 sm:bottom-6 sm:end-6 z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
       >
         <Palette size={20} />
       </button>
@@ -555,7 +555,7 @@ export default function TeacherDashboardView({
             color: adaptiveTheme.presentationMode ? 'var(--vb-accent-text)' : 'var(--vb-text-primary)',
             borderColor: adaptiveTheme.presentationMode ? 'var(--vb-accent)' : 'var(--vb-border)',
           }}
-          className="fixed bottom-5 right-20 sm:bottom-6 sm:right-[5.5rem] z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+          className="fixed bottom-20 end-5 sm:bottom-6 sm:end-[5.5rem] z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
         >
           <Tv2 size={20} />
         </button>
