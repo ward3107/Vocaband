@@ -3,7 +3,7 @@
 // Spotlight dynamic hero at the top. See docs/shop-redesign-plan.md.
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { Zap, Pin, Lock, Check, ChevronLeft } from "lucide-react";
 import { supabase, type AppUser } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
@@ -59,11 +59,6 @@ export default function ShopMarketplaceView({
   const t = shopT[language];
   const retention = useRetention(user.uid, xp);
   const { pinned, togglePin, unpin, isPinned } = usePinnedShopItem(user.uid);
-
-  // Combine eggs + boosters/powerups (the carousels merge them per
-  // the redesign). UI toggle for the merged section:
-  const [boostMode, setBoostMode] = useState<'powerup' | 'booster'>('powerup');
-  const [cosmeticMode, setCosmeticMode] = useState<'frame' | 'title'>('frame');
 
   // Egg cinematic state — phases mirror the original ShopView.
   const [openingEgg, setOpeningEgg] = useState<null | {
@@ -191,8 +186,10 @@ export default function ShopMarketplaceView({
       kind === 'avatar'  ? 'section-avatars' :
       kind === 'theme'   ? 'section-themes' :
       kind === 'egg'     ? 'section-eggs' :
-      kind === 'frame' || kind === 'title' ? 'section-cosmetics' :
-      kind === 'booster' || kind === 'powerUp' ? 'section-boosts' :
+      kind === 'frame'   ? 'section-frames' :
+      kind === 'title'   ? 'section-titles' :
+      kind === 'booster' ? 'section-boosters' :
+      kind === 'powerUp' ? 'section-powerups' :
       null;
     if (sectionId) document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -540,84 +537,53 @@ export default function ShopMarketplaceView({
             />
           </section>
 
-          {/* Power-ups + Boosters merged section (Phase 6). Internal toggle. */}
-          <section id="section-boosts" className="space-y-3">
-            <div className={`flex items-center justify-between px-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
-              <div className={`flex items-baseline gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                <span className="text-2xl leading-none">⚡</span>
-                <h2 className="text-lg font-black tracking-tight text-stone-900">
-                  {boostMode === 'powerup' ? t.powerUps : t.boosters}
-                </h2>
-              </div>
-              <div className="inline-flex bg-stone-200 rounded-full p-0.5 text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => setBoostMode('powerup')}
-                  className={`px-3 py-1 rounded-full transition-colors ${boostMode === 'powerup' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'}`}
-                >
-                  {t.powerUps}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBoostMode('booster')}
-                  className={`px-3 py-1 rounded-full transition-colors ${boostMode === 'booster' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'}`}
-                >
-                  {t.boosters}
-                </button>
-              </div>
-            </div>
-            <div
-              className={`flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x ${isRTL ? 'flex-row-reverse' : ''}`}
-              style={{ scrollbarWidth: 'thin' }}
-            >
-              {(boostMode === 'powerup' ? POWER_UP_DEFS : BOOSTERS_DEFS).map((item) => (
-                <div key={item.id} className="snap-start flex-shrink-0">
-                  {boostMode === 'powerup'
-                    ? renderPowerUp(item as typeof POWER_UP_DEFS[0])
-                    : renderBooster(item as typeof BOOSTERS_DEFS[0])}
-                </div>
-              ))}
-            </div>
+          {/* Power-ups + Boosters were previously merged behind a toggle;
+              split into separate carousels so students see both
+              catalogues by default (the toggle hid half the inventory
+              from anyone who didn't notice the pill). */}
+          <section id="section-powerups">
+            <CategoryCarousel
+              emoji="⚡"
+              title={t.powerUps}
+              items={POWER_UP_DEFS}
+              keyFor={(p) => p.id}
+              renderCard={renderPowerUp}
+              isRTL={isRTL}
+            />
           </section>
 
-          {/* Frames + Titles merged into "Decorations" (Phase 6). Internal toggle. */}
-          <section id="section-cosmetics" className="space-y-3">
-            <div className={`flex items-center justify-between px-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
-              <div className={`flex items-baseline gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                <span className="text-2xl leading-none">👑</span>
-                <h2 className="text-lg font-black tracking-tight text-stone-900">
-                  {cosmeticMode === 'frame' ? t.avatarFrames : t.nameTitles}
-                </h2>
-              </div>
-              <div className="inline-flex bg-stone-200 rounded-full p-0.5 text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => setCosmeticMode('frame')}
-                  className={`px-3 py-1 rounded-full transition-colors ${cosmeticMode === 'frame' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'}`}
-                >
-                  {t.avatarFrames}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCosmeticMode('title')}
-                  className={`px-3 py-1 rounded-full transition-colors ${cosmeticMode === 'title' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'}`}
-                >
-                  {t.nameTitles}
-                </button>
-              </div>
-            </div>
-            <div
-              className={`flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x ${isRTL ? 'flex-row-reverse' : ''}`}
-              style={{ scrollbarWidth: 'thin' }}
-            >
-              {(cosmeticMode === 'frame' ? NAME_FRAMES : NAME_TITLES).map((item) => (
-                <div key={item.id} className="snap-start flex-shrink-0">
-                  {cosmeticMode === 'frame'
-                    ? renderFrame(item as typeof NAME_FRAMES[0])
-                    : renderTitle(item as typeof NAME_TITLES[0])}
-                </div>
-              ))}
-            </div>
+          <section id="section-boosters">
+            <CategoryCarousel
+              emoji="🚀"
+              title={t.boosters}
+              items={BOOSTERS_DEFS}
+              keyFor={(b) => b.id}
+              renderCard={renderBooster}
+              isRTL={isRTL}
+            />
+          </section>
+
+          {/* Frames + Titles same treatment — separate rows. */}
+          <section id="section-frames">
+            <CategoryCarousel
+              emoji="🖼️"
+              title={t.avatarFrames}
+              items={NAME_FRAMES}
+              keyFor={(f) => f.id}
+              renderCard={renderFrame}
+              isRTL={isRTL}
+            />
+          </section>
+
+          <section id="section-titles">
+            <CategoryCarousel
+              emoji="👑"
+              title={t.nameTitles}
+              items={NAME_TITLES}
+              keyFor={(ti) => ti.id}
+              renderCard={renderTitle}
+              isRTL={isRTL}
+            />
           </section>
         </div>
       </div>

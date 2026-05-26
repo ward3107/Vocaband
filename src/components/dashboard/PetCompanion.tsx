@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Heart, Sparkles, X, Gift } from "lucide-react";
+import { Heart, Sparkles, X, Gift, Flame } from "lucide-react";
 import { PET_MILESTONES, type PetMilestone } from "../../constants/game";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
@@ -18,6 +18,10 @@ interface PetCompanionProps {
   claimableMilestone: PetMilestone | null;
   /** Callback when the student taps "Claim reward" on the pet. */
   onClaim: (milestone: PetMilestone) => void;
+  /** Current daily streak.  When >= 3 the bubble grows a small flame
+   *  badge so the pet visibly "celebrates" the streak — gives the
+   *  floating bubble a job beyond decoration. */
+  streak?: number;
 }
 
 /**
@@ -32,7 +36,7 @@ interface PetCompanionProps {
  * via useRetention (localStorage, scoped per user).
  */
 export default function PetCompanion({
-  xp, displayName, currentStage, nextStage, claimableMilestone, onClaim,
+  xp, displayName, currentStage, nextStage, claimableMilestone, onClaim, streak = 0,
 }: PetCompanionProps) {
   const { language, dir } = useLanguage();
   const t = studentDashboardT[language];
@@ -95,6 +99,21 @@ export default function PetCompanion({
             transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
             className="absolute top-0 end-0 w-4 h-4 rounded-full bg-rose-500 border-2 border-white"
           />
+        )}
+        {/* Streak badge — bubble's "yay you have a streak" reaction.
+            Sits at the bottom-end corner so it can't clash with the
+            claimable-reward dot at top-end.  Only appears at 3+ days
+            so a single-day blip doesn't trigger a permanent flair. */}
+        {streak >= 3 && (
+          <motion.span
+            animate={{ rotate: [-6, 6, -6] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute -bottom-1 -end-1 inline-flex items-center gap-0.5 bg-gradient-to-br from-orange-400 to-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white shadow-md tabular-nums"
+            aria-label={`${streak}-day streak`}
+          >
+            <Flame size={10} className="fill-white" />
+            {streak}
+          </motion.span>
         )}
         {/* Ambient pulse ring */}
         <span className="absolute inset-0 rounded-full bg-white/50 animate-ping opacity-20" />

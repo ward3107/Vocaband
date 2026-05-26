@@ -70,77 +70,62 @@ export default function StudentStatsRow({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
-      {/* ── TODAY card — XP earned today + current streak ───────────── */}
+      {/* ── TODAY card — XP earned today + current streak ─────────────
+          Compacted: smaller medallion (28→20), tighter padding, smaller
+          headline (text-5xl→text-3xl), sub-stat inlined with headline
+          instead of stacked.  Same metrics, roughly ⅔ the height. */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 text-white shadow-lg shadow-orange-500/20"
+        className="relative overflow-hidden rounded-2xl p-3.5 sm:p-4 bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 text-white shadow-md shadow-orange-500/20"
       >
-        {/* Decorative emoji medallion — logical `-end-8` so the disc
-            tucks into the leading-edge corner (right in LTR, left in
-            RTL) without overlapping the big headline number. Bumped
-            from `-end-4` after QA showed the disc was clipping the
-            "+" / "8" digit at tablet widths. */}
-        <div className="absolute -top-8 -end-8 w-28 h-28 rounded-full bg-white/15 flex items-center justify-center text-7xl select-none pointer-events-none">
+        <div className="absolute -top-6 -end-6 w-20 h-20 rounded-full bg-white/15 flex items-center justify-center text-5xl select-none pointer-events-none">
           ☀️
         </div>
 
         <div className="relative">
           <div className="flex items-center gap-1.5 mb-1">
-            <Zap size={16} className="text-amber-100" />
-            <span className="text-[11px] font-black uppercase tracking-widest opacity-90">{t.today}</span>
+            <Zap size={14} className="text-amber-100" />
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-90">{t.today}</span>
           </div>
 
-          {/* Headline: XP earned today */}
-          <div className="text-4xl sm:text-5xl font-black tabular-nums leading-none">
-            +{xpToday}
-          </div>
-          <div className="mt-1 text-xs sm:text-sm font-bold opacity-90">
-            {t.xpEarnedToday}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-3xl sm:text-4xl font-black tabular-nums leading-none">+{xpToday}</span>
+            <span className="text-xs font-bold opacity-90">{t.xpEarnedToday}</span>
           </div>
 
-          {/* Sub-stat: current streak */}
-          <div className="mt-4 inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs sm:text-sm font-bold">
-            <Flame size={14} className="text-amber-100 fill-amber-100" />
+          <div className="mt-2 inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2.5 py-1 text-[11px] font-bold">
+            <Flame size={12} className="text-amber-100 fill-amber-100" />
             {streak > 0 ? t.dayStreak(streak) : t.startYourStreak}
           </div>
         </div>
       </motion.div>
 
-      {/* ── PROGRESS card — Words mastered + assignments completed ── */}
+      {/* ── PROGRESS card — same compaction recipe as TODAY ─────────── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.05 }}
-        className="relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-emerald-400 via-teal-400 to-cyan-500 text-white shadow-lg shadow-teal-500/20"
+        className="relative overflow-hidden rounded-2xl p-3.5 sm:p-4 bg-gradient-to-br from-emerald-400 via-teal-400 to-cyan-500 text-white shadow-md shadow-teal-500/20"
       >
-        {/* Decorative emoji medallion — logical `-end-8` so the disc
-            tucks into the leading-edge corner (right in LTR, left in
-            RTL) without overlapping the big headline number. Bumped
-            from `-end-4` after QA showed the disc was clipping the
-            "+" / "8" digit at tablet widths. */}
-        <div className="absolute -top-8 -end-8 w-28 h-28 rounded-full bg-white/15 flex items-center justify-center text-7xl select-none pointer-events-none">
+        <div className="absolute -top-6 -end-6 w-20 h-20 rounded-full bg-white/15 flex items-center justify-center text-5xl select-none pointer-events-none">
           🎯
         </div>
 
         <div className="relative">
           <div className="flex items-center gap-1.5 mb-1">
-            <BookOpenCheck size={16} className="text-emerald-50" />
-            <span className="text-[11px] font-black uppercase tracking-widest opacity-90">{t.progress}</span>
+            <BookOpenCheck size={14} className="text-emerald-50" />
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-90">{t.progress}</span>
           </div>
 
-          {/* Headline: words mastered */}
-          <div className="text-4xl sm:text-5xl font-black tabular-nums leading-none">
-            {wordsMastered}
-          </div>
-          <div className="mt-1 text-xs sm:text-sm font-bold opacity-90">
-            {t.wordsMastered(wordsMastered)}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-3xl sm:text-4xl font-black tabular-nums leading-none">{wordsMastered}</span>
+            <span className="text-xs font-bold opacity-90">{t.wordsMastered(wordsMastered)}</span>
           </div>
 
-          {/* Sub-stat: assignments completed */}
-          <div className="mt-4 inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs sm:text-sm font-bold">
-            <Trophy size={14} className="text-amber-200" />
+          <div className="mt-2 inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2.5 py-1 text-[11px] font-bold">
+            <Trophy size={12} className="text-amber-200" />
             {t.assignmentsDone(assignmentsCompleted)}
           </div>
         </div>

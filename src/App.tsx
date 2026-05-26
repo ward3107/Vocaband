@@ -5,6 +5,7 @@ import { getEntitledVocas } from "./core/subject";
 import type { Word } from "./data/vocabulary";
 import { useVocabularyLazyWithDefaults } from "./hooks/useVocabularyLazy";
 import SvgSpinner from "./components/svg/SvgSpinner";
+import AnnouncementBanner from "./components/AnnouncementBanner";
 // motion is no longer imported eagerly here. Its three eager consumers
 // (CookieBanner, QuickPlayResumeBanner, ImageCropModal — all defined
 // further down as React.lazy) carry it in their own chunks now, so the
@@ -16,7 +17,6 @@ import { useLanguage } from "./hooks/useLanguage";
 import { appToastsT } from "./locales/app-toasts";
 import { useRetention } from "./hooks/useRetention";
 import { useSavedTasks } from "./hooks/useSavedTasks";
-import { useStructure } from "./hooks/useStructure";
 import { useBoosters } from "./hooks/useBoosters";
 import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
@@ -196,19 +196,6 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // quick-play snapshots so a teacher can rebuild the same task in one
   // tap.  Hook returns sorted list (pinned → most-used → most-recent).
   const savedTasks = useSavedTasks(user?.uid);
-
-  // Structure progression (Phase 1 of "build something meaningful").
-  // Tracks a per-user persisted creation (garden/city/rocket/castle)
-  // that grows as the student learns.  Gated behind the
-  // VITE_STRUCTURE_UX feature flag at the dashboard render level —
-  // this hook runs either way so the localStorage state is always
-  // consistent if the flag flips mid-session.
-  const structure = useStructure(user?.uid);
-  // Keys of parts that were just unlocked — used to bounce-animate them
-  // on the next render.  Currently never populated (the bounce trigger
-  // was never wired up); kept here as a stable [] reference so the
-  // dashboard section's prop contract stays unchanged.
-  const celebrateStructureKeys: string[] = [];
 
   // Active boosters (xp_booster, weekend_warrior, streak_freeze,
   // lucky_charm, focus_mode).  Scoped per-user via uid; persists in
@@ -999,7 +986,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
       setView, setActiveAssignment, setAssignmentWords, setShowModeSelection,
       setGameMode, setIsFinished,
       startClassMinute, retention, boosters,
-      showToast, renameStudentDisplayName, structure, celebrateStructureKeys,
+      showToast, renameStudentDisplayName,
       // Top-bar logout routes through the same soft-landing modal the
       // hardware back button uses, so a stray tap doesn't drop the kid
       // straight out of their session.
@@ -1187,6 +1174,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     && !showModeIntro;
   return (
     <>
+      <AnnouncementBanner user={user} />
       {renderGameRoute({
         view, user, setUser, language: appLanguage,
         showModeSelection, setShowModeSelection, activeAssignment, studentProgress,

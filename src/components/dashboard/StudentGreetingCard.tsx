@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Zap, Check, Copy, Flame, ShoppingBag, Pencil, X as XIcon, Crown } from "lucide-react";
+import { Check, Copy, Flame, ShoppingBag, Pencil, X as XIcon, Crown } from "lucide-react";
 import { getXpTitle, NAME_FRAMES, NAME_TITLES, XP_TITLES } from "../../constants/game";
 import { getTitleStyle } from "../../constants/titleStyles";
 import type { AppUser } from "../../core/supabase";
@@ -121,23 +121,6 @@ export default function StudentGreetingCard({
     : null;
   const frameRingClass = equippedFrame?.border ?? 'ring-4 ring-white/40';
 
-  // Roll-up XP counter on mount for a "wow" entrance.
-  const [displayedXp, setDisplayedXp] = useState(0);
-  useEffect(() => {
-    const duration = 900;
-    const start = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      // ease-out cubic
-      const eased = 1 - Math.pow(1 - t, 3);
-      setDisplayedXp(Math.round(eased * xp));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [xp]);
-
   const { language } = useLanguage();
   const t = studentDashboardT[language];
   const hour = new Date().getHours();
@@ -189,22 +172,24 @@ export default function StudentGreetingCard({
         </div>
       )}
 
-      <div className="relative flex items-center gap-4 sm:gap-5">
-        {/* Animated avatar — much bigger now (24x24 mobile, 32x32 desktop)
-            with a stronger glow halo so the student's chosen icon is the
-            visual anchor of the dashboard. */}
+      <div className="relative flex items-center gap-3 sm:gap-5">
+        {/* Animated avatar — 18x18 on mobile (was 24x24, which pushed
+            the right-column XP-progress caption into a wrap and let the
+            flame-streak badge bleed into the pills row), 32x32 on
+            desktop where there's room. */}
         <motion.div
           animate={{ y: [0, -4, 0] }}
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           className="relative shrink-0"
         >
           <div className="absolute inset-0 rounded-2xl bg-white/40 blur-xl animate-pulse" />
-          <div className={`relative w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-2xl flex items-center justify-center text-5xl sm:text-7xl shadow-2xl ${frameRingClass}`}>
+          <div className={`relative w-[72px] h-[72px] sm:w-32 sm:h-32 bg-white rounded-2xl flex items-center justify-center text-4xl sm:text-7xl shadow-2xl ${frameRingClass}`}>
             {user.avatar || '🦊'}
           </div>
           {streak > 0 && (
-            <div className="absolute -bottom-1.5 -end-1.5 bg-gradient-to-br from-orange-400 to-rose-500 text-white text-xs font-black px-2 py-1 rounded-full shadow-md flex items-center gap-1 border-2 border-white">
-              <Flame size={12} className="fill-white" />
+            <div className="absolute -bottom-1 -end-1 bg-gradient-to-br from-orange-400 to-rose-500 text-white text-[10px] sm:text-xs font-black px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full shadow-md flex items-center gap-0.5 sm:gap-1 border-2 border-white">
+              <Flame size={10} className="fill-white sm:hidden" />
+              <Flame size={12} className="fill-white hidden sm:inline" />
               {streak}
             </div>
           )}
@@ -330,30 +315,12 @@ export default function StudentGreetingCard({
           </div>
         </div>
 
-        {/* Right-hand stack: highlighted XP card + Shop button.
-            Moved from the old floating top-bar so everything the student
-            cares about (their identity + their balance + where to spend
-            it) sits inside one coloured rectangle.  On desktop both
-            elements are visible; on mobile they collapse to a tighter
-            row below the name. */}
-        <div className="hidden sm:flex shrink-0 flex-col gap-2">
-          {/* Highlighted XP card — amber/yellow gradient + spark icon so
-              it catches the eye as the main metric. */}
-          <div className="relative bg-gradient-to-br from-amber-300 to-yellow-400 rounded-xl px-5 py-3 shadow-lg shadow-amber-500/30 border-2 border-white/60">
-            <div className="absolute inset-0 rounded-xl bg-white/20 blur-lg opacity-60 pointer-events-none" />
-            <div className="relative flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-inner">
-                <Zap size={16} className="text-white fill-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-2xl font-black text-stone-900 tabular-nums leading-none">{displayedXp}</span>
-                <span className="text-[10px] font-black text-amber-800 uppercase tracking-widest leading-none mt-0.5">{t.totalXp}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Shop button — same visual weight as the XP card so they
-              read as a natural pair. */}
+        {/* Right-hand action: Shop button only.  The previous Total-XP
+            card was redundant — the same number already shows in the
+            level-bar caption below the name ("1,450 / 1,500 XP · 50
+            to Master").  Stripping it leaves the greeting clearly
+            about identity, with one cosmetic-economy CTA on the side. */}
+        <div className="hidden sm:flex shrink-0 self-center">
           <button
             onClick={onShopClick}
             type="button"
@@ -369,21 +336,16 @@ export default function StudentGreetingCard({
         </div>
       </div>
 
-      {/* Mobile row — XP pill + Shop button side-by-side so phones get
-          the same info density as the desktop stack. */}
-      <div className="sm:hidden mt-4 flex items-stretch gap-2">
-        <div className="flex-1 relative bg-gradient-to-br from-amber-300 to-yellow-400 rounded-xl px-3 py-2 shadow-lg shadow-amber-500/30 border-2 border-white/60 flex items-center gap-2">
-          <Zap size={14} className="text-stone-900 fill-amber-600 shrink-0" />
-          <div className="flex flex-col min-w-0">
-            <span className="text-lg font-black text-stone-900 tabular-nums leading-none truncate">{displayedXp}</span>
-            <span className="text-[9px] font-black text-amber-800 uppercase tracking-widest leading-none mt-0.5">{t.totalXp}</span>
-          </div>
-        </div>
+      {/* Mobile row — just the Shop button now, full-width so the
+          touch target is generous.  Total-XP pill removed for the
+          same reason it's gone on desktop (duplicate of the level
+          bar caption). */}
+      <div className="sm:hidden mt-4">
         <button
           onClick={onShopClick}
           type="button"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-xl shadow-lg shadow-pink-500/40 active:scale-95 transition-all text-sm border-2 border-white/60"
+          className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-xl shadow-lg shadow-pink-500/40 active:scale-95 transition-all text-sm border-2 border-white/60"
         >
           <ShoppingBag size={14} />
           Shop

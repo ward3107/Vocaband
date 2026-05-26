@@ -60,8 +60,6 @@ export interface StudentDashboardSectionDeps {
 
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   renameStudentDisplayName: Anyish;
-  structure: Anyish;
-  celebrateStructureKeys: Anyish;
 
   /** Opens the friendly student soft-landing exit modal — same one
    *  the hardware back button uses — when the student taps the top-
@@ -79,7 +77,7 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
     setView, setActiveAssignment, setAssignmentWords, setShowModeSelection,
     setGameMode, setIsFinished,
     startClassMinute, retention, boosters,
-    showToast, renameStudentDisplayName, structure, celebrateStructureKeys,
+    showToast, renameStudentDisplayName,
     onRequestLogout,
   } = deps;
 
@@ -138,8 +136,6 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
         }
         onGrantReward={(kind, value) => grantNonXpReward(kind, value, { user, setUser })}
         onRenameDisplayName={renameStudentDisplayName}
-        structure={structure}
-        celebrateStructureKeys={celebrateStructureKeys}
         onRequestLogout={onRequestLogout}
       />
     </LazyWrapper>

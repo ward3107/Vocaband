@@ -103,9 +103,6 @@ export interface StudentDashboardStrings {
   powerUpRevealLetter: string;
   powerUpWithCount: (label: string, n: number) => string;
 
-  // StudentOverallProgress
-  overallProgress: string;
-
   // StudentAssignmentsList / Card
   loadingAssignments: string;
   playAgain: string;
@@ -113,6 +110,10 @@ export interface StudentDashboardStrings {
   startLearning: string;
   yourAssignments: string;
   noAssignmentsYet: string;
+
+  // NextUpCard — primary CTA above the assignments list
+  nextUp: string;
+  continueAction: string;
 
   // RewardInboxCard
   dismissReward: string;
@@ -185,13 +186,14 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "Reveal Letter",
     powerUpWithCount: (label, n) => `${label} ×${n}`,
-    overallProgress: "Overall Progress",
     loadingAssignments: "Loading your assignments...",
     playAgain: "Play again",
     startAssignment: "Start",
     startLearning: "Start learning",
     yourAssignments: "Your Assignments",
     noAssignmentsYet: "No assignments yet. Check back later!",
+    nextUp: "Next up",
+    continueAction: "Continue",
     dismissReward: "Dismiss reward",
     thanks: "Thanks!",
   },
@@ -260,13 +262,14 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "חשוף אות",
     powerUpWithCount: (label, n) => `${label} ×${n}`,
-    overallProgress: "התקדמות כוללת",
     loadingAssignments: "טוען את המטלות שלך...",
     playAgain: "שחק שוב",
     startAssignment: "התחל",
     startLearning: "התחל ללמוד",
     yourAssignments: "המטלות שלך",
     noAssignmentsYet: "אין מטלות עדיין. חזור מאוחר יותר!",
+    nextUp: "הבא בתור",
+    continueAction: "המשך",
     dismissReward: "בטל פרס",
     thanks: "תודה!",
   },
@@ -335,13 +338,14 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "كشف حرف",
     powerUpWithCount: (label, n) => `${label} ×${n}`,
-    overallProgress: "التقدم الإجمالي",
     loadingAssignments: "جاري تحميل المهام...",
     playAgain: "العب مرة أخرى",
     startAssignment: "ابدأ",
     startLearning: "ابدأ التعلم",
     yourAssignments: "مهامك",
     noAssignmentsYet: "لا توجد مهام بعد. عد لاحقاً!",
+    nextUp: "التالي",
+    continueAction: "متابعة",
     dismissReward: "تجاهل المكافأة",
     thanks: "شكراً!",
   },
@@ -410,13 +414,14 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "Reveal Letter",
     powerUpWithCount: (label, n) => `${label} ×${n}`,
-    overallProgress: "Overall Progress",
     loadingAssignments: "Loading your assignments...",
     playAgain: "Play again",
     startAssignment: "Start",
     startLearning: "Start learning",
     yourAssignments: "Your Assignments",
     noAssignmentsYet: "No assignments yet. Check back later!",
+    nextUp: "Next up",
+    continueAction: "Continue",
     dismissReward: "Dismiss reward",
     thanks: "Thanks!",
   },
