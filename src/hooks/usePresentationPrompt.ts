@@ -10,14 +10,27 @@
  * desk monitor trips it too), it only ever *offers* — it never flips
  * Presentation Mode on by itself.
  *
- * Dismissal is session-scoped (in-memory), not persisted: a teacher who
- * waves it away at their desk should still get the offer later when
- * they actually open the dashboard on the classroom projector.
+ * Dismissal is persisted to localStorage so teachers who wave it away
+ * at their desk aren't pestered on every login.  A fullscreen entry
+ * (F11 right before class) is treated as a strong "about to present"
+ * signal that *clears* the persisted dismissal so the offer can
+ * reappear when it's actually useful.
  */
 import { useCallback, useEffect, useState } from "react";
+import { CLIENT_STORAGE_KEYS } from "../config/privacy-config";
 
 const LARGE_DISPLAY_MIN_WIDTH = 1280;
 const MAX_PROJECTOR_DPR = 1.5;
+const DISMISSED_KEY = CLIENT_STORAGE_KEYS.projectorPromptDismissed;
+
+function readDismissed(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(DISMISSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function looksLikeProjector(): boolean {
   if (typeof window === "undefined") return false;
@@ -35,7 +48,8 @@ export function usePresentationPrompt(active: boolean): {
   show: boolean;
   dismiss: () => void;
 } {
-  const [dismissed, setDismissed] = useState(false);
+  // Initialise from localStorage so the dismissal survives reloads.
+  const [dismissed, setDismissed] = useState<boolean>(() => readDismissed());
   // Evaluated once at mount via the lazy initializer (SSR-guarded inside
   // looksLikeProjector) so we don't setState synchronously in an effect.
   const [projectorLikely, setProjectorLikely] = useState<boolean>(() =>
@@ -45,13 +59,25 @@ export function usePresentationPrompt(active: boolean): {
   useEffect(() => {
     if (typeof document === "undefined") return;
     // Entering fullscreen (e.g. F11 before class) is a strong "about to
-    // present" signal — re-evaluate so the offer can appear then too.
-    const onFullscreen = () => setProjectorLikely(looksLikeProjector());
+    // present" signal — re-evaluate AND clear the persisted dismissal
+    // so the offer can reappear when it's actually useful.  Exiting
+    // fullscreen just re-evaluates without resurrecting the offer.
+    const onFullscreen = () => {
+      const inFullscreen = !!document.fullscreenElement;
+      if (inFullscreen) {
+        try { localStorage.removeItem(DISMISSED_KEY); } catch { /* storage blocked */ }
+        setDismissed(false);
+      }
+      setProjectorLikely(looksLikeProjector());
+    };
     document.addEventListener("fullscreenchange", onFullscreen);
     return () => document.removeEventListener("fullscreenchange", onFullscreen);
   }, []);
 
-  const dismiss = useCallback(() => setDismissed(true), []);
+  const dismiss = useCallback(() => {
+    setDismissed(true);
+    try { localStorage.setItem(DISMISSED_KEY, "1"); } catch { /* storage blocked */ }
+  }, []);
 
   return { show: projectorLikely && !active && !dismissed, dismiss };
 }
