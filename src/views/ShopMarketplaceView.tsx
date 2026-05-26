@@ -213,6 +213,47 @@ export default function ShopMarketplaceView({
   const ownsFrame = (id: string) => !!user.unlockedAvatars?.includes(`frame_${id}`);
   const ownsTitle = (id: string) => !!user.unlockedAvatars?.includes(`title_${id}`);
 
+  // --- Owned-collection row ---
+  // Flatten every purchased / unlocked cosmetic the student already owns
+  // into one list so they can equip from one row at the top instead of
+  // hunting through the catalogue rows.  Power-ups + boosters are
+  // omitted — they're consumed during games, not equipped.  Default
+  // theme is excluded too: it's the free baseline, not a purchase.
+  type OwnedTile = {
+    kind: 'avatar' | 'theme' | 'frame' | 'title';
+    id: string;
+    emoji: string;
+    label: string;
+    equipped: boolean;
+    equip: () => void;
+  };
+  const ownedTiles: OwnedTile[] = [
+    ...PREMIUM_AVATARS.filter(a => ownsAvatar(a.emoji)).map<OwnedTile>(a => ({
+      kind: 'avatar', id: a.id, emoji: a.emoji,
+      label: catalogName('avatars', a.id, language, a.name),
+      equipped: user.avatar === a.emoji,
+      equip: () => equipAvatar(a.emoji),
+    })),
+    ...THEMES.filter(th => th.id !== 'default' && ownsTheme(th.id)).map<OwnedTile>(th => ({
+      kind: 'theme', id: th.id, emoji: '🎨',
+      label: catalogName('themes', th.id, language, th.name),
+      equipped: user.activeTheme === th.id,
+      equip: () => equipTheme(th.id),
+    })),
+    ...NAME_FRAMES.filter(f => ownsFrame(f.id)).map<OwnedTile>(f => ({
+      kind: 'frame', id: f.id, emoji: '🖼️',
+      label: catalogName('frames', f.id, language, f.name),
+      equipped: user.activeFrame === f.id,
+      equip: () => equipFrame(f.id),
+    })),
+    ...NAME_TITLES.filter(ti => ownsTitle(ti.id)).map<OwnedTile>(ti => ({
+      kind: 'title', id: ti.id, emoji: '👑',
+      label: catalogName('titles', ti.id, language, ti.name),
+      equipped: user.activeTitle === ti.id,
+      equip: () => equipTitle(ti.id),
+    })),
+  ];
+
   // Pin button — appears on every locked card.
   const PinButton = ({ kind, id }: { kind: PinnedKind; id: string }) => (
     <button
@@ -504,6 +545,53 @@ export default function ShopMarketplaceView({
         />
 
         <div className="space-y-6">
+          {/* Your collection — flat list of equippable cosmetics the
+              student already owns.  Hidden when they own nothing so a
+              brand-new student doesn't see an empty rail. */}
+          {ownedTiles.length > 0 && (
+            <section id="section-owned">
+              <CategoryCarousel
+                emoji="✨"
+                title={t.yourCollection}
+                items={ownedTiles}
+                keyFor={(o) => `${o.kind}-${o.id}`}
+                renderCard={(o) => (
+                  <div
+                    className={`relative w-32 sm:w-36 rounded-2xl bg-white p-3 ring-2 shadow-sm transition-all ${
+                      o.equipped
+                        ? 'ring-violet-500 shadow-lg shadow-violet-500/30'
+                        : 'ring-stone-200 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex justify-center my-1">
+                      <span className="text-4xl">{o.emoji}</span>
+                    </div>
+                    <h3 className="text-xs font-black text-stone-900 text-center truncate">
+                      {o.label}
+                    </h3>
+                    <div className="mt-2">
+                      {o.equipped ? (
+                        <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600">
+                          <Check size={11} className="inline -mt-0.5 me-0.5" /> {t.equippedLabel}
+                        </span>
+                      ) : (
+                        <motion.button
+                          type="button"
+                          whileTap={{ scale: 0.97 }}
+                          onClick={o.equip}
+                          className="w-full text-[11px] font-black bg-violet-600 text-white rounded-full py-1.5"
+                        >
+                          {t.equipAction}
+                        </motion.button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                isRTL={isRTL}
+              />
+            </section>
+          )}
+
           <section id="section-eggs">
             <CategoryCarousel
               emoji="🥚"

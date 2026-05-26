@@ -212,7 +212,13 @@ export default function StudentDashboardView({
           onComplete={() => setShowStudentOnboarding(false)}
         />
       )}
-      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+      {/* Tightened from max-w-4xl → max-w-3xl to match the dev preview's
+          calmer width — 4xl was stretching every gradient card a touch
+          past where the eye wants to land.  Card-internal eyebrows on
+          NextUpCard, DailyPracticeRow, LeaderboardTeaser, etc. already
+          do the section-label work the preview achieved with outer
+          headings, so we don't need to add a second label layer. */}
+      <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
         {classNotFoundBanner}
         <StudentTopBar onRequestLogout={onRequestLogout} />
         {/* Teacher rewards land here FIRST so the student sees the

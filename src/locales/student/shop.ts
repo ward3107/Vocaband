@@ -71,6 +71,11 @@ export interface ShopStrings {
   titleEquipped: string;
   frameEquipped: string;
   couldNotOpenEgg: string;
+
+  // Owned-collection row at the top of the marketplace
+  yourCollection: string;
+  equipAction: string;
+  equippedLabel: string;
 }
 
 export const shopT: Record<Language, ShopStrings> = {
@@ -117,6 +122,9 @@ export const shopT: Record<Language, ShopStrings> = {
     titleEquipped: "Title equipped!",
     frameEquipped: "Frame equipped!",
     couldNotOpenEgg: "Could not open egg — try again later.",
+    yourCollection: "Your collection",
+    equipAction: "Equip",
+    equippedLabel: "Equipped",
   },
   he: {
     trendingNow: "מובילים עכשיו",
@@ -161,6 +169,9 @@ export const shopT: Record<Language, ShopStrings> = {
     titleEquipped: "התואר צויד!",
     frameEquipped: "המסגרת צוידה!",
     couldNotOpenEgg: "לא ניתן לפתוח את הביצה — נסה שוב מאוחר יותר.",
+    yourCollection: "האוסף שלך",
+    equipAction: "צייד",
+    equippedLabel: "מצויד",
   },
   ar: {
     trendingNow: "الرائج الآن",
@@ -205,6 +216,9 @@ export const shopT: Record<Language, ShopStrings> = {
     titleEquipped: "تم تجهيز اللقب!",
     frameEquipped: "تم تجهيز الإطار!",
     couldNotOpenEgg: "تعذّر فتح البيضة — حاول لاحقاً.",
+    yourCollection: "مجموعتك",
+    equipAction: "تجهيز",
+    equippedLabel: "مجهّز",
   },
   ru: {
     trendingNow: "Trending now",
@@ -249,5 +263,8 @@ export const shopT: Record<Language, ShopStrings> = {
     titleEquipped: "Title equipped!",
     frameEquipped: "Frame equipped!",
     couldNotOpenEgg: "Could not open egg — try again later.",
+    yourCollection: "Your collection",
+    equipAction: "Equip",
+    equippedLabel: "Equipped",
   },
 };
