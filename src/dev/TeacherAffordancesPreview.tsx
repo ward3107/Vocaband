@@ -11,7 +11,7 @@
  * production.
  */
 import { useState } from "react";
-import { Palette, Tv2, Sparkles, Crown, X } from "lucide-react";
+import { Palette, Tv2, Sparkles, Crown } from "lucide-react";
 import { LanguageProvider } from "../hooks/useLanguage";
 import { isPro, isTrialing, getTrialDaysLeft, freshTrialEndsAt } from "../core/plan";
 import type { AppUser } from "../core/supabase";
@@ -44,7 +44,6 @@ function buildUser(scenario: PlanScenario): AppUser {
 
 export default function TeacherAffordancesPreview() {
   const [scenario, setScenario] = useState<PlanScenario>("trialing-12");
-  const [showPrompt, setShowPrompt] = useState(true);
   const [presentationOn, setPresentationOn] = useState(false);
 
   const user = buildUser(scenario);
@@ -63,7 +62,7 @@ export default function TeacherAffordancesPreview() {
       >
         <div className="max-w-2xl mx-auto">
           <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 mb-4 text-xs font-bold text-amber-900">
-            DEV preview — pick a plan scenario, toggle the projector prompt, and watch the bottom-right corner for the two floating circles.
+            DEV preview — trial/free state now lives as a card in the Management grid on the real dashboard (not previewed here). The projector prompt has been removed; the live dashboard auto-enables Presentation Mode on F11 / fullscreen.
           </div>
 
           {/* Scenario picker */}
@@ -92,63 +91,37 @@ export default function TeacherAffordancesPreview() {
               isPro=<strong>{String(pro)}</strong>, isTrialing=<strong>{String(trialing)}</strong>,
               daysLeft=<strong>{String(daysLeft)}</strong>.
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setShowPrompt((v) => !v)}
-                className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200"
-              >
-                {showPrompt ? "Hide projector prompt" : "Show projector prompt"}
-              </button>
-              <div className="text-[11px] text-stone-500 self-center">
-                Fresh trial would expire: {new Date(freshTrialEndsAt()).toLocaleDateString()}
-              </div>
+            <div className="mt-3 text-[11px] text-stone-500">
+              Fresh trial would expire: {new Date(freshTrialEndsAt()).toLocaleDateString()}
             </div>
           </div>
 
-          {/* === Trial / plan banner (mirrors the live dashboard logic) ===
-              Bail only for paid Pro / school (`isPro && !trialing`). */}
+          {/* === Compact trial / upgrade chip (mirrors live) === */}
           {pro && !trialing && (
-            <div className="mb-4 rounded-xl border border-indigo-500/[0.10] bg-white p-4 text-sm font-bold text-[#1F1147]">
-              ✨ Pro plan — no banner shown on the live dashboard.
+            <div className="mb-4 rounded-xl border border-indigo-500/[0.10] bg-white p-3 text-xs font-bold text-[#1F1147]">
+              ✨ Pro plan — no chip shown on the live dashboard.
             </div>
           )}
           {trialing && daysLeft !== null && (
-            <div className="mb-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-amber-500/20 p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap">
-              <div className="w-11 h-11 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-                <Sparkles size={20} className="text-white" />
+            <div className="mb-4 flex justify-end">
+              <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm shadow-orange-500/30">
+                <Sparkles size={14} />
+                <span>You have {daysLeft} {daysLeft === 1 ? "day" : "days"} of Pro left</span>
+                <a href="#" onClick={(e) => e.preventDefault()} className="inline-flex items-center gap-1 rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-bold hover:bg-white/40">
+                  <Crown size={12} /> Upgrade
+                </a>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm sm:text-base font-bold">
-                  You have {daysLeft} {daysLeft === 1 ? "day" : "days"} of Pro left
-                </p>
-              </div>
-              <a
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                className="px-4 py-2 rounded-lg bg-white text-orange-600 font-bold text-sm shadow flex items-center gap-1.5 flex-shrink-0"
-              >
-                <Crown size={16} /> Upgrade
-              </a>
             </div>
           )}
           {!pro && !trialing && (
-            <div className="mb-4 rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 shadow-lg p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap border border-white/10">
-              <div className="w-11 h-11 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-                <Crown size={20} className="text-amber-400" />
+            <div className="mb-4 flex justify-end">
+              <div className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm">
+                <Crown size={14} className="text-amber-400" />
+                <span>Pro trial has ended</span>
+                <a href="#" onClick={(e) => e.preventDefault()} className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-[11px] font-bold">
+                  <Crown size={12} /> Upgrade
+                </a>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm sm:text-base font-bold">
-                  Pro trial has ended — upgrade to keep advanced features.
-                </p>
-              </div>
-              <a
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm shadow flex items-center gap-1.5 flex-shrink-0"
-              >
-                <Crown size={16} /> Upgrade
-              </a>
             </div>
           )}
 
@@ -157,21 +130,24 @@ export default function TeacherAffordancesPreview() {
           <div className="h-[60vh]" />
         </div>
 
-        {/* === Floating theme circle (bottom-right, mirrors live) === */}
+        {/* === Floating theme circle (bottom-end, mirrors live) === */}
         <button
           type="button"
           aria-label="Change theme (preview)"
-          className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-30 w-12 h-12 rounded-full border border-stone-200 bg-white shadow-lg flex items-center justify-center text-[#4A3B7A]"
+          className="fixed bottom-5 end-5 sm:bottom-6 sm:end-6 z-30 w-12 h-12 rounded-full border border-stone-200 bg-white shadow-lg flex items-center justify-center text-[#4A3B7A]"
         >
           <Palette size={20} />
         </button>
 
-        {/* === Floating projector circle (bottom-right, mirrors live) === */}
+        {/* === Floating projector circle — stacked ABOVE the theme
+             circle on mobile (`bottom-20 end-5`), beside it on desktop
+             (`sm:end-[5.5rem]`).  Stacking on mobile prevents the two
+             circles from crowding the bottom-end corner. === */}
         <button
           type="button"
           onClick={() => setPresentationOn((v) => !v)}
           aria-label="Toggle presentation mode (preview)"
-          className="fixed bottom-5 right-20 sm:bottom-6 sm:right-[5.5rem] z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center"
+          className="fixed bottom-20 end-5 sm:bottom-6 sm:end-[5.5rem] z-30 w-12 h-12 rounded-full border shadow-lg flex items-center justify-center"
           style={{
             background: presentationOn ? "#6366F1" : "#FFFFFF",
             color: presentationOn ? "#FFFFFF" : "#4A3B7A",
@@ -181,39 +157,9 @@ export default function TeacherAffordancesPreview() {
           <Tv2 size={20} />
         </button>
 
-        {/* === Projector prompt banner (the "annoying message") === */}
-        {showPrompt && (
-          <div
-            role="dialog"
-            className="fixed inset-x-3 bottom-3 sm:inset-x-auto sm:right-6 sm:bottom-24 sm:max-w-sm z-40 rounded-2xl border-2 border-indigo-200 bg-white p-4 shadow-xl"
-          >
-            <div className="flex items-start gap-3">
-              <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white flex items-center justify-center">
-                <Tv2 size={20} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-[#1F1147]">Looks like you're projecting?</p>
-                <p className="text-sm text-stone-600 mt-0.5">Switch to Presentation Mode for larger text + higher contrast.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPrompt(false)}
-                aria-label="Not now"
-                className="shrink-0 text-stone-500 hover:text-stone-900 p-1 rounded-lg"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <button type="button" onClick={() => setShowPrompt(false)} className="flex-1 py-2 rounded-lg border border-stone-200 text-stone-700 font-bold text-sm">
-                Not now
-              </button>
-              <button type="button" onClick={() => setShowPrompt(false)} className="flex-1 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-sm">
-                Turn on
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Projector prompt removed — the live dashboard now auto-enables
+            Presentation Mode on fullscreen entry instead.  The Tv2 toggle
+            below is the always-on manual control. */}
       </div>
     </LanguageProvider>
   );

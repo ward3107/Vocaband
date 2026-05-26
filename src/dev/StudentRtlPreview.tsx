@@ -109,9 +109,16 @@ export default function StudentRtlPreview() {
         {/* Student-visibility consent modal — hard gate that blocks the
             dashboard until the student ticks acknowledgement. */}
         <StudentVisibilityConsent studentUid={FAKE_USER.uid} />
-        <div className="max-w-md mx-auto p-4 sm:p-5">
+        {/* Container intentionally stretches to full viewport so the
+            Tailwind `sm:` breakpoint resolves against the *real* width
+            the student would have.  An earlier `max-w-md` here trapped
+            desktop layouts inside a mobile-width column at wide
+            viewports, manufacturing fake overlaps that didn't exist
+            on the real dashboard.  Resize your browser window to ≤
+            640px to test mobile layouts properly. */}
+        <div className="max-w-3xl mx-auto p-4 sm:p-5">
           <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 mb-3 text-xs font-bold text-amber-900">
-            DEV preview — flip language via the globe. Add <code>?consent=force</code> to re-open the consent modal.
+            DEV preview — flip language via the globe. Add <code>?consent=force</code> to re-open the consent modal. Resize the browser to ≤640px to see the mobile layout.
           </div>
 
           <StudentTopBar />

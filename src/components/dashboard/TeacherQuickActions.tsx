@@ -1,4 +1,4 @@
-import { GraduationCap, UserCircle, Zap, ClipboardList, Library } from "lucide-react";
+import { GraduationCap, UserCircle, Zap, ClipboardList, Library, Crown } from "lucide-react";
 import { HelpTooltip } from "../HelpTooltip";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
@@ -16,6 +16,19 @@ interface TeacherQuickActionsProps {
    *  Optional today so callers that haven't adopted the route yet
    *  keep working (the tile is hidden when undefined). */
   onLibraryClick?: () => void;
+  /** Plan-state card.  When omitted (paid Pro / school / admin / dev
+   *  allowlist) the card is hidden entirely.  When supplied, renders
+   *  the Plan card in the Management grid with either "Pro trial · X
+   *  days left" or "Free plan · Upgrade" copy. */
+  plan?: {
+    /** `'trialing'` → amber Pro-trial card; `'free'` → slate
+     *  free-plan card.  Anything else → no card. */
+    state: "trialing" | "free";
+    /** Days remaining in trial (only used when state==='trialing'). */
+    daysLeft?: number;
+    /** Click handler — typically opens the upgrade mailto. */
+    onUpgradeClick: () => void;
+  };
   /** Drives Hebrew-locked locale + RTL when the dashboard is showing a
    *  Hebrew class context. Defaults to "english" so existing callers
    *  keep their current behaviour. */
@@ -26,6 +39,7 @@ export default function TeacherQuickActions({
   pendingStudentsCount,
   onQuickPlayClick, onClassroomClick, onApprovalsClick, onWorksheetResultsClick,
   onLibraryClick,
+  plan,
   subject = "english",
 }: TeacherQuickActionsProps) {
   const { language } = useLanguage();
@@ -173,6 +187,33 @@ export default function TeacherQuickActions({
                   title={t.libraryTitle}
                   description={t.libraryDescription}
                   onClick={onLibraryClick}
+                  isHebrew={isHebrew}
+                />
+              </div>
+            </HelpTooltip>
+          )}
+
+          {/* Plan card — surfaces the teacher's current plan state +
+              upgrade entry.  Hidden for paid Pro / school / admin /
+              dev allowlist (parent passes `plan={undefined}`).  When
+              shown, the amber accent on trial state vs slate accent
+              on the free state mirrors the previous top-of-page
+              chip.  Replaces the chip itself — only one surface for
+              this state to avoid two upgrade prompts on one page. */}
+          {plan && (
+            <HelpTooltip className="h-full" content={t.planCardTooltip}>
+              <div className="h-full" data-tour="plan-card">
+                <CompactActionCard
+                  icon={<Crown size={20} />}
+                  iconBgVar={plan.state === "trialing" ? "rgba(245,158,11,0.12)" : "rgba(71,85,105,0.12)"}
+                  iconColorVar={plan.state === "trialing" ? "#D97706" : "#475569"}
+                  title={plan.state === "trialing" ? t.planCardTrialTitle : t.planCardFreeTitle}
+                  description={
+                    plan.state === "trialing" && typeof plan.daysLeft === "number"
+                      ? t.planCardTrialDesc(plan.daysLeft)
+                      : t.planCardFreeDesc
+                  }
+                  onClick={plan.onUpgradeClick}
                   isHebrew={isHebrew}
                 />
               </div>
