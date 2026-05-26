@@ -23,6 +23,8 @@ import DailyGoalBanner from "../components/dashboard/DailyGoalBanner";
 import RetentionStrip from "../components/dashboard/RetentionStrip";
 import PetEvolutionCard from "../components/dashboard/PetEvolutionCard";
 import PetCompanion from "../components/dashboard/PetCompanion";
+import StudentVisibilityConsent from "../components/StudentVisibilityConsent";
+import { CLIENT_STORAGE_KEYS } from "../config/privacy-config";
 
 const FAKE_USER: AppUser = {
   uid: "preview-student",
@@ -89,12 +91,27 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 export default function StudentRtlPreview() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  // `?consent=force` clears the localStorage acceptance flag so the
+  // student-visibility consent modal pops on every reload — useful for
+  // demoing the modal without logging in as a brand-new student.
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("consent") === "force") {
+      try {
+        localStorage.removeItem(CLIENT_STORAGE_KEYS.studentVisibilityVersion);
+      } catch { /* localStorage unavailable */ }
+    }
+  }
+
   return (
     <LanguageProvider>
       <div className="min-h-screen bg-stone-50">
+        {/* Student-visibility consent modal — hard gate that blocks the
+            dashboard until the student ticks acknowledgement. */}
+        <StudentVisibilityConsent studentUid={FAKE_USER.uid} />
         <div className="max-w-md mx-auto p-4 sm:p-5">
           <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 mb-3 text-xs font-bold text-amber-900">
-            DEV preview — flip language via the globe in the top bar. Toggles EN → HE → AR.
+            DEV preview — flip language via the globe. Add <code>?consent=force</code> to re-open the consent modal.
           </div>
 
           <StudentTopBar />
