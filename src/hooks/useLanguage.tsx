@@ -14,14 +14,36 @@ export const LANGUAGE_KEY = 'vocaband_legal_language';
 // audience, but the app teaches ENGLISH vocabulary, and the UI is the
 // learner's main exposure to the target language during a lesson. An
 // English-default surface reinforces the learning context; the user
-// can still switch to Hebrew or Arabic from the language picker, and
-// the choice persists in localStorage under LANGUAGE_KEY.
+// can still switch to Hebrew or Arabic from the language picker. A
+// logged-in user's choice persists across reloads (see
+// getInitialLanguage); logged-out / prospective visitors always start
+// in English so the public landing page is English-first.
 let globalLanguage: Language = 'en';
 const listeners: Set<(lang: Language) => void> = new Set();
 
 const SUPPORTED_LANGS: readonly Language[] = ['en', 'he', 'ar'] as const;
 const isSupported = (v: unknown): v is Language =>
   typeof v === 'string' && (SUPPORTED_LANGS as readonly string[]).includes(v);
+
+// True when supabase-js has a persisted auth session in localStorage —
+// i.e. the visitor is (or was) logged in on this device. supabase-js v2
+// stores the session under `sb-<project-ref>-auth-token` and no custom
+// storageKey is configured (see core/supabase.ts), so we match that key
+// shape. getInitialLanguage uses this to decide whether a saved
+// UI-language preference is auto-applied: logged-in users keep their
+// chosen language across reloads, logged-out / prospective visitors do
+// not. If supabase ever changes the key format this returns false and
+// everyone defaults to English on a cold load — exactly the desired
+// public behaviour anyway.
+const hasPersistedSession = (): boolean => {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('sb-') && k.includes('-auth-token')) return true;
+    }
+  } catch { /* localStorage blocked */ }
+  return false;
+};
 
 const getInitialLanguage = (): Language => {
   if (typeof window === 'undefined') return 'en';
@@ -39,16 +61,17 @@ const getInitialLanguage = (): Language => {
       return langParam;
     }
   } catch { /* URLSearchParams unavailable — fall through */ }
-  const saved = localStorage.getItem(LANGUAGE_KEY);
-  if (isSupported(saved)) {
-    return saved;
+  // A saved HE/AR preference is auto-applied ONLY for logged-in users, so a
+  // teacher who picked Hebrew keeps it across reloads. Logged-out /
+  // prospective visitors always get the English public surface: the landing
+  // page opens in English regardless of any previously saved choice. For the
+  // public, HE/AR stay an explicit, per-visit choice — the on-page language
+  // toggle (which holds for the session) or a ?lang= deep link. Keeps the
+  // marketing landing English-first while the app itself teaches English.
+  if (hasPersistedSession()) {
+    const saved = localStorage.getItem(LANGUAGE_KEY);
+    if (isSupported(saved)) return saved;
   }
-  // First visit (or saved key missing / invalid): default to English.
-  // The app teaches English vocabulary, so the landing page surface is
-  // English regardless of OS / browser locale — that reinforces the
-  // learning context and gives every visitor the same first impression.
-  // The language picker stays visible so a teacher can switch to Hebrew
-  // or Arabic, and the explicit pick is persisted in localStorage.
   return 'en';
 };
 
