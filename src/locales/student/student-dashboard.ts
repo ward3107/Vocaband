@@ -115,6 +115,11 @@ export interface StudentDashboardStrings {
   nextUp: string;
   continueAction: string;
 
+  // StudentWelcomeCard — empty-state when student has zero assignments
+  welcomeEyebrow: string;
+  welcomeTitle: (name: string) => string;
+  welcomeSubtitle: string;
+
   // RewardInboxCard
   dismissReward: string;
   thanks: string;
@@ -194,6 +199,9 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     noAssignmentsYet: "No assignments yet. Check back later!",
     nextUp: "Next up",
     continueAction: "Continue",
+    welcomeEyebrow: "Welcome aboard",
+    welcomeTitle: (name) => `Hi ${name}! 👋`,
+    welcomeSubtitle: "Your teacher hasn't shared an assignment yet — they'll show up here when they do. In the meantime, try the practice tiles below to start earning XP.",
     dismissReward: "Dismiss reward",
     thanks: "Thanks!",
   },
@@ -270,6 +278,9 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     noAssignmentsYet: "אין מטלות עדיין. חזור מאוחר יותר!",
     nextUp: "הבא בתור",
     continueAction: "המשך",
+    welcomeEyebrow: "ברוכים הבאים",
+    welcomeTitle: (name) => `שלום ${name}! 👋`,
+    welcomeSubtitle: "המורה שלך עדיין לא שיתף מטלה — היא תופיע כאן כשהיא תיווצר. בינתיים, נסה את כרטיסיות התרגול למטה כדי להתחיל לצבור XP.",
     dismissReward: "בטל פרס",
     thanks: "תודה!",
   },
@@ -346,6 +357,9 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     noAssignmentsYet: "لا توجد مهام بعد. عد لاحقاً!",
     nextUp: "التالي",
     continueAction: "متابعة",
+    welcomeEyebrow: "أهلاً بك",
+    welcomeTitle: (name) => `أهلاً ${name}! 👋`,
+    welcomeSubtitle: "لم يشارك معلمك مهمة بعد — ستظهر هنا عندما يضيفها. في هذه الأثناء، جرّب بطاقات التدريب أدناه لتبدأ بكسب XP.",
     dismissReward: "تجاهل المكافأة",
     thanks: "شكراً!",
   },
@@ -422,6 +436,9 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     noAssignmentsYet: "No assignments yet. Check back later!",
     nextUp: "Next up",
     continueAction: "Continue",
+    welcomeEyebrow: "Welcome aboard",
+    welcomeTitle: (name) => `Hi ${name}! 👋`,
+    welcomeSubtitle: "Your teacher hasn't shared an assignment yet — they'll show up here when they do. In the meantime, try the practice tiles below to start earning XP.",
     dismissReward: "Dismiss reward",
     thanks: "Thanks!",
   },
