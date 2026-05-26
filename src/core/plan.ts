@@ -2,7 +2,7 @@
  * plan.ts — runtime evaluation of a teacher's effective plan.
  *
  * The DB stores `plan` (paid state: 'free' | 'pro' | 'school') and
- * `trial_ends_at` (when the 30-day Pro trial expires).  This module
+ * `trial_ends_at` (when the 14-day Pro trial expires).  This module
  * resolves the EFFECTIVE plan a teacher should experience right now
  * and exposes the limits that gate Free-tier teachers in the UI.
  *
@@ -29,7 +29,7 @@ export type EffectivePlan = "free" | "pro" | "school";
  *   whose license is active (a paid school or an unexpired school-wide trial) —
  *   "whole school = all Pro", mirrors is_pro_or_trialing() in the DB and
  *   requireProTeacher on the server
- * - `pro` if they paid OR they're inside their own 30-day trial window
+ * - `pro` if they paid OR they're inside their own 14-day trial window
  * - `free` otherwise
  *
  * Students always read as `free` — plan only applies to teachers,
@@ -67,7 +67,7 @@ export function isPro(user: AppUser | null | undefined): boolean {
   return p === "pro" || p === "school";
 }
 
-/** Is the teacher inside their 30-day trial window? (Used for the "X
+/** Is the teacher inside their 14-day trial window? (Used for the "X
  *  days of Pro left" banner.  Returns false for paid Pro/School users
  *  even though they have Pro features — the banner only makes sense
  *  for trialing free users.  Also false for admins and developer
@@ -107,8 +107,8 @@ export const FREE_TIER_LIMITS = {
   MAX_STUDENTS_PER_CLASS: 30,
 } as const;
 
-/** A new teacher's trial window: 30 days from signup. */
-export const TRIAL_DURATION_DAYS = 30;
+/** A new teacher's trial window: 14 days from signup. */
+export const TRIAL_DURATION_DAYS = 14;
 
 /** Helper to compute a fresh trial-end timestamp at signup. */
 export function freshTrialEndsAt(): string {

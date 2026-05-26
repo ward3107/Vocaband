@@ -86,9 +86,13 @@
   --vb-text-on-accent: #ffffff;
 
   /* ── Accent (theme-driven)                                         */
-  --vb-accent: #6366f1;
-  --vb-accent-hover: #4f46e5;
-  --vb-accent-active: #4338ca;
+  /* indigo 600/700/800. Base is 600 (not 500) so accent-coloured text
+     clears WCAG AA 4.5:1 on white and on --vb-accent-soft (the landing
+     eyebrow badge was 3.99:1 at indigo-500). Teacher themes override
+     these at runtime; this is the default/public surface. */
+  --vb-accent: #4f46e5;
+  --vb-accent-hover: #4338ca;
+  --vb-accent-active: #3730a3;
   --vb-accent-soft: #eef2ff;
   --vb-accent-text: #ffffff;
   --vb-accent-contrast: #ffffff;
