@@ -76,7 +76,6 @@ export default function PublicShell() {
               onAccept={handleCookieAccept}
               onCustomize={handleCookieCustomize}
               onReject={handleCookieReject}
-              onPrivacyPolicy={() => navigate("public-privacy")}
             />
           </Suspense>
         )}
