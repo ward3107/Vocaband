@@ -39,6 +39,14 @@ export function resolveInitialView(): View {
   if (window.location.pathname === '/student') {
     return 'student-account-login';
   }
+  // `/privacy` opens the designed React PublicPrivacyPage instead of the
+  // bare static `/privacy.html` (which still exists for SEO + external
+  // links like the Google Play listing).  The cookie banner + consent
+  // modal point here with `target="_blank"` so the policy renders in a
+  // new tab over the modal-locked dashboard.
+  if (window.location.pathname === '/privacy') {
+    return 'public-privacy';
+  }
   // Classroom-poster QR code / teacher-shared invite link.  When the URL
   // carries a `?class=XXX` parameter and there's no already-active session,
   // skip the landing page and drop the visitor straight on the
