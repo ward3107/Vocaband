@@ -183,7 +183,7 @@ export interface AppUser {
    *  effective plan at runtime also considers `trialEndsAt`.  Students
    *  ignore this field. */
   plan?: 'free' | 'pro' | 'school';
-  /** Timestamp the 30-day Pro trial expires.  While > now() and
+  /** Timestamp the 14-day Pro trial expires.  While > now() and
    *  plan='free', the teacher has Pro features.  NULL for users who
    *  never had a trial (e.g. plan='pro' set manually). */
   trialEndsAt?: string | null;
