@@ -15,7 +15,7 @@
  * the effect body, add it here too — and add it in App.tsx's hook
  * call.  TypeScript will flag missing entries.
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type React from 'react';
 import {
   supabase,
@@ -162,6 +162,12 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
     setWordAttemptBatch, setShowModeSelection,
   } = deps;
 
+  // The uid we've already fully restored. Used to skip the heavy restore
+  // on TOKEN_REFRESHED / USER_UPDATED events (which fire on tab refocus
+  // and the periodic token refresh) so returning to a tab doesn't refetch
+  // data + reset whatever view the user had open.
+  const restoredUidRef = useRef<string | null>(null);
+
   useEffect(() => {
     // If Supabase isn't configured, skip auth entirely and show the landing page.
     if (!isSupabaseConfigured) {
@@ -188,6 +194,10 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
       // already routed them to "quick-play-student".  Skip auth restore.
       if (quickPlaySessionParam) return;
       restoreInProgress.current = true;
+      // Remember who we're restoring so refocus token-refreshes can skip
+      // the re-restore. Set at the start (not on success) because a failed
+      // restore retries via its own setTimeout below, not via this event.
+      restoredUidRef.current = supabaseUser.id;
 
       try {
         // For anonymous students: RLS blocks SELECT on users table
@@ -746,8 +756,19 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
           setLoading(false);
           return;
         }
+        // TOKEN_REFRESHED / USER_UPDATED fire on tab refocus and the
+        // periodic refresh — they never change identity. Re-running the
+        // full restore on them refetches data and resets the open view,
+        // wiping what the user had open when they switched tabs. Skip when
+        // the same user is already restored (a real account switch fires
+        // SIGNED_IN, which is never skipped).
+        if ((event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')
+            && restoredUidRef.current === session.user.id) {
+          return;
+        }
         restoreSession(session.user);
       } else if (event === 'SIGNED_OUT') {
+        restoredUidRef.current = null;
         cleanupSessionData();
         try { stopAllAudio(); } catch {}
         try { window.speechSynthesis?.cancel(); } catch {}

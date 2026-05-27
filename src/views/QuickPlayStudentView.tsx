@@ -7,7 +7,6 @@ import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
 import { shuffle } from "../utils";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { ALL_GAME_MODES } from "../constants/game";
-import { QP_CATEGORY_RACE_MODE } from "../core/quickPlayProtocol";
 import { supabase, type AppUser, type AssignmentData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
@@ -316,24 +315,6 @@ export default function QuickPlayStudentView({
       setQuickPlayStudentName(trimmedName);
       const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
       setUser(guestUser);
-
-      // Category Race: no word-game assignment to build — route straight
-      // to the live race view, which listens for rounds on the already-
-      // joined Quick Play socket.
-      const isRaceSession = quickPlayActiveSession.allowedModes?.length === 1
-        && quickPlayActiveSession.allowedModes[0] === QP_CATEGORY_RACE_MODE;
-      if (isRaceSession) {
-        try {
-          localStorage.setItem('vocaband_qp_guest', JSON.stringify({
-            sessionId: quickPlayActiveSession.id,
-            sessionCode: quickPlayActiveSession.sessionCode,
-            name: trimmedName,
-            avatar: quickPlayAvatar,
-          }));
-        } catch { /* storage unavailable */ }
-        setView("category-race-student");
-        return;
-      }
 
       const words = shuffle(quickPlayActiveSession.words).map(w => ({
         ...w,

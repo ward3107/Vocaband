@@ -9,7 +9,15 @@ const PUBLIC_VIEWS = new Set<View>([
 const TEACHER_VIEWS = new Set<View>([
   "worksheet", "classroom", "class-show", "teacher-approvals",
   "quick-play-teacher-monitor", "quick-play-setup", "create-assignment",
-  "hot-seat",
+  "hot-seat", "wheel",
+  // Authenticated teacher destinations that were previously NOT preserved
+  // — so a token refresh on tab-refocus bounced the teacher back to the
+  // dashboard, abandoning whatever they had open here.
+  "analytics", "gradebook", "students", "worksheet-attempts",
+  "live-challenge", "live-challenge-class-select",
+  "vocabulary-library", "vocabulary-collection", "vocabulary-set-detail", "vocabulary-set-builder",
+  "vocabagrut", "category-race-host",
+  "developer-dashboard", "admin-security", "manager-dashboard",
   "voca-picker", "vocahebrew-dashboard",
   "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-synonyms", "vocahebrew-listening",
 ]);
@@ -17,6 +25,7 @@ const TEACHER_VIEWS = new Set<View>([
 const STUDENT_VIEWS = new Set<View>([
   "student-dashboard", "game", "live-challenge",
   "shop", "global-leaderboard", "privacy-settings",
+  "category-race-student",
 ]);
 
 export const isPublicView = (view: View): boolean => PUBLIC_VIEWS.has(view);

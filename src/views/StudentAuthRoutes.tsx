@@ -133,8 +133,6 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
       <LazyWrapper loadingMessage="Loading race...">
         <CategoryRaceStudentView
           sessionCode={quickPlayActiveSession.sessionCode}
-          studentName={quickPlayStudentName}
-          avatar={quickPlayAvatar}
           setView={setView}
         />
       </LazyWrapper>

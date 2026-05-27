@@ -1,67 +1,89 @@
 /**
- * CategoryRaceStudentView — the student side of a live Category Race.
+ * CategoryRaceStudentView — the student side of a live Category Race,
+ * from join to play. Owns the whole student journey so it stays simple
+ * and self-contained (no shared multi-step Quick Play join flow):
  *
- * The student has already joined via QuickPlayStudentView (name + avatar
- * + Quick Play socket). This view owns the round loop:
- *   lobby (waiting for the teacher) → focus card (answering) → result →
- *   back to lobby for the next round, until the teacher ends the session.
+ *   join (name + avatar) → lobby (waiting) → focus card (answering) →
+ *   result → back to lobby for the next round, until the teacher ends.
  *
- * All round state is server-pushed: the teacher starts a round, the
- * server rolls one letter with a shared deadline, the student types in
- * the full-screen focus card, and on submit / timeout the server scores
- * the answers and sends back the per-cell result.
+ * Round state is server-pushed: the teacher starts a round, the server
+ * rolls one letter with a shared deadline, the student types in the
+ * full-screen focus card, and on submit / timeout the server scores the
+ * answers and returns the per-cell result.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Hourglass, Trophy, Check, X, RotateCw, Crown } from "lucide-react";
+import { Hourglass, Trophy, Check, X, RotateCw, Crown, Loader2, ArrowRight } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import CategoryRaceFocusCard from "../components/game/CategoryRaceFocusCard";
 import { CATEGORIES, categoryLabel, type CategoryMeta } from "../data/category-race-bank";
+import { containsProfanity } from "../utils/nicknameProfanity";
 import type { QpRaceResultPayload } from "../core/quickPlayProtocol";
 import type { View } from "../core/views";
 
 interface CategoryRaceStudentViewProps {
   sessionCode: string;
-  studentName: string;
-  avatar: string;
   setView: (v: View) => void;
 }
 
-type Phase = "lobby" | "answering" | "result" | "ended";
+type Phase = "join" | "lobby" | "answering" | "result" | "ended";
+
+const AVATARS = ["🦊", "🐼", "🐯", "🦁", "🐵", "🐶", "🐱", "🐰", "🐨", "🐸", "🐧", "🦄"];
 
 const STRINGS = {
   en: {
+    joinTitle: "Category Race", joinSub: "Type your name and jump in!",
+    namePlaceholder: "Your name", joinBtn: "Join the race", joining: "Joining…",
+    pickAvatar: "Pick your look",
+    nameTaken: "That name is taken — try another.", kicked: "You were removed from this game.",
+    joinFailed: "Couldn't join. Check the code and try again.", badName: "Please pick a different name.",
     lobbyTitle: "You're in!", lobbySub: "Waiting for your teacher to start the race…",
-    roundOver: "Round over", you: "You", points: (n: number) => `${n} pts`,
-    yourScore: "Your score", waitingNext: "Waiting for the next round…",
+    roundOver: "Round over", yourScore: "Your score", waitingNext: "Waiting for the next round…",
     endedTitle: "Race finished!", endedSub: "Thanks for playing.", backHome: "Back to home",
-    rank: (n: number) => `#${n}`,
+    points: (n: number) => `${n} pts`, rank: (n: number) => `#${n}`,
   },
   he: {
+    joinTitle: "מרוץ קטגוריות", joinSub: "כתבו את השם והצטרפו!",
+    namePlaceholder: "השם שלך", joinBtn: "הצטרפו למרוץ", joining: "מצטרפים…",
+    pickAvatar: "בחרו דמות",
+    nameTaken: "השם תפוס — נסו שם אחר.", kicked: "הוסרת מהמשחק.",
+    joinFailed: "ההצטרפות נכשלה. בדקו את הקוד ונסו שוב.", badName: "בחרו שם אחר בבקשה.",
     lobbyTitle: "אתם בפנים!", lobbySub: "ממתינים שהמורה יתחיל את המרוץ…",
-    roundOver: "הסבב הסתיים", you: "אתם", points: (n: number) => `${n} נק'`,
-    yourScore: "הניקוד שלך", waitingNext: "ממתינים לסבב הבא…",
+    roundOver: "הסבב הסתיים", yourScore: "הניקוד שלך", waitingNext: "ממתינים לסבב הבא…",
     endedTitle: "המרוץ הסתיים!", endedSub: "תודה ששיחקתם.", backHome: "חזרה לבית",
-    rank: (n: number) => `#${n}`,
+    points: (n: number) => `${n} נק'`, rank: (n: number) => `#${n}`,
   },
   ar: {
+    joinTitle: "سباق الفئات", joinSub: "اكتب اسمك وانضم!",
+    namePlaceholder: "اسمك", joinBtn: "انضم إلى السباق", joining: "جارٍ الانضمام…",
+    pickAvatar: "اختر شخصيتك",
+    nameTaken: "الاسم مأخوذ — جرّب اسمًا آخر.", kicked: "تمت إزالتك من اللعبة.",
+    joinFailed: "تعذّر الانضمام. تحقق من الرمز وحاول مجددًا.", badName: "اختر اسمًا مختلفًا من فضلك.",
     lobbyTitle: "أنت في السباق!", lobbySub: "في انتظار أن يبدأ معلمك السباق…",
-    roundOver: "انتهت الجولة", you: "أنت", points: (n: number) => `${n} نقطة`,
-    yourScore: "نتيجتك", waitingNext: "في انتظار الجولة التالية…",
+    roundOver: "انتهت الجولة", yourScore: "نتيجتك", waitingNext: "في انتظار الجولة التالية…",
     endedTitle: "انتهى السباق!", endedSub: "شكرًا للعب.", backHome: "العودة للرئيسية",
-    rank: (n: number) => `#${n}`,
+    points: (n: number) => `${n} نقطة`, rank: (n: number) => `#${n}`,
   },
 } as const;
 
-export default function CategoryRaceStudentView({ sessionCode, studentName, avatar, setView }: CategoryRaceStudentViewProps) {
+export default function CategoryRaceStudentView({ sessionCode, setView }: CategoryRaceStudentViewProps) {
   const { language, dir } = useLanguage();
   const t = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
 
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
-  const { currentRace, leaderboard, clientId, joinAsStudent, submitRaceAnswers, onRaceResult, onSessionEnded, onKicked } = qp;
+  const {
+    currentRace, leaderboard, clientId, joinedSessionCode, lastError,
+    joinAsStudent, submitRaceAnswers, onRaceResult, onSessionEnded, onKicked,
+  } = qp;
 
-  const [phase, setPhase] = useState<Phase>("lobby");
+  const [phase, setPhase] = useState<Phase>("join");
+  // Join form
+  const [name, setName] = useState("");
+  const [avatar, setAvatar] = useState(AVATARS[0]);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  // Round play
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [focusIndex, setFocusIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
@@ -80,13 +102,36 @@ export default function CategoryRaceStudentView({ sessionCode, studentName, avat
     [currentRace],
   );
 
-  // Ensure THIS hook instance is the registered owner (the join happened
-  // in QuickPlayStudentView's instance). Re-emitting is idempotent: the
-  // server keeps the existing score for the same clientId/nickname.
-  useEffect(() => {
-    joinAsStudent(studentName, avatar);
-  }, [joinAsStudent, studentName, avatar]);
+  // ─── Join ────────────────────────────────────────────────────────────
+  const handleJoin = () => {
+    const trimmed = name.trim();
+    if (!trimmed || joining) return;
+    if (containsProfanity(trimmed)) { setJoinError(t.badName); return; }
+    setJoinError(null);
+    setJoining(true);
+    joinAsStudent(trimmed, avatar);
+  };
 
+  // Advance to the lobby once the server confirms the join.
+  useEffect(() => {
+    if (joining && joinedSessionCode === sessionCode) {
+      setJoining(false);
+      setPhase("lobby");
+    }
+  }, [joining, joinedSessionCode, sessionCode]);
+
+  // Surface a join rejection (name taken / kicked / bad payload).
+  useEffect(() => {
+    if (!lastError || phase !== "join") return;
+    setJoining(false);
+    setJoinError(
+      lastError.code === "nickname_taken" ? t.nameTaken
+      : lastError.code === "kicked" ? t.kicked
+      : t.joinFailed,
+    );
+  }, [lastError, phase, t]);
+
+  // ─── Round play ──────────────────────────────────────────────────────
   const doSubmit = useCallback(() => {
     const race = raceRef.current;
     if (!race || submittedRef.current) return;
@@ -96,6 +141,7 @@ export default function CategoryRaceStudentView({ sessionCode, studentName, avat
 
   // A new round started — reset and drop into the focus card.
   useEffect(() => {
+    if (phase === "join") return;
     if (currentRace && currentRace.roundId !== activeRoundId) {
       setActiveRoundId(currentRace.roundId);
       setAnswers({});
@@ -104,7 +150,7 @@ export default function CategoryRaceStudentView({ sessionCode, studentName, avat
       submittedRef.current = false;
       setPhase("answering");
     }
-  }, [currentRace, activeRoundId]);
+  }, [currentRace, activeRoundId, phase]);
 
   // Countdown to the shared deadline; auto-submit at zero.
   useEffect(() => {
@@ -119,7 +165,6 @@ export default function CategoryRaceStudentView({ sessionCode, studentName, avat
     return () => window.clearInterval(id);
   }, [phase, currentRace, doSubmit]);
 
-  // Server scored our submission → show the result screen.
   useEffect(() => onRaceResult((p) => {
     setLastResult(p);
     setPhase("result");
@@ -129,12 +174,71 @@ export default function CategoryRaceStudentView({ sessionCode, studentName, avat
   useEffect(() => onKicked(() => setPhase("ended")), [onKicked]);
 
   // Derived: this student's live rank + score from the leaderboard.
-  const sorted = useMemo(
-    () => [...leaderboard].sort((a, b) => b.score - a.score),
-    [leaderboard],
-  );
+  const sorted = useMemo(() => [...leaderboard].sort((a, b) => b.score - a.score), [leaderboard]);
   const myIndex = sorted.findIndex(e => e.clientId === clientId);
   const myEntry = myIndex >= 0 ? sorted[myIndex] : null;
+
+  // ─── Join screen (large, single step) ────────────────────────────────
+  if (phase === "join") {
+    const canJoin = name.trim().length > 0 && !joining;
+    return (
+      <Shell dir={dir}>
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="w-full max-w-sm rounded-[32px] bg-white shadow-2xl shadow-fuchsia-500/20 border border-fuchsia-100 p-7"
+        >
+          <div className="text-center mb-6">
+            <div className="text-6xl mb-2">🌍</div>
+            <h1 className="text-3xl font-black text-stone-900">{t.joinTitle}</h1>
+            <p className="mt-1 text-stone-500 font-semibold">{t.joinSub}</p>
+          </div>
+
+          <input
+            type="text"
+            value={name}
+            onChange={e => { setName(e.target.value); setJoinError(null); }}
+            onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
+            placeholder={t.namePlaceholder}
+            maxLength={30}
+            autoComplete="off"
+            dir="auto"
+            className="w-full bg-stone-50 rounded-2xl border-2 border-stone-200 focus:border-fuchsia-400 outline-none px-5 py-4 text-xl font-bold text-stone-900 placeholder-stone-300 text-center transition"
+          />
+
+          <div className="mt-5">
+            <div className="text-xs font-black uppercase tracking-widest text-stone-400 mb-2 text-center">{t.pickAvatar}</div>
+            <div className="grid grid-cols-6 gap-2">
+              {AVATARS.map(a => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setAvatar(a)}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className={`aspect-square rounded-xl text-2xl flex items-center justify-center transition ${avatar === a ? "bg-gradient-to-br from-fuchsia-500 to-pink-600 shadow-md scale-105" : "bg-stone-100 hover:bg-stone-200"}`}
+                  aria-label={a}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {joinError && <p className="mt-4 text-sm font-bold text-rose-600 text-center">{joinError}</p>}
+
+          <button
+            type="button"
+            onClick={handleJoin}
+            disabled={!canJoin}
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            className={`mt-6 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-lg text-white shadow-lg transition ${canJoin ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
+          >
+            {joining ? <><Loader2 size={20} className="animate-spin" /> {t.joining}</> : <>{t.joinBtn} <ArrowRight size={20} className={dir === "rtl" ? "rotate-180" : ""} /></>}
+          </button>
+        </motion.div>
+      </Shell>
+    );
+  }
 
   // ─── Answering: the full-screen focus card ───────────────────────────
   if (phase === "answering" && currentRace && categories.length > 0) {
@@ -222,7 +326,7 @@ export default function CategoryRaceStudentView({ sessionCode, studentName, avat
   return (
     <Shell dir={dir}>
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
-        <div className="text-6xl mb-3">{avatar || "🦊"}</div>
+        <div className="text-6xl mb-3">{avatar}</div>
         <h1 className="text-3xl font-black text-stone-900">{t.lobbyTitle}</h1>
         <p className="mt-2 text-stone-500 font-semibold max-w-xs mx-auto">{t.lobbySub}</p>
         {myEntry && (
