@@ -1,5 +1,5 @@
 /**
- * Collects the twelve small side-effect useEffects that were scattered
+ * Collects the small side-effect useEffects that were scattered
  * through App.tsx's render-prep section.  None are independently large
  * enough to warrant their own hook, but as a group they were costing
  * App.tsx ~70 lines.
@@ -18,6 +18,7 @@
  *  10. Quick Play guest audio preload at session join time
  *  11. isFlipped reset on word advance (matching-card flip back)
  *  12. Adaptive next-word audio preload during regular game play
+ *  13. Teacher-login chunk prefetch on idle (instant logout for staff)
  */
 import { useEffect } from 'react';
 import type React from 'react';
@@ -195,4 +196,19 @@ export function useAppMiscEffects(deps: UseAppMiscEffectsDeps): void {
     ].filter((id): id is number => typeof id === 'number' && id > 0);
     if (nextIds.length) preloadMany(nextIds);
   }, [view, currentIndex, gameWords, preloadMany]);
+
+  // 13. Warm the teacher-login chunk on idle for signed-in staff.  On
+  // logout, teachers/admins/managers route to the small teacher-login card
+  // (see the SIGNED_OUT branch in useAuthRestore); prefetching it here while
+  // they work means that swap is instant instead of paying a cold dynamic
+  // import on slow school Wi-Fi.  Vite dedups this with PublicViews'
+  // lazyWithRetry mount, so it's the same chunk.
+  useEffect(() => {
+    const role = user?.role;
+    if (role !== 'teacher' && role !== 'admin' && role !== 'manager') return;
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    const warm = () => { void import('../views/TeacherLoginView'); };
+    if (typeof ric === 'function') ric(warm, { timeout: 3000 });
+    else window.setTimeout(warm, 1500);
+  }, [user?.role]);
 }
