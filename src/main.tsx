@@ -282,6 +282,11 @@ const StudentRtlPreview = lazyWithRetry(() => import('./dev/StudentRtlPreview'))
 // data so the projector / theme / plan-status surfaces can be
 // inspected without logging in as a real teacher.
 const TeacherAffordancesPreview = lazyWithRetry(() => import('./dev/TeacherAffordancesPreview'));
+// Dev-only short-circuit: `/dev/live-podium` mounts the teacher Live
+// Challenge podium (LiveChallengeView) against a fake leaderboard so the
+// real-time scoreboard layout can be inspected without a socket
+// connection or teacher login.  Add ?lang=he|ar to check the RTL layout.
+const LivePodiumPreview = lazyWithRetry(() => import('./dev/LivePodiumPreview'));
 // AccessibilityWidget is lazy too — it doesn't render anything on
 // public pages until the user interacts, so keeping it in the entry
 // chunk (with its motion/lucide deps) was pure dead weight on first
@@ -394,13 +399,16 @@ async function bootstrap() {
   const devPath = import.meta.env.DEV ? window.location.pathname : '';
   const isStudentRtlPreview = devPath === '/dev/student-rtl-preview';
   const isTeacherAffordancesPreview = devPath === '/dev/teacher-affordances';
-  const isDevPreview = isStudentRtlPreview || isTeacherAffordancesPreview;
+  const isLivePodiumPreview = devPath === '/dev/live-podium';
+  const isDevPreview = isStudentRtlPreview || isTeacherAffordancesPreview || isLivePodiumPreview;
 
   createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <Suspense fallback={<Loading />}>
         {isDevPreview ? (
-          isTeacherAffordancesPreview ? <TeacherAffordancesPreview /> : <StudentRtlPreview />
+          isTeacherAffordancesPreview ? <TeacherAffordancesPreview /> :
+          isLivePodiumPreview ? <LivePodiumPreview /> :
+          <StudentRtlPreview />
         ) : (
           <>
             <RootApp />
