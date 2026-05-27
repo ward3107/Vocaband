@@ -38,7 +38,6 @@ import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
 import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
-import { lazyWithRetry } from "./utils/lazyWithRetry";
 import { LazyWrapper } from "./components/SuspenseWrapper";
 const DreidelLobbyView = lazyWithRetry(() => import("./views/DreidelLobbyView"));
 const DreidelChallengeView = lazyWithRetry(() => import("./views/DreidelChallengeView"));
