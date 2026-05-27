@@ -89,6 +89,26 @@ const setGlobalLanguage = (lang: Language) => {
   globalLanguage = lang;
   if (typeof window !== 'undefined') {
     localStorage.setItem(LANGUAGE_KEY, lang);
+    // An explicit click must outrank a ?lang= deep link. Google's HE/AR
+    // hreflang alternates land searchers on /?lang=he|ar, which
+    // getInitialLanguage reads on EVERY load — and the SW auto-update
+    // reload (main.tsx) deliberately preserves the full URL. So if the
+    // param stays after the user toggles, the next reload/re-init snaps
+    // the UI back to the deep-linked language and even overwrites the
+    // saved choice. Drop the param here so the toggle sticks; the deep
+    // link still works for the first paint of an inbound SEO visit.
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('lang')) {
+        url.searchParams.delete('lang');
+        const qs = url.searchParams.toString();
+        window.history.replaceState(
+          window.history.state,
+          '',
+          url.pathname + (qs ? `?${qs}` : '') + url.hash,
+        );
+      }
+    } catch { /* URL / history unavailable — non-fatal */ }
     // Set lang attribute for accessibility (WCAG 2.0 AA 3.1.1)
     document.documentElement.setAttribute('lang', lang);
     // Set dir attribute for RTL support (Hebrew/Arabic)
