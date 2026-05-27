@@ -24,7 +24,6 @@ export const GAME_MODE_LEVELS: Record<string, GameModeDef[]> = {
     { id: 'true-false', name: 'True/False', emoji: '✅', color: 'from-purple-400 to-purple-500' },
     { id: 'letter-sounds', name: 'Letter Sounds', emoji: '🔊', color: 'from-fuchsia-400 to-fuchsia-500' },
     { id: 'speed-round', name: 'Speed Round', emoji: '⚡', color: 'from-red-400 to-red-500' },
-    { id: 'category-race', name: 'Category Race', emoji: '🌍', color: 'from-fuchsia-400 to-pink-500' },
   ],
   advanced: [
     { id: 'spelling', name: 'Spelling', emoji: '✍️', color: 'from-orange-400 to-orange-500' },
@@ -73,7 +72,6 @@ export const MODE_DIFFICULTY: Record<string, ModeDifficulty> = {
   spelling:         'hard',      // Pure recall + exact spelling
   'sentence-builder': 'hard',    // Vocab + grammar + syntax
   'fill-blank':     'hard',      // Read sentence in L2, infer missing word from context
-  'category-race':  'medium',    // Scattergories — letter + categories, timed round
 };
 
 export const DIFFICULTY_META: Record<ModeDifficulty, {
@@ -140,7 +138,7 @@ export interface AssignmentModeSection {
 // hardest mode within the section so the whole picker reads top-down.
 const SECTION_MODE_ORDER: Record<AssignmentModeSection['id'], string[]> = {
   easy:   ['flashcards', 'matching', 'classic', 'memory-flip', 'true-false'],
-  medium: ['listening', 'reverse', 'speed-round', 'category-race'],
+  medium: ['listening', 'reverse', 'speed-round'],
   hard:   ['scramble', 'letter-sounds', 'spelling'],
   ai:     ['sentence-builder', 'fill-blank'],
 };

@@ -15,6 +15,7 @@ import type { View } from '../core/views';
 
 const StudentAccountLoginView = lazyWithRetry(() => import('./StudentAccountLoginView'));
 const QuickPlayStudentView = lazyWithRetry(() => import('./QuickPlayStudentView'));
+const CategoryRaceStudentView = lazyWithRetry(() => import('./CategoryRaceStudentView'));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Anyish = any;
@@ -118,6 +119,23 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
           studentLoginClassCode={studentLoginClassCode}
           setStudentLoginClassCode={setStudentLoginClassCode}
           cookieBannerOverlay={cookieBannerOverlay}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'category-race-student') {
+    if (!quickPlayActiveSession) {
+      setView('public-landing');
+      return null;
+    }
+    return (
+      <LazyWrapper loadingMessage="Loading race...">
+        <CategoryRaceStudentView
+          sessionCode={quickPlayActiveSession.sessionCode}
+          studentName={quickPlayStudentName}
+          avatar={quickPlayAvatar}
+          setView={setView}
         />
       </LazyWrapper>
     );

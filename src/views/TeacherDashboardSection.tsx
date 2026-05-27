@@ -27,6 +27,7 @@ import {
 } from '../handlers/teacherOnboarding';
 import {
   startQuickPlayFromDashboard,
+  startCategoryRaceFromDashboard,
   startAssignClassFlow,
   loadAssignmentIntoCreateForm,
   applySavedTask,
@@ -255,6 +256,9 @@ export function TeacherDashboardSection(deps: TeacherDashboardSectionDeps): Reac
         onQuickPlayClick={() => startQuickPlayFromDashboard({
           cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode, setView,
         })}
+        onCategoryRaceClick={() => { void startCategoryRaceFromDashboard({
+          cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode, setView, showToast,
+        }); }}
         onClassroomClick={() => {
           fetchScores();
           fetchTeacherAssignments();

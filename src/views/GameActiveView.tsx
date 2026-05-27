@@ -33,11 +33,6 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // Speed Round = red.  60-second timer mode; red signals urgency
   // and pairs visually with the pulsing low-time-left timer.
   "speed-round": "red",
-  // Category Race = pink.  Scattergories-style mode where a letter
-  // is rolled and the student fills every category with words that
-  // start with it.  Pink reads playful and pairs well with the
-  // multi-input grid layout.
-  "category-race": "pink",
 };
 
 /** Modes whose "show correct answer" payload is the English vocab word
@@ -64,7 +59,6 @@ import SpellingGame from "../components/game/SpellingGame";
 import ScrambleGame from "../components/game/ScrambleGame";
 import IdiomGame from "../components/game/IdiomGame";
 import SpeedRoundGame from "../components/game/SpeedRoundGame";
-import CategoryRaceGame from "../components/game/CategoryRaceGame";
 import ReviewGame from "../components/game/ReviewGame";
 import RelationsGame from "../components/game/RelationsGame";
 
@@ -165,15 +159,12 @@ export default function GameActiveView({
   // Per-mode normalization:
   //   - Idiom: correctCount × 10 (10 questions, 10 points each = 0-100)
   //   - Speed Round: rawPoints × 5, capped at 100 (20 points = perfect)
-  //   - Category Race: rawScore is already 0-100 (the mode tracks its
-  //     own category × round totals and emits the percentage directly).
   // These mappings are intentionally generous so a strong run reads as
   // ≥80 and triggers a streak day; tunable in a follow-up once we have
   // pilot data on average scores.
-  const finishSelfContainedMode = async (rawScore: number, mode: 'idiom' | 'speed-round' | 'class-minute' | 'category-race') => {
+  const finishSelfContainedMode = async (rawScore: number, mode: 'idiom' | 'speed-round' | 'class-minute') => {
     let normalized: number;
     if (mode === 'idiom') normalized = Math.min(100, Math.max(0, rawScore) * 10);
-    else if (mode === 'category-race') normalized = Math.min(100, Math.max(0, rawScore));
     else /* speed-round, class-minute — same SpeedRoundGame mechanics */ normalized = Math.min(100, Math.max(0, rawScore) * 5);
     try {
       await saveScore(normalized, 100);
@@ -218,8 +209,7 @@ export default function GameActiveView({
   // and push the mode's own UI below the fold on mobile.
   const isSelfContainedMode =
     gameMode === 'idiom' ||
-    gameMode === 'speed-round' || gameMode === 'class-minute' ||
-    gameMode === 'category-race';
+    gameMode === 'speed-round' || gameMode === 'class-minute';
 
   const renderModeContent = () => {
     if (gameMode === "classic" || gameMode === "listening" || gameMode === "reverse") {
@@ -331,23 +321,6 @@ export default function GameActiveView({
           targetLanguage={targetLanguage}
           speak={speakWord}
           onFinish={(score) => { finishSelfContainedMode(score, 'speed-round'); }}
-        />
-      );
-    }
-    if (gameMode === "category-race") {
-      // Scattergories-style mode.  Owns its own setup card (categories
-      // + timer + rounds), its own letter roller, per-cell validator,
-      // and timer.  Returns an already-normalized 0-100 score so
-      // finishSelfContainedMode just passes it through.  L1 fallback
-      // answers are recorded inside the component and surfaced on the
-      // round-end card for the student (and on the teacher report in a
-      // follow-up — the data shape is wired but the report widget is
-      // not built in this PR).
-      return (
-        <CategoryRaceGame
-          themeColor={modeTheme ?? "pink"}
-          onFinish={(score) => { finishSelfContainedMode(score, 'category-race'); }}
-          onExit={handleExitGame}
         />
       );
     }

@@ -55,6 +55,15 @@ export const QP_EVENTS = {
   TEACHER_BONUS:   "qp:teacher:bonus",
   // A teacher ending the session — everyone in the room gets notified.
   TEACHER_END:     "qp:teacher:end",
+
+  // ─── Category Race (synchronized live round) ──────────────────────
+  // A teacher starting a round: the server rolls ONE letter for the
+  // whole room with a shared deadline, then broadcasts RACE_ROUND.
+  RACE_START:      "qp:teacher:race:start",
+  // A student submitting their per-category answers for the active
+  // round. Scored server-side against the answer bank — students send
+  // text, never a number, so a client can't claim arbitrary points.
+  RACE_SUBMIT:     "qp:student:race:submit",
 } as const;
 
 /** Server → client events. */
@@ -72,6 +81,18 @@ export const QP_SERVER_EVENTS = {
   REACTION:        "qp:reaction",
   // Error signal (rate limit, bad payload, session not found, etc.).
   ERROR:           "qp:error",
+
+  // ─── Category Race (synchronized live round) ──────────────────────
+  // A new round started — broadcast to the whole room with the letter,
+  // active categories, and a shared deadline so every student's clock
+  // counts down to the same instant.
+  RACE_ROUND:      "qp:race:round",
+  // The submitting student's per-cell scoring result (sent only to that
+  // socket) so their focus card can show what scored.
+  RACE_RESULT:     "qp:race:result",
+  // The active round closed (deadline reached or teacher moved on) —
+  // clients lock input and drop back to the lobby.
+  RACE_ENDED:      "qp:race:ended",
 } as const;
 
 // ─── Client → server payloads ───────────────────────────────────────────
@@ -237,6 +258,78 @@ export interface QpReactionPayload {
   serverTs: number;
 }
 
+// ─── Category Race payloads ─────────────────────────────────────────────
+//
+// A Category Race session is a normal quick_play_sessions row whose
+// allowed_modes is exactly [QP_CATEGORY_RACE_MODE] and whose word list is
+// empty — the discriminator the student client branches on to show the
+// race lobby instead of the regular game. The round config (categories,
+// timer) is NOT persisted; the teacher sends it live with each round.
+
+/** Client → server: teacher starts a round. */
+export interface QpRaceStartPayload {
+  sessionCode: string;
+  /** Supabase access token — verified against the session's teacher_uid. */
+  token: string;
+  /** Category ids the round runs over. Validated + clamped server-side
+   *  against the answer bank; unknown ids are dropped. */
+  categories: string[];
+  /** Seconds students get to answer. Clamped to QP_RACE_ROUND_SECONDS. */
+  roundSeconds: number;
+}
+
+/** Client → server: student submits answers for the active round. */
+export interface QpRaceSubmitPayload {
+  sessionCode: string;
+  clientId: string;
+  /** Must match the server's active round; stale submits are dropped. */
+  roundId: string;
+  /** categoryId → typed answer. Scored server-side via the bank. */
+  answers: Record<string, string>;
+}
+
+/** Server → room: a new round began. */
+export interface QpRaceRoundPayload {
+  sessionCode: string;
+  roundId: string;
+  /** The single letter every answer must start with this round. */
+  letter: string;
+  categories: string[];
+  roundSeconds: number;
+  /** Epoch ms the round closes — clients count down to this so every
+   *  device shares one clock regardless of when the packet lands. */
+  deadlineTs: number;
+  /** Server's clock at broadcast — lets clients correct for offset. */
+  serverTs: number;
+}
+
+/** One scored cell in a student's round result. */
+export interface QpRaceCellResult {
+  categoryId: string;
+  typed: string;
+  valid: boolean;
+  /** Canonical English answer the input matched (for L1-fallback copy). */
+  matchedEn: string | null;
+  matchedLanguage: "en" | "he" | "ar" | null;
+  points: number;
+}
+
+/** Server → submitting socket: that student's per-cell scoring. */
+export interface QpRaceResultPayload {
+  sessionCode: string;
+  roundId: string;
+  cells: QpRaceCellResult[];
+  roundPoints: number;
+  /** The student's running session total after this round. */
+  totalScore: number;
+}
+
+/** Server → room: the active round closed. */
+export interface QpRaceEndedPayload {
+  sessionCode: string;
+  roundId: string;
+}
+
 /** Error codes the server emits. Client maps to friendly copy. */
 export type QpErrorCode =
   | "invalid_payload"
@@ -386,4 +479,31 @@ export function isValidNickname(v: unknown): v is string {
     && v.length <= QP_MAX_NICKNAME
     && !/[\x00-\x1f]/.test(v)
     && !/[\u202A-\u202E\u2066-\u2069]/.test(v);
+}
+
+// \u2500\u2500\u2500 Category Race constants \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+/** allowed_modes sentinel that marks a quick_play_sessions row as a
+ *  Category Race session (vs. a regular vocab session). Reuses the
+ *  existing GameMode string so it isn't a foreign value elsewhere. */
+export const QP_CATEGORY_RACE_MODE = "category-race";
+
+/** Round-timer choices the teacher can pick (seconds). */
+export const QP_RACE_ROUND_SECONDS = [30, 60, 90, 120] as const;
+
+/** Max categories a single round can run over (the bank ships 12). */
+export const QP_RACE_MAX_CATEGORIES = 12;
+
+/** Points per scored cell \u2014 full credit for English, partial for an
+ *  accepted Hebrew/Arabic answer. Mirrors the retired solo mode so the
+ *  scoring feel is unchanged. */
+export const QP_RACE_PTS_EN = 10;
+export const QP_RACE_PTS_L1 = 3;
+
+/** Grace window (ms) after the deadline within which a late submit is
+ *  still accepted, to tolerate clock skew + network latency. */
+export const QP_RACE_SUBMIT_GRACE_MS = 3_000;
+
+export function isValidRaceRoundSeconds(v: unknown): v is number {
+  return typeof v === "number" && (QP_RACE_ROUND_SECONDS as readonly number[]).includes(v);
 }

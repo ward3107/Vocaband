@@ -87,6 +87,9 @@ interface TeacherDashboardViewProps {
 
   // Quick actions
   onQuickPlayClick: () => void;
+  /** Live, teacher-driven Category Race (Eretz-Ir). Paired with Quick
+   *  Play under "Live games" on the English dashboard. */
+  onCategoryRaceClick: () => void;
   /** Single entry point that opens the merged Classroom view. */
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
@@ -164,7 +167,7 @@ export default function TeacherDashboardView({
   deleteConfirmModal, setDeleteConfirmModal, onConfirmDeleteAssignment,
   rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
   toasts, confirmDialog, setConfirmDialog,
-  onQuickPlayClick, onClassroomClick, onApprovalsClick,
+  onQuickPlayClick, onCategoryRaceClick, onClassroomClick, onApprovalsClick,
   onWorksheetResultsClick,
   onLibraryClick,
   onProjectAssignmentToClass,
@@ -397,6 +400,7 @@ export default function TeacherDashboardView({
               openDropdownClassId={openDropdownClassId}
               setOpenDropdownClassId={setOpenDropdownClassId}
               onQuickPlayClick={onQuickPlayClick}
+              onCategoryRaceClick={onCategoryRaceClick}
               onClassroomClick={onClassroomClick}
               onApprovalsClick={onApprovalsClick}
               onWorksheetResultsClick={onWorksheetResultsClick}
