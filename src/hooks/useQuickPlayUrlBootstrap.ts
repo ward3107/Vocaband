@@ -206,7 +206,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
             allowedModes: data.allowed_modes,
             subject: 'english',
           });
-          setView("quick-play-student");
+          setView("category-race-student");
           window.history.replaceState({}, '', window.location.pathname);
           return;
         }
