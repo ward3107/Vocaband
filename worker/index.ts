@@ -142,6 +142,29 @@ function localizeHtmlResponse(response: Response, lang: LocalizableLang): Respon
     .transform(response);
 }
 
+// The SPA HTML shell must never be served from a cache across deploys.
+// `/`, `/student`, `/accessibility-statement` are run_worker_first
+// (wrangler.jsonc), so the Worker returns their HTML — and without an
+// explicit Cache-Control they inherit Workers Assets' default
+// (max-age=0, must-revalidate), which Cloudflare still edge-caches
+// (cf-cache-status: HIT). Because _headers re-applies the CURRENT CSP on
+// every serve, a stale edge/browser copy of a previous build's index.html
+// pairs an OLD inlined boot-debug script with the NEW CSP hash — the
+// browser then blocks the script as a hash mismatch. `no-store` keeps the
+// shell off both the edge and the browser HTTP cache so a deploy is never
+// shadowed by an old copy. Hashed /assets/* stay `immutable` (see
+// public/_headers), so this only re-fetches the ~24 KB shell — and the
+// Worker already runs for these routes anyway.
+function noStoreHtml(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", "no-store, must-revalidate");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 // 2026-04-25: migrated from Render (api.vocaband.com) to Fly.io.
 // Render hit its pipeline-minutes spend cap; Fly's auto_stop_machines
 // suspends the VM during off-hours so school-hours-only traffic costs
@@ -401,13 +424,21 @@ export default {
       const assetResponse = await env.ASSETS.fetch(request);
       const contentType = assetResponse.headers.get('content-type') ?? '';
       if (contentType.toLowerCase().includes('text/html')) {
-        return localizeHtmlResponse(assetResponse, langParam);
+        return noStoreHtml(localizeHtmlResponse(assetResponse, langParam));
       }
       return assetResponse;
     }
 
     // Everything else: serve static assets. env.ASSETS handles the SPA
-    // fallback (index.html for unknown paths).
-    return env.ASSETS.fetch(request);
+    // fallback (index.html for unknown paths). Stamp the HTML shell
+    // no-store (see noStoreHtml) so a cached previous-build index.html can
+    // never reach a user; non-HTML assets pass through untouched and keep
+    // their _headers cache rules (hashed bundles stay immutable).
+    const assetResponse = await env.ASSETS.fetch(request);
+    const contentType = assetResponse.headers.get('content-type') ?? '';
+    if (contentType.toLowerCase().includes('text/html')) {
+      return noStoreHtml(assetResponse);
+    }
+    return assetResponse;
   },
 };
