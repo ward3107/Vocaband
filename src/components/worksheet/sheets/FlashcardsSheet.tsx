@@ -5,6 +5,7 @@
  * serve as plain word cards.
  */
 import type { Word } from '../../../data/vocabulary';
+import { SheetInstruction } from './SheetInstruction';
 
 interface FlashcardsSheetProps {
   words: Word[];
@@ -25,12 +26,10 @@ export function FlashcardsSheet({ words, translationLang }: FlashcardsSheetProps
   }
 
   return (
-    <div style={{ fontSize: '12pt' }}>
-      <p style={{ fontSize: '11pt', color: '#666', fontStyle: 'italic', marginBottom: '1rem' }}>
-        {translationLang === 'he' ? 'גזרו לאורך הקווים המקווקווים. קפלו כל כרטיס לחצי. אנגלית בצד אחד, תרגום בצד השני.' : translationLang === 'ar' ? 'قصّ على طول الخطوط المنقّطة. اطوِ كل بطاقة من المنتصف. الإنجليزية على الوجه، والترجمة على الخلف.' : 'Cut along the dotted lines. Fold each card in half.'}
-      </p>
+    <div style={{ fontSize: '11pt' }}>
+      <SheetInstruction text="Cut along the dotted lines. Fold each card in half to study." />
       {pairs.map((pair, rowIdx) => (
-        <div key={rowIdx} style={{ display: 'flex', marginBottom: '1rem', pageBreakInside: 'avoid' }}>
+        <div key={rowIdx} style={{ display: 'flex', marginBottom: '0.7rem', pageBreakInside: 'avoid' }}>
           {pair.map((word, colIdx) => {
             if (!word) return <div key={`empty-${colIdx}`} style={{ flex: 1, marginRight: colIdx === 0 ? '1rem' : 0 }} />;
             const translation = pickTranslation(word, translationLang);
@@ -42,11 +41,11 @@ export function FlashcardsSheet({ words, translationLang }: FlashcardsSheetProps
                   marginRight: colIdx === 0 ? '1rem' : 0,
                   border: '2px dashed #999',
                   borderRadius: '8px',
-                  padding: '0.8rem',
+                  padding: '0.6rem',
                   position: 'relative',
                 }}
               >
-                <div style={{ fontSize: '16pt', fontWeight: 900, marginBottom: '0.5rem' }}>
+                <div style={{ fontSize: '14pt', fontWeight: 900, marginBottom: '0.4rem' }}>
                   {word.english}
                 </div>
                 {translation && (

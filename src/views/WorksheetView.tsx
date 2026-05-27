@@ -102,9 +102,16 @@ export default function WorksheetView({
   const t: WorksheetStrings = worksheetStrings[language];
   const guide = useFirstTimeGuide('worksheet');
   const guideStrings = teacherGuidesT[language].worksheet;
-  const translationLang: 'he' | 'ar' | 'en' = language === 'he' ? 'he' : language === 'ar' ? 'ar' : 'en';
-  // In English UI mode, hide sheet types that depend on a translation
-  // (match-up, matching, MC, T/F, reverse-translation, idiom).  They
+  // Worksheet translation language — which language prints in the
+  // vocabulary column.  Decoupled from the teacher's UI language so an
+  // English-UI teacher can still print Hebrew/Arabic translations (and
+  // use the translation-based sheet types).  Defaults to Hebrew, or
+  // Arabic when the UI is already Arabic.  'en' = English-only.
+  const [translationLang, setTranslationLang] = useState<'he' | 'ar' | 'en'>(
+    language === 'ar' ? 'ar' : 'he',
+  );
+  // Hide translation-based sheets (match-up, matching, MC, T/F,
+  // reverse-translation, idiom) only when printing English-only — they
   // would degenerate to English↔English rows or tautological prompts.
   const SHEET_TYPES = buildSheetTypes(t).filter(
     (s) => translationLang !== 'en' || !TRANSLATION_DEPENDENT_SHEETS.has(s.id),
@@ -144,6 +151,11 @@ export default function WorksheetView({
   const [aiSentences, setAiSentences] = useState<Record<number, string>>({});
   const [isGeneratingSentences, setIsGeneratingSentences] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
+  // AI sentence difficulty (1=Beginner … 4=Advanced).  Defaults to the
+  // easiest level — the audience is weak EFL learners — and the teacher
+  // can raise it per worksheet.  Feeds the `difficulty` field on the
+  // /api/generate-sentences calls.
+  const [difficulty, setDifficulty] = useState<1 | 2 | 3 | 4>(1);
 
   // Check AI availability
   useEffect(() => {
@@ -231,10 +243,12 @@ export default function WorksheetView({
     [wordsForSheet, translationLang, aiSentences],
   );
 
-  // Clear AI sentences when word source changes
+  // Clear AI sentences when the word source OR the difficulty changes —
+  // a new difficulty means the cached sentences are the wrong level, so
+  // they must be re-generated.
   useEffect(() => {
     setAiSentences({});
-  }, [sourceIdx]);
+  }, [sourceIdx, difficulty]);
 
   // Auto-generate sentences when fill-blank or sentence-builder is selected
   useEffect(() => {
@@ -255,7 +269,7 @@ export default function WorksheetView({
         const res = await fetch(`${apiUrl}/api/generate-sentences`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ words, difficulty: 2 }),
+          body: JSON.stringify({ words, difficulty }),
         });
         if (!res.ok) return;
         const { sentences } = await res.json();
@@ -274,7 +288,7 @@ export default function WorksheetView({
     };
 
     autoGenerate();
-  }, [selectedSheetTypes, sourceIdx, aiEnabled]);
+  }, [selectedSheetTypes, sourceIdx, aiEnabled, difficulty]);
 
   // Generate AI sentences for selected words (defined after wordsForSheet is available)
   const generateSentences = async () => {
@@ -288,7 +302,7 @@ export default function WorksheetView({
       const res = await fetch(`${apiUrl}/api/generate-sentences`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ words, difficulty: 2 }),
+        body: JSON.stringify({ words, difficulty }),
       });
       if (!res.ok) {
         // Surface the server's human-readable message (e.g. paywall
@@ -446,6 +460,39 @@ export default function WorksheetView({
           </div>
         </div>
 
+        {/* Worksheet translation language — which language prints in the
+            vocabulary column.  Independent of the teacher's UI language,
+            so an English-UI teacher can still print Hebrew/Arabic. */}
+        <div className="mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
+            {t.translationLanguageLabel}
+          </h2>
+          <div className="inline-flex rounded-lg p-1 w-full" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+            {([
+              { v: 'he', l: 'עברית' },
+              { v: 'ar', l: 'العربية' },
+              { v: 'en', l: t.translationNone },
+            ] as { v: 'he' | 'ar' | 'en'; l: string }[]).map((opt) => {
+              const active = translationLang === opt.v;
+              return (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setTranslationLang(opt.v)}
+                  className="flex-1 px-3 py-2 rounded-md text-sm font-bold transition-all"
+                  style={{
+                    backgroundColor: active ? 'var(--vb-surface)' : 'transparent',
+                    color: active ? 'var(--vb-accent)' : 'var(--vb-text-muted)',
+                    boxShadow: active ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                >
+                  {opt.l}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* AI Sentence Generation — shown only when sentence-based sheets are selected */}
         {Array.from(selectedSheetTypes).some(type => type === 'fill-blank' || type === 'sentence-builder') && (
           <div className="mb-8">
@@ -499,6 +546,45 @@ export default function WorksheetView({
                 )}
               </button>
             </div>
+
+            {/* Difficulty — drives the complexity of the AI sentences.
+                Defaults to the easiest level for weak EFL learners. */}
+            <div className="mt-3 p-4 rounded-xl border-2" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
+              <div className="font-bold text-sm mb-1" style={{ color: 'var(--vb-text-primary)' }}>
+                {t.difficultyLabel}
+              </div>
+              <p className="text-xs mb-3" style={{ color: 'var(--vb-text-muted)' }}>
+                {t.difficultyHint}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {([
+                  { v: 1, l: t.diffBeginner },
+                  { v: 2, l: t.diffElementary },
+                  { v: 3, l: t.diffIntermediate },
+                  { v: 4, l: t.diffAdvanced },
+                ] as { v: 1 | 2 | 3 | 4; l: string }[]).map((opt) => {
+                  const active = difficulty === opt.v;
+                  return (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => setDifficulty(opt.v)}
+                      className="px-3 py-2 rounded-lg text-xs font-bold border-2 transition-all text-start"
+                      style={{
+                        backgroundColor: active ? 'var(--vb-accent)' : 'var(--vb-surface)',
+                        color: active ? 'var(--vb-accent-text)' : 'var(--vb-text-secondary)',
+                        borderColor: active ? 'var(--vb-accent)' : 'var(--vb-border)',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                      }}
+                    >
+                      {opt.l}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {!aiEnabled && (
               <div className="mt-2 text-xs" style={{ color: 'var(--vb-text-muted)' }}>
                 {t.aiNotAvailable}
@@ -613,7 +699,7 @@ export default function WorksheetView({
                     </div>
                   )}
                   {idx === 0 && (
-                    <h3 style={{ fontSize: '20pt', fontWeight: 900, margin: 0, marginBottom: '0.5rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
+                    <h3 style={{ fontSize: '18pt', fontWeight: 900, margin: 0, marginBottom: '0.5rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
                       {title}
                     </h3>
                   )}

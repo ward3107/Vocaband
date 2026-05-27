@@ -11,6 +11,7 @@ import { useMemo } from 'react';
 import type { Word } from '../../../data/vocabulary';
 import type { MultipleChoiceShape } from '../buildShapes';
 import { buildQuestionShapes } from '../buildShapes';
+import { SheetInstruction } from './SheetInstruction';
 
 interface MultipleChoiceSheetProps {
   words: Word[];
@@ -32,30 +33,25 @@ export function MultipleChoiceSheet({ words, translationLang, answerKey, shape }
   );
   const effective = shape ?? fallback!;
 
-  // In English mode there's no translation to ask about — the prompt
-  // would just show the answer word.  Render a definition-style prompt
-  // ("Choose the word for: ___") with the target hidden, leaving the
-  // teacher to read the definition out loud.  When no definition is
-  // available the sheet remains usable as a recall check with the
-  // translation column blank.
+  // Prompt is always English ("What is the English word for X?") with
+  // the X shown in the worksheet's translation language.  These sheets
+  // are hidden when the teacher picks "English only", so a translation
+  // is always present.
   const whatIsMeaning = (w: Word) => {
     const target = pickTranslation(w, translationLang);
-    if (translationLang === 'he') return <>מה המשמעות באנגלית של <strong dir="auto">{target}</strong>?</>;
-    if (translationLang === 'ar') return <>ما المعنى الإنجليزي لـ <strong dir="auto">{target}</strong>؟</>;
-    // English: definition prompt if available, otherwise a generic
-    // "Pick the word that fits" with the teacher filling in context.
-    return <>Choose the correct word:</>;
+    return <>What is the English word for <strong dir="auto">{target}</strong>?</>;
   };
 
   return (
-    <div style={{ fontSize: '13pt' }}>
+    <div style={{ fontSize: '11pt' }}>
+      <SheetInstruction text="Circle the letter of the correct answer." />
       {effective.questions.map((q, qIdx) => {
         const word = words.find((w) => w.id === q.wordId);
         if (!word) return null;
         return (
-          <div key={q.wordId} style={{ marginBottom: '1.2rem', paddingBottom: '1rem', borderBottom: '1px dashed #ccc', breakInside: 'avoid' }}>
-            <div style={{ marginBottom: '0.5rem' }}>
-              <span style={{ fontWeight: 900, fontSize: '14pt' }}>{qIdx + 1}.</span>
+          <div key={q.wordId} style={{ marginBottom: '0.8rem', paddingBottom: '0.6rem', borderBottom: '1px dashed #ccc', breakInside: 'avoid' }}>
+            <div style={{ marginBottom: '0.4rem' }}>
+              <span style={{ fontWeight: 900, fontSize: '12pt' }}>{qIdx + 1}.</span>
               <span style={{ marginLeft: '0.5rem' }}>{whatIsMeaning(word)}</span>
             </div>
             <div style={{ marginLeft: '1.5rem' }}>
@@ -63,7 +59,7 @@ export function MultipleChoiceSheet({ words, translationLang, answerKey, shape }
                 const letter = String.fromCharCode(65 + optIdx);
                 const isCorrect = optIdx === q.correctIndex;
                 return (
-                  <div key={optIdx} style={{ marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div key={optIdx} style={{ marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ fontWeight: 700, minWidth: '1.5rem' }}>{letter}.</span>
                     <span>
                       {answerKey && isCorrect ? (

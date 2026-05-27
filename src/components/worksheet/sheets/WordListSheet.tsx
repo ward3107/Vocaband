@@ -7,6 +7,7 @@
  * just echo the English word).
  */
 import type { Word } from '../../../data/vocabulary';
+import { SheetInstruction } from './SheetInstruction';
 
 interface WordListSheetProps {
   words: Word[];
@@ -20,33 +21,32 @@ function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
 }
 
 export function WordListSheet({ words, translationLang }: WordListSheetProps) {
-  const englishH = translationLang === 'he' ? 'אנגלית' : translationLang === 'ar' ? 'الإنجليزية' : 'English';
-  const translationH = translationLang === 'he' ? 'תרגום' : translationLang === 'ar' ? 'الترجمة' : '';
   const showTranslation = translationLang !== 'en';
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13pt' }}>
-      <thead>
-        <tr style={{ borderBottom: '2px solid #000' }}>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '8%' }}>#</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: showTranslation ? '46%' : '92%' }}>{englishH}</th>
-          {showTranslation && (
-            <th style={{ textAlign: 'left', padding: '0.4rem', width: '46%' }}>
-              {translationH}
-            </th>
-          )}
-        </tr>
-      </thead>
-      <tbody>
-        {words.map((w, idx) => (
-          <tr key={w.id} style={{ borderBottom: '1px solid #ddd', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
-            <td style={{ padding: '0.5rem' }}>{idx + 1}</td>
-            <td style={{ padding: '0.5rem', fontWeight: 600 }}>{w.english}</td>
+    <div>
+      <SheetInstruction text="Study each English word and its meaning." />
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11pt' }}>
+        <thead>
+          <tr style={{ borderBottom: '2px solid #000' }}>
+            <th style={{ textAlign: 'left', padding: '0.3rem', width: '8%' }}>#</th>
+            <th style={{ textAlign: 'left', padding: '0.3rem', width: showTranslation ? '46%' : '92%' }}>English</th>
             {showTranslation && (
-              <td style={{ padding: '0.5rem' }} dir="auto">{pickTranslation(w, translationLang)}</td>
+              <th style={{ textAlign: 'left', padding: '0.3rem', width: '46%' }}>Translation</th>
             )}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {words.map((w, idx) => (
+            <tr key={w.id} style={{ borderBottom: '1px solid #ddd', pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
+              <td style={{ padding: '0.3rem' }}>{idx + 1}</td>
+              <td style={{ padding: '0.3rem', fontWeight: 600 }}>{w.english}</td>
+              {showTranslation && (
+                <td style={{ padding: '0.3rem' }} dir="auto">{pickTranslation(w, translationLang)}</td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

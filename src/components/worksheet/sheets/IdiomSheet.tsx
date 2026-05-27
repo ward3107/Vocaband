@@ -10,6 +10,7 @@
  * single-word vocab.
  */
 import type { Word } from '../../../data/vocabulary';
+import { SheetInstruction } from './SheetInstruction';
 
 interface IdiomSheetProps {
   words: Word[];
@@ -24,24 +25,21 @@ function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
 }
 
 export function IdiomSheet({ words, translationLang, answerKey }: IdiomSheetProps) {
-  const readEach = translationLang === 'he' ? 'קראו כל מילה או ביטוי וכתבו את המשמעות.' : translationLang === 'ar' ? 'اقرأ كل كلمة أو تعبير واكتب المعنى.' : 'Read each word or phrase and write its meaning.';
   return (
     <div>
-      <p style={{ fontSize: '11pt', marginBottom: '0.75rem', fontStyle: 'italic' }}>
-        {readEach}
-      </p>
-      <ol style={{ fontSize: '13pt', paddingLeft: '1.25rem', margin: 0 }}>
+      <SheetInstruction text="Read each word or phrase and write what it means." />
+      <ol style={{ fontSize: '11pt', paddingLeft: '1.2rem', margin: 0 }}>
         {words.map((w) => {
           const example = w.example ?? w.sentence;
           const translation = pickTranslation(w, translationLang);
           return (
-            <li key={w.id} style={{ marginBottom: '1rem', breakInside: 'avoid' }}>
-              <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{w.english}</div>
-              <div style={{ borderBottom: '1px solid #888', minHeight: '1.4em', marginBottom: '0.25rem' }}>
+            <li key={w.id} style={{ marginBottom: '0.7rem', breakInside: 'avoid' }}>
+              <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>{w.english}</div>
+              <div style={{ borderBottom: '1px solid #888', minHeight: '1.3em', marginBottom: '0.2rem' }}>
                 {answerKey && translation ? <em dir="auto">{translation}</em> : ''}
               </div>
               {example && (
-                <div style={{ fontSize: '11pt', fontStyle: 'italic', color: '#555' }} dir="auto">
+                <div style={{ fontSize: '10pt', fontStyle: 'italic', color: '#555' }} dir="auto">
                   e.g. "{example}"
                 </div>
               )}

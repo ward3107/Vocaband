@@ -12,6 +12,7 @@ import { useMemo } from 'react';
 import type { Word } from '../../../data/vocabulary';
 import type { SentenceBuilderShape } from '../buildShapes';
 import { buildQuestionShapes } from '../buildShapes';
+import { SheetInstruction } from './SheetInstruction';
 
 interface SentenceBuilderSheetProps {
   words: Word[];
@@ -34,12 +35,13 @@ export function SentenceBuilderSheet({ words, translationLang, answerKey, aiSent
   );
   const items = (shape ?? fallback!).items;
 
-  const unscramblePrefix = translationLang === 'he' ? 'סדרו את המילים למשפט על' : translationLang === 'ar' ? 'رتّب الكلمات لتكوين جملة عن' : 'Unscramble the words to make a sentence about';
-  const useWordPrompt = translationLang === 'he' ? 'כתבו משפט באמצעות' : translationLang === 'ar' ? 'اكتب جملة باستخدام' : 'Write a sentence using';
-  const yourAnswer = translationLang === 'he' ? 'התשובה שלך:' : translationLang === 'ar' ? 'إجابتك:' : 'Your answer:';
+  const unscramblePrefix = 'Put the words in order to make a sentence about';
+  const useWordPrompt = 'Write a sentence using';
+  const yourAnswer = 'Your answer:';
 
   return (
-    <div style={{ fontSize: '13pt' }}>
+    <div style={{ fontSize: '11pt' }}>
+      <SheetInstruction text="Put the words in the correct order to make a sentence. Write it on the line." />
       {items.map((item, idx) => {
         const word = words.find((w) => w.id === item.wordId);
         if (!word) return null;
@@ -50,9 +52,9 @@ export function SentenceBuilderSheet({ words, translationLang, answerKey, aiSent
         // a bogus scrambled placeholder.
         if (!item.sentence) {
           return (
-            <div key={item.wordId} style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px dashed #ccc', breakInside: 'avoid' }}>
-              <div style={{ marginBottom: '0.5rem' }}>
-                <span style={{ fontWeight: 900, fontSize: '14pt' }}>{idx + 1}.</span>
+            <div key={item.wordId} style={{ marginBottom: '0.9rem', paddingBottom: '0.6rem', borderBottom: '1px dashed #ccc', breakInside: 'avoid' }}>
+              <div style={{ marginBottom: '0.4rem' }}>
+                <span style={{ fontWeight: 900, fontSize: '12pt' }}>{idx + 1}.</span>
                 <span style={{ marginLeft: '0.5rem', fontWeight: 700 }}>
                   {useWordPrompt} <strong dir="auto">{word.english}</strong>
                   {translation && (
@@ -60,7 +62,7 @@ export function SentenceBuilderSheet({ words, translationLang, answerKey, aiSent
                   )}:
                 </span>
               </div>
-              <div style={{ marginLeft: '1.5rem', borderBottom: '1px solid #888', height: '1.6em', marginBottom: '0.3rem' }}>
+              <div style={{ marginLeft: '1.5rem', borderBottom: '1px solid #888', height: '1.4em', marginBottom: '0.2rem' }}>
                 {answerKey && <em style={{ color: '#999' }}>—</em>}
               </div>
             </div>
@@ -68,14 +70,14 @@ export function SentenceBuilderSheet({ words, translationLang, answerKey, aiSent
         }
 
         return (
-          <div key={item.wordId} style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px dashed #ccc', breakInside: 'avoid' }}>
-            <div style={{ marginBottom: '0.5rem' }}>
-              <span style={{ fontWeight: 900, fontSize: '14pt' }}>{idx + 1}.</span>
+          <div key={item.wordId} style={{ marginBottom: '0.9rem', paddingBottom: '0.6rem', borderBottom: '1px dashed #ccc', breakInside: 'avoid' }}>
+            <div style={{ marginBottom: '0.4rem' }}>
+              <span style={{ fontWeight: 900, fontSize: '12pt' }}>{idx + 1}.</span>
               <span style={{ marginLeft: '0.5rem', fontWeight: 700 }}>
                 {unscramblePrefix} <strong dir="auto">{labelTarget}</strong>:
               </span>
             </div>
-            <div style={{ marginLeft: '1.5rem', padding: '0.6rem', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '0.5rem' }}>
+            <div style={{ marginLeft: '1.5rem', padding: '0.4rem', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '0.4rem' }}>
               <span style={{ letterSpacing: '0.1em' }}>{item.scrambled}</span>
             </div>
             <div style={{ marginLeft: '1.5rem' }}>

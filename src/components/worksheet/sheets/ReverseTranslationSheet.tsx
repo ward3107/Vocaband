@@ -6,6 +6,7 @@
  * recall prompt the teacher reads aloud.
  */
 import type { Word } from '../../../data/vocabulary';
+import { SheetInstruction } from './SheetInstruction';
 
 interface ReverseTranslationSheetProps {
   words: Word[];
@@ -20,34 +21,32 @@ function pickTranslation(w: Word, lang: 'he' | 'ar' | 'en'): string {
 }
 
 export function ReverseTranslationSheet({ words, translationLang, answerKey }: ReverseTranslationSheetProps) {
-  const translationH = translationLang === 'he' ? 'תרגום' : translationLang === 'ar' ? 'الترجمة' : 'Translation';
-  const writeH = answerKey
-    ? (translationLang === 'he' ? 'אנגלית' : translationLang === 'ar' ? 'الإنجليزية' : 'English')
-    : (translationLang === 'he' ? 'כתבו את המילה באנגלית' : translationLang === 'ar' ? 'اكتب الكلمة بالإنجليزية' : 'Write the English word');
+  const writeH = answerKey ? 'English' : 'Write the English word';
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13pt' }}>
-      <thead>
-        <tr style={{ borderBottom: '2px solid #000' }}>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '8%' }}>#</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '40%' }}>{translationH}</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '52%' }}>
-            {writeH}
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {words.map((w, idx) => (
-          <tr key={w.id} style={{ borderBottom: '1px solid #ddd' }}>
-            <td style={{ padding: '0.55rem' }}>{idx + 1}</td>
-            <td style={{ padding: '0.55rem' }} dir="auto">
-              <strong>{pickTranslation(w, translationLang)}</strong>
-            </td>
-            <td style={{ padding: '0.55rem', fontStyle: answerKey ? 'normal' : 'italic' }}>
-              {answerKey ? <strong>{w.english}</strong> : '_______________________'}
-            </td>
+    <div>
+      <SheetInstruction text="Write the English word next to each translation." />
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11pt' }}>
+        <thead>
+          <tr style={{ borderBottom: '2px solid #000' }}>
+            <th style={{ textAlign: 'left', padding: '0.3rem', width: '8%' }}>#</th>
+            <th style={{ textAlign: 'left', padding: '0.3rem', width: '40%' }}>Translation</th>
+            <th style={{ textAlign: 'left', padding: '0.3rem', width: '52%' }}>{writeH}</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {words.map((w, idx) => (
+            <tr key={w.id} style={{ borderBottom: '1px solid #ddd' }}>
+              <td style={{ padding: '0.35rem' }}>{idx + 1}</td>
+              <td style={{ padding: '0.35rem' }} dir="auto">
+                <strong>{pickTranslation(w, translationLang)}</strong>
+              </td>
+              <td style={{ padding: '0.35rem', fontStyle: answerKey ? 'normal' : 'italic' }}>
+                {answerKey ? <strong>{w.english}</strong> : '_______________________'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

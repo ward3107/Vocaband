@@ -14,6 +14,7 @@
  * we render the free-write prompt rather than expose the answer.
  */
 import type { Word } from '../../../data/vocabulary';
+import { SheetInstruction } from './SheetInstruction';
 
 interface FillBlankSheetProps {
   words: Word[];
@@ -63,50 +64,53 @@ function blankSentence(sentence: string, target: string): { blanked: string; mat
   return { blanked: sentence.replace(re, '__________'), matched: true };
 }
 
-export function FillBlankSheet({ words, answerKey, aiSentences, translationLang = 'en' }: FillBlankSheetProps) {
-  const writeSentenceUsing = translationLang === 'he' ? 'כתבו משפט תוך שימוש ב' : translationLang === 'ar' ? 'اكتب جملة باستخدام' : 'Write a sentence using';
+export function FillBlankSheet({ words, answerKey, aiSentences }: FillBlankSheetProps) {
+  const writeSentenceUsing = 'Write a sentence using';
   return (
-    <ol style={{ paddingLeft: '1.5rem', fontSize: '13pt', lineHeight: 1.9 }}>
-      {words.map(w => {
-        const raw = aiSentences?.[w.id] ?? w.sentence ?? w.example;
-        if (!raw) {
+    <div>
+      <SheetInstruction text="Read each sentence and write the missing word on the line." />
+      <ol style={{ paddingLeft: '1.4rem', fontSize: '11pt', lineHeight: 1.5 }}>
+        {words.map(w => {
+          const raw = aiSentences?.[w.id] ?? w.sentence ?? w.example;
+          if (!raw) {
+            return (
+              <li key={w.id} style={{ marginBottom: '0.4rem', breakInside: 'avoid' }}>
+                {writeSentenceUsing} <strong>{w.english}</strong>:
+                {!answerKey && (
+                  <div style={{ borderBottom: '1px solid #aaa', height: '1.1em', marginTop: '0.2rem' }} />
+                )}
+              </li>
+            );
+          }
+          const { blanked, matched } = blankSentence(raw, w.english);
+          // If the AI invented an irregular form the matcher missed,
+          // don't print the sentence whole (it would show the answer).
+          // Fall back to the free-write prompt with the source word.
+          if (!matched) {
+            return (
+              <li key={w.id} style={{ marginBottom: '0.4rem', breakInside: 'avoid' }}>
+                {answerKey ? (
+                  <span><strong>{w.english}</strong> — {raw}</span>
+                ) : (
+                  <>
+                    {writeSentenceUsing} <strong>{w.english}</strong>:
+                    <div style={{ borderBottom: '1px solid #aaa', height: '1.1em', marginTop: '0.2rem' }} />
+                  </>
+                )}
+              </li>
+            );
+          }
           return (
-            <li key={w.id} style={{ marginBottom: '0.6rem', breakInside: 'avoid' }}>
-              {writeSentenceUsing} <strong>{answerKey ? w.english : w.english}</strong>:
-              {!answerKey && (
-                <div style={{ borderBottom: '1px solid #aaa', height: '1.2em', marginTop: '0.3rem' }} />
-              )}
-            </li>
-          );
-        }
-        const { blanked, matched } = blankSentence(raw, w.english);
-        // If the AI invented an irregular form the matcher missed,
-        // don't print the sentence whole (it would show the answer).
-        // Fall back to the free-write prompt with the source word.
-        if (!matched) {
-          return (
-            <li key={w.id} style={{ marginBottom: '0.6rem', breakInside: 'avoid' }}>
+            <li key={w.id} style={{ marginBottom: '0.4rem', breakInside: 'avoid' }}>
               {answerKey ? (
                 <span><strong>{w.english}</strong> — {raw}</span>
               ) : (
-                <>
-                  {writeSentenceUsing} <strong>{w.english}</strong>:
-                  <div style={{ borderBottom: '1px solid #aaa', height: '1.2em', marginTop: '0.3rem' }} />
-                </>
+                <span>{blanked}</span>
               )}
             </li>
           );
-        }
-        return (
-          <li key={w.id} style={{ marginBottom: '0.6rem', breakInside: 'avoid' }}>
-            {answerKey ? (
-              <span><strong>{w.english}</strong> — {raw}</span>
-            ) : (
-              <span>{blanked}</span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+        })}
+      </ol>
+    </div>
   );
 }
