@@ -10,6 +10,7 @@
  *   - /accessibility-statement → accessibility-statement
  *   - /w/<slug>            → public-interactive-worksheet (WhatsApp share)
  *   - /student             → student-account-login (dedicated route)
+ *   - /teacher             → teacher-login (dedicated route)
  *   - ?class=XXX           → student-account-login (classroom poster QR)
  *   - otherwise            → public-landing
  *
@@ -38,6 +39,13 @@ export function resolveInitialView(): View {
   // landing.  Teachers can share this URL with their class.
   if (window.location.pathname === '/student') {
     return 'student-account-login';
+  }
+  // Dedicated teacher URL — mirrors `/student`. It's where a logged-out
+  // teacher is sent (see the SIGNED_OUT handler in useAuthRestore), so a
+  // refresh keeps them on the login card instead of bouncing to the
+  // marketing landing.
+  if (window.location.pathname === '/teacher') {
+    return 'teacher-login';
   }
   // `/privacy` opens the designed React PublicPrivacyPage instead of the
   // bare static `/privacy.html` (which still exists for SEO + external
