@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 import type { Word } from '../../../data/vocabulary';
 import type { ScrambleShape } from '../buildShapes';
 import { buildQuestionShapes } from '../buildShapes';
+import { SheetInstruction } from './SheetInstruction';
 
 interface ScrambleSheetProps {
   words: Word[];
@@ -29,46 +30,45 @@ export function ScrambleSheet({ words, translationLang, answerKey, shape }: Scra
   );
   const scrambled = (shape ?? fallback!).scrambled;
 
-  const scrambledH = translationLang === 'he' ? 'מעורבל' : translationLang === 'ar' ? 'مخلوط' : 'Scrambled';
-  const hintH = translationLang === 'he' ? 'רמז' : translationLang === 'ar' ? 'تلميح' : 'Hint';
-  const answerH = answerKey
-    ? (translationLang === 'he' ? 'תשובה' : translationLang === 'ar' ? 'الإجابة' : 'Answer')
-    : (translationLang === 'he' ? 'התשובה שלך' : translationLang === 'ar' ? 'إجابتك' : 'Your answer');
+  const answerH = answerKey ? 'Answer' : 'Your answer';
 
   // English mode has no useful hint column — the hint would be the
   // same word as the answer.  Drop the hint header + cell in that case.
   const showHint = translationLang !== 'en';
 
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13pt' }}>
-      <thead>
-        <tr style={{ borderBottom: '2px solid #000' }}>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: '8%' }}>#</th>
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: showHint ? '30%' : '46%' }}>{scrambledH}</th>
-          {showHint && (
-            <th style={{ textAlign: 'left', padding: '0.4rem', width: '30%' }}>{hintH}</th>
-          )}
-          <th style={{ textAlign: 'left', padding: '0.4rem', width: showHint ? '32%' : '46%' }}>
-            {answerH}
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {words.map((w, idx) => (
-          <tr key={w.id} style={{ borderBottom: '1px solid #ddd' }}>
-            <td style={{ padding: '0.55rem' }}>{idx + 1}</td>
-            <td style={{ padding: '0.55rem', fontWeight: 700, letterSpacing: '0.1em' }}>
-              {scrambled[idx]}
-            </td>
+    <div>
+      <SheetInstruction text="Unscramble the letters to write the correct English word." />
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11pt' }}>
+        <thead>
+          <tr style={{ borderBottom: '2px solid #000' }}>
+            <th style={{ textAlign: 'left', padding: '0.3rem', width: '8%' }}>#</th>
+            <th style={{ textAlign: 'left', padding: '0.3rem', width: showHint ? '30%' : '46%' }}>Scrambled</th>
             {showHint && (
-              <td style={{ padding: '0.55rem' }} dir="auto">{pickTranslation(w, translationLang)}</td>
+              <th style={{ textAlign: 'left', padding: '0.3rem', width: '30%' }}>Hint</th>
             )}
-            <td style={{ padding: '0.55rem', fontStyle: answerKey ? 'normal' : 'italic' }}>
-              {answerKey ? <strong>{w.english.toUpperCase()}</strong> : '_______________________'}
-            </td>
+            <th style={{ textAlign: 'left', padding: '0.3rem', width: showHint ? '32%' : '46%' }}>
+              {answerH}
+            </th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {words.map((w, idx) => (
+            <tr key={w.id} style={{ borderBottom: '1px solid #ddd' }}>
+              <td style={{ padding: '0.35rem' }}>{idx + 1}</td>
+              <td style={{ padding: '0.35rem', fontWeight: 700, letterSpacing: '0.1em' }}>
+                {scrambled[idx]}
+              </td>
+              {showHint && (
+                <td style={{ padding: '0.35rem' }} dir="auto">{pickTranslation(w, translationLang)}</td>
+              )}
+              <td style={{ padding: '0.35rem', fontStyle: answerKey ? 'normal' : 'italic' }}>
+                {answerKey ? <strong>{w.english.toUpperCase()}</strong> : '_______________________'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

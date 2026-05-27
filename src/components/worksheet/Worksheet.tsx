@@ -214,7 +214,10 @@ export default function Worksheet({
   pageBreakBefore = false, answerKeyOnNewPage = false,
   sheetIndex = 0, totalSheets = 1, allSelectedSheetTypes,
 }: WorksheetProps) {
-  const t = worksheetStrings[translationLang === 'he' ? 'he' : translationLang === 'ar' ? 'ar' : 'en'];
+  // Worksheet chrome (header meta, sheet-type labels, answer key) is
+  // always English so the printout matches the English task instructions
+  // on every sheet.  Only the vocabulary cells use `translationLang`.
+  const t = worksheetStrings.en;
   const date = new Date().toLocaleDateString();
 
   // Outer wrapper — only forces a page break when the caller
@@ -246,13 +249,13 @@ export default function Worksheet({
     // empty-pages-in-PDF bug.
     <div className={outerClass} lang={translationLang} dir="ltr">
       {showDivider && (
-        <div style={{ marginTop: '2rem', marginBottom: '1.25rem', borderTop: '1.5px dashed #888' }} />
+        <div style={{ marginTop: '1.2rem', marginBottom: '0.8rem', borderTop: '1.5px dashed #888' }} />
       )}
 
       {title && (
-        <header style={{ marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '0.75rem' }}>
-          <h1 style={{ fontSize: '24pt', fontWeight: 900, margin: 0 }}>{title}</h1>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '11pt' }}>
+        <header style={{ marginBottom: '1rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
+          <h1 style={{ fontSize: '18pt', fontWeight: 900, margin: 0 }}>{title}</h1>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem', fontSize: '10pt' }}>
             {className && <span><strong>{t.classLabel}</strong> {className}</span>}
             <span><strong>{t.dateLabel}</strong> {date}</span>
             <span><strong>{t.nameLabel}</strong> ____________________</span>
@@ -262,7 +265,7 @@ export default function Worksheet({
 
       {/* Sheet type indicator when multiple sheets */}
       {totalSheets > 1 && (
-        <div style={{ marginBottom: '1rem', padding: '0.5rem', backgroundColor: '#f0f0f0', borderRadius: '8px', display: 'inline-block', fontWeight: 700, fontSize: '11pt', color: '#555' }}>
+        <div style={{ marginBottom: '0.6rem', padding: '0.25rem 0.6rem', backgroundColor: '#f0f0f0', borderRadius: '6px', display: 'inline-block', fontWeight: 700, fontSize: '10pt', color: '#555' }}>
           {getSheetLabel(sheetType, t)}
         </div>
       )}
@@ -286,16 +289,16 @@ export default function Worksheet({
       {includeAnswerKey && sheetIndex === totalSheets - 1 && (
         <div
           className={['vb-print-avoid-break', answerKeyOnNewPage ? 'vb-print-page-break' : ''].filter(Boolean).join(' ')}
-          style={{ marginTop: answerKeyOnNewPage ? 0 : '2rem' }}
+          style={{ marginTop: answerKeyOnNewPage ? 0 : '1.2rem' }}
         >
-          <h2 style={{ fontSize: '18pt', fontWeight: 900, marginBottom: '1rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>{t.answerKey}</h2>
+          <h2 style={{ fontSize: '14pt', fontWeight: 900, marginBottom: '0.6rem', borderBottom: '2px solid #000', paddingBottom: '0.35rem' }}>{t.answerKey}</h2>
 
           {allSelectedSheetTypes && allSelectedSheetTypes.length > 0 ? (
             <div>
               {allSelectedSheetTypes.filter(hasPerWordAnswer).map((answerType) => (
-                <div key={answerType} style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '13pt', fontWeight: 700, marginBottom: '0.5rem', color: '#555' }}>{getSheetLabel(answerType, t)}</h3>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
+                <div key={answerType} style={{ marginBottom: '0.9rem' }}>
+                  <h3 style={{ fontSize: '11pt', fontWeight: 700, marginBottom: '0.35rem', color: '#555' }}>{getSheetLabel(answerType, t)}</h3>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #999', backgroundColor: '#f5f5f5' }}>
                         <th style={{ textAlign: 'left', padding: '0.3rem', width: '5%' }}>{t.tableNumber}</th>
@@ -321,7 +324,7 @@ export default function Worksheet({
           ) : (
             /* Fallback for single worksheet — same per-row renderer, just one section */
             hasPerWordAnswer(sheetType) ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #999', backgroundColor: '#f5f5f5' }}>
                     <th style={{ textAlign: 'left', padding: '0.3rem', width: '5%' }}>{t.tableNumber}</th>
@@ -346,7 +349,7 @@ export default function Worksheet({
         </div>
       )}
 
-      <footer style={{ marginTop: '2rem', fontSize: '9pt', color: '#666', textAlign: 'center' }}>
+      <footer style={{ marginTop: '1.2rem', fontSize: '9pt', color: '#666', textAlign: 'center' }}>
         {t.vocabandFooter}
       </footer>
     </div>

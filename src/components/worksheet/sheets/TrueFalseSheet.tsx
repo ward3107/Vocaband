@@ -12,6 +12,7 @@ import { useMemo } from 'react';
 import type { Word } from '../../../data/vocabulary';
 import type { TrueFalseShape } from '../buildShapes';
 import { buildQuestionShapes } from '../buildShapes';
+import { SheetInstruction } from './SheetInstruction';
 
 interface TrueFalseSheetProps {
   words: Word[];
@@ -27,18 +28,19 @@ export function TrueFalseSheet({ words, translationLang, answerKey, shape }: Tru
   );
   const effective = shape ?? fallback!;
 
-  const meansWord = translationLang === 'he' ? 'פירושה' : translationLang === 'ar' ? 'تعني' : 'means';
-  const trueLabel = translationLang === 'he' ? 'נכון' : translationLang === 'ar' ? 'صحيح' : 'True';
-  const falseLabel = translationLang === 'he' ? 'לא נכון' : translationLang === 'ar' ? 'خطأ' : 'False';
+  const meansWord = 'means';
+  const trueLabel = 'True';
+  const falseLabel = 'False';
 
   return (
-    <div style={{ fontSize: '13pt' }}>
+    <div style={{ fontSize: '11pt' }}>
+      <SheetInstruction text="Read each pair. Tick True if the meaning is correct, or False if it is wrong." />
       {effective.questions.map((q, idx) => {
         const word = words.find((w) => w.id === q.wordId);
         if (!word) return null;
         return (
-          <div key={q.wordId} style={{ marginBottom: '0.8rem', paddingBottom: '0.8rem', borderBottom: '1px solid #eee', breakInside: 'avoid' }}>
-            <span style={{ fontWeight: 900, fontSize: '14pt' }}>{idx + 1}.</span>
+          <div key={q.wordId} style={{ marginBottom: '0.55rem', paddingBottom: '0.55rem', borderBottom: '1px solid #eee', breakInside: 'avoid' }}>
+            <span style={{ fontWeight: 900, fontSize: '12pt' }}>{idx + 1}.</span>
             <span style={{ marginLeft: '0.5rem', marginRight: '1rem' }}>
               <strong>{word.english}</strong> {meansWord} <strong dir="auto">{q.shownTranslation}</strong>
             </span>

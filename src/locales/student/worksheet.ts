@@ -82,6 +82,18 @@ export interface WorksheetStrings {
   answerTrue: string;
   answerFalse: string;
   answerCompleteSentence: string;
+
+  // Worksheet translation picker (which language prints in the vocab column)
+  translationLanguageLabel: string;
+  translationNone: string;
+
+  // AI sentence difficulty selector
+  difficultyLabel: string;
+  difficultyHint: string;
+  diffBeginner: string;
+  diffElementary: string;
+  diffIntermediate: string;
+  diffAdvanced: string;
 }
 
 export const worksheetStrings: Record<Language, WorksheetStrings> = {
@@ -146,6 +158,14 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     answerTrue: 'True',
     answerFalse: 'False',
     answerCompleteSentence: 'Complete sentence',
+    translationLanguageLabel: 'Worksheet translation',
+    translationNone: 'English only',
+    difficultyLabel: 'Sentence difficulty',
+    difficultyHint: 'Sentences are written for EFL learners — pick how hard they should be.',
+    diffBeginner: 'Beginner · grades 4-5',
+    diffElementary: 'Elementary · grades 6-7',
+    diffIntermediate: 'Intermediate · grades 8-9',
+    diffAdvanced: 'Advanced · grade 9+',
   },
   he: {
     heading: 'הדפס דף עבודה',
@@ -208,6 +228,14 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     answerTrue: 'נכון',
     answerFalse: 'לא נכון',
     answerCompleteSentence: 'משפט שלם',
+    translationLanguageLabel: 'תרגום דף העבודה',
+    translationNone: 'אנגלית בלבד',
+    difficultyLabel: 'רמת קושי של המשפטים',
+    difficultyHint: 'המשפטים נכתבים עבור לומדי אנגלית כשפה זרה — בחרו את רמת הקושי.',
+    diffBeginner: 'מתחילים · כיתות ד׳-ה׳',
+    diffElementary: 'בסיסי · כיתות ו׳-ז׳',
+    diffIntermediate: 'בינוני · כיתות ח׳-ט׳',
+    diffAdvanced: 'מתקדם · כיתה ט׳+',
   },
   ar: {
     heading: 'اطبع ورقة عمل',
@@ -270,6 +298,14 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     answerTrue: 'صح',
     answerFalse: 'خطأ',
     answerCompleteSentence: 'جملة كاملة',
+    translationLanguageLabel: 'ترجمة ورقة العمل',
+    translationNone: 'الإنجليزية فقط',
+    difficultyLabel: 'مستوى صعوبة الجمل',
+    difficultyHint: 'الجمل مكتوبة لمتعلّمي الإنجليزية كلغة أجنبية — اختر مستوى الصعوبة.',
+    diffBeginner: 'مبتدئ · الصفوف 4-5',
+    diffElementary: 'أساسي · الصفوف 6-7',
+    diffIntermediate: 'متوسط · الصفوف 8-9',
+    diffAdvanced: 'متقدّم · الصف 9+',
   },
   ru: {
     heading: 'Print worksheet',
@@ -332,5 +368,13 @@ export const worksheetStrings: Record<Language, WorksheetStrings> = {
     answerTrue: 'True',
     answerFalse: 'False',
     answerCompleteSentence: 'Complete sentence',
+    translationLanguageLabel: 'Worksheet translation',
+    translationNone: 'English only',
+    difficultyLabel: 'Sentence difficulty',
+    difficultyHint: 'Sentences are written for EFL learners — pick how hard they should be.',
+    diffBeginner: 'Beginner · grades 4-5',
+    diffElementary: 'Elementary · grades 6-7',
+    diffIntermediate: 'Intermediate · grades 8-9',
+    diffAdvanced: 'Advanced · grade 9+',
   },
 };

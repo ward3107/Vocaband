@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import type { Word } from '../../../data/vocabulary';
 import type { MatchingShape } from '../buildShapes';
 import { buildQuestionShapes } from '../buildShapes';
+import { SheetInstruction } from './SheetInstruction';
 
 interface MatchingSheetProps {
   words: Word[];
@@ -30,13 +31,9 @@ export function MatchingSheet({ words, translationLang, answerKey, shape }: Matc
   );
   const translationOrder = (shape ?? fallback!).translationOrder;
 
-  const drawLines = translationLang === 'he' ? 'משכו קווים כדי לחבר כל מילה באנגלית לתרגום הנכון שלה.' : translationLang === 'ar' ? 'ارسم خطوطًا لربط كل كلمة بالإنجليزية بترجمتها الصحيحة.' : 'Draw lines to connect each English word with its correct translation.';
-
   return (
-    <div style={{ fontSize: '13pt' }}>
-      <p style={{ fontSize: '11pt', color: '#666', marginBottom: '1rem' }}>
-        {drawLines}
-      </p>
+    <div style={{ fontSize: '11pt' }}>
+      <SheetInstruction text="Draw a line to match each English word with its translation." />
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2rem' }}>
         {/* English column — letters A, B, C ... */}
         <div style={{ flex: 1 }}>
@@ -44,8 +41,8 @@ export function MatchingSheet({ words, translationLang, answerKey, shape }: Matc
             <div
               key={w.id}
               style={{
-                padding: '0.6rem',
-                marginBottom: '0.5rem',
+                padding: '0.4rem',
+                marginBottom: '0.35rem',
                 border: '2px solid #000',
                 borderRadius: '8px',
                 fontWeight: 700,
@@ -66,8 +63,8 @@ export function MatchingSheet({ words, translationLang, answerKey, shape }: Matc
               <div
                 key={`right-${displayIdx}`}
                 style={{
-                  padding: '0.6rem',
-                  marginBottom: '0.5rem',
+                  padding: '0.4rem',
+                  marginBottom: '0.35rem',
                   border: '2px solid #000',
                   borderRadius: '8px',
                   display: 'flex',

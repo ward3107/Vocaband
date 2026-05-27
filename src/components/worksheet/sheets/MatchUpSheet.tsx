@@ -11,6 +11,7 @@ import { useMemo } from 'react';
 import type { Word } from '../../../data/vocabulary';
 import type { MatchUpShape } from '../buildShapes';
 import { buildQuestionShapes } from '../buildShapes';
+import { SheetInstruction } from './SheetInstruction';
 
 interface MatchUpSheetProps {
   words: Word[];
@@ -43,27 +44,24 @@ export function MatchUpSheet({ words, translationLang, answerKey, shape }: Match
     return LETTERS[rightPos] ?? '?';
   };
 
-  const drawLine = translationLang === 'he' ? 'משכו קו מכל מילה באנגלית לתרגום שלה. (או כתבו את האות המתאימה על הקו.)' : translationLang === 'ar' ? 'ارسم خطًا من كل كلمة بالإنجليزية إلى ترجمتها. (أو اكتب الحرف المطابق على السطر.)' : 'Draw a line from each English word to its translation.  (Or write the matching letter on the line.)';
   return (
     <div>
-      <p style={{ fontSize: '11pt', marginBottom: '0.75rem', fontStyle: 'italic' }}>
-        {drawLine}
-      </p>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13pt' }}>
+      <SheetInstruction text="Draw a line from each English word to its translation. Or write the matching letter on the line." />
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11pt' }}>
         <tbody>
           {words.map((w, idx) => {
             const rightWordIdx = rightOrder[idx];
             return (
               <tr key={`row-${idx}`} style={{ borderBottom: '1px solid #ddd' }}>
-                <td style={{ padding: '0.6rem', width: '5%' }}>{idx + 1}.</td>
-                <td style={{ padding: '0.6rem', fontWeight: 600, width: '30%' }}>{w.english}</td>
-                <td style={{ padding: '0.6rem', width: '20%' }}>
+                <td style={{ padding: '0.4rem', width: '5%' }}>{idx + 1}.</td>
+                <td style={{ padding: '0.4rem', fontWeight: 600, width: '30%' }}>{w.english}</td>
+                <td style={{ padding: '0.4rem', width: '20%' }}>
                   {answerKey
                     ? <strong>→ {correctLetterForLeft(idx)}</strong>
                     : '_____'}
                 </td>
-                <td style={{ padding: '0.6rem', width: '5%', fontWeight: 700 }}>{LETTERS[idx]}.</td>
-                <td style={{ padding: '0.6rem' }} dir="auto">{pickTranslation(words[rightWordIdx], translationLang)}</td>
+                <td style={{ padding: '0.4rem', width: '5%', fontWeight: 700 }}>{LETTERS[idx]}.</td>
+                <td style={{ padding: '0.4rem' }} dir="auto">{pickTranslation(words[rightWordIdx], translationLang)}</td>
               </tr>
             );
           })}
