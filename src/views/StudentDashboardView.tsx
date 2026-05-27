@@ -13,6 +13,7 @@ import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import NextUpCard from "../components/dashboard/NextUpCard";
 import DailyPracticeRow from "../components/dashboard/DailyPracticeRow";
+import StudentWelcomeCard from "../components/dashboard/StudentWelcomeCard";
 import { useCompetitionsForClass } from "../hooks/useCompetitions";
 import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
 import { useDailyMissions } from "../hooks/useDailyMissions";
@@ -243,6 +244,15 @@ export default function StudentDashboardView({
           onShopClick={() => setView("shop")}
           onRenameDisplayName={onRenameDisplayName}
         />
+        {/* Brand-new student welcome — only renders when the student
+            has zero assignments AND we're not still loading.  Without
+            this, a fresh login lands on a stack of empty-state widgets
+            with one italic "no assignments yet" line buried in the
+            middle of the page; this card explains the situation and
+            points them at the practice tiles below. */}
+        {!studentDataLoading && studentAssignments.length === 0 && (
+          <StudentWelcomeCard displayName={user.displayName} />
+        )}
         {/* Primary CTA — surfaces the single most-relevant assignment
             (in-progress > unstarted > replayable) directly under the
             greeting so the student always lands on a "do this now"
@@ -257,14 +267,13 @@ export default function StudentDashboardView({
           setView={setView}
           setShowModeSelection={setShowModeSelection}
         />
-        <StudentStatsRow
-          xp={xp}
-          streak={streak}
-          studentAssignments={studentAssignments}
-          studentProgress={studentProgress}
-        />
-        <ActiveBoostersStrip {...boosters} />
-        <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
+        {/* ── ACTION ZONE ─────────────────────────────────────────
+            Reordered so the student lands on do-this-now surfaces
+            before the informational ones.  Assignments list rises
+            from position #14 to here.  Stats / Leaderboard /
+            Boosters / Badges drop below as "scroll to see your
+            achievements" rather than competing with the actions
+            for the first scroll. */}
         {/* ── Daily Practice row ────────────────────────────────
             Collapses Review · Class Minute · Idioms into one
             compact 3-up row instead of three full-width cards. */}
@@ -282,6 +291,8 @@ export default function StudentDashboardView({
           } : undefined}
           idioms={onStartIdioms ? { onStart: onStartIdioms } : undefined}
         />
+        <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
+        <DailyGoalBanner studentProgress={studentProgress} onPlay={launchNextAssignment} />
         {/* ── Daily missions — three rotating tasks per user-local
             calendar day.  Gated to real students (the hook returns
             empty for guests + non-students). */}
@@ -291,18 +302,6 @@ export default function StudentDashboardView({
             isLoading={dailyMissions.isLoading}
           />
         )}
-        <DailyGoalBanner studentProgress={studentProgress} onPlay={launchNextAssignment} />
-        <LeaderboardTeaser
-          classCode={user.classCode}
-          currentStudentUid={user.uid}
-          currentXp={xp}
-          setView={setView}
-        />
-        {/* Hide the strip for day-one students with no badges yet —
-            otherwise they see a row of locked tiles that reads as
-            "broken" instead of "you haven't earned any yet".  Mirrors
-            the modern-dashboard guard at line 224. */}
-        {badges.length > 0 && <BadgesStrip earned={badges} />}
         <StudentAssignmentsList
           studentAssignments={studentAssignments}
           studentProgress={studentProgress}
@@ -314,6 +313,25 @@ export default function StudentDashboardView({
           setView={setView}
           setShowModeSelection={setShowModeSelection}
         />
+        {/* ── INFO ZONE ──────────────────────────────────────────
+            Below-the-fold achievement / status cards. */}
+        <StudentStatsRow
+          xp={xp}
+          streak={streak}
+          studentAssignments={studentAssignments}
+          studentProgress={studentProgress}
+        />
+        <LeaderboardTeaser
+          classCode={user.classCode}
+          currentStudentUid={user.uid}
+          currentXp={xp}
+          setView={setView}
+        />
+        <ActiveBoostersStrip {...boosters} />
+        {/* Hide the strip for day-one students with no badges yet —
+            otherwise they see a row of locked tiles that reads as
+            "broken" instead of "you haven't earned any yet". */}
+        {badges.length > 0 && <BadgesStrip earned={badges} />}
       </div>
       <PetCompanion
         xp={xp}
