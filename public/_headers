@@ -132,9 +132,24 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Don't cache HTML (SPA routing)
+# Never cache the HTML shell — not the literal file, and not the navigable
+# routes users actually request. /, /student and /accessibility-statement
+# are run_worker_first (wrangler.jsonc), so the Worker serves their HTML;
+# without a rule here they inherited Workers Assets' default
+# (max-age=0, must-revalidate), which Cloudflare edge-caches. A cached
+# shell from a previous deploy then pairs an OLD inlined boot-debug script
+# with the CSP applied fresh above, and the browser blocks it as a hash
+# mismatch. no-store keeps the shell off the edge + browser cache; the
+# Worker stamps the same header (see worker/index.ts noStoreHtml) so the
+# two layers agree. Hashed /assets/* stay immutable above.
 /index.html
-  Cache-Control: no-cache
+  Cache-Control: no-store, must-revalidate
+/
+  Cache-Control: no-store, must-revalidate
+/student
+  Cache-Control: no-store, must-revalidate
+/accessibility-statement
+  Cache-Control: no-store, must-revalidate
 
 # Don't cache service worker
 /sw.js
