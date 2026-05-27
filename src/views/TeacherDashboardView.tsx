@@ -38,7 +38,7 @@ import type { AppUser, ClassData, AssignmentData } from "../core/supabase";
 import type { VocaId } from "../core/subject";
 import { Sparkles } from "lucide-react";
 import type { SavedTask } from "../hooks/useSavedTasks";
-import { isTrialing, isPro, getTrialDaysLeft } from "../core/plan";
+import { isTrialing, getTrialDaysLeft, getEffectivePlan } from "../core/plan";
 
 interface TeacherDashboardViewProps {
   user: AppUser;
@@ -321,6 +321,15 @@ export default function TeacherDashboardView({
           </Suspense>
         )}
 
+        {/* Plan pill rendered in the TopAppBar next to the teacher
+            name so every teacher sees their plan at a glance.
+              trialing → amber "Trial · Nd" pill
+              free     → amber "Free" pill
+              pro      → emerald "Pro" pill
+              school   → indigo "School" pill
+            Trialing is checked first because getEffectivePlan collapses
+            trialing into "pro" — we split them back out for the day
+            counter. */}
         <TopAppBar
           title="Vocaband"
           subtitle={subject === "hebrew" ? "כיתות ד–ט · אוצר מילים בעברית" : "CEFR A1–B2 • ESL VOCABULARY"}
@@ -329,6 +338,17 @@ export default function TeacherDashboardView({
           onLogout={() => performUserLogout()}
           showScaleControl
           extraTrailing={headerExtra}
+          planBadge={(() => {
+            const trialing = isTrialing(user);
+            const daysLeft = trialing ? getTrialDaysLeft(user) : null;
+            if (trialing && daysLeft !== null) {
+              return { label: t.planPillTrial(daysLeft), tone: "trial" as const };
+            }
+            const effective = getEffectivePlan(user);
+            if (effective === "school") return { label: t.planPillSchool, tone: "school" as const };
+            if (effective === "pro") return { label: t.planPillPro, tone: "pro" as const };
+            return { label: t.planPillFree, tone: "free" as const };
+          })()}
         />
 
         {/* Greeting hero — kept for VocaHebrew (its dashboard hasn't
@@ -365,9 +385,8 @@ export default function TeacherDashboardView({
           {/* English dashboard gets the redesigned layout (Aurora hero
               + pastel class cards).  VocaHebrew keeps its existing
               TeacherQuickActions + TeacherClassesSection untouched.
-              The split is intentional so the Hebrew product surface
-              stays stable while the English side rolls out the new
-              visual language. */}
+              Plan state lives in the TopAppBar pill — no card on the
+              page itself. */}
           {subject === "english" ? (
             <EnglishDashboardLayout
               language={effectiveLanguage}
@@ -410,25 +429,6 @@ export default function TeacherDashboardView({
                 onWorksheetResultsClick={onWorksheetResultsClick}
                 onLibraryClick={onLibraryClick}
                 onDreidelClick={onDreidelClick}
-                plan={(() => {
-                  // Same `isPro && !trialing` guard as the previous top-
-                  // of-page chip: paid Pro / school / admin / dev
-                  // allowlist see no card.  Trialing teachers see the
-                  // amber "Pro trial · N days left" card; expired or
-                  // grandfathered teachers see the slate "Free plan"
-                  // card.
-                  const trialing = isTrialing(user);
-                  if (isPro(user) && !trialing) return undefined;
-                  const daysLeft = getTrialDaysLeft(user);
-                  const onUpgradeClick = () => {
-                    window.location.href =
-                      "mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro";
-                  };
-                  if (trialing && daysLeft !== null) {
-                    return { state: "trialing" as const, daysLeft, onUpgradeClick };
-                  }
-                  return { state: "free" as const, onUpgradeClick };
-                })()}
               />
 
               <TeacherClassesSection

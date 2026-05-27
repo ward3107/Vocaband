@@ -28,10 +28,26 @@ export interface TeacherDashboardT {
   trialBannerExpiredCta: string;
 
   // ─── Plan-state card in the Management grid ─────────────────────
+  // Four variants — every teacher now sees a card so paid Pro / School
+  // teachers get a positive confirmation of their plan rather than the
+  // absence of an upgrade prompt.
+  /** Small uppercase label above the plan name ("Your plan"). */
+  planCardLabel: string;
+  /** Short labels for the TopAppBar plan pill — sit next to the teacher
+   *  name, so they need to be brief (one or two words max). */
+  planPillFree: string;
+  planPillTrial: (daysLeft: number) => string;
+  planPillPro: string;
+  planPillSchool: string;
   planCardTrialTitle: string;
   planCardTrialDesc: (daysLeft: number) => string;
   planCardFreeTitle: string;
   planCardFreeDesc: string;
+  planCardProTitle: string;
+  planCardProDesc: string;
+  planCardSchoolTitle: string;
+  /** Receives the school's display name (or null when missing). */
+  planCardSchoolDesc: (schoolName: string | null) => string;
   planCardTooltip: string;
 
   // ─── Theme picker trigger ───────────────────────────────────────
@@ -159,10 +175,19 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     trialBannerExpired: "Your Pro trial has ended.",
     trialBannerExpiredCta: "Upgrade to Pro",
 
+    planCardLabel: "Your plan",
+    planPillFree: "Free",
+    planPillTrial: (daysLeft) => `Trial · ${daysLeft}d`,
+    planPillPro: "Pro",
+    planPillSchool: "School",
     planCardTrialTitle: "Pro trial",
     planCardTrialDesc: (daysLeft) => `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left · Upgrade`,
     planCardFreeTitle: "Free plan",
     planCardFreeDesc: "Upgrade to unlock Pro features",
+    planCardProTitle: "Pro plan",
+    planCardProDesc: "Active · All Pro features unlocked",
+    planCardSchoolTitle: "School license",
+    planCardSchoolDesc: (schoolName) => schoolName ? `Active · ${schoolName}` : "Active · School-wide license",
     planCardTooltip: "View your plan and upgrade options",
 
     changeThemeTitle: "Change dashboard theme",
@@ -274,10 +299,19 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     trialBannerExpired: "תקופת הניסיון של Pro הסתיימה.",
     trialBannerExpiredCta: "שדרגו ל־Pro",
 
+    planCardLabel: "התוכנית שלכם",
+    planPillFree: "חינם",
+    planPillTrial: (daysLeft) => `ניסיון · ${daysLeft} ימים`,
+    planPillPro: "Pro",
+    planPillSchool: "בית-ספר",
     planCardTrialTitle: "ניסיון Pro",
     planCardTrialDesc: (daysLeft) => `${daysLeft === 1 ? 'נותר יום אחד' : `נותרו ${daysLeft} ימים`} · שדרוג`,
     planCardFreeTitle: "תוכנית חינמית",
     planCardFreeDesc: "שדרגו כדי לפתוח את כל היכולות של Pro",
+    planCardProTitle: "תוכנית Pro",
+    planCardProDesc: "פעיל · כל יכולות Pro פתוחות",
+    planCardSchoolTitle: "רישיון בית-ספרי",
+    planCardSchoolDesc: (schoolName) => schoolName ? `פעיל · ${schoolName}` : "פעיל · רישיון לכל בית הספר",
     planCardTooltip: "צפו בתוכנית שלכם ובאפשרויות השדרוג",
 
     changeThemeTitle: "החלפת ערכת נושא",
@@ -389,10 +423,19 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     trialBannerExpired: "انتهت تجربة Pro الخاصة بك.",
     trialBannerExpiredCta: "ترقية إلى Pro",
 
+    planCardLabel: "خطتك",
+    planPillFree: "مجاني",
+    planPillTrial: (daysLeft) => `تجربة · ${daysLeft} أيام`,
+    planPillPro: "Pro",
+    planPillSchool: "مدرسة",
     planCardTrialTitle: "تجربة Pro",
     planCardTrialDesc: (daysLeft) => `${daysLeft === 1 ? 'يوم واحد متبقي' : `${daysLeft} أيام متبقية`} · ترقية`,
     planCardFreeTitle: "الخطة المجانية",
     planCardFreeDesc: "ترقية لفتح ميزات Pro",
+    planCardProTitle: "خطة Pro",
+    planCardProDesc: "نشط · جميع ميزات Pro مفتوحة",
+    planCardSchoolTitle: "ترخيص مدرسي",
+    planCardSchoolDesc: (schoolName) => schoolName ? `نشط · ${schoolName}` : "نشط · ترخيص لكامل المدرسة",
     planCardTooltip: "اعرض خطتك وخيارات الترقية",
 
     changeThemeTitle: "تغيير سمة لوحة التحكم",
@@ -504,10 +547,19 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     trialBannerExpired: "Your Pro trial has ended.",
     trialBannerExpiredCta: "Upgrade to Pro",
 
+    planCardLabel: "Your plan",
+    planPillFree: "Free",
+    planPillTrial: (daysLeft) => `Trial · ${daysLeft}d`,
+    planPillPro: "Pro",
+    planPillSchool: "School",
     planCardTrialTitle: "Pro trial",
     planCardTrialDesc: (daysLeft) => `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left · Upgrade`,
     planCardFreeTitle: "Free plan",
     planCardFreeDesc: "Upgrade to unlock Pro features",
+    planCardProTitle: "Pro plan",
+    planCardProDesc: "Active · All Pro features unlocked",
+    planCardSchoolTitle: "School license",
+    planCardSchoolDesc: (schoolName) => schoolName ? `Active · ${schoolName}` : "Active · School-wide license",
     planCardTooltip: "View your plan and upgrade options",
 
     changeThemeTitle: "Change dashboard theme",
