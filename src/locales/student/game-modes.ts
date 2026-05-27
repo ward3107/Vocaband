@@ -32,8 +32,7 @@ export type GameModeId =
   | "reverse"
   | "letter-sounds"
   | "sentence-builder"
-  | "speed-round"
-  | "category-race";
+  | "speed-round";
 
 export interface GameModeStrings {
   name: string;
@@ -123,11 +122,6 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "60 seconds, as many words as you can. Wrong answers cost 1 second!",
         tooltip: ["60-second timer", "Wrong answers cost 1 second", "3 in a row earns combo bonus points"],
       },
-      "category-race": {
-        name: "Category Race",
-        desc: "A letter is rolled — fill in every category with words that start with it!",
-        tooltip: ["Roll a letter, fill every category", "Hebrew/Arabic answers earn fewer points", "Beat the clock for a perfect round"],
-      },
     },
   },
 
@@ -202,11 +196,6 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "סבב מהיר",
         desc: "60 שניות, כמה שיותר מילים. תשובה שגויה עולה שנייה!",
         tooltip: ["טיימר של 60 שניות", "תשובה שגויה מורידה שנייה", "3 ברצף — בונוס נקודות"],
-      },
-      "category-race": {
-        name: "מרוץ קטגוריות",
-        desc: "מגרילים אות — מלאו כל קטגוריה במילים שמתחילות באות הזו!",
-        tooltip: ["אות אחת, כל הקטגוריות", "תשובה בעברית או ערבית מזכה בפחות נקודות", "נצחו את השעון לסבב מושלם"],
       },
     },
   },
@@ -283,11 +272,6 @@ export const gameModesT: Record<Language, GameModesT> = {
         desc: "60 ثانية، أكبر عدد ممكن من الكلمات. الإجابة الخاطئة تكلفك ثانية!",
         tooltip: ["مؤقت 60 ثانية", "الإجابة الخاطئة تخصم ثانية", "3 إجابات متتالية تمنحك مكافأة"],
       },
-      "category-race": {
-        name: "سباق الفئات",
-        desc: "يُختار حرف — املأ كل فئة بكلمات تبدأ بهذا الحرف!",
-        tooltip: ["حرف واحد، كل الفئات", "الإجابات بالعبرية أو العربية تكسب نقاطًا أقل", "اسبق المؤقت لجولة كاملة"],
-      },
     },
   },
 
@@ -362,11 +346,6 @@ export const gameModesT: Record<Language, GameModesT> = {
         name: "Speed Round",
         desc: "60 seconds, as many words as you can. Wrong answers cost 1 second!",
         tooltip: ["60-second timer", "Wrong answers cost 1 second", "3 in a row earns combo bonus points"],
-      },
-      "category-race": {
-        name: "Category Race",
-        desc: "A letter is rolled — fill in every category with words that start with it!",
-        tooltip: ["Roll a letter, fill every category", "Hebrew/Arabic answers earn fewer points", "Beat the clock for a perfect round"],
       },
     },
   },

@@ -10,6 +10,7 @@ import type { ClassData, AssignmentData } from '../core/supabase';
 import { ALL_GAME_MODES } from '../constants/game';
 import type { SavedTask } from '../hooks/useSavedTasks';
 import type { View } from '../core/views';
+import { createCategoryRaceSession } from './quickPlaySession';
 
 export interface QuickPlayClickDeps {
   cleanupSessionData: () => void;
@@ -42,6 +43,45 @@ export function startQuickPlayFromDashboard(deps: QuickPlayClickDeps): void {
   deps.setQuickPlayActiveSession(null);
   deps.setQuickPlaySessionCode(null);
   deps.setView('quick-play-setup');
+}
+
+export interface CategoryRaceClickDeps {
+  cleanupSessionData: () => void;
+  setQuickPlayActiveSession: QuickPlayClickDeps['setQuickPlayActiveSession'];
+  setQuickPlaySessionCode: React.Dispatch<React.SetStateAction<string | null>>;
+  setView: React.Dispatch<React.SetStateAction<View>>;
+  showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+}
+
+/**
+ * Dashboard "Category Race" tap. Unlike Quick Play there's no word
+ * picker — it creates a wordless race session immediately and drops the
+ * teacher into the live host control room. Clears any stale QP state
+ * first so we don't carry a previous session's words/code over.
+ */
+export async function startCategoryRaceFromDashboard(deps: CategoryRaceClickDeps): Promise<void> {
+  try { sessionStorage.setItem('vocaband_skip_restore', 'true'); } catch { /* ignore */ }
+  try { localStorage.removeItem('vocaband_quick_play_session'); } catch { /* ignore */ }
+  deps.cleanupSessionData();
+  deps.setQuickPlayActiveSession(null);
+  deps.setQuickPlaySessionCode(null);
+  try {
+    await createCategoryRaceSession({
+      showToast: deps.showToast,
+      failedCreateSessionMsg: (err) => `Couldn't start the race: ${err}`,
+      setSessionCode: (code) => deps.setQuickPlaySessionCode(code),
+      setActiveSession: (s) => deps.setQuickPlayActiveSession({
+        id: s.id,
+        sessionCode: s.sessionCode,
+        wordIds: s.wordIds,
+        words: s.words,
+        allowedModes: s.allowedModes,
+      }),
+    });
+    deps.setView('category-race-host');
+  } catch {
+    /* createCategoryRaceSession already surfaced a toast */
+  }
 }
 
 export interface AssignClassDeps {

@@ -47,6 +47,13 @@ export type View =
   | "quick-play-setup"
   | "quick-play-teacher-monitor"
   | "quick-play-student"
+  // Category Race (live, teacher-driven Eretz-Ir / Scattergories).
+  // Built on the Quick Play socket rails — a race session is a
+  // quick_play_sessions row whose allowed_modes is [QP_CATEGORY_RACE_MODE]
+  // and whose word list is empty. The teacher hosts + runs rounds; each
+  // student joins via code/QR and answers in a full-screen focus card.
+  | "category-race-host"
+  | "category-race-student"
   | "hot-seat"
   | "wheel"
   | "class-show"

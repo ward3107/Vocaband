@@ -17,6 +17,7 @@ import type { View } from '../core/views';
 
 const LiveChallengeView = lazyWithRetry(() => import('./LiveChallengeView'));
 const QuickPlayTeacherMonitorView = lazyWithRetry(() => import('./QuickPlayTeacherMonitorView'));
+const CategoryRaceHostView = lazyWithRetry(() => import('./CategoryRaceHostView'));
 const HebrewComingSoonView = lazyWithRetry(() => import('./HebrewComingSoonView'));
 
 function reconnectingFallback(
@@ -110,6 +111,27 @@ export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): Re
           socketConnected={socketConnected}
           setView={setView}
           setIsLiveChallenge={setIsLiveChallenge}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'category-race-host') {
+    if (!quickPlayActiveSession) {
+      setView('teacher-dashboard');
+      return null;
+    }
+    return (
+      <LazyWrapper
+        loadingMessage="Loading Category Race..."
+        fallback={reconnectingFallback(
+          'The race hit a hiccup. Your session is safe — return to the dashboard and start it again.',
+          () => setView('teacher-dashboard'),
+        )}
+      >
+        <CategoryRaceHostView
+          sessionCode={quickPlayActiveSession.sessionCode}
+          setView={setView}
         />
       </LazyWrapper>
     );

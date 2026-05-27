@@ -35,6 +35,7 @@ import { getCachedVocabulary } from "./useVocabularyLazy";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { getGameDebugger } from "../utils/gameDebug";
 import { ALL_GAME_MODES } from "../constants/game";
+import { QP_CATEGORY_RACE_MODE } from "../core/quickPlayProtocol";
 import type { View } from "../core/views";
 
 /** What this hook hydrates into App.tsx's quickPlayActiveSession state.
@@ -185,6 +186,28 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           showToast("Invalid or expired Quick Play session. Please scan the QR code again.", "error");
           window.history.replaceState({}, '', window.location.pathname);
           setView("public-landing");
+          return;
+        }
+
+        // Category Race sessions carry NO words — branch out before the
+        // word-loading path (which would otherwise bail with "no words"
+        // and bounce to landing). The student still joins via the normal
+        // join screen; QuickPlayStudentView routes them to the race view
+        // once the server confirms the join.
+        const isCategoryRace = Array.isArray(data.allowed_modes)
+          && data.allowed_modes.length === 1
+          && data.allowed_modes[0] === QP_CATEGORY_RACE_MODE;
+        if (isCategoryRace) {
+          setQuickPlayActiveSession({
+            id: data.id,
+            sessionCode: data.session_code,
+            wordIds: [],
+            words: [],
+            allowedModes: data.allowed_modes,
+            subject: 'english',
+          });
+          setView("quick-play-student");
+          window.history.replaceState({}, '', window.location.pathname);
           return;
         }
 

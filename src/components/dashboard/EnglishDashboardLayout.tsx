@@ -8,6 +8,15 @@ import MgmtCard from "./MgmtCard";
 import FrostedEmoji from "./FrostedEmoji";
 import { accentForClass, BRAND_GRADIENT } from "./dashboardAccents";
 
+// Strings for the "Live games" pairing (Quick Play hero + Category
+// Race card). Kept inline so this layout doesn't have to thread new
+// keys through the shared teacher-dashboard locale.
+const LIVE_GAMES_STRINGS = {
+  en: { liveGames: "Live games", live: "Live", raceTitle: "Category Race", raceDescription: "Pick a letter, race the class to fill the categories.", raceStart: "Start" },
+  he: { liveGames: "משחקים חיים", live: "חי", raceTitle: "מרוץ קטגוריות", raceDescription: "אות אחת — כל הכיתה מתחרה למלא את הקטגוריות.", raceStart: "התחל" },
+  ar: { liveGames: "ألعاب مباشرة", live: "مباشر", raceTitle: "سباق الفئات", raceDescription: "حرف واحد — يتسابق الصف لملء الفئات.", raceStart: "ابدأ" },
+} as const;
+
 // Mirrors the WhatsApp share text the legacy section produced — the
 // link goes to STUDENTS, so it stays in English here (English Voca).
 function buildWhatsAppShareText(code: string): string {
@@ -36,6 +45,7 @@ interface EnglishDashboardLayoutProps {
 
   // Top-level dashboard actions
   onQuickPlayClick: () => void;
+  onCategoryRaceClick: () => void;
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
   onWorksheetResultsClick?: () => void;
@@ -78,6 +88,7 @@ export default function EnglishDashboardLayout({
   openDropdownClassId,
   setOpenDropdownClassId,
   onQuickPlayClick,
+  onCategoryRaceClick,
   onClassroomClick,
   onApprovalsClick,
   onWorksheetResultsClick,
@@ -96,6 +107,7 @@ export default function EnglishDashboardLayout({
   onPrintAssignmentWorksheet,
 }: EnglishDashboardLayoutProps) {
   const t = teacherDashboardT[language];
+  const rt = LIVE_GAMES_STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
   const hasClasses = classes.length > 0;
 
   return (
@@ -104,14 +116,44 @@ export default function EnglishDashboardLayout({
           the parent view) so this component stays focused on the
           three big blocks below. */}
 
-      <AuroraQuickPlayHero
-        title={t.qpTitle}
-        instantBadge={t.qpInstantBadge}
-        description={t.qpDescription}
-        ctaLabel={t.qpStartBtn}
-        onStart={onQuickPlayClick}
-        isRTL={isRTL}
-      />
+      {/* ─── Live games ─── Quick Play + Category Race, paired so the
+          two live, join-by-code experiences sit together (separate from
+          the Management utilities below). */}
+      <section>
+        <SectionLabel>{rt.liveGames}</SectionLabel>
+        <AuroraQuickPlayHero
+          title={t.qpTitle}
+          instantBadge={t.qpInstantBadge}
+          description={t.qpDescription}
+          ctaLabel={t.qpStartBtn}
+          onStart={onQuickPlayClick}
+          isRTL={isRTL}
+        />
+        <button
+          type="button"
+          onClick={onCategoryRaceClick}
+          dir={isRTL ? "rtl" : "ltr"}
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
+            background: "linear-gradient(135deg,#D946EF 0%,#EC4899 55%,#F43F5E 100%)",
+            boxShadow: "0 14px 30px -12px rgba(217,70,239,0.5)",
+          }}
+          className="mt-3 w-full flex items-center gap-4 rounded-[28px] p-5 text-white text-start active:scale-[0.99] transition-transform"
+        >
+          <span className="inline-flex flex-shrink-0 items-center justify-center w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm text-3xl">🌍</span>
+          <span className="flex-1 min-w-0">
+            <span className="flex items-center gap-2 flex-wrap">
+              <span className="text-lg font-extrabold tracking-tight">{rt.raceTitle}</span>
+              <span className="text-[10px] font-black uppercase tracking-wider bg-white/25 rounded-full px-2 py-0.5">{rt.live}</span>
+            </span>
+            <span className="block text-sm font-semibold text-white/85 mt-0.5">{rt.raceDescription}</span>
+          </span>
+          <span className="flex-shrink-0 inline-flex items-center font-black text-sm bg-white/20 rounded-full px-4 py-2">
+            {rt.raceStart}
+          </span>
+        </button>
+      </section>
 
       {/* ─── Management ─── */}
       <section className="mt-7 sm:mt-9">

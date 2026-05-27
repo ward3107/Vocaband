@@ -16,6 +16,7 @@
  */
 import { supabase } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
+import { QP_CATEGORY_RACE_MODE } from '../core/quickPlayProtocol';
 
 type ToastFn = (
   message: string,
@@ -215,5 +216,38 @@ export async function createHebrewQuickPlaySession(
   // generation here is correct, not a gap.
 
   persistResumeHint(session.id, projectedWords, effectiveAllowedModes);
+  return session.session_code;
+}
+
+/**
+ * Create a Category Race session — a Quick Play row with NO words and
+ * allowed_modes set to the single race sentinel. The sentinel is the
+ * discriminator the student bootstrap branches on to show the race
+ * lobby instead of the regular word game. Round config (categories,
+ * timer) is never persisted; the teacher sends it live with each round.
+ */
+export async function createCategoryRaceSession(
+  deps: Pick<QuickPlaySessionDeps, 'showToast' | 'failedCreateSessionMsg' | 'setSessionCode' | 'setActiveSession'>,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('create_quick_play_session', {
+    p_word_ids: null,
+    p_custom_words: null,
+    p_allowed_modes: [QP_CATEGORY_RACE_MODE],
+  });
+
+  if (error) {
+    deps.showToast(deps.failedCreateSessionMsg(error.message), 'error');
+    throw error;
+  }
+
+  const session = data as { id: string; session_code: string };
+  deps.setSessionCode(session.session_code);
+  deps.setActiveSession({
+    id: session.id,
+    sessionCode: session.session_code,
+    wordIds: [],
+    words: [],
+    allowedModes: [QP_CATEGORY_RACE_MODE],
+  });
   return session.session_code;
 }
