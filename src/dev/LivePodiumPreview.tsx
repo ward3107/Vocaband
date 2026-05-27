@@ -24,13 +24,13 @@ const mockClass = {
 // Maya 500 / Daniel 450 / Noa 410, then the rest of the leaderboard.
 // Lina is flagged as a guest to show the 🎭 mask treatment.
 const mockLeaderboard: Record<string, LeaderboardEntry> = {
-  u1: { name: "Maya", baseScore: 420, currentGameScore: 80 },
-  u2: { name: "Daniel", baseScore: 300, currentGameScore: 150 },
-  u3: { name: "Noa", baseScore: 380, currentGameScore: 30 },
-  u4: { name: "Yossi", baseScore: 250, currentGameScore: 100 },
-  u5: { name: "Lina", baseScore: 200, currentGameScore: 110, isGuest: true },
-  u6: { name: "Omar", baseScore: 180, currentGameScore: 90 },
-  u7: { name: "Tamar", baseScore: 120, currentGameScore: 60 },
+  u1: { name: "Maya", baseScore: 420, currentGameScore: 80, avatar: "🦄" },
+  u2: { name: "Daniel", baseScore: 300, currentGameScore: 150, avatar: "🦊" },
+  u3: { name: "Noa", baseScore: 380, currentGameScore: 30, avatar: "🐼" },
+  u4: { name: "Yossi", baseScore: 250, currentGameScore: 100, avatar: "🐯" },
+  u5: { name: "Lina", baseScore: 200, currentGameScore: 110, isGuest: true, avatar: "🐸" },
+  u6: { name: "Omar", baseScore: 180, currentGameScore: 90, avatar: "🐬" },
+  u7: { name: "Tamar", baseScore: 120, currentGameScore: 60, avatar: "🦁" },
 };
 
 export default function LivePodiumPreview() {

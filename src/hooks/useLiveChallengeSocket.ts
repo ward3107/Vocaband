@@ -129,6 +129,7 @@ export function useLiveChallengeSocket(
               classCode: currentUser.classCode,
               name: currentUser.displayName,
               uid: currentUser.uid,
+              avatar: currentUser.avatar,
             });
           }
         }

@@ -11,6 +11,8 @@ export interface LeaderboardEntry {
   baseScore: number;
   currentGameScore: number;
   isGuest?: boolean;
+  /** Student's chosen emoji avatar (from CLASS_AVATARS), shown on the podium. */
+  avatar?: string;
 }
 
 /**
@@ -32,6 +34,8 @@ export interface JoinChallengePayload {
   name: string;
   uid: string;
   isGuest?: boolean;
+  /** Student's chosen emoji avatar, forwarded to the live leaderboard. */
+  avatar?: string;
 }
 
 export interface ObserveChallengePayload {
