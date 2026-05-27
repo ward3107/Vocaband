@@ -86,9 +86,11 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white flex">
-      {/* Sidebar */}
-      <aside className="w-60 shrink-0 border-r border-white/10 bg-slate-950/60 backdrop-blur-sm flex flex-col sticky top-0 h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white flex flex-col lg:flex-row">
+      {/* Sidebar — vertical rail on desktop, stacks above the content as a
+          horizontally-scrolling tab strip on mobile so the main panel keeps
+          the full viewport width instead of being squished into a column. */}
+      <aside className="lg:w-60 lg:shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-slate-950/60 backdrop-blur-sm flex flex-col lg:sticky lg:top-0 lg:h-screen">
         <div className="p-4 flex items-center gap-3 border-b border-white/10">
           <button
             type="button"
@@ -105,7 +107,7 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
           </div>
         </div>
 
-        <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+        <nav className="p-3 flex lg:flex-col gap-1 flex-1 overflow-x-auto lg:overflow-y-auto">
           {TABS.map((t) => {
             const active = tab === t.id;
             return (
@@ -114,7 +116,7 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
                 type="button"
                 onClick={() => setTab(t.id)}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
+                className={`shrink-0 whitespace-nowrap lg:w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
                   active
                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
                     : "text-white/60 hover:bg-white/5 hover:text-white"
