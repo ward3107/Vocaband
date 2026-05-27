@@ -782,9 +782,12 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
         try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
         try { clearAllReadCache(); } catch {}
         const wasStudent = lastUserRoleRef.current === 'student';
-        const postLogoutView: View = wasStudent ? 'student-account-login' : 'public-landing';
+        // Teachers land on the lightweight teacher-login card, not the heavy
+        // marketing landing chunk — logging out then waiting seconds for the
+        // landing page to download was the symptom. Mirrors the student path.
+        const postLogoutView: View = wasStudent ? 'student-account-login' : 'teacher-login';
         lastUserRoleRef.current = null;
-        const target = wasStudent ? '/student' : '/';
+        const target = wasStudent ? '/student' : '/teacher';
         if (!quickPlaySessionParam) {
           try { window.history.replaceState({ view: postLogoutView }, '', target); } catch {
             try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
