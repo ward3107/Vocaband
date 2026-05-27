@@ -267,6 +267,29 @@ export default function StudentDashboardView({
           setView={setView}
           setShowModeSelection={setShowModeSelection}
         />
+        {/* ── Dreidel Blitz join — visible to students with a class.
+            Tap to join the teacher's live blitz session.  The session
+            may not exist yet; the join view shows a "waiting…" state
+            until DREIDEL_STATE arrives. */}
+        {user.classCode && !user.isGuest && (
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => setView('dreidel-student')}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              className="w-full rounded-2xl p-4 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-lg shadow-fuchsia-300/40 hover:shadow-xl active:scale-[0.99] transition-all flex items-center gap-4"
+            >
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center text-2xl shrink-0">
+                🎲
+              </div>
+              <div className="flex-1 min-w-0 text-start">
+                <p className="font-black text-base">Join Dreidel Blitz</p>
+                <p className="text-xs text-white/85 mt-0.5">Live letter race — fastest word wins</p>
+              </div>
+              <span className="text-2xl shrink-0">→</span>
+            </button>
+          </div>
+        )}
         {/* ── ACTION ZONE ─────────────────────────────────────────
             Reordered so the student lands on do-this-now surfaces
             before the informational ones.  Assignments list rises

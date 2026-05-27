@@ -2,6 +2,7 @@ import { Plus, Sparkles } from "lucide-react";
 import ClassCard from "../ClassCard";
 import type { ClassData, AssignmentData, CompetitionData } from "../../core/supabase";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
+import { teacherDreidelT } from "../../locales/teacher/dreidel";
 import type { Language } from "../../hooks/useLanguage";
 import AuroraQuickPlayHero from "./AuroraQuickPlayHero";
 import MgmtCard from "./MgmtCard";
@@ -40,6 +41,8 @@ interface EnglishDashboardLayoutProps {
   onApprovalsClick: () => void;
   onWorksheetResultsClick?: () => void;
   onLibraryClick?: () => void;
+  /** Dreidel Blitz — live blitz mode launcher (English-only). */
+  onDreidelClick?: () => void;
 
   // Class-section handlers
   onNewClass: () => void;
@@ -82,6 +85,7 @@ export default function EnglishDashboardLayout({
   onApprovalsClick,
   onWorksheetResultsClick,
   onLibraryClick,
+  onDreidelClick,
   onNewClass,
   onAssignClass,
   onDeleteClass,
@@ -96,6 +100,7 @@ export default function EnglishDashboardLayout({
   onPrintAssignmentWorksheet,
 }: EnglishDashboardLayoutProps) {
   const t = teacherDashboardT[language];
+  const tDreidel = teacherDreidelT[language];
   const hasClasses = classes.length > 0;
 
   return (
@@ -143,6 +148,16 @@ export default function EnglishDashboardLayout({
               onClick={onLibraryClick}
               isRTL={isRTL}
               tour="vocabulary-library"
+            />
+          )}
+          {onDreidelClick && (
+            <MgmtCard
+              emoji="🎲"
+              title={tDreidel.tileTitle}
+              sub={tDreidel.tileSubtitle}
+              onClick={onDreidelClick}
+              isRTL={isRTL}
+              tour="dreidel"
             />
           )}
           {pendingStudentsCount > 0 && (

@@ -2,6 +2,7 @@ import { GraduationCap, UserCircle, Zap, ClipboardList, Library } from "lucide-r
 import { HelpTooltip } from "../HelpTooltip";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
+import { teacherDreidelT } from "../../locales/teacher/dreidel";
 import type { VocaId } from "../../core/subject";
 
 interface TeacherQuickActionsProps {
@@ -16,6 +17,9 @@ interface TeacherQuickActionsProps {
    *  Optional today so callers that haven't adopted the route yet
    *  keep working (the tile is hidden when undefined). */
   onLibraryClick?: () => void;
+  /** Dreidel Blitz — live mode, English-only.  Hidden on Hebrew
+   *  dashboards and when the caller doesn't wire the handler. */
+  onDreidelClick?: () => void;
   /** Drives Hebrew-locked locale + RTL when the dashboard is showing a
    *  Hebrew class context. Defaults to "english" so existing callers
    *  keep their current behaviour. */
@@ -25,7 +29,7 @@ interface TeacherQuickActionsProps {
 export default function TeacherQuickActions({
   pendingStudentsCount,
   onQuickPlayClick, onClassroomClick, onApprovalsClick, onWorksheetResultsClick,
-  onLibraryClick,
+  onLibraryClick, onDreidelClick,
   subject = "english",
 }: TeacherQuickActionsProps) {
   const { language } = useLanguage();
@@ -34,6 +38,7 @@ export default function TeacherQuickActions({
   const isHebrew = subject === "hebrew";
   const effectiveLanguage = isHebrew ? "he" : language;
   const t = teacherDashboardT[effectiveLanguage];
+  const tDreidel = teacherDreidelT[effectiveLanguage];
 
   return (
     <div className="mb-8 sm:mb-10" dir={isHebrew ? "rtl" : undefined} lang={isHebrew ? "he" : undefined}>
@@ -155,6 +160,22 @@ export default function TeacherQuickActions({
                 />
               </div>
             </HelpTooltip>
+          )}
+
+          {/* Dreidel Blitz — live blitz mode.  English-only, so we
+              hide it on Hebrew dashboards. */}
+          {onDreidelClick && !isHebrew && (
+            <div className="h-full">
+              <CompactActionCard
+                icon={<span className="text-xl">🎲</span>}
+                iconBgVar="var(--vb-accent-soft)"
+                iconColorVar="var(--vb-accent)"
+                title={tDreidel.tileTitle}
+                description={tDreidel.tileSubtitle}
+                onClick={onDreidelClick}
+                isHebrew={isHebrew}
+              />
+            </div>
           )}
 
           {/* Vocabulary Library — the teacher's saved-vocabulary
