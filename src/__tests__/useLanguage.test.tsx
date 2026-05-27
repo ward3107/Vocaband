@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useLanguage, LANGUAGE_KEY } from '../hooks/useLanguage';
 
 // Resolution rules for the initial UI language (getInitialLanguage):
@@ -54,5 +54,29 @@ describe('useLanguage — initial language resolution', () => {
     setSearch('?lang=ar');
     const { result } = renderHook(() => useLanguage());
     expect(result.current.language).toBe('ar');
+  });
+
+  it('drops the ?lang= param on an explicit toggle so the choice is not re-overridden', () => {
+    setSearch('?lang=he');
+    const { result } = renderHook(() => useLanguage());
+    expect(result.current.language).toBe('he'); // deep link honored on first paint
+
+    act(() => result.current.setLanguage('en'));
+
+    expect(result.current.language).toBe('en');
+    // The stale deep-link param is gone, so a reload / re-mount can't snap back.
+    expect(window.location.search).not.toContain('lang');
+    const { result: remount } = renderHook(() => useLanguage());
+    expect(remount.current.language).toBe('en');
+  });
+
+  it('preserves other query params when stripping ?lang= on toggle', () => {
+    setSearch('?lang=he&class=ABC123');
+    const { result } = renderHook(() => useLanguage());
+
+    act(() => result.current.setLanguage('en'));
+
+    expect(window.location.search).not.toContain('lang=');
+    expect(window.location.search).toContain('class=ABC123');
   });
 });
