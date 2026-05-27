@@ -13,12 +13,12 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { motion } from "motion/react";
-import { Play, Clock, Users, Crown, LogOut, Check } from "lucide-react";
+import { Play, Clock, Users, LogOut, Check } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { CATEGORIES, categoryLabel } from "../data/category-race-bank";
+import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import { QP_RACE_ROUND_SECONDS } from "../core/quickPlayProtocol";
 import type { View } from "../core/views";
 
@@ -214,27 +214,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               <Users size={14} /> {t.leaderboard}
               <span className="ms-auto text-stone-400">{t.players(sorted.length)}</span>
             </h2>
-            {sorted.length === 0 ? (
-              <p className="text-sm text-stone-400 font-semibold py-8 text-center">{t.noStudents}</p>
-            ) : (
-              <ul className="space-y-2">
-                {sorted.map((s, i) => (
-                  <motion.li
-                    key={s.clientId}
-                    layout
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${i === 0 ? "bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200" : "bg-stone-50"}`}
-                  >
-                    <span className="w-6 text-center font-black text-stone-400">{i === 0 ? <Crown size={16} className="text-amber-500 mx-auto" /> : i + 1}</span>
-                    <span className="text-xl">{s.avatar || "🦊"}</span>
-                    <span className="flex-1 min-w-0 font-black text-stone-800 truncate" dir="auto">{s.nickname}</span>
-                    <span className="font-black text-fuchsia-600">{s.score}</span>
-                  </motion.li>
-                ))}
-              </ul>
-            )}
-            {sorted.length === 0 && (
-              <p className="mt-4 text-center text-xs text-stone-400 font-semibold">{t.waiting}</p>
-            )}
+            <CategoryRacePodium entries={sorted} emptyText={t.noStudents} />
           </section>
         </div>
       </div>
