@@ -149,6 +149,12 @@ export function useCompetitionsForClassIds(classIds: string[]) {
 
     // Single broad channel; RLS narrows to this teacher's classes
     // server-side, and the in-memory filter mirrors that.
+    //
+    // Status-aware fallback polling: when the Realtime channel drops
+    // (school Wi-Fi blip, Supabase Realtime outage), kick a 60s poll
+    // so teachers don't see stale competition state.  Mirrors the
+    // pattern used by useCompetitionsForClassCode + useDashboardPolling.
+    let fallbackPollId: ReturnType<typeof setInterval> | null = null;
     const channel = supabase
       .channel(`competitions-teacher-${key}`)
       .on(
@@ -156,8 +162,22 @@ export function useCompetitionsForClassIds(classIds: string[]) {
         { event: '*', schema: 'public', table: 'competitions' },
         () => { if (!document.hidden) refresh(); },
       )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') {
+          if (fallbackPollId) { clearInterval(fallbackPollId); fallbackPollId = null; }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (!fallbackPollId) {
+            fallbackPollId = setInterval(
+              () => { if (!document.hidden) refresh(); },
+              FALLBACK_POLL_MS,
+            );
+          }
+        }
+      });
+    return () => {
+      supabase.removeChannel(channel);
+      if (fallbackPollId) clearInterval(fallbackPollId);
+    };
   }, [key, refresh]);
 
   return { competitions, refresh };
