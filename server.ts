@@ -254,13 +254,19 @@ interface SupabaseJwtPayload extends JWTPayload {
 
 // Local JWT signature + expiry check using JWKS. Returns the decoded payload on
 // success, null on any failure (invalid signature, expired, malformed, or
-// JWKS not configured). jose's jwtVerify handles algorithm selection from the
-// JWKS metadata (ES256, RS256, HS256, etc.) and validates the exp claim
-// automatically — expired tokens throw JWTExpired which we catch.
+// JWKS not configured). Algorithm, issuer, and audience are pinned explicitly:
+// Supabase signs user tokens with ES256 (per the JWKS comment above) and emits
+// aud='authenticated' and iss=`${SUPABASE_URL}/auth/v1`. Pinning closes the
+// theoretical downgrade window if Supabase ever publishes a JWKS with weaker
+// keys during a future rotation.
 async function verifyTokenLocal(token: string): Promise<SupabaseJwtPayload | null> {
   if (!JWKS) return null;
   try {
-    const { payload } = await jwtVerify(token, JWKS);
+    const { payload } = await jwtVerify(token, JWKS, {
+      algorithms: ["ES256"],
+      issuer: `${process.env.SUPABASE_URL}/auth/v1`,
+      audience: "authenticated",
+    });
     if (typeof payload.sub !== "string" || payload.sub.length === 0) return null;
     return {
       ...payload,
