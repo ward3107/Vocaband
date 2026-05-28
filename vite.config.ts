@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import {defineConfig, type Plugin} from 'vite';
 // Cloudflare plugin is intentionally disabled (causes white screen
 // in dev) — kept as a comment so future edits don't re-import it.
@@ -77,6 +78,56 @@ function vocabandHtmlPerf(): Plugin {
     name: 'vocaband-html-perf',
     apply: 'build',
     enforce: 'post',
+    // After Vite finishes writing dist, rewrite dist/_headers so its CSP
+    // hash for boot-debug.js matches whatever bytes we actually inlined
+    // into dist/index.html. The checked-in public/_headers carries a
+    // hand-maintained hash for documentation, but the hash that ships is
+    // computed here from the same source the plugin inlined above. This
+    // closes the recurring drift bug where editing boot-debug.js without
+    // bumping the hash silently broke prod CSP — the browser refused the
+    // inline script and the loading spinner never cleared on cold visits.
+    writeBundle: {
+      sequential: true,
+      handler(options) {
+        const outDir = options.dir ?? path.resolve(__dirname, 'dist');
+        const headersPath = path.join(outDir, '_headers');
+        const bootDebugPath = path.resolve(__dirname, 'public/boot-debug.js');
+        let headers: string;
+        let bootDebugJs: string;
+        try {
+          headers = fs.readFileSync(headersPath, 'utf8');
+          bootDebugJs = fs.readFileSync(bootDebugPath, 'utf8');
+        } catch {
+          // Either file missing — likely a custom build pipeline.
+          // Leave dist alone so we don't break it; the checked-in hash
+          // is still the right fallback.
+          return;
+        }
+        const hash = crypto.createHash('sha256').update(bootDebugJs).digest('base64');
+        // Every existing sha256-* token in the CSP today is the
+        // boot-debug hash (Cloudflare Insights retired its rotating
+        // hashes — see the 2026-05-23 note in public/_headers). Replace
+        // them all so script-src and script-src-elem stay in lockstep.
+        // base64 may or may not pad with `=`; match any base64 chars
+        // (including `=` padding) up to the closing single quote.
+        const cspHashRe = /'sha256-[A-Za-z0-9+/=]+'/g;
+        const matches = headers.match(cspHashRe);
+        if (!matches || matches.length === 0) return;
+        const replacement = `'sha256-${hash}'`;
+        const rewritten = headers.replace(cspHashRe, replacement);
+        if (rewritten === headers) return;
+        fs.writeFileSync(headersPath, rewritten, 'utf8');
+        const checkedIn = matches[0];
+        if (checkedIn !== replacement) {
+          this.warn(
+            `[vocaband-html-perf] _headers boot-debug.js hash drifted ` +
+              `(checked-in ${checkedIn}, actual ${replacement}). ` +
+              `dist/_headers has been corrected; please update public/_headers ` +
+              `to match so source-of-truth stays in sync.`,
+          );
+        }
+      },
+    },
     transformIndexHtml: {
       order: 'post',
       handler(html, ctx) {
@@ -552,16 +603,28 @@ export default defineConfig(() => {
     },
     build: {
       modulePreload: {
-        // Keep App + the supabase client OUT of the auto-injected
+        // Keep App + the supabase client + Sentry OUT of the auto-injected
         // modulepreload graph. The landing now boots PublicShell (which
-        // is supabase-free); preloading App/supabase in the shared static
-        // <head> would force every public visitor to download ~106 kB gz
-        // they don't need on first paint. They load on-demand when a
-        // visitor logs in or restores a session — one extra RTT on a
-        // deliberate action, in exchange for a much lighter cold landing.
+        // is supabase-free); preloading App/supabase/sentry in the shared
+        // static <head> would force every public visitor to download
+        // ~150 kB gz they don't need on first paint. They all load on
+        // demand — App on login/session-restore, Sentry on idle after
+        // first paint, supabase on the OAuth ?code= callback or once App
+        // mounts. One extra RTT on a deliberate action, in exchange for a
+        // much lighter cold landing.
+        //
+        // Lighthouse field test (2026-05-28) showed an older deploy still
+        // dragging supabase-* and sentry-* onto the landing critical
+        // path's chunk dependency tree even though main.tsx already
+        // dynamic-imports them. The sentry-* filter below makes the
+        // exclusion explicit so a future refactor that re-introduces an
+        // eager import doesn't silently regress cold-load.
         resolveDependencies(_filename, deps) {
           return deps.filter(
-            (dep) => !/\/App-[\w-]+\.js$/.test(dep) && !/\/supabase-[\w-]+\.js$/.test(dep),
+            (dep) =>
+              !/\/App-[\w-]+\.js$/.test(dep) &&
+              !/\/supabase-[\w-]+\.js$/.test(dep) &&
+              !/\/sentry-[\w-]+\.js$/.test(dep),
           );
         },
       },
