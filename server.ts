@@ -1274,7 +1274,7 @@ async function startServer() {
       socket.emit("challenge_error", { event, reason });
     };
 
-    socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid }: JoinChallengePayload) => {
+    socket.on(SOCKET_EVENTS.JOIN_CHALLENGE, async ({ classCode, name, uid, avatar }: JoinChallengePayload) => {
       if (!isValidClassCode(classCode) || !isValidName(name) || !isValidUid(uid)) {
         return rejectChallenge("join_challenge", "invalid payload");
       }
@@ -1331,7 +1331,11 @@ async function startServer() {
       if (!liveSessions[classCode]) {
         liveSessions[classCode] = {};
       }
-      liveSessions[classCode][uid] = { name, baseScore: totalScore, currentGameScore: 0 };
+      // Avatar is cosmetic and rendered as text on the teacher podium
+      // (React-escaped), but bound the length so a tampered client can't
+      // stuff an oversized string into the broadcast leaderboard.
+      const safeAvatar = typeof avatar === "string" && avatar.length > 0 && avatar.length <= 24 ? avatar : undefined;
+      liveSessions[classCode][uid] = { name, baseScore: totalScore, currentGameScore: 0, avatar: safeAvatar };
       io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
     });
 

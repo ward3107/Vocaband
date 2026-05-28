@@ -82,6 +82,7 @@ export function useLiveChallengeEvents(params: UseLiveChallengeEventsParams): vo
         classCode: user.classCode!,
         name: user.displayName,
         uid: sessionUid,
+        avatar: user.avatar,
       });
       console.log('[Live] JOIN_CHALLENGE emitted', {
         classCode: user.classCode,

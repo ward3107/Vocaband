@@ -5,6 +5,7 @@ import type { ClassData } from "../core/supabase";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
 import { liveChallengeT } from "../locales/teacher/live-challenge";
+import confetti from "canvas-confetti";
 
 interface LiveChallengeViewProps {
   selectedClass: ClassData;
@@ -12,6 +13,119 @@ interface LiveChallengeViewProps {
   socketConnected: boolean;
   setView: React.Dispatch<React.SetStateAction<View>>;
   setIsLiveChallenge: (v: boolean) => void;
+}
+
+// ─── Podium step styling per place.  Solid metallic blocks + a glowing
+// avatar medallion so the top-3 reads as a real winners' stage instead
+// of three faint translucent bars.
+const PLACE_STYLES: Record<1 | 2 | 3, {
+  ring: string;
+  block: string;
+  topEdge: string;
+  badge: string;
+  glow: string;
+  avatar: string;
+  blockH: string;
+  nameSize: string;
+  scoreSize: string;
+  delay: number;
+}> = {
+  1: {
+    ring: "from-amber-200 via-yellow-300 to-amber-500",
+    block: "from-yellow-400 via-amber-500 to-amber-700",
+    topEdge: "from-yellow-100 to-amber-300",
+    badge: "bg-amber-500",
+    glow: "shadow-[0_0_55px_-4px_rgba(251,191,36,0.75)]",
+    avatar: "w-24 h-24 sm:w-28 sm:h-28 text-4xl sm:text-5xl",
+    blockH: "h-36 sm:h-52",
+    nameSize: "text-base sm:text-lg",
+    scoreSize: "text-3xl sm:text-4xl",
+    delay: 0.1,
+  },
+  2: {
+    ring: "from-slate-100 via-slate-300 to-slate-400",
+    block: "from-slate-300 via-slate-400 to-slate-600",
+    topEdge: "from-white to-slate-200",
+    badge: "bg-slate-500",
+    glow: "shadow-[0_0_34px_-6px_rgba(203,213,225,0.6)]",
+    avatar: "w-20 h-20 sm:w-24 sm:h-24 text-3xl sm:text-4xl",
+    blockH: "h-24 sm:h-40",
+    nameSize: "text-sm sm:text-base",
+    scoreSize: "text-2xl sm:text-3xl",
+    delay: 0.25,
+  },
+  3: {
+    ring: "from-orange-200 via-orange-400 to-orange-700",
+    block: "from-orange-400 via-orange-600 to-orange-800",
+    topEdge: "from-orange-100 to-orange-300",
+    badge: "bg-orange-600",
+    glow: "shadow-[0_0_30px_-6px_rgba(251,146,60,0.6)]",
+    avatar: "w-20 h-20 sm:w-24 sm:h-24 text-3xl sm:text-4xl",
+    blockH: "h-20 sm:h-32",
+    nameSize: "text-sm sm:text-base",
+    scoreSize: "text-2xl sm:text-3xl",
+    delay: 0.4,
+  },
+};
+
+function PodiumStep({
+  place,
+  entry,
+  rankLabel,
+  pointsLabel,
+}: {
+  place: 1 | 2 | 3;
+  entry: { name: string; totalScore: number; isGuest: boolean; avatar?: string };
+  rankLabel: string;
+  pointsLabel: string;
+}) {
+  const s = PLACE_STYLES[place];
+  const initial = entry.name?.trim()?.charAt(0)?.toUpperCase() || "?";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 60 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: s.delay, type: "spring", stiffness: 120, damping: 16 }}
+      className="flex flex-col items-center w-28 sm:w-40"
+    >
+      {place === 1 && (
+        <motion.div
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="text-4xl sm:text-5xl mb-1 drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)]"
+        >
+          👑
+        </motion.div>
+      )}
+
+      <div className="relative">
+        <div className={`rounded-full bg-gradient-to-br ${s.ring} p-[3px] ${s.glow}`}>
+          <div className={`${s.avatar} rounded-full bg-slate-900/85 flex items-center justify-center font-black`}>
+            {entry.avatar ? <span aria-hidden="true">{entry.avatar}</span> : <bdi>{initial}</bdi>}
+          </div>
+        </div>
+        <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 ${s.badge} text-white text-[11px] font-black px-2.5 py-0.5 rounded-full border-2 border-white/80 shadow-lg whitespace-nowrap`}>
+          {rankLabel}
+        </div>
+        {entry.isGuest && (
+          <span className="absolute -top-1 -end-1 text-lg" aria-hidden="true">🎭</span>
+        )}
+      </div>
+
+      <p className={`mt-4 font-bold ${s.nameSize} max-w-full truncate text-center px-1`}>
+        <bdi>{entry.name}</bdi>
+      </p>
+      <p className={`${s.scoreSize} font-black leading-none mt-0.5`}>{entry.totalScore}</p>
+      <p className="text-[10px] tracking-wide text-white/70 font-bold mb-2">{pointsLabel}</p>
+
+      <div className={`relative w-full ${s.blockH} rounded-t-xl bg-gradient-to-b ${s.block} shadow-2xl overflow-hidden border-x border-t border-white/10`}>
+        <div className={`absolute inset-x-0 top-0 h-2 bg-gradient-to-r ${s.topEdge} opacity-80`} />
+        <span className="absolute inset-0 flex items-center justify-center text-5xl sm:text-6xl font-black text-white/25 select-none">
+          {place}
+        </span>
+      </div>
+    </motion.div>
+  );
 }
 
 export default function LiveChallengeView({
@@ -30,6 +144,7 @@ export default function LiveChallengeView({
       name: entry.name,
       totalScore: entry.baseScore + entry.currentGameScore,
       isGuest: entry.isGuest || false,
+      avatar: entry.avatar,
     }))
     .sort((a, b) => b.totalScore - a.totalScore);
 
@@ -69,6 +184,26 @@ export default function LiveChallengeView({
     prevLeaderUidRef.current = currentLeaderUid;
   }, [sortedLeaderboard]);
 
+  // ─── Confetti burst when the podium first gets players, with a second
+  // pop ~1.7s later.  Guarded by a ref so live leaderboard updates
+  // (which re-render constantly) don't keep re-triggering it.
+  const confettiFiredRef = useRef(false);
+  useEffect(() => {
+    if (confettiFiredRef.current || sortedLeaderboard.length === 0) return;
+    confettiFiredRef.current = true;
+    const fire = () =>
+      confetti({
+        particleCount: 70,
+        spread: 75,
+        startVelocity: 45,
+        origin: { x: 0.5, y: 0.4 },
+        colors: ["#fbbf24", "#f59e0b", "#a78bfa", "#f472b6", "#ffffff"],
+      });
+    fire();
+    const t2 = setTimeout(fire, 1700);
+    return () => clearTimeout(t2);
+  }, [sortedLeaderboard.length]);
+
   // ─── End-challenge flow: confirm → results → exit
   //
   // Originally "End Challenge" went straight to the results modal,
@@ -99,7 +234,7 @@ export default function LiveChallengeView({
   };
 
   return (
-    <div dir={dir} className="min-h-screen bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-4 sm:p-6 text-white">
+    <div dir={dir} className="min-h-screen bg-gradient-to-b from-indigo-900 via-violet-800 to-fuchsia-800 p-4 sm:p-6 text-white">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-8">
           <button onClick={exitChallenge} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">{t.backToClassSelection}</button>
@@ -189,85 +324,20 @@ export default function LiveChallengeView({
 
         {/* Winner's Podium for Top 3 */}
         {top3.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-end justify-center gap-2 sm:gap-4 mb-6">
-              {/* 2nd Place */}
+          <div className="relative mb-8 sm:mb-10">
+            {/* Warm spotlight behind the winner so the metallic steps pop */}
+            <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-4 bottom-0 flex justify-center">
+              <div className="w-72 h-72 sm:w-[26rem] sm:h-[26rem] rounded-full bg-amber-300/25 blur-3xl" />
+            </div>
+            <div className="relative flex items-end justify-center gap-2 sm:gap-5">
               {top3[1] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl shadow-xl shadow-slate-400/30 border-4 border-white">
-                      🥈
-                    </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-500 text-white text-xs px-2 py-0.5 rounded-full font-black">{t.rankBadge2}</div>
-                  </div>
-                  <div className="bg-white/20 backdrop-blur-md rounded-xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-40">
-                    <p className="font-bold text-sm sm:text-base 2xl:text-lg truncate"><bdi>{top3[1].name}</bdi>{top3[1].isGuest && <span className="ms-1" aria-hidden="true">🎭</span>}</p>
-                    <p className="text-2xl sm:text-3xl 2xl:text-4xl font-black">{top3[1].totalScore}</p>
-                    <p className="text-[10px] 2xl:text-xs text-white/70 font-bold">{t.pointsLabel}</p>
-                  </div>
-                  <div className="h-16 sm:h-24 2xl:h-28 w-full bg-gradient-to-t from-slate-400/30 to-transparent rounded-t-lg mt-2"></div>
-                </motion.div>
+                <PodiumStep place={2} entry={top3[1]} rankLabel={t.rankBadge2} pointsLabel={t.pointsLabel} />
               )}
-
-              {/* 1st Place - Center and tallest */}
               {top3[0] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="flex flex-col items-center relative"
-                >
-                  {/* Crown animation */}
-                  <motion.div
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                    className="text-4xl sm:text-5xl 2xl:text-6xl mb-2 drop-shadow-lg"
-                  >
-                    👑
-                  </motion.div>
-                  <div className="relative">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 2xl:w-28 2xl:h-28 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-4xl sm:text-5xl 2xl:text-6xl shadow-2xl shadow-yellow-400/50 border-4 border-white animate-pulse">
-                      🥇
-                    </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs px-3 py-0.5 rounded-full font-black shadow-lg">{t.rankBadge1}</div>
-                    <div className="absolute -top-1 -right-1 text-yellow-300 animate-bounce">✨</div>
-                    <div className="absolute -top-1 -left-1 text-yellow-300 animate-bounce [animation-delay:0.5s]">✨</div>
-                  </div>
-                  <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-600/30 backdrop-blur-md rounded-xl p-4 sm:p-5 mt-4 text-center border-2 border-yellow-300/50 w-32 sm:w-40 2xl:w-44 shadow-2xl shadow-yellow-400/20">
-                    <p className="font-bold text-base sm:text-lg 2xl:text-xl truncate"><bdi>{top3[0].name}</bdi>{top3[0].isGuest && <span className="ms-1" aria-hidden="true">🎭</span>}</p>
-                    <p className="text-3xl sm:text-4xl 2xl:text-5xl font-black">{top3[0].totalScore}</p>
-                    <p className="text-[10px] 2xl:text-xs text-white/80 font-bold">{t.pointsLabel}</p>
-                  </div>
-                  <div className="h-24 sm:h-32 2xl:h-36 w-full bg-gradient-to-t from-yellow-400/40 to-transparent rounded-t-lg mt-2"></div>
-                </motion.div>
+                <PodiumStep place={1} entry={top3[0]} rankLabel={t.rankBadge1} pointsLabel={t.pointsLabel} />
               )}
-
-              {/* 3rd Place */}
               {top3[2] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl shadow-xl shadow-orange-400/30 border-4 border-white">
-                      🥉
-                    </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full font-black">{t.rankBadge3}</div>
-                  </div>
-                  <div className="bg-white/20 backdrop-blur-md rounded-xl p-3 sm:p-4 mt-4 text-center border border-white/30 w-28 sm:w-36 2xl:w-40">
-                    <p className="font-bold text-sm sm:text-base 2xl:text-lg truncate"><bdi>{top3[2].name}</bdi>{top3[2].isGuest && <span className="ms-1" aria-hidden="true">🎭</span>}</p>
-                    <p className="text-2xl sm:text-3xl 2xl:text-4xl font-black">{top3[2].totalScore}</p>
-                    <p className="text-[10px] 2xl:text-xs text-white/70 font-bold">{t.pointsLabel}</p>
-                  </div>
-                  <div className="h-12 sm:h-20 2xl:h-24 w-full bg-gradient-to-t from-orange-400/30 to-transparent rounded-t-lg mt-2"></div>
-                </motion.div>
+                <PodiumStep place={3} entry={top3[2]} rankLabel={t.rankBadge3} pointsLabel={t.pointsLabel} />
               )}
             </div>
           </div>
@@ -294,6 +364,7 @@ export default function LiveChallengeView({
               >
                 <div className="flex items-center gap-3 sm:gap-4">
                   <span className="w-8 h-8 sm:w-10 sm:h-10 2xl:w-12 2xl:h-12 rounded-full bg-white/20 flex items-center justify-center font-black text-sm sm:text-base 2xl:text-lg">{idx + 4}</span>
+                  {entry.avatar && <span className="text-2xl sm:text-3xl leading-none" aria-hidden="true">{entry.avatar}</span>}
                   <span className="font-bold text-base sm:text-lg 2xl:text-xl"><bdi>{entry.name}</bdi>{entry.isGuest && <span className="ms-1" aria-hidden="true">🎭</span>}</span>
                 </div>
                 <span className="text-xl sm:text-2xl 2xl:text-3xl font-black tabular-nums">{entry.totalScore}</span>
