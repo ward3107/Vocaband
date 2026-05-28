@@ -36,6 +36,41 @@ if (!isSupabaseConfigured) {
   );
 }
 
+// Per-request fetch timeout. The browser's default fetch has no abort
+// timer; on a silent black-hole pipe a request can hang for 30-60s
+// before the underlying socket gives up. On Israeli school Wi-Fi that
+// produces the "frozen spinner" experience students describe. An 8s
+// budget is generous for REST queries that normally complete in <1s
+// and lets the existing save-queue retry path catch the abort instead
+// of the UI awaiting indefinitely.
+//
+// Storage uploads (OCR images, custom-word audio) can legitimately
+// take 20-30s on a slow uplink, so they get a longer budget. Realtime
+// runs over WebSocket, not fetch, so it's unaffected.
+const REST_TIMEOUT_MS = 8_000;
+const STORAGE_TIMEOUT_MS = 60_000;
+
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
+function vocabandFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  // If the caller already wired up an AbortSignal (e.g. useNetworkDiagnostic,
+  // OCR upload), respect it — don't double-abort.
+  if (init?.signal) return fetch(input, init);
+
+  const url = urlOf(input);
+  const isStorage = url.includes('/storage/v1/');
+  const timeoutMs = isStorage ? STORAGE_TIMEOUT_MS : REST_TIMEOUT_MS;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(input, { ...init, signal: controller.signal })
+    .finally(() => clearTimeout(timer));
+}
+
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key',
@@ -49,6 +84,7 @@ export const supabase = createClient(
       // in main.tsx before React mounts.
       detectSessionInUrl: false,
     },
+    global: { fetch: vocabandFetch },
   }
 );
 
