@@ -519,6 +519,20 @@ export default defineConfig(() => {
                 expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 180 },
               },
             },
+            {
+              // In-game background music — ~10 same-origin MP3s shipped in
+              // public/game-music/.  Without this rule the 'fonts + small
+              // images' handler above ignores them (request.destination ===
+              // 'audio' doesn't match the font/image filter), so every game
+              // session re-fetches the BGM from origin on weak Wi-Fi.
+              // CacheFirst with 20 entries comfortably covers the asset set.
+              urlPattern: /\/game-music\/.*\.mp3$/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'vocaband-game-music',
+                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 180 },
+              },
+            },
           ],
         },
       })] : []),
