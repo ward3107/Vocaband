@@ -1227,7 +1227,18 @@ async function startServer() {
     // different delays.  reverifyHandle is mutated on each tick so
     // disconnect always clears the latest one.
     const REVERIFY_INTERVAL_MS = 5 * 60 * 1000;
+    // Require two consecutive remote-verify failures before we
+    // disconnect.  A single failure can be a transient Supabase blip,
+    // a network hiccup between Fly and Supabase, or the student's own
+    // weak Wi-Fi interrupting the JWKS fetch path's fallback to remote.
+    // Disconnecting on the first failure caused mass kick-outs across a
+    // classroom when Supabase had a 5-second blip lined up with the
+    // 5-minute re-verify window — a real revocation still surfaces on
+    // the next interval (≤10 min after revocation, vs ≤5 min before),
+    // which is the right trade-off for school-Wi-Fi reality.
+    const MAX_CONSECUTIVE_REVERIFY_FAILURES = 2;
     let reverifyHandle: ReturnType<typeof setTimeout> | null = null;
+    let consecutiveReverifyFailures = 0;
 
     const runReverify = async (): Promise<void> => {
       const token = socket.handshake.auth?.token;
@@ -1242,10 +1253,19 @@ async function startServer() {
       // Supabase round-trip per active socket per 5 min — bounded.
       const stillValidUid = await verifyTokenRemote(token);
       if (!stillValidUid || stillValidUid !== uid) {
-        if (isDev) console.warn(`[Socket] Re-verify failed for uid=${uid}, disconnecting`);
+        consecutiveReverifyFailures += 1;
+        if (consecutiveReverifyFailures < MAX_CONSECUTIVE_REVERIFY_FAILURES) {
+          if (isDev) console.warn(`[Socket] Re-verify miss ${consecutiveReverifyFailures}/${MAX_CONSECUTIVE_REVERIFY_FAILURES} for uid=${uid} — deferring`);
+          return;
+        }
+        if (isDev) console.warn(`[Socket] Re-verify failed ${consecutiveReverifyFailures}x for uid=${uid}, disconnecting`);
         socket.emit("forced_disconnect", { reason: "token_revoked" });
         socket.disconnect(true);
+        return;
       }
+      // Reset the strike counter on any successful re-verify so a
+      // genuine revocation later still needs MAX_CONSECUTIVE failures.
+      consecutiveReverifyFailures = 0;
     };
 
     const scheduleReverify = (delayMs: number): void => {
