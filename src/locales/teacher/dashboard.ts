@@ -114,6 +114,10 @@ export interface TeacherDashboardT {
   emptyTitle: string;
   emptySubtitle: string;
   emptyCta: string;
+  /** Small pill on the most-recently-active class card so a teacher
+   *  with multiple classes can find the one they were last working
+   *  on at a glance. */
+  recentBadge: string;
 
   // ─── ClassCard ─────────────────────────────────────────────────
   pickAvatarHeading: string;
@@ -245,6 +249,7 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     emptyTitle: "No classes yet",
     emptySubtitle: "Create your first class to get a shareable join code.",
     emptyCta: "Create first class",
+    recentBadge: "Recent",
 
     pickAvatarHeading: "Pick avatar",
     accentColorHeading: "Color",
@@ -369,6 +374,7 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     emptyTitle: "עוד אין כיתות",
     emptySubtitle: "צור את הכיתה הראשונה שלך כדי לקבל קוד הצטרפות.",
     emptyCta: "צור כיתה ראשונה",
+    recentBadge: "אחרונה",
 
     pickAvatarHeading: "בחר אווטאר",
     accentColorHeading: "צבע",
@@ -493,6 +499,7 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     emptyTitle: "لا توجد فصول بعد",
     emptySubtitle: "أنشئ فصلك الأول للحصول على رمز انضمام قابل للمشاركة.",
     emptyCta: "أنشئ أول فصل",
+    recentBadge: "حديث",
 
     pickAvatarHeading: "اختر صورة",
     accentColorHeading: "اللون",
@@ -617,6 +624,7 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     emptyTitle: "No classes yet",
     emptySubtitle: "Create your first class to get a shareable join code.",
     emptyCta: "Create first class",
+    recentBadge: "Recent",
 
     pickAvatarHeading: "Pick avatar",
     accentColorHeading: "Color",

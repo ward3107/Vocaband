@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ChevronLeft, X, Crown } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { ChevronLeft, X, Crown, LogOut } from "lucide-react";
 import UiScaleControl from "./dashboard/UiScaleControl";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useLanguage } from "../hooks/useLanguage";
@@ -76,9 +76,41 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   const backAria = language === "he" ? "חזרה" : language === "ar" ? "رجوع" : "Go back";
   const defaultExit = language === "he" ? "יציאה" : language === "ar" ? "خروج" : "Exit";
   const effectiveExitLabel = exitLabel ?? defaultExit;
+  // Mobile profile-menu localisation. Kept inline (3 strings × 3 langs)
+  // rather than threading through the teacher-dashboard locale, because
+  // the bar is used by every screen — student, teacher, setup wizards.
+  const menuLabels = {
+    profile: language === "he" ? "פרופיל" : language === "ar" ? "الملف الشخصي" : "Profile",
+    welcome: language === "he" ? "שלום," : language === "ar" ? "مرحبًا،" : "Welcome back,",
+    logout: language === "he" ? "התנתק" : language === "ar" ? "تسجيل الخروج" : "Logout",
+  } as const;
   const safeAvatarUrl = sanitizeAvatarUrl(userAvatar);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close the mobile profile menu on outside-tap or Escape.  Uses
+  // pointerdown rather than click so the menu closes before the next
+  // tap fires its own click handler (avoids the "tap-through" feel on
+  // touch devices where two taps are needed to dismiss + select).
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointer = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -127,7 +159,13 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2 sm:gap-3">
+      {/* ─── Desktop cluster (sm+) ──────────────────────────────────
+          Unchanged from the original layout.  Mobile compresses to
+          plan-badge + avatar-as-menu-button (see below) because the
+          full row was clipping the teacher name to "V..." on phones
+          (no room for Switch + globe + PRO + Logout + avatar in one
+          line). */}
+      <div className="hidden sm:flex items-center gap-2 sm:gap-3">
         {/* Parent-supplied trailing control(s).  Rendered first so a
             "switch Voca" pill sits to the left of Exit/Scale/Language/
             User chip rather than floating over the header. */}
@@ -157,25 +195,18 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         <div className="hidden md:block">
           <LanguageSwitcher variant="compact" className="scale-90 origin-right" />
         </div>
-        {/* Mobile language dropdown - simpler button */}
+        {/* Tablet-only LanguageSwitcher (between sm and md). Phones
+            hit the in-dropdown copy below. */}
         <div className="md:hidden">
           <LanguageSwitcher variant="compact" className="scale-85 origin-right" />
         </div>
         {userName && (
-          <div className="hidden sm:flex flex-col items-end">
+          <div className="flex flex-col items-end">
             <span className="text-xs text-on-surface-variant font-medium">Welcome back,</span>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-on-surface">{userName}</span>
               {planBadge && <PlanBadge {...planBadge} />}
             </div>
-          </div>
-        )}
-        {/* Mobile-only pill — desktop renders it inline next to the
-            userName above.  Visible everywhere else (sm:hidden) so a
-            teacher on a phone still sees their plan at a glance. */}
-        {planBadge && (
-          <div className="sm:hidden">
-            <PlanBadge {...planBadge} />
           </div>
         )}
         {onLogout && (
@@ -195,6 +226,87 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* ─── Mobile cluster (<sm) ───────────────────────────────────
+          Just the plan badge + avatar-as-menu-button.  Tapping the
+          avatar opens a dropdown sheet with Switch / Language / Exit /
+          Logout so the header itself stays uncluttered and the page
+          title gets enough room to render without truncating. */}
+      <div className="sm:hidden flex items-center gap-2 relative" ref={menuRef}>
+        {planBadge && <PlanBadge {...planBadge} />}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label={menuLabels.profile}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+          className="w-10 h-10 rounded-full signature-gradient border-2 border-white overflow-hidden shadow-sm active:scale-95 transition-transform"
+        >
+          {safeAvatarUrl ? (
+            <img alt="" src={safeAvatarUrl} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-white font-bold">
+              {userName ? userName.charAt(0).toUpperCase() : title.charAt(0).toUpperCase()}
+            </div>
+          )}
+        </button>
+        {menuOpen && (
+          <div
+            role="menu"
+            style={{
+              backgroundColor: 'var(--vb-surface)',
+              borderColor: 'var(--vb-border)',
+            }}
+            className={`absolute top-12 ${language === 'he' || language === 'ar' ? 'left-0' : 'right-0'} w-60 rounded-2xl border-2 shadow-2xl p-3 z-50 flex flex-col gap-2`}
+          >
+            {userName && (
+              <div className="px-2 pt-1 pb-2 border-b border-[var(--vb-border)]">
+                <div className="text-[11px] text-on-surface-variant font-medium">{menuLabels.welcome}</div>
+                <div className="text-sm font-bold text-on-surface truncate">{userName}</div>
+              </div>
+            )}
+            {extraTrailing && (
+              <div className="px-1" onClick={() => setMenuOpen(false)}>
+                {extraTrailing}
+              </div>
+            )}
+            <div className="px-1" onClick={() => setMenuOpen(false)}>
+              <LanguageSwitcher variant="compact" />
+            </div>
+            {showScaleControl && (
+              <div className="px-1">
+                <UiScaleControl />
+              </div>
+            )}
+            {onExit && (
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(false); onExit(); }}
+                style={{
+                  backgroundColor: 'var(--vb-surface-alt)',
+                  color: 'var(--vb-text-secondary)',
+                  borderColor: 'var(--vb-border)',
+                }}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold border-2"
+              >
+                <X size={14} />
+                <span>{effectiveExitLabel}</span>
+              </button>
+            )}
+            {onLogout && (
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(false); onLogout(); }}
+                className="inline-flex items-center justify-center gap-1.5 text-on-surface-variant font-bold hover:text-error text-sm px-3 py-2 bg-surface-container-lowest rounded-lg shadow-sm border-2 border-primary-container/30 hover:border-error transition-all"
+              >
+                <LogOut size={14} />
+                <span>{menuLabels.logout}</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );
