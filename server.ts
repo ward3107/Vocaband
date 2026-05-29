@@ -9,7 +9,7 @@ loadDotenv({ path: ".env.local", override: true });
 import * as Sentry from "@sentry/node";
 import { scrubPii } from "./src/utils/scrubPii";
 import { installScrubbingConsole, redactEmail } from "./src/utils/serverLog";
-import { createSign } from "node:crypto";
+import { createSign, timingSafeEqual } from "node:crypto";
 
 // installScrubbingConsole patches console.{log,warn,error,info,debug}
 // to run every argument through scrubPii before the underlying writer
@@ -737,6 +737,39 @@ function cloudflareOnlyIngress(
 ): void {
   if (process.env.CLOUDFLARE_INGRESS_ONLY !== "1") return next();
   if (CF_INGRESS_ALLOWED_PATHS.has(req.path)) return next();
+
+  // Strong gate (preferred): a shared secret header that Cloudflare injects
+  // via a Transform Rule and that an off-network attacker cannot guess. This
+  // closes the spoofing gap in the cf-ray/cf-connecting-ip presence check
+  // below — a direct origin probe can forge those two well-known headers (and
+  // a live pen test on 2026-05-29 confirmed it could), but it cannot forge an
+  // unguessable secret.
+  //
+  // Activates ONLY when CLOUDFLARE_ORIGIN_SECRET is set on the origin; until
+  // then we fall through to the legacy presence check, so deploying this code
+  // alone changes nothing in production. Rollout order (must follow, or you
+  // 403 ALL traffic — cf. the #1003 issuer-pin outage): (1) deploy this code,
+  // (2) add the Cloudflare rule injecting `X-CF-Origin-Secret: <secret>`,
+  // (3) confirm the header reaches the origin, (4) THEN set the
+  // CLOUDFLARE_ORIGIN_SECRET Fly secret to enforce, (5) verify the live site
+  // still loads. Rollback = unset CLOUDFLARE_ORIGIN_SECRET.
+  const originSecret = process.env.CLOUDFLARE_ORIGIN_SECRET;
+  if (originSecret) {
+    const raw = req.headers["x-cf-origin-secret"];
+    const provided = Array.isArray(raw) ? raw[0] : raw;
+    const ok =
+      typeof provided === "string" &&
+      provided.length === originSecret.length &&
+      timingSafeEqual(Buffer.from(provided), Buffer.from(originSecret));
+    if (!ok) {
+      console.warn(
+        `[cf-ingress] missing/invalid origin secret — rejected. path=${req.path} ip=${req.ip ?? "?"}`,
+      );
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    return next();
+  }
 
   // Header-presence check.  Cloudflare sets BOTH `cf-ray` and
   // `cf-connecting-ip` on every proxied request reaching the origin —
