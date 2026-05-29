@@ -18,6 +18,12 @@ import { useCompetitionsForClass } from "../hooks/useCompetitions";
 import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
 import { useDailyMissions } from "../hooks/useDailyMissions";
 import { useDueReviews } from "../hooks/useDueReviews";
+import { useFeatureFlag } from "../hooks/useFeatureFlag";
+import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
+import ArcadeStatsBar from "../components/arcade/ArcadeStatsBar";
+import TrophyRoadStrip from "../components/arcade/TrophyRoadStrip";
+import BigPlayButton from "../components/arcade/BigPlayButton";
+import CharacterStage from "../components/arcade/CharacterStage";
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
@@ -201,7 +207,126 @@ export default function StudentDashboardView({
     ? 'bg-gradient-to-b from-violet-50 via-stone-50 to-white'
     : activeThemeConfig.colors.bg;
 
+  // Feature-flagged Brawl-Stars-style hub.  Wraps the legacy dashboard
+  // panels inside a vibrant ArcadeHubLayout with hero PLAY button +
+  // trophy road.  Default OFF; admin enables via `arcade_hub` flag.
+  // When the flag is on we skip rendering StudentGreetingCard /
+  // NextUpCard — ArcadeStatsBar and BigPlayButton supersede them.
+  const arcadeHubEnabled = useFeatureFlag('arcade_hub', false);
+
   // ── DASHBOARD RENDER ──────────────────────────────────────────────
+  if (arcadeHubEnabled) {
+    return (
+      <>
+        {consentModal}
+        {exitConfirmModal}
+        {classSwitchModal}
+        {showStudentOnboarding && (
+          <StudentOnboarding
+            userName={user.displayName}
+            onComplete={() => setShowStudentOnboarding(false)}
+          />
+        )}
+        <ArcadeHubLayout
+          statsBar={<ArcadeStatsBar xp={xp} streak={streak} />}
+          trophyRoad={<TrophyRoadStrip xp={xp} />}
+          character={
+            <CharacterStage
+              currentStage={retention.currentPetStage}
+              hasClaimable={Boolean(retention.claimablePetMilestone)}
+              displayName={user.displayName}
+            />
+          }
+          playButton={<BigPlayButton onPlay={launchNextAssignment} />}
+        >
+          {classNotFoundBanner}
+          <StudentTopBar onRequestLogout={onRequestLogout} />
+          <RewardInboxCard
+            userUid={user.uid}
+            onServerRewardsArrived={({ xpToAdd, badgesToAppend }) => {
+              onApplyServerRewards({ xpToAdd, badgesToAppend });
+            }}
+          />
+          {!studentDataLoading && studentAssignments.length === 0 && (
+            <StudentWelcomeCard displayName={user.displayName} />
+          )}
+          <DailyPracticeRow
+            review={onStartReview ? {
+              dueCount: dueReviews.dueCount,
+              isLoading: dueReviews.isLoading,
+              onStart: onStartReview,
+            } : undefined}
+            classMinute={onStartClassMinute ? {
+              doneToday: classMinuteDoneToday,
+              streak: classMinuteStreak,
+              isLoading: studentDataLoading,
+              onStart: onStartClassMinute,
+            } : undefined}
+            idioms={onStartIdioms ? { onStart: onStartIdioms } : undefined}
+          />
+          <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
+          <DailyGoalBanner studentProgress={studentProgress} onPlay={launchNextAssignment} />
+          {(user?.role === 'student' && !user?.isGuest) && (
+            <DailyMissionsCard
+              missions={dailyMissions.missions}
+              isLoading={dailyMissions.isLoading}
+            />
+          )}
+          <StudentAssignmentsList
+            studentAssignments={studentAssignments}
+            studentProgress={studentProgress}
+            studentDataLoading={studentDataLoading}
+            userUid={user.uid}
+            competitionsByAssignment={competitionsByAssignment}
+            setActiveAssignment={setActiveAssignment}
+            setAssignmentWords={setAssignmentWords}
+            setView={setView}
+            setShowModeSelection={setShowModeSelection}
+          />
+          <StudentStatsRow
+            xp={xp}
+            streak={streak}
+            studentAssignments={studentAssignments}
+            studentProgress={studentProgress}
+          />
+          <LeaderboardTeaser
+            classCode={user.classCode}
+            currentStudentUid={user.uid}
+            currentXp={xp}
+            setView={setView}
+          />
+          <ActiveBoostersStrip {...boosters} />
+          {badges.length > 0 && <BadgesStrip earned={badges} />}
+        </ArcadeHubLayout>
+        <PetCompanion
+          xp={xp}
+          displayName={user.displayName}
+          streak={streak}
+          currentStage={retention.currentPetStage}
+          nextStage={retention.nextPetStage}
+          claimableMilestone={retention.claimablePetMilestone}
+          onClaim={(milestone) => {
+            if (milestone.reward.kind === 'xp' && typeof milestone.reward.value === 'number') {
+              onGrantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
+            } else {
+              onGrantReward(milestone.reward.kind, milestone.reward.value);
+            }
+            retention.claimPetMilestone(milestone);
+          }}
+        />
+        <FloatingButtons
+          showBackToTop={false}
+          shareLevel={{
+            displayName: user.displayName,
+            xp,
+            title: getXpTitle(xp).title,
+            emoji: getXpTitle(xp).emoji,
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <div className={`min-h-screen ${bgClass} p-4 sm:p-6`}>
       {consentModal}

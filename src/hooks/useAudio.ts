@@ -359,6 +359,111 @@ export const setForceTTSMode = (force: boolean) => {
 // Export getter to read current state
 export const getForceTTSMode = () => forceTTSMode;
 
+// ── Arcade SFX ────────────────────────────────────────────────────────────
+// Standalone procedural Web Audio cues used by the arcade hub + in-game
+// juice (combo, level-up, achievement).  Pattern mirrors `playWrong()`
+// below: a one-shot OscillatorNode + GainNode with an envelope, closed
+// immediately after so we don't leak AudioContexts.  No MP3 assets ship —
+// keeps the bundle flat and works offline.
+//
+// All four are rate-limited with a per-cue cooldown so a 10× combo (one
+// tick every 200ms) doesn't stack into a buzzing wall, and a chained
+// level-up + achievement on the same frame doesn't clip.
+
+const sfxLastPlayedAt: Record<string, number> = {};
+
+function playTone(
+  cue: string,
+  cooldownMs: number,
+  build: (ctx: AudioContext) => void,
+): void {
+  const now = Date.now();
+  if (sfxLastPlayedAt[cue] && now - sfxLastPlayedAt[cue] < cooldownMs) return;
+  sfxLastPlayedAt[cue] = now;
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    build(ctx);
+    setTimeout(() => ctx.close(), 800);
+  } catch {/* unsupported / blocked by autoplay policy */}
+}
+
+/** Short rising blip on each combo increment. */
+export const playComboTick = (chain: number): void => {
+  // Pitch climbs ~50 Hz per combo step so 3× sounds different from 8×.
+  const base = 440 + Math.min(chain, 12) * 55;
+  playTone("combo-tick", 80, (ctx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(base, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(base * 1.4, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.1);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.12);
+  });
+};
+
+/** Falling glass-break tone when a combo resets on a wrong answer. */
+export const playComboBreak = (): void => {
+  playTone("combo-break", 250, (ctx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(520, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.32);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.34);
+  });
+};
+
+/** Two-note major-third fanfare for XP tier crossings. */
+export const playLevelUp = (): void => {
+  playTone("level-up", 600, (ctx) => {
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 arpeggio
+    notes.forEach((freq, i) => {
+      const start = ctx.currentTime + i * 0.08;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.22, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.4);
+      osc.start(start);
+      osc.stop(start + 0.42);
+    });
+  });
+};
+
+/** Soft chime for achievement unlocks — lighter than level-up so the two
+ *  can stack on the same frame without sounding like a slot machine. */
+export const playAchievement = (): void => {
+  playTone("achievement", 400, (ctx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.18);
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.32);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.34);
+  });
+};
+
 export interface UseAudioOptions {
   /** Vocab subject — defaults to 'english'. Hebrew callers (VocaHebrew
    *  game modes, Hebrew Class Show) pass 'hebrew' so the hook fetches
