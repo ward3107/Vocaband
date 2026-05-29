@@ -27,6 +27,10 @@ interface CategoryRacePodiumProps {
   /** Already sorted by score, descending. */
   entries: PodiumEntry[];
   emptyText: string;
+  /** Projector mode — scales every lane, name, and score way up so a
+   *  class reading the board from the back of the room can make out
+   *  who's who. Defaults off for any compact/preview use. */
+  large?: boolean;
 }
 
 // easeOutCubic count-up so a +10 visibly ticks up instead of snapping.
@@ -51,7 +55,7 @@ function AnimatedScore({ value }: { value: number }) {
   return <>{display}</>;
 }
 
-export default function CategoryRacePodium({ entries, emptyText }: CategoryRacePodiumProps) {
+export default function CategoryRacePodium({ entries, emptyText, large = false }: CategoryRacePodiumProps) {
   // Detect score increases between renders to fire a "+N" burst.
   const prev = useRef<Map<string, number>>(new Map());
   const gainId = useRef(0);
@@ -87,7 +91,11 @@ export default function CategoryRacePodium({ entries, emptyText }: CategoryRaceP
   }, [entries]);
 
   if (entries.length === 0) {
-    return <p className="text-sm text-stone-400 font-semibold py-10 text-center">{emptyText}</p>;
+    return (
+      <p className={`text-stone-400 font-semibold text-center ${large ? "text-2xl py-20" : "text-sm py-10"}`}>
+        {emptyText}
+      </p>
+    );
   }
 
   // Bars scale relative to the leader, so the front-runner pins at
@@ -98,7 +106,7 @@ export default function CategoryRacePodium({ entries, emptyText }: CategoryRaceP
   const leaderScore = Math.max(1, entries[0]?.score ?? 0);
 
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className={`flex flex-col ${large ? "gap-4" : "gap-3"}`}>
       <AnimatePresence initial={false}>
         {entries.map((e, i) => {
           const pct = Math.max(2, Math.min(100, (e.score / leaderScore) * 100));
@@ -113,21 +121,21 @@ export default function CategoryRacePodium({ entries, emptyText }: CategoryRaceP
               exit={{ opacity: 0 }}
               transition={{ layout: { type: "spring", stiffness: 500, damping: 32 } }}
             >
-              {/* Lane head — rank chip + avatar + name. Kept compact
-                  so a class of 25+ doesn't push the page off-screen. */}
-              <div className="flex items-center gap-2 mb-1.5">
+              {/* Lane head — rank chip + avatar + name. Scaled up in
+                  projector mode so names read from the back of the room. */}
+              <div className={`flex items-center mb-1.5 ${large ? "gap-3" : "gap-2"}`}>
                 <span
-                  className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black ${
-                    isLeader
-                      ? "bg-amber-400 text-white"
-                      : "bg-stone-200 text-stone-600"
-                  }`}
+                  className={`inline-flex items-center justify-center rounded-full font-black ${
+                    large ? "w-9 h-9 text-lg" : "w-6 h-6 text-xs"
+                  } ${isLeader ? "bg-amber-400 text-white" : "bg-stone-200 text-stone-600"}`}
                 >
                   {i + 1}
                 </span>
-                <span className="text-lg">{e.avatar || "🦊"}</span>
+                <span className={large ? "text-3xl" : "text-lg"}>{e.avatar || "🦊"}</span>
                 <span
-                  className="font-black text-stone-800 text-sm truncate min-w-0 flex-1"
+                  className={`font-black text-stone-800 truncate min-w-0 flex-1 ${
+                    large ? "text-2xl sm:text-3xl" : "text-sm"
+                  }`}
                   dir="auto"
                 >
                   {e.nickname}
@@ -138,20 +146,22 @@ export default function CategoryRacePodium({ entries, emptyText }: CategoryRaceP
                   end of the leader's fill so it travels with whoever
                   is in front. */}
               <div
-                className="relative h-8 rounded-full bg-stone-100 overflow-hidden"
+                className={`relative rounded-full bg-stone-100 overflow-hidden ${large ? "h-12" : "h-8"}`}
                 style={gain ? { boxShadow: "0 0 0 2px rgba(16,185,129,0.55)" } : undefined}
               >
                 <motion.div
                   layout
                   animate={{ width: `${pct}%` }}
                   transition={{ type: "spring", stiffness: 220, damping: 28 }}
-                  className={`relative h-full rounded-full flex items-center justify-end px-3 text-white font-black text-sm shadow-md ${
+                  className={`relative h-full rounded-full flex items-center justify-end text-white font-black shadow-md ${
+                    large ? "px-5 text-2xl" : "px-3 text-sm"
+                  } ${
                     isLeader
                       ? "bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 shadow-fuchsia-500/40"
                       : "bg-gradient-to-r from-fuchsia-400 to-pink-500 shadow-fuchsia-400/30"
                   }`}
                 >
-                  <span className="tabular-nums">
+                  <span className={`tabular-nums ${large && isLeader ? "me-9" : large ? "me-2" : ""}`}>
                     <AnimatedScore value={e.score} />
                   </span>
                   {/* "+N" burst sits inside the fill so it rides with
@@ -163,7 +173,7 @@ export default function CategoryRacePodium({ entries, emptyText }: CategoryRaceP
                         initial={{ opacity: 0, y: 4, scale: 0.7 }}
                         animate={{ opacity: 1, y: -14, scale: 1 }}
                         exit={{ opacity: 0, y: -24 }}
-                        className="absolute -top-1 end-2 text-xs font-black text-emerald-500 whitespace-nowrap drop-shadow-sm"
+                        className={`absolute -top-1 end-2 font-black text-emerald-500 whitespace-nowrap drop-shadow-sm ${large ? "text-base" : "text-xs"}`}
                       >
                         +{gain.amount} ✨
                       </motion.span>
@@ -181,10 +191,12 @@ export default function CategoryRacePodium({ entries, emptyText }: CategoryRaceP
                       animate={{ opacity: 1, scale: 1, x: 0 }}
                       exit={{ opacity: 0, scale: 0.6 }}
                       transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                      className="absolute top-1/2 -translate-y-1/2 end-1.5 flex items-center justify-center w-7 h-7 rounded-full bg-white shadow-md ring-2 ring-amber-300 pointer-events-none"
+                      className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-white shadow-md ring-2 ring-amber-300 pointer-events-none ${
+                        large ? "end-2 w-10 h-10" : "end-1.5 w-7 h-7"
+                      }`}
                       aria-hidden
                     >
-                      <Trophy size={14} className="text-amber-500 fill-amber-400" />
+                      <Trophy size={large ? 20 : 14} className="text-amber-500 fill-amber-400" />
                     </motion.div>
                   )}
                 </AnimatePresence>
