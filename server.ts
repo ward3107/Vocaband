@@ -217,6 +217,28 @@ if (JWKS) {
   console.warn("[verifyToken] local JWKS verification DISABLED — SUPABASE_URL not set; falling back to remote auth.getUser()");
 }
 
+// Acceptable iss claims for the JWT. Empty array = no iss check (only
+// signature + algorithm + audience are enforced, which JWKS-trust already
+// makes ironclad).  When this project has a custom auth domain enabled,
+// Supabase can emit either the custom-domain URL or the project-ref URL
+// in the iss claim depending on which auth path the client took — so
+// pinning to a single value would reject half the legitimate traffic.
+// Operators that want defence-in-depth iss pinning can set
+// SUPABASE_JWT_ISSUERS to a comma-separated list of every full issuer URL
+// to accept, e.g.
+//   SUPABASE_JWT_ISSUERS="https://auth.example.com/auth/v1,https://abc123.supabase.co/auth/v1"
+const ACCEPTED_JWT_ISSUERS: string[] = (process.env.SUPABASE_JWT_ISSUERS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+if (JWKS) {
+  console.log(
+    ACCEPTED_JWT_ISSUERS.length > 0
+      ? `[verifyToken] iss claim restricted to: ${ACCEPTED_JWT_ISSUERS.join(", ")}`
+      : "[verifyToken] iss claim not pinned — set SUPABASE_JWT_ISSUERS to restrict",
+  );
+}
+
 // Supabase admin client — uses the service role key to verify tokens server-side
 // Only created if credentials are available.
 //
@@ -254,18 +276,17 @@ interface SupabaseJwtPayload extends JWTPayload {
 
 // Local JWT signature + expiry check using JWKS. Returns the decoded payload on
 // success, null on any failure (invalid signature, expired, malformed, or
-// JWKS not configured). Algorithm, issuer, and audience are pinned explicitly:
-// Supabase signs user tokens with ES256 (per the JWKS comment above) and emits
-// aud='authenticated' and iss=`${SUPABASE_URL}/auth/v1`. Pinning closes the
-// theoretical downgrade window if Supabase ever publishes a JWKS with weaker
-// keys during a future rotation.
+// JWKS not configured). Algorithm (ES256) and audience ('authenticated') are
+// pinned to close the algorithm-downgrade and service-role-token-confusion
+// windows.  Issuer is only pinned when SUPABASE_JWT_ISSUERS is set — see
+// the comment on ACCEPTED_JWT_ISSUERS above for the custom-domain rationale.
 async function verifyTokenLocal(token: string): Promise<SupabaseJwtPayload | null> {
   if (!JWKS) return null;
   try {
     const { payload } = await jwtVerify(token, JWKS, {
       algorithms: ["ES256"],
-      issuer: `${process.env.SUPABASE_URL}/auth/v1`,
       audience: "authenticated",
+      ...(ACCEPTED_JWT_ISSUERS.length > 0 ? { issuer: ACCEPTED_JWT_ISSUERS } : {}),
     });
     if (typeof payload.sub !== "string" || payload.sub.length === 0) return null;
     return {
