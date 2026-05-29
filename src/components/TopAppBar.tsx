@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, X, Crown, LogOut } from "lucide-react";
+import { ChevronLeft, ChevronDown, X, Crown, LogOut } from "lucide-react";
 import UiScaleControl from "./dashboard/UiScaleControl";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useLanguage } from "../hooks/useLanguage";
@@ -235,22 +235,39 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           title gets enough room to render without truncating. */}
       <div className="sm:hidden flex items-center gap-2 relative" ref={menuRef}>
         {planBadge && <PlanBadge {...planBadge} />}
+        {/* Mobile menu trigger — pill-shape so it clearly reads as a
+            button (the bare-circle avatar was getting mistaken for a
+            decoration).  Avatar + chevron + a soft outline make the
+            tap target obvious; chevron flips on open. */}
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
           aria-label={menuLabels.profile}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className="w-10 h-10 rounded-full signature-gradient border-2 border-white overflow-hidden shadow-sm active:scale-95 transition-transform"
+          style={{
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            backgroundColor: 'var(--vb-surface)',
+            borderColor: 'var(--vb-border)',
+          }}
+          className="inline-flex items-center gap-1.5 ps-1 pe-2.5 py-1 rounded-full border-2 shadow-sm hover:bg-surface-container active:scale-95 transition-transform"
         >
-          {safeAvatarUrl ? (
-            <img alt="" src={safeAvatarUrl} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white font-bold">
-              {userName ? userName.charAt(0).toUpperCase() : title.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <span className="w-7 h-7 rounded-full signature-gradient overflow-hidden flex items-center justify-center shadow-sm">
+            {safeAvatarUrl ? (
+              <img alt="" src={safeAvatarUrl} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-white text-xs font-black">
+                {userName ? userName.charAt(0).toUpperCase() : title.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </span>
+          <ChevronDown
+            size={14}
+            className="text-on-surface-variant transition-transform"
+            style={{ transform: menuOpen ? 'rotate(180deg)' : 'none' }}
+            aria-hidden
+          />
         </button>
         {menuOpen && (
           <div
@@ -267,12 +284,14 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
                 <div className="text-sm font-bold text-on-surface truncate">{userName}</div>
               </div>
             )}
-            {extraTrailing && (
-              <div className="px-1" onClick={() => setMenuOpen(false)}>
-                {extraTrailing}
-              </div>
-            )}
-            <div className="px-1" onClick={() => setMenuOpen(false)}>
+            {/* Action wrappers intentionally have NO onClick that closes
+                the menu — LanguageSwitcher renders its own popover and
+                the outer auto-close was eating the toggle (the
+                language popover would unmount the same tick it opened).
+                Each item's own handler navigates away or closes the
+                menu where appropriate. */}
+            {extraTrailing && <div className="px-1">{extraTrailing}</div>}
+            <div className="px-1">
               <LanguageSwitcher variant="compact" />
             </div>
             {showScaleControl && (
