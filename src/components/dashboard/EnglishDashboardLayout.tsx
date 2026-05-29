@@ -247,7 +247,26 @@ export default function EnglishDashboardLayout({
             cta={t.emptyCta}
             onCreate={onNewClass}
           />
-        ) : (
+        ) : (() => {
+          // The "most recent" class is the one with the most-recently
+          // created assignment.  Ties (or no assignments anywhere)
+          // fall back to the most-recently-created class id — which is
+          // just `classes[classes.length - 1]` because the array is
+          // chronological and we reverse it for display.  Computed
+          // once per render rather than inline so a class with zero
+          // assignments doesn't trigger N empty Math.max calls.
+          const lastCreatedClassId = classes[classes.length - 1]?.id ?? null;
+          let recentClassId: string | null = null;
+          let recentTimestamp = -Infinity;
+          for (const a of teacherAssignments) {
+            const ts = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            if (ts > recentTimestamp) {
+              recentTimestamp = ts;
+              recentClassId = a.classId;
+            }
+          }
+          if (!recentClassId) recentClassId = lastCreatedClassId;
+          return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-start">
             {[...classes].reverse().map(c => {
               const classAssignments = teacherAssignments.filter(a => a.classId === c.id);
@@ -256,6 +275,7 @@ export default function EnglishDashboardLayout({
                   key={c.id}
                   variant="pastel"
                   accent={accentForClass(c.id)}
+                  isRecent={c.id === recentClassId}
                   subject={c.subject ?? "english"}
                   name={c.name}
                   code={c.code}
@@ -292,7 +312,8 @@ export default function EnglishDashboardLayout({
               );
             })}
           </div>
-        )}
+          );
+        })()}
       </section>
     </div>
   );
