@@ -74,7 +74,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
   const {
     currentRace, leaderboard, clientId, joinedSessionCode, lastError,
-    joinAsStudent, submitRaceAnswers, onRaceResult, onSessionEnded, onKicked,
+    joinAsStudent, submitRaceAnswers, onRaceResult, onRaceEnded, onSessionEnded, onKicked,
   } = qp;
 
   const [phase, setPhase] = useState<Phase>("join");
@@ -89,6 +89,9 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [lastResult, setLastResult] = useState<QpRaceResultPayload | null>(null);
   const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
+  // Real state (not just the ref) so the Submit button reflects the
+  // in-flight state and re-renders the focus card with a spinner.
+  const [submitting, setSubmitting] = useState(false);
 
   // Refs so the countdown's auto-submit reads the freshest values.
   const answersRef = useRef(answers);
@@ -136,6 +139,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     const race = raceRef.current;
     if (!race || submittedRef.current) return;
     submittedRef.current = true;
+    setSubmitting(true);
     submitRaceAnswers(race.roundId, answersRef.current);
   }, [submitRaceAnswers]);
 
@@ -148,6 +152,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
       setFocusIndex(0);
       setLastResult(null);
       submittedRef.current = false;
+      setSubmitting(false);
       setPhase("answering");
     }
   }, [currentRace, activeRoundId, phase]);
@@ -166,9 +171,38 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   }, [phase, currentRace, doSubmit]);
 
   useEffect(() => onRaceResult((p) => {
+    setSubmitting(false);
     setLastResult(p);
     setPhase("result");
   }), [onRaceResult]);
+
+  // Server says the round closed. If we never submitted (clock skew vs.
+  // the shared deadline, or the student just sat there), fire one final
+  // submit so their typed answers still count within the grace window.
+  // If we already submitted, fall back to the lobby so a dropped
+  // RACE_RESULT packet doesn't leave the student stuck on the answer
+  // card with nothing happening.
+  useEffect(() => onRaceEnded(() => {
+    if (submittedRef.current) {
+      setSubmitting(false);
+      setPhase(prev => (prev === "answering" ? "lobby" : prev));
+    } else {
+      doSubmit();
+    }
+  }), [onRaceEnded, doSubmit]);
+
+  // Safety net: if a submit goes out but no RACE_RESULT comes back
+  // (lost packet, mid-round reconnect), don't trap the student on the
+  // answering screen. Drop them to the lobby — their score is already
+  // recorded server-side and shows on the next leaderboard tick.
+  useEffect(() => {
+    if (phase !== "answering" || !submitting) return;
+    const id = window.setTimeout(() => {
+      setSubmitting(false);
+      setPhase(prev => (prev === "answering" ? "lobby" : prev));
+    }, 6000);
+    return () => window.clearTimeout(id);
+  }, [phase, submitting]);
 
   useEffect(() => onSessionEnded(() => setPhase("ended")), [onSessionEnded]);
   useEffect(() => onKicked(() => setPhase("ended")), [onKicked]);
@@ -253,7 +287,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
         secondsLeft={secondsLeft}
         totalSeconds={currentRace.roundSeconds}
         onSubmit={doSubmit}
-        submitting={submittedRef.current}
+        submitting={submitting}
       />
     );
   }

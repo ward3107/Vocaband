@@ -10,7 +10,7 @@
  */
 import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronLeft, ChevronRight, Clock, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Send, Loader2 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import {
   type CategoryMeta,
@@ -34,9 +34,9 @@ interface CategoryRaceFocusCardProps {
 }
 
 const STRINGS = {
-  en: { letter: "Your letter", submit: "Submit answers", of: (a: number, b: number) => `${a} of ${b}`, filled: (n: number, total: number) => `${n}/${total} filled` },
-  he: { letter: "האות שלך", submit: "שליחת תשובות", of: (a: number, b: number) => `${a} מתוך ${b}`, filled: (n: number, total: number) => `${n}/${total} מולאו` },
-  ar: { letter: "حرفك", submit: "إرسال الإجابات", of: (a: number, b: number) => `${a} من ${b}`, filled: (n: number, total: number) => `${n}/${total} مكتملة` },
+  en: { letter: "Your letter", submit: "Submit answers", submitting: "Sending…", of: (a: number, b: number) => `${a} of ${b}`, filled: (n: number, total: number) => `${n}/${total} filled` },
+  he: { letter: "האות שלך", submit: "שליחת תשובות", submitting: "שולח…", of: (a: number, b: number) => `${a} מתוך ${b}`, filled: (n: number, total: number) => `${n}/${total} מולאו` },
+  ar: { letter: "حرفك", submit: "إرسال الإجابات", submitting: "جارٍ الإرسال…", of: (a: number, b: number) => `${a} من ${b}`, filled: (n: number, total: number) => `${n}/${total} مكتملة` },
 } as const;
 
 export default function CategoryRaceFocusCard({
@@ -177,7 +177,9 @@ export default function CategoryRaceFocusCard({
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg shadow-fuchsia-500/30 bg-gradient-to-r from-fuchsia-500 to-pink-600 active:scale-[0.98] transition disabled:opacity-60"
           >
-            <Send size={18} /> {t.submit}
+            {submitting
+              ? <><Loader2 size={18} className="animate-spin" /> {t.submitting}</>
+              : <><Send size={18} /> {t.submit}</>}
           </button>
         </div>
       </footer>
