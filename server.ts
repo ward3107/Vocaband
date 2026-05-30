@@ -111,6 +111,8 @@ import {
   QP_RACE_PTS_EN,
   QP_RACE_PTS_L1,
   QP_RACE_SUBMIT_GRACE_MS,
+  QP_RACE_SPEED_BONUS_MAX,
+  QP_RACE_UNTIMED_SAFETY_SECONDS,
   isValidReactionEmoji,
   isValidSessionCode,
   isValidClientId,
@@ -128,6 +130,7 @@ import {
   type QpErrorCode,
   type QpRaceStartPayload,
   type QpRaceSubmitPayload,
+  type QpRaceEndRoundPayload,
   type QpRaceCellResult,
 } from "./src/core/quickPlayProtocol";
 import { containsProfanity } from "./src/utils/nicknameProfanity";
@@ -1511,6 +1514,10 @@ async function startServer() {
       deadlineTs: number;
       submitted: Set<string>;
       timer: ReturnType<typeof setTimeout> | null;
+      /** Relaxed mode — no countdown; ends on all-submitted or teacher. */
+      untimed: boolean;
+      /** Round start epoch ms — basis for the speed bonus. */
+      startTs: number;
     } | null;
   }
 
@@ -2187,10 +2194,15 @@ async function startServer() {
       // RACE_ENDED for the round we're about to start.
       if (state.currentRace?.timer) clearTimeout(state.currentRace.timer);
 
+      const untimed = payload.untimed === true;
       const roundId = randomUUID();
       const letter = raceRollLetter();
       const now = Date.now();
-      const deadlineTs = now + roundSeconds * 1000;
+      // Untimed rounds still get a generous safety deadline so a forgotten
+      // relaxed round can't hang the room — the client just hides the clock
+      // and the round ends on all-submitted / teacher "end round".
+      const effectiveSeconds = untimed ? QP_RACE_UNTIMED_SAFETY_SECONDS : roundSeconds;
+      const deadlineTs = now + effectiveSeconds * 1000;
       state.currentRace = {
         roundId,
         letter,
@@ -2199,6 +2211,8 @@ async function startServer() {
         deadlineTs,
         submitted: new Set(),
         timer: null,
+        untimed,
+        startTs: now,
       };
       // Close the round server-side at the deadline (+grace) so late or
       // silent students get locked out and "round over" is unambiguous
@@ -2209,14 +2223,14 @@ async function startServer() {
           qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
           s.currentRace.timer = null;
         }
-      }, roundSeconds * 1000 + QP_RACE_SUBMIT_GRACE_MS);
+      }, effectiveSeconds * 1000 + QP_RACE_SUBMIT_GRACE_MS);
 
       qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ROUND, {
         sessionCode, roundId, letter,
         categories: uniqueCategories,
-        roundSeconds, deadlineTs, serverTs: now,
+        roundSeconds, deadlineTs, serverTs: now, untimed,
       });
-      console.log(`[QP RACE start] session=${sessionCode} round=${roundId.slice(0, 8)} letter=${letter} cats=${uniqueCategories.length} secs=${roundSeconds}`);
+      console.log(`[QP RACE start] session=${sessionCode} round=${roundId.slice(0, 8)} letter=${letter} cats=${uniqueCategories.length} secs=${untimed ? "untimed" : roundSeconds}`);
     });
 
     // ─── Category Race: student submits answers for the active round ───
@@ -2251,6 +2265,14 @@ async function startServer() {
       const entry = state.students.get(clientId);
       if (!entry) return;
 
+      // Categories where the student used a hint/suggestion — those cells
+      // score at the reduced (L1) rate even in English, so help is fair.
+      const helpedSet = new Set<string>(
+        Array.isArray(payload.helped)
+          ? payload.helped.filter((c): c is string => typeof c === "string")
+          : [],
+      );
+
       const cells: QpRaceCellResult[] = race.categories.map((catId) => {
         const raw = (answers as Record<string, unknown>)[catId];
         const typed = typeof raw === "string" ? raw.trim().slice(0, 60) : "";
@@ -2258,7 +2280,7 @@ async function startServer() {
           ? raceValidateAnswer(catId, race.letter, typed)
           : { valid: false, matchedEn: null, matchedLanguage: null };
         const points = result.valid
-          ? (result.matchedLanguage === "en" ? QP_RACE_PTS_EN : QP_RACE_PTS_L1)
+          ? (helpedSet.has(catId) ? QP_RACE_PTS_L1 : (result.matchedLanguage === "en" ? QP_RACE_PTS_EN : QP_RACE_PTS_L1))
           : 0;
         return {
           categoryId: catId,
@@ -2271,15 +2293,50 @@ async function startServer() {
       });
       const roundPoints = cells.reduce((sum, c) => sum + c.points, 0);
 
+      // Speed bonus — reward decisive answers. Scales from SPEED_BONUS_MAX
+      // (instant) down to 0 (clock expired). Only when they actually scored,
+      // and never in untimed mode (no clock to race against).
+      let speedBonus = 0;
+      if (!race.untimed && roundPoints > 0) {
+        const totalMs = Math.max(1, race.deadlineTs - race.startTs);
+        const remainingMs = Math.max(0, race.deadlineTs - Date.now());
+        const fraction = Math.max(0, Math.min(1, remainingMs / totalMs));
+        speedBonus = Math.round(QP_RACE_SPEED_BONUS_MAX * fraction);
+      }
+
       race.submitted.add(clientId);
-      entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints);
+      entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints + speedBonus);
       entry.lastSeen = Date.now();
 
       socket.emit(QP_SERVER_EVENTS.RACE_RESULT, {
-        sessionCode, roundId, cells, roundPoints, totalScore: entry.score,
+        sessionCode, roundId, cells, roundPoints, speedBonus, totalScore: entry.score,
       });
       qpScheduleBroadcast(sessionCode);
-      console.log(`[QP RACE submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} +${roundPoints} → ${entry.score}`);
+
+      // Auto-end the round once every CONNECTED student has submitted, so a
+      // quick class never waits out the clock. Disconnected students don't
+      // block it — they're not in the live socket→client map.
+      const connectedIds = new Set(state.socketToClient.values());
+      if (connectedIds.size > 0 && [...connectedIds].every((id) => race.submitted.has(id))) {
+        if (race.timer) { clearTimeout(race.timer); race.timer = null; }
+        qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
+      }
+      console.log(`[QP RACE submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} +${roundPoints}${speedBonus ? `+${speedBonus}⚡` : ""} → ${entry.score}`);
+    });
+
+    // ─── Category Race: teacher ends the active round early ────────────
+    socket.on(QP_EVENTS.RACE_END_ROUND, async (payload: QpRaceEndRoundPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, token, roundId } = payload;
+      if (!isValidSessionCode(sessionCode) || typeof roundId !== "string" || !roundId) return;
+      if (!qpTeacherLimiter.checkLimit(socket.id)) return;
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.RACE_END_ROUND, verify.reason, "access denied");
+      const state = qpSessions.get(sessionCode);
+      if (!state?.currentRace || state.currentRace.roundId !== roundId) return;
+      if (state.currentRace.timer) { clearTimeout(state.currentRace.timer); state.currentRace.timer = null; }
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
+      console.log(`[QP RACE end-round] session=${sessionCode} round=${roundId.slice(0, 8)} (teacher)`);
     });
 
     socket.on("disconnect", () => {

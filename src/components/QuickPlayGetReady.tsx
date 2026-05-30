@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { Loader2 } from "lucide-react";
 import { useLanguage, type Language } from "../hooks/useLanguage";
 import { primeAudio } from "../utils/primeAudio";
+import QPAvatar from "./QPAvatar";
 
 interface Props {
   name: string;
@@ -85,10 +86,10 @@ export default function QuickPlayGetReady({ name, avatar, joining, onStart, join
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 220, damping: 18 }}
-        className="text-7xl sm:text-8xl mb-4 select-none"
+        className="text-7xl sm:text-8xl mb-4 select-none flex items-center justify-center"
         aria-hidden
       >
-        {avatar || "🦊"}
+        <QPAvatar value={avatar || "🦊"} iconSize={84} />
       </motion.div>
 
       <motion.h1

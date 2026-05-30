@@ -8,14 +8,15 @@
  * Purely presentational: the parent owns the answers map, the countdown,
  * and what "submit" does. Reused for every round.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronLeft, ChevronRight, Clock, Send, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Send, Loader2, Sparkles, Lightbulb, Infinity as InfinityIcon } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import {
   type CategoryMeta,
   categoryLabel,
   categoryPlaceholder,
+  answersFor,
 } from "../../data/category-race-bank";
 
 interface CategoryRaceFocusCardProps {
@@ -29,20 +30,26 @@ interface CategoryRaceFocusCardProps {
   setIndex: (i: number) => void;
   secondsLeft: number;
   totalSeconds: number;
+  /** Relaxed mode — no countdown, no auto-submit, no half-time nudge. */
+  untimed?: boolean;
+  /** Called when the student opens a hint for a category — the parent
+   *  records it so that cell scores at the reduced (help) rate. */
+  onHintUsed?: (categoryId: string) => void;
   onSubmit: () => void;
   submitting?: boolean;
 }
 
 const STRINGS = {
-  en: { letter: "Your letter", submit: "Submit answers", submitting: "Sending…", of: (a: number, b: number) => `${a} of ${b}`, filled: (n: number, total: number) => `${n}/${total} filled` },
-  he: { letter: "האות שלך", submit: "שליחת תשובות", submitting: "שולח…", of: (a: number, b: number) => `${a} מתוך ${b}`, filled: (n: number, total: number) => `${n}/${total} מולאו` },
-  ar: { letter: "حرفك", submit: "إرسال الإجابات", submitting: "جارٍ الإرسال…", of: (a: number, b: number) => `${a} من ${b}`, filled: (n: number, total: number) => `${n}/${total} مكتملة` },
+  en: { letter: "Your letter", submit: "Submit answers", submitting: "Sending…", of: (a: number, b: number) => `${a} of ${b}`, filled: (n: number, total: number) => `${n}/${total} filled`, nudge: "Trust your gut! 🎯", relaxed: "Answer when ready", needIdeas: "Need ideas?", startsWith: "Starts with", tapToUse: "Tap a word to use it" },
+  he: { letter: "האות שלך", submit: "שליחת תשובות", submitting: "שולח…", of: (a: number, b: number) => `${a} מתוך ${b}`, filled: (n: number, total: number) => `${n}/${total} מולאו`, nudge: "סמכו על האינטואיציה! 🎯", relaxed: "ענו כשמוכנים", needIdeas: "צריכים רעיון?", startsWith: "מתחיל ב", tapToUse: "הקישו על מילה כדי להשתמש בה" },
+  ar: { letter: "حرفك", submit: "إرسال الإجابات", submitting: "جارٍ الإرسال…", of: (a: number, b: number) => `${a} من ${b}`, filled: (n: number, total: number) => `${n}/${total} مكتملة`, nudge: "ثق بحدسك! 🎯", relaxed: "أجب عند الاستعداد", needIdeas: "تحتاج أفكارًا؟", startsWith: "يبدأ بـ", tapToUse: "اضغط على كلمة لاستخدامها" },
 } as const;
 
 export default function CategoryRaceFocusCard({
   letter, categories, answers, onChange, index, setIndex,
-  secondsLeft, totalSeconds, onSubmit, submitting = false,
+  secondsLeft, totalSeconds, untimed = false, onHintUsed, onSubmit, submitting = false,
 }: CategoryRaceFocusCardProps) {
+  const [revealedHints, setRevealedHints] = useState<Set<string>>(new Set());
   const { language, dir } = useLanguage();
   const t = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,8 +59,12 @@ export default function CategoryRaceFocusCard({
   const isFirst = safeIndex === 0;
   const isLast = safeIndex === categories.length - 1;
   const filledCount = categories.reduce((n, c) => n + ((answers[c.id] ?? "").trim() ? 1 : 0), 0);
-  const lowTime = secondsLeft <= 10;
+  const lowTime = !untimed && secondsLeft <= 10;
   const pct = totalSeconds > 0 ? Math.max(0, Math.min(100, (secondsLeft / totalSeconds) * 100)) : 0;
+  // "Trust your gut" nudge fires in a short window around half-time to
+  // discourage overthinking. Suppressed in relaxed/untimed rounds.
+  const half = Math.floor(totalSeconds / 2);
+  const showNudge = !untimed && secondsLeft > 0 && secondsLeft <= half && secondsLeft > half - 3;
 
   // Focus the field whenever the visible category changes so the student
   // can type immediately without tapping.
@@ -66,6 +77,17 @@ export default function CategoryRaceFocusCard({
 
   if (!cat) return null;
 
+  // Help scaffold for weaker students: valid answers for this cell power
+  // both the first-letters hint and the tappable suggestions. Opening the
+  // hint marks the cell "helped" (reduced points) via onHintUsed.
+  const hints = answersFor(cat.id, letter);
+  const hintRevealed = revealedHints.has(cat.id);
+  const openHint = () => {
+    if (revealedHints.has(cat.id)) return;
+    setRevealedHints(prev => new Set(prev).add(cat.id));
+    onHintUsed?.(cat.id);
+  };
+
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-gradient-to-br from-fuchsia-50 via-white to-pink-50" dir={dir}>
       {/* Header: letter + countdown */}
@@ -74,17 +96,42 @@ export default function CategoryRaceFocusCard({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <span className="text-[10px] font-black uppercase tracking-[0.18em] text-fuchsia-500">{t.letter}</span>
-              <span className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white text-2xl font-black shadow-lg shadow-fuchsia-500/30">
+              <motion.span
+                initial={{ scale: 0.3, rotate: -12, opacity: 0 }}
+                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 320, damping: 14 }}
+                className={`inline-flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br ${cat.gradient} text-white text-2xl font-black shadow-lg`}
+              >
                 {letter}
-              </span>
+              </motion.span>
             </div>
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-sm ${lowTime ? "bg-red-100 text-red-700 animate-pulse" : "bg-stone-100 text-stone-700"}`}>
-              <Clock size={15} /> {secondsLeft}s
-            </span>
+            {untimed ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-sm bg-indigo-100 text-indigo-700">
+                <InfinityIcon size={15} /> {t.relaxed}
+              </span>
+            ) : (
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-sm ${lowTime ? "bg-red-100 text-red-700 animate-pulse" : "bg-stone-100 text-stone-700"}`}>
+                <Clock size={15} /> {secondsLeft}s
+              </span>
+            )}
           </div>
-          <div className="h-1.5 w-full rounded-full bg-stone-200 overflow-hidden mt-3">
-            <div className={`h-full transition-all duration-1000 ease-linear ${lowTime ? "bg-red-500" : "bg-gradient-to-r from-fuchsia-500 to-pink-500"}`} style={{ width: `${pct}%` }} />
-          </div>
+          {!untimed && (
+            <div className="h-1.5 w-full rounded-full bg-stone-200 overflow-hidden mt-3">
+              <div className={`h-full transition-all duration-1000 ease-linear ${lowTime ? "bg-red-500" : `bg-gradient-to-r ${cat.gradient}`}`} style={{ width: `${pct}%` }} />
+            </div>
+          )}
+          <AnimatePresence>
+            {showNudge && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="mt-2 flex justify-center"
+              >
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-black text-xs">
+                  <Sparkles size={13} /> {t.nudge}
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </header>
 
@@ -119,6 +166,46 @@ export default function CategoryRaceFocusCard({
                   dir="auto"
                   className="w-full bg-stone-50 rounded-2xl border-2 border-stone-200 focus:border-fuchsia-400 outline-none px-4 py-4 text-2xl font-bold text-stone-900 placeholder-stone-300 text-center transition"
                 />
+
+                {/* Stuck? Hint scaffold — reveals first letters + tappable
+                    suggestions. Hidden if the bank has nothing for this cell. */}
+                {hints.length > 0 && (
+                  <div className="mt-3">
+                    {!hintRevealed ? (
+                      <button
+                        type="button"
+                        onClick={openHint}
+                        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-black text-xs active:scale-95 transition"
+                      >
+                        <Lightbulb size={14} /> {t.needIdeas}
+                      </button>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                        className="rounded-2xl bg-amber-50 border border-amber-200 p-3"
+                      >
+                        <div className="text-xs font-bold text-amber-700">
+                          {t.startsWith}: <span className="font-black">{hints[0].en.slice(0, Math.min(2, hints[0].en.length))}…</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2" dir="ltr">
+                          {hints.slice(0, 3).map(h => (
+                            <button
+                              key={h.en}
+                              type="button"
+                              onClick={() => onChange(cat.id, h.en)}
+                              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                              className="px-3 py-1.5 rounded-full bg-white border border-amber-300 text-amber-800 font-black text-sm active:scale-95 transition"
+                            >
+                              {h.en}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="text-[10px] font-bold text-amber-500 mt-1.5">{t.tapToUse}</div>
+                      </motion.div>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           </AnimatePresence>
