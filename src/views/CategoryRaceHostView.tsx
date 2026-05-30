@@ -248,8 +248,8 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   };
 
   // Theme class helpers.
-  const pageCls = dark ? "bg-stone-950" : "bg-stone-100";
-  const cardCls = dark ? "bg-stone-900 border-stone-800 shadow-black/40" : "bg-white border-stone-200 shadow-stone-900/5";
+  const pageCls = dark ? "bg-stone-950" : "bg-gradient-to-br from-fuchsia-50 via-white to-pink-50";
+  const cardCls = dark ? "bg-stone-900 border-stone-800 shadow-black/40" : "bg-white border-fuchsia-100 shadow-fuchsia-500/10";
   const headingCls = dark ? "text-stone-100" : "text-stone-900";
   const pillIdle = dark ? "bg-stone-800 border-stone-700 text-stone-300 hover:border-stone-600" : "bg-white border-stone-200 hover:border-stone-300 text-stone-700";
   const iconBtn = dark ? "bg-stone-800 text-stone-200 hover:bg-stone-700" : "bg-white text-fuchsia-600 hover:bg-fuchsia-50 border border-stone-200";
@@ -257,7 +257,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   return (
     <div className={`min-h-[100dvh] transition-colors ${pageCls}`} dir={dir}>
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <header className="flex items-center justify-between gap-3 mb-5">
           <h1 className={`text-2xl sm:text-3xl font-black flex items-center gap-2 ${headingCls}`}>
             <span className="text-3xl">🌍</span> {t.title}
           </h1>
@@ -278,7 +278,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               </button>
             </div>
           ) : (
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setPresenting(true)}
