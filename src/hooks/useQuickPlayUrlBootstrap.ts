@@ -83,6 +83,21 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
     if (sessionCode) {
       // Load Quick Play session
       const loadQuickPlaySession = async () => {
+        // ─── PERF: prewarm the vocabulary chunk in parallel ────────────
+        // The English word data isn't consumed until ~150 lines below
+        // (after the anon-auth handshake AND the session SELECT). Left
+        // there, its ~139 kB-gz download ran *sequentially* after every
+        // network hop, stacking the whole fetch onto the join wait — a
+        // big contributor to the multi-second "loading" students saw on
+        // classroom Wi-Fi. Kick it off now so it streams in parallel
+        // with the auth round trips. import() is idempotent + runtime-
+        // cached, so the real `import("../data/vocabulary")` below
+        // resolves instantly. Fire-and-forget; the load below has its
+        // own error handling. (Hebrew sessions use a separate tiny lemma
+        // chunk — the rare wasted English prefetch costs far less than
+        // the common-case latency it removes.)
+        void import("../data/vocabulary").catch(() => {});
+
         // ─── Anon-auth bootstrap ───────────────────────────────────────
         // Ensure we have a VALID anonymous auth session — RLS requires it.
         //
