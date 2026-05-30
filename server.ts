@@ -5625,6 +5625,25 @@ ${sanitizedText}`;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    // Client-side errors raised by body-parser / upstream middleware — e.g.
+    // PayloadTooLargeError (413) when a request body exceeds the 50kb json
+    // limit, or 400 for malformed JSON — carry a 4xx status. Surface that
+    // status directly instead of masking it as a generic 500 and logging it as
+    // an [unhandled] server fault: the request was rejected by design, not a
+    // server bug. (Found in the 2026-05 pen test: a 100kb body returned 500
+    // instead of 413.)
+    const clientStatus =
+      (err as { status?: number; statusCode?: number }).status ??
+      (err as { statusCode?: number }).statusCode;
+    if (typeof clientStatus === "number" && clientStatus >= 400 && clientStatus < 500) {
+      if (!res.headersSent) {
+        res.status(clientStatus).json({
+          error: clientStatus === 413 ? "Payload too large" : "Bad request",
+        });
+      }
+      return;
+    }
+
     // SECURITY: pass req.method and req.path as separate arguments
     // rather than interpolating into a template literal.  Node's
     // console.error treats the first argument as a printf-style
