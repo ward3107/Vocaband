@@ -109,8 +109,8 @@ export const setBuildWizardT: Record<Language, SetBuildWizardStrings> = {
     modeCurriculumBlurb: "Pick from the built-in Set 1 / Set 2 / Set 3 word banks.",
     comingSoonBadge: "Soon",
 
-    setNameLabel: "Set name",
-    setNamePlaceholder: "e.g. Animals — Unit 3",
+    setNameLabel: "List name",
+    setNamePlaceholder: "e.g. English 6 · Unit 3 · page 24",
     defaultSetNamePhoto: (date) => `Photo · ${date}`,
     defaultSetNamePaste: (date) => `Pasted · ${date}`,
     defaultSetNameManual: (date) => `New set · ${date}`,
@@ -179,7 +179,7 @@ export const setBuildWizardT: Record<Language, SetBuildWizardStrings> = {
     comingSoonBadge: "בקרוב",
 
     setNameLabel: "שם הרשימה",
-    setNamePlaceholder: "למשל: חיות — יחידה 3",
+    setNamePlaceholder: "למשל: אנגלית 6 · יחידה 3 · עמוד 24",
     defaultSetNamePhoto: (date) => `צילום · ${date}`,
     defaultSetNamePaste: (date) => `הדבקה · ${date}`,
     defaultSetNameManual: (date) => `רשימה חדשה · ${date}`,
@@ -248,7 +248,7 @@ export const setBuildWizardT: Record<Language, SetBuildWizardStrings> = {
     comingSoonBadge: "قريبًا",
 
     setNameLabel: "اسم القائمة",
-    setNamePlaceholder: "مثال: الحيوانات — الوحدة 3",
+    setNamePlaceholder: "مثال: إنجليزي 6 · الوحدة 3 · صفحة 24",
     defaultSetNamePhoto: (date) => `صورة · ${date}`,
     defaultSetNamePaste: (date) => `لصق · ${date}`,
     defaultSetNameManual: (date) => `قائمة جديدة · ${date}`,
@@ -316,8 +316,8 @@ export const setBuildWizardT: Record<Language, SetBuildWizardStrings> = {
     modeCurriculumBlurb: "Pick from the built-in Set 1 / Set 2 / Set 3 word banks.",
     comingSoonBadge: "Soon",
 
-    setNameLabel: "Set name",
-    setNamePlaceholder: "e.g. Animals — Unit 3",
+    setNameLabel: "List name",
+    setNamePlaceholder: "e.g. English 6 · Unit 3 · page 24",
     defaultSetNamePhoto: (date) => `Photo · ${date}`,
     defaultSetNamePaste: (date) => `Pasted · ${date}`,
     defaultSetNameManual: (date) => `New set · ${date}`,

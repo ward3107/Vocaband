@@ -445,7 +445,10 @@ export default function ClassReportModal({
                       >
                         <h3 className="font-black text-sm print:text-stone-800" style={{ color: 'var(--vb-text-primary)' }}>{t.reportStatusTableHeading}</h3>
                       </div>
-                      <table className="w-full text-sm">
+                      {/* Horizontal scroll on phones so the 6 columns aren't
+                          clipped; min-width keeps them readable. */}
+                      <div className="overflow-x-auto">
+                      <table className="w-full min-w-[34rem] text-sm">
                         <thead
                           style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
                           className="text-xs uppercase tracking-wider print:bg-stone-100/70 print:text-stone-600"
@@ -497,6 +500,7 @@ export default function ClassReportModal({
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </div>
 
                     {/* Legend — how to read the report */}

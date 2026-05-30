@@ -257,7 +257,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   return (
     <div className={`min-h-[100dvh] transition-colors ${pageCls}`} dir={dir}>
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="flex items-center justify-between gap-3 mb-5">
+        <header className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <h1 className={`text-2xl sm:text-3xl font-black flex items-center gap-2 ${headingCls}`}>
             <span className="text-3xl">🌍</span> {t.title}
           </h1>
@@ -278,7 +278,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setPresenting(true)}

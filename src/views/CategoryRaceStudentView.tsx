@@ -575,9 +575,15 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
 }
 
 function Shell({ children, dir }: { children: ReactNode; dir: "ltr" | "rtl" }) {
+  // Outer scrolls, inner centers: short screens (join, lobby) stay
+  // vertically centered, but tall ones (a full result with cells +
+  // standings) scroll instead of being clipped off the top/bottom on a
+  // phone. A plain centered flex container can't scroll its overflow.
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-5 bg-stone-100" dir={dir}>
-      {children}
+    <div className="min-h-[100dvh] overflow-y-auto bg-stone-100" dir={dir}>
+      <div className="min-h-[100dvh] flex items-center justify-center px-5 py-6">
+        {children}
+      </div>
     </div>
   );
 }

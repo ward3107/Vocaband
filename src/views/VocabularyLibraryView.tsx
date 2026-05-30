@@ -15,7 +15,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { BookMarked, FolderPlus, Plus, FileText, Folder, Clock, Sparkles, ChevronRight, ChevronLeft, Home, FolderInput } from "lucide-react";
+import { BookMarked, FolderPlus, Plus, FileText, Folder, Clock, Sparkles, ChevronRight, ChevronLeft, Home, FolderInput, Pencil, Trash2 } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
 import { THUMB_GRADIENTS, gradientFor } from "../components/vocabulary-library/v2/constants";
 import { useLanguage } from "../hooks/useLanguage";
@@ -29,6 +29,10 @@ import {
   listRecentSets,
   getCollectionPath,
   createCollection,
+  updateSet,
+  updateCollection,
+  deleteSet,
+  deleteCollection,
   type VocabularyCollection,
   type VocabularySet,
 } from "../core/vocabularyLibrary";
@@ -161,6 +165,61 @@ export default function VocabularyLibraryView({
     setShowBuildWizard(true);
   }, [user, busy]);
 
+  // Rename / delete for word lists + folders. Uses the browser prompt /
+  // confirm (same lightweight pattern as handleNewCollection above) so
+  // there's no extra modal to maintain.
+  const handleRenameSet = useCallback(async (set: VocabularySet) => {
+    if (busy) return;
+    const name = window.prompt(t.renamePrompt, set.name);
+    if (name == null) return;
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === set.name) return;
+    setBusy(true);
+    try {
+      await updateSet(set.id, { name: trimmed });
+      showToast(t.toastRenamed, "success");
+      await refresh();
+    } catch { showToast(t.toastError, "error"); }
+    finally { setBusy(false); }
+  }, [busy, t, showToast, refresh]);
+
+  const handleRenameCollection = useCallback(async (c: VocabularyCollection) => {
+    if (busy) return;
+    const name = window.prompt(t.renamePrompt, c.name);
+    if (name == null) return;
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === c.name) return;
+    setBusy(true);
+    try {
+      await updateCollection(c.id, { name: trimmed });
+      showToast(t.toastRenamed, "success");
+      await refresh();
+    } catch { showToast(t.toastError, "error"); }
+    finally { setBusy(false); }
+  }, [busy, t, showToast, refresh]);
+
+  const handleDeleteSet = useCallback(async (set: VocabularySet) => {
+    if (busy || !window.confirm(t.deleteConfirm(set.name))) return;
+    setBusy(true);
+    try {
+      await deleteSet(set.id);
+      showToast(t.toastDeleted, "success");
+      await refresh();
+    } catch { showToast(t.toastError, "error"); }
+    finally { setBusy(false); }
+  }, [busy, t, showToast, refresh]);
+
+  const handleDeleteCollection = useCallback(async (c: VocabularyCollection) => {
+    if (busy || !window.confirm(t.deleteConfirm(c.name))) return;
+    setBusy(true);
+    try {
+      await deleteCollection(c.id);
+      showToast(t.toastDeleted, "success");
+      await refresh();
+    } catch { showToast(t.toastError, "error"); }
+    finally { setBusy(false); }
+  }, [busy, t, showToast, refresh]);
+
   const handleWizardSaved = useCallback(() => {
     setShowBuildWizard(false);
     void refresh();
@@ -201,6 +260,13 @@ export default function VocabularyLibraryView({
     void refresh();
   }, [refresh]);
 
+  // Folders are an OPTIONAL grouping layer — most teachers just want a
+  // flat list of word lists. So we only surface the folder UI once the
+  // teacher has enough lists for grouping to matter (or already made a
+  // folder). Keeps the first-run experience as simple as "name a list,
+  // add words."
+  const showFolders = isInsideCollection || collections.length > 0 || allSets.length >= 4;
+
   // Inside a folder the surface shrinks: "sets here" + "sub-folders".
   // Recent is global by definition, so it only makes sense at the root.
   const tabs: Array<{ id: Tab; label: string; icon: ReactNode; count: number }> = isInsideCollection
@@ -210,7 +276,7 @@ export default function VocabularyLibraryView({
       ]
     : [
         { id: "all", label: t.tabAllSets, icon: <FileText className="w-4 h-4" />, count: allSets.length },
-        { id: "collections", label: t.tabCollections, icon: <Folder className="w-4 h-4" />, count: collections.length },
+        ...(showFolders ? [{ id: "collections" as Tab, label: t.tabCollections, icon: <Folder className="w-4 h-4" />, count: collections.length }] : []),
         { id: "recent", label: t.tabRecent, icon: <Clock className="w-4 h-4" />, count: recent.length },
       ];
 
@@ -313,7 +379,11 @@ export default function VocabularyLibraryView({
             )}
           </div>
 
-          <div className={`mt-5 flex flex-col sm:flex-row gap-3 ${isRTL ? "sm:flex-row-reverse" : ""}`}>
+          {/* Primary action is intentionally singular: just "New word
+              list." Folders are an optional grouping layer surfaced later
+              (see the tabs row), so a first-time teacher isn't asked to
+              choose between two concepts they don't yet need. */}
+          <div className="mt-5">
             <motion.button
               type="button"
               whileHover={{ scale: 1.02 }}
@@ -321,22 +391,10 @@ export default function VocabularyLibraryView({
               onClick={handleNewSet}
               disabled={busy}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-violet-700 font-bold py-3 px-5 shadow-sm hover:bg-white/95 disabled:opacity-60"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-violet-700 font-bold py-3.5 px-5 shadow-sm hover:bg-white/95 disabled:opacity-60"
             >
               <Plus className="w-5 h-5" />
               {t.newSet}
-            </motion.button>
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={handleNewCollection}
-              disabled={busy}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-white/15 backdrop-blur text-white font-bold py-3 px-5 hover:bg-white/25 disabled:opacity-60"
-            >
-              <FolderPlus className="w-5 h-5" />
-              {t.newCollection}
             </motion.button>
           </div>
         </motion.div>
@@ -378,6 +436,20 @@ export default function VocabularyLibraryView({
               </button>
             );
           })}
+          {/* Optional "group into folders" action — only once folders are
+              relevant, so it never clutters the first-run experience. */}
+          {showFolders && (
+            <button
+              type="button"
+              onClick={handleNewCollection}
+              disabled={busy}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className="shrink-0 ms-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 disabled:opacity-60"
+            >
+              <FolderPlus className="w-4 h-4" />
+              {t.newCollection}
+            </button>
+          )}
         </div>
 
         {/* Tab content */}
@@ -400,6 +472,8 @@ export default function VocabularyLibraryView({
                     t={t}
                     onOpen={() => setOpenedSet(s)}
                     onMove={() => setMovingItem({ kind: "set", set: s })}
+                    onRename={() => handleRenameSet(s)}
+                    onDelete={() => handleDeleteSet(s)}
                   />
                 ))}
               </CardGrid>
@@ -420,6 +494,8 @@ export default function VocabularyLibraryView({
                     t={t}
                     onOpen={() => openCollection(c)}
                     onMove={() => setMovingItem({ kind: "collection", collection: c })}
+                    onRename={() => handleRenameCollection(c)}
+                    onDelete={() => handleDeleteCollection(c)}
                   />
                 ))}
               </CardGrid>
@@ -439,6 +515,8 @@ export default function VocabularyLibraryView({
                   t={t}
                   onOpen={() => setOpenedSet(s)}
                   onMove={() => setMovingItem({ kind: "set", set: s })}
+                  onRename={() => handleRenameSet(s)}
+                  onDelete={() => handleDeleteSet(s)}
                 />
               ))}
             </CardGrid>
@@ -518,11 +596,15 @@ function SetCard({
   t,
   onOpen,
   onMove,
+  onRename,
+  onDelete,
 }: {
   set: VocabularySet;
   t: VocabularyLibraryStrings;
   onOpen: () => void;
   onMove: () => void;
+  onRename: () => void;
+  onDelete: () => void;
 }) {
   // Repainted with the v2 vocabulary-library SetCard look: tamed-
   // rainbow thumbnail with floating word-count chip + drop-shadowed
@@ -562,11 +644,11 @@ function SetCard({
             {set.emoji ?? "📄"}
           </span>
         </div>
-        <div className="px-4 pb-4 pt-3.5 pe-12">
+        <div className="px-4 pb-4 pt-3.5 pe-28">
           <div className="truncate text-[14px] font-bold text-[#1F1147]">{set.name}</div>
         </div>
       </button>
-      <CardMoveButton onMove={onMove} ariaLabel={t.moveAria} />
+      <CardActions t={t} onRename={onRename} onMove={onMove} onDelete={onDelete} />
     </motion.div>
   );
 }
@@ -576,11 +658,15 @@ function CollectionCard({
   t,
   onOpen,
   onMove,
+  onRename,
+  onDelete,
 }: {
   collection: VocabularyCollection;
   t: VocabularyLibraryStrings;
   onOpen: () => void;
   onMove: () => void;
+  onRename: () => void;
+  onDelete: () => void;
 }) {
   // Same chrome as SetCard — keeps adjacent set + collection cards
   // visually coherent inside a mixed grid.
@@ -612,7 +698,7 @@ function CollectionCard({
             {collection.emoji ?? "📁"}
           </span>
         </div>
-        <div className="px-4 pb-4 pt-3.5 pe-12">
+        <div className="px-4 pb-4 pt-3.5 pe-28">
           <div className="truncate text-[14px] font-bold text-[#1F1147]">{collection.name}</div>
           {collection.description ? (
             <p className="mt-1 line-clamp-2 text-[11px] font-semibold text-[#8B85AB]">
@@ -621,26 +707,61 @@ function CollectionCard({
           ) : null}
         </div>
       </button>
-      <CardMoveButton onMove={onMove} ariaLabel={t.moveAria} />
+      <CardActions t={t} onRename={onRename} onMove={onMove} onDelete={onDelete} />
     </motion.div>
   );
 }
 
-/** Small floating "move" button anchored to a card's bottom-right corner.
- *  Sits outside the card's main button so its click doesn't trigger the
- *  drill-in / open-detail action. */
-function CardMoveButton({ onMove, ariaLabel }: { onMove: () => void; ariaLabel: string }) {
+/** Floating per-card actions (Rename / Move / Delete), anchored to the
+ *  card's bottom-end corner. Each stops propagation so a tap doesn't also
+ *  trigger the card's open / drill-in action. */
+function CardActions({
+  t,
+  onRename,
+  onMove,
+  onDelete,
+}: {
+  t: VocabularyLibraryStrings;
+  onRename: () => void;
+  onMove: () => void;
+  onDelete: () => void;
+}) {
+  const base =
+    "w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-slate-200 flex items-center justify-center shadow-sm";
+  const tap = { touchAction: "manipulation", WebkitTapHighlightColor: "transparent" } as const;
   return (
-    <button
-      type="button"
-      onClick={(e) => { e.stopPropagation(); onMove(); }}
-      aria-label={ariaLabel}
-      title={ariaLabel}
-      className="absolute end-2 bottom-2 w-9 h-9 rounded-full bg-white/90 backdrop-blur border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 flex items-center justify-center shadow-sm"
-      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-    >
-      <FolderInput className="w-4 h-4" />
-    </button>
+    <div className="absolute end-2 bottom-2 flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onRename(); }}
+        aria-label={t.renameAria}
+        title={t.renameAria}
+        className={`${base} text-slate-600 hover:bg-slate-100 hover:text-slate-900`}
+        style={tap}
+      >
+        <Pencil className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onMove(); }}
+        aria-label={t.moveAria}
+        title={t.moveAria}
+        className={`${base} text-slate-600 hover:bg-slate-100 hover:text-slate-900`}
+        style={tap}
+      >
+        <FolderInput className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        aria-label={t.deleteAria}
+        title={t.deleteAria}
+        className={`${base} text-rose-500 hover:bg-rose-50 hover:text-rose-600`}
+        style={tap}
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
   );
 }
 
