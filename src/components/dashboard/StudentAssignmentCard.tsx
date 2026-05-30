@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Zap, Sparkles, Lock, Trophy } from "lucide-react";
-import { ALL_WORDS } from "../../data/vocabulary";
 import { MAX_ASSIGNMENT_ROUNDS, ALL_GAME_MODES } from "../../constants/game";
 import { resolveAssignmentPlays, computeRoundsCompleted, isAssignmentLocked } from "../../hooks/useAssignmentPlays";
 import type { AssignmentData, CompetitionData, ProgressData } from "../../core/supabase";
@@ -10,6 +9,7 @@ import type { View } from "../../core/views";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 import { competitionsT } from "../../locales/competitions";
+import { resolveAssignmentWords } from "../../utils/resolveAssignmentWords";
 import CompetitionLeaderboardModal from "../CompetitionLeaderboardModal";
 
 const DEFAULT_MODES = ALL_GAME_MODES;
@@ -119,9 +119,9 @@ export default function StudentAssignmentCard({
   // game loop already awards).  Displayed as an incentive chip.
   const xpReward = totalModes * 15;
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (isLocked) return;
-    const filteredWords = assignment.words || ALL_WORDS.filter(w => assignment.wordIds.includes(w.id));
+    const filteredWords = await resolveAssignmentWords(assignment);
     setActiveAssignment(assignment);
     setAssignmentWords(filteredWords);
     React.startTransition(() => {

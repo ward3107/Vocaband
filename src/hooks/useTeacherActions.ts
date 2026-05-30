@@ -14,7 +14,6 @@ import {
   type ProgressData,
 } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
-import { HEBREW_LEMMAS } from "../data/vocabulary-hebrew";
 import { getCachedVocabulary } from "./useVocabularyLazy";
 import { chunkArray } from "../utils";
 import { loadMammoth } from "../utils/lazyLoad";
@@ -576,9 +575,20 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     // for the dedup + filter step below.  The `unknown` hop is needed
     // because Word and HebrewLemma don't share a base type, even though
     // both expose `id`.
-    const allPossibleWords: ReadonlyArray<{ id: number }> = isHebrewClass
-      ? (HEBREW_LEMMAS as unknown as ReadonlyArray<{ id: number }>)
-      : ([...(getCachedVocabulary()?.ALL_WORDS ?? []), ...customWords] as ReadonlyArray<{ id: number }>);
+    //
+    // The Hebrew lemma corpus (vocabulary-hebrew) is large and only
+    // needed the moment a teacher saves a Hebrew assignment, so it's
+    // dynamic-imported here rather than statically.  A static import
+    // dragged the whole corpus onto the shared app-shell chunk that
+    // EVERY login (including students, who never touch this handler)
+    // had to download — a major login-latency regression.
+    let allPossibleWords: ReadonlyArray<{ id: number }>;
+    if (isHebrewClass) {
+      const { HEBREW_LEMMAS } = await import("../data/vocabulary-hebrew");
+      allPossibleWords = HEBREW_LEMMAS as unknown as ReadonlyArray<{ id: number }>;
+    } else {
+      allPossibleWords = [...(getCachedVocabulary()?.ALL_WORDS ?? []), ...customWords] as ReadonlyArray<{ id: number }>;
+    }
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
     const wordsToCheckSet = new Set(wordsToCheck);
     const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));

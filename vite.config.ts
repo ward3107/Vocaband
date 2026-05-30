@@ -655,6 +655,21 @@ export default defineConfig(() => {
         output: {
           manualChunks(id) {
             if (id.includes('lucide-react')) return 'lucide';
+            // Split the Hebrew lemma corpus from the English vocabulary.
+            // The old single `src/data/vocabulary` glob matched
+            // vocabulary.ts, vocabulary-hebrew.ts AND vocabulary-ru.ts,
+            // merging all three into one ~595 kB chunk.  Because they
+            // shared a chunk, importing the Hebrew corpus (or English)
+            // dragged the other onto the wire too — so a student doing
+            // English still downloaded the Hebrew lemmas and vice versa.
+            // Hebrew data is independent (nothing in vocabulary.ts imports
+            // it), so it gets its own chunk.  vocabulary-ru stays inside
+            // `vocabulary` because vocabulary.ts hard-imports it at module
+            // eval to build ALL_WORDS — splitting it would only add a
+            // guaranteed second request with no payoff.  MORE-SPECIFIC
+            // MATCH FIRST: vocabulary-hebrew must be tested before the
+            // generic `vocabulary` substring.
+            if (id.includes('src/data/vocabulary-hebrew')) return 'vocabulary-hebrew';
             if (id.includes('src/data/vocabulary')) return 'vocabulary';
             // Pin Sentry to its own chunk.  Bundled into `index` it
             // bloated the entry by ~40 kB gz and any change to main.tsx
