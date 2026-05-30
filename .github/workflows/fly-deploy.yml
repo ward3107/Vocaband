@@ -53,7 +53,13 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
+        # Pinned to an immutable commit SHA instead of the mutable @master
+        # branch: this workflow holds FLY_API_TOKEN, so a compromise of the
+        # action's master branch would run with our Fly deploy token. This
+        # SHA is release tag 1.6 (also == master HEAD today), so the pin is
+        # a no-op for behavior. Bump deliberately when upgrading the tag.
+        # (Security audit INFO-4.)
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
 
       - name: Deploy
         # --remote-only: build runs on Fly's remote builder, so this
