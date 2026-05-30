@@ -24,6 +24,12 @@ interface Props {
   /** Called after successful signInWithPassword.  App.tsx's auth listener
    *  then hydrates the AppUser from public.users. */
   onSuccess: () => void;
+  /** Tier-2 fast login (build-flag gated in App). When provided, the card
+   *  tries the single-round-trip /api/student/login first; App handles
+   *  setSession + dashboard hydration on 'ok'. 'invalid' → wrong-PIN UX;
+   *  'fallback' → run the existing direct signInWithPassword below.
+   *  Undefined = feature off → direct path only. */
+  onTier2Login?: (email: string, pin: string) => Promise<'ok' | 'invalid' | 'fallback'>;
 }
 
 const PIN_LENGTH = 6;
@@ -31,7 +37,7 @@ const PIN_LENGTH = 6;
 // (no I/L/O, no 0/1).
 const PIN_REGEX = /^[A-HJ-KM-NP-Z2-9]{6}$/;
 
-const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSuccess }) => {
+const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSuccess, onTier2Login }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = studentPinLoginT[language];
   const [step, setStep] = useState<"pick" | "pin">("pick");
@@ -142,6 +148,25 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     setSigningIn(true);
     setPinError(null);
     try {
+      // Tier-2 fast path: one round-trip to the nearby edge instead of
+      // 3-4 to Frankfurt. App handles setSession + dashboard hydration on
+      // 'ok'; 'fallback' drops through to the direct path below.
+      if (onTier2Login) {
+        const outcome = await onTier2Login(selected.email, cleanPin);
+        if (outcome === 'ok') {
+          void supabase.rpc("student_touch_last_login");
+          onSuccess();
+          return;
+        }
+        if (outcome === 'invalid') {
+          const nextCount = wrongPinCount + 1;
+          setWrongPinCount(nextCount);
+          setPinError(nextCount >= 3 ? t.wrongPinPersistent : t.wrongPin);
+          return;
+        }
+        // 'fallback' → continue to the direct signInWithPassword below.
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email: selected.email,
         password: cleanPin,
