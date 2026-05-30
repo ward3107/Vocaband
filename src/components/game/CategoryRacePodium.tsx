@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Trophy } from "lucide-react";
+import QPAvatar from "../QPAvatar";
 
 export interface PodiumEntry {
   clientId: string;
@@ -31,6 +32,8 @@ interface CategoryRacePodiumProps {
    *  class reading the board from the back of the room can make out
    *  who's who. Defaults off for any compact/preview use. */
   large?: boolean;
+  /** Dark theme — flips name/track colours for the dark projector. */
+  dark?: boolean;
 }
 
 // easeOutCubic count-up so a +10 visibly ticks up instead of snapping.
@@ -55,7 +58,7 @@ function AnimatedScore({ value }: { value: number }) {
   return <>{display}</>;
 }
 
-export default function CategoryRacePodium({ entries, emptyText, large = false }: CategoryRacePodiumProps) {
+export default function CategoryRacePodium({ entries, emptyText, large = false, dark = false }: CategoryRacePodiumProps) {
   // Detect score increases between renders to fire a "+N" burst.
   const prev = useRef<Map<string, number>>(new Map());
   const gainId = useRef(0);
@@ -73,6 +76,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false }
     }
     prev.current = next;
     if (!fresh.length) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- diffs score props to fire a "+N" burst; matches existing convention
     setGains(g => {
       const m = new Map(g);
       for (const f of fresh) m.set(f.clientId, { amount: f.amount, id: f.id });
@@ -92,7 +96,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false }
 
   if (entries.length === 0) {
     return (
-      <p className={`text-stone-400 font-semibold text-center ${large ? "text-2xl py-20" : "text-sm py-10"}`}>
+      <p className={`font-semibold text-center ${dark ? "text-stone-500" : "text-stone-400"} ${large ? "text-2xl py-20" : "text-sm py-10"}`}>
         {emptyText}
       </p>
     );
@@ -124,16 +128,25 @@ export default function CategoryRacePodium({ entries, emptyText, large = false }
               {/* Lane head — rank chip + avatar + name. Scaled up in
                   projector mode so names read from the back of the room. */}
               <div className={`flex items-center mb-1.5 ${large ? "gap-3" : "gap-2"}`}>
-                <span
-                  className={`inline-flex items-center justify-center rounded-full font-black ${
-                    large ? "w-9 h-9 text-lg" : "w-6 h-6 text-xs"
-                  } ${isLeader ? "bg-amber-400 text-white" : "bg-stone-200 text-stone-600"}`}
-                >
-                  {i + 1}
+                {/* Top three get medals; everyone else a numbered chip. */}
+                {i < 3 ? (
+                  <span className={`inline-flex items-center justify-center ${large ? "w-9 h-9 text-3xl" : "w-6 h-6 text-lg"}`} aria-label={`Rank ${i + 1}`}>
+                    {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                  </span>
+                ) : (
+                  <span
+                    className={`inline-flex items-center justify-center rounded-full font-black ${dark ? "bg-stone-700 text-stone-200" : "bg-stone-200 text-stone-600"} ${
+                      large ? "w-9 h-9 text-lg" : "w-6 h-6 text-xs"
+                    }`}
+                  >
+                    {i + 1}
+                  </span>
+                )}
+                <span className={`flex items-center justify-center ${large ? "text-3xl" : "text-lg"}`}>
+                  <QPAvatar value={e.avatar || "🦊"} iconSize={large ? 30 : 18} />
                 </span>
-                <span className={large ? "text-3xl" : "text-lg"}>{e.avatar || "🦊"}</span>
                 <span
-                  className={`font-black text-stone-800 truncate min-w-0 flex-1 ${
+                  className={`font-black truncate min-w-0 flex-1 ${dark ? "text-stone-100" : "text-stone-800"} ${
                     large ? "text-2xl sm:text-3xl" : "text-sm"
                   }`}
                   dir="auto"
@@ -146,7 +159,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false }
                   end of the leader's fill so it travels with whoever
                   is in front. */}
               <div
-                className={`relative rounded-full bg-stone-100 overflow-hidden ${large ? "h-12" : "h-8"}`}
+                className={`relative rounded-full overflow-hidden ${dark ? "bg-stone-800" : "bg-stone-100"} ${large ? "h-12" : "h-8"}`}
                 style={gain ? { boxShadow: "0 0 0 2px rgba(16,185,129,0.55)" } : undefined}
               >
                 <motion.div

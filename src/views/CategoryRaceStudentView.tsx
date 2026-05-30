@@ -3,20 +3,33 @@
  * from join to play. Owns the whole student journey so it stays simple
  * and self-contained (no shared multi-step Quick Play join flow):
  *
- *   join (name + avatar) → lobby (waiting) → focus card (answering) →
- *   result → back to lobby for the next round, until the teacher ends.
+ *   join (name + avatar) → get-ready (audio unlock) → lobby (waiting) →
+ *   focus card (answering) → result → back to lobby for the next round,
+ *   until the teacher ends.
  *
  * Round state is server-pushed: the teacher starts a round, the server
  * rolls one letter with a shared deadline, the student types in the
  * full-screen focus card, and on submit / timeout the server scores the
  * answers and returns the per-cell result.
+ *
+ * Polish parity with Quick Play: the tabbed QPAvatarPicker, a get-ready
+ * screen that primes iOS audio, a floating help button, friendly error
+ * screens, confetti + sound + point count-up + an "on fire" streak on
+ * the result.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Hourglass, Trophy, Check, X, RotateCw, Crown, Loader2, ArrowRight } from "lucide-react";
+import { Hourglass, Trophy, Check, X, RotateCw, Crown, ArrowRight } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import CategoryRaceFocusCard from "../components/game/CategoryRaceFocusCard";
+import QPAvatarPicker from "../components/QPAvatarPicker";
+import QPAvatar from "../components/QPAvatar";
+import QuickPlayGetReady from "../components/QuickPlayGetReady";
+import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
+import QuickPlayErrorScreen from "../components/QuickPlayErrorScreen";
+import { celebrate } from "../utils/celebrate";
+import { playLetterReveal, playGood, playGentle, playFanfare } from "../utils/raceSfx";
 import { CATEGORIES, categoryLabel, type CategoryMeta } from "../data/category-race-bank";
 import { containsProfanity } from "../utils/nicknameProfanity";
 import type { QpRaceResultPayload } from "../core/quickPlayProtocol";
@@ -27,45 +40,75 @@ interface CategoryRaceStudentViewProps {
   setView: (v: View) => void;
 }
 
-type Phase = "join" | "lobby" | "answering" | "result" | "ended";
+type Phase = "join" | "getready" | "lobby" | "answering" | "result" | "ended" | "kicked";
 
-const AVATARS = ["🦊", "🐼", "🐯", "🦁", "🐵", "🐶", "🐱", "🐰", "🐨", "🐸", "🐧", "🦄"];
+const DEFAULT_AVATAR = "🦊";
 
 const STRINGS = {
   en: {
     joinTitle: "Category Race", joinSub: "Type your name and jump in!",
-    namePlaceholder: "Your name", joinBtn: "Join the race", joining: "Joining…",
-    pickAvatar: "Pick your look",
+    namePlaceholder: "Your name", continueBtn: "Continue", joinBtn: "Join the race", joining: "Joining…",
     nameTaken: "That name is taken — try another.", kicked: "You were removed from this game.",
     joinFailed: "Couldn't join. Check the code and try again.", badName: "Please pick a different name.",
     lobbyTitle: "You're in!", lobbySub: "Waiting for your teacher to start the race…",
     roundOver: "Round over", yourScore: "Your score", waitingNext: "Waiting for the next round…",
     endedTitle: "Race finished!", endedSub: "Thanks for playing.", backHome: "Back to home",
     points: (n: number) => `${n} pts`, rank: (n: number) => `#${n}`,
+    onFire: (n: number) => `On fire! ${n} perfect rounds in a row`,
+    chase: (pts: number) => `${pts} pts behind the leader — catch them!`,
+    nailedIt: "Nailed it — all in English! 🎯",
+    niceTry: (n: number) => n > 0 ? `Nice — ${n} in English! Keep going.` : "Keep going — you'll get the next one! 💪",
+    speedLabel: "speed bonus", standings: "Live standings", you: "You",
   },
   he: {
     joinTitle: "מרוץ קטגוריות", joinSub: "כתבו את השם והצטרפו!",
-    namePlaceholder: "השם שלך", joinBtn: "הצטרפו למרוץ", joining: "מצטרפים…",
-    pickAvatar: "בחרו דמות",
+    namePlaceholder: "השם שלך", continueBtn: "המשך", joinBtn: "הצטרפו למרוץ", joining: "מצטרפים…",
     nameTaken: "השם תפוס — נסו שם אחר.", kicked: "הוסרת מהמשחק.",
     joinFailed: "ההצטרפות נכשלה. בדקו את הקוד ונסו שוב.", badName: "בחרו שם אחר בבקשה.",
     lobbyTitle: "אתם בפנים!", lobbySub: "ממתינים שהמורה יתחיל את המרוץ…",
     roundOver: "הסבב הסתיים", yourScore: "הניקוד שלך", waitingNext: "ממתינים לסבב הבא…",
     endedTitle: "המרוץ הסתיים!", endedSub: "תודה ששיחקתם.", backHome: "חזרה לבית",
     points: (n: number) => `${n} נק'`, rank: (n: number) => `#${n}`,
+    onFire: (n: number) => `אש! ${n} סבבים מושלמים ברצף`,
+    chase: (pts: number) => `${pts} נק' מאחורי המוביל — תשיגו אותו!`,
+    nailedIt: "מצוין — הכול באנגלית! 🎯",
+    niceTry: (n: number) => n > 0 ? `יפה — ${n} באנגלית! המשיכו.` : "המשיכו — תצליחו בסבב הבא! 💪",
+    speedLabel: "בונוס מהירות", standings: "דירוג חי", you: "אתם",
   },
   ar: {
     joinTitle: "سباق الفئات", joinSub: "اكتب اسمك وانضم!",
-    namePlaceholder: "اسمك", joinBtn: "انضم إلى السباق", joining: "جارٍ الانضمام…",
-    pickAvatar: "اختر شخصيتك",
+    namePlaceholder: "اسمك", continueBtn: "متابعة", joinBtn: "انضم إلى السباق", joining: "جارٍ الانضمام…",
     nameTaken: "الاسم مأخوذ — جرّب اسمًا آخر.", kicked: "تمت إزالتك من اللعبة.",
     joinFailed: "تعذّر الانضمام. تحقق من الرمز وحاول مجددًا.", badName: "اختر اسمًا مختلفًا من فضلك.",
     lobbyTitle: "أنت في السباق!", lobbySub: "في انتظار أن يبدأ معلمك السباق…",
     roundOver: "انتهت الجولة", yourScore: "نتيجتك", waitingNext: "في انتظار الجولة التالية…",
     endedTitle: "انتهى السباق!", endedSub: "شكرًا للعب.", backHome: "العودة للرئيسية",
     points: (n: number) => `${n} نقطة`, rank: (n: number) => `#${n}`,
+    onFire: (n: number) => `رائع! ${n} جولات مثالية متتالية`,
+    chase: (pts: number) => `${pts} نقطة خلف المتصدر — الحق به!`,
+    nailedIt: "أحسنت — كله بالإنجليزية! 🎯",
+    niceTry: (n: number) => n > 0 ? `جيد — ${n} بالإنجليزية! واصل.` : "واصل — ستنجح في الجولة القادمة! 💪",
+    speedLabel: "مكافأة السرعة", standings: "الترتيب المباشر", you: "أنت",
   },
 } as const;
+
+/** easeOutCubic count-up so a "+45" visibly ticks up instead of snapping. */
+function CountUp({ value, className }: { value: number; className?: string }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / 700);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.round(value * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <span className={className}>{display}</span>;
+}
 
 export default function CategoryRaceStudentView({ sessionCode, setView }: CategoryRaceStudentViewProps) {
   const { language, dir } = useLanguage();
@@ -74,13 +117,14 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
   const {
     currentRace, leaderboard, clientId, joinedSessionCode, lastError,
-    joinAsStudent, submitRaceAnswers, onRaceResult, onRaceEnded, onSessionEnded, onKicked,
+    joinAsStudent, submitRaceAnswers, sendReaction,
+    onRaceResult, onRaceEnded, onSessionEnded, onKicked,
   } = qp;
 
   const [phase, setPhase] = useState<Phase>("join");
   // Join form
   const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState(AVATARS[0]);
+  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   // Round play
@@ -89,13 +133,17 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [lastResult, setLastResult] = useState<QpRaceResultPayload | null>(null);
   const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
-  // Real state (not just the ref) so the Submit button reflects the
-  // in-flight state and re-renders the focus card with a spinner.
   const [submitting, setSubmitting] = useState(false);
+  // Motivation: consecutive perfect (all-English) rounds.
+  const [streak, setStreak] = useState(0);
+  // Category ids where the student used a hint this round (reduced points).
+  const [helped, setHelped] = useState<Set<string>>(new Set());
 
   // Refs so the countdown's auto-submit reads the freshest values.
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
+  const helpedRef = useRef(helped);
+  useEffect(() => { helpedRef.current = helped; }, [helped]);
   const raceRef = useRef(currentRace);
   useEffect(() => { raceRef.current = currentRace; }, [currentRace]);
   const submittedRef = useRef(false);
@@ -106,27 +154,41 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   );
 
   // ─── Join ────────────────────────────────────────────────────────────
-  const handleJoin = () => {
+  // Step 1: validate the name and move to the get-ready screen. We DON'T
+  // emit the join here — the get-ready tap is what primes iOS audio, so
+  // the actual join fires from there (same pattern as Quick Play).
+  const handleContinue = () => {
     const trimmed = name.trim();
-    if (!trimmed || joining) return;
+    if (!trimmed) return;
     if (containsProfanity(trimmed)) { setJoinError(t.badName); return; }
     setJoinError(null);
+    setPhase("getready");
+  };
+
+  // Step 2: get-ready tap — audio is primed inside QuickPlayGetReady, then
+  // this fires the real join emit.
+  const handleStart = () => {
+    if (joining) return;
     setJoining(true);
-    joinAsStudent(trimmed, avatar);
+    joinAsStudent(name.trim(), avatar);
   };
 
   // Advance to the lobby once the server confirms the join.
   useEffect(() => {
     if (joining && joinedSessionCode === sessionCode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- socket join confirmation; matches existing convention
       setJoining(false);
       setPhase("lobby");
     }
   }, [joining, joinedSessionCode, sessionCode]);
 
-  // Surface a join rejection (name taken / kicked / bad payload).
+  // Surface a join rejection (name taken / bad payload) — bounce back to
+  // the join form with the reason so the student can fix it.
   useEffect(() => {
-    if (!lastError || phase !== "join") return;
+    if (!lastError || (phase !== "join" && phase !== "getready")) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reacts to a socket error payload; matches existing convention
     setJoining(false);
+    setPhase("join");
     setJoinError(
       lastError.code === "nickname_taken" ? t.nameTaken
       : lastError.code === "kicked" ? t.kicked
@@ -140,26 +202,31 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     if (!race || submittedRef.current) return;
     submittedRef.current = true;
     setSubmitting(true);
-    submitRaceAnswers(race.roundId, answersRef.current);
+    submitRaceAnswers(race.roundId, answersRef.current, [...helpedRef.current]);
   }, [submitRaceAnswers]);
 
-  // A new round started — reset and drop into the focus card.
+  // A new round started — reset, play the letter-reveal blip, and drop
+  // into the focus card.
   useEffect(() => {
-    if (phase === "join") return;
+    if (phase === "join" || phase === "getready") return;
     if (currentRace && currentRace.roundId !== activeRoundId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- a server-pushed new round resets local play state; matches existing convention
       setActiveRoundId(currentRace.roundId);
       setAnswers({});
       setFocusIndex(0);
       setLastResult(null);
+      setHelped(new Set());
       submittedRef.current = false;
       setSubmitting(false);
       setPhase("answering");
+      playLetterReveal();
     }
   }, [currentRace, activeRoundId, phase]);
 
-  // Countdown to the shared deadline; auto-submit at zero.
+  // Countdown to the shared deadline; auto-submit at zero. Skipped for
+  // untimed (relaxed) rounds — the student submits when ready.
   useEffect(() => {
-    if (phase !== "answering" || !currentRace) return;
+    if (phase !== "answering" || !currentRace || currentRace.untimed) return;
     const tick = () => {
       const left = Math.max(0, Math.round((currentRace.deadlineTs - Date.now()) / 1000));
       setSecondsLeft(left);
@@ -174,14 +241,29 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     setSubmitting(false);
     setLastResult(p);
     setPhase("result");
-  }), [onRaceResult]);
 
-  // Server says the round closed. If we never submitted (clock skew vs.
-  // the shared deadline, or the student just sat there), fire one final
-  // submit so their typed answers still count within the grace window.
-  // If we already submitted, fall back to the lobby so a dropped
-  // RACE_RESULT packet doesn't leave the student stuck on the answer
-  // card with nothing happening.
+    // Reward feedback: a "perfect" round = every active category answered
+    // in English. Perfect → streak ticks up + full confetti + bright chime.
+    // Any points → small spark + chime. Nothing → gentle note, streak resets.
+    const total = p.cells.length;
+    const englishCount = p.cells.filter(c => c.matchedLanguage === "en").length;
+    const perfect = total > 0 && englishCount === total;
+    if (perfect) {
+      setStreak(s => s + 1);
+      celebrate(streak >= 1 ? "big" : "normal");
+      playGood();
+    } else if (p.roundPoints > 0) {
+      setStreak(0);
+      celebrate("small");
+      playGood();
+    } else {
+      setStreak(0);
+      playGentle();
+    }
+  }), [onRaceResult, streak]);
+
+  // Server says the round closed — final-submit if we never did, else
+  // fall back to the lobby so a dropped RACE_RESULT doesn't strand us.
   useEffect(() => onRaceEnded(() => {
     if (submittedRef.current) {
       setSubmitting(false);
@@ -191,10 +273,8 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     }
   }), [onRaceEnded, doSubmit]);
 
-  // Safety net: if a submit goes out but no RACE_RESULT comes back
-  // (lost packet, mid-round reconnect), don't trap the student on the
-  // answering screen. Drop them to the lobby — their score is already
-  // recorded server-side and shows on the next leaderboard tick.
+  // Safety net: a submit went out but no RACE_RESULT came back — don't
+  // trap the student on the answering screen.
   useEffect(() => {
     if (phase !== "answering" || !submitting) return;
     const id = window.setTimeout(() => {
@@ -204,17 +284,37 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     return () => window.clearTimeout(id);
   }, [phase, submitting]);
 
-  useEffect(() => onSessionEnded(() => setPhase("ended")), [onSessionEnded]);
-  useEffect(() => onKicked(() => setPhase("ended")), [onKicked]);
+  useEffect(() => onSessionEnded(() => {
+    setPhase("ended");
+    playFanfare();
+  }), [onSessionEnded]);
+  useEffect(() => onKicked(() => setPhase("kicked")), [onKicked]);
 
   // Derived: this student's live rank + score from the leaderboard.
   const sorted = useMemo(() => [...leaderboard].sort((a, b) => b.score - a.score), [leaderboard]);
   const myIndex = sorted.findIndex(e => e.clientId === clientId);
   const myEntry = myIndex >= 0 ? sorted[myIndex] : null;
+  const leaderScore = sorted[0]?.score ?? 0;
 
-  // ─── Join screen (large, single step) ────────────────────────────────
+  // Fire confetti once when a top-3 finish lands on the ended screen.
+  const finishCelebrated = useRef(false);
+  useEffect(() => {
+    if (phase === "ended" && !finishCelebrated.current && myIndex >= 0 && myIndex < 3) {
+      finishCelebrated.current = true;
+      celebrate("big");
+    }
+  }, [phase, myIndex]);
+
+  const helpButton = (
+    <QuickPlayHelpButton
+      onAlertTeacher={() => sendReaction("🙋")}
+      onLeave={() => setView("public-landing")}
+    />
+  );
+
+  // ─── Join screen (name + rich avatar picker) ─────────────────────────
   if (phase === "join") {
-    const canJoin = name.trim().length > 0 && !joining;
+    const canContinue = name.trim().length > 0;
     return (
       <Shell dir={dir}>
         <motion.div
@@ -232,7 +332,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
             type="text"
             value={name}
             onChange={e => { setName(e.target.value); setJoinError(null); }}
-            onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
+            onKeyDown={e => { if (e.key === "Enter") handleContinue(); }}
             placeholder={t.namePlaceholder}
             maxLength={30}
             autoComplete="off"
@@ -241,35 +341,36 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
           />
 
           <div className="mt-5">
-            <div className="text-xs font-black uppercase tracking-widest text-stone-400 mb-2 text-center">{t.pickAvatar}</div>
-            <div className="grid grid-cols-6 gap-2">
-              {AVATARS.map(a => (
-                <button
-                  key={a}
-                  type="button"
-                  onClick={() => setAvatar(a)}
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`aspect-square rounded-xl text-2xl flex items-center justify-center transition ${avatar === a ? "bg-gradient-to-br from-fuchsia-500 to-pink-600 shadow-md scale-105" : "bg-stone-100 hover:bg-stone-200"}`}
-                  aria-label={a}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
+            <QPAvatarPicker selected={avatar} onSelect={setAvatar} />
           </div>
 
           {joinError && <p className="mt-4 text-sm font-bold text-rose-600 text-center">{joinError}</p>}
 
           <button
             type="button"
-            onClick={handleJoin}
-            disabled={!canJoin}
+            onClick={handleContinue}
+            disabled={!canContinue}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className={`mt-6 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-lg text-white shadow-lg transition ${canJoin ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
+            className={`mt-6 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-lg text-white shadow-lg transition ${canContinue ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
           >
-            {joining ? <><Loader2 size={20} className="animate-spin" /> {t.joining}</> : <>{t.joinBtn} <ArrowRight size={20} className={dir === "rtl" ? "rotate-180" : ""} /></>}
+            {t.continueBtn} <ArrowRight size={20} className={dir === "rtl" ? "rotate-180" : ""} />
           </button>
         </motion.div>
+      </Shell>
+    );
+  }
+
+  // ─── Get ready (primes iOS audio, then joins) ────────────────────────
+  if (phase === "getready") {
+    return (
+      <Shell dir={dir}>
+        <QuickPlayGetReady
+          name={name.trim()}
+          avatar={avatar}
+          joining={joining}
+          onStart={handleStart}
+          joinedCount={leaderboard.length}
+        />
       </Shell>
     );
   }
@@ -286,20 +387,36 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
         setIndex={setFocusIndex}
         secondsLeft={secondsLeft}
         totalSeconds={currentRace.roundSeconds}
+        untimed={!!currentRace.untimed}
+        onHintUsed={(id) => setHelped(prev => new Set(prev).add(id))}
         onSubmit={doSubmit}
         submitting={submitting}
       />
     );
   }
 
-  // ─── Ended ───────────────────────────────────────────────────────────
+  // ─── Kicked ──────────────────────────────────────────────────────────
+  if (phase === "kicked") {
+    return (
+      <Shell dir={dir}>
+        <QuickPlayErrorScreen kind="kicked" onPrimary={() => setView("public-landing")} />
+      </Shell>
+    );
+  }
+
+  // ─── Ended (celebratory finish) ──────────────────────────────────────
   if (phase === "ended") {
     return (
       <Shell dir={dir}>
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
-          <div className="text-6xl mb-3">🎉</div>
+          <div className="text-7xl mb-3">{myIndex === 0 ? "🥇" : myIndex === 1 ? "🥈" : myIndex === 2 ? "🥉" : "🎉"}</div>
           <h1 className="text-3xl font-black text-stone-900">{t.endedTitle}</h1>
-          {myEntry && <p className="mt-2 text-lg font-bold text-fuchsia-600">{t.yourScore}: {t.points(myEntry.score)}{myIndex >= 0 ? ` · ${t.rank(myIndex + 1)}` : ""}</p>}
+          {myEntry && (
+            <p className="mt-2 text-lg font-black text-fuchsia-600">
+              {t.yourScore}: <CountUp value={myEntry.score} /> {language === "he" ? "נק'" : language === "ar" ? "نقطة" : "pts"}
+              {myIndex >= 0 ? ` · ${t.rank(myIndex + 1)}` : ""}
+            </p>
+          )}
           <p className="mt-1 text-stone-500 font-semibold">{t.endedSub}</p>
           <button
             type="button"
@@ -310,22 +427,62 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
             {t.backHome}
           </button>
         </motion.div>
+        {helpButton}
       </Shell>
     );
   }
 
   // ─── Result ──────────────────────────────────────────────────────────
   if (phase === "result" && lastResult) {
+    const total = lastResult.cells.length;
+    const englishCount = lastResult.cells.filter(c => c.matchedLanguage === "en").length;
+    const perfect = total > 0 && englishCount === total;
+    const behind = myEntry && leaderScore > myEntry.score ? leaderScore - myEntry.score : 0;
     return (
       <Shell dir={dir}>
         <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-md">
           <header className="text-center mb-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg mb-2">
+            <motion.div
+              initial={{ scale: 0.6, rotate: -12 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 16 }}
+              className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg mb-2"
+            >
               <Trophy size={30} />
-            </div>
+            </motion.div>
             <h2 className="text-2xl font-black text-stone-900">{t.roundOver}</h2>
-            <p className="mt-1 font-black text-fuchsia-600 text-lg">+{lastResult.roundPoints} · {t.yourScore} {lastResult.totalScore}</p>
+            <p className="mt-1 font-black text-fuchsia-600 text-2xl">
+              +<CountUp value={lastResult.roundPoints} /> · {t.yourScore} <CountUp value={lastResult.totalScore} />
+            </p>
+
+            {lastResult.speedBonus > 0 && (
+              <motion.div
+                initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 320, damping: 16, delay: 0.15 }}
+                className="mt-1.5 inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-amber-100 text-amber-700 font-black text-xs"
+              >
+                ⚡ +{lastResult.speedBonus} {t.speedLabel}
+              </motion.div>
+            )}
+
+            {/* Streak / encouragement banner. */}
+            {streak >= 2 ? (
+              <motion.div
+                initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 14 }}
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-sm shadow-md"
+              >
+                🔥 {t.onFire(streak)}
+              </motion.div>
+            ) : (
+              <p className="mt-2 text-sm font-bold text-stone-500">{perfect ? t.nailedIt : t.niceTry(englishCount)}</p>
+            )}
+
+            {behind > 0 && (
+              <p className="mt-1 text-xs font-bold text-fuchsia-500">⚡ {t.chase(behind)}</p>
+            )}
           </header>
+
           <ul className="space-y-2 mb-5">
             {lastResult.cells.map(cell => {
               const meta = CATEGORIES.find(c => c.id === cell.categoryId);
@@ -348,10 +505,40 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
               );
             })}
           </ul>
+          {/* Live standings — stays engaging while others finish; updates
+              in real time as each submit lands. */}
+          {sorted.length > 0 && (
+            <div className="mb-5">
+              <div className="text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2 text-center">{t.standings}</div>
+              <ul className="space-y-1.5">
+                {sorted.slice(0, 5).map((e, i) => {
+                  const me = e.clientId === clientId;
+                  return (
+                    <li key={e.clientId} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${me ? "bg-fuchsia-100 ring-2 ring-fuchsia-300" : "bg-white shadow-sm"}`}>
+                      <span className="w-6 text-center font-black text-xs text-stone-500">{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>
+                      <span className="flex items-center justify-center text-lg"><QPAvatar value={e.avatar || "🦊"} iconSize={18} /></span>
+                      <span className="flex-1 min-w-0 truncate font-black text-sm text-stone-800" dir="auto">{me ? t.you : e.nickname}</span>
+                      <span className="font-black text-sm text-fuchsia-600 tabular-nums">{e.score}</span>
+                    </li>
+                  );
+                })}
+                {myIndex >= 5 && myEntry && (
+                  <li className="flex items-center gap-2 rounded-xl px-3 py-2 bg-fuchsia-100 ring-2 ring-fuchsia-300">
+                    <span className="w-6 text-center font-black text-xs text-stone-500">{myIndex + 1}</span>
+                    <span className="flex items-center justify-center text-lg"><QPAvatar value={avatar} iconSize={18} /></span>
+                    <span className="flex-1 min-w-0 truncate font-black text-sm text-stone-800">{t.you}</span>
+                    <span className="font-black text-sm text-fuchsia-600 tabular-nums">{myEntry.score}</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
           <div className="flex items-center justify-center gap-2 text-stone-400 font-bold text-sm">
             <Hourglass size={16} className="animate-pulse" /> {t.waitingNext}
           </div>
         </motion.div>
+        {helpButton}
       </Shell>
     );
   }
@@ -360,7 +547,13 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   return (
     <Shell dir={dir}>
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
-        <div className="text-6xl mb-3">{avatar}</div>
+        <motion.div
+          initial={{ scale: 0.6 }} animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 220, damping: 16 }}
+          className="text-7xl mb-3 flex items-center justify-center"
+        >
+          <QPAvatar value={avatar} iconSize={72} />
+        </motion.div>
         <h1 className="text-3xl font-black text-stone-900">{t.lobbyTitle}</h1>
         <p className="mt-2 text-stone-500 font-semibold max-w-xs mx-auto">{t.lobbySub}</p>
         {myEntry && (
@@ -376,11 +569,12 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
           ))}
         </div>
       </motion.div>
+      {helpButton}
     </Shell>
   );
 }
 
-function Shell({ children, dir }: { children: React.ReactNode; dir: "ltr" | "rtl" }) {
+function Shell({ children, dir }: { children: ReactNode; dir: "ltr" | "rtl" }) {
   return (
     <div className="min-h-[100dvh] flex items-center justify-center px-5 bg-gradient-to-br from-fuchsia-50 via-white to-pink-50" dir={dir}>
       {children}
