@@ -29,8 +29,8 @@ import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import type { RetentionState } from "../hooks/useRetention";
-import { ALL_WORDS } from "../data/vocabulary";
 import { pickNextAssignment } from "../utils/pickNextAssignment";
+import { resolveAssignmentWords } from "../utils/resolveAssignmentWords";
 import React from "react";
 
 interface StudentDashboardViewProps {
@@ -134,10 +134,8 @@ export default function StudentDashboardView({
   // Null when nothing is eligible, in which case dependent CTAs hide.
   const nextPick = pickNextAssignment(studentAssignments, studentProgress, user.uid);
   const launchNextAssignment = nextPick
-    ? () => {
-        const filteredWords =
-          nextPick.assignment.words ||
-          ALL_WORDS.filter((w) => nextPick.assignment.wordIds.includes(w.id));
+    ? async () => {
+        const filteredWords = await resolveAssignmentWords(nextPick.assignment);
         setActiveAssignment(nextPick.assignment);
         setAssignmentWords(filteredWords);
         React.startTransition(() => {

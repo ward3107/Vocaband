@@ -11,7 +11,8 @@ import AnnouncementBanner from "./components/AnnouncementBanner";
 // further down as React.lazy) carry it in their own chunks now, so the
 // ~43 kB gz motion bundle drops out of the App.tsx modulepreload chain
 // on cold first-paint.
-import { hasTeacherAccess, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, hasTeacherAccess, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { studentLoginViaServer } from "./api/studentLogin";
 import { useAudio } from "./hooks/useAudio";
 import { useLanguage } from "./hooks/useLanguage";
 import { appToastsT } from "./locales/app-toasts";
@@ -731,6 +732,67 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     setView("game");
   }, [ALL_WORDS, SET_2_WORDS, studentAssignments]);
 
+  // ─── Tier-2 fast student login (build-flag gated) ───────────────────────
+  // Collapses PIN login's 3-4 serial client→Frankfurt hops into ONE edge
+  // round-trip via /api/student/login (see docs/login-latency-tier2-proposal.md).
+  // Returns:
+  //   'ok'       — session set + dashboard hydrated here, nothing else to do
+  //   'invalid'  — wrong PIN; the card shows its own error
+  //   'fallback' — endpoint disabled / unavailable / bootstrap missing; the
+  //                card runs the existing direct signInWithPassword path
+  // Gated behind VITE_ENABLE_TIER2_LOGIN so it ships dark until the operator
+  // sets SUPABASE_ANON_KEY on Fly and flips the build flag.
+  const tier2LoginEnabled =
+    (import.meta as { env?: { VITE_ENABLE_TIER2_LOGIN?: string } }).env?.VITE_ENABLE_TIER2_LOGIN === 'true';
+  const handleTier2StudentLogin = useCallback(
+    async (email: string, pin: string): Promise<'ok' | 'invalid' | 'fallback'> => {
+      // User-local YYYY-MM-DD — drives the bootstrap's daily-missions / pet rollover.
+      const localDate = new Intl.DateTimeFormat('sv-SE').format(new Date());
+      // Suppress the onAuthStateChange restore that setSession() will fire —
+      // we hydrate directly from the server's bootstrap payload instead, so
+      // we don't pay the very client-side hops this endpoint exists to remove.
+      manualLoginInProgress.current = true;
+      try {
+        const result = await studentLoginViaServer({ email, pin, localDate });
+        if (result.kind === 'invalid') return 'invalid';
+        if (result.kind === 'unavailable') return 'fallback';
+        // Need a usable student dashboard payload to safely skip the client
+        // restore. If the server's bootstrap failed (null/non-ok/non-student),
+        // fall back to the direct path (which runs the normal restore) rather
+        // than landing the student on an empty dashboard.
+        const boot = result.bootstrap;
+        if (!boot || boot.status !== 'ok' || !boot.user || boot.user.role !== 'student') {
+          return 'fallback';
+        }
+        const { error: setErr } = await supabase.auth.setSession({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
+        });
+        if (setErr) return 'fallback';
+        // Hydrate exactly what restoreSession's student branch would have set.
+        setUser(boot.user);
+        checkConsent(boot.user);
+        setStudentAssignments(boot.assignments);
+        setStudentProgress(boot.progress);
+        setBadges(boot.user.badges || []);
+        setXp(boot.user.xp ?? 0);
+        setStreak(boot.user.streak ?? 0);
+        setLoading(false);
+        setView('student-dashboard');
+        return 'ok';
+      } catch {
+        return 'fallback';
+      } finally {
+        // Release the guard on the next tick so the SIGNED_IN event already
+        // queued by setSession() is skipped, while future events (token
+        // refresh, sign-out) are handled normally.
+        setTimeout(() => { manualLoginInProgress.current = false; }, 0);
+      }
+    },
+    [manualLoginInProgress, setUser, checkConsent, setStudentAssignments,
+     setStudentProgress, setBadges, setXp, setStreak, setLoading, setView],
+  );
+
   // Deep-link consumers: ?assignment=<id> + ?play=class-minute.
   useDeepLinkConsumers({
     user, view,
@@ -957,6 +1019,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     setScore, setFeedback, setIsFinished, setMistakes, setShowModeSelection,
     cleanupSessionData,
     setQuickPlayKicked,
+    onTier2Login: tier2LoginEnabled ? handleTier2StudentLogin : undefined,
   });
   if (studentAuthRoute) return studentAuthRoute;
 

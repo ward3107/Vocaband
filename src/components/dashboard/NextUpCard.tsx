@@ -1,13 +1,13 @@
 import React from "react";
 import { motion } from "motion/react";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { ALL_WORDS } from "../../data/vocabulary";
 import type { AssignmentData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
 import type { View } from "../../core/views";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 import { pickNextAssignment } from "../../utils/pickNextAssignment";
+import { resolveAssignmentWords } from "../../utils/resolveAssignmentWords";
 
 interface NextUpCardProps {
   studentAssignments: AssignmentData[];
@@ -83,10 +83,8 @@ export default function NextUpCard({
         ? t.playAgain
         : t.startAssignment;
 
-  const handleStart = () => {
-    const filteredWords =
-      assignment.words ||
-      ALL_WORDS.filter((w) => assignment.wordIds.includes(w.id));
+  const handleStart = async () => {
+    const filteredWords = await resolveAssignmentWords(assignment);
     setActiveAssignment(assignment);
     setAssignmentWords(filteredWords);
     React.startTransition(() => {

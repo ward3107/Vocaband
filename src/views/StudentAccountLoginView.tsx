@@ -19,6 +19,10 @@ interface StudentAccountLoginViewProps {
   studentLoginClassCode: string;
   setStudentLoginClassCode: (v: string) => void;
 
+  /** Tier-2 fast login (build-flag gated). Forwarded to the PIN card;
+   *  undefined when the feature is off (card uses the direct path). */
+  onTier2Login?: (email: string, pin: string) => Promise<'ok' | 'invalid' | 'fallback'>;
+
   // Global cookie banner passthrough
   cookieBannerOverlay: ReactNode;
 }
@@ -49,6 +53,7 @@ export default function StudentAccountLoginView({
   error,
   studentLoginClassCode,
   setStudentLoginClassCode,
+  onTier2Login,
   cookieBannerOverlay,
 }: StudentAccountLoginViewProps) {
   const codeInputRef = useRef<HTMLInputElement | null>(null);
@@ -389,6 +394,7 @@ export default function StudentAccountLoginView({
                     <StudentPinLoginCard
                       classCode={studentLoginClassCode.trim().toUpperCase()}
                       prefilledStudentId={prefilledStudentId}
+                      onTier2Login={onTier2Login}
                       onSuccess={() => {
                         // Supabase session is live; App.tsx's
                         // onAuthStateChange listener will hydrate the
