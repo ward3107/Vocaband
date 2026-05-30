@@ -272,6 +272,27 @@ const supabaseAdmin = hasSupabaseConfig
     )
   : null;
 
+// Public (publishable/anon) key used by the Tier-2 /api/student/login
+// endpoint to sign a student in NEXT TO the database instead of from the
+// phone (see docs/login-latency-tier2-proposal.md). Read from a server env
+// var, falling back to the build-time VITE_ name if it happens to be set in
+// the process. The key is PUBLIC — it already ships in the client bundle —
+// so reading it here is low-risk. When unset, the endpoint disables itself
+// and clients keep using their existing direct-to-Supabase login path.
+const SUPABASE_ANON_KEY =
+  process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || null;
+
+// Fresh, session-less Supabase client per request. MUST NOT be shared: each
+// request signs in its own student, so a shared client instance would risk
+// one student's tokens bleeding into another's concurrent response.
+function makeStudentAuthClient() {
+  if (!process.env.SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  return createClient(process.env.SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+
 interface SupabaseJwtPayload extends JWTPayload {
   sub: string;
   email?: string;
@@ -3890,6 +3911,111 @@ Quality rules:
       return res.json(data);
     } catch (err) {
       console.error("[qp-session-lookup] exception:", err);
+      return res.status(500).json({ error: "Internal error" });
+    }
+  });
+
+  // ─── Tier-2 student login (single round-trip) ──────────────────────────
+  // Collapses the 3-4 serial client→Frankfurt hops of PIN login into ONE
+  // request that lands on the nearby Cloudflare edge. This endpoint runs in
+  // Frankfurt next to Supabase (<5 ms hops), does the sign-in + dashboard
+  // bootstrap there, and hands back the session tokens + dashboard payload.
+  // The client then calls supabase.auth.setSession(tokens) — a LOCAL op, no
+  // network — so the resulting session is byte-for-byte identical to the
+  // direct path (refresh, RLS, realtime all unchanged). See
+  // docs/login-latency-tier2-proposal.md.
+  //
+  // SECURITY: this performs the SAME signInWithPassword the client does
+  // today — a wrong PIN still fails. It is NOT a privilege path (uses the
+  // public anon key, not the service role). Because GoTrue's per-IP brute-
+  // force limiter now sees Fly's IP (not the student's), we re-add brute-
+  // force protection here: a tight per-EMAIL limiter (the real account
+  // surface) plus a generous per-IP limiter (a whole class shares one NAT
+  // IP, so this must not lock out classmates).
+  const studentLoginEmailLimiter = createSharedRateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 10, // 10 wrong PINs / 10 min / account before cool-down
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many sign-in attempts for this account. Wait a few minutes or ask your teacher to reset your PIN." },
+    keyGenerator: (req) => {
+      const email = typeof req.body?.email === "string" ? req.body.email.toLowerCase().slice(0, 200) : "";
+      return email ? `sl-email:${email}` : ipKeyGenerator(req.ip || "unknown");
+    },
+  });
+  const studentLoginIpLimiter = createSharedRateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 300, // generous: an entire class shares one school NAT IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many sign-in attempts from this network. Please wait a moment." },
+    keyGenerator: (req) => ipKeyGenerator(req.ip || "unknown"),
+  });
+
+  app.post("/api/student/login", studentLoginIpLimiter, studentLoginEmailLimiter, async (req, res) => {
+    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+    const pin = typeof req.body?.pin === "string" ? req.body.pin.trim().toUpperCase() : "";
+    const localDate =
+      typeof req.body?.localDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.body.localDate)
+        ? req.body.localDate
+        : null;
+
+    // Validate shape before any network work. PIN alphabet mirrors the
+    // roster-PIN regex (no I/L/O, no 0/1); the email is the synthetic
+    // roster address, so a loose sanity check suffices — signInWithPassword
+    // is the real authority. NB: never log `pin`.
+    if (!email || email.length > 200 || !/^[A-HJ-KM-NP-Z2-9]{6}$/.test(pin)) {
+      return res.status(400).json({ error: "Invalid email or PIN format" });
+    }
+
+    const anon = makeStudentAuthClient();
+    if (!anon) {
+      // Endpoint disabled (no anon key configured) — signal the client to
+      // use its existing direct-to-Supabase login path. `fallback: true`
+      // is the client's cue to retry the old way, not to show an error.
+      return res.status(503).json({ error: "not_configured", fallback: true });
+    }
+
+    try {
+      const { data: signIn, error: signInErr } = await anon.auth.signInWithPassword({
+        email,
+        password: pin,
+      });
+      if (signInErr || !signIn?.session) {
+        // Wrong PIN / unknown account — generic code, same UX as the client
+        // path's "wrong PIN". Don't leak GoTrue's message.
+        return res.status(401).json({ error: "invalid_login" });
+      }
+
+      // The anon client now carries the student's JWT, so this RPC runs AS
+      // the student (auth.uid() = their uid) — identical to the client
+      // calling it directly, just executed next to the DB.
+      const { data: bootstrap, error: bootErr } = await anon.rpc("bootstrap_student_session", {
+        p_class_code: null,
+        p_display_name: null,
+        p_avatar: "🦊",
+        p_local_date: localDate,
+      });
+      if (bootErr) {
+        // Auth succeeded but bootstrap failed — still hand back the session
+        // so the client can fall through to its legacy dashboard load
+        // rather than being stuck unauthenticated.
+        console.error("[student-login] bootstrap RPC failed:", bootErr.message);
+      }
+
+      const s = signIn.session;
+      return res.json({
+        session: {
+          access_token: s.access_token,
+          refresh_token: s.refresh_token,
+          expires_at: s.expires_at,
+          expires_in: s.expires_in,
+          token_type: s.token_type,
+        },
+        bootstrap: bootErr ? null : bootstrap,
+      });
+    } catch (err) {
+      console.error("[student-login] exception:", err);
       return res.status(500).json({ error: "Internal error" });
     }
   });
