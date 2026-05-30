@@ -89,7 +89,7 @@ export default function CategoryRaceFocusCard({
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-gradient-to-br from-fuchsia-50 via-white to-pink-50" dir={dir}>
+    <div className="fixed inset-0 z-40 flex flex-col bg-stone-100" dir={dir}>
       {/* Header: letter + countdown */}
       <header className="flex-shrink-0 px-4 pt-[max(14px,env(safe-area-inset-top))] pb-3">
         <div className="max-w-xl mx-auto">
@@ -145,7 +145,7 @@ export default function CategoryRaceFocusCard({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: dir === "rtl" ? 24 : -24 }}
               transition={{ duration: 0.18 }}
-              className="rounded-3xl bg-white shadow-xl shadow-fuchsia-500/10 border border-fuchsia-100 overflow-hidden"
+              className="rounded-3xl bg-white shadow-lg shadow-stone-900/5 border border-stone-200 overflow-hidden"
             >
               <div className={`bg-gradient-to-br ${cat.gradient} px-6 py-7 text-center text-white`}>
                 <div className="text-5xl mb-1">{cat.emoji}</div>

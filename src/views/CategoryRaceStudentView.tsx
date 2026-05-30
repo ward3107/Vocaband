@@ -320,7 +320,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="w-full max-w-sm rounded-[32px] bg-white shadow-2xl shadow-fuchsia-500/20 border border-fuchsia-100 p-7"
+          className="w-full max-w-sm rounded-[32px] bg-white shadow-xl shadow-stone-900/5 border border-stone-200 p-7"
         >
           <div className="text-center mb-6">
             <div className="text-6xl mb-2">🌍</div>
@@ -576,7 +576,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
 
 function Shell({ children, dir }: { children: ReactNode; dir: "ltr" | "rtl" }) {
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-5 bg-gradient-to-br from-fuchsia-50 via-white to-pink-50" dir={dir}>
+    <div className="min-h-[100dvh] flex items-center justify-center px-5 bg-stone-100" dir={dir}>
       {children}
     </div>
   );

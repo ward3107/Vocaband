@@ -124,6 +124,15 @@ export interface TeacherClassroomT {
   excelStatusAmber: string;
   excelStatusRed: string;
 
+  // Report export — activity sheet + per-student words + legend
+  excelSheetActivity: string;
+  wordsToReview: string;
+  noWordsToReview: string;
+  legendTitle: string;
+  legendStatusLine: string;
+  legendScoresLine: string;
+  legendWordsLine: string;
+
   // ─── ClassReportModal ──────────────────────────────────────────
   reportModalTitle: string;
   reportModalSubtitle: (className: string) => string;
@@ -155,6 +164,13 @@ export interface TeacherClassroomT {
 
 export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
   en: {
+    excelSheetActivity: "Activity",
+    wordsToReview: "Words to review",
+    noWordsToReview: "—",
+    legendTitle: "How to read this report",
+    legendStatusLine: "Status — 🟢 On track (80%+) · 🟡 Watch (60–79%) · 🔴 Needs support (under 60%).",
+    legendScoresLine: "Avg% is the average across all the student's games; Best% is their single highest game.",
+    legendWordsLine: "Words to review are the words this student missed most — re-teach these first.",
     classroomTitle: "Classroom",
     legacySubtitle: "PULSE · MASTERY",
     loading: "Loading…",
@@ -275,6 +291,13 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
   },
 
   he: {
+    excelSheetActivity: "פעילות",
+    wordsToReview: "מילים לחזרה",
+    noWordsToReview: "—",
+    legendTitle: "איך לקרוא את הדוח",
+    legendStatusLine: "סטטוס — 🟢 במסלול (80%+) · 🟡 לעקוב (60–79%) · 🔴 זקוק לתמיכה (מתחת ל-60%).",
+    legendScoresLine: "ממוצע% הוא הממוצע בכל המשחקים של התלמיד; הטוב ביותר% הוא המשחק הגבוה ביותר.",
+    legendWordsLine: "מילים לחזרה הן המילים שבהן התלמיד טעה הכי הרבה — כדאי ללמד אותן מחדש.",
     classroomTitle: "כיתה",
     legacySubtitle: "פעילות · שליטה",
     loading: "טוען…",
@@ -395,6 +418,13 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
   },
 
   ar: {
+    excelSheetActivity: "النشاط",
+    wordsToReview: "كلمات للمراجعة",
+    noWordsToReview: "—",
+    legendTitle: "كيفية قراءة هذا التقرير",
+    legendStatusLine: "الحالة — 🟢 على المسار (80%+) · 🟡 للمتابعة (60–79%) · 🔴 بحاجة لدعم (أقل من 60%).",
+    legendScoresLine: "المعدل% هو متوسط الطالب في كل الألعاب؛ الأفضل% هو أعلى لعبة فردية.",
+    legendWordsLine: "كلمات للمراجعة هي الكلمات التي أخطأ فيها الطالب أكثر — أعد تعليمها أولاً.",
     classroomTitle: "الفصل",
     legacySubtitle: "النبض · الإتقان",
     loading: "جارٍ التحميل…",
@@ -515,6 +545,13 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
   },
 
   ru: {
+    excelSheetActivity: "Activity",
+    wordsToReview: "Words to review",
+    noWordsToReview: "—",
+    legendTitle: "How to read this report",
+    legendStatusLine: "Status — 🟢 On track (80%+) · 🟡 Watch (60–79%) · 🔴 Needs support (under 60%).",
+    legendScoresLine: "Avg% is the average across all the student's games; Best% is their single highest game.",
+    legendWordsLine: "Words to review are the words this student missed most — re-teach these first.",
     classroomTitle: "Classroom",
     legacySubtitle: "PULSE · MASTERY",
     loading: "Loading…",

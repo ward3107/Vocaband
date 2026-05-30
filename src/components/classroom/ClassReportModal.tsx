@@ -34,6 +34,12 @@ import {
 import type { ProgressData, AssignmentData, ClassData } from '../../core/supabase';
 import { useLanguage } from '../../hooks/useLanguage';
 import { teacherClassroomT } from '../../locales/teacher/classroom';
+import { analyticsT } from '../../locales/teacher/analytics';
+import { ALL_WORDS } from '../../data/vocabulary';
+
+// id → word, built once so the per-student + class word tallies skip a
+// linear ALL_WORDS.find() per mistake. `mistakes` holds numeric word IDs.
+const WORD_BY_ID = new Map(ALL_WORDS.map(w => [w.id, w]));
 
 export interface ClassReportModalProps {
   open: boolean;
@@ -52,11 +58,19 @@ interface StudentSummary {
   avgScore: number;
   totalMistakes: number;
   status: 'green' | 'amber' | 'red';
+  /** This student's most-missed English words (top 3) — "words to review". */
+  topMissed: string[];
 }
 
 interface WordCount {
   word: string;
   count: number;
+}
+
+interface Activity {
+  /** Plays per weekday, index 0 = Sunday. */
+  dayTotals: number[];
+  busiestDayIdx: number | null;
 }
 
 // Score → status thresholds.  Same bands as the Excel export.
@@ -84,11 +98,13 @@ const STATUS_TEXT: Record<StudentSummary['status'], string> = {
 function buildSummaries(
   scores: ProgressData[],
   classCode: string,
-): { students: StudentSummary[]; topWords: WordCount[] } {
+): { students: StudentSummary[]; topWords: WordCount[]; activity: Activity } {
   const filtered = classCode ? scores.filter(s => s.classCode === classCode) : scores;
 
   const byStudent = new Map<string, { plays: number; sum: number; mistakes: number }>();
-  const byWord = new Map<string, number>();
+  const byWordId = new Map<number, number>();
+  const missByStudent = new Map<string, Map<number, number>>();
+  const dayTotals = Array(7).fill(0);
 
   for (const s of filtered) {
     const prev = byStudent.get(s.studentName) ?? { plays: 0, sum: 0, mistakes: 0 };
@@ -97,13 +113,29 @@ function buildSummaries(
     prev.mistakes += s.mistakes?.length ?? 0;
     byStudent.set(s.studentName, prev);
 
-    for (const m of s.mistakes ?? []) {
-      if (!m) continue;
-      const key = typeof m === 'string' ? m : (m as { word?: string }).word ?? '';
-      if (!key) continue;
-      byWord.set(key, (byWord.get(key) ?? 0) + 1);
+    if (s.completedAt) {
+      const d = new Date(s.completedAt);
+      if (!Number.isNaN(d.getTime())) dayTotals[d.getDay()] += 1;
+    }
+
+    // `mistakes` holds numeric word IDs — join to ALL_WORDS, same as the
+    // on-screen Reports card. (The old code keyed on a string `.word`
+    // that never exists, so the words chart always came out empty.)
+    for (const wordId of s.mistakes ?? []) {
+      if (typeof wordId !== 'number' || !WORD_BY_ID.has(wordId)) continue;
+      byWordId.set(wordId, (byWordId.get(wordId) ?? 0) + 1);
+      const per = missByStudent.get(s.studentName) ?? new Map<number, number>();
+      per.set(wordId, (per.get(wordId) ?? 0) + 1);
+      missByStudent.set(s.studentName, per);
     }
   }
+
+  const topMissedFor = (name: string): string[] =>
+    Array.from(missByStudent.get(name)?.entries() ?? [])
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([id]) => WORD_BY_ID.get(id)?.english ?? '')
+      .filter(Boolean);
 
   const students: StudentSummary[] = Array.from(byStudent.entries())
     .map(([studentName, v]) => {
@@ -114,16 +146,21 @@ function buildSummaries(
         avgScore: avg,
         totalMistakes: v.mistakes,
         status: statusFor(avg),
+        topMissed: topMissedFor(studentName),
       };
     })
     .sort((a, b) => b.avgScore - a.avgScore);
 
-  const topWords: WordCount[] = Array.from(byWord.entries())
-    .map(([word, count]) => ({ word, count }))
+  const topWords: WordCount[] = Array.from(byWordId.entries())
+    .map(([id, count]) => ({ word: WORD_BY_ID.get(id)!.english, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  return { students, topWords };
+  const busiestDayIdx = dayTotals.some(v => v > 0)
+    ? dayTotals.indexOf(Math.max(...dayTotals))
+    : null;
+
+  return { students, topWords, activity: { dayTotals, busiestDayIdx } };
 }
 
 export default function ClassReportModal({
@@ -137,6 +174,7 @@ export default function ClassReportModal({
 }: ClassReportModalProps) {
   const { language, dir, isRTL } = useLanguage();
   const t = teacherClassroomT[language];
+  const at = analyticsT[language];
   const printRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<null | 'pdf'>(null);
 
@@ -151,10 +189,17 @@ export default function ClassReportModal({
 
   const className = classes.find(c => c.code === classCode)?.name ?? classCode ?? t.allClasses;
 
-  const { students, topWords } = useMemo(
+  const { students, topWords, activity } = useMemo(
     () => buildSummaries(scores, classCode),
     [scores, classCode],
   );
+
+  // Per-weekday play counts for the activity bar chart.
+  const activityData = useMemo(
+    () => at.dayLabels.map((day, i) => ({ day, plays: activity.dayTotals[i] })),
+    [at.dayLabels, activity.dayTotals],
+  );
+  const hasActivity = activity.busiestDayIdx != null;
 
   const totals = useMemo(() => {
     const plays = students.reduce((sum, s) => sum + s.plays, 0);
@@ -371,6 +416,24 @@ export default function ClassReportModal({
                       )}
                     </ChartCard>
 
+                    {/* Activity pattern — when does the class actually play? */}
+                    {hasActivity && (
+                      <ChartCard
+                        title={at.activityPattern}
+                        subtitle={`${at.busiestDayLabel} ${at.dayLabels[activity.busiestDayIdx as number]}`}
+                      >
+                        <ResponsiveContainer width="100%" height={210}>
+                          <BarChart data={activityData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#374151' }} reversed={isRTL} />
+                            <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} allowDecimals={false} />
+                            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v) => at.playsTooltip(Number(v) || 0)} />
+                            <Bar dataKey="plays" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </ChartCard>
+                    )}
+
                     {/* Status table */}
                     <div
                       style={{ borderColor: 'var(--vb-border)' }}
@@ -393,6 +456,7 @@ export default function ClassReportModal({
                             <th className="px-4 py-2 text-center font-bold">{t.pdfColAvg}</th>
                             <th className="px-4 py-2 text-center font-bold">{t.pdfColMistakes}</th>
                             <th className="px-4 py-2 text-center font-bold">{t.excelColStatus}</th>
+                            <th className={`px-4 py-2 ${isRTL ? 'text-right' : 'text-left'} font-bold`}>{t.wordsToReview}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -422,10 +486,28 @@ export default function ClassReportModal({
                                   {statusLabels[s.status]}
                                 </span>
                               </td>
+                              <td
+                                className={`px-4 py-2 text-xs ${isRTL ? 'text-right' : 'text-left'}`}
+                                style={{ color: 'var(--vb-text-secondary)' }}
+                                dir="auto"
+                              >
+                                {s.topMissed.length ? s.topMissed.join(', ') : t.noWordsToReview}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                    </div>
+
+                    {/* Legend — how to read the report */}
+                    <div
+                      style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
+                      className="rounded-xl border p-4 mt-4 text-xs leading-relaxed vb-print-avoid-break print:bg-stone-50 print:border-stone-200"
+                    >
+                      <p className="font-black mb-1" style={{ color: 'var(--vb-text-primary)' }}>{t.legendTitle}</p>
+                      <p style={{ color: 'var(--vb-text-secondary)' }}>{t.legendStatusLine}</p>
+                      <p style={{ color: 'var(--vb-text-secondary)' }}>{t.legendScoresLine}</p>
+                      <p style={{ color: 'var(--vb-text-secondary)' }}>{t.legendWordsLine}</p>
                     </div>
                   </>
                 )}

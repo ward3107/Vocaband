@@ -248,8 +248,8 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   };
 
   // Theme class helpers.
-  const pageCls = dark ? "bg-stone-950" : "bg-gradient-to-br from-fuchsia-50 via-white to-pink-50";
-  const cardCls = dark ? "bg-stone-900 border-stone-800 shadow-black/40" : "bg-white border-fuchsia-100 shadow-fuchsia-500/10";
+  const pageCls = dark ? "bg-stone-950" : "bg-stone-100";
+  const cardCls = dark ? "bg-stone-900 border-stone-800 shadow-black/40" : "bg-white border-stone-200 shadow-stone-900/5";
   const headingCls = dark ? "text-stone-100" : "text-stone-900";
   const pillIdle = dark ? "bg-stone-800 border-stone-700 text-stone-300 hover:border-stone-600" : "bg-white border-stone-200 hover:border-stone-300 text-stone-700";
   const iconBtn = dark ? "bg-stone-800 text-stone-200 hover:bg-stone-700" : "bg-white text-fuchsia-600 hover:bg-fuchsia-50 border border-stone-200";
