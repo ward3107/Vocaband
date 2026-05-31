@@ -3915,6 +3915,81 @@ Quality rules:
     }
   });
 
+  // ─── Tier-2 Quick Play join (single round-trip) ────────────────────────
+  // A QR-scan join normally signs in anonymously THEN reads the session row
+  // — two serial Israel→Frankfurt hops. This endpoint does both server-side
+  // (Frankfurt, <5 ms to Supabase): creates the anon session AND reads the
+  // active row, returning tokens + row in one response. The client adopts
+  // the session via setSession() (local). Mirrors /api/student/login.
+  //
+  // Gated on SUPABASE_ANON_KEY; when unset it returns 503 {fallback:true}
+  // and the client uses its existing direct path. Per-IP limit is sized for
+  // a shared classroom NAT (a whole class scans within seconds) — unlike
+  // the GET lookup's 10/min/IP limit, which is meant for sporadic fallback.
+  const qpJoinIpLimiter = createSharedRateLimit({
+    windowMs: 60 * 1000,
+    max: 120, // a class of ~40 can each retry a couple times in a minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many join attempts from this network. Please wait a moment." },
+    keyGenerator: (req) => ipKeyGenerator(req.ip || "unknown"),
+  });
+
+  app.post("/api/quick-play/join", qpJoinIpLimiter, async (req, res) => {
+    const sessionCode =
+      typeof req.body?.sessionCode === "string" ? req.body.sessionCode.trim().toUpperCase() : "";
+    if (!sessionCode || !/^[A-HJ-NP-Z2-9]{6}$/i.test(sessionCode)) {
+      return res.status(400).json({ error: "Invalid session code format" });
+    }
+    if (!supabaseAdmin) {
+      return res.status(503).json({ error: "Server not configured" });
+    }
+    const anon = makeStudentAuthClient();
+    if (!anon) {
+      // No anon key configured → client uses its existing direct path.
+      return res.status(503).json({ error: "not_configured", fallback: true });
+    }
+    try {
+      // Service-role lookup (bypasses RLS) + a fresh anon session, both
+      // server-local. Parallel because they're independent.
+      const [lookup, signIn] = await Promise.all([
+        supabaseAdmin
+          .from("quick_play_sessions")
+          .select("*")
+          .eq("session_code", sessionCode)
+          .eq("is_active", true)
+          .maybeSingle(),
+        anon.auth.signInAnonymously(),
+      ]);
+      if (lookup.error) {
+        console.error("[qp-join] lookup error:", lookup.error.message);
+        return res.status(500).json({ error: "Lookup failed" });
+      }
+      if (!lookup.data) {
+        return res.status(404).json({ error: "Session not found or no longer active" });
+      }
+      if (signIn.error || !signIn.data?.session) {
+        // Anonymous sign-ins disabled / failed — fall back client-side.
+        console.error("[qp-join] anon sign-in failed:", signIn.error?.message);
+        return res.status(503).json({ error: "signin_failed", fallback: true });
+      }
+      const s = signIn.data.session;
+      return res.json({
+        session: {
+          access_token: s.access_token,
+          refresh_token: s.refresh_token,
+          expires_at: s.expires_at,
+          expires_in: s.expires_in,
+          token_type: s.token_type,
+        },
+        qpSession: lookup.data,
+      });
+    } catch (err) {
+      console.error("[qp-join] exception:", err);
+      return res.status(500).json({ error: "Internal error" });
+    }
+  });
+
   // ─── Tier-2 student login (single round-trip) ──────────────────────────
   // Collapses the 3-4 serial client→Frankfurt hops of PIN login into ONE
   // request that lands on the nearby Cloudflare edge. This endpoint runs in
