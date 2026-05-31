@@ -97,7 +97,21 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
   useEffect(() => {
     const gameDebug = getGameDebugger();
     const params = new URLSearchParams(window.location.search);
-    const sessionCode = params.get('session');
+    const rawSessionParam = params.get('session');
+    // Sanitise the code. Session codes are exactly 6 chars from the
+    // ambiguity-free alphabet generate_session_code() uses (A-H, J-N,
+    // P-Z, 2-9). A scanned/typed/pasted link sometimes arrives with the
+    // whole URL re-appended (e.g. "9EXTLAhttps://…/?session=9EXTLA") or
+    // with stray query/hash junk — that produced a malformed code, a 400
+    // from the lookup, and a bounce to landing. Pull the FIRST valid
+    // 6-char run out of whatever we got so a slightly mangled link still
+    // joins instead of failing.
+    const sessionCode = (() => {
+      if (!rawSessionParam) return null;
+      const upper = rawSessionParam.toUpperCase();
+      const m = upper.match(/[A-HJ-NP-Z2-9]{6}/);
+      return m ? m[0] : null;
+    })();
 
     if (sessionCode) {
       // Load Quick Play session
