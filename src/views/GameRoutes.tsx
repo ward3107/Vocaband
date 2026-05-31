@@ -171,7 +171,6 @@ export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
               setShowModeSelection(false);
               if (mode === 'niqqud') setView('vocahebrew-niqqud');
               else if (mode === 'shoresh') setView('vocahebrew-shoresh');
-              else if (mode === 'synonym') setView('vocahebrew-synonyms');
               else if (mode === 'listening') setView('vocahebrew-listening');
             }}
             onExit={handleExitGame}

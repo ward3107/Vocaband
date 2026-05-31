@@ -74,6 +74,5 @@ export type View =
   | "vocahebrew-dashboard"
   | "vocahebrew-niqqud"
   | "vocahebrew-shoresh"
-  | "vocahebrew-synonyms"
   | "vocahebrew-listening";
 

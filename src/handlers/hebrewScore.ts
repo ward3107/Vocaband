@@ -17,7 +17,7 @@
  */
 import { supabase, type AppUser, type AssignmentData } from '../core/supabase';
 
-export type HebrewMode = 'niqqud' | 'shoresh' | 'synonym' | 'listening';
+export type HebrewMode = 'niqqud' | 'shoresh' | 'listening';
 
 export interface HebrewScoreDeps {
   user: AppUser;

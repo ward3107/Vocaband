@@ -27,7 +27,6 @@ interface VocaHebrewDashboardViewProps {
   showSwitcher: boolean;
   onLaunchNiqqudMode: () => void;
   onLaunchShoreshHunt: () => void;
-  onLaunchSynonymMatch: () => void;
   onLaunchListeningMode: () => void;
 }
 
@@ -37,7 +36,6 @@ export default function VocaHebrewDashboardView({
   showSwitcher,
   onLaunchNiqqudMode,
   onLaunchShoreshHunt,
-  onLaunchSynonymMatch,
   onLaunchListeningMode,
 }: VocaHebrewDashboardViewProps) {
   const { dir } = useLanguage();
@@ -57,14 +55,6 @@ export default function VocaHebrewDashboardView({
       gradient: "from-emerald-500 via-teal-500 to-cyan-600",
       shadow: "shadow-emerald-500/20",
       onLaunch: onLaunchShoreshHunt,
-    },
-    {
-      emoji: "↔",
-      title: "Synonym Match",
-      blurb: "Pair words by meaning · grades 4–9 · 10 rounds",
-      gradient: "from-fuchsia-500 via-pink-500 to-rose-600",
-      shadow: "shadow-fuchsia-500/20",
-      onLaunch: onLaunchSynonymMatch,
     },
     {
       emoji: "🎧",

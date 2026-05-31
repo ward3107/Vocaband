@@ -17,7 +17,7 @@ import { ArrowLeft } from "lucide-react";
 import type { AssignmentData } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 
-export type HebrewModeId = "niqqud" | "shoresh" | "synonym" | "listening";
+export type HebrewModeId = "niqqud" | "shoresh" | "listening";
 
 interface ModeTile {
   id: HebrewModeId;
@@ -31,7 +31,6 @@ interface ModeTile {
 const TILES: readonly ModeTile[] = [
   { id: "niqqud",    emoji: "נִ", title: "Niqqud Mode",    blurb: "Pick the right vocalization", gradient: "from-amber-400 via-orange-500 to-rose-500",  shadow: "shadow-orange-500/20" },
   { id: "shoresh",   emoji: "ש",  title: "Shoresh Hunt",   blurb: "Find the 3 root letters",      gradient: "from-emerald-500 via-teal-500 to-cyan-600",  shadow: "shadow-emerald-500/20" },
-  { id: "synonym",   emoji: "↔",  title: "Synonym Match",  blurb: "Pair words by meaning",        gradient: "from-fuchsia-500 via-pink-500 to-rose-600",  shadow: "shadow-fuchsia-500/20" },
   { id: "listening", emoji: "🎧", title: "Listening Mode", blurb: "Hear it, pick the niqqud",     gradient: "from-violet-500 via-indigo-500 to-blue-600", shadow: "shadow-indigo-500/20" },
 ];
 

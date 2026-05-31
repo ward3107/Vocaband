@@ -20,7 +20,6 @@ import type { View } from '../core/views';
 const VocaHebrewDashboardView = lazyWithRetry(() => import('./VocaHebrewDashboardView'));
 const NiqqudModeView = lazyWithRetry(() => import('./NiqqudModeView'));
 const ShoreshHuntView = lazyWithRetry(() => import('./ShoreshHuntView'));
-const SynonymMatchView = lazyWithRetry(() => import('./SynonymMatchView'));
 const ListeningModeView = lazyWithRetry(() => import('./ListeningModeView'));
 
 const HEBREW_VIEW_MAP: Record<
@@ -37,7 +36,6 @@ const HEBREW_VIEW_MAP: Record<
 > = {
   'vocahebrew-niqqud':    { Component: NiqqudModeView,    label: 'Loading Niqqud Mode...',   mode: 'niqqud' },
   'vocahebrew-shoresh':   { Component: ShoreshHuntView,   label: 'Loading Shoresh Hunt...',  mode: 'shoresh' },
-  'vocahebrew-synonyms':  { Component: SynonymMatchView,  label: 'Loading Synonym Match...', mode: 'synonym' },
   'vocahebrew-listening': { Component: ListeningModeView, label: 'Loading Listening Mode...', mode: 'listening' },
 };
 
@@ -76,7 +74,6 @@ export function renderHebrewRoute(deps: RenderHebrewRouteDeps): ReactNode {
             onSwitchVoca={() => { setActiveVoca(null); setView('voca-picker'); }}
             onLaunchNiqqudMode={() => setView('vocahebrew-niqqud')}
             onLaunchShoreshHunt={() => setView('vocahebrew-shoresh')}
-            onLaunchSynonymMatch={() => setView('vocahebrew-synonyms')}
             onLaunchListeningMode={() => setView('vocahebrew-listening')}
           />
         </LazyWrapper>

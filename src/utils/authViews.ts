@@ -19,7 +19,7 @@ const TEACHER_VIEWS = new Set<View>([
   "vocabagrut", "category-race-host",
   "developer-dashboard", "admin-security", "manager-dashboard",
   "voca-picker", "vocahebrew-dashboard",
-  "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-synonyms", "vocahebrew-listening",
+  "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-listening",
 ]);
 
 const STUDENT_VIEWS = new Set<View>([
