@@ -24,7 +24,14 @@ import { Download, FileSpreadsheet, BarChart3, Loader2 } from 'lucide-react';
 import type { ProgressData, AssignmentData, ClassData } from '../../core/supabase';
 import { useLanguage } from '../../hooks/useLanguage';
 import { teacherClassroomT } from '../../locales/teacher/classroom';
+import { analyticsT } from '../../locales/teacher/analytics';
+import { ALL_WORDS } from '../../data/vocabulary';
 import ClassReportModal from './ClassReportModal';
+
+// id → word, built once so the per-student + class word tallies don't
+// do an O(n) ALL_WORDS.find() per mistake.
+const WORD_BY_ID = new Map(ALL_WORDS.map(w => [w.id, w]));
+const ACTIVITY_WEEKS = 8;
 
 interface ClassStudent {
   name: string;
@@ -61,12 +68,27 @@ interface StudentSummaryRow {
   lastActive: string;
   totalMistakes: number;
   status: 'green' | 'amber' | 'red';
+  /** This student's most-missed English words (top 3) — "words to review". */
+  topMissed: string[];
 }
 
 interface WordMissRow {
   word: string;
+  /** Hebrew + Arabic translations for the Word Mastery sheet. */
+  he: string;
+  ar: string;
   count: number;
   studentsAffected: number;
+}
+
+interface ActivityData {
+  /** weeks × 7 grid of play counts; row 0 = oldest week shown. */
+  grid: number[][];
+  /** Total plays per weekday (index 0 = Sunday). */
+  dayTotals: number[];
+  /** Index of the busiest weekday, or null when there's no activity. */
+  busiestDayIdx: number | null;
+  max: number;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -80,7 +102,7 @@ function buildRows(
   assignments: AssignmentData[],
   classCode: string,
   quickPlayLabel: string,
-): { plays: PlayRow[]; students: StudentSummaryRow[]; words: WordMissRow[] } {
+): { plays: PlayRow[]; students: StudentSummaryRow[]; words: WordMissRow[]; activity: ActivityData } {
   const filtered = classCode
     ? scores.filter(s => s.classCode === classCode)
     : scores;
@@ -111,6 +133,32 @@ function buildRows(
     byName.set(p.studentName, prev);
   }
 
+  // Word-level miss tallies. `mistakes` holds numeric word IDs — join to
+  // ALL_WORDS (the on-screen Reports card does the same). Track both the
+  // class-wide counts AND per-student counts so each student gets their
+  // own "words to review".
+  const byWordId = new Map<number, { count: number; students: Set<string> }>();
+  const missByStudent = new Map<string, Map<number, number>>();
+  for (const s of filtered) {
+    for (const wordId of s.mistakes ?? []) {
+      if (typeof wordId !== 'number' || !WORD_BY_ID.has(wordId)) continue;
+      const prev = byWordId.get(wordId) ?? { count: 0, students: new Set<string>() };
+      prev.count += 1;
+      prev.students.add(s.studentName);
+      byWordId.set(wordId, prev);
+      const perStudent = missByStudent.get(s.studentName) ?? new Map<number, number>();
+      perStudent.set(wordId, (perStudent.get(wordId) ?? 0) + 1);
+      missByStudent.set(s.studentName, perStudent);
+    }
+  }
+
+  const topMissedFor = (name: string): string[] =>
+    Array.from(missByStudent.get(name)?.entries() ?? [])
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([id]) => WORD_BY_ID.get(id)?.english ?? '')
+      .filter(Boolean);
+
   const students: StudentSummaryRow[] = Array.from(byName.entries())
     .map(([studentName, v]) => {
       const avg = v.plays === 0 ? 0 : Math.round(v.sum / v.plays);
@@ -122,30 +170,45 @@ function buildRows(
         totalMistakes: v.mistakes,
         lastActive: v.lastTs ? new Date(v.lastTs).toLocaleDateString() : '—',
         status: statusFor(avg),
+        topMissed: topMissedFor(studentName),
       };
     })
     .sort((a, b) => b.avgScore - a.avgScore);
 
-  // Word-level miss counts.  Two tallies:
-  //   count             — total times the word was missed across class
-  //   studentsAffected  — distinct students who missed it at least once
-  const byWord = new Map<string, { count: number; students: Set<string> }>();
-  for (const s of filtered) {
-    for (const m of s.mistakes ?? []) {
-      const key = typeof m === 'string' ? m : (m as { word?: string }).word ?? '';
-      if (!key) continue;
-      const prev = byWord.get(key) ?? { count: 0, students: new Set<string>() };
-      prev.count += 1;
-      prev.students.add(s.studentName);
-      byWord.set(key, prev);
-    }
-  }
-
-  const words: WordMissRow[] = Array.from(byWord.entries())
-    .map(([word, v]) => ({ word, count: v.count, studentsAffected: v.students.size }))
+  const words: WordMissRow[] = Array.from(byWordId.entries())
+    .map(([id, v]) => {
+      const w = WORD_BY_ID.get(id)!;
+      return { word: w.english, he: w.hebrew ?? '', ar: w.arabic ?? '', count: v.count, studentsAffected: v.students.size };
+    })
     .sort((a, b) => b.count - a.count);
 
-  return { plays, students, words };
+  // ─── Activity heatmap — weeks × 7 play counts (matches the on-screen
+  // "Activity Pattern" card), plus weekday totals + busiest weekday.
+  const now = new Date();
+  const thisWeekSunday = new Date(now);
+  thisWeekSunday.setHours(0, 0, 0, 0);
+  thisWeekSunday.setDate(thisWeekSunday.getDate() - thisWeekSunday.getDay());
+  const grid: number[][] = Array.from({ length: ACTIVITY_WEEKS }, () => Array(7).fill(0));
+  const dayTotals = Array(7).fill(0);
+  let max = 0;
+  for (const s of filtered) {
+    if (!s.completedAt) continue;
+    const d = new Date(s.completedAt);
+    if (Number.isNaN(d.getTime())) continue;
+    const diffDays = Math.floor((thisWeekSunday.getTime() - d.getTime()) / 86_400_000);
+    const weekIndex = diffDays < 0 ? 0 : Math.floor(diffDays / 7);
+    const dayIndex = d.getDay();
+    dayTotals[dayIndex] += 1;
+    if (weekIndex < 0 || weekIndex >= ACTIVITY_WEEKS) continue;
+    grid[weekIndex][dayIndex] += 1;
+    if (grid[weekIndex][dayIndex] > max) max = grid[weekIndex][dayIndex];
+  }
+  const busiestDayIdx = dayTotals.some(v => v > 0)
+    ? dayTotals.indexOf(Math.max(...dayTotals))
+    : null;
+  const activity: ActivityData = { grid, dayTotals, busiestDayIdx, max };
+
+  return { plays, students, words, activity };
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -178,10 +241,11 @@ export default function ReportExportBar({
 }: ReportExportBarProps) {
   const { language } = useLanguage();
   const t = teacherClassroomT[language];
+  const at = analyticsT[language];
   const [busy, setBusy] = useState<null | 'excel'>(null);
   const [reportOpen, setReportOpen] = useState(false);
 
-  const { plays, students, words } = useMemo(
+  const { plays, students, words, activity } = useMemo(
     () => buildRows(scores, assignments, classCode, t.quickPlayLabel),
     [scores, assignments, classCode, t.quickPlayLabel],
   );
@@ -240,6 +304,7 @@ export default function ReportExportBar({
         t.pdfColBest,
         t.pdfColMistakes,
         t.excelColStatus,
+        t.wordsToReview,
       ];
       const headerRow = overview.getRow(6);
       overviewHeaders.forEach((h, i) => { headerRow.getCell(i + 1).value = h; });
@@ -262,10 +327,22 @@ export default function ReportExportBar({
         r.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: status.fill } };
         // Conditional fill on the Avg column to mirror the status colour
         r.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: status.fill } };
+        r.getCell(7).value = s.topMissed.length ? s.topMissed.join(', ') : t.noWordsToReview;
       });
 
       overview.columns.forEach((col, i) => {
-        col.width = i === 0 ? 26 : 14;
+        col.width = i === 0 ? 26 : i === 6 ? 40 : 14;
+      });
+
+      // ─── Legend / how-to-read, a few rows below the table ──────
+      const legendStart = 7 + students.length + 2;
+      const legendLines = [t.legendTitle, t.legendStatusLine, t.legendScoresLine, t.legendWordsLine];
+      legendLines.forEach((line, i) => {
+        const cell = overview.getCell(`A${legendStart + i}`);
+        cell.value = line;
+        cell.font = i === 0
+          ? { bold: true, size: 12, color: { argb: 'FF1E1B4B' } }
+          : { color: { argb: 'FF4B5563' } };
       });
 
       // ─── Sheet 2: Game History ─────────────────────────────────
@@ -324,6 +401,50 @@ export default function ReportExportBar({
         r.getCell(2).value = w.count;
         r.getCell(3).value = w.studentsAffected;
       });
+
+      // ─── Sheet 4: Activity ─────────────────────────────────────
+      // Weeks × weekday heatmap, mirroring the on-screen Activity
+      // Pattern card so the download matches what the teacher sees.
+      const activitySheet = workbook.addWorksheet(t.excelSheetActivity, {
+        views: [{ state: 'frozen', ySplit: 2 }],
+      });
+      activitySheet.getCell('A1').value = at.activityPattern;
+      activitySheet.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF1E1B4B' } };
+      if (activity.busiestDayIdx != null) {
+        activitySheet.getCell('C1').value = `${at.busiestDayLabel} ${at.dayLabels[activity.busiestDayIdx]}`;
+        activitySheet.getCell('C1').font = { italic: true, color: { argb: 'FF4B5563' } };
+      }
+      const dayHeader = activitySheet.getRow(2);
+      at.dayLabels.forEach((label, i) => { dayHeader.getCell(2 + i).value = label; });
+      dayHeader.font = { bold: true, color: { argb: HEADER_TEXT } };
+      dayHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } };
+      const activityFill = (count: number): string | null => {
+        if (activity.max === 0 || count === 0) return null;
+        const intensity = count / activity.max;
+        if (intensity > 0.75) return 'FF4F46E5';
+        if (intensity > 0.5) return 'FF6366F1';
+        if (intensity > 0.25) return 'FF818CF8';
+        if (intensity > 0.1) return 'FFA5B4FC';
+        return 'FFC7D2FE';
+      };
+      activity.grid.forEach((week, weekIndex) => {
+        const label = weekIndex === 0 ? at.thisWeek : weekIndex === 1 ? at.lastWeek : at.weeksAgo(weekIndex);
+        const r = activitySheet.getRow(3 + weekIndex);
+        r.getCell(1).value = label;
+        r.getCell(1).font = { bold: true, color: { argb: 'FF4B5563' } };
+        week.forEach((count, dayIdx) => {
+          const c = r.getCell(2 + dayIdx);
+          c.value = count > 0 ? count : '';
+          c.alignment = { horizontal: 'center' };
+          const fill = activityFill(count);
+          if (fill) {
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+            if (count / activity.max > 0.5) c.font = { bold: true, color: { argb: HEADER_TEXT } };
+          }
+        });
+      });
+      activitySheet.getColumn(1).width = 14;
+      for (let i = 2; i <= 8; i++) activitySheet.getColumn(i).width = 7;
 
       // ─── Write and download ────────────────────────────────────
       const buf = await workbook.xlsx.writeBuffer();

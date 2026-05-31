@@ -15,7 +15,7 @@
  *
  * Renders read-only.  Pure derivation from props.  No fetches.
  */
-import { useMemo } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { TrendingUp, BarChart3 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherClassroomT } from "../../locales/teacher/classroom";
@@ -151,14 +151,8 @@ export default function ReportsDashboard({
         title={t.trendTitle}
         sub={t.trendSubtitle}
       >
-        <div className="h-56 sm:h-64">
-          {/* `minWidth={0}` silences Recharts' "width(-1) height(-1)"
-              warning that fires during the brief moment between mount
-              and the parent flex container measuring its dimensions
-              (most visible when the teacher switches to the reports
-              tab — the parent goes from display:none → flex and
-              ResponsiveContainer measures during the transition). */}
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <ChartFrame>
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart data={weeklyTrend} margin={{ top: 6, right: 12, bottom: 6, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
               <XAxis dataKey="week" tick={{ fontSize: 11 }} stroke="#78716c" />
@@ -170,7 +164,7 @@ export default function ReportsDashboard({
               <Line type="monotone" dataKey="avg" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} connectNulls={false} />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </ChartFrame>
       </Section>
 
       {/* ── Plays per day histogram ─────────────────────────────────── */}
@@ -179,9 +173,8 @@ export default function ReportsDashboard({
         title={t.histogramTitle}
         sub={t.histogramSubtitle}
       >
-        <div className="h-56 sm:h-64">
-          {/* See sister chart above for the minWidth={0} rationale. */}
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <ChartFrame>
+          <ResponsiveContainer width="100%" height="100%">
             <BarChart data={playsPerDay} margin={{ top: 6, right: 12, bottom: 6, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
               <XAxis dataKey="day" tick={{ fontSize: 10 }} interval={3} stroke="#78716c" />
@@ -193,9 +186,39 @@ export default function ReportsDashboard({
               <Bar dataKey="plays" fill="#6366f1" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartFrame>
       </Section>
 
+    </div>
+  );
+}
+
+/**
+ * ChartFrame — defers rendering its chart until the container has a real,
+ * measured size. ResponsiveContainer otherwise measures during the brief
+ * window between mount and layout (the reports tab mounts behind a motion
+ * entry animation), reads width/height of -1, and logs a console warning
+ * on every render. Gating on a non-zero ResizeObserver measurement renders
+ * the chart exactly once it can be drawn correctly — no warning, no flash.
+ */
+function ChartFrame({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const box = entries[0]?.contentRect;
+      if (box && box.width > 0 && box.height > 0) setReady(true);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="h-56 sm:h-64">
+      {ready ? children : null}
     </div>
   );
 }

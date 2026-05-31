@@ -6754,7 +6754,12 @@ export const SET_3_WORDS: Word[] = ALL_WORDS.filter(w => w.level === "Set 3");
 // Pack "Birds" deduped from 21 -> 17 IDs.
 // Pack "Farm Animals" deduped from 26 -> 23 IDs.
 // Pack "Holidays & Celebrations" deduped from 24 -> 19 IDs.
-export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
+// Source order below reflects when each pack was authored — which put the
+// advanced Bagrut packs (Academic English, Phrasal Verbs, Idioms) first and
+// buried beginner packs (Colors, Animals, Food) at the bottom. The exported
+// TOPIC_PACKS (just after this array) re-sorts these into easy → hard tiers
+// for display, so the order here is authoring history, not what teachers see.
+const TOPIC_PACKS_SOURCE: { name: string; icon: string; ids: number[] }[] = [
   // ── Bagrut Module E supplement (advanced/academic, B2-C1 CEFR) ──
   // Grade 11-12 prep pack covering critical-thinking, abstract,
   // environment, technology, society, economics, ethics and law
@@ -7762,3 +7767,49 @@ export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] = [
     ids: [72, 102, 441, 815, 969, 989, 1135, 1227, 3206, 3499, 4303, 4549, 6458, 6467, 6699, 6862, 7043, 7177, 7728, 7753],
   },
 ];
+
+// ── Topic Packs display order: easiest → hardest ──────────────────────────
+// Teachers of grades 4-6 were scrolling past C1 Bagrut packs to reach the
+// beginner vocabulary they needed. We sort TOPIC_PACKS_SOURCE into four
+// difficulty tiers for display — concrete beginner nouns → everyday topics →
+// grammar/structure → advanced/Bagrut — keeping each theme's parts together
+// (Part 1 before Part 2) via a stable sort. Pure presentation: pack contents
+// and ids are unchanged; consumers look packs up by name/ids, not position.
+const TOPIC_PACK_DISPLAY_ORDER: string[] = [
+  // Tier 1 — beginner, concrete, picture-able nouns
+  "Colors", "Numbers", "Animals", "Food & Drinks", "Fruits", "Vegetables",
+  "Family", "Body Parts", "Clothes", "School", "Days & Months",
+  "Shapes & Sizes", "Birds", "Farm Animals",
+  // Tier 2 — everyday topics
+  "Feelings & Emotions", "Weather", "Sports & Games", "Hobbies & Free Time",
+  "House & Rooms", "Furniture", "Kitchen Items", "Bathroom", "Transportation",
+  "Professions & Jobs", "Nature", "Beach & Sea", "Sky & Space", "Music & Arts",
+  "Desserts & Sweets", "Time Expressions", "Daily Routine",
+  "Greetings & Polite Words", "Holidays & Celebrations", "In the City",
+  "Money & Shopping", "At the Doctor", "Tools & Gadgets", "Hot & Cold",
+  "Describing People", "Travel & Directions", "Technology & Internet",
+  // Tier 3 — grammar & sentence structure
+  "Common Verbs", "Opposites", "Question Words", "Prepositions", "Modal Verbs",
+  "Irregular Past Tense", "Comparatives & Superlatives",
+  "Conjunctions & Connectors", "Common Collocations", "Classroom Language",
+  "Linking Words",
+  // Tier 4 — advanced / Bagrut prep
+  "Idioms & Expressions", "Phrasal Verbs", "Environment & Sustainability",
+  "Opinions & Arguments", "Academic English",
+];
+
+/** Theme stem of a pack name: drop the "· Part N" suffix and trailing icon,
+ *  so "Family · Part 2 👨‍👩‍👧" and "Food & Drinks 🍕" both collapse to their
+ *  base theme for difficulty lookup. */
+function topicPackStem(name: string): string {
+  return name.split("·")[0].replace(/[^\w& ]+$/u, "").trim();
+}
+
+export const TOPIC_PACKS: { name: string; icon: string; ids: number[] }[] =
+  [...TOPIC_PACKS_SOURCE].sort((a, b) => {
+    const rank = (n: string) => {
+      const i = TOPIC_PACK_DISPLAY_ORDER.indexOf(topicPackStem(n));
+      return i === -1 ? TOPIC_PACK_DISPLAY_ORDER.length : i;
+    };
+    return rank(a.name) - rank(b.name);
+  });
