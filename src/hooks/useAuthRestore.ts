@@ -802,13 +802,15 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
         try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
         try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
         try { clearAllReadCache(); } catch {}
-        const wasStudent = lastUserRoleRef.current === 'student';
-        // Teachers land on the lightweight teacher-login card, not the heavy
-        // marketing landing chunk — logging out then waiting seconds for the
-        // landing page to download was the symptom. Mirrors the student path.
-        const postLogoutView: View = wasStudent ? 'student-account-login' : 'teacher-login';
+        // Only a CONFIRMED teacher lands on the teacher login card. Students
+        // AND Quick Play guests (whose role can be unset) must never be dumped
+        // on the teacher sign-in screen — route every non-teacher to the
+        // student login instead. (Previously this keyed on === 'student', so a
+        // guest with no role fell through to the teacher card.)
+        const wasTeacher = lastUserRoleRef.current === 'teacher';
+        const postLogoutView: View = wasTeacher ? 'teacher-login' : 'student-account-login';
         lastUserRoleRef.current = null;
-        const target = wasStudent ? '/student' : '/teacher';
+        const target = wasTeacher ? '/teacher' : '/student';
         if (!quickPlaySessionParam) {
           try { window.history.replaceState({ view: postLogoutView }, '', target); } catch {
             try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
