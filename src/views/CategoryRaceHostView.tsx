@@ -19,7 +19,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Play, Clock, Users, LogOut, Check, Copy, Maximize2, Eye, EyeOff, Moon, Sun, Plus, X, Monitor, Minimize2, Square, Infinity as InfinityIcon } from "lucide-react";
+import { Play, Clock, Users, LogOut, Check, Copy, Maximize2, Moon, Sun, Plus, X, Monitor, Minimize2, Square, Infinity as InfinityIcon } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
@@ -136,7 +136,6 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const [now, setNow] = useState(() => Date.now());
   const [hasRunRound, setHasRunRound] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [qrHidden, setQrHidden] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
   const [restarting, setRestarting] = useState(false);
   // Presentation mode hides ALL teacher chrome (sidebar + header actions)
@@ -198,9 +197,12 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
     primeAudio();
     playRoundStart();
     startRaceRound(selectedCats, roundSeconds, tokenRef.current, untimed);
+    // Auto-collapse into the clean projector view on the FIRST start only —
+    // setup is done, so the board should take over. Only the first round, so
+    // a teacher who later taps "Controls" to tweak categories isn't yanked
+    // back into presentation every subsequent round.
+    if (!hasRunRound) setPresenting(true);
     setHasRunRound(true);
-    // Auto-collapse into the clean projector view the moment a round starts.
-    setPresenting(true);
   };
 
   const handleEndRound = () => {
@@ -257,15 +259,16 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   return (
     <div className={`min-h-[100dvh] transition-colors ${pageCls}`} dir={dir}>
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="flex items-center justify-between gap-3 mb-5">
-          <h1 className={`text-2xl sm:text-3xl font-black flex items-center gap-2 ${headingCls}`}>
-            <span className="text-3xl">🌍</span> {t.title}
+        <header className="flex items-center justify-between gap-2 mb-5">
+          <h1 className={`min-w-0 text-xl sm:text-3xl font-black flex items-center gap-2 ${headingCls}`}>
+            <span className="text-2xl sm:text-3xl flex-shrink-0">🌍</span>
+            <span className="truncate">{t.title}</span>
           </h1>
           {presenting ? (
             // Presentation mode: keep only the join code visible (so late
             // students can still join) + a button back to the controls.
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-black text-lg tracking-[0.12em] ${dark ? "bg-stone-800 text-stone-100" : "bg-fuchsia-50 text-fuchsia-700"}`}>
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              <span className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] ${dark ? "bg-stone-800 text-stone-100" : "bg-fuchsia-50 text-fuchsia-700"}`}>
                 {t.code}: {liveCode}
               </span>
               <button
@@ -278,20 +281,22 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            // Icon-only on phones (labels appear at sm+) so the four
+            // actions + title fit a single row without overflowing.
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setPresenting(true)}
                 style={{ touchAction: "manipulation" }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-sm bg-indigo-100 text-indigo-700 hover:bg-indigo-200 active:scale-95 transition"
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-indigo-100 text-indigo-700 hover:bg-indigo-200 active:scale-95 transition"
               >
-                <Monitor size={16} /> {t.present}
+                <Monitor size={16} /> <span className="hidden sm:inline">{t.present}</span>
               </button>
               <button
                 type="button"
                 onClick={toggleDark}
                 style={{ touchAction: "manipulation" }}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-black text-sm transition active:scale-95 ${iconBtn}`}
+                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl font-black text-sm transition active:scale-95 ${iconBtn}`}
                 aria-label={dark ? t.darkOff : t.darkOn}
               >
                 {dark ? <Sun size={16} /> : <Moon size={16} />}
@@ -302,17 +307,17 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 onClick={handleEndAndNew}
                 disabled={restarting}
                 style={{ touchAction: "manipulation" }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-sm bg-fuchsia-100 text-fuchsia-700 hover:bg-fuchsia-200 active:scale-95 transition disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-fuchsia-100 text-fuchsia-700 hover:bg-fuchsia-200 active:scale-95 transition disabled:opacity-60"
               >
-                <Plus size={16} /> {restarting ? t.restarting : t.endNew}
+                <Plus size={16} /> <span className="hidden sm:inline">{restarting ? t.restarting : t.endNew}</span>
               </button>
               <button
                 type="button"
                 onClick={handleEnd}
                 style={{ touchAction: "manipulation" }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-sm bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-95 transition"
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-95 transition"
               >
-                <LogOut size={16} /> {t.end}
+                <LogOut size={16} /> <span className="hidden sm:inline">{t.end}</span>
               </button>
             </div>
           )}
@@ -376,26 +381,18 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500">{t.joinHeading}</h2>
-                <div className="flex items-center gap-1.5">
-                  {!qrHidden && (
-                    <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
-                      className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
-                      <Maximize2 size={15} />
-                    </button>
-                  )}
-                  <button type="button" onClick={() => setQrHidden(h => !h)} style={{ touchAction: "manipulation" }}
-                    className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={qrHidden ? t.show : t.hide}>
-                    {qrHidden ? <Eye size={15} /> : <EyeOff size={15} />}
-                  </button>
-                </div>
+                {/* Just enlarge — "Present" already gives a clean projector
+                    view, so a separate hide-QR toggle was a redundant click. */}
+                <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
+                  className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
+                  <Maximize2 size={15} />
+                </button>
               </div>
               <div className="flex flex-col items-center text-center">
-                {!qrHidden && (
-                  <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
-                    className="bg-white p-2 rounded-2xl border border-stone-100 shadow-sm active:scale-[0.98] transition" aria-label={t.enlarge}>
-                    <QRCodeSVG value={joinUrl} size={132} />
-                  </button>
-                )}
+                <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
+                  className="bg-white p-2 rounded-2xl border border-stone-100 shadow-sm active:scale-[0.98] transition" aria-label={t.enlarge}>
+                  <QRCodeSVG value={joinUrl} size={132} />
+                </button>
                 <div className="mt-3 w-full">
                   <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">{t.code}</div>
                   <div className={`text-4xl font-black tracking-[0.15em] ${headingCls}`}>{liveCode}</div>
@@ -534,7 +531,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
 
       {/* Enlarged QR overlay — projector-friendly so the back row can scan. */}
       <AnimatePresence>
-        {qrEnlarged && !qrHidden && (
+        {qrEnlarged && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setQrEnlarged(false)}

@@ -46,19 +46,26 @@ export interface CategoryMeta {
   placeholderAr: string;
 }
 
+// Ordered easiest → hardest for grade 4-9 EFL learners. This array order is
+// the display order of the category tiles in CategoryRaceHostView. Easiest
+// first: concrete, high-frequency, picture-able words (colors, animals,
+// food). Middle: proper-noun packs that lean on world knowledge (cities,
+// countries) and lower-frequency nouns (plants, professions). Hardest last:
+// abstract parts of speech (verbs, adjectives). Order is display-only —
+// defaults + the answer bank are keyed by id, not position.
 export const CATEGORIES: ReadonlyArray<CategoryMeta> = [
-  { id: "country",    emoji: "🌍", gradient: "from-emerald-500 to-teal-600",   labelEn: "Country",    labelHe: "מדינה",     labelAr: "دولة",     placeholderEn: "e.g. Spain",     placeholderHe: "למשל ספרד",      placeholderAr: "مثل إسبانيا" },
-  { id: "city",       emoji: "🏙️", gradient: "from-sky-500 to-indigo-600",     labelEn: "City",       labelHe: "עיר",       labelAr: "مدينة",    placeholderEn: "e.g. Tokyo",     placeholderHe: "למשל טוקיו",     placeholderAr: "مثل طوكيو" },
+  { id: "color",      emoji: "🎨", gradient: "from-pink-500 to-fuchsia-600",   labelEn: "Color",      labelHe: "צבע",       labelAr: "لون",      placeholderEn: "e.g. Silver",    placeholderHe: "למשל כסוף",     placeholderAr: "مثل فضي" },
   { id: "animal",     emoji: "🐾", gradient: "from-amber-500 to-orange-600",   labelEn: "Animal",     labelHe: "חיה",       labelAr: "حيوان",    placeholderEn: "e.g. Tiger",     placeholderHe: "למשל נמר",      placeholderAr: "مثل نمر" },
-  { id: "plant",      emoji: "🌳", gradient: "from-lime-500 to-emerald-600",   labelEn: "Plant",      labelHe: "צמח",       labelAr: "نبات",     placeholderEn: "e.g. Rose",      placeholderHe: "למשל ורד",      placeholderAr: "مثل وردة" },
   { id: "food",       emoji: "🍎", gradient: "from-rose-500 to-pink-600",      labelEn: "Food",       labelHe: "אוכל",      labelAr: "طعام",     placeholderEn: "e.g. Pasta",     placeholderHe: "למשל פסטה",     placeholderAr: "مثل معكرونة" },
+  { id: "name",       emoji: "👤", gradient: "from-cyan-500 to-blue-600",      labelEn: "Name",       labelHe: "שם",        labelAr: "اسم",      placeholderEn: "e.g. Sam",       placeholderHe: "למשל שירה",     placeholderAr: "مثل سامي" },
   { id: "object",     emoji: "📦", gradient: "from-stone-500 to-stone-700",    labelEn: "Object",     labelHe: "חפץ",       labelAr: "غرض",      placeholderEn: "e.g. Mirror",    placeholderHe: "למשל מראה",     placeholderAr: "مثل مرآة" },
+  { id: "sport",      emoji: "⚽", gradient: "from-orange-500 to-red-600",     labelEn: "Sport",      labelHe: "ספורט",    labelAr: "رياضة",    placeholderEn: "e.g. Tennis",    placeholderHe: "למשל טניס",     placeholderAr: "مثل تنس" },
+  { id: "city",       emoji: "🏙️", gradient: "from-sky-500 to-indigo-600",     labelEn: "City",       labelHe: "עיר",       labelAr: "مدينة",    placeholderEn: "e.g. Tokyo",     placeholderHe: "למשל טוקיו",     placeholderAr: "مثل طوكيو" },
+  { id: "country",    emoji: "🌍", gradient: "from-emerald-500 to-teal-600",   labelEn: "Country",    labelHe: "מדינה",     labelAr: "دولة",     placeholderEn: "e.g. Spain",     placeholderHe: "למשל ספרד",      placeholderAr: "مثل إسبانيا" },
+  { id: "plant",      emoji: "🌳", gradient: "from-lime-500 to-emerald-600",   labelEn: "Plant",      labelHe: "צמח",       labelAr: "نبات",     placeholderEn: "e.g. Rose",      placeholderHe: "למשל ורד",      placeholderAr: "مثل وردة" },
+  { id: "profession", emoji: "💼", gradient: "from-indigo-500 to-violet-600",  labelEn: "Profession", labelHe: "מקצוע",    labelAr: "مهنة",     placeholderEn: "e.g. Teacher",   placeholderHe: "למשל מורה",     placeholderAr: "مثل معلم" },
   { id: "verb",       emoji: "🏃", gradient: "from-violet-500 to-purple-600",  labelEn: "Verb",       labelHe: "פועל",      labelAr: "فعل",      placeholderEn: "e.g. Sing",      placeholderHe: "למשל לשיר",     placeholderAr: "مثل غنى" },
   { id: "adjective",  emoji: "✨", gradient: "from-fuchsia-500 to-rose-600",   labelEn: "Adjective",  labelHe: "שם תואר",  labelAr: "صفة",      placeholderEn: "e.g. Soft",      placeholderHe: "למשל רך",       placeholderAr: "مثل ناعم" },
-  { id: "name",       emoji: "👤", gradient: "from-cyan-500 to-blue-600",      labelEn: "Name",       labelHe: "שם",        labelAr: "اسم",      placeholderEn: "e.g. Sam",       placeholderHe: "למשל שירה",     placeholderAr: "مثل سامي" },
-  { id: "profession", emoji: "💼", gradient: "from-indigo-500 to-violet-600",  labelEn: "Profession", labelHe: "מקצוע",    labelAr: "مهنة",     placeholderEn: "e.g. Teacher",   placeholderHe: "למשל מורה",     placeholderAr: "مثل معلم" },
-  { id: "sport",      emoji: "⚽", gradient: "from-orange-500 to-red-600",     labelEn: "Sport",      labelHe: "ספורט",    labelAr: "رياضة",    placeholderEn: "e.g. Tennis",    placeholderHe: "למשל טניס",     placeholderAr: "مثل تنس" },
-  { id: "color",      emoji: "🎨", gradient: "from-pink-500 to-fuchsia-600",   labelEn: "Color",      labelHe: "צבע",       labelAr: "لون",      placeholderEn: "e.g. Silver",    placeholderHe: "למשל כסוף",     placeholderAr: "مثل فضي" },
 ];
 
 /** Letters in the roll pool. Only letters with seeded entries below
