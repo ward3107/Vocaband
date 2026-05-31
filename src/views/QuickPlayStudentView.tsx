@@ -12,7 +12,7 @@ import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
-import { useLanguage, languageNames, ALL_LANGUAGES } from "../hooks/useLanguage";
+import { useLanguage, languageNames } from "../hooks/useLanguage";
 import { quickPlayT } from "../locales/student/quick-play";
 
 // Quick Play join flow: students connect to the `/quick-play`
@@ -658,7 +658,10 @@ export default function QuickPlayStudentView({
               </div>
 
               <div className="space-y-3">
-                {ALL_LANGUAGES.map((lang) => (
+                {/* Hebrew/Arabic only — students learn English toward their
+                    native language; an English-UI option would show no
+                    translations. Single point where the language is chosen. */}
+                {(['he', 'ar'] as const).map((lang) => (
                   <button
                     key={lang}
                     onClick={() => {

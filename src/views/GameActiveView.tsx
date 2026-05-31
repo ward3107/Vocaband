@@ -433,8 +433,6 @@ export default function GameActiveView({
         score={score}
         xp={xp}
         streak={streak}
-        targetLanguage={targetLanguage}
-        setTargetLanguage={setTargetLanguage}
         onExit={handleExitGame}
       />
 
