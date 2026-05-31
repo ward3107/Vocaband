@@ -321,6 +321,17 @@ export default defineConfig(() => {
             'assets/PublicNav-*.js',
             'assets/landing-page-*.js',
             'assets/FloatingButtons-*.js',
+            // Student entry chunks — the first views a student navigates to
+            // (PIN login, Quick Play join, Category Race join) + the shared
+            // socket hook. Tiny (~4-7 kB gz each) but precaching them means
+            // the SW install fetches them in the background, so the first
+            // navigation is a cache hit instead of a network round trip —
+            // the biggest "feels instant" win on weak classroom Wi-Fi and
+            // on every repeat visit. Also makes these flows work offline.
+            'assets/StudentAccountLoginView-*.js',
+            'assets/QuickPlayStudentView-*.js',
+            'assets/CategoryRaceStudentView-*.js',
+            'assets/useQuickPlaySocket-*.js',
             // Main Tailwind stylesheet
             'assets/index-*.css',
           ],
