@@ -49,6 +49,45 @@ This guard mirrors the ones at `App.tsx:1421` and `App.tsx:1782`. Don't remove i
 
 ---
 
+## E. Multi-VM sync — the Redis adapter must be attached
+
+We run `min_machines_running = 2` (`fly.toml:81`). With 2+ VMs, socket.io
+broadcasts only reach clients on the *same* VM unless the
+`@socket.io/redis-adapter` is attached — otherwise a live game can **split**,
+with half the class on each machine and two diverging leaderboards.
+
+`server.ts` attaches the adapter at boot **only if `REDIS_URL` is set**
+(`server.ts:880`). No URL ⇒ it logs `REDIS_URL not set — running single-VM`
+and silently runs unsynced. So the failure mode is invisible from the app — you
+have to check the health endpoint.
+
+**Check it:** open `https://www.vocaband.com/api/health/redis`. It returns the
+live `redisAdapterStatus`:
+
+| Response | Meaning | Action |
+|---|---|---|
+| `{"adapter":"attached","error":null,"ping":"PONG","pingLatencyMs":3}` | ✅ Redis connected, both VMs synced, pub/sub round-trip healthy | None |
+| `{"adapter":"disabled",...}` | ⚠️ `REDIS_URL` unset — with 2 VMs, live games can split | Set `REDIS_URL` (Option B) **or** drop to 1 VM (Option A, below) |
+| `{"adapter":"failed",...}` | ❌ TCP up but pub/sub probe failed — check region + `rediss://` (TLS) | See `error` field; verify Upstash region matches `fra` |
+
+**The two fixes (`fly.toml:47-56` has the full notes):**
+- **Option A — run 1 VM.** Set `min_machines_running = 1`; no Redis needed,
+  live games can't split. Simplest for low concurrency.
+- **Option B — keep 2 VMs + free Redis.** Provision an Upstash Redis in
+  `eu-central-1` (same region as `fra` for <5ms), then
+  `fly secrets set REDIS_URL=rediss://default:<password>@<host>:6380`. The code
+  already supports it — the same Redis also backs the cross-VM rate limiter
+  (`server.ts:934`).
+
+> **Verified 2026-05-31:** prod returned `attached` / `PONG` / 3ms — Option B is
+> live and both VMs are synced. This endpoint is the single source of truth;
+> re-check it after any Fly scaling or `REDIS_URL` change.
+
+This only affects live games (Quick Play / Live Challenge leaderboards) — not
+login or single-player.
+
+---
+
 ## Quick triage checklist
 
 When live-play scores aren't ticking, in order:
