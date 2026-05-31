@@ -962,7 +962,6 @@ const MODE_LABEL: Record<string, string> = {
   listening_dictation: "Listening",
   fill_blank: "Fill in the blank",
   definition_match: "Definition match",
-  synonym_antonym: "Synonym / Antonym",
   cloze: "Cloze",
   sentence_building: "Sentence building",
   translation_typing: "Translation typing",

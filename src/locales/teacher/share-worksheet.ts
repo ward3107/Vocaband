@@ -32,9 +32,6 @@ export interface ShareWorksheetStrings {
 
   // Per-exercise config rows
   translationDirectionLabel: string;
-  synonymModeLabel: string;
-  synonymOption: string;
-  antonymOption: string;
 
   // AI sentence generation confirm — shown inline on a sentence-dependent
   // card the moment the teacher toggles it on, before it's added to the
@@ -101,7 +98,6 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
       listening_dictation: { label: "Listening dictation", desc: "Hear the word, type it" },
       fill_blank: { label: "Fill in the blank", desc: "Type the missing word in a sentence" },
       definition_match: { label: "Definition match", desc: "Match each word to its definition" },
-      synonym_antonym: { label: "Synonyms / antonyms", desc: "Pick the matching or opposite word" },
       cloze: { label: "Cloze paragraph", desc: "Fill multiple blanks in a paragraph" },
       sentence_building: { label: "Sentence building", desc: "Arrange words into a sentence" },
       translation_typing: { label: "Translation typing", desc: "Type the translation" },
@@ -109,9 +105,6 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
       true_false: { label: "True or false", desc: "Decide if a claim is true" },
     },
     translationDirectionLabel: "Direction",
-    synonymModeLabel: "Mode",
-    synonymOption: "Synonyms",
-    antonymOption: "Antonyms",
     aiConfirmTitle: (n) => `Generate AI sentences for the ${n} words you picked?`,
     aiConfirmBody:
       "This exercise needs a context sentence per word. We'll generate one using AI so the kid actually has questions to play.",
@@ -158,7 +151,6 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
       listening_dictation: { label: "הכתבה לפי הקלטה", desc: "שמעו את המילה והקלידו" },
       fill_blank: { label: "השלמת מילה חסרה", desc: "הקלידו את המילה החסרה במשפט" },
       definition_match: { label: "התאמת הגדרה", desc: "התאימו כל מילה להגדרה שלה" },
-      synonym_antonym: { label: "מילים נרדפות / הפוכות", desc: "בחרו את המילה המתאימה או ההפוכה" },
       cloze: { label: "פסקת חסר", desc: "השלימו כמה מילים חסרות בפסקה" },
       sentence_building: { label: "בניית משפט", desc: "סדרו מילים למשפט" },
       translation_typing: { label: "תרגום בכתב", desc: "הקלידו את התרגום" },
@@ -166,9 +158,6 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
       true_false: { label: "נכון / לא נכון", desc: "החליטו אם המשפט נכון" },
     },
     translationDirectionLabel: "כיוון",
-    synonymModeLabel: "מצב",
-    synonymOption: "נרדפות",
-    antonymOption: "הפוכות",
     aiConfirmTitle: (n) => `ליצור משפטי AI עבור ${n} המילים שבחרתם?`,
     aiConfirmBody:
       "התרגיל הזה זקוק למשפט הקשר לכל מילה. ניצור אחד באמצעות AI כדי שתהיינה לתלמיד שאלות אמיתיות לשחק.",
@@ -217,7 +206,6 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
       listening_dictation: { label: "إملاء بالاستماع", desc: "اسمع الكلمة ثم اكتبها" },
       fill_blank: { label: "املأ الفراغ", desc: "اكتب الكلمة الناقصة في الجملة" },
       definition_match: { label: "مطابقة التعريف", desc: "طابق كل كلمة بتعريفها" },
-      synonym_antonym: { label: "مرادفات / أضداد", desc: "اختر الكلمة المرادفة أو الضد" },
       cloze: { label: "فقرة بإكمال الفراغات", desc: "املأ عدة فراغات في الفقرة" },
       sentence_building: { label: "بناء جملة", desc: "رتب الكلمات لتكوين جملة" },
       translation_typing: { label: "ترجمة بالكتابة", desc: "اكتب الترجمة" },
@@ -225,9 +213,6 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
       true_false: { label: "صح أم خطأ", desc: "قرّر إن كانت العبارة صحيحة" },
     },
     translationDirectionLabel: "الاتجاه",
-    synonymModeLabel: "الوضع",
-    synonymOption: "مرادفات",
-    antonymOption: "أضداد",
     aiConfirmTitle: (n) => `إنشاء جمل AI للكلمات الـ ${n} التي اخترتها؟`,
     aiConfirmBody:
       "يحتاج هذا التمرين إلى جملة سياق لكل كلمة. سننشئ واحدة باستخدام الذكاء الاصطناعي حتى تكون هناك أسئلة فعلية للطالب.",
@@ -276,7 +261,6 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
       listening_dictation: { label: "Listening dictation", desc: "Hear the word, type it" },
       fill_blank: { label: "Fill in the blank", desc: "Type the missing word in a sentence" },
       definition_match: { label: "Definition match", desc: "Match each word to its definition" },
-      synonym_antonym: { label: "Synonyms / antonyms", desc: "Pick the matching or opposite word" },
       cloze: { label: "Cloze paragraph", desc: "Fill multiple blanks in a paragraph" },
       sentence_building: { label: "Sentence building", desc: "Arrange words into a sentence" },
       translation_typing: { label: "Translation typing", desc: "Type the translation" },
@@ -284,9 +268,6 @@ export const shareWorksheetT: Record<Language, ShareWorksheetStrings> = {
       true_false: { label: "True or false", desc: "Decide if a claim is true" },
     },
     translationDirectionLabel: "Direction",
-    synonymModeLabel: "Mode",
-    synonymOption: "Synonyms",
-    antonymOption: "Antonyms",
     aiConfirmTitle: (n) => `Generate AI sentences for the ${n} words you picked?`,
     aiConfirmBody:
       "This exercise needs a context sentence per word. We'll generate one using AI so the kid actually has questions to play.",
