@@ -25,6 +25,30 @@ interface Env {
   // Optional: override Supabase URL via Worker env var. Defaults below to
   // the production project so the Worker still works without setting it.
   SUPABASE_URL?: string;
+  // Optional shared secret injected on /api/* subrequests to the Fly origin
+  // so the origin's cloudflareOnlyIngress guard can prove the request came
+  // through Cloudflare and not from a direct-to-origin probe forging
+  // cf-ray/cf-connecting-ip (audit MED-1). No-op until the SAME value is also
+  // set as the Fly secret CLOUDFLARE_ORIGIN_SECRET — until then the origin
+  // ignores the header. Set the Worker side first, confirm, THEN set Fly.
+  // Rollback = unset the Fly secret. Set via `wrangler secret put
+  // CLOUDFLARE_ORIGIN_SECRET`. socket.io traffic is intentionally NOT covered:
+  // it attaches to the HTTP server, bypasses the Express ingress guard, and
+  // re-wrapping that request breaks the WebSocket upgrade (see /socket.io/
+  // handler below).
+  CLOUDFLARE_ORIGIN_SECRET?: string;
+}
+
+// Build a Request to the Fly origin, injecting the Cloudflare-origin shared
+// secret header when configured. Centralised so both the passthrough proxy
+// and the edge-cache path stamp it identically. Only used for /api/* — the
+// /socket.io/ upgrade path must pass the original Request unmodified.
+function originRequest(target: string, request: Request, env: Env): Request {
+  const req = new Request(target, request);
+  if (env.CLOUDFLARE_ORIGIN_SECRET) {
+    req.headers.set("X-CF-Origin-Secret", env.CLOUDFLARE_ORIGIN_SECRET);
+  }
+  return req;
 }
 
 // Minimal HTMLRewriter typing — the Workers runtime exposes this as a
@@ -262,9 +286,9 @@ const EDGE_CACHEABLE_GET_PATHS: ReadonlySet<string> = new Set([
   "/api/version",
 ]);
 
-async function passthroughProxy(request: Request, url: URL): Promise<Response> {
+async function passthroughProxy(request: Request, url: URL, env: Env): Promise<Response> {
   const backendUrl = new URL(url.pathname + url.search, API_BACKEND);
-  const upstream = await fetch(new Request(backendUrl.toString(), request));
+  const upstream = await fetch(originRequest(backendUrl.toString(), request, env));
   // Defence in depth: even though Cloudflare won't cache non-cacheable
   // responses by default, mark every proxied /api/* response as varying
   // by Authorization so an accidentally-added cache rule downstream
@@ -281,13 +305,16 @@ async function passthroughProxy(request: Request, url: URL): Promise<Response> {
   });
 }
 
-async function edgeCachedGet(request: Request, url: URL): Promise<Response> {
+async function edgeCachedGet(request: Request, url: URL, env: Env): Promise<Response> {
   const backendUrl = new URL(url.pathname + url.search, API_BACKEND);
   // The cache key purposely strips the Authorization header — these
   // endpoints have no per-user variance, so one cache entry is
   // appropriate.  If we ever cache an auth-bearing endpoint, switch
   // the key strategy (e.g. hash the bearer) before adding the path.
   const cacheKey = new Request(backendUrl.toString(), { method: "GET" });
+  // The cache key (above) deliberately omits the origin secret — it's a
+  // constant per-deploy value, adds no per-user variance, and keeping it out
+  // of the key means rotating the secret doesn't invalidate the edge cache.
   // `caches.default` is the Cloudflare Workers per-colony cache —
   // it's a runtime global, not in the standard DOM `CacheStorage`
   // typing, so we cast to `any` to access it.  Wrangler types this
@@ -302,7 +329,7 @@ async function edgeCachedGet(request: Request, url: URL): Promise<Response> {
     return new Response(hit.body, { status: hit.status, headers });
   }
 
-  const upstream = await fetch(new Request(backendUrl.toString(), request));
+  const upstream = await fetch(originRequest(backendUrl.toString(), request, env));
   // Only cache 2xx — never cache an error response or a 304.  Errors
   // should re-hit the origin so the next request gets a chance to
   // see a recovery.
@@ -368,15 +395,20 @@ export default {
     // Public, GET-only, no-PII endpoints get the Cloudflare edge cache.
     // Everything else falls through to the passthrough proxy below.
     if (request.method === "GET" && EDGE_CACHEABLE_GET_PATHS.has(url.pathname)) {
-      return edgeCachedGet(request, url);
+      return edgeCachedGet(request, url, env);
     }
 
     // Proxy everything else under /api/* and /socket.io/* to the Fly.io
     // backend. Same-origin from the browser's view (no CORS preflight).
     if (url.pathname.startsWith("/api/")) {
-      return passthroughProxy(request, url);
+      return passthroughProxy(request, url, env);
     }
     if (url.pathname.startsWith("/socket.io/")) {
+      // NOTE: the X-CF-Origin-Secret injection (audit MED-1) deliberately does
+      // NOT apply here. socket.io attaches to the HTTP server, not the Express
+      // app, so it never hits the cloudflareOnlyIngress guard that consumes the
+      // secret — and it has its own JWT handshake gate. Re-wrapping this
+      // request to add a header would also break the WebSocket upgrade (below).
       // Pass the original Request as fetch()'s init parameter — wrapping
       // with `new Request(url, request)` produces a fresh Request without
       // the WebSocket-upgrade marker the Workers runtime uses to bridge
