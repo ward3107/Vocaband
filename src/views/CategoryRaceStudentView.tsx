@@ -590,6 +590,22 @@ function Shell({ children, dir }: { children: ReactNode; dir: "ltr" | "rtl" }) {
 // together with src/utils/joinTiming.ts once diagnosed.
 function JoinTimingOverlay() {
   const marks = getJoinMarks();
+  // Fire a native alert() once the marks exist — impossible to miss, and
+  // works even if a fixed-position box is hidden behind the mobile browser
+  // chrome. TEMP diagnostic.
+  useEffect(() => {
+    if (marks.length === 0) return;
+    const first = marks[0].ms;
+    const total = marks[marks.length - 1].ms - first;
+    const lines = marks.map((m, i) => {
+      const step = i > 0 ? m.ms - marks[i - 1].ms : 0;
+      return `${step >= 1000 ? "!! " : ""}${m.label}: +${step}ms`;
+    });
+    const msg = `JOIN TIMING — total ${total}ms\n\n${lines.join("\n")}`;
+    const id = window.setTimeout(() => { try { window.alert(msg); } catch { /* noop */ } }, 400);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   if (marks.length === 0) return null;
   const first = marks[0].ms;
   const total = marks[marks.length - 1].ms - first;
@@ -597,10 +613,9 @@ function JoinTimingOverlay() {
     <div
       dir="ltr"
       style={{
-        position: "fixed", bottom: 8, left: 8, right: 8, zIndex: 99999,
-        margin: "0 auto", maxWidth: 440, background: "rgba(0,0,0,0.88)",
-        color: "#0f0", font: "12px/1.5 monospace", padding: "8px 10px",
-        borderRadius: 8,
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 2147483647,
+        background: "#000", color: "#0f0", font: "13px/1.55 monospace",
+        padding: "10px 12px", borderBottom: "2px solid #0f0",
       }}
     >
       <div style={{ color: "#fff", fontWeight: 700, marginBottom: 4 }}>
