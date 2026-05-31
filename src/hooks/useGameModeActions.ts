@@ -281,8 +281,27 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
           }, 300);
         }
       } else {
-        // Wrong match - just change selection
-        setSelectedMatch(item);
+        // Wrong pair.
+        if (gameMode === 'memory-flip') {
+          // Memory Flip cards are FACE-DOWN until tapped, so a wrong
+          // pair has to flip back. Matching's default (just move the
+          // selection) leaves both cards stuck face-up because
+          // MemoryFlipGame's flip-back effect only fires when
+          // isMatchingProcessing goes true→false. Drive that pulse and
+          // clear the selection so neither card is held open; the kid
+          // sees both faces during the delay, then they flip back.
+          isProcessingRef.current = true;
+          setIsMatchingProcessing(true);
+          setSelectedMatch(null);
+          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+          feedbackTimeoutRef.current = setTimeout(() => {
+            isProcessingRef.current = false;
+            setIsMatchingProcessing(false);
+          }, 900);
+        } else {
+          // Matching: cards are always face-up; just move the highlight.
+          setSelectedMatch(item);
+        }
       }
     }
   };
