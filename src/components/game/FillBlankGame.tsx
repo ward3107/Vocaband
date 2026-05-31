@@ -14,6 +14,7 @@ interface FillBlankGameProps {
   hiddenOptions: number[];
   feedback: "correct" | "wrong" | "show-answer" | null;
   gameWordsCount: number;
+  targetLanguage: "hebrew" | "arabic";
   onAnswer: (w: Word) => void;
   /** Phase-3i theme -- lime.  Drives the sentence-card hero tint
    *  and the AnswerOptionButton accents.  The blank slot is always
@@ -78,7 +79,7 @@ export function redactSentence(sentence: string, target: string): string {
 const FillBlankGame = React.memo(({
   activeAssignment, currentWord, currentIndex,
   options, hiddenOptions, feedback,
-  gameWordsCount, onAnswer, themeColor,
+  gameWordsCount, targetLanguage, onAnswer, themeColor,
 }: FillBlankGameProps) => {
   const { language } = useLanguage();
   const t = gameActiveT[language];
@@ -170,7 +171,7 @@ const FillBlankGame = React.memo(({
             currentWordId={currentWord.id}
             feedback={feedback}
             gameMode="fill-blank"
-            targetLanguage="hebrew"
+            targetLanguage={targetLanguage}
             onAnswer={onAnswer}
             themeColor={themeColor}
           />

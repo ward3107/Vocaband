@@ -306,6 +306,7 @@ export default function GameActiveView({
           hiddenOptions={hiddenOptions}
           feedback={feedback}
           gameWordsCount={gameWords.length}
+          targetLanguage={targetLanguage}
           onAnswer={handleAnswer}
           themeColor={modeTheme}
         />
