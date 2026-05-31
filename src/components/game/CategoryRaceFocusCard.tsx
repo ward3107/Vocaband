@@ -40,9 +40,9 @@ interface CategoryRaceFocusCardProps {
 }
 
 const STRINGS = {
-  en: { letter: "Your letter", submit: "Submit answers", submitting: "Sending…", of: (a: number, b: number) => `${a} of ${b}`, filled: (n: number, total: number) => `${n}/${total} filled`, nudge: "Trust your gut! 🎯", relaxed: "Answer when ready", needIdeas: "Need ideas?", startsWith: "Starts with", tapToUse: "Tap a word to use it" },
-  he: { letter: "האות שלך", submit: "שליחת תשובות", submitting: "שולח…", of: (a: number, b: number) => `${a} מתוך ${b}`, filled: (n: number, total: number) => `${n}/${total} מולאו`, nudge: "סמכו על האינטואיציה! 🎯", relaxed: "ענו כשמוכנים", needIdeas: "צריכים רעיון?", startsWith: "מתחיל ב", tapToUse: "הקישו על מילה כדי להשתמש בה" },
-  ar: { letter: "حرفك", submit: "إرسال الإجابات", submitting: "جارٍ الإرسال…", of: (a: number, b: number) => `${a} من ${b}`, filled: (n: number, total: number) => `${n}/${total} مكتملة`, nudge: "ثق بحدسك! 🎯", relaxed: "أجب عند الاستعداد", needIdeas: "تحتاج أفكارًا؟", startsWith: "يبدأ بـ", tapToUse: "اضغط على كلمة لاستخدامها" },
+  en: { letter: "Your letter", next: "Next", submit: "Submit answers", submitting: "Sending…", of: (a: number, b: number) => `${a} of ${b}`, filled: (n: number, total: number) => `${n}/${total} filled`, nudge: "Trust your gut! 🎯", relaxed: "Answer when ready", needIdeas: "Need ideas?", startsWith: "Starts with", tapToUse: "Tap a word to use it" },
+  he: { letter: "האות שלך", next: "הבא", submit: "שליחת תשובות", submitting: "שולח…", of: (a: number, b: number) => `${a} מתוך ${b}`, filled: (n: number, total: number) => `${n}/${total} מולאו`, nudge: "סמכו על האינטואיציה! 🎯", relaxed: "ענו כשמוכנים", needIdeas: "צריכים רעיון?", startsWith: "מתחיל ב", tapToUse: "הקישו על מילה כדי להשתמש בה" },
+  ar: { letter: "حرفك", next: "التالي", submit: "إرسال الإجابات", submitting: "جارٍ الإرسال…", of: (a: number, b: number) => `${a} من ${b}`, filled: (n: number, total: number) => `${n}/${total} مكتملة`, nudge: "ثق بحدسك! 🎯", relaxed: "أجب عند الاستعداد", needIdeas: "تحتاج أفكارًا؟", startsWith: "يبدأ بـ", tapToUse: "اضغط على كلمة لاستخدامها" },
 } as const;
 
 export default function CategoryRaceFocusCard({
@@ -257,16 +257,21 @@ export default function CategoryRaceFocusCard({
               );
             })}
           </div>
+          {/* Big primary action stays "Next" until the final category, so a
+              student has to deliberately reach the last card to submit —
+              this stops accidental early submits while answers are unfinished. */}
           <button
             type="button"
-            onClick={onSubmit}
+            onClick={isLast ? onSubmit : goNext}
             disabled={submitting}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg shadow-fuchsia-500/30 bg-gradient-to-r from-fuchsia-500 to-pink-600 active:scale-[0.98] transition disabled:opacity-60"
           >
             {submitting
               ? <><Loader2 size={18} className="animate-spin" /> {t.submitting}</>
-              : <><Send size={18} /> {t.submit}</>}
+              : isLast
+                ? <><Send size={18} /> {t.submit}</>
+                : <>{t.next} {dir === "rtl" ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}</>}
           </button>
         </div>
       </footer>
