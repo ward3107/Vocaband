@@ -30,7 +30,7 @@ import type { HebrewLemma } from "../data/types-hebrew";
 // The 4 wired Hebrew game modes.  Same ids as in HebrewAssignmentWizard
 // and HebrewModeSelectionView — matching is what lets the student-side
 // `allowedModes` filter resolve correctly.
-type HebrewQpModeId = "niqqud" | "shoresh" | "synonym" | "listening";
+type HebrewQpModeId = "niqqud" | "shoresh" | "listening";
 
 const HEBREW_QP_MODES: ReadonlyArray<{
   id: HebrewQpModeId;
@@ -41,7 +41,6 @@ const HEBREW_QP_MODES: ReadonlyArray<{
 }> = [
   { id: "niqqud",    emoji: "נִ", titleHe: "מצב ניקוד",            blurbHe: "בחרו את הניקוד הנכון",      gradient: "from-amber-400 to-rose-500" },
   { id: "shoresh",   emoji: "ש",  titleHe: "ציד שורש",             blurbHe: "מצאו את שלוש אותיות השורש", gradient: "from-emerald-500 to-teal-600" },
-  { id: "synonym",   emoji: "↔",  titleHe: "התאמת מילים נרדפות", blurbHe: "התאימו מילים לפי משמעות",    gradient: "from-fuchsia-500 to-rose-600" },
   { id: "listening", emoji: "🎧", titleHe: "מצב האזנה",            blurbHe: "שמעו ובחרו את הניקוד",       gradient: "from-violet-500 to-blue-600" },
 ];
 
@@ -62,7 +61,7 @@ export default function HebrewQuickPlaySetupView({
 }: HebrewQuickPlaySetupViewProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [selectedModes, setSelectedModes] = useState<HebrewQpModeId[]>(["niqqud", "shoresh", "synonym", "listening"]);
+  const [selectedModes, setSelectedModes] = useState<HebrewQpModeId[]>(["niqqud", "shoresh", "listening"]);
   const [gradePackId, setGradePackId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [creating, setCreating] = useState(false);
@@ -142,7 +141,7 @@ export default function HebrewQuickPlaySetupView({
   function handlePlayAnother() {
     setSessionCode(null);
     setSelectedIds([]);
-    setSelectedModes(["niqqud", "shoresh", "synonym", "listening"]);
+    setSelectedModes(["niqqud", "shoresh", "listening"]);
     setGradePackId(null);
     setTitle("");
     setStep(1);

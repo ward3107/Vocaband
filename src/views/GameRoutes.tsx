@@ -18,6 +18,7 @@ import type { GameMode } from '../constants/game';
 import type { LeaderboardEntry } from '../core/types';
 import type { Language } from '../hooks/useLanguage';
 import { gameActiveT } from '../locales/student/game-active';
+import { primeAudio } from '../utils/primeAudio';
 
 const HebrewModeSelectionView = lazyWithRetry(() => import('./HebrewModeSelectionView'));
 const GameModeSelectionView = lazyWithRetry(() => import('./GameModeSelectionView'));
@@ -170,7 +171,6 @@ export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
               setShowModeSelection(false);
               if (mode === 'niqqud') setView('vocahebrew-niqqud');
               else if (mode === 'shoresh') setView('vocahebrew-shoresh');
-              else if (mode === 'synonym') setView('vocahebrew-synonyms');
               else if (mode === 'listening') setView('vocahebrew-listening');
             }}
             onExit={handleExitGame}
@@ -247,6 +247,12 @@ export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
           setShowModeIntro={setShowModeIntro}
           setShowModeSelection={setShowModeSelection}
           onLetsGo={() => {
+            // iOS Safari audio unlock — the "Let's Go!" tap is the last
+            // user-gesture before the first word auto-speaks from a
+            // setTimeout in useGameModeSetup. Without priming here, iOS
+            // silently swallows that first (and every) speak() call and
+            // the student thinks the mode is broken. Idempotent + cheap.
+            primeAudio();
             gameDebug.logModeIntroComplete({ mode: gameMode });
             gameDebug.logState({
               view, gameMode, showModeSelection, showModeIntro: false,

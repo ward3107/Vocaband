@@ -21,7 +21,6 @@ export type ExerciseType =
   | "listening_dictation"
   | "fill_blank"
   | "definition_match"
-  | "synonym_antonym"
   | "cloze"
   | "sentence_building"
   | "translation_typing"
@@ -43,7 +42,6 @@ export type Exercise =
   | { type: "listening_dictation"; word_ids: number[] }
   | { type: "fill_blank"; word_ids: number[] }
   | { type: "definition_match"; word_ids: number[] }
-  | { type: "synonym_antonym"; word_ids: number[]; mode: "synonym" | "antonym" }
   | { type: "cloze"; word_ids: number[] }
   | { type: "sentence_building"; word_ids: number[] }
   | { type: "translation_typing"; word_ids: number[]; direction: TranslationDirection }
@@ -67,7 +65,6 @@ export type Answer =
   | { kind: "listening_dictation"; word_id: number; word: string; typed: string; is_correct: boolean }
   | { kind: "fill_blank"; word_id: number; sentence: string; typed: string; is_correct: boolean }
   | { kind: "definition_match"; word_id: number; word: string; given: string; correct: string; is_correct: boolean }
-  | { kind: "synonym_antonym"; word_id: number; word: string; mode: "synonym" | "antonym"; given: string; correct: string; is_correct: boolean }
   | { kind: "cloze"; word_id: number; sentence: string; typed: string; is_correct: boolean }
   | { kind: "sentence_building"; word_id: number; target: string; given: string; is_correct: boolean }
   | { kind: "translation_typing"; word_id: number; prompt: string; typed: string; correct: string; is_correct: boolean }
@@ -212,16 +209,6 @@ export const extractMisses = (answers: Answer[]): MissedWord[] => {
       case "definition_match":
         if (!a.is_correct) {
           upsert({ word_id: a.word_id, english: a.word, translation: a.correct });
-        }
-        break;
-      case "synonym_antonym":
-        if (!a.is_correct) {
-          upsert({
-            word_id: a.word_id,
-            english: a.word,
-            translation: a.correct,
-            note: a.mode,
-          });
         }
         break;
       case "cloze":

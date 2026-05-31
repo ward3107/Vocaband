@@ -34,7 +34,6 @@ import { hebrewWizardT } from "../locales/teacher/hebrew-wizard";
 export type HebrewModeId =
   | "niqqud"
   | "shoresh"
-  | "synonym"
   | "listening"
   | "classic"
   | "spelling"
@@ -53,7 +52,6 @@ export const HEBREW_MODE_OPTIONS: ReadonlyArray<{
 }> = [
   { id: "niqqud",      emoji: "נִ", titleHe: "מצב ניקוד",            blurbHe: "בחרו את הניקוד הנכון",          gradient: "from-amber-400 to-rose-500" },
   { id: "shoresh",     emoji: "ש",  titleHe: "ציד שורש",             blurbHe: "מצאו את שלוש אותיות השורש",    gradient: "from-emerald-500 to-teal-600" },
-  { id: "synonym",     emoji: "↔",  titleHe: "התאמת מילים נרדפות", blurbHe: "התאימו מילים לפי משמעות",       gradient: "from-fuchsia-500 to-rose-600" },
   { id: "listening",   emoji: "🎧", titleHe: "מצב האזנה",            blurbHe: "שמעו ובחרו את הניקוד",          gradient: "from-violet-500 to-blue-600" },
   { id: "classic",     emoji: "🌍", titleHe: "תרגום מילים",          blurbHe: "בחרו את התרגום הנכון",          gradient: "from-sky-500 to-cyan-600",      comingSoon: true },
   { id: "spelling",    emoji: "⌨️", titleHe: "איות בעברית",          blurbHe: "הקלידו את המילה הנכונה",        gradient: "from-lime-500 to-emerald-600",  comingSoon: true },

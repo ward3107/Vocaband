@@ -14,6 +14,7 @@ interface FillBlankGameProps {
   hiddenOptions: number[];
   feedback: "correct" | "wrong" | "show-answer" | null;
   gameWordsCount: number;
+  targetLanguage: "hebrew" | "arabic";
   onAnswer: (w: Word) => void;
   /** Phase-3i theme -- lime.  Drives the sentence-card hero tint
    *  and the AnswerOptionButton accents.  The blank slot is always
@@ -78,7 +79,7 @@ export function redactSentence(sentence: string, target: string): string {
 const FillBlankGame = React.memo(({
   activeAssignment, currentWord, currentIndex,
   options, hiddenOptions, feedback,
-  gameWordsCount, onAnswer, themeColor,
+  gameWordsCount, targetLanguage, onAnswer, themeColor,
 }: FillBlankGameProps) => {
   const { language } = useLanguage();
   const t = gameActiveT[language];
@@ -159,8 +160,10 @@ const FillBlankGame = React.memo(({
       </div>
 
       {/* 2x2 option grid.  AnswerOptionButton owns its own theme-
-          tinted resting border, hover state, and feedback colours. */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          tinted resting border, hover state, and feedback colours.
+          dir="ltr" pins the option positions — the answers are English
+          words, so without it they swap sides under a Hebrew/Arabic UI. */}
+      <div dir="ltr" className="grid grid-cols-2 gap-2 sm:gap-3">
         {options.filter(o => !hiddenOptions.includes(o.id)).map(option => (
           <AnswerOptionButton
             key={option.id}
@@ -168,7 +171,7 @@ const FillBlankGame = React.memo(({
             currentWordId={currentWord.id}
             feedback={feedback}
             gameMode="fill-blank"
-            targetLanguage="hebrew"
+            targetLanguage={targetLanguage}
             onAnswer={onAnswer}
             themeColor={themeColor}
           />
