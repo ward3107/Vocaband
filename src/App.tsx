@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback, Suspense } from "react";
+import React, { useState, useMemo, useRef, useCallback, useEffect, Suspense } from "react";
 import type { View } from "./core/views";
 import { lazyWithRetry } from "./utils/lazyWithRetry";
 import { getEntitledVocas } from "./core/subject";
@@ -405,6 +405,16 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     targetLanguage, setTargetLanguage,
     hasChosenLanguage, setHasChosenLanguage,
   } = useTargetLanguageState();
+
+  // Lock the translation target to the chosen UI language: a student who
+  // picks Hebrew sees Hebrew translations everywhere, Arabic → Arabic.
+  // The in-game language toggle was removed, so this is the single source
+  // of truth. (English UI — teachers/demo — keeps the existing target.)
+  useEffect(() => {
+    if (appLanguage === 'he') setTargetLanguage('hebrew');
+    else if (appLanguage === 'ar') setTargetLanguage('arabic');
+  }, [appLanguage, setTargetLanguage]);
+
   const [isFinished, setIsFinished] = useState(false);
   const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
 

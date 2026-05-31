@@ -20,7 +20,6 @@ import type { GameMode } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
 import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
 import { useLanguage } from "../hooks/useLanguage";
-import LanguageSwitcher from "../components/LanguageSwitcher";
 import { gameModesT, type GameModeId } from "../locales/student/game-modes";
 
 // Small star-rating component — 3 stars with N filled. Same visual
@@ -190,16 +189,9 @@ export default function GameModeSelectionView({
           <X size={28} />
         </button>
 
-        {/* Inline language picker — single Globe button with a
-            dropdown of the three languages.  Mode names + tooltips
-            re-render in the chosen language because each tile reads
-            `t.modes[id].name` from gameModesT[language].  Available
-            for both real-assignment and Quick Play students.
-            Persists via useLanguage's localStorage. */}
-        <div className="mb-5 sm:mb-7 flex items-center justify-center">
-          <LanguageSwitcher variant="compact" />
-        </div>
-
+        {/* Language picker intentionally removed — students choose their
+            instruction language once at login and it stays locked, so
+            mid-flow screens like the mode picker don't offer a change. */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}

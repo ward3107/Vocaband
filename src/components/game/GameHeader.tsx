@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Languages } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { gameActiveT } from "../../locales/student/game-active";
 import { getPronunciationSpeed, setPronunciationSpeed, type PronunciationSpeed } from "../../hooks/useAudio";
@@ -9,8 +9,6 @@ interface GameHeaderProps {
   score: number;
   xp: number;
   streak: number;
-  targetLanguage: "hebrew" | "arabic";
-  setTargetLanguage: React.Dispatch<React.SetStateAction<"hebrew" | "arabic">>;
   onExit: () => void;
 }
 
@@ -33,7 +31,7 @@ const STREAK_STYLES = {
 } as const;
 
 export default function GameHeader({
-  score, xp, streak, targetLanguage, setTargetLanguage, onExit,
+  score, xp, streak, onExit,
 }: GameHeaderProps) {
   const { language } = useLanguage();
   const t = gameActiveT[language];
@@ -98,13 +96,6 @@ export default function GameHeader({
         >
           <span className="text-base leading-none" aria-hidden>{speed === "slow" ? "🐢" : "🐇"}</span>
           <span className="text-xs font-bold text-stone-600">{speed === "slow" ? t.speedSlow : t.speedNormal}</span>
-        </button>
-        <button
-          onClick={() => setTargetLanguage(targetLanguage === "hebrew" ? "arabic" : "hebrew")}
-          className="flex items-center gap-2 bg-white px-3 sm:px-4 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors"
-        >
-          <Languages size={18} />
-          <span className="text-sm font-bold">{targetLanguage === "hebrew" ? "עברית" : "عربي"}</span>
         </button>
         <button
           onClick={onExit}
