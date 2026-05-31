@@ -49,7 +49,10 @@ const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOpti
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+    {/* dir="ltr" pins the option POSITIONS so they don't mirror
+        (swap left/right) when the UI is Hebrew/Arabic. Each button
+        keeps its own dir for the translation text it renders. */}
+    <div dir="ltr" className="grid grid-cols-2 gap-2 sm:gap-3">
       {options.filter(o => !hiddenOptions.includes(o.id)).map((option) => (
         <AnswerOptionButton
           key={option.id}

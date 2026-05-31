@@ -103,7 +103,11 @@ export default function MatchingModeGame({
       {/* Two-column layout, horizontally centered with mx-auto on
           the wrapper and items-center inside each column so the
           remaining tiles stay centered as pairs vanish. */}
-      <div className="w-full max-w-2xl mx-auto">
+      {/* dir="ltr" keeps English in the LEFT column and the translation
+          in the RIGHT column (the documented layout) even under a
+          Hebrew/Arabic UI — without it the two columns swap sides. Each
+          tile still sets its own dir for the text it shows. */}
+      <div dir="ltr" className="w-full max-w-2xl mx-auto">
         <div className="grid grid-cols-2 gap-3 sm:gap-6 items-center">
           <div className="flex flex-col items-center justify-center gap-2 sm:gap-3">
             <AnimatePresence>

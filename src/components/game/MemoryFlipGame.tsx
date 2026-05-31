@@ -139,8 +139,12 @@ export default function MemoryFlipGame({
         {t.findThePairs}
       </p>
 
+      {/* dir="ltr" pins the card grid order so the board doesn't mirror
+          when the UI is Hebrew/Arabic. Each card sets its own dir for
+          the text on its face. */}
       <motion.div
         key="memory-flip"
+        dir="ltr"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}

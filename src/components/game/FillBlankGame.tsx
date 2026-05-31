@@ -159,8 +159,10 @@ const FillBlankGame = React.memo(({
       </div>
 
       {/* 2x2 option grid.  AnswerOptionButton owns its own theme-
-          tinted resting border, hover state, and feedback colours. */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          tinted resting border, hover state, and feedback colours.
+          dir="ltr" pins the option positions — the answers are English
+          words, so without it they swap sides under a Hebrew/Arabic UI. */}
+      <div dir="ltr" className="grid grid-cols-2 gap-2 sm:gap-3">
         {options.filter(o => !hiddenOptions.includes(o.id)).map(option => (
           <AnswerOptionButton
             key={option.id}

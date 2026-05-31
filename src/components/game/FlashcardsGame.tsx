@@ -157,7 +157,9 @@ export default function FlashcardsGame({
           rose↔emerald palette since "I'm still learning vs I got it" is
           a direct judgement, same as True/False.  Each button is
           min-h-[88px], stacked emoji + label inside. */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+      {/* dir="ltr" keeps "Still Learning" left and "Got It" right
+          regardless of UI language, so the buttons don't swap sides. */}
+      <div dir="ltr" className="grid grid-cols-2 gap-3 sm:gap-4">
         <button
           onClick={() => onAnswer(false)}
           onTouchStart={(e) => { if (!isProcessingRef.current) e.currentTarget.click(); }}
