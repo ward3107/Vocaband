@@ -14,6 +14,7 @@ import AnnouncementBanner from "./components/AnnouncementBanner";
 import { supabase, hasTeacherAccess, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
 import { studentLoginViaServer } from "./api/studentLogin";
 import { useAudio } from "./hooks/useAudio";
+import { primeAudio } from "./utils/primeAudio";
 import { useLanguage } from "./hooks/useLanguage";
 import { appToastsT } from "./locales/app-toasts";
 import { useRetention } from "./hooks/useRetention";
@@ -720,6 +721,12 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // Class Minute entry point — dashboard widget + ?play=class-minute
   // deep link.  Pulls SRS-due words → assignments → SET_2_WORDS.
   const startClassMinute = useCallback(async () => {
+    // Prime iOS audio synchronously inside the dashboard-tap gesture,
+    // BEFORE the await below — once we yield to the async word-pick the
+    // gesture context is gone and SpeedRoundGame's auto-speak would be
+    // muted on iOS. Idempotent. (Deep-link launches have no gesture, but
+    // those are rare and already-primed sessions stay primed.)
+    primeAudio();
     const seedWords = await pickClassMinuteWords({
       allWords: ALL_WORDS,
       set2Words: SET_2_WORDS,

@@ -6,6 +6,7 @@ import { type ReactNode } from 'react';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
+import { primeAudio } from '../utils/primeAudio';
 import {
   grantRetentionXp,
   applyServerRewards,
@@ -104,7 +105,10 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
         setAssignmentWords={setAssignmentWords}
         setShowModeSelection={setShowModeSelection}
         onStartReview={() => {
-          // Spaced repetition entry — bypasses the mode picker.
+          // Spaced repetition entry — bypasses the mode picker, so this
+          // tap is the only user-gesture before ReviewGame auto-speaks.
+          // Prime iOS audio here (no intro screen / Let's Go to catch it).
+          primeAudio();
           // ReviewGame self-fetches its queue + the ALL_WORDS distractor
           // pool, so we don't need to seed gameWords or activeAssignment.
           setGameMode('review');
@@ -114,9 +118,11 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
         }}
         onStartClassMinute={startClassMinute}
         onStartIdioms={() => {
-          // Idiom entry — bypasses the mode picker.  IdiomGame self-
-          // fetches its question pool from src/data/idioms.ts, so we
-          // don't need to seed gameWords or activeAssignment.
+          // Idiom entry — bypasses the mode picker, so prime iOS audio
+          // on this tap (no Let's Go screen downstream to catch it).
+          primeAudio();
+          // IdiomGame self-fetches its question pool from
+          // src/data/idioms.ts, so we don't need to seed gameWords.
           setGameMode('idiom');
           setIsFinished(false);
           setShowModeSelection(false);
