@@ -36,7 +36,7 @@ import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { getGameDebugger } from "../utils/gameDebug";
 import { ALL_GAME_MODES } from "../constants/game";
 import { QP_CATEGORY_RACE_MODE } from "../core/quickPlayProtocol";
-import { joinMark, joinTimingReport } from "../utils/joinTiming"; // TEMP diagnostic
+import { preloadCategoryRaceView, preloadQuickPlayView } from "../views/studentJoinChunks";
 import type { View } from "../core/views";
 
 /** Shape of a quick_play_sessions row as consumed by the join flow —
@@ -115,7 +115,18 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
     if (sessionCode) {
       // Load Quick Play session
       const loadQuickPlaySession = async () => {
-        joinMark("bootstrap start"); // TEMP diagnostic
+        // ─── PERF: prewarm the join-view chunks in parallel ────────────
+        // The student-side view (Quick Play or Category Race) is a lazy
+        // chunk that otherwise only starts downloading AFTER the join
+        // resolves and the router renders it — the visible "Loading race…"
+        // wait on a fresh mobile scan. We don't yet know which mode this
+        // session is, but the chunks are tiny (~4-7 kB gz) so preloading
+        // BOTH now (in parallel with the auth + lookup below) guarantees
+        // the correct one is already cached when the view mounts. The
+        // unused one costs a few kB once. import() is idempotent so the
+        // eventual lazy render reuses this fetch.
+        preloadCategoryRaceView();
+        preloadQuickPlayView();
         // ─── PERF: prewarm the vocabulary chunk in parallel ────────────
         // The English word data isn't consumed until ~150 lines below
         // (after the anon-auth handshake AND the session SELECT). Left
@@ -150,12 +161,10 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
         // down the live component tree (caused 8/10 student crashes in a
         // classroom test).
         const { data: { session: cachedSession } } = await supabase.auth.getSession();
-        joinMark("after getSession"); // TEMP diagnostic
         let stale = false;
         if (cachedSession) {
           const { error } = await supabase.auth.getUser();
           stale = !!error;
-          joinMark("after getUser validate"); // TEMP diagnostic
         }
         if (stale) {
           try {
@@ -206,13 +215,11 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
               }
             }
           } catch { /* network / parse error — fall through to the slow path */ }
-          joinMark(fastOk ? "after fast-join OK" : "after fast-join MISS"); // TEMP diagnostic
           if (!fastOk) {
             // Fast path missed — establish a client anon session so the
             // direct-SELECT fallback below has the auth role it needs,
             // exactly as the non-fast path does.
             await supabase.auth.signInAnonymously().catch(() => {});
-            joinMark("after signInAnonymously (miss)"); // TEMP diagnostic
           }
         } else if (!cachedSession || stale) {
           // Sign in anonymously when there's no usable cached session.
@@ -243,7 +250,6 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
             .maybeSingle();
           data = (direct.data as QpSessionRow | null) ?? null;
           error = direct.error;
-          joinMark("after direct SELECT"); // TEMP diagnostic
         }
 
         if (error || !data) {
@@ -301,11 +307,6 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           && data.allowed_modes.length === 1
           && data.allowed_modes[0] === QP_CATEGORY_RACE_MODE;
         if (isCategoryRace) {
-          joinMark("CR session resolved -> show name screen"); // TEMP diagnostic
-          // TEMP diagnostic: pop the timing breakdown right as the name
-          // screen is about to render — this is the exact window the
-          // student waits through. Remove with src/utils/joinTiming.ts.
-          try { window.setTimeout(() => window.alert(joinTimingReport()), 300); } catch { /* noop */ }
           setQuickPlayActiveSession({
             id: data.id,
             sessionCode: data.session_code,
