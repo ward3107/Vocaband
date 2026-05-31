@@ -73,7 +73,6 @@ import ScrambleGame from "../components/game/ScrambleGame";
 import IdiomGame from "../components/game/IdiomGame";
 import SpeedRoundGame from "../components/game/SpeedRoundGame";
 import ReviewGame from "../components/game/ReviewGame";
-import RelationsGame from "../components/game/RelationsGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -223,12 +222,12 @@ export default function GameActiveView({
   const isSelfContainedMode =
     gameMode === 'idiom' ||
     gameMode === 'speed-round' || gameMode === 'class-minute' ||
-    // Review + Relations render their OWN prompt word, progress, and
-    // finish flow (ReviewGame self-fetches its SRS queue; RelationsGame
-    // its dataset). Without this they leaked the global WordPromptCard
-    // showing a stale gameWords[currentIndex] above their own UI, plus a
-    // power-up toolbar + "1 / 0" progress bar that don't apply.
-    gameMode === 'review' || gameMode === 'relations';
+    // Review renders its OWN prompt word, progress, and finish flow
+    // (ReviewGame self-fetches its SRS queue). Without this it leaked
+    // the global WordPromptCard showing a stale gameWords[currentIndex]
+    // above its own UI, plus a power-up toolbar + "1 / 0" progress bar
+    // that don't apply.
+    gameMode === 'review';
 
   const renderModeContent = () => {
     if (gameMode === "classic" || gameMode === "listening" || gameMode === "reverse") {
@@ -374,18 +373,6 @@ export default function GameActiveView({
           themeColor={modeTheme ?? "violet"}
           targetLanguage={targetLanguage}
           speak={speakWord}
-          onFinish={handleExitGame}
-        />
-      );
-    }
-    if (gameMode === "relations") {
-      // Synonyms & Antonyms — multi-choice question alternating
-      // between syn / ant per turn.  Question source is the curated
-      // RELATIONS dataset, not the assignment word pool.
-      return (
-        <RelationsGame
-          themeColor={modeTheme ?? "violet"}
-          speak={speak}
           onFinish={handleExitGame}
         />
       );
