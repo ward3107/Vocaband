@@ -13,9 +13,12 @@ import type { AppUser, AssignmentData } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 
+import {
+  CategoryRaceStudentViewLazy as CategoryRaceStudentView,
+  QuickPlayStudentViewLazy as QuickPlayStudentView,
+} from './studentJoinChunks';
+
 const StudentAccountLoginView = lazyWithRetry(() => import('./StudentAccountLoginView'));
-const QuickPlayStudentView = lazyWithRetry(() => import('./QuickPlayStudentView'));
-const CategoryRaceStudentView = lazyWithRetry(() => import('./CategoryRaceStudentView'));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Anyish = any;
