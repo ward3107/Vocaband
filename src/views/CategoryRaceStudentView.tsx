@@ -32,6 +32,7 @@ import { celebrate } from "../utils/celebrate";
 import { playLetterReveal, playGood, playGentle, playFanfare } from "../utils/raceSfx";
 import { CATEGORIES, categoryLabel, type CategoryMeta } from "../data/category-race-bank";
 import { containsProfanity } from "../utils/nicknameProfanity";
+import { joinMark, getJoinMarks } from "../utils/joinTiming"; // TEMP diagnostic
 import type { QpRaceResultPayload } from "../core/quickPlayProtocol";
 import type { View } from "../core/views";
 
@@ -111,6 +112,7 @@ function CountUp({ value, className }: { value: number; className?: string }) {
 }
 
 export default function CategoryRaceStudentView({ sessionCode, setView }: CategoryRaceStudentViewProps) {
+  joinMark("CR view mounted"); // TEMP diagnostic
   const { language, dir } = useLanguage();
   const t = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
 
@@ -578,6 +580,41 @@ function Shell({ children, dir }: { children: ReactNode; dir: "ltr" | "rtl" }) {
   return (
     <div className="min-h-[100dvh] flex items-center justify-center px-5 bg-gradient-to-br from-fuchsia-50 via-white to-pink-50" dir={dir}>
       {children}
+      <JoinTimingOverlay />
+    </div>
+  );
+}
+
+// TEMP diagnostic overlay — shows where the join time went. Each row is
+// the gap from the previous mark; rows >=1000ms are flagged red. Remove
+// together with src/utils/joinTiming.ts once diagnosed.
+function JoinTimingOverlay() {
+  const marks = getJoinMarks();
+  if (marks.length === 0) return null;
+  const first = marks[0].ms;
+  const total = marks[marks.length - 1].ms - first;
+  return (
+    <div
+      dir="ltr"
+      style={{
+        position: "fixed", bottom: 8, left: 8, right: 8, zIndex: 99999,
+        margin: "0 auto", maxWidth: 440, background: "rgba(0,0,0,0.88)",
+        color: "#0f0", font: "12px/1.5 monospace", padding: "8px 10px",
+        borderRadius: 8,
+      }}
+    >
+      <div style={{ color: "#fff", fontWeight: 700, marginBottom: 4 }}>
+        join timing — total {total}ms
+      </div>
+      {marks.map((m, i) => {
+        const step = i > 0 ? m.ms - marks[i - 1].ms : 0;
+        const slow = step >= 1000;
+        return (
+          <div key={i} style={{ color: slow ? "#ff5555" : "#0f0" }}>
+            {slow ? "!! " : ""}{m.label}: +{step}ms
+          </div>
+        );
+      })}
     </div>
   );
 }

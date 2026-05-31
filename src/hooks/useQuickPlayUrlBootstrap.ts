@@ -36,6 +36,7 @@ import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { getGameDebugger } from "../utils/gameDebug";
 import { ALL_GAME_MODES } from "../constants/game";
 import { QP_CATEGORY_RACE_MODE } from "../core/quickPlayProtocol";
+import { joinMark } from "../utils/joinTiming"; // TEMP diagnostic
 import type { View } from "../core/views";
 
 /** Shape of a quick_play_sessions row as consumed by the join flow —
@@ -101,6 +102,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
     if (sessionCode) {
       // Load Quick Play session
       const loadQuickPlaySession = async () => {
+        joinMark("bootstrap start"); // TEMP diagnostic
         // ─── PERF: prewarm the vocabulary chunk in parallel ────────────
         // The English word data isn't consumed until ~150 lines below
         // (after the anon-auth handshake AND the session SELECT). Left
@@ -135,6 +137,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
         // down the live component tree (caused 8/10 student crashes in a
         // classroom test).
         const { data: { session: cachedSession } } = await supabase.auth.getSession();
+        joinMark("after getSession"); // TEMP diagnostic
         let stale = false;
         if (cachedSession) {
           const { error } = await supabase.auth.getUser();
@@ -281,6 +284,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           && data.allowed_modes.length === 1
           && data.allowed_modes[0] === QP_CATEGORY_RACE_MODE;
         if (isCategoryRace) {
+          joinMark("session resolved -> route CR"); // TEMP diagnostic
           setQuickPlayActiveSession({
             id: data.id,
             sessionCode: data.session_code,
