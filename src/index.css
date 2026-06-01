@@ -625,6 +625,29 @@ html[dir="rtl"] .rtl-flip {
    intact so student-side surfaces (which deliberately don't follow the
    teacher theme) still render with the original neutral grey. */
 .bg-stone-200 { background-color: #f5f5f4; }
+
+/* =============================================================================
+   Anti-glare: route the solid `bg-white` utility through the surface token.
+
+   Pure #fff is fine on a modern phone but glares painfully on the older,
+   max-backlight monitors and washed-out projectors in many classrooms —
+   which is exactly why the design system already uses an off-white surface
+   token (#fafaf9) for every token-driven surface (see --vb-surface above).
+   ~300 older components still hardcode Tailwind's built-in `bg-white`
+   (= #fff) and never got the memo, so they read brighter than the rest of
+   the app.  Remapping the utility onto the token unifies them AND — because
+   the token flips under dark mode — makes every one of those surfaces follow
+   the dark theme for free.
+
+   Scope notes:
+   - Only the SOLID `.bg-white` utility is remapped.  The `bg-white/NN`
+     alpha overlays (553 of them) keep Tailwind's default — they sit on
+     gradients/glass/photos where translucent white is the intent.
+   - `text-white` / `border-white` are untouched — white text on a coloured
+     gradient hero must stay pure white for contrast.
+   - Modals/popovers that need a hair more lift than the page can opt back
+     up to `bg-surface-elevated` (var(--vb-surface-elevated)). */
+.bg-white { background-color: var(--vb-surface); }
 .bg-stone-200-high { background-color: var(--vb-surface-alt, #e7e5e4); }
 .bg-stone-200-highest { background-color: var(--vb-border, #d6d3d1); }
 .bg-blue-100\/10 { background-color: rgba(219, 234, 254, 0.1); }
