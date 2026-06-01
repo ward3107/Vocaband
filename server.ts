@@ -2303,6 +2303,10 @@ async function startServer() {
           const c = typeof p?.clientId === "string" ? p.clientId.slice(0, 8) : "?";
           const r = typeof p?.roundId === "string" ? p.roundId.slice(0, 8) : "?";
           console.warn(`[QP RACE submit DROP] reason=${reason} session=${s} client=${c} round=${r}`, extra ?? "");
+          // Also echo the reason back to the submitting student so it shows in
+          // their browser console (DevTools) — no Fly log access needed to
+          // diagnose. Temporary; remove once the drop cause is fixed.
+          socket.emit("qp:race:submit:rejected", { reason });
         } catch { /* logging must never throw */ }
       };
       if (!payload || typeof payload !== "object") { dropLog("bad_payload"); return; }
