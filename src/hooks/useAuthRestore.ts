@@ -800,17 +800,23 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
         setQuickPlaySessionEnded(false);
         try { localStorage.removeItem('vocaband_student_login'); } catch {}
         try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
+        // Capture the Quick Play guest marker BEFORE the removeItem below
+        // wipes it — the post-logout routing needs it.
+        const wasQpGuest = (() => {
+          try { return !!localStorage.getItem('vocaband_qp_guest'); } catch { return false; }
+        })();
         try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
         try { clearAllReadCache(); } catch {}
-        // Only a CONFIRMED teacher lands on the teacher login card. Students
-        // AND Quick Play guests (whose role can be unset) must never be dumped
-        // on the teacher sign-in screen — route every non-teacher to the
-        // student login instead. (Previously this keyed on === 'student', so a
-        // guest with no role fell through to the teacher card.)
-        const wasTeacher = lastUserRoleRef.current === 'teacher';
-        const postLogoutView: View = wasTeacher ? 'teacher-login' : 'student-account-login';
+        // Route the student login ONLY for confirmed students + Quick Play
+        // guests; teachers (and admins/managers) keep the teacher login card.
+        // Key on a POSITIVE student/guest signal rather than "anyone who isn't
+        // 'teacher'": the latter dumped teachers whose role ref was stale, and
+        // admins/managers, onto the student screen. Guests are detected via
+        // their localStorage marker since their role can be unset.
+        const wasStudentOrGuest = lastUserRoleRef.current === 'student' || wasQpGuest;
+        const postLogoutView: View = wasStudentOrGuest ? 'student-account-login' : 'teacher-login';
         lastUserRoleRef.current = null;
-        const target = wasTeacher ? '/teacher' : '/student';
+        const target = wasStudentOrGuest ? '/student' : '/teacher';
         if (!quickPlaySessionParam) {
           try { window.history.replaceState({ view: postLogoutView }, '', target); } catch {
             try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}
