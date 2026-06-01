@@ -2291,19 +2291,33 @@ async function startServer() {
     // Students send TEXT, not a score — the server scores it against the
     // bank, so a tampered client can never claim arbitrary points.
     socket.on(QP_EVENTS.RACE_SUBMIT, (payload: QpRaceSubmitPayload) => {
-      if (!payload || typeof payload !== "object") return;
+      // ── Diagnostic (2026-06 #2/#3) ──────────────────────────────────────
+      // A dropped RACE_SUBMIT is silent: the student never gets a
+      // RACE_RESULT and the host never sees the score move. Both reported
+      // symptoms are this. Log WHICH guard rejects so one repro + `fly logs`
+      // pinpoints the cause. Purely additive — no behaviour change.
+      const dropLog = (reason: string, extra?: Record<string, unknown>) => {
+        try {
+          const p = payload as { sessionCode?: unknown; clientId?: unknown; roundId?: unknown };
+          const s = typeof p?.sessionCode === "string" ? p.sessionCode : "?";
+          const c = typeof p?.clientId === "string" ? p.clientId.slice(0, 8) : "?";
+          const r = typeof p?.roundId === "string" ? p.roundId.slice(0, 8) : "?";
+          console.warn(`[QP RACE submit DROP] reason=${reason} session=${s} client=${c} round=${r}`, extra ?? "");
+        } catch { /* logging must never throw */ }
+      };
+      if (!payload || typeof payload !== "object") { dropLog("bad_payload"); return; }
       const { sessionCode, clientId, roundId, answers } = payload;
-      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
-      if (typeof roundId !== "string" || !roundId) return;
-      if (!answers || typeof answers !== "object") return;
-      if (!qpScoreLimiter.checkLimit(socket.id)) return;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) { dropLog("bad_session_or_client"); return; }
+      if (typeof roundId !== "string" || !roundId) { dropLog("bad_roundId"); return; }
+      if (!answers || typeof answers !== "object") { dropLog("bad_answers"); return; }
+      if (!qpScoreLimiter.checkLimit(socket.id)) { dropLog("rate_limited"); return; }
 
       const state = qpSessions.get(sessionCode);
-      if (!state || !state.currentRace) return;
+      if (!state || !state.currentRace) { dropLog("no_session_or_race", { hasState: !!state }); return; }
       const race = state.currentRace;
-      if (race.roundId !== roundId) return;                              // stale round
-      if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) return; // too late
-      if (race.submitted.has(clientId)) return;                          // one submit per round
+      if (race.roundId !== roundId) { dropLog("stale_round", { serverRound: race.roundId.slice(0, 8) }); return; } // stale round
+      if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late", { lateMs: Date.now() - (race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) }); return; } // too late
+      if (race.submitted.has(clientId)) { dropLog("already_submitted"); return; }                          // one submit per round
 
       // Self-heal the socket→client mapping (mirrors SCORE_UPDATE) in
       // case a reconnect raced the submit.
@@ -2313,11 +2327,12 @@ async function startServer() {
           state.socketToClient.set(socket.id, clientId);
           socket.join(sessionCode);
         } else {
+          dropLog("not_in_students", { owned: owned ?? null, knownClients: state.students.size });
           return;
         }
       }
       const entry = state.students.get(clientId);
-      if (!entry) return;
+      if (!entry) { dropLog("no_entry"); return; }
 
       // Categories where the student used a hint/suggestion — those cells
       // score at the reduced (L1) rate even in English, so help is fair.
