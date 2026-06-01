@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  X, Copy, Users, BookOpen, QrCode, LogOut, Volume2, VolumeX,
+  X, Copy, Users, BookOpen, LogOut, Volume2, VolumeX,
   ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause,
   Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap, ZapOff, Plus
 } from 'lucide-react';
@@ -906,16 +906,30 @@ export default function QuickPlayMonitor({
   // motion.div initial/animate values in the grid below).
   const prevStudentNamesRef = useRef<Set<string>>(new Set());
   const [recentJoiners, setRecentJoiners] = useState<{ name: string; avatar: string; ts: number }[]>([]);
+  // Per-name cooldown so a flapping/ghost connection (a student whose
+  // session drops and re-joins every few seconds) can't fire an endless
+  // stack of "X JOINED!" toasts.  Without this, a single unstable client
+  // pushed the same name over and over and the toasts piled down over the
+  // podium instead of clearing.
+  const joinerCooldownRef = useRef<Map<string, number>>(new Map());
+  const JOIN_TOAST_COOLDOWN_MS = 15000;
   useEffect(() => {
     prevStudentCountRef.current = effectiveStudents.length;
     const currentNames = new Set(effectiveStudents.map(s => s.name));
+    const now = Date.now();
     const newcomers: { name: string; avatar: string; ts: number }[] = [];
+    const seen = new Set<string>();
     for (const s of effectiveStudents) {
-      if (!prevStudentNamesRef.current.has(s.name)) {
-        // Inline the avatar fallback rather than calling getStudentAvatar
-        // (declared further down in the file, would TDZ).
-        newcomers.push({ name: s.name, avatar: s.avatar || '🦊', ts: Date.now() });
-      }
+      if (prevStudentNamesRef.current.has(s.name)) continue; // already on the board
+      if (seen.has(s.name)) continue;                        // duplicate in same payload
+      const lastShown = joinerCooldownRef.current.get(s.name) ?? 0;
+      if (now - lastShown < JOIN_TOAST_COOLDOWN_MS) continue; // re-joined too soon — skip
+      seen.add(s.name);
+      joinerCooldownRef.current.set(s.name, now);
+      // Inline the avatar fallback rather than calling getStudentAvatar
+      // (declared further down in the file, would TDZ).  Unique ts per
+      // toast (now + index) so each dismisses independently.
+      newcomers.push({ name: s.name, avatar: s.avatar || '🦊', ts: now + newcomers.length });
     }
     if (newcomers.length > 0) {
       setRecentJoiners(prev => {
@@ -1545,25 +1559,42 @@ export default function QuickPlayMonitor({
             it back to the floating icon. */}
         <section className={`grid grid-cols-1 ${qrCollapsed ? '' : 'lg:grid-cols-12'} gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8 relative`}>
           {qrCollapsed ? (
-            // Compact floating QR icon — replaces the old long
-            // horizontal "Show QR" strip.  Click expands directly to
-            // the inline card (not the modal) for faster teacher access.
-            <button
-              type="button"
-              onClick={toggleQrCollapsed}
-              aria-label={tT.qpShowQrAria}
-              className={`absolute top-0 right-0 z-10 bg-gradient-to-br ${t.qrCard} rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all text-white flex flex-col items-center justify-center p-3 sm:p-4 ring-4 ring-white/30`}
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any, minWidth: '80px', minHeight: '80px' }}
-            >
-              <QrCode size={36} className="sm:hidden" />
-              <QrCode size={42} className="hidden sm:block" />
-              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider mt-1 leading-none">{tT.qpShowQrShort}</span>
-              {effectiveStudents.length > 0 && (
-                <span className="absolute -top-2 -right-2 min-w-[24px] h-6 px-1.5 bg-green-500 text-white text-[11px] font-black rounded-full flex items-center justify-center shadow-md ring-2 ring-white/30">
-                  {effectiveStudents.length}
-                </span>
-              )}
-            </button>
+            // Compact corner QR — a REAL, scannable code (not just an icon)
+            // pinned top-right so latecomers can scan it straight from the
+            // board without the teacher having to open or enlarge anything.
+            // Tapping still opens the big modal for whole-class scanning,
+            // and the modal's "Show as card" brings back the full controls.
+            <div className="absolute top-0 right-0 z-10 flex flex-col items-stretch w-28 sm:w-36">
+              <button
+                type="button"
+                onClick={() => setQrEnlarged(true)}
+                aria-label={tT.qpShowQrAria}
+                className="relative bg-white rounded-t-xl shadow-xl hover:shadow-2xl hover:scale-[1.03] active:scale-95 transition-all p-2 ring-4 ring-white/30"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              >
+                <div className="w-full aspect-square flex items-center justify-center">
+                  <QRCodeSVG
+                    value={qrUrl}
+                    size={176}
+                    level="M"
+                    marginSize={1}
+                    style={{ width: '100%', height: '100%' }}
+                    aria-label={tT.qpQrCodeAria}
+                  />
+                </div>
+                {effectiveStudents.length > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[24px] h-6 px-1.5 bg-green-500 text-white text-[11px] font-black rounded-full flex items-center justify-center shadow-md ring-2 ring-white/30">
+                    {effectiveStudents.length}
+                  </span>
+                )}
+              </button>
+              {/* Code + "Scan to join" on the gradient so it reads against
+                  the dark board; doubles as the type-by-hand fallback. */}
+              <div className={`bg-gradient-to-br ${t.qrCard} rounded-b-xl px-2 py-1.5 text-white text-center shadow-xl`}>
+                <div className="font-headline text-base sm:text-lg font-black tracking-tight leading-none">{session.sessionCode}</div>
+                <div className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider opacity-85 leading-tight mt-0.5">{tT.qpScanToJoin}</div>
+              </div>
+            </div>
           ) : (
           <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
