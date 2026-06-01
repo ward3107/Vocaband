@@ -17,6 +17,7 @@ import {
   Accessibility,
   Droplet,
   Moon,
+  MoonStar,
 } from 'lucide-react';
 
 /* =============================================================================
@@ -45,6 +46,7 @@ import {
 
 interface A11ySettings {
   fontSize: number;
+  darkMode: boolean;
   highContrast: boolean;
   grayscale: boolean;
   invertColors: boolean;
@@ -60,6 +62,7 @@ interface A11ySettings {
 
 const DEFAULT_SETTINGS: A11ySettings = {
   fontSize: 1,
+  darkMode: false,
   highContrast: false,
   grayscale: false,
   invertColors: false,
@@ -128,6 +131,7 @@ const LABELS: Record<Lang, Record<string, string>> = {
   en: {
     title: 'Accessibility', close: 'Close accessibility panel',
     trigger: 'Open accessibility menu (Alt+0)',
+    darkMode: 'Dark Mode',
     fontSize: 'Font Size', lineHeight: 'Line Height', textSpacing: 'Text Spacing',
     highContrast: 'High Contrast', grayscale: 'Grayscale', invertColors: 'Invert Colors',
     readableFont: 'Readable Font', dyslexiaFont: 'Dyslexia Font',
@@ -144,6 +148,7 @@ const LABELS: Record<Lang, Record<string, string>> = {
   he: {
     title: 'נגישות', close: 'סגור תפריט נגישות',
     trigger: 'פתח תפריט נגישות (Alt+0)',
+    darkMode: 'מצב כהה',
     fontSize: 'גודל גופן', lineHeight: 'גובה שורה', textSpacing: 'ריווח טקסט',
     highContrast: 'ניגודיות גבוהה', grayscale: 'גווני אפור', invertColors: 'היפוך צבעים',
     readableFont: 'גופן קריא', dyslexiaFont: 'גופן לדיסלקסיה',
@@ -160,6 +165,7 @@ const LABELS: Record<Lang, Record<string, string>> = {
   ar: {
     title: 'إمكانية الوصول', close: 'إغلاق قائمة إمكانية الوصول',
     trigger: 'فتح قائمة إمكانية الوصول (Alt+0)',
+    darkMode: 'الوضع الداكن',
     fontSize: 'حجم الخط', lineHeight: 'ارتفاع السطر', textSpacing: 'تباعد النص',
     highContrast: 'تباين عالٍ', grayscale: 'تدرج الرمادي', invertColors: 'عكس الألوان',
     readableFont: 'خط قابل للقراءة', dyslexiaFont: 'خط عسر القراءة',
@@ -176,6 +182,7 @@ const LABELS: Record<Lang, Record<string, string>> = {
   ru: {
     title: 'Accessibility', close: 'Close accessibility panel',
     trigger: 'Open accessibility menu (Alt+0)',
+    darkMode: 'Dark Mode',
     fontSize: 'Font Size', lineHeight: 'Line Height', textSpacing: 'Text Spacing',
     highContrast: 'High Contrast', grayscale: 'Grayscale', invertColors: 'Invert Colors',
     readableFont: 'Readable Font', dyslexiaFont: 'Dyslexia Font',
@@ -358,6 +365,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
   useEffect(() => {
     const html = document.documentElement;
     const toggles: [keyof A11ySettings, string][] = [
+      ['darkMode', 'a11y-dark'],
       ['highContrast', 'a11y-contrast'],
       ['grayscale', 'a11y-grayscale'],
       ['invertColors', 'a11y-invert'],
@@ -515,6 +523,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
   const isRTL = lang === 'he' || lang === 'ar';
 
   const toggleFeatures: { key: keyof A11ySettings; icon: React.ReactNode; label: string }[] = [
+    { key: 'darkMode',      icon: <MoonStar size={18} />,     label: t.darkMode },
     { key: 'highContrast',  icon: <Eye size={18} />,          label: t.highContrast },
     { key: 'grayscale',     icon: <Droplet size={18} />,      label: t.grayscale },
     { key: 'invertColors',  icon: <Moon size={18} />,         label: t.invertColors },

@@ -476,6 +476,131 @@ body {
   background-clip: padding-box;
 }
 
+/* =============================================================================
+   Global Dark Mode — toggled from the Accessibility widget (adds
+   `html.a11y-dark`).  This is the universal, everyone-facing light/dark
+   switch (students, guests, public pages, games), distinct from the
+   teacher dashboard's brand-palette picker.
+
+   How it works: flip the design tokens (--vb-* AND the @theme --color-*
+   that power utilities) to a dark stone palette.  Because the anti-glare
+   rule above routes the solid `bg-white` utility through --vb-surface,
+   every one of those ~300 surfaces follows the token into dark for free.
+   Brand gradients (bg-gradient-*) and `text-white` are intentionally left
+   alone — saturated gradients read well on dark and their white text
+   stays white.
+
+   Scope: `:not([data-theme-dark])` makes global dark mode YIELD to the
+   teacher theme system whenever a teacher palette is active (that system
+   sets data-theme-dark on <html> and already ships its own dark themes).
+   So the two never fight: teachers use their picker; everyone else uses
+   this toggle.
+   ============================================================================= */
+html.a11y-dark:not([data-theme-dark]) {
+  color-scheme: dark;
+
+  /* Surfaces → stone-900/800 family */
+  --vb-surface: #1c1917;
+  --vb-surface-alt: #292524;
+  --vb-surface-elevated: #292524;
+  --vb-bg-primary: #1c1917;
+  --vb-bg-secondary: #292524;
+
+  /* Text → inverted (light on dark) */
+  --vb-text-primary: #f5f5f4;
+  --vb-text-secondary: #d6d3d1;
+  --vb-text-muted: #a8a29e;
+  --vb-text-on-accent: #ffffff;
+
+  /* Structural */
+  --vb-border: #44403c;
+  --vb-border-strong: #57534e;
+
+  /* Accent: brighten indigo so it pops on dark; darken the soft chip */
+  --vb-accent: #818cf8;
+  --vb-accent-hover: #a5b4fc;
+  --vb-accent-active: #c7d2fe;
+  --vb-accent-soft: #312e81;
+  --vb-focus-ring: #a5b4fc;
+
+  /* Status soft tints → muted dark blocks (not neon on a dark page) */
+  --vb-success-soft: #14321f;
+  --vb-warning-soft: #3a2a10;
+  --vb-error-soft:   #3a1414;
+  --vb-danger-soft:  #3a1414;
+  --vb-info-soft:    #102a3a;
+
+  /* Mirror into the Tailwind @theme tokens (bg-surface, text-on-surface…) */
+  --color-surface: #1c1917;
+  --color-surface-bright: #292524;
+  --color-surface-dim: #0c0a09;
+  --color-surface-variant: #292524;
+  --color-surface-container-lowest: #0c0a09;
+  --color-surface-container-low: #1c1917;
+  --color-surface-container: #292524;
+  --color-surface-container-high: #292524;
+  --color-surface-container-highest: #44403c;
+  --color-background: #1c1917;
+  --color-on-surface: #f5f5f4;
+  --color-on-surface-variant: #d6d3d1;
+  --color-on-background: #f5f5f4;
+  --color-inverse-surface: #f5f5f4;
+  --color-inverse-on-surface: #1c1917;
+  --color-outline: #78716c;
+  --color-outline-variant: #44403c;
+  --color-primary: #818cf8;
+  --color-on-primary: #1e1b4b;
+  --color-primary-container: #312e81;
+  --color-on-primary-container: #c7d2fe;
+}
+
+/* Curated overrides for the common HARDCODED light Tailwind utilities that
+   bypass the tokens — without these, dark text would vanish on the now-dark
+   surfaces.  Grouped with :is() for brevity; the scope prefix keeps each
+   more specific than Tailwind's own utility, so no !important needed.
+   This list is deliberately the high-traffic 80%; rare hand-picked colours
+   on individual screens get polished as we review them in dark mode. */
+html.a11y-dark:not([data-theme-dark]) :is(
+  .bg-stone-50,.bg-stone-100,.bg-stone-200,
+  .bg-gray-50,.bg-gray-100,.bg-slate-50,.bg-slate-100,
+  .bg-neutral-50,.bg-neutral-100,.bg-zinc-50,.bg-zinc-100
+) { background-color: var(--vb-surface-alt); }
+
+html.a11y-dark:not([data-theme-dark]) :is(
+  .text-black,
+  .text-stone-900,.text-stone-800,.text-stone-700,
+  .text-gray-900,.text-gray-800,.text-gray-700,
+  .text-slate-900,.text-slate-800,.text-slate-700,
+  .text-neutral-900,.text-neutral-800,.text-zinc-900,.text-zinc-800
+) { color: var(--vb-text-primary); }
+
+html.a11y-dark:not([data-theme-dark]) :is(
+  .text-stone-600,.text-stone-500,
+  .text-gray-600,.text-gray-500,
+  .text-slate-600,.text-slate-500,
+  .text-neutral-600,.text-neutral-500
+) { color: var(--vb-text-secondary); }
+
+html.a11y-dark:not([data-theme-dark]) :is(
+  .border-stone-200,.border-stone-100,
+  .border-gray-200,.border-gray-100,
+  .border-slate-200,.border-slate-100,
+  .border-neutral-200,.border-neutral-100
+) { border-color: var(--vb-border); }
+
+/* Native scrollbars for global dark mode (mirrors the teacher-dark rules). */
+html.a11y-dark:not([data-theme-dark]) {
+  scrollbar-color: var(--vb-border) transparent;
+}
+html.a11y-dark:not([data-theme-dark]) ::-webkit-scrollbar { width: 10px; height: 10px; }
+html.a11y-dark:not([data-theme-dark]) ::-webkit-scrollbar-track { background: transparent; }
+html.a11y-dark:not([data-theme-dark]) ::-webkit-scrollbar-thumb {
+  background-color: var(--vb-border);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
 /* Headline font for headings */
 h1, h2, h3, h4, h5, h6, .font-headline {
   font-family: var(--font-headline);
