@@ -421,6 +421,12 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       const onRaceResult = (p: QpRaceResultPayload) => {
         if (p?.sessionCode === sessionCode) raceResultRef.current?.(p);
       };
+      // Temporary diagnostic (#2/#3): server echoes WHY a RACE_SUBMIT was
+      // dropped so it surfaces in the student's DevTools console without
+      // needing Fly logs. Remove once the drop cause is found + fixed.
+      const onRaceRejected = (p: { reason?: string }) => {
+        console.warn("[CR submit rejected by server] reason=", p?.reason ?? "unknown");
+      };
       const onRaceEnded = (p: QpRaceEndedPayload) => {
         if (p?.sessionCode !== sessionCode) return;
         // Only clear if it's the round that ended — a fresh round may
@@ -441,6 +447,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
       socket.on(QP_SERVER_EVENTS.RACE_RESULT,   onRaceResult);
       socket.on(QP_SERVER_EVENTS.RACE_ENDED,    onRaceEnded);
+      socket.on("qp:race:submit:rejected",      onRaceRejected);
 
       if (socket.connected) onConnect();
 
@@ -457,6 +464,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
         socket.off(QP_SERVER_EVENTS.RACE_RESULT,   onRaceResult);
         socket.off(QP_SERVER_EVENTS.RACE_ENDED,    onRaceEnded);
+        socket.off("qp:race:submit:rejected",      onRaceRejected);
       };
     });
 
