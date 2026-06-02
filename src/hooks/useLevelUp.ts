@@ -1,19 +1,20 @@
 /**
- * useLevelUp — watches a student's XP and fires a single "level up"
- * event when they cross an XP_TITLES tier boundary.
+ * useLevelUp — fires a single "level up" modal each time a student
+ * crosses an XP_TITLES tier boundary.
  *
- * The hook stores the last-seen tier minimum in localStorage per user so
- * a refresh during a celebration doesn't fire it twice, and a student
- * who logs in already past a tier doesn't get retroactively spammed.
+ * Implementation note: rather than watch XP in an effect and push
+ * pending tier into state (which trips the `set-state-in-effect`
+ * lint), this hook DERIVES pending synchronously from current XP and
+ * the per-user "last seen" tier minimum.  The lastSeen state is only
+ * updated on `dismiss()`, so the celebration sticks on screen until
+ * the student closes it, persists across XP bumps mid-celebration,
+ * and never fires twice for the same crossing.
  *
- * Returns:
- *   - pending : the tier just crossed (or null when nothing pending)
- *   - dismiss : clears the pending tier
- *
- * The caller (App.tsx) renders LevelUpModal when `pending` is non-null
- * and calls `dismiss` on close.
+ * localStorage `voca:last-tier:<uid>` keeps lastSeen across reloads,
+ * so a refresh during the modal doesn't replay it, and an already-
+ * past-tier login at first device-use silently seeds without firing.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { XP_TITLES, getXpTitle } from "../constants/game";
 
 type Tier = typeof XP_TITLES[number];
@@ -23,7 +24,11 @@ const storageKey = (uid: string) => `voca:last-tier:${uid}`;
 function readLastSeenMin(uid: string, fallback: number): number {
   try {
     const raw = localStorage.getItem(storageKey(uid));
-    if (raw == null) return fallback;
+    if (raw == null) {
+      // First-time seed — write current so we don't fire retroactively.
+      localStorage.setItem(storageKey(uid), String(fallback));
+      return fallback;
+    }
     const n = parseInt(raw, 10);
     return Number.isFinite(n) ? n : fallback;
   } catch {
@@ -40,32 +45,47 @@ function writeLastSeenMin(uid: string, min: number): void {
 interface UseLevelUpOptions {
   uid: string | null | undefined;
   xp: number;
-  /** When false, the hook is inert — used to silence level-ups for
-   *  guests / pre-auth flows so a sign-in seed doesn't fire a modal. */
+  /** When false, the hook is inert — silences level-ups for guests and
+   *  pre-auth flows so a sign-in XP seed doesn't fire a modal. */
   enabled: boolean;
 }
 
 export function useLevelUp({ uid, xp, enabled }: UseLevelUpOptions) {
-  const [pending, setPending] = useState<Tier | null>(null);
+  const [lastSeen, setLastSeen] = useState<number | null>(null);
 
+  // Initialise lastSeen on uid change.  The read also seeds the
+  // localStorage entry on first-ever device-use so an existing high-
+  // XP student doesn't get retroactively spammed.
+  //
+  // We deliberately call setState inside this effect: it's a one-shot
+  // sync of external (localStorage) state into React on identity
+  // change, which is the documented pattern useSyncExternalStore was
+  // designed for but a single read is overkill for that API.  The
+  // effect does NOT depend on xp — re-running on every tick would
+  // clobber the in-flight pending tier.
   useEffect(() => {
-    if (!enabled || !uid) return;
-    const currentMin = getXpTitle(xp).min;
-    const lastSeen = readLastSeenMin(uid, currentMin);
-    if (currentMin > lastSeen) {
-      const tier = XP_TITLES.find((t) => t.min === currentMin) ?? null;
-      if (tier) setPending(tier);
-      writeLastSeenMin(uid, currentMin);
-    } else if (lastSeen !== currentMin) {
-      // First-time seed (no localStorage entry yet) OR XP went down
-      // (shouldn't happen normally, but be defensive — just sync without
-      // firing the modal).
-      writeLastSeenMin(uid, currentMin);
+    if (!enabled || !uid) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLastSeen(null);
+      return;
     }
-  }, [uid, xp, enabled]);
+    const currentMin = getXpTitle(xp).min;
+    setLastSeen(readLastSeenMin(uid, currentMin));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, enabled]);
 
-  return {
-    pending,
-    dismiss: () => setPending(null),
+  const pending = useMemo<Tier | null>(() => {
+    if (!enabled || lastSeen == null) return null;
+    const currentMin = getXpTitle(xp).min;
+    if (currentMin <= lastSeen) return null;
+    return XP_TITLES.find((t) => t.min === currentMin) ?? null;
+  }, [enabled, lastSeen, xp]);
+
+  const dismiss = () => {
+    if (!pending || !uid) return;
+    writeLastSeenMin(uid, pending.min);
+    setLastSeen(pending.min);
   };
+
+  return { pending, dismiss };
 }
