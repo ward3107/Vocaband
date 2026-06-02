@@ -6,6 +6,9 @@ import type { Word } from "../data/vocabulary";
 import type { LeaderboardEntry } from "../core/types";
 import { THEMES } from "../constants/game";
 import { useLanguage } from "../hooks/useLanguage";
+import { useCombo } from "../hooks/useCombo";
+import { useFeatureFlag } from "../hooks/useFeatureFlag";
+import CombosOverlay from "../components/arcade/CombosOverlay";
 import { gameActiveT } from "../locales/student/game-active";
 import { getThemeColors, type GameThemeColor } from "../components/game/GameShell";
 
@@ -179,6 +182,25 @@ export default function GameActiveView({
   const t = gameActiveT[language];
   const modeTheme: GameThemeColor | undefined = MODE_THEME[gameMode];
   const modeLabel = t.modeLabels[gameMode] ?? gameMode;
+
+  // Combo chain — fires when arcade-hub flag is on.  Watches the
+  // `feedback` prop and translates "correct"/"wrong"/"show-answer" into
+  // combo register calls.  Combo state lives in this hook (per-game-
+  // session), so navigating back to the dashboard resets it naturally
+  // when the view unmounts.
+  const arcadeHubEnabled = useFeatureFlag('arcade_hub', false);
+  const combo = useCombo();
+  useEffect(() => {
+    if (!arcadeHubEnabled) return;
+    if (feedback === "correct") combo.registerCorrect();
+    else if (feedback === "wrong" || feedback === "show-answer") combo.registerWrong();
+    // Reset on game finish so the next round starts clean.
+    if (isFinished) combo.reset();
+    // combo functions are stable refs from useCallback — safe to omit
+    // from deps without lint complaining, and including them would
+    // re-fire on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedback, isFinished, arcadeHubEnabled]);
 
   // Warn before the tab closes mid-game.  Without this guard a stray
   // tap on the close button (or a pinch-to-go-back swipe that escapes
@@ -408,6 +430,9 @@ export default function GameActiveView({
     // unreachable on phones.
     <div
       className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] font-sans max-w-7xl mx-auto`}>
+      {arcadeHubEnabled && (
+        <CombosOverlay chain={combo.chain} multiplier={combo.multiplier} />
+      )}
       {saveError && (
         <div className="fixed bottom-4 end-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />

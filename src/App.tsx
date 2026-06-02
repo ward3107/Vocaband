@@ -18,6 +18,9 @@ import { appToastsT } from "./locales/app-toasts";
 import { useRetention } from "./hooks/useRetention";
 import { useSavedTasks } from "./hooks/useSavedTasks";
 import { useBoosters } from "./hooks/useBoosters";
+import { useFeatureFlag } from "./hooks/useFeatureFlag";
+import { useLevelUp } from "./hooks/useLevelUp";
+import LevelUpModal from "./components/arcade/LevelUpModal";
 import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
 import { createGuestUser } from "./utils/createGuestUser";
@@ -191,6 +194,17 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // Retention state (daily chest, weekly challenge, comeback, limited
   // rotating item, pet evolution milestones).  Scoped per-user via uid.
   const retention = useRetention(user?.uid, xp);
+
+  // Arcade level-up modal — fires once per XP_TITLES tier crossing.
+  // Gated by the same `arcade_hub` flag as the rest of the redesign so
+  // the legacy dashboard's existing streak/perfect toasts stay the only
+  // celebration when the flag is off.
+  const arcadeHubEnabled = useFeatureFlag("arcade_hub", false);
+  const levelUp = useLevelUp({
+    uid: user?.uid ?? null,
+    xp,
+    enabled: arcadeHubEnabled && user?.role === "student" && !user?.isGuest,
+  });
 
   // Saved task templates — teacher-side localStorage of full assignment /
   // quick-play snapshots so a teacher can rebuild the same task in one
@@ -1212,6 +1226,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
           />
         </Suspense>
       )}
+      <LevelUpModal tier={levelUp.pending} onClose={levelUp.dismiss} />
     </>
   );
 };
