@@ -23,7 +23,7 @@ import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
 import ArcadeStatsBar from "../components/arcade/ArcadeStatsBar";
 import TrophyRoadStrip from "../components/arcade/TrophyRoadStrip";
 import BigPlayButton from "../components/arcade/BigPlayButton";
-import CharacterStage from "../components/arcade/CharacterStage";
+import EvolutionCore from "../components/arcade/EvolutionCore";
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
@@ -73,6 +73,14 @@ interface StudentDashboardViewProps {
   onStartIdioms?: () => void;
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
+  /** Server-authoritative badge XP claim (BadgesStrip arcade tiles).
+   *  Routes through claim_badge_xp so re-claims are deduped in the DB.
+   *  Resolves to whether the badge was already claimed, or null on
+   *  failure so the tile can revert its optimistic state. */
+  onClaimBadgeXp: (badgeId: string, xp: number, reason: string) => Promise<{ alreadyClaimed: boolean } | null>;
+  /** True on the render where the student crossed a tier — fires the
+   *  pet's collapse → burst → reveal transformation in CharacterStage. */
+  evolutionPending: boolean;
   onGrantReward: (kind: PetRewardKind, value: number | string) => void;
   /**
    * Called by RewardInboxCard when a new teacher reward is polled in
@@ -111,7 +119,8 @@ export default function StudentDashboardView({
   consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
   setView,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
-  retention, onGrantXp, onGrantReward, onApplyServerRewards, boosters,
+  retention, onGrantXp, onClaimBadgeXp, onGrantReward, onApplyServerRewards, boosters,
+  evolutionPending,
   onRenameDisplayName,
   onStartReview,
   onStartClassMinute,
@@ -216,6 +225,18 @@ export default function StudentDashboardView({
 
   // ── DASHBOARD RENDER ──────────────────────────────────────────────
   if (arcadeHubEnabled) {
+    // Shared pet-milestone claim — used by both the EvolutionCore hero
+    // and the floating PetCompanion. Grants the reward, then records the
+    // claim so it won't re-surface.
+    const handleClaimMilestone = (milestone: typeof retention.claimablePetMilestone) => {
+      if (!milestone) return;
+      if (milestone.reward.kind === "xp" && typeof milestone.reward.value === "number") {
+        onGrantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
+      } else {
+        onGrantReward(milestone.reward.kind, milestone.reward.value);
+      }
+      retention.claimPetMilestone(milestone);
+    };
     return (
       <>
         {consentModal}
@@ -231,9 +252,13 @@ export default function StudentDashboardView({
           statsBar={<ArcadeStatsBar xp={xp} streak={streak} />}
           trophyRoad={<TrophyRoadStrip xp={xp} />}
           character={
-            <CharacterStage
+            <EvolutionCore
               currentStage={retention.currentPetStage}
-              hasClaimable={Boolean(retention.claimablePetMilestone)}
+              nextStage={retention.nextPetStage}
+              xp={xp}
+              evolutionPending={evolutionPending}
+              claimableMilestone={retention.claimablePetMilestone}
+              onClaim={handleClaimMilestone}
               displayName={user.displayName}
             />
           }
@@ -296,7 +321,7 @@ export default function StudentDashboardView({
             setView={setView}
           />
           <ActiveBoostersStrip {...boosters} />
-          {badges.length > 0 && <BadgesStrip earned={badges} />}
+          {badges.length > 0 && <BadgesStrip earned={badges} userUid={user.uid} onClaimBadgeXp={onClaimBadgeXp} />}
         </ArcadeHubLayout>
         <PetCompanion
           xp={xp}
@@ -305,14 +330,7 @@ export default function StudentDashboardView({
           currentStage={retention.currentPetStage}
           nextStage={retention.nextPetStage}
           claimableMilestone={retention.claimablePetMilestone}
-          onClaim={(milestone) => {
-            if (milestone.reward.kind === 'xp' && typeof milestone.reward.value === 'number') {
-              onGrantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
-            } else {
-              onGrantReward(milestone.reward.kind, milestone.reward.value);
-            }
-            retention.claimPetMilestone(milestone);
-          }}
+          onClaim={handleClaimMilestone}
         />
         <FloatingButtons
           showBackToTop={false}
@@ -328,7 +346,10 @@ export default function StudentDashboardView({
   }
 
   return (
-    <div className={`min-h-screen ${bgClass} p-4 sm:p-6`}>
+    // Extra bottom padding clears the fixed overlays (FloatingButtons at
+    // bottom-28 + PetCompanion at bottom-20) plus the iOS safe area, so
+    // the last card is never hidden under them.
+    <div className={`min-h-screen ${bgClass} p-4 sm:p-6 pb-[calc(env(safe-area-inset-bottom)+10rem)]`}>
       {consentModal}
       {exitConfirmModal}
       {classSwitchModal}
@@ -456,7 +477,7 @@ export default function StudentDashboardView({
         {/* Hide the strip for day-one students with no badges yet —
             otherwise they see a row of locked tiles that reads as
             "broken" instead of "you haven't earned any yet". */}
-        {badges.length > 0 && <BadgesStrip earned={badges} />}
+        {badges.length > 0 && <BadgesStrip earned={badges} userUid={user.uid} onClaimBadgeXp={onClaimBadgeXp} />}
       </div>
       <PetCompanion
         xp={xp}

@@ -388,6 +388,10 @@ export const DAILY_CHEST_XP = { min: 20, max: 60 };
 export const WEEKLY_CHALLENGE_PLAYS = 5;      // plays required
 export const WEEKLY_CHALLENGE_REWARD_XP = 100; // + a free common egg (granted via RPC)
 export const COMEBACK_AFTER_DAYS = 3;          // offline this many days → free golden egg on return
+// One-shot XP a student collects by tapping an earned badge on the
+// dashboard. Claimed state persists in localStorage (per uid) to stop
+// re-claim spam — same pattern as the pet-evolution rewards above.
+export const BADGE_CLAIM_XP = 50;
 // --- GAME: LETTER COLORS ---
 export const LETTER_COLORS = ["#EF4444","#F97316","#EAB308","#22C55E","#3B82F6","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#6366F1"];
 

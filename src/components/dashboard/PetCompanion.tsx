@@ -81,7 +81,7 @@ export default function PetCompanion({
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.92 }}
         style={{ touchAction: 'manipulation' }}
-        className={`fixed bottom-20 end-4 sm:bottom-6 sm:end-6 z-40 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${glow} shadow-lg flex items-center justify-center border-2 border-white`}
+        className={`fixed bottom-20 end-6 sm:bottom-6 sm:end-6 z-40 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${glow} shadow-lg flex items-center justify-center border-2 border-white`}
         aria-label={t.openPetCompanion}
         title={currentStage.stage}
       >

@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { motion } from "motion/react";
-import { Zap, Flame, BookOpenCheck, Trophy } from "lucide-react";
+import { Zap, Flame, BookOpenCheck, Trophy, Gamepad2 } from "lucide-react";
 import type { AssignmentData, ProgressData } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
+import { useFeatureFlag } from "../../hooks/useFeatureFlag";
+import { ARCADE_HERO_GRADIENT, ARCADE_REWARD_GRADIENT, ARCADE_STREAK_GRADIENT } from "../arcade/theme";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 interface StudentStatsRowProps {
@@ -35,7 +37,9 @@ export default function StudentStatsRow({
 }: StudentStatsRowProps) {
   const { language } = useLanguage();
   const t = studentDashboardT[language];
-  void xp; // reserved for future per-session XP delta; currently uses derived `xpToday`
+  // Arcade theme: three frosted stat tiles (XP / Streak / Games)
+  // instead of the two hero cards. Falls back to existing when off.
+  const arcade = useFeatureFlag('arcade_hub', false);
   const { xpToday, wordsMastered, assignmentsCompleted } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -67,6 +71,33 @@ export default function StudentStatsRow({
 
     return { xpToday: xpTodayApprox, wordsMastered: mastered, assignmentsCompleted: completedCount };
   }, [studentProgress, studentAssignments]);
+
+  // Arcade: three compact frosted stat tiles. Games maps to total
+  // plays (one progress row per mode played).
+  if (arcade) {
+    const tiles = [
+      { grad: ARCADE_REWARD_GRADIENT, shadow: "shadow-amber-500/30",   icon: <Trophy size={16} className="text-white" />,   value: xp,                    label: "XP" },
+      { grad: ARCADE_STREAK_GRADIENT, shadow: "shadow-rose-500/30",    icon: <Flame size={16} className="text-white" />,    value: streak,                label: "STREAK" },
+      { grad: ARCADE_HERO_GRADIENT,   shadow: "shadow-fuchsia-500/30", icon: <Gamepad2 size={16} className="text-white" />, value: studentProgress.length, label: "GAMES" },
+    ];
+    return (
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {tiles.map((tile, i) => (
+          <motion.div
+            key={tile.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: i * 0.05 }}
+            className={`rounded-2xl p-3 text-center ${tile.grad} ring-2 ring-white/30 shadow-lg ${tile.shadow}`}
+          >
+            <div className="flex justify-center mb-1">{tile.icon}</div>
+            <div className="text-2xl font-black tabular-nums text-white leading-none">{tile.value}</div>
+            <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/70">{tile.label}</div>
+          </motion.div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">

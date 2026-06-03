@@ -18,11 +18,14 @@
  *   - The user isn't a real student (the parent decides — pass
  *     enabled:false to the hook and the card mounts empty)
  */
+import type { ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { Target, Gamepad2, Trophy, CheckCircle2 } from 'lucide-react';
 import type { DailyMission, DailyMissionType } from '../../hooks/useDailyMissions';
 import { useLanguage } from '../../hooks/useLanguage';
 import type { Language } from "../../hooks/useLanguage";
+import { useFeatureFlag } from '../../hooks/useFeatureFlag';
+import { ARCADE_CARD, ARCADE_REWARD_GRADIENT } from '../arcade/theme';
 
 interface DailyMissionsCardProps {
   missions: DailyMission[];
@@ -30,7 +33,7 @@ interface DailyMissionsCardProps {
 }
 
 interface MissionMeta {
-  icon: React.ReactNode;
+  icon: ReactNode;
   /** Tailwind gradient for the leading icon tile. */
   iconBg: string;
   /** Tailwind gradient for the progress bar fill. */
@@ -111,6 +114,10 @@ const STRINGS: Record<Language, {
 export default function DailyMissionsCard({ missions, isLoading }: DailyMissionsCardProps) {
   const { language, dir } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
+  // Arcade theme: dark frosted card, white text, vivid chips. Falls
+  // back to the existing light styling when off. Read before the early
+  // returns below so the hook order stays stable.
+  const arcade = useFeatureFlag('arcade_hub', false);
 
   // Always render the card frame (consistent dashboard layout) — empty
   // state is the loading skeleton.
@@ -152,33 +159,39 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="rounded-2xl p-4 sm:p-5 bg-white border border-indigo-500/[0.10]"
-      style={{
-        boxShadow:
-          "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
-      }}
+      className={arcade ? `${ARCADE_CARD} p-4 sm:p-5` : "rounded-2xl p-4 sm:p-5 bg-white border border-indigo-500/[0.10]"}
+      style={
+        arcade
+          ? undefined
+          : {
+              boxShadow:
+                "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
+            }
+      }
       dir={dir}
     >
       <header className="flex items-center justify-between mb-3 sm:mb-4">
         <div>
-          <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+          <div className={`mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] ${arcade ? 'text-cyan-200' : 'text-[#8B5CF6]'}`}>
             <span
               className="inline-block h-1.5 w-1.5 rounded-full"
               style={{ background: "linear-gradient(135deg,#8B5CF6,#D946EF)" }}
             />
             {t.title}
           </div>
-          <h3 className="text-sm sm:text-base font-black text-[#1F1147] flex items-center gap-2">
+          <h3 className={`flex items-center gap-2 ${arcade ? 'text-lg font-extrabold text-white' : 'text-sm sm:text-base font-black text-[#1F1147]'}`}>
             <span className="text-xl" aria-hidden>🎯</span>
             {t.title}
           </h3>
         </div>
         <span
-          className="text-[11px] font-extrabold px-2.5 py-1 rounded-full"
+          className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${arcade ? `${ARCADE_REWARD_GRADIENT} text-white` : ''}`}
           style={
-            allDone
-              ? { background: "linear-gradient(110deg, #3FA689, #5EC9A6)", color: "#fff" }
-              : { background: "rgba(99,102,241,0.10)", color: "#4A3B7A" }
+            arcade
+              ? undefined
+              : allDone
+                ? { background: "linear-gradient(110deg, #3FA689, #5EC9A6)", color: "#fff" }
+                : { background: "rgba(99,102,241,0.10)", color: "#4A3B7A" }
           }
         >
           {t.doneChip(completedCount, ordered.length)}
@@ -193,8 +206,12 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
           return (
             <div
               key={m.mission_type}
-              className={`bg-white rounded-xl p-3 flex items-center gap-3 transition-all ${
-                m.completed ? 'opacity-90' : ''
+              className={`p-3 flex items-center gap-3 transition-all ${
+                arcade
+                  ? m.completed
+                    ? 'bg-white/5 opacity-60 rounded-2xl'
+                    : 'bg-white/10 ring-1 ring-white/15 rounded-2xl'
+                  : `bg-white rounded-xl ${m.completed ? 'opacity-90' : ''}`
               }`}
             >
               {/* Icon tile — checkmark replaces the icon when complete. */}
@@ -206,12 +223,18 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className={`text-sm font-bold leading-snug truncate ${m.completed ? 'text-stone-500 line-through' : 'text-stone-900'}`}>
+                  <p className={`text-sm font-bold leading-snug truncate ${
+                    arcade
+                      ? `text-white ${m.completed ? 'line-through' : ''}`
+                      : m.completed ? 'text-stone-500 line-through' : 'text-stone-900'
+                  }`}>
                     {copy.name}
                   </p>
                   <span
                     className={`text-[11px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${
-                      m.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      arcade
+                        ? 'bg-amber-400/20 text-amber-200 ring-1 ring-amber-300/30'
+                        : m.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                     }`}
                   >
                     +{m.xp_reward} XP
@@ -222,7 +245,7 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
                     of the verbose "Answer 5 different words correctly"
                     so the row reads compact on mobile. */}
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-2 rounded-full bg-stone-100 overflow-hidden">
+                  <div className={`flex-1 h-2 rounded-full overflow-hidden ${arcade ? 'bg-white/15' : 'bg-stone-100'}`}>
                     <motion.div
                       initial={{ scaleX: 0 }}
                       animate={{ scaleX: pct / 100 }}
@@ -231,7 +254,7 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
                       className={`h-full w-full bg-gradient-to-r ${meta.barGradient}`}
                     />
                   </div>
-                  <span className="text-[11px] font-bold text-stone-500 tabular-nums whitespace-nowrap">
+                  <span className={`text-[11px] font-bold tabular-nums whitespace-nowrap ${arcade ? 'text-white/80' : 'text-stone-500'}`}>
                     {Math.min(m.progress, m.target)}/{m.target}
                   </span>
                 </div>
@@ -245,7 +268,7 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
         <motion.p
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-3 text-center text-xs sm:text-sm font-black text-emerald-700"
+          className={`mt-3 text-center text-xs sm:text-sm font-black ${arcade ? 'text-emerald-300' : 'text-emerald-700'}`}
         >
           {t.allDone}
         </motion.p>

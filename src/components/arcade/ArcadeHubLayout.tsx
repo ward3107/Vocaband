@@ -64,7 +64,10 @@ export default function ArcadeHubLayout({
         className="pointer-events-none absolute -top-32 left-1/2 h-72 w-[120%] -translate-x-1/2 rounded-full bg-cyan-400/30 blur-3xl"
       />
 
-      <div className="relative z-10 mx-auto max-w-3xl space-y-4 p-4 sm:space-y-6 sm:p-6">
+      {/* Bottom padding clears the fixed overlays (FloatingButtons +
+          PetCompanion) and the iOS safe area so the last card stays
+          fully visible above them. */}
+      <div className="relative z-10 mx-auto max-w-3xl space-y-4 p-4 pb-[calc(env(safe-area-inset-bottom)+10rem)] sm:space-y-6 sm:p-6 sm:pb-[calc(env(safe-area-inset-bottom)+10rem)]">
         {statsBar}
         {trophyRoad}
         <div className="flex flex-col items-center justify-center gap-2 py-2 sm:gap-4 sm:py-4">
