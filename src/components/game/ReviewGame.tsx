@@ -136,15 +136,14 @@ export default function ReviewGame({
   const [picked, setPicked] = useState<Word | null>(null);
   const submittedRef = useRef(false);
 
-  // Loading state while the queue OR vocabulary fetches.
-  if (dueWords === null || (allWords.length === 0 && !passedWords)) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]" dir={dir}>
-        <Loader2 size={28} className="animate-spin text-violet-500" />
-      </div>
-    );
-  }
-
+  // Current question + its multiple-choice options, and the speak-on-load
+  // effect. Both MUST run on every render, so they sit ABOVE the loading /
+  // empty / no-question early returns below. While the queue is still
+  // fetching, `target` is undefined, `question` is null, and the effect
+  // no-ops — harmless. They were previously placed AFTER the loading early
+  // return, so the hook count jumped (N → N+2) the instant `dueWords`
+  // resolved from null to a list, throwing React #310 ("Rendered more hooks
+  // than during the previous render") and crashing the student into Review.
   const target = queue[questionIdx];
   const question = useMemo(() => target ? buildQuestion(target, allWords) : null, [target, allWords]);
 
@@ -155,6 +154,15 @@ export default function ReviewGame({
     setPicked(null);
     speak(target.id, target.english);
   }, [target, speak]);
+
+  // Loading state while the queue OR vocabulary fetches.
+  if (dueWords === null || (allWords.length === 0 && !passedWords)) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]" dir={dir}>
+        <Loader2 size={28} className="animate-spin text-violet-500" />
+      </div>
+    );
+  }
 
   // Empty-state: the queue is empty when the component mounts.  This
   // shouldn't happen via normal navigation (the dashboard widget

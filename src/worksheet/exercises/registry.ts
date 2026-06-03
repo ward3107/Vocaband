@@ -17,7 +17,6 @@ import { ListeningDictationExercise } from "./ListeningDictationExercise";
 import { MatchingExercise } from "./MatchingExercise";
 import { QuizExercise } from "./QuizExercise";
 import { SentenceBuildingExercise } from "./SentenceBuildingExercise";
-import { SynonymAntonymExercise } from "./SynonymAntonymExercise";
 import { TranslationTypingExercise } from "./TranslationTypingExercise";
 import { TrueFalseExercise } from "./TrueFalseExercise";
 import { WordInContextExercise } from "./WordInContextExercise";
@@ -37,7 +36,6 @@ export const EXERCISE_REGISTRY: Record<ExerciseType, ExerciseComponent> = {
   // scripts/generate-word-definitions.ts populates the bank and the
   // exercise turns on without a code change.
   definition_match: DefinitionMatchExercise as ExerciseComponent,
-  synonym_antonym: SynonymAntonymExercise as ExerciseComponent,
   cloze: ClozeExercise as ExerciseComponent,
   sentence_building: SentenceBuildingExercise as ExerciseComponent,
   translation_typing: TranslationTypingExercise as ExerciseComponent,

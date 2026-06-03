@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import {defineConfig, type Plugin} from 'vite';
 // Cloudflare plugin is intentionally disabled (causes white screen
 // in dev) — kept as a comment so future edits don't re-import it.
@@ -77,6 +78,56 @@ function vocabandHtmlPerf(): Plugin {
     name: 'vocaband-html-perf',
     apply: 'build',
     enforce: 'post',
+    // After Vite finishes writing dist, rewrite dist/_headers so its CSP
+    // hash for boot-debug.js matches whatever bytes we actually inlined
+    // into dist/index.html. The checked-in public/_headers carries a
+    // hand-maintained hash for documentation, but the hash that ships is
+    // computed here from the same source the plugin inlined above. This
+    // closes the recurring drift bug where editing boot-debug.js without
+    // bumping the hash silently broke prod CSP — the browser refused the
+    // inline script and the loading spinner never cleared on cold visits.
+    writeBundle: {
+      sequential: true,
+      handler(options) {
+        const outDir = options.dir ?? path.resolve(__dirname, 'dist');
+        const headersPath = path.join(outDir, '_headers');
+        const bootDebugPath = path.resolve(__dirname, 'public/boot-debug.js');
+        let headers: string;
+        let bootDebugJs: string;
+        try {
+          headers = fs.readFileSync(headersPath, 'utf8');
+          bootDebugJs = fs.readFileSync(bootDebugPath, 'utf8');
+        } catch {
+          // Either file missing — likely a custom build pipeline.
+          // Leave dist alone so we don't break it; the checked-in hash
+          // is still the right fallback.
+          return;
+        }
+        const hash = crypto.createHash('sha256').update(bootDebugJs).digest('base64');
+        // Every existing sha256-* token in the CSP today is the
+        // boot-debug hash (Cloudflare Insights retired its rotating
+        // hashes — see the 2026-05-23 note in public/_headers). Replace
+        // them all so script-src and script-src-elem stay in lockstep.
+        // base64 may or may not pad with `=`; match any base64 chars
+        // (including `=` padding) up to the closing single quote.
+        const cspHashRe = /'sha256-[A-Za-z0-9+/=]+'/g;
+        const matches = headers.match(cspHashRe);
+        if (!matches || matches.length === 0) return;
+        const replacement = `'sha256-${hash}'`;
+        const rewritten = headers.replace(cspHashRe, replacement);
+        if (rewritten === headers) return;
+        fs.writeFileSync(headersPath, rewritten, 'utf8');
+        const checkedIn = matches[0];
+        if (checkedIn !== replacement) {
+          this.warn(
+            `[vocaband-html-perf] _headers boot-debug.js hash drifted ` +
+              `(checked-in ${checkedIn}, actual ${replacement}). ` +
+              `dist/_headers has been corrected; please update public/_headers ` +
+              `to match so source-of-truth stays in sync.`,
+          );
+        }
+      },
+    },
     transformIndexHtml: {
       order: 'post',
       handler(html, ctx) {
@@ -260,28 +311,42 @@ export default defineConfig(() => {
             // resolved within ms of first paint.
             'assets/App-*.js',
             'assets/LandingPage-*.js',
-            // motion + lucide ship in App.tsx's modulepreload chain so
-            // they fetch in parallel with App. Keep them precached so
-            // offline second visits don't fall back to network for the
-            // landing page's animations / icons.
-            'assets/motion-*.js',
+            // lucide (shared icon chunk) ships in App.tsx's modulepreload
+            // chain so it fetches in parallel with App. Keep it precached so
+            // offline second visits don't fall back to network for the app's
+            // icons. (motion is no longer force-chunked — it auto-splits into
+            // the lazy views that animate, so there is no motion-*.js to
+            // precache here; see manualChunks below. The previous
+            // 'assets/motion-*.js' glob matched nothing and warned on build.)
             'assets/lucide-*.js',
-            // Above-the-fold landing dependencies
+            // Above-the-fold landing dependencies. The LandingPage chunk
+            // itself is precached above (assets/LandingPage-*.js); the old
+            // lowercase 'assets/landing-page-*.js' glob matched no file and
+            // warned on every build.
             'assets/PublicNav-*.js',
-            'assets/landing-page-*.js',
             'assets/FloatingButtons-*.js',
+            // Student entry chunks — the first views a student navigates to
+            // (PIN login, Quick Play join, Category Race join) + the shared
+            // socket hook. Tiny (~4-7 kB gz each) but precaching them means
+            // the SW install fetches them in the background, so the first
+            // navigation is a cache hit instead of a network round trip —
+            // the biggest "feels instant" win on weak classroom Wi-Fi and
+            // on every repeat visit. Also makes these flows work offline.
+            'assets/StudentAccountLoginView-*.js',
+            'assets/QuickPlayStudentView-*.js',
+            'assets/CategoryRaceStudentView-*.js',
+            'assets/useQuickPlaySocket-*.js',
             // Main Tailwind stylesheet
             'assets/index-*.css',
           ],
           // Cap precached file size to keep accidental wildcard matches
           // from pulling in heavy chunks. The index Tailwind stylesheet
-          // (~406 kB raw) is now the heaviest legitimate precached entry —
-          // it grew past the old 400 kB cap when the arcade hub's styles
-          // landed — followed by App.tsx (~200 kB raw). 470 kB clears the
-          // stylesheet with headroom while still excluding the pptxgen lib
-          // chunk (497 kB), vocabulary (596 kB), html2pdf (736 kB) and
-          // exceljs (930 kB) if a glob pattern ever accidentally matches.
-          maximumFileSizeToCacheInBytes: 470_000,
+          // is the heaviest legitimate precached entry and grows with
+          // the app (~400 kB and climbing); 460 kB clears it with room
+          // to breathe while still excluding the big lazy chunks if a
+          // glob ever accidentally matches them — lib (~497 kB),
+          // vocabulary (~596 kB), html2pdf (~736 kB), exceljs (~930 kB).
+          maximumFileSizeToCacheInBytes: 460_000,
           // Clean up any caches left behind by the previous (broken)
           // SW so returning users don't carry stale entries forward.
           cleanupOutdatedCaches: true,
@@ -520,6 +585,20 @@ export default defineConfig(() => {
                 expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 180 },
               },
             },
+            {
+              // In-game background music — ~10 same-origin MP3s shipped in
+              // public/game-music/.  Without this rule the 'fonts + small
+              // images' handler above ignores them (request.destination ===
+              // 'audio' doesn't match the font/image filter), so every game
+              // session re-fetches the BGM from origin on weak Wi-Fi.
+              // CacheFirst with 20 entries comfortably covers the asset set.
+              urlPattern: /\/game-music\/.*\.mp3$/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'vocaband-game-music',
+                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 180 },
+              },
+            },
           ],
         },
       })] : []),
@@ -553,16 +632,28 @@ export default defineConfig(() => {
     },
     build: {
       modulePreload: {
-        // Keep App + the supabase client OUT of the auto-injected
+        // Keep App + the supabase client + Sentry OUT of the auto-injected
         // modulepreload graph. The landing now boots PublicShell (which
-        // is supabase-free); preloading App/supabase in the shared static
-        // <head> would force every public visitor to download ~106 kB gz
-        // they don't need on first paint. They load on-demand when a
-        // visitor logs in or restores a session — one extra RTT on a
-        // deliberate action, in exchange for a much lighter cold landing.
+        // is supabase-free); preloading App/supabase/sentry in the shared
+        // static <head> would force every public visitor to download
+        // ~150 kB gz they don't need on first paint. They all load on
+        // demand — App on login/session-restore, Sentry on idle after
+        // first paint, supabase on the OAuth ?code= callback or once App
+        // mounts. One extra RTT on a deliberate action, in exchange for a
+        // much lighter cold landing.
+        //
+        // Lighthouse field test (2026-05-28) showed an older deploy still
+        // dragging supabase-* and sentry-* onto the landing critical
+        // path's chunk dependency tree even though main.tsx already
+        // dynamic-imports them. The sentry-* filter below makes the
+        // exclusion explicit so a future refactor that re-introduces an
+        // eager import doesn't silently regress cold-load.
         resolveDependencies(_filename, deps) {
           return deps.filter(
-            (dep) => !/\/App-[\w-]+\.js$/.test(dep) && !/\/supabase-[\w-]+\.js$/.test(dep),
+            (dep) =>
+              !/\/App-[\w-]+\.js$/.test(dep) &&
+              !/\/supabase-[\w-]+\.js$/.test(dep) &&
+              !/\/sentry-[\w-]+\.js$/.test(dep),
           );
         },
       },
@@ -579,6 +670,21 @@ export default defineConfig(() => {
         output: {
           manualChunks(id) {
             if (id.includes('lucide-react')) return 'lucide';
+            // Split the Hebrew lemma corpus from the English vocabulary.
+            // The old single `src/data/vocabulary` glob matched
+            // vocabulary.ts, vocabulary-hebrew.ts AND vocabulary-ru.ts,
+            // merging all three into one ~595 kB chunk.  Because they
+            // shared a chunk, importing the Hebrew corpus (or English)
+            // dragged the other onto the wire too — so a student doing
+            // English still downloaded the Hebrew lemmas and vice versa.
+            // Hebrew data is independent (nothing in vocabulary.ts imports
+            // it), so it gets its own chunk.  vocabulary-ru stays inside
+            // `vocabulary` because vocabulary.ts hard-imports it at module
+            // eval to build ALL_WORDS — splitting it would only add a
+            // guaranteed second request with no payoff.  MORE-SPECIFIC
+            // MATCH FIRST: vocabulary-hebrew must be tested before the
+            // generic `vocabulary` substring.
+            if (id.includes('src/data/vocabulary-hebrew')) return 'vocabulary-hebrew';
             if (id.includes('src/data/vocabulary')) return 'vocabulary';
             // Pin Sentry to its own chunk.  Bundled into `index` it
             // bloated the entry by ~40 kB gz and any change to main.tsx

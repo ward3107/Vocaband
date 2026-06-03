@@ -1,13 +1,21 @@
 /**
- * CategoryRacePodium — the live, competitive scoreboard for the Category
- * Race host screen. The top 3 stand on gold/silver/bronze pedestals (the
- * leader gets a bouncing crown + glow); everyone else rides a spring-
- * reordered list. Scores count up and a "+N" burst flashes the moment a
- * student earns points, so the room feels every lead change in real time.
+ * CategoryRacePodium — race-lane scoreboard for the Category Race host
+ * screen. Every student gets a horizontal lane; the fill width scales
+ * relative to the leader's score, so the whole class reads as a real
+ * race in motion.  The leader's lane carries a trophy at the head.
+ *
+ * Live behaviour kept from the previous pedestal version:
+ *   - count-up tween on score changes (so +10 visibly ticks up)
+ *   - "+N" burst float over the lane when a student scores
+ *   - spring layout reorder when a student overtakes another
+ *
+ * RTL note: the lane fill uses block flow + flex `justify-end`, which
+ * respects the parent's `dir` so the bar grows right→left in he/ar.
  */
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Crown } from "lucide-react";
+import { Trophy } from "lucide-react";
+import QPAvatar from "../QPAvatar";
 
 export interface PodiumEntry {
   clientId: string;
@@ -20,6 +28,12 @@ interface CategoryRacePodiumProps {
   /** Already sorted by score, descending. */
   entries: PodiumEntry[];
   emptyText: string;
+  /** Projector mode — scales every lane, name, and score way up so a
+   *  class reading the board from the back of the room can make out
+   *  who's who. Defaults off for any compact/preview use. */
+  large?: boolean;
+  /** Dark theme — flips name/track colours for the dark projector. */
+  dark?: boolean;
 }
 
 // easeOutCubic count-up so a +10 visibly ticks up instead of snapping.
@@ -44,14 +58,8 @@ function AnimatedScore({ value }: { value: number }) {
   return <>{display}</>;
 }
 
-const PODIUM = [
-  { ring: "ring-amber-300", bar: "from-amber-300 to-yellow-500", medal: "🥇", h: 96, av: "w-[68px] h-[68px] text-4xl" },
-  { ring: "ring-slate-300", bar: "from-slate-200 to-slate-400", medal: "🥈", h: 70, av: "w-14 h-14 text-3xl" },
-  { ring: "ring-orange-300", bar: "from-orange-300 to-amber-600", medal: "🥉", h: 56, av: "w-14 h-14 text-3xl" },
-];
-
-export default function CategoryRacePodium({ entries, emptyText }: CategoryRacePodiumProps) {
-  // Detect score increases between renders to fire a "+N" burst + glow.
+export default function CategoryRacePodium({ entries, emptyText, large = false, dark = false }: CategoryRacePodiumProps) {
+  // Detect score increases between renders to fire a "+N" burst.
   const prev = useRef<Map<string, number>>(new Map());
   const gainId = useRef(0);
   const [gains, setGains] = useState<Map<string, { amount: number; id: number }>>(new Map());
@@ -68,6 +76,7 @@ export default function CategoryRacePodium({ entries, emptyText }: CategoryRaceP
     }
     prev.current = next;
     if (!fresh.length) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- diffs score props to fire a "+N" burst; matches existing convention
     setGains(g => {
       const m = new Map(g);
       for (const f of fresh) m.set(f.clientId, { amount: f.amount, id: f.id });
@@ -86,117 +95,129 @@ export default function CategoryRacePodium({ entries, emptyText }: CategoryRaceP
   }, [entries]);
 
   if (entries.length === 0) {
-    return <p className="text-sm text-stone-400 font-semibold py-10 text-center">{emptyText}</p>;
+    return (
+      <p className={`font-semibold text-center ${dark ? "text-stone-500" : "text-stone-400"} ${large ? "text-2xl py-20" : "text-sm py-10"}`}>
+        {emptyText}
+      </p>
+    );
   }
 
-  const top3 = entries.slice(0, 3);
-  const rest = entries.slice(3);
-  // Render the top 3 in visual order: 2nd, 1st, 3rd (leader centre + tallest).
-  const order = [top3[1], top3[0], top3[2]];
+  // Bars scale relative to the leader, so the front-runner pins at
+  // 100% and everyone else reads as "how close am I" against them.
+  // When the leader scores, their bar stays full but the field's bars
+  // shrink proportionally, which is the right "they pulled ahead"
+  // signal.  Math.max(1, …) avoids a 0/0 NaN before anyone has scored.
+  const leaderScore = Math.max(1, entries[0]?.score ?? 0);
 
   return (
-    <div>
-      <div className="flex items-end justify-center gap-2 sm:gap-3 pt-7 pb-1">
-        {order.map(e => {
-          if (!e) return null;
-          const rank = top3.indexOf(e);
-          const st = PODIUM[rank];
+    <ul className={`flex flex-col ${large ? "gap-4" : "gap-3"}`}>
+      <AnimatePresence initial={false}>
+        {entries.map((e, i) => {
+          const pct = Math.max(2, Math.min(100, (e.score / leaderScore) * 100));
+          const isLeader = i === 0;
           const gain = gains.get(e.clientId);
           return (
-            <div key={e.clientId} className="flex-1 max-w-[120px] flex flex-col items-center">
-              {rank === 0 && (
-                <motion.div
-                  animate={{ y: [0, -7, 0] }}
-                  transition={{ repeat: Infinity, duration: 1.3, ease: "easeInOut" }}
-                  className="mb-0.5"
+            <motion.li
+              key={e.clientId}
+              layout
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ layout: { type: "spring", stiffness: 500, damping: 32 } }}
+            >
+              {/* Lane head — rank chip + avatar + name. Scaled up in
+                  projector mode so names read from the back of the room. */}
+              <div className={`flex items-center mb-1.5 ${large ? "gap-3" : "gap-2"}`}>
+                {/* Top three get medals; everyone else a numbered chip. */}
+                {i < 3 ? (
+                  <span className={`inline-flex items-center justify-center ${large ? "w-9 h-9 text-3xl" : "w-6 h-6 text-lg"}`} aria-label={`Rank ${i + 1}`}>
+                    {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                  </span>
+                ) : (
+                  <span
+                    className={`inline-flex items-center justify-center rounded-full font-black ${dark ? "bg-stone-700 text-stone-200" : "bg-stone-200 text-stone-600"} ${
+                      large ? "w-9 h-9 text-lg" : "w-6 h-6 text-xs"
+                    }`}
+                  >
+                    {i + 1}
+                  </span>
+                )}
+                <span className={`flex items-center justify-center ${large ? "text-3xl" : "text-lg"}`}>
+                  <QPAvatar value={e.avatar || "🦊"} iconSize={large ? 30 : 18} />
+                </span>
+                <span
+                  className={`font-black truncate min-w-0 flex-1 ${dark ? "text-stone-100" : "text-stone-800"} ${
+                    large ? "text-2xl sm:text-3xl" : "text-sm"
+                  }`}
+                  dir="auto"
                 >
-                  <Crown size={26} className="text-amber-400 fill-amber-400 drop-shadow" />
-                </motion.div>
-              )}
-              <motion.div
-                initial={{ scale: 0, rotate: -20 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 460, damping: 18 }}
-                className="relative"
-              >
-                <div
-                  className={`relative inline-flex items-center justify-center ${st.av} rounded-full bg-white ring-4 ${st.ring} shadow-lg`}
-                  style={rank === 0 ? { boxShadow: "0 0 0 4px rgba(251,191,36,0.25), 0 10px 24px -8px rgba(245,158,11,0.6)" } : undefined}
-                >
-                  {e.avatar || "🦊"}
-                  <span className="absolute -bottom-1 -end-1 text-lg">{st.medal}</span>
-                </div>
-                <AnimatePresence>
-                  {gain && (
-                    <motion.span
-                      key={gain.id}
-                      initial={{ opacity: 0, y: 4, scale: 0.7 }}
-                      animate={{ opacity: 1, y: -16, scale: 1 }}
-                      exit={{ opacity: 0, y: -26 }}
-                      className="absolute -top-1 left-1/2 -translate-x-1/2 text-sm font-black text-emerald-500 whitespace-nowrap"
-                    >
-                      +{gain.amount} ✨
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-              <div className="mt-1.5 w-full text-center">
-                <div className="font-black text-stone-800 text-sm truncate" dir="auto">{e.nickname}</div>
-                <div className="font-black text-fuchsia-600 text-lg leading-none"><AnimatedScore value={e.score} /></div>
+                  {e.nickname}
+                </span>
               </div>
-              <motion.div
-                initial={{ scaleY: 0 }}
-                animate={{ scaleY: 1 }}
-                transition={{ type: "spring", stiffness: 200, damping: 22 }}
-                style={{ height: st.h, transformOrigin: "bottom" }}
-                className={`mt-2 w-full rounded-t-xl bg-gradient-to-b ${st.bar} shadow-inner flex items-start justify-center pt-1.5`}
-              >
-                <span className="font-black text-white/90 text-xl drop-shadow">{rank + 1}</span>
-              </motion.div>
-            </div>
-          );
-        })}
-      </div>
 
-      {rest.length > 0 && (
-        <ul className="mt-4 space-y-2">
-          <AnimatePresence initial={false}>
-            {rest.map((e, i) => {
-              const gain = gains.get(e.clientId);
-              return (
-                <motion.li
-                  key={e.clientId}
+              {/* Track + fill — the race itself. Trophy sits at the
+                  end of the leader's fill so it travels with whoever
+                  is in front. */}
+              <div
+                className={`relative rounded-full overflow-hidden ${dark ? "bg-stone-800" : "bg-stone-100"} ${large ? "h-12" : "h-8"}`}
+                style={gain ? { boxShadow: "0 0 0 2px rgba(16,185,129,0.55)" } : undefined}
+              >
+                <motion.div
                   layout
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ layout: { type: "spring", stiffness: 500, damping: 32 } }}
-                  className="relative flex items-center gap-3 rounded-xl px-3 py-2.5 bg-stone-50"
-                  style={gain ? { boxShadow: "0 0 0 2px rgba(16,185,129,0.55)" } : undefined}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ type: "spring", stiffness: 220, damping: 28 }}
+                  className={`relative h-full rounded-full flex items-center justify-end text-white font-black shadow-md ${
+                    large ? "px-5 text-2xl" : "px-3 text-sm"
+                  } ${
+                    isLeader
+                      ? "bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 shadow-fuchsia-500/40"
+                      : "bg-gradient-to-r from-fuchsia-400 to-pink-500 shadow-fuchsia-400/30"
+                  }`}
                 >
-                  <span className="w-6 text-center font-black text-stone-400">{i + 4}</span>
-                  <span className="text-xl">{e.avatar || "🦊"}</span>
-                  <span className="flex-1 min-w-0 font-black text-stone-800 truncate" dir="auto">{e.nickname}</span>
-                  <span className="font-black text-fuchsia-600"><AnimatedScore value={e.score} /></span>
+                  <span className={`tabular-nums ${large && isLeader ? "me-9" : large ? "me-2" : ""}`}>
+                    <AnimatedScore value={e.score} />
+                  </span>
+                  {/* "+N" burst sits inside the fill so it rides with
+                      the bar instead of floating above an empty lane. */}
                   <AnimatePresence>
                     {gain && (
                       <motion.span
                         key={gain.id}
-                        initial={{ opacity: 0, scale: 0.7 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute end-10 text-xs font-black text-emerald-500"
+                        initial={{ opacity: 0, y: 4, scale: 0.7 }}
+                        animate={{ opacity: 1, y: -14, scale: 1 }}
+                        exit={{ opacity: 0, y: -24 }}
+                        className={`absolute -top-1 end-2 font-black text-emerald-500 whitespace-nowrap drop-shadow-sm ${large ? "text-base" : "text-xs"}`}
                       >
-                        +{gain.amount}
+                        +{gain.amount} ✨
                       </motion.span>
                     )}
                   </AnimatePresence>
-                </motion.li>
-              );
-            })}
-          </AnimatePresence>
-        </ul>
-      )}
-    </div>
+                </motion.div>
+                {/* Trophy: anchored to the END of the leader's lane.
+                    AnimatePresence handles the hand-off when a new
+                    leader takes the front. */}
+                <AnimatePresence>
+                  {isLeader && (
+                    <motion.div
+                      key="trophy"
+                      initial={{ opacity: 0, scale: 0.6, x: 4 }}
+                      animate={{ opacity: 1, scale: 1, x: 0 }}
+                      exit={{ opacity: 0, scale: 0.6 }}
+                      transition={{ type: "spring", stiffness: 380, damping: 22 }}
+                      className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-white shadow-md ring-2 ring-amber-300 pointer-events-none ${
+                        large ? "end-2 w-10 h-10" : "end-1.5 w-7 h-7"
+                      }`}
+                      aria-hidden
+                    >
+                      <Trophy size={large ? 20 : 14} className="text-amber-500 fill-amber-400" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.li>
+          );
+        })}
+      </AnimatePresence>
+    </ul>
   );
 }

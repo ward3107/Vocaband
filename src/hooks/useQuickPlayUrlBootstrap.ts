@@ -36,7 +36,26 @@ import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { getGameDebugger } from "../utils/gameDebug";
 import { ALL_GAME_MODES } from "../constants/game";
 import { QP_CATEGORY_RACE_MODE } from "../core/quickPlayProtocol";
+import { preloadCategoryRaceView, preloadQuickPlayView } from "../views/studentJoinChunks";
 import type { View } from "../core/views";
+
+/** Shape of a quick_play_sessions row as consumed by the join flow —
+ *  same fields whether it arrives via the direct RLS SELECT or the
+ *  no-auth server endpoint. Index signature keeps `select('*')` extras
+ *  accessible without widening every call site. */
+interface QpSessionRow {
+  id: string;
+  session_code: string;
+  // NOT NULL in the DB (default '{}'), and the join flow below indexes
+  // into them directly — typed non-null to match that existing usage.
+  word_ids: number[];
+  allowed_modes: string[];
+  ai_sentences?: string[] | null;
+  custom_words?: unknown;
+  subject?: string | null;
+  is_active?: boolean;
+  [k: string]: unknown;
+}
 
 /** What this hook hydrates into App.tsx's quickPlayActiveSession state.
  *  Index signature keeps it assignable to the wider concrete shape App
@@ -78,11 +97,51 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
   useEffect(() => {
     const gameDebug = getGameDebugger();
     const params = new URLSearchParams(window.location.search);
-    const sessionCode = params.get('session');
+    const rawSessionParam = params.get('session');
+    // Sanitise the code. Session codes are exactly 6 chars from the
+    // ambiguity-free alphabet generate_session_code() uses (A-H, J-N,
+    // P-Z, 2-9). A scanned/typed/pasted link sometimes arrives with the
+    // whole URL re-appended (e.g. "9EXTLAhttps://…/?session=9EXTLA") or
+    // with stray query/hash junk — that produced a malformed code, a 400
+    // from the lookup, and a bounce to landing. Pull the FIRST valid
+    // 6-char run out of whatever we got so a slightly mangled link still
+    // joins instead of failing.
+    const sessionCode = (() => {
+      if (!rawSessionParam) return null;
+      const m = rawSessionParam.toUpperCase().match(/[A-HJ-NP-Z2-9]{6}/);
+      return m ? m[0] : null;
+    })();
 
     if (sessionCode) {
       // Load Quick Play session
       const loadQuickPlaySession = async () => {
+        // ─── PERF: prewarm the join-view chunks in parallel ────────────
+        // The student-side view (Quick Play or Category Race) is a lazy
+        // chunk that otherwise only starts downloading AFTER the join
+        // resolves and the router renders it — the visible "Loading race…"
+        // wait on a fresh mobile scan. We don't yet know which mode this
+        // session is, but the chunks are tiny (~4-7 kB gz) so preloading
+        // BOTH now (in parallel with the auth + lookup below) guarantees
+        // the correct one is already cached when the view mounts. The
+        // unused one costs a few kB once. import() is idempotent so the
+        // eventual lazy render reuses this fetch.
+        preloadCategoryRaceView();
+        preloadQuickPlayView();
+        // ─── PERF: prewarm the vocabulary chunk in parallel ────────────
+        // The English word data isn't consumed until ~150 lines below
+        // (after the anon-auth handshake AND the session SELECT). Left
+        // there, its ~139 kB-gz download ran *sequentially* after every
+        // network hop, stacking the whole fetch onto the join wait — a
+        // big contributor to the multi-second "loading" students saw on
+        // classroom Wi-Fi. Kick it off now so it streams in parallel
+        // with the auth round trips. import() is idempotent + runtime-
+        // cached, so the real `import("../data/vocabulary")` below
+        // resolves instantly. Fire-and-forget; the load below has its
+        // own error handling. (Hebrew sessions use a separate tiny lemma
+        // chunk — the rare wasted English prefetch costs far less than
+        // the common-case latency it removes.)
+        void import("../data/vocabulary").catch(() => {});
+
         // ─── Anon-auth bootstrap ───────────────────────────────────────
         // Ensure we have a VALID anonymous auth session — RLS requires it.
         //
@@ -116,32 +175,82 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
             }
           } catch { /* private mode / disabled storage — fall through */ }
         }
-        // Sign in anonymously when there's no usable cached session.
-        // Reasoning: the QP session row SELECT depends on RLS allowing
-        // the role making the call.  If the anon-read policy on
-        // `quick_play_sessions` ever drifts (a future security migration
-        // tightening it to `authenticated` only — the exact regression
-        // that made students hit "session inactive" → bounce to landing
-        // on 2026-04-25), an anon auth session keeps the read working
-        // without a schema fix.  The 30-day cleanup cron (migration
-        // 20260429) garbage-collects the resulting anon auth.users rows
-        // so this doesn't accumulate.
-        if (!cachedSession || stale) {
+
+        // ─── Fast join (Tier-2): one round-trip for sign-in + lookup ────
+        // On a fresh scan (no usable cached session) the anon sign-in and
+        // the session lookup both happen server-side in ONE request to
+        // /api/quick-play/join (Frankfurt, next to Supabase): the server
+        // creates the anon session AND reads the row (service-role), then
+        // hands back the tokens + row. The client adopts the session with
+        // setSession() — a local op — turning the common QR-scan path from
+        // two serial Israel→Frankfurt hops into one. Gated by the same
+        // Tier-2 flag as fast login; on ANY miss (flag off, endpoint
+        // disabled/unavailable, cached session present) we fall straight
+        // through to the existing path with every guard intact — so
+        // behaviour is unchanged whenever the fast path doesn't apply.
+        const tier2FastJoin =
+          (import.meta as { env?: { VITE_ENABLE_TIER2_LOGIN?: string } }).env?.VITE_ENABLE_TIER2_LOGIN === 'true';
+
+        let data: QpSessionRow | null = null;
+        let error: { message: string; code?: string; details?: string; hint?: string } | null = null;
+
+        if (tier2FastJoin && (!cachedSession || stale)) {
+          let fastOk = false;
+          try {
+            const apiUrl = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '';
+            const r = await fetch(`${apiUrl}/api/quick-play/join`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sessionCode }),
+            });
+            if (r.ok) {
+              const j = await r.json().catch(() => null);
+              if (j?.session?.access_token && j?.session?.refresh_token && j?.qpSession) {
+                await supabase.auth.setSession({
+                  access_token: j.session.access_token,
+                  refresh_token: j.session.refresh_token,
+                });
+                data = j.qpSession as QpSessionRow;
+                fastOk = true;
+              }
+            }
+          } catch { /* network / parse error — fall through to the slow path */ }
+          if (!fastOk) {
+            // Fast path missed — establish a client anon session so the
+            // direct-SELECT fallback below has the auth role it needs,
+            // exactly as the non-fast path does.
+            await supabase.auth.signInAnonymously().catch(() => {});
+          }
+        } else if (!cachedSession || stale) {
+          // Sign in anonymously when there's no usable cached session.
+          // Reasoning: the QP session row SELECT depends on RLS allowing
+          // the role making the call.  If the anon-read policy on
+          // `quick_play_sessions` ever drifts (a future security migration
+          // tightening it to `authenticated` only — the exact regression
+          // that made students hit "session inactive" → bounce to landing
+          // on 2026-04-25), an anon auth session keeps the read working
+          // without a schema fix.  The 30-day cleanup cron (migration
+          // 20260429) garbage-collects the resulting anon auth.users rows
+          // so this doesn't accumulate.
           await supabase.auth.signInAnonymously().catch(() => {});
         }
 
-        // First, try the direct Supabase REST path.  When RLS +
-        // anonymous-signup are both correctly configured this is one
-        // network hop and ~50ms.  We use `maybeSingle()` instead of
-        // `.single()` so 0-rows comes back as `data: null` instead
-        // of a 406 — the noisy DevTools error was scaring teachers
-        // even when the fallback below recovered.
-        let { data, error } = await supabase
-          .from('quick_play_sessions')
-          .select('*')
-          .eq('session_code', sessionCode)
-          .eq('is_active', true)
-          .maybeSingle();
+        // Direct Supabase REST path — skipped when the fast join already
+        // resolved the row. When RLS + anonymous-signup are both correctly
+        // configured this is one network hop and ~50ms.  We use
+        // `maybeSingle()` instead of `.single()` so 0-rows comes back as
+        // `data: null` instead of a 406 — the noisy DevTools error was
+        // scaring teachers even when the fallback below recovered.
+        if (!data) {
+          const direct = await supabase
+            .from('quick_play_sessions')
+            .select('*')
+            .eq('session_code', sessionCode)
+            .eq('is_active', true)
+            .maybeSingle();
+          data = (direct.data as QpSessionRow | null) ?? null;
+          error = direct.error;
+        }
 
         if (error || !data) {
           // Fallback: server endpoint that uses the service role key

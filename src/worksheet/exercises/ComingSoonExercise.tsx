@@ -15,7 +15,6 @@ const LABELS: Record<string, string> = {
   listening_dictation: "Listening dictation",
   fill_blank: "Fill in the blank",
   definition_match: "Definition match",
-  synonym_antonym: "Synonyms & antonyms",
   cloze: "Cloze paragraph",
   sentence_building: "Sentence building",
   translation_typing: "Translation typing",

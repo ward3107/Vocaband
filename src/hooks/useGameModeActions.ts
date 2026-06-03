@@ -281,8 +281,27 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
           }, 300);
         }
       } else {
-        // Wrong match - just change selection
-        setSelectedMatch(item);
+        // Wrong pair.
+        if (gameMode === 'memory-flip') {
+          // Memory Flip cards are FACE-DOWN until tapped, so a wrong
+          // pair has to flip back. Matching's default (just move the
+          // selection) leaves both cards stuck face-up because
+          // MemoryFlipGame's flip-back effect only fires when
+          // isMatchingProcessing goes true→false. Drive that pulse and
+          // clear the selection so neither card is held open; the kid
+          // sees both faces during the delay, then they flip back.
+          isProcessingRef.current = true;
+          setIsMatchingProcessing(true);
+          setSelectedMatch(null);
+          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+          feedbackTimeoutRef.current = setTimeout(() => {
+            isProcessingRef.current = false;
+            setIsMatchingProcessing(false);
+          }, 900);
+        } else {
+          // Matching: cards are always face-up; just move the highlight.
+          setSelectedMatch(item);
+        }
       }
     }
   };
@@ -582,14 +601,42 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
         }
       }, AUTO_SKIP_DELAY_MS);
     } else {
-      setFeedback("wrong");
+      // Wrong. Track per-word attempts so we can reveal the answer and
+      // move on after MAX_ATTEMPTS_PER_WORD — mirroring the multiple-
+      // choice modes. Without this a student who can't produce the word
+      // (Spelling shows only the translation) was stuck on it forever,
+      // with a paid Skip power-up the only way out.
       streakRef.current = 0;
       if (!mistakes.includes(currentWord.id)) {
         setMistakes([...mistakes, currentWord.id]);
       }
-      // Use feedbackTimeoutRef for consistent feedback clearing
+      const currentAttempts = (wordAttempts[currentWord.id] || 0) + 1;
+      setWordAttempts(prev => ({ ...prev, [currentWord.id]: currentAttempts }));
+
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), WRONG_FEEDBACK_DELAY_MS);
+      if (currentAttempts >= MAX_ATTEMPTS_PER_WORD) {
+        // Out of tries — reveal the correct word (each mode renders its
+        // own show-answer UI), then auto-advance like handleAnswer does.
+        setFeedback("show-answer");
+        feedbackTimeoutRef.current = setTimeout(() => {
+          if (currentIndex < gameWords.length - 1) {
+            setCurrentIndex(currentIndex + 1);
+            setFeedback(null);
+            setSpellingInput("");
+            setWordAttempts(prev => removeKey(prev, currentWord.id));
+          } else {
+            setIsFinished(true);
+            saveScore();
+          }
+        }, SHOW_ANSWER_DELAY_MS);
+      } else {
+        // Tries left — clear feedback so the kid can retry. Input is
+        // left intact so they can fix a typo (or re-tap tiles in
+        // scramble) rather than starting over.
+        setFeedback("wrong");
+        playWrong();
+        feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), WRONG_FEEDBACK_DELAY_MS);
+      }
     }
   };
 

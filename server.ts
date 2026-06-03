@@ -9,7 +9,7 @@ loadDotenv({ path: ".env.local", override: true });
 import * as Sentry from "@sentry/node";
 import { scrubPii } from "./src/utils/scrubPii";
 import { installScrubbingConsole, redactEmail } from "./src/utils/serverLog";
-import { createSign } from "node:crypto";
+import { createSign, timingSafeEqual } from "node:crypto";
 
 // installScrubbingConsole patches console.{log,warn,error,info,debug}
 // to run every argument through scrubPii before the underlying writer
@@ -111,6 +111,8 @@ import {
   QP_RACE_PTS_EN,
   QP_RACE_PTS_L1,
   QP_RACE_SUBMIT_GRACE_MS,
+  QP_RACE_SPEED_BONUS_MAX,
+  QP_RACE_UNTIMED_SAFETY_SECONDS,
   isValidReactionEmoji,
   isValidSessionCode,
   isValidClientId,
@@ -128,6 +130,7 @@ import {
   type QpErrorCode,
   type QpRaceStartPayload,
   type QpRaceSubmitPayload,
+  type QpRaceEndRoundPayload,
   type QpRaceCellResult,
 } from "./src/core/quickPlayProtocol";
 import { containsProfanity } from "./src/utils/nicknameProfanity";
@@ -217,6 +220,28 @@ if (JWKS) {
   console.warn("[verifyToken] local JWKS verification DISABLED — SUPABASE_URL not set; falling back to remote auth.getUser()");
 }
 
+// Acceptable iss claims for the JWT. Empty array = no iss check (only
+// signature + algorithm + audience are enforced, which JWKS-trust already
+// makes ironclad).  When this project has a custom auth domain enabled,
+// Supabase can emit either the custom-domain URL or the project-ref URL
+// in the iss claim depending on which auth path the client took — so
+// pinning to a single value would reject half the legitimate traffic.
+// Operators that want defence-in-depth iss pinning can set
+// SUPABASE_JWT_ISSUERS to a comma-separated list of every full issuer URL
+// to accept, e.g.
+//   SUPABASE_JWT_ISSUERS="https://auth.example.com/auth/v1,https://abc123.supabase.co/auth/v1"
+const ACCEPTED_JWT_ISSUERS: string[] = (process.env.SUPABASE_JWT_ISSUERS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+if (JWKS) {
+  console.log(
+    ACCEPTED_JWT_ISSUERS.length > 0
+      ? `[verifyToken] iss claim restricted to: ${ACCEPTED_JWT_ISSUERS.join(", ")}`
+      : "[verifyToken] iss claim not pinned — set SUPABASE_JWT_ISSUERS to restrict",
+  );
+}
+
 // Supabase admin client — uses the service role key to verify tokens server-side
 // Only created if credentials are available.
 //
@@ -247,6 +272,94 @@ const supabaseAdmin = hasSupabaseConfig
     )
   : null;
 
+// ── Generic AI result cache ────────────────────────────────────────────
+// Pure, deterministic AI generators (text analysis, lesson generation)
+// return the same payload for the same inputs, so there's no reason to
+// re-pay the model — or re-wait for it — when an identical request comes
+// back (double-submit, navigation, two teachers in the same set).  These
+// helpers wrap a single `ai_cache(feature, cache_key, content)` table.
+//
+// IMPORTANT: every call is best-effort.  A missing table (migration not
+// applied yet) or a transient Supabase error must NEVER break generation —
+// it just means a cache miss and we fall through to the live model.  This
+// mirrors the bagrut_cache pattern.
+//
+// Only cache generators that are (a) pure (no DB side-effects) and
+// (b) meant to be reproducible.  Do NOT cache the library sentence /
+// distractor generators: they persist candidates to the DB and exist to
+// give teachers FRESH variety on each "Regenerate" tap — a cache hit
+// there would hand back the identical batch and defeat the feature.
+function aiCacheKey(parts: unknown): string {
+  return createHash("sha256").update(JSON.stringify(parts)).digest("hex");
+}
+
+async function aiCacheGet<T>(feature: string, key: string): Promise<T | null> {
+  if (!supabaseAdmin) return null;
+  try {
+    const { data } = await supabaseAdmin
+      .from("ai_cache")
+      .select("content")
+      .eq("feature", feature)
+      .eq("cache_key", key)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (data?.content) {
+      // Fire-and-forget hit counter; don't block the response on it.
+      supabaseAdmin
+        .rpc("touch_ai_cache", { p_feature: feature, p_cache_key: key })
+        .then(() => {}, () => {});
+      return data.content as T;
+    }
+  } catch (err) {
+    console.warn(`[ai_cache] lookup failed (${feature}):`, (err as Error)?.message || err);
+  }
+  return null;
+}
+
+// TTL default 30 days — pure generators are stable, but an expiry keeps the
+// table from growing unbounded and lets prompt/model improvements roll in.
+function aiCacheSet(feature: string, key: string, content: unknown, ttlMs = 30 * 24 * 60 * 60 * 1000): void {
+  if (!supabaseAdmin) return;
+  void withRetry(
+    async () => {
+      const { error } = await supabaseAdmin!
+        .from("ai_cache")
+        .upsert(
+          {
+            feature,
+            cache_key: key,
+            content,
+            expires_at: new Date(Date.now() + ttlMs).toISOString(),
+          },
+          { onConflict: "feature,cache_key" },
+        );
+      if (error) throw error;
+    },
+    { label: `ai_cache:upsert:${feature}` },
+  ).catch((err) => console.warn(`[ai_cache] upsert failed (${feature}):`, err?.message || err));
+}
+
+// Public (publishable/anon) key used by the Tier-2 /api/student/login
+// endpoint to sign a student in NEXT TO the database instead of from the
+// phone (see docs/login-latency-tier2-proposal.md). Read from a server env
+// var, falling back to the build-time VITE_ name if it happens to be set in
+// the process. The key is PUBLIC — it already ships in the client bundle —
+// so reading it here is low-risk. When unset, the endpoint disables itself
+// and clients keep using their existing direct-to-Supabase login path.
+const SUPABASE_ANON_KEY =
+  process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || null;
+
+// Fresh, session-less Supabase client per request. MUST NOT be shared: each
+// request signs in its own student, so a shared client instance would risk
+// one student's tokens bleeding into another's concurrent response.
+function makeStudentAuthClient() {
+  if (!process.env.SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  return createClient(process.env.SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+
 interface SupabaseJwtPayload extends JWTPayload {
   sub: string;
   email?: string;
@@ -254,13 +367,18 @@ interface SupabaseJwtPayload extends JWTPayload {
 
 // Local JWT signature + expiry check using JWKS. Returns the decoded payload on
 // success, null on any failure (invalid signature, expired, malformed, or
-// JWKS not configured). jose's jwtVerify handles algorithm selection from the
-// JWKS metadata (ES256, RS256, HS256, etc.) and validates the exp claim
-// automatically — expired tokens throw JWTExpired which we catch.
+// JWKS not configured). Algorithm (ES256) and audience ('authenticated') are
+// pinned to close the algorithm-downgrade and service-role-token-confusion
+// windows.  Issuer is only pinned when SUPABASE_JWT_ISSUERS is set — see
+// the comment on ACCEPTED_JWT_ISSUERS above for the custom-domain rationale.
 async function verifyTokenLocal(token: string): Promise<SupabaseJwtPayload | null> {
   if (!JWKS) return null;
   try {
-    const { payload } = await jwtVerify(token, JWKS);
+    const { payload } = await jwtVerify(token, JWKS, {
+      algorithms: ["ES256"],
+      audience: "authenticated",
+      ...(ACCEPTED_JWT_ISSUERS.length > 0 ? { issuer: ACCEPTED_JWT_ISSUERS } : {}),
+    });
     if (typeof payload.sub !== "string" || payload.sub.length === 0) return null;
     return {
       ...payload,
@@ -710,6 +828,39 @@ function cloudflareOnlyIngress(
 ): void {
   if (process.env.CLOUDFLARE_INGRESS_ONLY !== "1") return next();
   if (CF_INGRESS_ALLOWED_PATHS.has(req.path)) return next();
+
+  // Strong gate (preferred): a shared secret header that Cloudflare injects
+  // via a Transform Rule and that an off-network attacker cannot guess. This
+  // closes the spoofing gap in the cf-ray/cf-connecting-ip presence check
+  // below — a direct origin probe can forge those two well-known headers (and
+  // a live pen test on 2026-05-29 confirmed it could), but it cannot forge an
+  // unguessable secret.
+  //
+  // Activates ONLY when CLOUDFLARE_ORIGIN_SECRET is set on the origin; until
+  // then we fall through to the legacy presence check, so deploying this code
+  // alone changes nothing in production. Rollout order (must follow, or you
+  // 403 ALL traffic — cf. the #1003 issuer-pin outage): (1) deploy this code,
+  // (2) add the Cloudflare rule injecting `X-CF-Origin-Secret: <secret>`,
+  // (3) confirm the header reaches the origin, (4) THEN set the
+  // CLOUDFLARE_ORIGIN_SECRET Fly secret to enforce, (5) verify the live site
+  // still loads. Rollback = unset CLOUDFLARE_ORIGIN_SECRET.
+  const originSecret = process.env.CLOUDFLARE_ORIGIN_SECRET;
+  if (originSecret) {
+    const raw = req.headers["x-cf-origin-secret"];
+    const provided = Array.isArray(raw) ? raw[0] : raw;
+    const ok =
+      typeof provided === "string" &&
+      provided.length === originSecret.length &&
+      timingSafeEqual(Buffer.from(provided), Buffer.from(originSecret));
+    if (!ok) {
+      console.warn(
+        `[cf-ingress] missing/invalid origin secret — rejected. path=${req.path} ip=${req.ip ?? "?"}`,
+      );
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    return next();
+  }
 
   // Header-presence check.  Cloudflare sets BOTH `cf-ray` and
   // `cf-connecting-ip` on every proxied request reaching the origin —
@@ -1227,7 +1378,18 @@ async function startServer() {
     // different delays.  reverifyHandle is mutated on each tick so
     // disconnect always clears the latest one.
     const REVERIFY_INTERVAL_MS = 5 * 60 * 1000;
+    // Require two consecutive remote-verify failures before we
+    // disconnect.  A single failure can be a transient Supabase blip,
+    // a network hiccup between Fly and Supabase, or the student's own
+    // weak Wi-Fi interrupting the JWKS fetch path's fallback to remote.
+    // Disconnecting on the first failure caused mass kick-outs across a
+    // classroom when Supabase had a 5-second blip lined up with the
+    // 5-minute re-verify window — a real revocation still surfaces on
+    // the next interval (≤10 min after revocation, vs ≤5 min before),
+    // which is the right trade-off for school-Wi-Fi reality.
+    const MAX_CONSECUTIVE_REVERIFY_FAILURES = 2;
     let reverifyHandle: ReturnType<typeof setTimeout> | null = null;
+    let consecutiveReverifyFailures = 0;
 
     const runReverify = async (): Promise<void> => {
       const token = socket.handshake.auth?.token;
@@ -1242,10 +1404,19 @@ async function startServer() {
       // Supabase round-trip per active socket per 5 min — bounded.
       const stillValidUid = await verifyTokenRemote(token);
       if (!stillValidUid || stillValidUid !== uid) {
-        if (isDev) console.warn(`[Socket] Re-verify failed for uid=${uid}, disconnecting`);
+        consecutiveReverifyFailures += 1;
+        if (consecutiveReverifyFailures < MAX_CONSECUTIVE_REVERIFY_FAILURES) {
+          if (isDev) console.warn(`[Socket] Re-verify miss ${consecutiveReverifyFailures}/${MAX_CONSECUTIVE_REVERIFY_FAILURES} for uid=${uid} — deferring`);
+          return;
+        }
+        if (isDev) console.warn(`[Socket] Re-verify failed ${consecutiveReverifyFailures}x for uid=${uid}, disconnecting`);
         socket.emit("forced_disconnect", { reason: "token_revoked" });
         socket.disconnect(true);
+        return;
       }
+      // Reset the strike counter on any successful re-verify so a
+      // genuine revocation later still needs MAX_CONSECUTIVE failures.
+      consecutiveReverifyFailures = 0;
     };
 
     const scheduleReverify = (delayMs: number): void => {
@@ -1464,6 +1635,10 @@ async function startServer() {
       deadlineTs: number;
       submitted: Set<string>;
       timer: ReturnType<typeof setTimeout> | null;
+      /** Relaxed mode — no countdown; ends on all-submitted or teacher. */
+      untimed: boolean;
+      /** Round start epoch ms — basis for the speed bonus. */
+      startTs: number;
     } | null;
   }
 
@@ -2140,10 +2315,15 @@ async function startServer() {
       // RACE_ENDED for the round we're about to start.
       if (state.currentRace?.timer) clearTimeout(state.currentRace.timer);
 
+      const untimed = payload.untimed === true;
       const roundId = randomUUID();
       const letter = raceRollLetter();
       const now = Date.now();
-      const deadlineTs = now + roundSeconds * 1000;
+      // Untimed rounds still get a generous safety deadline so a forgotten
+      // relaxed round can't hang the room — the client just hides the clock
+      // and the round ends on all-submitted / teacher "end round".
+      const effectiveSeconds = untimed ? QP_RACE_UNTIMED_SAFETY_SECONDS : roundSeconds;
+      const deadlineTs = now + effectiveSeconds * 1000;
       state.currentRace = {
         roundId,
         letter,
@@ -2152,6 +2332,8 @@ async function startServer() {
         deadlineTs,
         submitted: new Set(),
         timer: null,
+        untimed,
+        startTs: now,
       };
       // Close the round server-side at the deadline (+grace) so late or
       // silent students get locked out and "round over" is unambiguous
@@ -2162,33 +2344,51 @@ async function startServer() {
           qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
           s.currentRace.timer = null;
         }
-      }, roundSeconds * 1000 + QP_RACE_SUBMIT_GRACE_MS);
+      }, effectiveSeconds * 1000 + QP_RACE_SUBMIT_GRACE_MS);
 
       qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ROUND, {
         sessionCode, roundId, letter,
         categories: uniqueCategories,
-        roundSeconds, deadlineTs, serverTs: now,
+        roundSeconds, deadlineTs, serverTs: now, untimed,
       });
-      console.log(`[QP RACE start] session=${sessionCode} round=${roundId.slice(0, 8)} letter=${letter} cats=${uniqueCategories.length} secs=${roundSeconds}`);
+      console.log(`[QP RACE start] session=${sessionCode} round=${roundId.slice(0, 8)} letter=${letter} cats=${uniqueCategories.length} secs=${untimed ? "untimed" : roundSeconds}`);
     });
 
     // ─── Category Race: student submits answers for the active round ───
     // Students send TEXT, not a score — the server scores it against the
     // bank, so a tampered client can never claim arbitrary points.
     socket.on(QP_EVENTS.RACE_SUBMIT, (payload: QpRaceSubmitPayload) => {
-      if (!payload || typeof payload !== "object") return;
+      // ── Diagnostic (2026-06 #2/#3) ──────────────────────────────────────
+      // A dropped RACE_SUBMIT is silent: the student never gets a
+      // RACE_RESULT and the host never sees the score move. Both reported
+      // symptoms are this. Log WHICH guard rejects so one repro + `fly logs`
+      // pinpoints the cause. Purely additive — no behaviour change.
+      const dropLog = (reason: string, extra?: Record<string, unknown>) => {
+        try {
+          const p = payload as { sessionCode?: unknown; clientId?: unknown; roundId?: unknown };
+          const s = typeof p?.sessionCode === "string" ? p.sessionCode : "?";
+          const c = typeof p?.clientId === "string" ? p.clientId.slice(0, 8) : "?";
+          const r = typeof p?.roundId === "string" ? p.roundId.slice(0, 8) : "?";
+          console.warn(`[QP RACE submit DROP] reason=${reason} session=${s} client=${c} round=${r}`, extra ?? "");
+          // Also echo the reason back to the submitting student so it shows in
+          // their browser console (DevTools) — no Fly log access needed to
+          // diagnose. Temporary; remove once the drop cause is fixed.
+          socket.emit("qp:race:submit:rejected", { reason });
+        } catch { /* logging must never throw */ }
+      };
+      if (!payload || typeof payload !== "object") { dropLog("bad_payload"); return; }
       const { sessionCode, clientId, roundId, answers } = payload;
-      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
-      if (typeof roundId !== "string" || !roundId) return;
-      if (!answers || typeof answers !== "object") return;
-      if (!qpScoreLimiter.checkLimit(socket.id)) return;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) { dropLog("bad_session_or_client"); return; }
+      if (typeof roundId !== "string" || !roundId) { dropLog("bad_roundId"); return; }
+      if (!answers || typeof answers !== "object") { dropLog("bad_answers"); return; }
+      if (!qpScoreLimiter.checkLimit(socket.id)) { dropLog("rate_limited"); return; }
 
       const state = qpSessions.get(sessionCode);
-      if (!state || !state.currentRace) return;
+      if (!state || !state.currentRace) { dropLog("no_session_or_race", { hasState: !!state }); return; }
       const race = state.currentRace;
-      if (race.roundId !== roundId) return;                              // stale round
-      if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) return; // too late
-      if (race.submitted.has(clientId)) return;                          // one submit per round
+      if (race.roundId !== roundId) { dropLog("stale_round", { serverRound: race.roundId.slice(0, 8) }); return; } // stale round
+      if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late", { lateMs: Date.now() - (race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) }); return; } // too late
+      if (race.submitted.has(clientId)) { dropLog("already_submitted"); return; }                          // one submit per round
 
       // Self-heal the socket→client mapping (mirrors SCORE_UPDATE) in
       // case a reconnect raced the submit.
@@ -2198,11 +2398,20 @@ async function startServer() {
           state.socketToClient.set(socket.id, clientId);
           socket.join(sessionCode);
         } else {
+          dropLog("not_in_students", { owned: owned ?? null, knownClients: state.students.size });
           return;
         }
       }
       const entry = state.students.get(clientId);
-      if (!entry) return;
+      if (!entry) { dropLog("no_entry"); return; }
+
+      // Categories where the student used a hint/suggestion — those cells
+      // score at the reduced (L1) rate even in English, so help is fair.
+      const helpedSet = new Set<string>(
+        Array.isArray(payload.helped)
+          ? payload.helped.filter((c): c is string => typeof c === "string")
+          : [],
+      );
 
       const cells: QpRaceCellResult[] = race.categories.map((catId) => {
         const raw = (answers as Record<string, unknown>)[catId];
@@ -2211,7 +2420,7 @@ async function startServer() {
           ? raceValidateAnswer(catId, race.letter, typed)
           : { valid: false, matchedEn: null, matchedLanguage: null };
         const points = result.valid
-          ? (result.matchedLanguage === "en" ? QP_RACE_PTS_EN : QP_RACE_PTS_L1)
+          ? (helpedSet.has(catId) ? QP_RACE_PTS_L1 : (result.matchedLanguage === "en" ? QP_RACE_PTS_EN : QP_RACE_PTS_L1))
           : 0;
         return {
           categoryId: catId,
@@ -2224,15 +2433,50 @@ async function startServer() {
       });
       const roundPoints = cells.reduce((sum, c) => sum + c.points, 0);
 
+      // Speed bonus — reward decisive answers. Scales from SPEED_BONUS_MAX
+      // (instant) down to 0 (clock expired). Only when they actually scored,
+      // and never in untimed mode (no clock to race against).
+      let speedBonus = 0;
+      if (!race.untimed && roundPoints > 0) {
+        const totalMs = Math.max(1, race.deadlineTs - race.startTs);
+        const remainingMs = Math.max(0, race.deadlineTs - Date.now());
+        const fraction = Math.max(0, Math.min(1, remainingMs / totalMs));
+        speedBonus = Math.round(QP_RACE_SPEED_BONUS_MAX * fraction);
+      }
+
       race.submitted.add(clientId);
-      entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints);
+      entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints + speedBonus);
       entry.lastSeen = Date.now();
 
       socket.emit(QP_SERVER_EVENTS.RACE_RESULT, {
-        sessionCode, roundId, cells, roundPoints, totalScore: entry.score,
+        sessionCode, roundId, cells, roundPoints, speedBonus, totalScore: entry.score,
       });
       qpScheduleBroadcast(sessionCode);
-      console.log(`[QP RACE submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} +${roundPoints} → ${entry.score}`);
+
+      // Auto-end the round once every CONNECTED student has submitted, so a
+      // quick class never waits out the clock. Disconnected students don't
+      // block it — they're not in the live socket→client map.
+      const connectedIds = new Set(state.socketToClient.values());
+      if (connectedIds.size > 0 && [...connectedIds].every((id) => race.submitted.has(id))) {
+        if (race.timer) { clearTimeout(race.timer); race.timer = null; }
+        qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
+      }
+      console.log(`[QP RACE submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} +${roundPoints}${speedBonus ? `+${speedBonus}⚡` : ""} → ${entry.score}`);
+    });
+
+    // ─── Category Race: teacher ends the active round early ────────────
+    socket.on(QP_EVENTS.RACE_END_ROUND, async (payload: QpRaceEndRoundPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, token, roundId } = payload;
+      if (!isValidSessionCode(sessionCode) || typeof roundId !== "string" || !roundId) return;
+      if (!qpTeacherLimiter.checkLimit(socket.id)) return;
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.RACE_END_ROUND, verify.reason, "access denied");
+      const state = qpSessions.get(sessionCode);
+      if (!state?.currentRace || state.currentRace.roundId !== roundId) return;
+      if (state.currentRace.timer) { clearTimeout(state.currentRace.timer); state.currentRace.timer = null; }
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
+      console.log(`[QP RACE end-round] session=${sessionCode} round=${roundId.slice(0, 8)} (teacher)`);
     });
 
     socket.on("disconnect", () => {
@@ -2774,14 +3018,19 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     return res.json({ hebrew, arabic, russian });
   });
 
-  // ── OCR via Claude Haiku Vision ───────────────────────────────────────────
-  // Replaces Tesseract.js entirely. Tesseract had three problems:
+  // ── OCR via Google Gemini Vision ──────────────────────────────────────────
+  // The OCR handler lives at app.post("/api/ocr", …) further down. It runs
+  // gemini-2.5-flash (GOOGLE_AI_API_KEY) at temperature 0 — NOT Claude.
+  //
+  // History: replaced Tesseract.js, which had three problems:
   //   1. ~300 MB RAM per worker → crashed Render's 512 MB free tier
   //   2. 10-15s per request (cold start + recognition)
   //   3. Poor accuracy on phone photos (angles, shadows, blur)
   //
-  // Claude Haiku Vision: 2-3s, excellent accuracy, ~$0.002/image, 0 MB RAM.
-  // Uses the same ANTHROPIC_API_KEY already configured for AI sentences.
+  // Gemini Flash: 2-3s, excellent accuracy, ~2-3x cheaper per image than
+  // Claude Haiku Vision (and a free tier), decodes HEIC/HEIF natively, 0 MB
+  // RAM. An earlier iteration briefly used Claude Haiku Vision; that's why a
+  // stale "Claude Haiku Vision" note used to sit here — corrected 2026-06.
 
   // Auth gate for the OCR diagnostic endpoints. Both reveal partial details
   // about GOOGLE_AI_API_KEY (boolean presence, prefix/suffix, length, error
@@ -3757,6 +4006,186 @@ Quality rules:
     }
   });
 
+  // ─── Tier-2 Quick Play join (single round-trip) ────────────────────────
+  // A QR-scan join normally signs in anonymously THEN reads the session row
+  // — two serial Israel→Frankfurt hops. This endpoint does both server-side
+  // (Frankfurt, <5 ms to Supabase): creates the anon session AND reads the
+  // active row, returning tokens + row in one response. The client adopts
+  // the session via setSession() (local). Mirrors /api/student/login.
+  //
+  // Gated on SUPABASE_ANON_KEY; when unset it returns 503 {fallback:true}
+  // and the client uses its existing direct path. Per-IP limit is sized for
+  // a shared classroom NAT (a whole class scans within seconds) — unlike
+  // the GET lookup's 10/min/IP limit, which is meant for sporadic fallback.
+  const qpJoinIpLimiter = createSharedRateLimit({
+    windowMs: 60 * 1000,
+    max: 120, // a class of ~40 can each retry a couple times in a minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many join attempts from this network. Please wait a moment." },
+    keyGenerator: (req) => ipKeyGenerator(req.ip || "unknown"),
+  });
+
+  app.post("/api/quick-play/join", qpJoinIpLimiter, async (req, res) => {
+    const sessionCode =
+      typeof req.body?.sessionCode === "string" ? req.body.sessionCode.trim().toUpperCase() : "";
+    if (!sessionCode || !/^[A-HJ-NP-Z2-9]{6}$/i.test(sessionCode)) {
+      return res.status(400).json({ error: "Invalid session code format" });
+    }
+    if (!supabaseAdmin) {
+      return res.status(503).json({ error: "Server not configured" });
+    }
+    const anon = makeStudentAuthClient();
+    if (!anon) {
+      // No anon key configured → client uses its existing direct path.
+      return res.status(503).json({ error: "not_configured", fallback: true });
+    }
+    try {
+      // Service-role lookup (bypasses RLS) + a fresh anon session, both
+      // server-local. Parallel because they're independent.
+      const [lookup, signIn] = await Promise.all([
+        supabaseAdmin
+          .from("quick_play_sessions")
+          .select("*")
+          .eq("session_code", sessionCode)
+          .eq("is_active", true)
+          .maybeSingle(),
+        anon.auth.signInAnonymously(),
+      ]);
+      if (lookup.error) {
+        console.error("[qp-join] lookup error:", lookup.error.message);
+        return res.status(500).json({ error: "Lookup failed" });
+      }
+      if (!lookup.data) {
+        return res.status(404).json({ error: "Session not found or no longer active" });
+      }
+      if (signIn.error || !signIn.data?.session) {
+        // Anonymous sign-ins disabled / failed — fall back client-side.
+        console.error("[qp-join] anon sign-in failed:", signIn.error?.message);
+        return res.status(503).json({ error: "signin_failed", fallback: true });
+      }
+      const s = signIn.data.session;
+      return res.json({
+        session: {
+          access_token: s.access_token,
+          refresh_token: s.refresh_token,
+          expires_at: s.expires_at,
+          expires_in: s.expires_in,
+          token_type: s.token_type,
+        },
+        qpSession: lookup.data,
+      });
+    } catch (err) {
+      console.error("[qp-join] exception:", err);
+      return res.status(500).json({ error: "Internal error" });
+    }
+  });
+
+  // ─── Tier-2 student login (single round-trip) ──────────────────────────
+  // Collapses the 3-4 serial client→Frankfurt hops of PIN login into ONE
+  // request that lands on the nearby Cloudflare edge. This endpoint runs in
+  // Frankfurt next to Supabase (<5 ms hops), does the sign-in + dashboard
+  // bootstrap there, and hands back the session tokens + dashboard payload.
+  // The client then calls supabase.auth.setSession(tokens) — a LOCAL op, no
+  // network — so the resulting session is byte-for-byte identical to the
+  // direct path (refresh, RLS, realtime all unchanged). See
+  // docs/login-latency-tier2-proposal.md.
+  //
+  // SECURITY: this performs the SAME signInWithPassword the client does
+  // today — a wrong PIN still fails. It is NOT a privilege path (uses the
+  // public anon key, not the service role). Because GoTrue's per-IP brute-
+  // force limiter now sees Fly's IP (not the student's), we re-add brute-
+  // force protection here: a tight per-EMAIL limiter (the real account
+  // surface) plus a generous per-IP limiter (a whole class shares one NAT
+  // IP, so this must not lock out classmates).
+  const studentLoginEmailLimiter = createSharedRateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 10, // 10 wrong PINs / 10 min / account before cool-down
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many sign-in attempts for this account. Wait a few minutes or ask your teacher to reset your PIN." },
+    keyGenerator: (req) => {
+      const email = typeof req.body?.email === "string" ? req.body.email.toLowerCase().slice(0, 200) : "";
+      return email ? `sl-email:${email}` : ipKeyGenerator(req.ip || "unknown");
+    },
+  });
+  const studentLoginIpLimiter = createSharedRateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 300, // generous: an entire class shares one school NAT IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many sign-in attempts from this network. Please wait a moment." },
+    keyGenerator: (req) => ipKeyGenerator(req.ip || "unknown"),
+  });
+
+  app.post("/api/student/login", studentLoginIpLimiter, studentLoginEmailLimiter, async (req, res) => {
+    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+    const pin = typeof req.body?.pin === "string" ? req.body.pin.trim().toUpperCase() : "";
+    const localDate =
+      typeof req.body?.localDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.body.localDate)
+        ? req.body.localDate
+        : null;
+
+    // Validate shape before any network work. PIN alphabet mirrors the
+    // roster-PIN regex (no I/L/O, no 0/1); the email is the synthetic
+    // roster address, so a loose sanity check suffices — signInWithPassword
+    // is the real authority. NB: never log `pin`.
+    if (!email || email.length > 200 || !/^[A-HJ-KM-NP-Z2-9]{6}$/.test(pin)) {
+      return res.status(400).json({ error: "Invalid email or PIN format" });
+    }
+
+    const anon = makeStudentAuthClient();
+    if (!anon) {
+      // Endpoint disabled (no anon key configured) — signal the client to
+      // use its existing direct-to-Supabase login path. `fallback: true`
+      // is the client's cue to retry the old way, not to show an error.
+      return res.status(503).json({ error: "not_configured", fallback: true });
+    }
+
+    try {
+      const { data: signIn, error: signInErr } = await anon.auth.signInWithPassword({
+        email,
+        password: pin,
+      });
+      if (signInErr || !signIn?.session) {
+        // Wrong PIN / unknown account — generic code, same UX as the client
+        // path's "wrong PIN". Don't leak GoTrue's message.
+        return res.status(401).json({ error: "invalid_login" });
+      }
+
+      // The anon client now carries the student's JWT, so this RPC runs AS
+      // the student (auth.uid() = their uid) — identical to the client
+      // calling it directly, just executed next to the DB.
+      const { data: bootstrap, error: bootErr } = await anon.rpc("bootstrap_student_session", {
+        p_class_code: null,
+        p_display_name: null,
+        p_avatar: "🦊",
+        p_local_date: localDate,
+      });
+      if (bootErr) {
+        // Auth succeeded but bootstrap failed — still hand back the session
+        // so the client can fall through to its legacy dashboard load
+        // rather than being stuck unauthenticated.
+        console.error("[student-login] bootstrap RPC failed:", bootErr.message);
+      }
+
+      const s = signIn.session;
+      return res.json({
+        session: {
+          access_token: s.access_token,
+          refresh_token: s.refresh_token,
+          expires_at: s.expires_at,
+          expires_in: s.expires_in,
+          token_type: s.token_type,
+        },
+        bootstrap: bootErr ? null : bootstrap,
+      });
+    } catch (err) {
+      console.error("[student-login] exception:", err);
+      return res.status(500).json({ error: "Internal error" });
+    }
+  });
+
   // AI sentence generation — rate limited per teacher
   const aiRateLimiter = createSharedRateLimit({
     windowMs: 60 * 1000,
@@ -4496,7 +4925,10 @@ Return JSON: an array, one item per word, each with { word, distractors: [string
           // word + sentence per entry, so it needs more headroom than the
           // old one-sentence-per-line text reply. Billed on actual usage.
           max_tokens: 2048,
-          system: `You generate English sentences for Israeli EFL students (grades 4-9) used in vocabulary practice games.  Output is consumed by two modes: Sentence Builder (student rebuilds the sentence from shuffled words) and Fill in the Blank (the target word is removed and the student picks it from a 4-option list).  Both modes need the SAME quality from a sentence — the target word must fit naturally and the rest of the sentence must hint at it.
+          // System block is cached (per-difficulty): the rules are static
+          // across the batch, so repeat calls in the 5-min window skip
+          // re-processing the prompt prefix.
+          system: [{ type: "text", cache_control: { type: "ephemeral" }, text: `You generate English sentences for Israeli EFL students (grades 4-9) used in vocabulary practice games.  Output is consumed by two modes: Sentence Builder (student rebuilds the sentence from shuffled words) and Fill in the Blank (the target word is removed and the student picks it from a 4-option list).  Both modes need the SAME quality from a sentence — the target word must fit naturally and the rest of the sentence must hint at it.
 
 CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-violated rule; obey its word count strictly.
 
@@ -4509,7 +4941,7 @@ CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-
 5. Statements only — never write a question. Question word order is awkward in Sentence Builder.
 6. Do NOT reuse any OTHER word from the input batch inside the sentence. The blank must be uniquely answerable; if two batch words both fit, the question is broken.
 7. Concrete and visual — avoid abstract metaphors or idioms. Vocabulary level for grades 4-9.
-8. Return your answer ONLY through the submit_sentences tool: one entry per input word, echoing the exact input word in "word" and its sentence in "sentence".`,
+8. Return your answer ONLY through the submit_sentences tool: one entry per input word, echoing the exact input word in "word" and its sentence in "sentence".` }],
           // Tool use instead of free-text + line splitting. The old code split
           // the reply on "\n" and paired line[i] → word[i] by position — one
           // stray blank line or numbered prefix silently shifted every
@@ -4636,6 +5068,15 @@ CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-
     if (injection.detected) {
       console.warn(`[AI Text] uid=${auth.uid}: prompt-injection rejected (pattern=${injection.pattern})`);
       return res.status(400).json({ error: "Text contains disallowed pattern" });
+    }
+
+    // Cache hit short-circuit — same text + level + flags always yields the
+    // same analysis (temperature 0.2), so skip the (paid, ~2-4s) Gemini call.
+    const aiTextKey = aiCacheKey({ text: text.trim(), level, extractVocab, generateQuestions });
+    const cachedText = await aiCacheGet<{ vocabulary: unknown[]; questions: unknown[] }>("ai_process_text", aiTextKey);
+    if (cachedText) {
+      console.log(`[AI Text] uid=${auth.uid}: cache hit`);
+      return res.json(cachedText);
     }
 
     try {
@@ -4783,6 +5224,7 @@ Output ONLY the JSON, no markdown, no explanations.
         questions: sanitizedQuestions,
       };
 
+      aiCacheSet("ai_process_text", aiTextKey, responsePayload);
       return res.json(responsePayload);
     } catch (error: any) {
       console.error("[AI Text] processing error:", error?.message || error);
@@ -4843,6 +5285,19 @@ Output ONLY the JSON, no markdown, no explanations.
           return res.status(400).json({ error: "A vocabulary word contains a disallowed pattern" });
         }
       }
+    }
+
+    // Cache hit short-circuit — identical words + config yields an
+    // equivalent lesson, so skip the (paid, multi-call: generate + coverage
+    // repair) Gemini round-trip.  A teacher who wants a different lesson
+    // changes a config knob (length, text type, question mix), which
+    // changes the key; an unchanged re-submit reuses the prior result.
+    const lessonWords = words.map((w: any) => (typeof w === "string" ? w : w?.english || ""));
+    const lessonKey = aiCacheKey({ words: lessonWords, config });
+    const cachedLesson = await aiCacheGet<{ text: string; wordCount: number; questions: unknown[]; missingWords: string[] }>("ai_generate_lesson", lessonKey);
+    if (cachedLesson) {
+      console.log(`[AI Lesson] uid=${auth.uid}: cache hit`);
+      return res.json(cachedLesson);
     }
 
     try {
@@ -5089,12 +5544,14 @@ ${sanitizedText}`;
       const finalWordCount = finalText.split(/\s+/).length;
       console.log(`[AI Lesson] uid=${auth.uid}: generated ${finalWordCount} words, ${sanitizedQuestions.length} questions, missing=${missingWords.length}`);
 
-      return res.json({
+      const lessonPayload = {
         text: finalText,
         wordCount: finalWordCount,
         questions: sanitizedQuestions,
         missingWords,
-      });
+      };
+      aiCacheSet("ai_generate_lesson", lessonKey, lessonPayload);
+      return res.json(lessonPayload);
     } catch (error: any) {
       console.error("[AI Lesson] generation error:", error?.message || error);
       return res.status(500).json({ error: "AI lesson generation failed" });
@@ -5268,7 +5725,11 @@ ${sanitizedText}`;
               cache_control: { type: "ephemeral" },
             },
           ],
-          tools: [BAGRUT_TOOL as any],
+          // Cache the (large, static) tool schema alongside the system
+          // prompt so repeat generations in the 5-minute window skip
+          // re-processing both blocks — trims input latency + ~90% of the
+          // input-token cost when a teacher batches tests.
+          tools: [{ ...(BAGRUT_TOOL as any), cache_control: { type: "ephemeral" } }],
           tool_choice: { type: "tool", name: "bagrut_test" },
           messages: [
             {
@@ -5545,6 +6006,25 @@ ${sanitizedText}`;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    // Client-side errors raised by body-parser / upstream middleware — e.g.
+    // PayloadTooLargeError (413) when a request body exceeds the 50kb json
+    // limit, or 400 for malformed JSON — carry a 4xx status. Surface that
+    // status directly instead of masking it as a generic 500 and logging it as
+    // an [unhandled] server fault: the request was rejected by design, not a
+    // server bug. (Found in the 2026-05 pen test: a 100kb body returned 500
+    // instead of 413.)
+    const clientStatus =
+      (err as { status?: number; statusCode?: number }).status ??
+      (err as { statusCode?: number }).statusCode;
+    if (typeof clientStatus === "number" && clientStatus >= 400 && clientStatus < 500) {
+      if (!res.headersSent) {
+        res.status(clientStatus).json({
+          error: clientStatus === 413 ? "Payload too large" : "Bad request",
+        });
+      }
+      return;
+    }
+
     // SECURITY: pass req.method and req.path as separate arguments
     // rather than interpolating into a template literal.  Node's
     // console.error treats the first argument as a printf-style

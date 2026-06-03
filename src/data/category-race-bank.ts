@@ -46,19 +46,26 @@ export interface CategoryMeta {
   placeholderAr: string;
 }
 
+// Ordered easiest → hardest for grade 4-9 EFL learners. This array order is
+// the display order of the category tiles in CategoryRaceHostView. Easiest
+// first: concrete, high-frequency, picture-able words (colors, animals,
+// food). Middle: proper-noun packs that lean on world knowledge (cities,
+// countries) and lower-frequency nouns (plants, professions). Hardest last:
+// abstract parts of speech (verbs, adjectives). Order is display-only —
+// defaults + the answer bank are keyed by id, not position.
 export const CATEGORIES: ReadonlyArray<CategoryMeta> = [
-  { id: "country",    emoji: "🌍", gradient: "from-emerald-500 to-teal-600",   labelEn: "Country",    labelHe: "מדינה",     labelAr: "دولة",     placeholderEn: "e.g. Spain",     placeholderHe: "למשל ספרד",      placeholderAr: "مثل إسبانيا" },
-  { id: "city",       emoji: "🏙️", gradient: "from-sky-500 to-indigo-600",     labelEn: "City",       labelHe: "עיר",       labelAr: "مدينة",    placeholderEn: "e.g. Tokyo",     placeholderHe: "למשל טוקיו",     placeholderAr: "مثل طوكيو" },
+  { id: "color",      emoji: "🎨", gradient: "from-pink-500 to-fuchsia-600",   labelEn: "Color",      labelHe: "צבע",       labelAr: "لون",      placeholderEn: "e.g. Silver",    placeholderHe: "למשל כסוף",     placeholderAr: "مثل فضي" },
   { id: "animal",     emoji: "🐾", gradient: "from-amber-500 to-orange-600",   labelEn: "Animal",     labelHe: "חיה",       labelAr: "حيوان",    placeholderEn: "e.g. Tiger",     placeholderHe: "למשל נמר",      placeholderAr: "مثل نمر" },
-  { id: "plant",      emoji: "🌳", gradient: "from-lime-500 to-emerald-600",   labelEn: "Plant",      labelHe: "צמח",       labelAr: "نبات",     placeholderEn: "e.g. Rose",      placeholderHe: "למשל ורד",      placeholderAr: "مثل وردة" },
   { id: "food",       emoji: "🍎", gradient: "from-rose-500 to-pink-600",      labelEn: "Food",       labelHe: "אוכל",      labelAr: "طعام",     placeholderEn: "e.g. Pasta",     placeholderHe: "למשל פסטה",     placeholderAr: "مثل معكرونة" },
+  { id: "name",       emoji: "👤", gradient: "from-cyan-500 to-blue-600",      labelEn: "Name",       labelHe: "שם",        labelAr: "اسم",      placeholderEn: "e.g. Sam",       placeholderHe: "למשל שירה",     placeholderAr: "مثل سامي" },
   { id: "object",     emoji: "📦", gradient: "from-stone-500 to-stone-700",    labelEn: "Object",     labelHe: "חפץ",       labelAr: "غرض",      placeholderEn: "e.g. Mirror",    placeholderHe: "למשל מראה",     placeholderAr: "مثل مرآة" },
+  { id: "sport",      emoji: "⚽", gradient: "from-orange-500 to-red-600",     labelEn: "Sport",      labelHe: "ספורט",    labelAr: "رياضة",    placeholderEn: "e.g. Tennis",    placeholderHe: "למשל טניס",     placeholderAr: "مثل تنس" },
+  { id: "city",       emoji: "🏙️", gradient: "from-sky-500 to-indigo-600",     labelEn: "City",       labelHe: "עיר",       labelAr: "مدينة",    placeholderEn: "e.g. Tokyo",     placeholderHe: "למשל טוקיו",     placeholderAr: "مثل طوكيو" },
+  { id: "country",    emoji: "🌍", gradient: "from-emerald-500 to-teal-600",   labelEn: "Country",    labelHe: "מדינה",     labelAr: "دولة",     placeholderEn: "e.g. Spain",     placeholderHe: "למשל ספרד",      placeholderAr: "مثل إسبانيا" },
+  { id: "plant",      emoji: "🌳", gradient: "from-lime-500 to-emerald-600",   labelEn: "Plant",      labelHe: "צמח",       labelAr: "نبات",     placeholderEn: "e.g. Rose",      placeholderHe: "למשל ורד",      placeholderAr: "مثل وردة" },
+  { id: "profession", emoji: "💼", gradient: "from-indigo-500 to-violet-600",  labelEn: "Profession", labelHe: "מקצוע",    labelAr: "مهنة",     placeholderEn: "e.g. Teacher",   placeholderHe: "למשל מורה",     placeholderAr: "مثل معلم" },
   { id: "verb",       emoji: "🏃", gradient: "from-violet-500 to-purple-600",  labelEn: "Verb",       labelHe: "פועל",      labelAr: "فعل",      placeholderEn: "e.g. Sing",      placeholderHe: "למשל לשיר",     placeholderAr: "مثل غنى" },
   { id: "adjective",  emoji: "✨", gradient: "from-fuchsia-500 to-rose-600",   labelEn: "Adjective",  labelHe: "שם תואר",  labelAr: "صفة",      placeholderEn: "e.g. Soft",      placeholderHe: "למשל רך",       placeholderAr: "مثل ناعم" },
-  { id: "name",       emoji: "👤", gradient: "from-cyan-500 to-blue-600",      labelEn: "Name",       labelHe: "שם",        labelAr: "اسم",      placeholderEn: "e.g. Sam",       placeholderHe: "למשל שירה",     placeholderAr: "مثل سامي" },
-  { id: "profession", emoji: "💼", gradient: "from-indigo-500 to-violet-600",  labelEn: "Profession", labelHe: "מקצוע",    labelAr: "مهنة",     placeholderEn: "e.g. Teacher",   placeholderHe: "למשל מורה",     placeholderAr: "مثل معلم" },
-  { id: "sport",      emoji: "⚽", gradient: "from-orange-500 to-red-600",     labelEn: "Sport",      labelHe: "ספורט",    labelAr: "رياضة",    placeholderEn: "e.g. Tennis",    placeholderHe: "למשל טניס",     placeholderAr: "مثل تنس" },
-  { id: "color",      emoji: "🎨", gradient: "from-pink-500 to-fuchsia-600",   labelEn: "Color",      labelHe: "צבע",       labelAr: "لون",      placeholderEn: "e.g. Silver",    placeholderHe: "למשל כסוף",     placeholderAr: "مثل فضي" },
 ];
 
 /** Letters in the roll pool. Only letters with seeded entries below
@@ -66,7 +73,7 @@ export const CATEGORIES: ReadonlyArray<CategoryMeta> = [
  *  give the student an unwinnable round. */
 export const LETTER_POOL: ReadonlyArray<string> = ["A", "B", "C", "F", "M", "P", "S", "T"];
 
-interface Entry {
+export interface Entry {
   /** Canonical English answer.  MUST start with the keyed letter. */
   en: string;
   /** Hebrew translation. */
@@ -613,6 +620,30 @@ function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/** Levenshtein edit distance, capped — bails early when lengths differ by
+ *  more than 2 (can't be within our spelling-grace threshold anyway). */
+function editDistance(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (Math.abs(m - n) > 2) return 99;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  let curr = new Array<number>(n + 1).fill(0);
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n];
+}
+
+/** All canonical answers for a (category, letter) cell — powers the
+ *  student "need ideas?" suggestions + the first-letters hint. */
+export function answersFor(category: CategoryId, letter: string): Entry[] {
+  return CATEGORY_ANSWERS[category]?.[letter.toUpperCase()] ?? [];
+}
+
 /** Validate a single answer for one (category, letter) cell. */
 export function validateAnswer(
   category: CategoryId,
@@ -639,6 +670,20 @@ export function validateAnswer(
     if (entry.ar && entry.ar.trim() === trimmed) {
       return { valid: true, matchedEn: entry.en, matchedLanguage: "ar" };
     }
+  }
+
+  // Spelling grace: no exact hit, so accept a near-miss English answer —
+  // 1 edit for short words, 2 for longer ones — so a weaker speller who
+  // typed "snak" / "aple" / "tigr" still gets credit. Match against the
+  // closest entry only, to limit false positives.
+  let best: { en: string; dist: number; len: number } | null = null;
+  for (const entry of bank) {
+    const target = normalize(entry.en);
+    const d = editDistance(normalizedInput, target);
+    if (best === null || d < best.dist) best = { en: entry.en, dist: d, len: target.length };
+  }
+  if (best && best.dist <= (best.len >= 6 ? 2 : 1)) {
+    return { valid: true, matchedEn: best.en, matchedLanguage: "en" };
   }
 
   return { valid: false, matchedEn: null, matchedLanguage: null };

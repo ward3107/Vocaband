@@ -75,7 +75,6 @@ const EXERCISE_ORDER: ExerciseType[] = [
   "listening_dictation",
   "fill_blank",
   "true_false",
-  "synonym_antonym",
   "definition_match",
   "sentence_building",
   "word_in_context",
@@ -83,8 +82,8 @@ const EXERCISE_ORDER: ExerciseType[] = [
 ];
 
 // Per-exercise default config — used when a type is first toggled on.
-// Translation typing and synonym/antonym are the only ones with knobs
-// today; everything else just rides the worksheet's word pool.
+// Translation typing is the only one with knobs today; everything else
+// just rides the worksheet's word pool.
 const defaultConfig = (
   type: ExerciseType,
   wordIds: number[],
@@ -94,9 +93,6 @@ const defaultConfig = (
     const direction: TranslationDirection =
       defaultLang === "ar" ? "en_to_ar" : "en_to_he";
     return { type, word_ids: wordIds, direction };
-  }
-  if (type === "synonym_antonym") {
-    return { type, word_ids: wordIds, mode: "synonym" };
   }
   return { type, word_ids: wordIds } as Exercise;
 };
@@ -681,31 +677,6 @@ const ExerciseConfigRow: React.FC<{
               }`}
             >
               {d.l}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  if (exercise.type === "synonym_antonym") {
-    return (
-      <div className="px-4 pb-3 -mt-1">
-        <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--vb-text-muted)] mb-1">
-          {t.synonymModeLabel}
-        </p>
-        <div className="inline-flex rounded-lg bg-[var(--vb-surface)] border border-[var(--vb-border)] p-0.5 w-full">
-          {(["synonym", "antonym"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => onUpdate("synonym_antonym", { mode })}
-              className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all ${
-                exercise.mode === mode
-                  ? "bg-emerald-600 text-white"
-                  : "text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)]"
-              }`}
-            >
-              {mode === "synonym" ? t.synonymOption : t.antonymOption}
             </button>
           ))}
         </div>

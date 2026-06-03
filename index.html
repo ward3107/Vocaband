@@ -257,6 +257,17 @@
          No request to fonts.googleapis.com / fonts.gstatic.com is made
          for them.  See PR #787 follow-up (privacy review item #5).
 
+         Preload the two weights the hero actually paints with so they
+         arrive in parallel with the entry CSS instead of waiting for
+         CSS parse to discover them.  Lighthouse's LCP audit pinned the
+         landing hero subtitle (Be Vietnam Pro 400) with a 510 ms render
+         delay because the request only fired AFTER /assets/index-*.css
+         finished parsing — preloading drops that delay to a single
+         queue position. Plus Jakarta Sans is the variable file the h1
+         renders; the rest of the Be Vietnam Pro family (500/700/900)
+         is below-the-fold or interaction-blocking, so swap-loading
+         them is fine.
+
          RTL fonts (Heebo + Fredoka) are still lazy-loaded from Google
          Fonts when the visitor's language is HE/AR — boot-debug.js
          injects a <link> built from the meta tag below.  The preconnects
@@ -265,6 +276,8 @@
          dropped by the browser if it's never followed.  When Heebo +
          Fredoka are also self-hosted (future PR) these can disappear
          entirely. -->
+    <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/be-vietnam-pro-400-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Supabase auth + REST + storage origin.  Pre-warming the TLS

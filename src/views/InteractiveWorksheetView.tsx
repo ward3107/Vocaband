@@ -11,6 +11,7 @@ import { ArrowLeft, CheckCircle2, Loader2, RotateCcw, XCircle } from "lucide-rea
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import WorksheetRunner from "../worksheet/WorksheetRunner";
+import { EXERCISE_REGISTRY } from "../worksheet/exercises/registry";
 import type {
   Answer,
   Exercise,
@@ -227,7 +228,16 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   // backfill (or any client that mints with the old RPC) still plays.
   const exercises: Exercise[] = useMemo(() => {
     if (!row) return [];
-    if (Array.isArray(row.exercises) && row.exercises.length > 0) return row.exercises;
+    if (Array.isArray(row.exercises) && row.exercises.length > 0) {
+      // Drop any exercise type that's since been retired (e.g. the
+      // removed synonym_antonym) so a worksheet saved before the
+      // removal doesn't crash the runner on a now-missing registry
+      // entry. A worksheet left empty by the filter falls through.
+      const playable = (row.exercises as Exercise[]).filter(
+        (ex) => ex && ex.type in EXERCISE_REGISTRY,
+      );
+      if (playable.length > 0) return playable;
+    }
     if (row.format && Array.isArray(row.word_ids) && row.word_ids.length > 0) {
       return [{ type: row.format, word_ids: row.word_ids } as Exercise];
     }
@@ -483,7 +493,6 @@ const FORMAT_LABEL: Record<string, string> = {
   listening_dictation: "Listening dictation",
   fill_blank: "Fill in the blank",
   definition_match: "Definition match",
-  synonym_antonym: "Synonyms & antonyms",
   cloze: "Cloze paragraph",
   sentence_building: "Sentence building",
   translation_typing: "Translation typing",

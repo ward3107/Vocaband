@@ -64,6 +64,9 @@ export const QP_EVENTS = {
   // round. Scored server-side against the answer bank — students send
   // text, never a number, so a client can't claim arbitrary points.
   RACE_SUBMIT:     "qp:student:race:submit",
+  // A teacher ending the active round early (before the deadline / for
+  // untimed rounds). Server closes the round and broadcasts RACE_ENDED.
+  RACE_END_ROUND:  "qp:teacher:race:end-round",
 } as const;
 
 /** Server → client events. */
@@ -276,6 +279,17 @@ export interface QpRaceStartPayload {
   categories: string[];
   /** Seconds students get to answer. Clamped to QP_RACE_ROUND_SECONDS. */
   roundSeconds: number;
+  /** Relaxed mode — no countdown shown; the round ends when every
+   *  connected student has submitted or the teacher ends it. roundSeconds
+   *  still rides along but is only used as a server-side safety cap. */
+  untimed?: boolean;
+}
+
+/** Client → server: teacher ends the active round early. */
+export interface QpRaceEndRoundPayload {
+  sessionCode: string;
+  token: string;
+  roundId: string;
 }
 
 /** Client → server: student submits answers for the active round. */
@@ -286,6 +300,10 @@ export interface QpRaceSubmitPayload {
   roundId: string;
   /** categoryId → typed answer. Scored server-side via the bank. */
   answers: Record<string, string>;
+  /** Category ids where the student used a hint / suggestion. Those cells
+   *  score at the reduced (L1) rate even when answered in English — fair
+   *  scaffolding for weaker students without giving full points for help. */
+  helped?: string[];
 }
 
 /** Server → room: a new round began. */
@@ -301,6 +319,8 @@ export interface QpRaceRoundPayload {
   deadlineTs: number;
   /** Server's clock at broadcast — lets clients correct for offset. */
   serverTs: number;
+  /** Relaxed mode — clients hide the countdown and never auto-submit. */
+  untimed?: boolean;
 }
 
 /** One scored cell in a student's round result. */
@@ -319,7 +339,12 @@ export interface QpRaceResultPayload {
   sessionCode: string;
   roundId: string;
   cells: QpRaceCellResult[];
+  /** Base points from scored cells (English + L1). */
   roundPoints: number;
+  /** Extra points for answering fast — 0 in untimed mode or a 0-point
+   *  round. Already folded into totalScore; surfaced so the client can
+   *  celebrate "⚡ +N speed". */
+  speedBonus: number;
   /** The student's running session total after this round. */
   totalScore: number;
 }
@@ -489,7 +514,15 @@ export function isValidNickname(v: unknown): v is string {
 export const QP_CATEGORY_RACE_MODE = "category-race";
 
 /** Round-timer choices the teacher can pick (seconds). */
-export const QP_RACE_ROUND_SECONDS = [30, 60, 90, 120] as const;
+export const QP_RACE_ROUND_SECONDS = [15, 30, 45, 60, 90, 120, 150, 180] as const;
+
+/** Max bonus points for an instant correct answer; scales linearly to 0
+ *  as the round clock runs out. Rewards decisive answers over stalling. */
+export const QP_RACE_SPEED_BONUS_MAX = 10;
+
+/** Safety auto-close (seconds) for untimed rounds, so a forgotten relaxed
+ *  round can't hang the room forever. */
+export const QP_RACE_UNTIMED_SAFETY_SECONDS = 600;
 
 /** Max categories a single round can run over (the bank ships 12). */
 export const QP_RACE_MAX_CATEGORIES = 12;

@@ -16,11 +16,17 @@
 //  3. If the retry also fails with a chunk-load error, hand off to
 //     attemptChunkReload() — which unregisters the SW, drops the caches,
 //     and reloads with a cache-buster so the browser picks up a fresh
-//     index.html with current hashes. We then suspend forever so React
-//     keeps the Suspense fallback up while the tab tears down (the
-//     alternative — letting the rejection propagate — would surface a
-//     scary error screen between attemptChunkReload firing and the
-//     browser actually navigating).
+//     index.html with current hashes. When a reload is actually kicked
+//     off we suspend forever so React keeps the Suspense fallback up
+//     while the tab tears down (the alternative — letting the rejection
+//     propagate — would surface a scary error screen for the split
+//     second before the browser navigates).
+//     But attemptChunkReload() returns false when its 60 s guard blocks
+//     a repeat reload (we already reloaded once and the chunk *still*
+//     won't load). Suspending forever in that case would strand the user
+//     on an infinite spinner with no escape — so we re-throw instead, and
+//     the nearest ErrorBoundary renders its fallback (which offers a
+//     manual recovery button via forceFullRecovery).
 //  4. Non-chunk errors fall through unchanged so real bugs still surface.
 
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
@@ -51,13 +57,15 @@ export function lazyWithRetry<T extends ComponentType<any>>(
       } catch (err2) {
         if (!isChunkLoadError(err2)) throw err2;
 
-        // Recovery already in-flight (or guarded out) — block the
-        // promise so Suspense keeps the fallback visible until the
-        // navigation actually happens. Without this we'd re-throw and
-        // any ErrorBoundary up the tree would render its error UI for
-        // the split second before the page tears down.
-        attemptChunkReload();
-        await new Promise<never>(() => { /* never resolves */ });
+        // Only block the promise when a reload is genuinely in flight —
+        // then Suspense keeps the fallback up until the navigation tears
+        // the tab down. If the guard refused the reload (returns false),
+        // navigation won't happen, so falling through to re-throw lets an
+        // ErrorBoundary surface a recoverable fallback instead of hanging
+        // on the spinner forever.
+        if (attemptChunkReload()) {
+          await new Promise<never>(() => { /* never resolves */ });
+        }
         throw err2;
       }
     }

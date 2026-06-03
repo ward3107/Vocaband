@@ -1,20 +1,13 @@
-import { LogOut, Globe } from "lucide-react";
-import { useState } from "react";
+import { LogOut } from "lucide-react";
 import { supabase } from "../../core/supabase";
-import { useLanguage, languageNames, ALL_LANGUAGES, type Language } from "../../hooks/useLanguage";
+import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 /**
- * Top bar for the student dashboard.  Logout affordance + a compact
- * language switcher (Globe icon + EN/HE/AR label).  The student-facing
- * screens are all translated to EN/HE/AR via src/locales/student/*.ts
- * but the LanguageSwitcher component was previously only mounted on
- * the legal pages (Terms / Privacy / Accessibility / Security), so
- * students had no way to actually flip the language.  Surfacing the
- * picker here makes the existing translations reachable from the
- * dashboard — and once flipped, the choice persists via the
- * useLanguage hook's localStorage so the games + shop + game-active
- * screens all inherit it on the next view change.
+ * Top bar for the student dashboard.  Logout affordance only — the
+ * language switcher was removed: students pick their instruction
+ * language once at login (StudentAccountLoginView / Quick Play join)
+ * and it stays locked, so mid-flow screens no longer offer a change.
  *
  * `onRequestLogout` — when supplied, the logout button asks App.tsx
  * to show the friendly student soft-landing modal ("See you tomorrow,
@@ -30,47 +23,15 @@ interface StudentTopBarProps {
 }
 
 export default function StudentTopBar({ onRequestLogout }: StudentTopBarProps = {}) {
-  const { language, setLanguage } = useLanguage();
+  const { language } = useLanguage();
   const t = studentDashboardT[language];
-  const [langOpen, setLangOpen] = useState(false);
-  const langs: Language[] = ALL_LANGUAGES;
 
+  // The language switcher was removed from the dashboard: students pick
+  // their instruction language once at login (StudentAccountLoginView /
+  // Quick Play join) and it stays locked, so mid-flow screens no longer
+  // offer a way to change it. Only the logout affordance remains here.
   return (
     <div className="flex justify-end items-center gap-2 mb-4">
-      <div className="relative">
-        <button
-          onClick={() => setLangOpen(o => !o)}
-          type="button"
-          aria-label={language === 'he' ? 'החלף שפה' : language === 'ar' ? 'تغيير اللغة' : 'Change language'}
-          aria-expanded={langOpen}
-          style={{ touchAction: 'manipulation' }}
-          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-stone-500 hover:text-stone-900 hover:bg-white/60 rounded-lg text-xs sm:text-sm font-semibold transition-all"
-        >
-          <Globe size={14} />
-          <span className="hidden sm:inline">{languageNames[language]}</span>
-        </button>
-        {langOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setLangOpen(false)} />
-            <div className="absolute top-full mt-1 end-0 z-50 bg-white rounded-lg shadow-xl border border-stone-200 overflow-hidden min-w-[160px]">
-              {langs.map(lng => (
-                <button
-                  key={lng}
-                  onClick={() => { setLanguage(lng); setLangOpen(false); }}
-                  type="button"
-                  style={{ touchAction: 'manipulation' }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium hover:bg-stone-50 transition-colors ${
-                    language === lng ? 'bg-indigo-50 text-indigo-700' : 'text-stone-700'
-                  }`}
-                >
-                  <Globe size={14} aria-hidden />
-                  <span>{languageNames[lng]}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
       <button
         onClick={() => {
           if (onRequestLogout) onRequestLogout();

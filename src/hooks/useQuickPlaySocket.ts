@@ -199,9 +199,12 @@ export interface QuickPlaySocketApi {
   currentRace: QpRaceRoundPayload | null;
   /** Teacher: start a synchronized round. Server rolls the letter and
    *  sets the shared deadline. */
-  startRaceRound: (categories: string[], roundSeconds: number, token: string) => void;
-  /** Student: submit per-category answers for the active round. */
-  submitRaceAnswers: (roundId: string, answers: Record<string, string>) => void;
+  startRaceRound: (categories: string[], roundSeconds: number, token: string, untimed?: boolean) => void;
+  /** Teacher: end the active round early (before its deadline). */
+  endRaceRound: (roundId: string, token: string) => void;
+  /** Student: submit per-category answers for the active round. `helped`
+   *  lists category ids where a hint was used (reduced scoring). */
+  submitRaceAnswers: (roundId: string, answers: Record<string, string>, helped?: string[]) => void;
   /** Student: fires with this client's per-cell scoring after a submit. */
   onRaceResult: (cb: (p: QpRaceResultPayload) => void) => () => void;
   /** Fires when the active round closes (deadline reached). */
@@ -418,6 +421,12 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       const onRaceResult = (p: QpRaceResultPayload) => {
         if (p?.sessionCode === sessionCode) raceResultRef.current?.(p);
       };
+      // Temporary diagnostic (#2/#3): server echoes WHY a RACE_SUBMIT was
+      // dropped so it surfaces in the student's DevTools console without
+      // needing Fly logs. Remove once the drop cause is found + fixed.
+      const onRaceRejected = (p: { reason?: string }) => {
+        console.warn("[CR submit rejected by server] reason=", p?.reason ?? "unknown");
+      };
       const onRaceEnded = (p: QpRaceEndedPayload) => {
         if (p?.sessionCode !== sessionCode) return;
         // Only clear if it's the round that ended — a fresh round may
@@ -438,6 +447,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
       socket.on(QP_SERVER_EVENTS.RACE_RESULT,   onRaceResult);
       socket.on(QP_SERVER_EVENTS.RACE_ENDED,    onRaceEnded);
+      socket.on("qp:race:submit:rejected",      onRaceRejected);
 
       if (socket.connected) onConnect();
 
@@ -454,6 +464,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
         socket.off(QP_SERVER_EVENTS.RACE_RESULT,   onRaceResult);
         socket.off(QP_SERVER_EVENTS.RACE_ENDED,    onRaceEnded);
+        socket.off("qp:race:submit:rejected",      onRaceRejected);
       };
     });
 
@@ -609,20 +620,25 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
 
   // ─── Category Race ───────────────────────────────────────────────────
 
-  const startRaceRound = useCallback((categories: string[], roundSeconds: number, token: string) => {
+  const startRaceRound = useCallback((categories: string[], roundSeconds: number, token: string, untimed?: boolean) => {
     if (!sessionCode || !socketRef.current) return;
     socketRef.current.emit(QP_EVENTS.RACE_START, {
-      sessionCode, token, categories, roundSeconds,
+      sessionCode, token, categories, roundSeconds, untimed: untimed === true,
     });
   }, [sessionCode]);
 
-  const submitRaceAnswers = useCallback((roundId: string, answers: Record<string, string>) => {
+  const endRaceRound = useCallback((roundId: string, token: string) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.RACE_END_ROUND, { sessionCode, token, roundId });
+  }, [sessionCode]);
+
+  const submitRaceAnswers = useCallback((roundId: string, answers: Record<string, string>, helped?: string[]) => {
     if (!sessionCode || !socketRef.current) return;
     // Same sessionStorage-sourced clientId rationale as updateScore —
     // both hook instances must agree on the id the server owns.
     const id = readStoredClientId() ?? clientIdRef.current;
     socketRef.current.emit(QP_EVENTS.RACE_SUBMIT, {
-      sessionCode, clientId: id, roundId, answers,
+      sessionCode, clientId: id, roundId, answers, helped: helped ?? [],
     });
   }, [sessionCode]);
 
@@ -655,6 +671,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     onSessionEnded,
     currentRace,
     startRaceRound,
+    endRaceRound,
     submitRaceAnswers,
     onRaceResult,
     onRaceEnded,

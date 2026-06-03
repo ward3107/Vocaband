@@ -13,9 +13,12 @@ import type { AppUser, AssignmentData } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 
+import {
+  CategoryRaceStudentViewLazy as CategoryRaceStudentView,
+  QuickPlayStudentViewLazy as QuickPlayStudentView,
+} from './studentJoinChunks';
+
 const StudentAccountLoginView = lazyWithRetry(() => import('./StudentAccountLoginView'));
-const QuickPlayStudentView = lazyWithRetry(() => import('./QuickPlayStudentView'));
-const CategoryRaceStudentView = lazyWithRetry(() => import('./CategoryRaceStudentView'));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Anyish = any;
@@ -42,6 +45,11 @@ export interface StudentAuthRoutesDeps {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   studentLoginClassCode: string;
   setStudentLoginClassCode: React.Dispatch<React.SetStateAction<string>>;
+  /** Tier-2 fast login (build-flag gated in App). When provided, the PIN
+   *  card tries the single-round-trip /api/student/login first and only
+   *  falls back to direct signInWithPassword on 'fallback'. Undefined =
+   *  feature off → existing direct path only. */
+  onTier2Login?: (email: string, pin: string) => Promise<'ok' | 'invalid' | 'fallback'>;
 
   // Quick Play student join
   quickPlayActiveSession: {
@@ -89,6 +97,7 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     pendingApprovalInfo, setPendingApprovalInfo, handleLoginAsStudent,
     error,
     studentLoginClassCode, setStudentLoginClassCode,
+    onTier2Login,
     quickPlayActiveSession, setQuickPlayActiveSession,
     quickPlayStudentName, setQuickPlayStudentName,
     quickPlayAvatar, setQuickPlayAvatar,
@@ -118,6 +127,7 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
           error={error}
           studentLoginClassCode={studentLoginClassCode}
           setStudentLoginClassCode={setStudentLoginClassCode}
+          onTier2Login={onTier2Login}
           cookieBannerOverlay={cookieBannerOverlay}
         />
       </LazyWrapper>

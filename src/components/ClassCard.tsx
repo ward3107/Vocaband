@@ -16,6 +16,7 @@ import {
   ACCENTS,
   ACCENT_ORDER,
   BRAND_GRADIENT,
+  RECENT_RING_COLOR,
   type AccentName,
 } from "./dashboard/dashboardAccents";
 
@@ -91,6 +92,11 @@ interface ClassCardProps {
    *  avatar popover.  Optional — popover hides the swatch row when not
    *  wired. */
   onAccentChange?: (next: AccentName) => Promise<void> | void;
+  /** When true (pastel variant only), the card is highlighted as the
+   *  teacher's most-recently-active class: thicker brand-purple ring +
+   *  a small badge in the top-right. Helps a teacher with 3+ classes
+   *  spot the one they were just working on. */
+  isRecent?: boolean;
 }
 
 const ClassCard: React.FC<ClassCardProps> = ({
@@ -123,6 +129,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   variant = "classic",
   accent,
   onAccentChange,
+  isRecent = false,
 }) => {
   const { language } = useLanguage();
   const isPastel = variant === "pastel";
@@ -291,11 +298,19 @@ const ClassCard: React.FC<ClassCardProps> = ({
           ? {
               // Pastel: outer card carries the accent gradient (or
               // custom hex tint) directly so the whole card reads as
-              // one tinted surface. No border — the soft shadow does
-              // the lifting.
+              // one tinted surface.  The tonal border frames each card
+              // so they read as discrete surfaces against the page
+              // background (without it, the soft pastels blur into the
+              // page on light themes).  When `isRecent`, swap the
+              // tonal border for the brand-purple ring so the teacher
+              // can spot their most-recent class at a glance.
               background: backgroundColor ?? pastelBg ?? "var(--vb-surface)",
-              boxShadow:
-                "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.25)",
+              boxShadow: isRecent
+                ? `0 1px 0 rgba(255,255,255,0.7) inset, 0 0 0 3px ${RECENT_RING_COLOR}, 0 22px 44px -20px ${RECENT_RING_COLOR}55`
+                : "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.25)",
+              border: isRecent
+                ? "none"
+                : `1.5px solid ${accentDef?.border ?? "rgba(0,0,0,0.08)"}`,
             }
           : {
               backgroundColor: 'var(--vb-surface)',
@@ -304,10 +319,22 @@ const ClassCard: React.FC<ClassCardProps> = ({
       }
       className={
         isPastel
-          ? "rounded-[28px] overflow-hidden"
+          ? "relative rounded-[28px] overflow-visible"
           : "rounded-xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden"
       }
     >
+      {isPastel && isRecent && (
+        <span
+          style={{
+            background: RECENT_RING_COLOR,
+            color: "#fff",
+            boxShadow: `0 6px 14px -6px ${RECENT_RING_COLOR}99`,
+          }}
+          className="absolute -top-2 -start-2 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+        >
+          {t.recentBadge}
+        </span>
+      )}
       {/* Header band — wraps the school strip + class-name row so the
           per-class tint (backgroundColor prop) sits behind those two
           elements only.  Rest of the card stays neutral so the

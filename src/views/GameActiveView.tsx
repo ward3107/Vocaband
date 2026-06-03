@@ -37,6 +37,19 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
   // Speed Round = red.  60-second timer mode; red signals urgency
   // and pairs visually with the pulsing low-time-left timer.
   "speed-round": "red",
+  // Remaining modes — each component was built with a designed colour
+  // (see its docstring) but was missing here, so it fell back to grey
+  // stone styling (and matching/memory-flip lost their top label pill,
+  // flashcards showed a grey front against a cyan back). Wire them all
+  // so every mode looks finished.
+  flashcards: "cyan",
+  spelling: "violet",
+  scramble: "indigo",
+  matching: "amber",
+  "memory-flip": "pink",
+  "letter-sounds": "violet",
+  "sentence-builder": "teal",
+  review: "violet",
 };
 
 /** Modes whose "show correct answer" payload is the English vocab word
@@ -64,7 +77,6 @@ import ScrambleGame from "../components/game/ScrambleGame";
 import IdiomGame from "../components/game/IdiomGame";
 import SpeedRoundGame from "../components/game/SpeedRoundGame";
 import ReviewGame from "../components/game/ReviewGame";
-import RelationsGame from "../components/game/RelationsGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -239,7 +251,13 @@ export default function GameActiveView({
   // and push the mode's own UI below the fold on mobile.
   const isSelfContainedMode =
     gameMode === 'idiom' ||
-    gameMode === 'speed-round' || gameMode === 'class-minute';
+    gameMode === 'speed-round' || gameMode === 'class-minute' ||
+    // Review renders its OWN prompt word, progress, and finish flow
+    // (ReviewGame self-fetches its SRS queue). Without this it leaked
+    // the global WordPromptCard showing a stale gameWords[currentIndex]
+    // above its own UI, plus a power-up toolbar + "1 / 0" progress bar
+    // that don't apply.
+    gameMode === 'review';
 
   const renderModeContent = () => {
     if (gameMode === "classic" || gameMode === "listening" || gameMode === "reverse") {
@@ -317,6 +335,7 @@ export default function GameActiveView({
           hiddenOptions={hiddenOptions}
           feedback={feedback}
           gameWordsCount={gameWords.length}
+          targetLanguage={targetLanguage}
           onAnswer={handleAnswer}
           themeColor={modeTheme}
         />
@@ -388,18 +407,6 @@ export default function GameActiveView({
         />
       );
     }
-    if (gameMode === "relations") {
-      // Synonyms & Antonyms — multi-choice question alternating
-      // between syn / ant per turn.  Question source is the curated
-      // RELATIONS dataset, not the assignment word pool.
-      return (
-        <RelationsGame
-          themeColor={modeTheme ?? "violet"}
-          speak={speak}
-          onFinish={handleExitGame}
-        />
-      );
-    }
     if (gameMode === "scramble") {
       return (
         <ScrambleGame
@@ -467,8 +474,6 @@ export default function GameActiveView({
         score={score}
         xp={xp}
         streak={streak}
-        targetLanguage={targetLanguage}
-        setTargetLanguage={setTargetLanguage}
         onExit={handleExitGame}
       />
 
@@ -561,14 +566,15 @@ export default function GameActiveView({
                   </div>
                 )}
 
-                {/* Skip WordPromptCard for fill-blank (renders its own
-                    gapped sentence as the prompt), flashcards (the
-                    3D flip card BECOMES the prompt), and scramble
-                    (Phase 3g renders the scrambled letters as
-                    interactive TILES inside ScrambleGame, plus its
-                    own translation prompt — WordPromptCard would
-                    show the scramble as static text alongside).  */}
-                {!isSelfContainedMode && gameMode !== "fill-blank" && gameMode !== "flashcards" && gameMode !== "scramble" && (
+                {/* Skip WordPromptCard for modes that render their own
+                    prompt: fill-blank (gapped sentence), flashcards (the
+                    3D flip card IS the prompt), scramble (interactive
+                    letter TILES + own translation), sentence-builder
+                    (listen-hero — WordPromptCard otherwise showed a
+                    stray gameWords[0] word above it), and letter-sounds
+                    (its letter-by-letter reveal IS the word — showing
+                    the full English word here spoiled the mechanic). */}
+                {!isSelfContainedMode && gameMode !== "fill-blank" && gameMode !== "flashcards" && gameMode !== "scramble" && gameMode !== "sentence-builder" && gameMode !== "letter-sounds" && (
                   <WordPromptCard
                     currentIndex={currentIndex}
                     gameWordsLength={gameWords.length}

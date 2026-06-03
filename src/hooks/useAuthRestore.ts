@@ -800,15 +800,23 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
         setQuickPlaySessionEnded(false);
         try { localStorage.removeItem('vocaband_student_login'); } catch {}
         try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
+        // Capture the Quick Play guest marker BEFORE the removeItem below
+        // wipes it — the post-logout routing needs it.
+        const wasQpGuest = (() => {
+          try { return !!localStorage.getItem('vocaband_qp_guest'); } catch { return false; }
+        })();
         try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
         try { clearAllReadCache(); } catch {}
-        const wasStudent = lastUserRoleRef.current === 'student';
-        // Teachers land on the lightweight teacher-login card, not the heavy
-        // marketing landing chunk — logging out then waiting seconds for the
-        // landing page to download was the symptom. Mirrors the student path.
-        const postLogoutView: View = wasStudent ? 'student-account-login' : 'teacher-login';
+        // Route the student login ONLY for confirmed students + Quick Play
+        // guests; teachers (and admins/managers) keep the teacher login card.
+        // Key on a POSITIVE student/guest signal rather than "anyone who isn't
+        // 'teacher'": the latter dumped teachers whose role ref was stale, and
+        // admins/managers, onto the student screen. Guests are detected via
+        // their localStorage marker since their role can be unset.
+        const wasStudentOrGuest = lastUserRoleRef.current === 'student' || wasQpGuest;
+        const postLogoutView: View = wasStudentOrGuest ? 'student-account-login' : 'teacher-login';
         lastUserRoleRef.current = null;
-        const target = wasStudent ? '/student' : '/teacher';
+        const target = wasStudentOrGuest ? '/student' : '/teacher';
         if (!quickPlaySessionParam) {
           try { window.history.replaceState({ view: postLogoutView }, '', target); } catch {
             try { window.history.replaceState({ view: postLogoutView }, ''); } catch {}

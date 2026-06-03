@@ -12,7 +12,7 @@ import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
-import { useLanguage, languageNames, ALL_LANGUAGES } from "../hooks/useLanguage";
+import { useLanguage, languageNames } from "../hooks/useLanguage";
 import { quickPlayT } from "../locales/student/quick-play";
 
 // Quick Play join flow: students connect to the `/quick-play`
@@ -159,20 +159,50 @@ export default function QuickPlayStudentView({
   // teacher's "one student stuck reconnecting while the other nine play
   // fine" report) leaves the student on the language picker or
   // "Reconnecting…" button forever, since `lastError` only fires on
-  // protocol-level rejections.  After 8s with no JOINED or error, reset
-  // the UI and surface a retry-friendly toast.
+  // protocol-level rejections.
+  //
+  // The watchdog now silently re-emits up to JOIN_MAX_ATTEMPTS times
+  // with a 6-second per-attempt window before surfacing the error.  A
+  // single dropped WS frame on weak school Wi-Fi used to dump the
+  // student straight into the "📡 internet went away" screen even
+  // though the very next attempt would have landed.  Three attempts at
+  // 6s each gives ~18s of recovery budget before the error state shows,
+  // which is roughly what students will tolerate before bailing
+  // themselves.  Server-side STUDENT_JOIN is idempotent for the same
+  // clientId (it's the same path socket.io reconnect uses).
+  const JOIN_ATTEMPT_TIMEOUT_MS = 6_000;
+  const JOIN_MAX_ATTEMPTS = 3;
   const joinWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const joinAttemptCountRef = useRef(0);
   const disarmJoinWatchdog = () => {
     if (joinWatchdogRef.current) {
       clearTimeout(joinWatchdogRef.current);
       joinWatchdogRef.current = null;
     }
+    joinAttemptCountRef.current = 0;
   };
-  const armJoinWatchdog = () => {
-    disarmJoinWatchdog();
-    joinWatchdogRef.current = setTimeout(() => {
+  const armJoinWatchdog = (reemit: () => void) => {
+    if (joinWatchdogRef.current) {
+      clearTimeout(joinWatchdogRef.current);
       joinWatchdogRef.current = null;
-      if (pendingJoinRef.current === null) return;
+    }
+    joinAttemptCountRef.current = 1;
+    const tick = () => {
+      // Pending intent already resolved (JOINED arrived or user backed out).
+      if (pendingJoinRef.current === null) {
+        joinWatchdogRef.current = null;
+        joinAttemptCountRef.current = 0;
+        return;
+      }
+      if (joinAttemptCountRef.current < JOIN_MAX_ATTEMPTS) {
+        joinAttemptCountRef.current += 1;
+        try { reemit(); } catch { /* socket layer logs its own errors */ }
+        joinWatchdogRef.current = setTimeout(tick, JOIN_ATTEMPT_TIMEOUT_MS);
+        return;
+      }
+      // Exhausted — surface the error UI.
+      joinWatchdogRef.current = null;
+      joinAttemptCountRef.current = 0;
       pendingJoinRef.current = null;
       const wasResuming = resumingRef.current;
       setResuming(false);
@@ -188,7 +218,8 @@ export default function QuickPlayStudentView({
       } else {
         showToast(quickPlayT[qpLanguage]?.toastCantReachGame ?? quickPlayT.en.toastCantReachGame, "error");
       }
-    }, 8000);
+    };
+    joinWatchdogRef.current = setTimeout(tick, JOIN_ATTEMPT_TIMEOUT_MS);
   };
   // Mirror `resuming` into a ref so the watchdog (closed over at arm
   // time) reads the live value rather than the value at the moment
@@ -378,7 +409,7 @@ export default function QuickPlayStudentView({
       // rejecting (nickname_taken, session inactive, kicked) and the
       // student "played" a session they were never in.
       pendingJoinRef.current = applyJoinedState;
-      armJoinWatchdog();
+      armJoinWatchdog(() => quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar));
       quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
     }, 100);
   };
@@ -576,7 +607,7 @@ export default function QuickPlayStudentView({
                       if (quickPlayActiveSession && quickPlayStudentName) {
                         setResuming(true);
                         pendingJoinRef.current = advance;
-                        armJoinWatchdog();
+                        armJoinWatchdog(() => quickPlaySocket.joinAsStudent(quickPlayStudentName, quickPlayAvatar));
                         quickPlaySocket.joinAsStudent(quickPlayStudentName, quickPlayAvatar);
                       } else {
                         advance();
@@ -627,7 +658,10 @@ export default function QuickPlayStudentView({
               </div>
 
               <div className="space-y-3">
-                {ALL_LANGUAGES.map((lang) => (
+                {/* Hebrew/Arabic only — students learn English toward their
+                    native language; an English-UI option would show no
+                    translations. Single point where the language is chosen. */}
+                {(['he', 'ar'] as const).map((lang) => (
                   <button
                     key={lang}
                     onClick={() => {

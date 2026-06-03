@@ -16,7 +16,6 @@ import { motion } from "motion/react";
 export interface HebrewLaunches {
   niqqud: () => void;
   shoresh: () => void;
-  synonym: () => void;
   listening: () => void;
 }
 
@@ -52,14 +51,6 @@ export default function HebrewSoloLaunchStrip({
       gradient: "from-emerald-500 via-teal-500 to-cyan-600",
       shadow: "shadow-emerald-500/20",
       onLaunch: launches.shoresh,
-    },
-    {
-      emoji: "↔",
-      title: "התאמת מילים נרדפות",
-      blurb: "התאימו מילים לפי משמעות · כיתות ד–ט · 10 סיבובים",
-      gradient: "from-fuchsia-500 via-pink-500 to-rose-600",
-      shadow: "shadow-fuchsia-500/20",
-      onLaunch: launches.synonym,
     },
     {
       emoji: "🎧",

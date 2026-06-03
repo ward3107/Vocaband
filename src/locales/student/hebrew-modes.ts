@@ -31,12 +31,6 @@ export interface HebrewModesStrings {
   listenPraiseMid: string;
   listenPraiseLow: string;
 
-  // SynonymMatchView
-  synonymChipLabel: string;
-  antonymChipLabel: string;
-  synonymPraiseHigh: string;
-  synonymPraiseMid: string;
-  synonymPraiseLow: string;
 
   // ShoreshHuntView
   shoreshInstruction: string;
@@ -64,11 +58,6 @@ export const hebrewModesT: Record<Language, HebrewModesStrings> = {
     listenPraiseHigh: "Excellent! Great Hebrew ear",
     listenPraiseMid: "Nice — your listening keeps improving",
     listenPraiseLow: "Keep listening — your ear will sharpen",
-    synonymChipLabel: "נרדפת · synonym",
-    antonymChipLabel: "הפך · antonym",
-    synonymPraiseHigh: "Excellent! Strong vocabulary",
-    synonymPraiseMid: "Nice — you're building real vocabulary",
-    synonymPraiseLow: "Practice helps — try again",
     shoreshInstruction: "Find the 3 root letters",
     shoreshCorrect: "✓ Correct",
     shoreshShowAnswer: (letters) => `✗ Root: ${letters}`,
@@ -90,11 +79,6 @@ export const hebrewModesT: Record<Language, HebrewModesStrings> = {
     listenPraiseHigh: "מצוין! אוזן עברית מצוינת",
     listenPraiseMid: "יפה — האוזן משתפרת עם תרגול",
     listenPraiseLow: "נמשיך להאזין — האוזן תתחזק",
-    synonymChipLabel: "נרדפת · synonym",
-    antonymChipLabel: "הפך · antonym",
-    synonymPraiseHigh: "מצוין! אוצר מילים חזק",
-    synonymPraiseMid: "יפה — ממשיכים לבנות אוצר מילים",
-    synonymPraiseLow: "התרגול עוזר — נסה שוב",
     shoreshInstruction: "מצאו את 3 אותיות השורש",
     shoreshCorrect: "✓ נכון",
     shoreshShowAnswer: (letters) => `✗ השורש: ${letters}`,
@@ -116,11 +100,6 @@ export const hebrewModesT: Record<Language, HebrewModesStrings> = {
     listenPraiseHigh: "ممتاز! أذن عبرية رائعة",
     listenPraiseMid: "جيد — استماعك يتحسّن مع التدريب",
     listenPraiseLow: "تابع الاستماع — ستتحسّن أذنك",
-    synonymChipLabel: "נרדפת · مرادف",
-    antonymChipLabel: "הפך · ضد",
-    synonymPraiseHigh: "ممتاز! مفردات قوية",
-    synonymPraiseMid: "جيد — تبني مفرداتك خطوة بخطوة",
-    synonymPraiseLow: "التدريب يساعد — حاول مرة أخرى",
     shoreshInstruction: "اعثر على حروف الجذر الثلاثة",
     shoreshCorrect: "✓ صحيح",
     shoreshShowAnswer: (letters) => `✗ الجذر: ${letters}`,
@@ -142,11 +121,6 @@ export const hebrewModesT: Record<Language, HebrewModesStrings> = {
     listenPraiseHigh: "Excellent! Great Hebrew ear",
     listenPraiseMid: "Nice — your listening keeps improving",
     listenPraiseLow: "Keep listening — your ear will sharpen",
-    synonymChipLabel: "נרדפת · synonym",
-    antonymChipLabel: "הפך · antonym",
-    synonymPraiseHigh: "Excellent! Strong vocabulary",
-    synonymPraiseMid: "Nice — you're building real vocabulary",
-    synonymPraiseLow: "Practice helps — try again",
     shoreshInstruction: "Find the 3 root letters",
     shoreshCorrect: "✓ Correct",
     shoreshShowAnswer: (letters) => `✗ Root: ${letters}`,

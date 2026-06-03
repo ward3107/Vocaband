@@ -8,12 +8,17 @@
 #                      One class of inline script is allowlisted by
 #                      SHA-256 hash:
 #                        Vocaband's boot-debug.js — inlined into
-#                        index.html by vocabandHtmlPerf (vite.config.ts)
-#                        to save one cold-load RTT. When public/boot-debug.js
-#                        changes, recompute its hash with
-#                          openssl dgst -sha256 -binary public/boot-debug.js | openssl base64 -A
-#                        and replace the BOOT_DEBUG entry below.  Current:
-#                          BOOT_DEBUG (2026-05-22): jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=
+#                        index.html by vocabandHtmlPerf (vite.config.ts).
+#                        The plugin auto-rewrites the BOOT_DEBUG hash in
+#                        dist/_headers at build time from the actual file
+#                        contents, so this checked-in value can drift and
+#                        still ship a correct policy. The format below
+#                        MUST stay a single sha256 token quoted in both
+#                        script-src and script-src-elem so the regex
+#                        replacement finds it. If this value doesn't
+#                        match the source file's current hash, the build
+#                        warns but still ships the correct hash to dist.
+#                          BOOT_DEBUG (2026-06-03): jfdTJmTJMBkWScnPEkrwJrS5EX9O4il57RiDGkHMHc0=
 #
 #                      (2026-05-23) Cloudflare Insights retired: the
 #                      product injected a rotating inline bootstrap

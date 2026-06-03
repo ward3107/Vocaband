@@ -191,7 +191,6 @@ const EXERCISE_LABEL: Record<ExerciseType, string> = {
   listening_dictation: "Listening Dictation",
   fill_blank: "Fill in the Blank",
   definition_match: "Definition Match",
-  synonym_antonym: "Synonyms & Antonyms",
   cloze: "Cloze Paragraph",
   sentence_building: "Sentence Building",
   translation_typing: "Translation Typing",

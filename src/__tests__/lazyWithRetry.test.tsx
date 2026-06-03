@@ -54,6 +54,41 @@ describe('lazyWithRetry', () => {
     expect(factory).toHaveBeenCalledTimes(2);
   });
 
+  it('re-throws to the boundary once the reload guard blocks a repeat reload', async () => {
+    // Simulate a returning user who already triggered a recovery reload in
+    // this tab: the guard timestamp is fresh, so attemptChunkReload() will
+    // refuse to navigate again. The lazy chunk still 404s. We must surface
+    // the error to an ErrorBoundary rather than suspend forever on a spinner.
+    sessionStorage.setItem('vocaband_chunk_reload_attempted_at', String(Date.now()));
+    const factory = vi.fn(() =>
+      Promise.reject(new Error('Failed to fetch dynamically imported module: foo.js')),
+    );
+    const Lazy = lazyWithRetry(factory);
+
+    class Boundary extends React.Component<{ children: React.ReactNode }, { errored: boolean }> {
+      state = { errored: false };
+      static getDerivedStateFromError() {
+        return { errored: true };
+      }
+      render() {
+        return this.state.errored ? <span>caught</span> : this.props.children;
+      }
+    }
+
+    render(
+      <Boundary>
+        <Suspense fallback={<span>loading</span>}>
+          <Lazy />
+        </Suspense>
+      </Boundary>,
+    );
+
+    // Both attempts fail (initial + the single retry), then the guarded-out
+    // reload re-throws into the boundary instead of hanging.
+    await waitFor(() => expect(screen.getByText('caught')).toBeDefined(), { timeout: 2000 });
+    expect(factory).toHaveBeenCalledTimes(2);
+  });
+
   it('propagates non-chunk errors without retrying', async () => {
     const factory = vi.fn(() => Promise.reject(new Error('something else went wrong')));
     const Lazy = lazyWithRetry(factory);

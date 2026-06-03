@@ -11,8 +11,10 @@ import AnnouncementBanner from "./components/AnnouncementBanner";
 // further down as React.lazy) carry it in their own chunks now, so the
 // ~43 kB gz motion bundle drops out of the App.tsx modulepreload chain
 // on cold first-paint.
-import { hasTeacherAccess, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { supabase, hasTeacherAccess, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
+import { studentLoginViaServer } from "./api/studentLogin";
 import { useAudio } from "./hooks/useAudio";
+import { primeAudio } from "./utils/primeAudio";
 import { useLanguage } from "./hooks/useLanguage";
 import { appToastsT } from "./locales/app-toasts";
 import { useRetention } from "./hooks/useRetention";
@@ -380,6 +382,32 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
+
+  // Achievement snapshot — rebuilt whenever xp / streak / progress changes
+  // and handed to `recordEvent` so the hook can re-evaluate every locked
+  // achievement. MUST live here with the top-level hooks: it was previously
+  // placed after the view-routing early returns near the render tail, so it
+  // ran on the in-game render but NOT on the student-dashboard render (which
+  // early-returns earlier) — flipping App's hook count between those two
+  // views and throwing React #310 on the dashboard→game transition. The
+  // arcadeActive guard inside keeps it a no-op for non-arcade sessions.
+  // Word-mastered uses a coarse proxy (distinct progress rows ≥80) until the
+  // mastery ledger is wired in.
+  useEffect(() => {
+    if (!arcadeActive) return;
+    const perfectScores = studentProgress.filter((p) => p.score >= 100).length;
+    const modesPlayed = new Set(studentProgress.map((p) => p.mode));
+    const wordsMastered = studentProgress.filter((p) => p.score >= 80).length * 5;
+    void achievements.recordEvent({
+      xp,
+      streak,
+      gamesPlayed: studentProgress.length,
+      perfectScores,
+      wordsMastered,
+      modesPlayed,
+    });
+  }, [arcadeActive, xp, streak, studentProgress, achievements]);
+
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
   // Warm the audio cache for the active assignment so a student who loses
   // Wi-Fi mid-lesson can still hear the words. Idle-scheduled, skipped on
@@ -456,6 +484,16 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     targetLanguage, setTargetLanguage,
     hasChosenLanguage, setHasChosenLanguage,
   } = useTargetLanguageState();
+
+  // Lock the translation target to the chosen UI language: a student who
+  // picks Hebrew sees Hebrew translations everywhere, Arabic → Arabic.
+  // The in-game language toggle was removed, so this is the single source
+  // of truth. (English UI — teachers/demo — keeps the existing target.)
+  useEffect(() => {
+    if (appLanguage === 'he') setTargetLanguage('hebrew');
+    else if (appLanguage === 'ar') setTargetLanguage('arabic');
+  }, [appLanguage, setTargetLanguage]);
+
   const [isFinished, setIsFinished] = useState(false);
   const [wordAttempts, setWordAttempts] = useState<Record<number, number>>({});
 
@@ -732,6 +770,26 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     restoreInProgressRef: restoreInProgress,
   });
 
+  // Re-consent, exit-confirm, class-not-found, class-switch overlay markup.
+  // MUST stay here with the other top-level hooks — above every early
+  // return below. It was previously called further down (after the public /
+  // quick-play-exit / student-auth early returns), so a student
+  // transitioning from the join form (early-returned) into the dashboard or
+  // live-challenge game (not early-returned) ran this hook on one render but
+  // not the previous one — React #310 ("Rendered more hooks than during the
+  // previous render"), which crashed the live-challenge join. The returned
+  // overlay nodes are only consumed by the authenticated branches further
+  // down, so hoisting the call changes nothing visible.
+  const { consentModal, exitConfirmModal, classNotFoundBanner, classSwitchModal } = useAppOverlays({
+    user, needsConsent, showOnboarding,
+    consentChecked, setConsentChecked,
+    consentMode, dontShowAgain, setDontShowAgain,
+    recordConsent,
+    showExitConfirmModal, setShowExitConfirmModal, beginExitFlow,
+    classNotFoundIntent, setClassNotFoundIntent, setView,
+    pendingClassSwitch, handleConfirmClassSwitch, handleCancelClassSwitch,
+  });
+
   // Apply teacher dashboard theme to document root.  Extract theme ID
   // separately so the effect doesn't re-run on unrelated user updates.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -772,6 +830,12 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // Class Minute entry point — dashboard widget + ?play=class-minute
   // deep link.  Pulls SRS-due words → assignments → SET_2_WORDS.
   const startClassMinute = useCallback(async () => {
+    // Prime iOS audio synchronously inside the dashboard-tap gesture,
+    // BEFORE the await below — once we yield to the async word-pick the
+    // gesture context is gone and SpeedRoundGame's auto-speak would be
+    // muted on iOS. Idempotent. (Deep-link launches have no gesture, but
+    // those are rare and already-primed sessions stay primed.)
+    primeAudio();
     const seedWords = await pickClassMinuteWords({
       allWords: ALL_WORDS,
       set2Words: SET_2_WORDS,
@@ -783,6 +847,67 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     setShowModeSelection(false);
     setView("game");
   }, [ALL_WORDS, SET_2_WORDS, studentAssignments]);
+
+  // ─── Tier-2 fast student login (build-flag gated) ───────────────────────
+  // Collapses PIN login's 3-4 serial client→Frankfurt hops into ONE edge
+  // round-trip via /api/student/login (see docs/login-latency-tier2-proposal.md).
+  // Returns:
+  //   'ok'       — session set + dashboard hydrated here, nothing else to do
+  //   'invalid'  — wrong PIN; the card shows its own error
+  //   'fallback' — endpoint disabled / unavailable / bootstrap missing; the
+  //                card runs the existing direct signInWithPassword path
+  // Gated behind VITE_ENABLE_TIER2_LOGIN so it ships dark until the operator
+  // sets SUPABASE_ANON_KEY on Fly and flips the build flag.
+  const tier2LoginEnabled =
+    (import.meta as { env?: { VITE_ENABLE_TIER2_LOGIN?: string } }).env?.VITE_ENABLE_TIER2_LOGIN === 'true';
+  const handleTier2StudentLogin = useCallback(
+    async (email: string, pin: string): Promise<'ok' | 'invalid' | 'fallback'> => {
+      // User-local YYYY-MM-DD — drives the bootstrap's daily-missions / pet rollover.
+      const localDate = new Intl.DateTimeFormat('sv-SE').format(new Date());
+      // Suppress the onAuthStateChange restore that setSession() will fire —
+      // we hydrate directly from the server's bootstrap payload instead, so
+      // we don't pay the very client-side hops this endpoint exists to remove.
+      manualLoginInProgress.current = true;
+      try {
+        const result = await studentLoginViaServer({ email, pin, localDate });
+        if (result.kind === 'invalid') return 'invalid';
+        if (result.kind === 'unavailable') return 'fallback';
+        // Need a usable student dashboard payload to safely skip the client
+        // restore. If the server's bootstrap failed (null/non-ok/non-student),
+        // fall back to the direct path (which runs the normal restore) rather
+        // than landing the student on an empty dashboard.
+        const boot = result.bootstrap;
+        if (!boot || boot.status !== 'ok' || !boot.user || boot.user.role !== 'student') {
+          return 'fallback';
+        }
+        const { error: setErr } = await supabase.auth.setSession({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
+        });
+        if (setErr) return 'fallback';
+        // Hydrate exactly what restoreSession's student branch would have set.
+        setUser(boot.user);
+        checkConsent(boot.user);
+        setStudentAssignments(boot.assignments);
+        setStudentProgress(boot.progress);
+        setBadges(boot.user.badges || []);
+        setXp(boot.user.xp ?? 0);
+        setStreak(boot.user.streak ?? 0);
+        setLoading(false);
+        setView('student-dashboard');
+        return 'ok';
+      } catch {
+        return 'fallback';
+      } finally {
+        // Release the guard on the next tick so the SIGNED_IN event already
+        // queued by setSession() is skipped, while future events (token
+        // refresh, sign-out) are handled normally.
+        setTimeout(() => { manualLoginInProgress.current = false; }, 0);
+      }
+    },
+    [manualLoginInProgress, setUser, checkConsent, setStudentAssignments,
+     setStudentProgress, setBadges, setXp, setStreak, setLoading, setView],
+  );
 
   // Deep-link consumers: ?assignment=<id> + ?play=class-minute.
   useDeepLinkConsumers({
@@ -955,21 +1080,6 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     qpResumeSuppress, ocrPendingFile, setOcrPendingFile, processOcrFile,
   });
 
-  // Re-consent / exit-confirm / class-not-found / class-switch overlay
-  // markup. MUST stay above every early return below (the loading
-  // spinner and all route guards) so the hook order never changes
-  // between renders (Rules of Hooks). Modals are consumed by the
-  // dashboard sections further down.
-  const { consentModal, exitConfirmModal, classNotFoundBanner, classSwitchModal } = useAppOverlays({
-    user, needsConsent, showOnboarding,
-    consentChecked, setConsentChecked,
-    consentMode, dontShowAgain, setDontShowAgain,
-    recordConsent,
-    showExitConfirmModal, setShowExitConfirmModal, beginExitFlow,
-    classNotFoundIntent, setClassNotFoundIntent, setView,
-    pendingClassSwitch, handleConfirmClassSwitch, handleCancelClassSwitch,
-  });
-
   if (loading && !quickPlaySessionParam) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-100">
       <SvgSpinner className="animate-spin text-blue-700" size={48} />
@@ -1025,6 +1135,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     setScore, setFeedback, setIsFinished, setMistakes, setShowModeSelection,
     cleanupSessionData,
     setQuickPlayKicked,
+    onTier2Login: tier2LoginEnabled ? handleTier2StudentLogin : undefined,
   });
   if (studentAuthRoute) return studentAuthRoute;
 

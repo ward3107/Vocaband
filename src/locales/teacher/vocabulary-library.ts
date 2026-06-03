@@ -62,6 +62,11 @@ export interface VocabularyLibraryStrings {
 
   // Move / reparent
   moveAria: string;
+  renameAria: string;
+  deleteAria: string;
+  renamePrompt: string;
+  deleteConfirm: (name: string) => string;
+  toastRenamed: string;
   moveModalTitle: (name: string) => string;
   movePickFolder: string;
   moveToRoot: string;
@@ -81,20 +86,20 @@ export interface VocabularyLibraryStrings {
 export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
   en: {
     pageTitle: "Vocabulary Library",
-    pageSubtitle: "Your saved word lists, organized into collections",
+    pageSubtitle: "Your saved word lists — name each after its book, unit, or page",
     backToDashboard: "Back to dashboard",
 
-    tabAllSets: "All sets",
-    tabCollections: "Collections",
+    tabAllSets: "My word lists",
+    tabCollections: "Folders",
     tabRecent: "Recent",
 
-    newCollection: "New collection",
-    newSet: "New vocabulary set",
+    newCollection: "New folder",
+    newSet: "New word list",
     searchPlaceholder: "Search your library…",
 
-    emptyLibraryTitle: "Your library is empty",
+    emptyLibraryTitle: "Create your first word list",
     emptyLibraryBlurb:
-      "Build a vocabulary set from a photo of a page, a paste, a topic, or by typing words manually. Everything you create is saved here for reuse.",
+      "Tap “New word list”, name it after the book, unit, or page (e.g. “English 6 · Unit 3”), then paste the words or snap a photo of the page. Everything you save here is reusable.",
     emptyCollectionTitle: "This collection is empty",
     emptyCollectionBlurb: "Add a vocabulary set or a sub-collection to get started.",
     emptyRecentTitle: "Nothing recent yet",
@@ -126,6 +131,11 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
     emptySetsHereBlurb: "No sets in this folder yet. Tap “New vocabulary set” to add one.",
 
     moveAria: "Move",
+    renameAria: "Rename",
+    deleteAria: "Delete",
+    renamePrompt: "New name:",
+    deleteConfirm: (name) => `Delete “${name}”? This can't be undone.`,
+    toastRenamed: "Renamed",
     moveModalTitle: (name) => `Move “${name}”`,
     movePickFolder: "Pick a destination folder",
     moveToRoot: "Move to root (no folder)",
@@ -142,20 +152,20 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
   },
   he: {
     pageTitle: "ספריית אוצר המילים",
-    pageSubtitle: "רשימות המילים השמורות שלך, מאורגנות באוספים",
+    pageSubtitle: "רשימות המילים השמורות שלך — תנו שם לפי הספר, היחידה או העמוד",
     backToDashboard: "חזרה ללוח המורה",
 
-    tabAllSets: "כל הרשימות",
-    tabCollections: "אוספים",
+    tabAllSets: "הרשימות שלי",
+    tabCollections: "תיקיות",
     tabRecent: "אחרונים",
 
-    newCollection: "אוסף חדש",
+    newCollection: "תיקייה חדשה",
     newSet: "רשימת מילים חדשה",
     searchPlaceholder: "חיפוש בספרייה…",
 
-    emptyLibraryTitle: "הספרייה שלך ריקה",
+    emptyLibraryTitle: "צרו את רשימת המילים הראשונה",
     emptyLibraryBlurb:
-      "בנו רשימת מילים מצילום של עמוד, מהדבקת טקסט, מנושא או על־ידי הקלדה ידנית. כל מה שתצרו יישמר כאן לשימוש חוזר.",
+      "הקישו על “רשימת מילים חדשה”, תנו שם לפי הספר, היחידה או העמוד (למשל “אנגלית 6 · יחידה 3”), ואז הדביקו את המילים או צלמו את העמוד. כל מה שתשמרו כאן ניתן לשימוש חוזר.",
     emptyCollectionTitle: "האוסף הזה ריק",
     emptyCollectionBlurb: "הוסיפו רשימת מילים או תת־אוסף כדי להתחיל.",
     emptyRecentTitle: "עדיין אין פעילות אחרונה",
@@ -187,6 +197,11 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
     emptySetsHereBlurb: "אין עדיין רשימות בתיקייה הזו. הקישו על “רשימת מילים חדשה” כדי להוסיף.",
 
     moveAria: "העברה",
+    renameAria: "שינוי שם",
+    deleteAria: "מחיקה",
+    renamePrompt: "שם חדש:",
+    deleteConfirm: (name) => `למחוק את "${name}"? אי אפשר לבטל.`,
+    toastRenamed: "השם שונה",
     moveModalTitle: (name) => `העברת "${name}"`,
     movePickFolder: "בחרו תיקיית יעד",
     moveToRoot: "העבר לשורש (ללא תיקייה)",
@@ -203,20 +218,20 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
   },
   ar: {
     pageTitle: "مكتبة المفردات",
-    pageSubtitle: "قوائم الكلمات المحفوظة لديك، مرتّبة في مجموعات",
+    pageSubtitle: "قوائم الكلمات المحفوظة لديك — سمِّ كل واحدة باسم الكتاب أو الوحدة أو الصفحة",
     backToDashboard: "العودة إلى لوحة المعلّم",
 
-    tabAllSets: "كل القوائم",
-    tabCollections: "المجموعات",
+    tabAllSets: "قوائمي",
+    tabCollections: "المجلدات",
     tabRecent: "الأخيرة",
 
-    newCollection: "مجموعة جديدة",
-    newSet: "قائمة مفردات جديدة",
+    newCollection: "مجلد جديد",
+    newSet: "قائمة كلمات جديدة",
     searchPlaceholder: "ابحث في مكتبتك…",
 
-    emptyLibraryTitle: "مكتبتك فارغة",
+    emptyLibraryTitle: "أنشئ أول قائمة كلمات",
     emptyLibraryBlurb:
-      "أنشئ قائمة مفردات من صورة لصفحة، أو من نص ملصوق، أو من موضوع، أو بكتابة الكلمات يدويًا. كل ما تنشئه يُحفظ هنا لإعادة استخدامه.",
+      "اضغط على “قائمة كلمات جديدة”، وسمِّها باسم الكتاب أو الوحدة أو الصفحة (مثل “إنجليزي 6 · الوحدة 3”)، ثم الصق الكلمات أو التقط صورة للصفحة. كل ما تحفظه هنا قابل لإعادة الاستخدام.",
     emptyCollectionTitle: "هذه المجموعة فارغة",
     emptyCollectionBlurb: "أضف قائمة مفردات أو مجموعة فرعية للبدء.",
     emptyRecentTitle: "لا يوجد نشاط حديث بعد",
@@ -248,6 +263,11 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
     emptySetsHereBlurb: "لا توجد قوائم في هذا المجلد بعد. اضغط على “قائمة مفردات جديدة” لإضافة قائمة.",
 
     moveAria: "نقل",
+    renameAria: "إعادة تسمية",
+    deleteAria: "حذف",
+    renamePrompt: "الاسم الجديد:",
+    deleteConfirm: (name) => `حذف "${name}"؟ لا يمكن التراجع.`,
+    toastRenamed: "تمت إعادة التسمية",
     moveModalTitle: (name) => `نقل "${name}"`,
     movePickFolder: "اختر مجلد الوجهة",
     moveToRoot: "النقل إلى الجذر (بدون مجلد)",
@@ -264,20 +284,20 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
   },
   ru: {
     pageTitle: "Vocabulary Library",
-    pageSubtitle: "Your saved word lists, organized into collections",
+    pageSubtitle: "Your saved word lists — name each after its book, unit, or page",
     backToDashboard: "Back to dashboard",
 
-    tabAllSets: "All sets",
-    tabCollections: "Collections",
+    tabAllSets: "My word lists",
+    tabCollections: "Folders",
     tabRecent: "Recent",
 
-    newCollection: "New collection",
-    newSet: "New vocabulary set",
+    newCollection: "New folder",
+    newSet: "New word list",
     searchPlaceholder: "Search your library…",
 
-    emptyLibraryTitle: "Your library is empty",
+    emptyLibraryTitle: "Create your first word list",
     emptyLibraryBlurb:
-      "Build a vocabulary set from a photo of a page, a paste, a topic, or by typing words manually. Everything you create is saved here for reuse.",
+      "Tap “New word list”, name it after the book, unit, or page (e.g. “English 6 · Unit 3”), then paste the words or snap a photo of the page. Everything you save here is reusable.",
     emptyCollectionTitle: "This collection is empty",
     emptyCollectionBlurb: "Add a vocabulary set or a sub-collection to get started.",
     emptyRecentTitle: "Nothing recent yet",
@@ -309,6 +329,11 @@ export const vocabularyLibraryT: Record<Language, VocabularyLibraryStrings> = {
     emptySetsHereBlurb: "No sets in this folder yet. Tap “New vocabulary set” to add one.",
 
     moveAria: "Move",
+    renameAria: "Rename",
+    deleteAria: "Delete",
+    renamePrompt: "New name:",
+    deleteConfirm: (name) => `Delete “${name}”? This can't be undone.`,
+    toastRenamed: "Renamed",
     moveModalTitle: (name) => `Move “${name}”`,
     movePickFolder: "Pick a destination folder",
     moveToRoot: "Move to root (no folder)",

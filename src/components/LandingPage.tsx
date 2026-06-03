@@ -183,8 +183,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           rendered DOM strengthens the signal Google actually trusts
           (meta keywords are largely deprecated; on-page content isn't).
         */}
+        {/* SR-only SEO block sits BEFORE the hero in DOM order so
+            crawlers reach the alt-spelling keywords first. Was an <h2>
+            until 2026-05-28; demoted to a strong paragraph because an
+            h2 ahead of the page's only <h1> tripped the heading-order
+            heuristic (Lighthouse a11y manual check, WCAG 1.3.1).
+            SEO impact is negligible — Google indexes the keywords by
+            presence in DOM, not by heading level — and the visible
+            layout is unchanged because the wrapper is sr-only. */}
         <div className="sr-only" aria-hidden="false">
-          <h2>Vocaband — also searched as</h2>
+          <p><strong>Vocaband — also searched as</strong></p>
           <p>
             Vocaband, Voca, Voca Band, VocaBand, voca band, voca-band,
             vocabandapp, vocaband.com, vokaband, vocabend, vocband,
@@ -351,12 +359,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 {/* Try Demo Icon — "Play it · 3D gamepad · Learn it"
                     Was previously per-letter wave animation + bobbing
                     icon (motion.span × ~12 + motion.div × 4). Now a
-                    static row with the same gradient/glow styling. */}
+                    static row with the same gradient/glow styling.
+                    Rendered as <button> (not <div>) so keyboard users
+                    can activate it with Enter/Space — the previous
+                    onClick-on-div made it click-only, failing
+                    WCAG 2.1.1. <button> already exposes role + focus +
+                    keyboard activation for free. */}
                 {onTryDemo && (
-                  <div
-                    className="flex items-center gap-8 cursor-pointer"
-                    dir={dir}
+                  <button
+                    type="button"
                     onClick={onTryDemo}
+                    aria-label={`${t.heroPlayItWord} ${t.heroLearnItWord}`}
+                    className="flex items-center gap-8 cursor-pointer bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-fuchsia-300/70 rounded-2xl"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    dir={dir}
                   >
                     <span
                       className="text-2xl font-black text-white"
@@ -367,20 +383,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       {t.heroPlayItWord}
                     </span>
 
-                    <div
-                      className="relative w-24 h-24 flex-shrink-0 transition-transform hover:scale-110 active:scale-95"
-                      style={{ touchAction: 'manipulation' }}
+                    <span
+                      className="relative w-24 h-24 flex-shrink-0 transition-transform hover:scale-110 active:scale-95 inline-block"
                     >
                       {/* 3D shadow layer */}
-                      <div className="absolute inset-2 bg-gradient-to-br from-primary/50 to-fuchsia-600/50 rounded-2xl blur-xl" />
+                      <span className="absolute inset-2 bg-gradient-to-br from-primary/50 to-fuchsia-600/50 rounded-2xl blur-xl" aria-hidden="true" />
                       {/* Main icon container */}
-                      <div className="relative w-full h-full bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600 rounded-2xl shadow-2xl shadow-primary/40 flex items-center justify-center overflow-hidden">
-                        <Gamepad2 size={42} strokeWidth={2.5} className="relative z-10 text-white" />
-                        <div className="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg">
-                          <BookOpen size={14} strokeWidth={2.5} className="text-primary" />
-                        </div>
-                      </div>
-                    </div>
+                      <span className="relative w-full h-full bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600 rounded-2xl shadow-2xl shadow-primary/40 flex items-center justify-center overflow-hidden">
+                        <Gamepad2 size={42} strokeWidth={2.5} className="relative z-10 text-white" aria-hidden="true" />
+                        <span className="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg">
+                          <BookOpen size={14} strokeWidth={2.5} className="text-primary" aria-hidden="true" />
+                        </span>
+                      </span>
+                    </span>
 
                     <span
                       className="text-2xl font-black text-white"
@@ -390,7 +405,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     >
                       {t.heroLearnItWord}
                     </span>
-                  </div>
+                  </button>
                 )}
 
                 {/* Cards Grid - Large Rectangular Cards.

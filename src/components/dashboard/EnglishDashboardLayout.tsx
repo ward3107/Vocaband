@@ -1,12 +1,28 @@
+import type React from "react";
 import { Plus, Sparkles } from "lucide-react";
 import ClassCard from "../ClassCard";
 import type { ClassData, AssignmentData, CompetitionData } from "../../core/supabase";
 import { teacherDashboardT } from "../../locales/teacher/dashboard";
 import type { Language } from "../../hooks/useLanguage";
-import AuroraQuickPlayHero from "./AuroraQuickPlayHero";
+import LiveGameHero from "./LiveGameHero";
 import MgmtCard from "./MgmtCard";
 import FrostedEmoji from "./FrostedEmoji";
-import { accentForClass, BRAND_GRADIENT } from "./dashboardAccents";
+import { accentForClass, BRAND_GRADIENT, HERO_AURORA } from "./dashboardAccents";
+
+// Shared "Live games" hero styling — both cards use the identical
+// LiveGameHero layout and differ only in colour + copy.
+const QP_HERO = {
+  background: HERO_AURORA,
+  boxShadow: "0 20px 50px -22px rgba(99,102,241,0.55), 0 8px 22px -10px rgba(217,70,239,0.35)",
+  accent: "#5B21B6",
+  ctaShadow: "0 10px 24px -8px rgba(91,33,182,0.45)",
+} as const;
+const RACE_HERO = {
+  background: "radial-gradient(120% 140% at 0% 0%, #D946EF 0%, #EC4899 45%, #F43F5E 80%, #FB7185 100%)",
+  boxShadow: "0 20px 50px -22px rgba(217,70,239,0.5), 0 8px 22px -10px rgba(244,63,94,0.35)",
+  accent: "#9D174D",
+  ctaShadow: "0 10px 24px -8px rgba(157,23,77,0.45)",
+} as const;
 
 // Strings for the "Live games" pairing (Quick Play hero + Category
 // Race card). Kept inline so this layout doesn't have to thread new
@@ -121,38 +137,30 @@ export default function EnglishDashboardLayout({
           the Management utilities below). */}
       <section>
         <SectionLabel>{rt.liveGames}</SectionLabel>
-        <AuroraQuickPlayHero
-          title={t.qpTitle}
-          instantBadge={t.qpInstantBadge}
-          description={t.qpDescription}
-          ctaLabel={t.qpStartBtn}
-          onStart={onQuickPlayClick}
-          isRTL={isRTL}
-        />
-        <button
-          type="button"
-          onClick={onCategoryRaceClick}
-          dir={isRTL ? "rtl" : "ltr"}
-          style={{
-            touchAction: "manipulation",
-            WebkitTapHighlightColor: "transparent",
-            background: "linear-gradient(135deg,#D946EF 0%,#EC4899 55%,#F43F5E 100%)",
-            boxShadow: "0 14px 30px -12px rgba(217,70,239,0.5)",
-          }}
-          className="mt-3 w-full flex items-center gap-4 rounded-[28px] p-5 text-white text-start active:scale-[0.99] transition-transform"
-        >
-          <span className="inline-flex flex-shrink-0 items-center justify-center w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm text-3xl">🌍</span>
-          <span className="flex-1 min-w-0">
-            <span className="flex items-center gap-2 flex-wrap">
-              <span className="text-lg font-extrabold tracking-tight">{rt.raceTitle}</span>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-white/25 rounded-full px-2 py-0.5">{rt.live}</span>
-            </span>
-            <span className="block text-sm font-semibold text-white/85 mt-0.5">{rt.raceDescription}</span>
-          </span>
-          <span className="flex-shrink-0 inline-flex items-center font-black text-sm bg-white/20 rounded-full px-4 py-2">
-            {rt.raceStart}
-          </span>
-        </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
+          <LiveGameHero
+            emoji="⚡"
+            title={t.qpTitle}
+            badge={t.qpInstantBadge}
+            description={t.qpDescription}
+            ctaLabel={t.qpStartBtn}
+            onStart={onQuickPlayClick}
+            isRTL={isRTL}
+            dataTour="quick-play"
+            {...QP_HERO}
+          />
+          <LiveGameHero
+            emoji="🌍"
+            title={rt.raceTitle}
+            badge={rt.live}
+            description={rt.raceDescription}
+            ctaLabel={rt.raceStart}
+            onStart={onCategoryRaceClick}
+            isRTL={isRTL}
+            dataTour="category-race"
+            {...RACE_HERO}
+          />
+        </div>
       </section>
 
       {/* ─── Management ─── */}
@@ -247,7 +255,26 @@ export default function EnglishDashboardLayout({
             cta={t.emptyCta}
             onCreate={onNewClass}
           />
-        ) : (
+        ) : (() => {
+          // The "most recent" class is the one with the most-recently
+          // created assignment.  Ties (or no assignments anywhere)
+          // fall back to the most-recently-created class id — which is
+          // just `classes[classes.length - 1]` because the array is
+          // chronological and we reverse it for display.  Computed
+          // once per render rather than inline so a class with zero
+          // assignments doesn't trigger N empty Math.max calls.
+          const lastCreatedClassId = classes[classes.length - 1]?.id ?? null;
+          let recentClassId: string | null = null;
+          let recentTimestamp = -Infinity;
+          for (const a of teacherAssignments) {
+            const ts = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            if (ts > recentTimestamp) {
+              recentTimestamp = ts;
+              recentClassId = a.classId;
+            }
+          }
+          if (!recentClassId) recentClassId = lastCreatedClassId;
+          return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-start">
             {[...classes].reverse().map(c => {
               const classAssignments = teacherAssignments.filter(a => a.classId === c.id);
@@ -256,6 +283,7 @@ export default function EnglishDashboardLayout({
                   key={c.id}
                   variant="pastel"
                   accent={accentForClass(c.id)}
+                  isRecent={c.id === recentClassId}
                   subject={c.subject ?? "english"}
                   name={c.name}
                   code={c.code}
@@ -292,7 +320,8 @@ export default function EnglishDashboardLayout({
               );
             })}
           </div>
-        )}
+          );
+        })()}
       </section>
     </div>
   );
