@@ -132,6 +132,7 @@ import {
   type QpRaceSubmitPayload,
   type QpRaceEndRoundPayload,
   type QpRaceCellResult,
+  type QpRaceResultPayload,
 } from "./src/core/quickPlayProtocol";
 import { containsProfanity } from "./src/utils/nicknameProfanity";
 import {
@@ -1647,6 +1648,22 @@ async function startServer() {
   const qpPendingBroadcasts = new Set<string>();
   let qpBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Opaque per-process id stamped onto every leaderboard snapshot. `qpSessions`
+  // is per-VM, so once Fly runs >1 machine a single session's students are
+  // split across processes and each VM broadcasts only the subset it knows.
+  // The client keeps the latest snapshot PER serverId and renders their union
+  // (max score per clientId) — see QpLeaderboardPayload.serverId.
+  const QP_SERVER_ID = randomUUID();
+
+  // Cross-VM (server-to-server) event for a Category Race submit that landed
+  // on a VM which doesn't own the active round. The round + its scoring live
+  // only on the VM where the teacher pressed Start; with ≥2 Fly machines a
+  // student's socket can land elsewhere. serverSideEmit (Redis-adapter backed)
+  // forwards this to every OTHER VM; the owner scores it and replies straight
+  // to the student's socket. Plain string — serverSideEmit forbids reserved
+  // names. (2026-06: fixes "submit dropped, no podium points, stuck on lobby".)
+  const QP_RACE_SUBMIT_FANOUT = "qp:internal:race-submit";
+
   // Rate limiters — sized for a real classroom on a school's NAT'd
   // Wi-Fi where ALL students hit the server from one external IP.
   //
@@ -1692,6 +1709,7 @@ async function startServer() {
           qpIo.to(code).emit(QP_SERVER_EVENTS.LEADERBOARD, {
             sessionCode: code,
             students: Array.from(s.students.values()),
+            serverId: QP_SERVER_ID,
           });
           // Clear the one-shot perfectRound flag after each broadcast so
           // the next leaderboard tick doesn't re-fire the achievement
@@ -1705,6 +1723,135 @@ async function startServer() {
       qpBroadcastTimer = null;
     }, QP_BROADCAST_INTERVAL_MS);
   }
+
+  // ─── Category Race scoring (shared by the local + cross-VM submit paths) ──
+  // Students send TEXT, never a number — the server scores it against the
+  // bank so a tampered client can't claim arbitrary points.
+  function qpScoreRaceCells(
+    race: NonNullable<QpSessionState["currentRace"]>,
+    answers: Record<string, unknown>,
+    helped: string[],
+  ): { cells: QpRaceCellResult[]; roundPoints: number } {
+    const helpedSet = new Set<string>(helped);
+    const cells: QpRaceCellResult[] = race.categories.map((catId) => {
+      const raw = answers[catId];
+      const typed = typeof raw === "string" ? raw.trim().slice(0, 60) : "";
+      const result = typed
+        ? raceValidateAnswer(catId, race.letter, typed)
+        : { valid: false, matchedEn: null, matchedLanguage: null };
+      // Hinted cells score at the reduced (L1) rate even in English so help
+      // stays fair.
+      const points = result.valid
+        ? (helpedSet.has(catId) ? QP_RACE_PTS_L1 : (result.matchedLanguage === "en" ? QP_RACE_PTS_EN : QP_RACE_PTS_L1))
+        : 0;
+      return {
+        categoryId: catId, typed, valid: result.valid,
+        matchedEn: result.matchedEn, matchedLanguage: result.matchedLanguage, points,
+      };
+    });
+    return { cells, roundPoints: cells.reduce((sum, c) => sum + c.points, 0) };
+  }
+
+  // Apply a submission to the session that owns the round. Used by BOTH the
+  // local handler (student co-located with the round owner) and the cross-VM
+  // fanout handler (student on another VM). Creates the student's leaderboard
+  // entry if this VM never saw their JOIN — the round owner is authoritative
+  // for the race score, so a remote student's row is born here from the
+  // nickname/avatar carried on the submit. Returns the RACE_RESULT payload to
+  // deliver, or null when the submit must be ignored (too late / duplicate).
+  function qpApplyRaceSubmission(
+    state: QpSessionState,
+    race: NonNullable<QpSessionState["currentRace"]>,
+    args: { clientId: string; nickname: string; avatar: string; answers: Record<string, unknown>; helped: string[] },
+  ): QpRaceResultPayload | null {
+    if (race.submitted.has(args.clientId)) return null;                       // one submit per round
+    if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) return null;  // too late
+
+    const { cells, roundPoints } = qpScoreRaceCells(race, args.answers, args.helped);
+
+    // Speed bonus — reward decisive answers. Scales from SPEED_BONUS_MAX
+    // (instant) to 0 (clock expired); only when they scored, never untimed.
+    let speedBonus = 0;
+    if (!race.untimed && roundPoints > 0) {
+      const totalMs = Math.max(1, race.deadlineTs - race.startTs);
+      const remainingMs = Math.max(0, race.deadlineTs - Date.now());
+      speedBonus = Math.round(QP_RACE_SPEED_BONUS_MAX * Math.max(0, Math.min(1, remainingMs / totalMs)));
+    }
+
+    let entry = state.students.get(args.clientId);
+    if (!entry) {
+      entry = { clientId: args.clientId, nickname: args.nickname, avatar: args.avatar || "🦊", score: 0, lastSeen: Date.now() };
+      state.students.set(args.clientId, entry);
+    }
+    race.submitted.add(args.clientId);
+    entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints + speedBonus);
+    entry.lastSeen = Date.now();
+
+    return { sessionCode: state.sessionCode, roundId: race.roundId, cells, roundPoints, speedBonus, totalScore: entry.score };
+  }
+
+  // Auto-end the round once EVERY connected student has submitted, so a quick
+  // class doesn't wait out the clock. Student sockets can be spread across
+  // VMs, so we count them with the adapter-aware `fetchSockets()` (returns the
+  // whole room across every machine) rather than this VM's local socket map —
+  // a local-only count would end the round as soon as the owner-VM students
+  // were done, cutting off everyone who landed on another VM.
+  async function qpMaybeAutoEndRace(
+    sessionCode: string,
+    race: NonNullable<QpSessionState["currentRace"]>,
+  ): Promise<void> {
+    let connectedStudentIds: Set<string>;
+    try {
+      const sockets = await qpIo.in(sessionCode).fetchSockets();
+      connectedStudentIds = new Set(
+        sockets
+          .filter((s) => s.data?.qpRole === "student" && typeof s.data?.qpClientId === "string")
+          .map((s) => s.data.qpClientId as string),
+      );
+    } catch {
+      // Redis mid-reconnect — fall back to the local map so single-VM still
+      // auto-ends; multi-VM just waits out the clock this round.
+      const local = qpSessions.get(sessionCode);
+      connectedStudentIds = new Set(local ? local.socketToClient.values() : []);
+    }
+    if (connectedStudentIds.size === 0) return;
+    if (![...connectedStudentIds].every((id) => race.submitted.has(id))) return;
+    // Re-check we still own this exact round before announcing the close.
+    const state = qpSessions.get(sessionCode);
+    if (!state?.currentRace || state.currentRace.roundId !== race.roundId) return;
+    if (state.currentRace.timer) { clearTimeout(state.currentRace.timer); state.currentRace.timer = null; }
+    qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId: race.roundId });
+  }
+
+  // Cross-VM Category Race submit (see QP_RACE_SUBMIT_FANOUT). Fires on every
+  // VM; only the one that owns the round acts. serverSideEmit delivers to all
+  // OTHER instances (never the sender), so the sending VM already handled the
+  // "round is local" case before fanning out.
+  qpIo.on(QP_RACE_SUBMIT_FANOUT, (data: {
+    sessionCode: string; roundId: string; clientId: string;
+    nickname: string; avatar: string; socketId: string;
+    answers: Record<string, unknown>; helped: string[];
+  }) => {
+    try {
+      if (!data || typeof data !== "object") return;
+      const state = qpSessions.get(data.sessionCode);
+      if (!state?.currentRace || state.currentRace.roundId !== data.roundId) return; // not the owner
+      const race = state.currentRace;
+      const result = qpApplyRaceSubmission(state, race, {
+        clientId: data.clientId, nickname: data.nickname, avatar: data.avatar,
+        answers: data.answers, helped: Array.isArray(data.helped) ? data.helped : [],
+      });
+      if (!result) return; // too late / duplicate
+      // Reply straight to the student's socket on its own VM — the Redis
+      // adapter routes `to(socketId)` across machines.
+      qpIo.to(data.socketId).emit(QP_SERVER_EVENTS.RACE_RESULT, result);
+      qpScheduleBroadcast(data.sessionCode);
+      console.log(`[QP RACE submit xvm] session=${data.sessionCode} client=${data.clientId.slice(0, 8)} round=${data.roundId.slice(0, 8)} → ${result.totalScore}`);
+      void qpMaybeAutoEndRace(data.sessionCode, race);
+    } catch (err) {
+      console.warn("[QP RACE submit xvm] handler threw", err);
+    }
+  });
 
   function qpEmitError(
     socket: import("socket.io").Socket,
@@ -1887,11 +2034,17 @@ async function startServer() {
         authUid: incomingAuthUid ?? prev?.authUid,
       });
       state.socketToClient.set(socket.id, clientId);
+      // Stamp role + clientId on the socket so the adapter-aware
+      // `fetchSockets()` (whole room, across VMs) can count connected
+      // students for the Category Race all-submitted auto-end.
+      socket.data.qpRole = "student";
+      socket.data.qpClientId = clientId;
       socket.join(sessionCode);
 
       socket.emit(QP_SERVER_EVENTS.JOINED, {
         clientId,
         leaderboard: Array.from(state.students.values()),
+        serverId: QP_SERVER_ID,
       });
       qpScheduleBroadcast(sessionCode);
     });
@@ -1926,6 +2079,8 @@ async function startServer() {
         // socket→client mapping (post-reconnect race).
         if (state.students.has(clientId)) {
           state.socketToClient.set(socket.id, clientId);
+          socket.data.qpRole = "student";
+          socket.data.qpClientId = clientId;
           socket.join(sessionCode);
           console.log(
             `[QP SCORE self-heal] reattached socket=${socket.id} ` +
@@ -2083,10 +2238,14 @@ async function startServer() {
       const state = qpGetOrCreateSession(sessionCode);
       state.teacherSockets.add(socket.id);
       state.lastTeacherSeenAt = Date.now();
+      // Tag as a teacher so the Category Race all-submitted count (which uses
+      // the cross-VM `fetchSockets()`) doesn't mistake an observer for a player.
+      socket.data.qpRole = "teacher";
       socket.join(sessionCode);
       socket.emit(QP_SERVER_EVENTS.LEADERBOARD, {
         sessionCode,
         students: Array.from(state.students.values()),
+        serverId: QP_SERVER_ID,
       });
     });
 
@@ -2358,11 +2517,6 @@ async function startServer() {
     // Students send TEXT, not a score — the server scores it against the
     // bank, so a tampered client can never claim arbitrary points.
     socket.on(QP_EVENTS.RACE_SUBMIT, (payload: QpRaceSubmitPayload) => {
-      // ── Diagnostic (2026-06 #2/#3) ──────────────────────────────────────
-      // A dropped RACE_SUBMIT is silent: the student never gets a
-      // RACE_RESULT and the host never sees the score move. Both reported
-      // symptoms are this. Log WHICH guard rejects so one repro + `fly logs`
-      // pinpoints the cause. Purely additive — no behaviour change.
       const dropLog = (reason: string, extra?: Record<string, unknown>) => {
         try {
           const p = payload as { sessionCode?: unknown; clientId?: unknown; roundId?: unknown };
@@ -2370,10 +2524,6 @@ async function startServer() {
           const c = typeof p?.clientId === "string" ? p.clientId.slice(0, 8) : "?";
           const r = typeof p?.roundId === "string" ? p.roundId.slice(0, 8) : "?";
           console.warn(`[QP RACE submit DROP] reason=${reason} session=${s} client=${c} round=${r}`, extra ?? "");
-          // Also echo the reason back to the submitting student so it shows in
-          // their browser console (DevTools) — no Fly log access needed to
-          // diagnose. Temporary; remove once the drop cause is fixed.
-          socket.emit("qp:race:submit:rejected", { reason });
         } catch { /* logging must never throw */ }
       };
       if (!payload || typeof payload !== "object") { dropLog("bad_payload"); return; }
@@ -2383,85 +2533,74 @@ async function startServer() {
       if (!answers || typeof answers !== "object") { dropLog("bad_answers"); return; }
       if (!qpScoreLimiter.checkLimit(socket.id)) { dropLog("rate_limited"); return; }
 
+      const helped = Array.isArray(payload.helped)
+        ? payload.helped.filter((c): c is string => typeof c === "string")
+        : [];
       const state = qpSessions.get(sessionCode);
-      if (!state || !state.currentRace) { dropLog("no_session_or_race", { hasState: !!state }); return; }
-      const race = state.currentRace;
-      if (race.roundId !== roundId) { dropLog("stale_round", { serverRound: race.roundId.slice(0, 8) }); return; } // stale round
-      if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late", { lateMs: Date.now() - (race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) }); return; } // too late
-      if (race.submitted.has(clientId)) { dropLog("already_submitted"); return; }                          // one submit per round
 
-      // Self-heal the socket→client mapping (mirrors SCORE_UPDATE) in
-      // case a reconnect raced the submit.
-      const owned = state.socketToClient.get(socket.id);
-      if (owned !== clientId) {
-        if (state.students.has(clientId)) {
-          state.socketToClient.set(socket.id, clientId);
-          socket.join(sessionCode);
-        } else {
-          dropLog("not_in_students", { owned: owned ?? null, knownClients: state.students.size });
-          return;
+      // Does THIS VM own the active round? `qpSessions` is per-process and Fly
+      // runs ≥2 machines, so the round (created where the teacher pressed
+      // Start) often lives on a DIFFERENT VM than the student's socket.
+      //   • Local match → score here, reply on this socket (single-VM, or the
+      //     student happens to share the teacher's VM).
+      //   • No local match → fan the submit out to every VM (serverSideEmit);
+      //     the owner scores it and replies to this socket cross-VM. This
+      //     replaces the old silent "no_session_or_race"/"stale_round" drop
+      //     that left split-class students unscored and stranded on the lobby.
+      if (state?.currentRace && state.currentRace.roundId === roundId) {
+        const race = state.currentRace;
+        if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late", { lateMs: Date.now() - (race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) }); return; }
+        if (race.submitted.has(clientId)) { dropLog("already_submitted"); return; }
+
+        // Self-heal the socket→client mapping (mirrors SCORE_UPDATE) in case a
+        // reconnect raced the submit.
+        const owned = state.socketToClient.get(socket.id);
+        if (owned !== clientId) {
+          if (state.students.has(clientId)) {
+            state.socketToClient.set(socket.id, clientId);
+            socket.data.qpClientId = clientId;
+            socket.join(sessionCode);
+          } else {
+            dropLog("not_in_students", { owned: owned ?? null, knownClients: state.students.size });
+            return;
+          }
         }
+        const entry = state.students.get(clientId);
+        if (!entry) { dropLog("no_entry"); return; }
+
+        const result = qpApplyRaceSubmission(state, race, {
+          clientId, nickname: entry.nickname, avatar: entry.avatar,
+          answers: answers as Record<string, unknown>, helped,
+        });
+        if (!result) return; // too late / duplicate (already screened above)
+        socket.emit(QP_SERVER_EVENTS.RACE_RESULT, result);
+        qpScheduleBroadcast(sessionCode);
+        console.log(`[QP RACE submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} +${result.roundPoints}${result.speedBonus ? `+${result.speedBonus}⚡` : ""} → ${result.totalScore}`);
+        void qpMaybeAutoEndRace(sessionCode, race);
+        return;
       }
-      const entry = state.students.get(clientId);
-      if (!entry) { dropLog("no_entry"); return; }
 
-      // Categories where the student used a hint/suggestion — those cells
-      // score at the reduced (L1) rate even in English, so help is fair.
-      const helpedSet = new Set<string>(
-        Array.isArray(payload.helped)
-          ? payload.helped.filter((c): c is string => typeof c === "string")
-          : [],
-      );
-
-      const cells: QpRaceCellResult[] = race.categories.map((catId) => {
-        const raw = (answers as Record<string, unknown>)[catId];
-        const typed = typeof raw === "string" ? raw.trim().slice(0, 60) : "";
-        const result = typed
-          ? raceValidateAnswer(catId, race.letter, typed)
-          : { valid: false, matchedEn: null, matchedLanguage: null };
-        const points = result.valid
-          ? (helpedSet.has(catId) ? QP_RACE_PTS_L1 : (result.matchedLanguage === "en" ? QP_RACE_PTS_EN : QP_RACE_PTS_L1))
-          : 0;
-        return {
-          categoryId: catId,
-          typed,
-          valid: result.valid,
-          matchedEn: result.matchedEn,
-          matchedLanguage: result.matchedLanguage,
-          points,
-        };
+      // No local round for this roundId. With the Redis adapter attached the
+      // round may simply live on another VM → fan the submit out so the owner
+      // can score it. Without the adapter there are no other VMs, so this is a
+      // genuinely stale / unknown round → drop it exactly as before (the
+      // default adapter's serverSideEmit is a no-op + warning anyway).
+      if (redisAdapterStatus !== "attached") {
+        dropLog(state ? "stale_round" : "no_session_or_race", { hasState: !!state });
+        return;
+      }
+      // Send the student's nickname/avatar from this VM's roster (they joined
+      // here) so the owner can mint their leaderboard row if it never saw their
+      // JOIN.
+      const local = state?.students.get(clientId);
+      qpIo.serverSideEmit(QP_RACE_SUBMIT_FANOUT, {
+        sessionCode, roundId, clientId,
+        nickname: local?.nickname ?? "Player",
+        avatar: local?.avatar ?? "🦊",
+        socketId: socket.id,
+        answers: answers as Record<string, unknown>,
+        helped,
       });
-      const roundPoints = cells.reduce((sum, c) => sum + c.points, 0);
-
-      // Speed bonus — reward decisive answers. Scales from SPEED_BONUS_MAX
-      // (instant) down to 0 (clock expired). Only when they actually scored,
-      // and never in untimed mode (no clock to race against).
-      let speedBonus = 0;
-      if (!race.untimed && roundPoints > 0) {
-        const totalMs = Math.max(1, race.deadlineTs - race.startTs);
-        const remainingMs = Math.max(0, race.deadlineTs - Date.now());
-        const fraction = Math.max(0, Math.min(1, remainingMs / totalMs));
-        speedBonus = Math.round(QP_RACE_SPEED_BONUS_MAX * fraction);
-      }
-
-      race.submitted.add(clientId);
-      entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints + speedBonus);
-      entry.lastSeen = Date.now();
-
-      socket.emit(QP_SERVER_EVENTS.RACE_RESULT, {
-        sessionCode, roundId, cells, roundPoints, speedBonus, totalScore: entry.score,
-      });
-      qpScheduleBroadcast(sessionCode);
-
-      // Auto-end the round once every CONNECTED student has submitted, so a
-      // quick class never waits out the clock. Disconnected students don't
-      // block it — they're not in the live socket→client map.
-      const connectedIds = new Set(state.socketToClient.values());
-      if (connectedIds.size > 0 && [...connectedIds].every((id) => race.submitted.has(id))) {
-        if (race.timer) { clearTimeout(race.timer); race.timer = null; }
-        qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
-      }
-      console.log(`[QP RACE submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} +${roundPoints}${speedBonus ? `+${speedBonus}⚡` : ""} → ${entry.score}`);
     });
 
     // ─── Category Race: teacher ends the active round early ────────────
