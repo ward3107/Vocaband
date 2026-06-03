@@ -1140,7 +1140,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   if (studentAuthRoute) return studentAuthRoute;
 
   if (user?.role === "student" && view === "student-dashboard") {
-    return StudentDashboardSection({
+    const dashboardSection = StudentDashboardSection({
       user, xp, streak, badges, setXp, setBadges, setUser,
       copiedCode, setCopiedCode,
       studentAssignments, studentProgress, studentDataLoading,
@@ -1159,6 +1159,19 @@ export default function App({ initialView }: { initialView?: View } = {}) {
       // straight out of their session.
       onRequestLogout: () => setShowExitConfirmModal(true),
     });
+    // Celebrations must mount on the dashboard return path too: XP grants,
+    // badge claims and achievement unlocks all happen here, and the pet
+    // transformation above already keys off levelUp.pending. Without these
+    // the student never sees the level-up modal / achievement toasts that
+    // their dashboard actions trigger (they only mounted in the final
+    // render branch, which the dashboard early-returns past).
+    return (
+      <>
+        {dashboardSection}
+        <LevelUpModal tier={levelUp.pending} onClose={levelUp.dismiss} />
+        <AchievementToast toasts={achievements.toasts} onDismiss={achievements.dismissToast} />
+      </>
+    );
   }
 
   // Privacy-settings view (lazy-loaded). See PrivacySettingsSection.
