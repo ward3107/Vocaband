@@ -156,11 +156,15 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
     <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-bg)' }}>
       {/* Sticky action bar */}
       <div className="sticky top-0 z-20 backdrop-blur" style={{ backgroundColor: 'rgba(255,255,255,0.85)', borderBottom: '1px solid var(--vb-border)' }}>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <button onClick={onBack} type="button" className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--vb-text-secondary)' }}>
+        {/* flex-wrap on both rows so the 5 action buttons reflow onto a
+            second/third line on narrow phones instead of overflowing the
+            viewport — previously "Copy as text" and "Export PDF" were
+            pushed off the right edge and became untappable on mobile. */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-y-2 gap-x-3">
+          <button onClick={onBack} type="button" className="inline-flex items-center gap-1.5 text-sm font-medium shrink-0" style={{ color: 'var(--vb-text-secondary)' }}>
             <ArrowLeft size={16} /> {t.newTest}
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => onPreview(draft)}

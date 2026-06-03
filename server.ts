@@ -5625,7 +5625,11 @@ ${sanitizedText}`;
               cache_control: { type: "ephemeral" },
             },
           ],
-          tools: [BAGRUT_TOOL as any],
+          // Cache the (large, static) tool schema alongside the system
+          // prompt so repeat generations in the 5-minute window skip
+          // re-processing both blocks — trims input latency + ~90% of the
+          // input-token cost when a teacher batches tests.
+          tools: [{ ...(BAGRUT_TOOL as any), cache_control: { type: "ephemeral" } }],
           tool_choice: { type: "tool", name: "bagrut_test" },
           messages: [
             {
