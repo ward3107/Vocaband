@@ -10,6 +10,7 @@ import { primeAudio } from '../utils/primeAudio';
 import {
   grantRetentionXp,
   applyServerRewards,
+  claimBadgeXp,
   grantNonXpReward,
 } from '../handlers/retentionGrants';
 import type { AppUser, AssignmentData, ProgressData } from '../core/supabase';
@@ -62,6 +63,10 @@ export interface StudentDashboardSectionDeps {
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   renameStudentDisplayName: Anyish;
 
+  /** True on the render where the student just crossed a tier (same
+   *  signal as LevelUpModal) — drives the pet transformation animation. */
+  evolutionPending: boolean;
+
   /** Opens the friendly student soft-landing exit modal — same one
    *  the hardware back button uses — when the student taps the top-
    *  bar logout button.  Wired by App.tsx to setShowExitConfirmModal. */
@@ -79,6 +84,7 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
     setGameMode, setIsFinished,
     startClassMinute, retention, boosters,
     showToast, renameStudentDisplayName,
+    evolutionPending,
     onRequestLogout,
   } = deps;
 
@@ -137,6 +143,8 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
           luckyCharms: boosters.luckyCharms,
         }}
         onGrantXp={(amount, reason) => grantRetentionXp(amount, reason, { user, setXp, showToast })}
+        onClaimBadgeXp={(badgeId, xp, reason) => claimBadgeXp(badgeId, xp, reason, { setXp, showToast })}
+        evolutionPending={evolutionPending}
         onApplyServerRewards={({ xpToAdd, badgesToAppend }) =>
           applyServerRewards(xpToAdd, badgesToAppend, { setXp, setBadges })
         }

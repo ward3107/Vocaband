@@ -1,14 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, X } from "lucide-react";
 import type { AppUser, AssignmentData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { LeaderboardEntry } from "../core/types";
-import { THEMES } from "../constants/game";
+import { THEMES, PET_MILESTONES } from "../constants/game";
 import { useLanguage } from "../hooks/useLanguage";
 import { useCombo } from "../hooks/useCombo";
 import { useFeatureFlag } from "../hooks/useFeatureFlag";
 import CombosOverlay from "../components/arcade/CombosOverlay";
+import InGamePetReactor from "../components/arcade/InGamePetReactor";
 import { gameActiveT } from "../locales/student/game-active";
 import { getThemeColors, type GameThemeColor } from "../components/game/GameShell";
 
@@ -202,6 +203,13 @@ export default function GameActiveView({
   // when the view unmounts.
   const arcadeHubEnabled = useFeatureFlag('arcade_hub', false);
   const combo = useCombo();
+  // Pet stage emoji for the in-game companion — derived from xp exactly
+  // as useRetention.currentPetStage does, so it matches the dashboard
+  // pet without spinning up a second retention hook here.
+  const petStageEmoji = useMemo(
+    () => ([...PET_MILESTONES].reverse().find((m) => xp >= m.xpRequired) ?? PET_MILESTONES[0]).emoji,
+    [xp],
+  );
   useEffect(() => {
     if (!arcadeHubEnabled) return;
     if (feedback === "correct") combo.registerCorrect();
@@ -439,6 +447,14 @@ export default function GameActiveView({
       className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] font-sans max-w-7xl mx-auto`}>
       {arcadeHubEnabled && (
         <CombosOverlay chain={combo.chain} multiplier={combo.multiplier} />
+      )}
+      {arcadeHubEnabled && !isFinished && (
+        <InGamePetReactor
+          stageEmoji={petStageEmoji}
+          feedback={feedback}
+          comboChain={combo.chain}
+          isFinished={isFinished}
+        />
       )}
       {saveError && (
         <div className="fixed bottom-4 end-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">

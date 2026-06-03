@@ -9,6 +9,7 @@ import type { View } from "../../core/views";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 import { competitionsT } from "../../locales/competitions";
+import { ARCADE_CARD, ARCADE_REWARD_GRADIENT } from "../arcade/theme";
 import { resolveAssignmentWords } from "../../utils/resolveAssignmentWords";
 import CompetitionLeaderboardModal from "../CompetitionLeaderboardModal";
 
@@ -41,6 +42,8 @@ interface StudentAssignmentCardProps {
   /** Optional competition row for this assignment. When set, the card
    *  renders a leaderboard badge that opens the standings modal. */
   competition?: CompetitionData | null;
+  /** Arcade theme — frosted card on dark with white text + gold CTA. */
+  arcade?: boolean;
   setActiveAssignment: (a: AssignmentData) => void;
   setAssignmentWords: (w: Word[]) => void;
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -52,24 +55,38 @@ function ProgressRing({
   percent,
   stroke,
   size = 58,
-}: { percent: number; stroke: string; size?: number }) {
+  arcade = false,
+}: { percent: number; stroke: string; size?: number; arcade?: boolean }) {
   const radius = (size - 8) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (Math.min(100, Math.max(0, percent)) / 100) * circumference;
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        {/* Arcade progress uses a cyan→fuchsia stroke gradient (the SVG
+            equivalent of ARCADE_HERO_GRADIENT, which is a CSS bg class
+            and can't paint a stroke). */}
+        {arcade && (
+          <defs>
+            <linearGradient id="arcadeHeroRing" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#22d3ee" />
+              <stop offset="50%" stopColor="#8b5cf6" />
+              <stop offset="100%" stopColor="#d946ef" />
+            </linearGradient>
+          </defs>
+        )}
         {/* Track */}
         <circle
           cx={size / 2} cy={size / 2} r={radius}
           strokeWidth="6" fill="none"
-          className="stroke-white/70"
+          className={arcade ? "stroke-white/15" : "stroke-white/70"}
         />
         {/* Progress */}
         <motion.circle
           cx={size / 2} cy={size / 2} r={radius}
           strokeWidth="6" strokeLinecap="round" fill="none"
-          className={stroke}
+          className={arcade ? undefined : stroke}
+          stroke={arcade ? "url(#arcadeHeroRing)" : undefined}
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
@@ -77,14 +94,14 @@ function ProgressRing({
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-sm font-black text-stone-800 tabular-nums">{Math.round(percent)}%</span>
+        <span className={`text-sm font-black tabular-nums ${arcade ? 'text-white' : 'text-stone-800'}`}>{Math.round(percent)}%</span>
       </div>
     </div>
   );
 }
 
 export default function StudentAssignmentCard({
-  assignment, assignmentIdx, studentProgress, userUid, competition,
+  assignment, assignmentIdx, studentProgress, userUid, competition, arcade = false,
   setActiveAssignment, setAssignmentWords, setView, setShowModeSelection,
 }: StudentAssignmentCardProps) {
   const { language } = useLanguage();
@@ -148,7 +165,11 @@ export default function StudentAssignmentCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: assignmentIdx * 0.06 }}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-      className={`${isLocked ? 'bg-stone-100 grayscale-[0.5]' : accent.bg} p-4 sm:p-5 rounded-2xl border border-white/80 shadow-sm ${isLocked ? 'cursor-not-allowed opacity-75' : 'hover:shadow-md cursor-pointer active:scale-[0.99]'} transition-all relative overflow-hidden`}
+      className={
+        arcade
+          ? `${ARCADE_CARD} p-4 sm:p-5 transition-all relative overflow-hidden ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.99] hover:shadow-2xl'}`
+          : `${isLocked ? 'bg-stone-100 grayscale-[0.5]' : accent.bg} p-4 sm:p-5 rounded-2xl border border-white/80 shadow-sm ${isLocked ? 'cursor-not-allowed opacity-75' : 'hover:shadow-md cursor-pointer active:scale-[0.99]'} transition-all relative overflow-hidden`
+      }
     >
       {/* Colored leading strip — uses `start-0` so it flips to the
           right edge in RTL (Hebrew / Arabic) and never overlaps the
@@ -161,7 +182,7 @@ export default function StudentAssignmentCard({
           initial={{ scale: 0, rotate: -20 }}
           animate={{ scale: 1, rotate: -8 }}
           transition={{ type: "spring", stiffness: 200, damping: 14, delay: 0.4 }}
-          className="absolute top-2 end-2 bg-gradient-to-r from-stone-700 to-stone-900 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-1"
+          className={`absolute top-2 end-2 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 ${arcade ? 'bg-white/15 ring-1 ring-white/15 backdrop-blur' : 'bg-gradient-to-r from-stone-700 to-stone-900'}`}
         >
           <Lock size={10} />
           MAXED
@@ -183,11 +204,11 @@ export default function StudentAssignmentCard({
 
       <div className="flex items-center gap-3 sm:gap-4">
         {/* Progress ring */}
-        <ProgressRing percent={progressPercentage} stroke={accent.ring} />
+        <ProgressRing percent={progressPercentage} stroke={accent.ring} arcade={arcade} />
 
         {/* Title + meta */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-base sm:text-lg font-black text-stone-900 leading-tight truncate">
+          <h3 className={`text-base sm:text-lg leading-tight truncate ${arcade ? 'text-white font-bold' : 'font-black text-stone-900'}`}>
             {assignment.subject === "hebrew" && (
               <span className="inline-block me-1.5 text-[10px] tracking-[0.2em] uppercase font-black text-blue-700 bg-blue-100 rounded-full px-2 py-0.5 align-middle">
                 📖 עברית
@@ -196,13 +217,13 @@ export default function StudentAssignmentCard({
             {assignment.title}
           </h3>
           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-            <span className="text-[10px] sm:text-xs font-bold text-stone-500 uppercase tracking-wide">
+            <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wide ${arcade ? 'bg-white/15 text-cyan-100 rounded-full px-2 py-0.5' : 'text-stone-500'}`}>
               {assignment.wordIds.length} words
             </span>
             {assignment.deadline && (
               <>
-                <span className="text-stone-300">·</span>
-                <span className="text-[10px] sm:text-xs font-bold text-stone-500">
+                <span className={arcade ? 'text-white/40' : 'text-stone-300'}>·</span>
+                <span className={`text-[10px] sm:text-xs font-bold ${arcade ? 'text-cyan-100' : 'text-stone-500'}`}>
                   Due {new Date(assignment.deadline).toLocaleDateString()}
                 </span>
               </>
@@ -226,16 +247,17 @@ export default function StudentAssignmentCard({
               </button>
             )}
             {!isLocked && (
-              <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${accent.chip}`}>
+              <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${arcade ? 'bg-white/15 text-cyan-100' : accent.chip}`}>
                 <Zap size={11} className="fill-current" />
                 +{xpReward} XP
               </span>
             )}
-            <span className="text-[10px] sm:text-xs font-bold text-stone-500">
+            <span className={`text-[10px] sm:text-xs font-bold ${arcade ? 'bg-white/15 text-cyan-100 rounded-full px-2 py-0.5' : 'text-stone-500'}`}>
               {completedModes}/{totalModes} modes
             </span>
             {/* Rounds counter — colour turns amber as the cap approaches. */}
             <span className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${
+              arcade ? 'bg-white/15 text-cyan-100' :
               isLocked ? 'bg-stone-200 text-stone-600' :
               playsLeft <= totalModes ? 'bg-rose-100 text-rose-700' :
               playsLeft <= totalModes * 2 ? 'bg-amber-100 text-amber-700' :
@@ -254,7 +276,11 @@ export default function StudentAssignmentCard({
             onClick={(e) => { e.stopPropagation(); handleStart(); }}
             type="button"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            className={`hidden sm:inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 ${accent.cta} text-white rounded-lg font-bold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all`}
+            className={
+              arcade
+                ? `hidden sm:inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 ${ARCADE_REWARD_GRADIENT} text-amber-950 rounded-full font-extrabold text-sm ring-2 ring-white/40 shadow-md hover:shadow-lg active:scale-95 transition-all`
+                : `hidden sm:inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 ${accent.cta} text-white rounded-lg font-bold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all`
+            }
           >
             {isComplete ? t.playAgain : t.startAssignment} →
           </button>
@@ -267,13 +293,17 @@ export default function StudentAssignmentCard({
           onClick={(e) => { e.stopPropagation(); handleStart(); }}
           type="button"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className={`sm:hidden w-full mt-3 py-2.5 ${accent.cta} text-white rounded-lg font-bold text-sm shadow-sm active:scale-95 transition-all`}
+          className={
+            arcade
+              ? `sm:hidden w-full mt-3 py-2.5 ${ARCADE_REWARD_GRADIENT} text-amber-950 rounded-full font-extrabold text-sm ring-2 ring-white/40 shadow-sm active:scale-95 transition-all`
+              : `sm:hidden w-full mt-3 py-2.5 ${accent.cta} text-white rounded-lg font-bold text-sm shadow-sm active:scale-95 transition-all`
+          }
         >
           {isComplete ? t.playAgain : t.startLearning} →
         </button>
       )}
       {isLocked && (
-        <div className="mt-3 text-[11px] font-bold text-stone-500 bg-white/60 border border-stone-200 rounded-lg px-3 py-2 flex items-center gap-2">
+        <div className={`mt-3 text-[11px] font-bold rounded-lg px-3 py-2 flex items-center gap-2 ${arcade ? 'text-white/70 bg-white/10 ring-1 ring-white/15' : 'text-stone-500 bg-white/60 border border-stone-200'}`}>
           <Lock size={12} />
           You've completed all {MAX_ASSIGNMENT_ROUNDS} rounds of this assignment. Great practice! Check your other assignments.
         </div>

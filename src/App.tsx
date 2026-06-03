@@ -413,6 +413,30 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // Wi-Fi mid-lesson can still hear the words. Idle-scheduled, skipped on
   // 2G / data-saver. See useAssignmentPrecache for the why.
   useAssignmentPrecache(assignmentWords);
+
+  // Achievement snapshot — rebuilt whenever xp / streak / progress
+  // changes and handed to `recordEvent` to re-evaluate locked
+  // achievements. MUST stay above the early returns further down so
+  // the hook order never changes between renders (Rules of Hooks);
+  // the `arcadeActive` guard lives inside the effect body, not around
+  // the hook call.
+  useEffect(() => {
+    if (!arcadeActive) return;
+    const perfectScores = studentProgress.filter((p) => p.score >= 100).length;
+    const modesPlayed = new Set(studentProgress.map((p) => p.mode));
+    // Coarse mastery proxy — distinct assignments fully played at 80+
+    // is a decent stand-in until the word-mastery hook surfaces here.
+    const wordsMastered = studentProgress.filter((p) => p.score >= 80).length * 5;
+    void achievements.recordEvent({
+      xp,
+      streak,
+      gamesPlayed: studentProgress.length,
+      perfectScores,
+      wordsMastered,
+      modesPlayed,
+    });
+  }, [arcadeActive, xp, streak, studentProgress, achievements]);
+
   // ?assignment=<id> and ?play=<mode> deep-link URL params captured at
   // boot.  See useDeepLinkUrlParams.
   const {
@@ -1115,10 +1139,6 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   });
   if (studentAuthRoute) return studentAuthRoute;
 
-  // ── Student Pending Approval Screen ────────────────────────────────────────
-
-
-
   if (user?.role === "student" && view === "student-dashboard") {
     return StudentDashboardSection({
       user, xp, streak, badges, setXp, setBadges, setUser,
@@ -1130,6 +1150,10 @@ export default function App({ initialView }: { initialView?: View } = {}) {
       setGameMode, setIsFinished,
       startClassMinute, retention, boosters,
       showToast, renameStudentDisplayName,
+      // Same crossing that fires LevelUpModal triggers the pet's
+      // transformation animation (XP_TITLES tiers coincide with
+      // PET_MILESTONES, so the pet has just evolved too).
+      evolutionPending: Boolean(levelUp.pending),
       // Top-bar logout routes through the same soft-landing modal the
       // hardware back button uses, so a stray tap doesn't drop the kid
       // straight out of their session.
