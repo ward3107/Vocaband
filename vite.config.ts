@@ -274,13 +274,14 @@ export default defineConfig(() => {
             'assets/index-*.css',
           ],
           // Cap precached file size to keep accidental wildcard matches
-          // from pulling in heavy chunks. App.tsx (~200 kB raw) and
-          // the index Tailwind stylesheet (~375 kB raw) are the
-          // heaviest legitimate entries; 400 kB clears them while
-          // still excluding vocabulary (404 kB), the pptxgen lib
-          // chunk (497 kB), and ClassroomView (403 kB) if a glob
-          // pattern ever accidentally matches.
-          maximumFileSizeToCacheInBytes: 400_000,
+          // from pulling in heavy chunks. The index Tailwind stylesheet
+          // (~406 kB raw) is now the heaviest legitimate precached entry —
+          // it grew past the old 400 kB cap when the arcade hub's styles
+          // landed — followed by App.tsx (~200 kB raw). 470 kB clears the
+          // stylesheet with headroom while still excluding the pptxgen lib
+          // chunk (497 kB), vocabulary (596 kB), html2pdf (736 kB) and
+          // exceljs (930 kB) if a glob pattern ever accidentally matches.
+          maximumFileSizeToCacheInBytes: 470_000,
           // Clean up any caches left behind by the previous (broken)
           // SW so returning users don't carry stale entries forward.
           cleanupOutdatedCaches: true,
