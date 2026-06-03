@@ -383,31 +383,6 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
 
-  // Achievement snapshot — rebuilt whenever xp / streak / progress changes
-  // and handed to `recordEvent` so the hook can re-evaluate every locked
-  // achievement. MUST live here with the top-level hooks: it was previously
-  // placed after the view-routing early returns near the render tail, so it
-  // ran on the in-game render but NOT on the student-dashboard render (which
-  // early-returns earlier) — flipping App's hook count between those two
-  // views and throwing React #310 on the dashboard→game transition. The
-  // arcadeActive guard inside keeps it a no-op for non-arcade sessions.
-  // Word-mastered uses a coarse proxy (distinct progress rows ≥80) until the
-  // mastery ledger is wired in.
-  useEffect(() => {
-    if (!arcadeActive) return;
-    const perfectScores = studentProgress.filter((p) => p.score >= 100).length;
-    const modesPlayed = new Set(studentProgress.map((p) => p.mode));
-    const wordsMastered = studentProgress.filter((p) => p.score >= 80).length * 5;
-    void achievements.recordEvent({
-      xp,
-      streak,
-      gamesPlayed: studentProgress.length,
-      perfectScores,
-      wordsMastered,
-      modesPlayed,
-    });
-  }, [arcadeActive, xp, streak, studentProgress, achievements]);
-
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
   // Warm the audio cache for the active assignment so a student who loses
   // Wi-Fi mid-lesson can still hear the words. Idle-scheduled, skipped on
