@@ -272,6 +272,73 @@ const supabaseAdmin = hasSupabaseConfig
     )
   : null;
 
+// ── Generic AI result cache ────────────────────────────────────────────
+// Pure, deterministic AI generators (text analysis, lesson generation)
+// return the same payload for the same inputs, so there's no reason to
+// re-pay the model — or re-wait for it — when an identical request comes
+// back (double-submit, navigation, two teachers in the same set).  These
+// helpers wrap a single `ai_cache(feature, cache_key, content)` table.
+//
+// IMPORTANT: every call is best-effort.  A missing table (migration not
+// applied yet) or a transient Supabase error must NEVER break generation —
+// it just means a cache miss and we fall through to the live model.  This
+// mirrors the bagrut_cache pattern.
+//
+// Only cache generators that are (a) pure (no DB side-effects) and
+// (b) meant to be reproducible.  Do NOT cache the library sentence /
+// distractor generators: they persist candidates to the DB and exist to
+// give teachers FRESH variety on each "Regenerate" tap — a cache hit
+// there would hand back the identical batch and defeat the feature.
+function aiCacheKey(parts: unknown): string {
+  return createHash("sha256").update(JSON.stringify(parts)).digest("hex");
+}
+
+async function aiCacheGet<T>(feature: string, key: string): Promise<T | null> {
+  if (!supabaseAdmin) return null;
+  try {
+    const { data } = await supabaseAdmin
+      .from("ai_cache")
+      .select("content")
+      .eq("feature", feature)
+      .eq("cache_key", key)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (data?.content) {
+      // Fire-and-forget hit counter; don't block the response on it.
+      supabaseAdmin
+        .rpc("touch_ai_cache", { p_feature: feature, p_cache_key: key })
+        .then(() => {}, () => {});
+      return data.content as T;
+    }
+  } catch (err) {
+    console.warn(`[ai_cache] lookup failed (${feature}):`, (err as Error)?.message || err);
+  }
+  return null;
+}
+
+// TTL default 30 days — pure generators are stable, but an expiry keeps the
+// table from growing unbounded and lets prompt/model improvements roll in.
+function aiCacheSet(feature: string, key: string, content: unknown, ttlMs = 30 * 24 * 60 * 60 * 1000): void {
+  if (!supabaseAdmin) return;
+  void withRetry(
+    async () => {
+      const { error } = await supabaseAdmin!
+        .from("ai_cache")
+        .upsert(
+          {
+            feature,
+            cache_key: key,
+            content,
+            expires_at: new Date(Date.now() + ttlMs).toISOString(),
+          },
+          { onConflict: "feature,cache_key" },
+        );
+      if (error) throw error;
+    },
+    { label: `ai_cache:upsert:${feature}` },
+  ).catch((err) => console.warn(`[ai_cache] upsert failed (${feature}):`, err?.message || err));
+}
+
 // Public (publishable/anon) key used by the Tier-2 /api/student/login
 // endpoint to sign a student in NEXT TO the database instead of from the
 // phone (see docs/login-latency-tier2-proposal.md). Read from a server env
@@ -4853,7 +4920,10 @@ Return JSON: an array, one item per word, each with { word, distractors: [string
           // word + sentence per entry, so it needs more headroom than the
           // old one-sentence-per-line text reply. Billed on actual usage.
           max_tokens: 2048,
-          system: `You generate English sentences for Israeli EFL students (grades 4-9) used in vocabulary practice games.  Output is consumed by two modes: Sentence Builder (student rebuilds the sentence from shuffled words) and Fill in the Blank (the target word is removed and the student picks it from a 4-option list).  Both modes need the SAME quality from a sentence — the target word must fit naturally and the rest of the sentence must hint at it.
+          // System block is cached (per-difficulty): the rules are static
+          // across the batch, so repeat calls in the 5-min window skip
+          // re-processing the prompt prefix.
+          system: [{ type: "text", cache_control: { type: "ephemeral" }, text: `You generate English sentences for Israeli EFL students (grades 4-9) used in vocabulary practice games.  Output is consumed by two modes: Sentence Builder (student rebuilds the sentence from shuffled words) and Fill in the Blank (the target word is removed and the student picks it from a 4-option list).  Both modes need the SAME quality from a sentence — the target word must fit naturally and the rest of the sentence must hint at it.
 
 CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-violated rule; obey its word count strictly.
 
@@ -4866,7 +4936,7 @@ CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-
 5. Statements only — never write a question. Question word order is awkward in Sentence Builder.
 6. Do NOT reuse any OTHER word from the input batch inside the sentence. The blank must be uniquely answerable; if two batch words both fit, the question is broken.
 7. Concrete and visual — avoid abstract metaphors or idioms. Vocabulary level for grades 4-9.
-8. Return your answer ONLY through the submit_sentences tool: one entry per input word, echoing the exact input word in "word" and its sentence in "sentence".`,
+8. Return your answer ONLY through the submit_sentences tool: one entry per input word, echoing the exact input word in "word" and its sentence in "sentence".` }],
           // Tool use instead of free-text + line splitting. The old code split
           // the reply on "\n" and paired line[i] → word[i] by position — one
           // stray blank line or numbered prefix silently shifted every
@@ -4993,6 +5063,15 @@ CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-
     if (injection.detected) {
       console.warn(`[AI Text] uid=${auth.uid}: prompt-injection rejected (pattern=${injection.pattern})`);
       return res.status(400).json({ error: "Text contains disallowed pattern" });
+    }
+
+    // Cache hit short-circuit — same text + level + flags always yields the
+    // same analysis (temperature 0.2), so skip the (paid, ~2-4s) Gemini call.
+    const aiTextKey = aiCacheKey({ text: text.trim(), level, extractVocab, generateQuestions });
+    const cachedText = await aiCacheGet<{ vocabulary: unknown[]; questions: unknown[] }>("ai_process_text", aiTextKey);
+    if (cachedText) {
+      console.log(`[AI Text] uid=${auth.uid}: cache hit`);
+      return res.json(cachedText);
     }
 
     try {
@@ -5140,6 +5219,7 @@ Output ONLY the JSON, no markdown, no explanations.
         questions: sanitizedQuestions,
       };
 
+      aiCacheSet("ai_process_text", aiTextKey, responsePayload);
       return res.json(responsePayload);
     } catch (error: any) {
       console.error("[AI Text] processing error:", error?.message || error);
@@ -5200,6 +5280,19 @@ Output ONLY the JSON, no markdown, no explanations.
           return res.status(400).json({ error: "A vocabulary word contains a disallowed pattern" });
         }
       }
+    }
+
+    // Cache hit short-circuit — identical words + config yields an
+    // equivalent lesson, so skip the (paid, multi-call: generate + coverage
+    // repair) Gemini round-trip.  A teacher who wants a different lesson
+    // changes a config knob (length, text type, question mix), which
+    // changes the key; an unchanged re-submit reuses the prior result.
+    const lessonWords = words.map((w: any) => (typeof w === "string" ? w : w?.english || ""));
+    const lessonKey = aiCacheKey({ words: lessonWords, config });
+    const cachedLesson = await aiCacheGet<{ text: string; wordCount: number; questions: unknown[]; missingWords: string[] }>("ai_generate_lesson", lessonKey);
+    if (cachedLesson) {
+      console.log(`[AI Lesson] uid=${auth.uid}: cache hit`);
+      return res.json(cachedLesson);
     }
 
     try {
@@ -5446,12 +5539,14 @@ ${sanitizedText}`;
       const finalWordCount = finalText.split(/\s+/).length;
       console.log(`[AI Lesson] uid=${auth.uid}: generated ${finalWordCount} words, ${sanitizedQuestions.length} questions, missing=${missingWords.length}`);
 
-      return res.json({
+      const lessonPayload = {
         text: finalText,
         wordCount: finalWordCount,
         questions: sanitizedQuestions,
         missingWords,
-      });
+      };
+      aiCacheSet("ai_generate_lesson", lessonKey, lessonPayload);
+      return res.json(lessonPayload);
     } catch (error: any) {
       console.error("[AI Lesson] generation error:", error?.message || error);
       return res.status(500).json({ error: "AI lesson generation failed" });
