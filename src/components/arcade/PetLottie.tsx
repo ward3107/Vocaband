@@ -34,18 +34,26 @@ interface PetLottieProps {
 
 export default function PetLottie({ stage, fallbackEmoji, className }: PetLottieProps) {
   const reduced = useReducedMotion();
-  const [data, setData] = useState<object | null>(null);
+  // Cache the loaded JSON together with the stage it belongs to. Deriving
+  // `data` from a stage match — instead of nulling state inside the effect
+  // on every stage change — avoids a synchronous setState-in-effect: when
+  // the stage changes the cached art simply stops matching, so the emoji
+  // shows until the new file resolves. The pet never flashes stale art.
+  const [entry, setEntry] = useState<{ stage: string; data: object } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setData(null); // reset on stage change so we never flash the old art
     const loader = PET_LOTTIE[`../../assets/pet/${stage}.json`];
     if (!loader) return; // no file for this stage → emoji fallback
     loader()
-      .then((m) => { if (!cancelled) setData(m.default); })
-      .catch(() => { if (!cancelled) setData(null); }); // missing / bad JSON → emoji
+      .then((m) => { if (!cancelled) setEntry({ stage, data: m.default }); })
+      .catch(() => { if (!cancelled) setEntry(null); }); // missing / bad JSON → emoji
     return () => { cancelled = true; };
   }, [stage]);
+
+  // Only show art that belongs to the CURRENT stage; otherwise fall back to
+  // the emoji (loading, missing file, failed parse, or mid stage-change).
+  const data = entry && entry.stage === stage ? entry.data : null;
 
   // Loading, missing, or failed → legacy emoji. It inherits the parent's
   // font size, so the fallback matches the pre-Lottie look exactly.

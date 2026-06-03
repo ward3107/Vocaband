@@ -273,7 +273,9 @@ export default function CharacterStage({
   // Latest pool, read at fire time so a language/stage change is picked
   // up by the NEXT bubble without resetting the cadence.
   const poolRef = useRef<string[]>([]);
-  poolRef.current = petLines[language]?.[stageKey] ?? petLines.en[stageKey] ?? [];
+  useEffect(() => {
+    poolRef.current = petLines[language]?.[stageKey] ?? petLines.en[stageKey] ?? [];
+  }, [language, stageKey]);
 
   useEffect(() => {
     let cancelled = false;

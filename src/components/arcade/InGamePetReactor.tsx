@@ -38,7 +38,9 @@ export default function InGamePetReactor({
   // fires (the effect depends only on `feedback`, so it can't list
   // comboChain without re-firing on every combo change).
   const comboRef = useRef(comboChain);
-  comboRef.current = comboChain;
+  useEffect(() => {
+    comboRef.current = comboChain;
+  }, [comboChain]);
 
   // Fire the matching keyframe on each feedback transition. Skipped
   // entirely under reduced motion.
