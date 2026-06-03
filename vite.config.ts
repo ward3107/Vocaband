@@ -311,15 +311,19 @@ export default defineConfig(() => {
             // resolved within ms of first paint.
             'assets/App-*.js',
             'assets/LandingPage-*.js',
-            // motion + lucide ship in App.tsx's modulepreload chain so
-            // they fetch in parallel with App. Keep them precached so
-            // offline second visits don't fall back to network for the
-            // landing page's animations / icons.
-            'assets/motion-*.js',
+            // lucide (shared icon chunk) ships in App.tsx's modulepreload
+            // chain so it fetches in parallel with App. Keep it precached so
+            // offline second visits don't fall back to network for the app's
+            // icons. (motion is no longer force-chunked — it auto-splits into
+            // the lazy views that animate, so there is no motion-*.js to
+            // precache here; see manualChunks below. The previous
+            // 'assets/motion-*.js' glob matched nothing and warned on build.)
             'assets/lucide-*.js',
-            // Above-the-fold landing dependencies
+            // Above-the-fold landing dependencies. The LandingPage chunk
+            // itself is precached above (assets/LandingPage-*.js); the old
+            // lowercase 'assets/landing-page-*.js' glob matched no file and
+            // warned on every build.
             'assets/PublicNav-*.js',
-            'assets/landing-page-*.js',
             'assets/FloatingButtons-*.js',
             // Student entry chunks — the first views a student navigates to
             // (PIN login, Quick Play join, Category Race join) + the shared
