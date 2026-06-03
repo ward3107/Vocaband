@@ -3018,14 +3018,19 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     return res.json({ hebrew, arabic, russian });
   });
 
-  // ── OCR via Claude Haiku Vision ───────────────────────────────────────────
-  // Replaces Tesseract.js entirely. Tesseract had three problems:
+  // ── OCR via Google Gemini Vision ──────────────────────────────────────────
+  // The OCR handler lives at app.post("/api/ocr", …) further down. It runs
+  // gemini-2.5-flash (GOOGLE_AI_API_KEY) at temperature 0 — NOT Claude.
+  //
+  // History: replaced Tesseract.js, which had three problems:
   //   1. ~300 MB RAM per worker → crashed Render's 512 MB free tier
   //   2. 10-15s per request (cold start + recognition)
   //   3. Poor accuracy on phone photos (angles, shadows, blur)
   //
-  // Claude Haiku Vision: 2-3s, excellent accuracy, ~$0.002/image, 0 MB RAM.
-  // Uses the same ANTHROPIC_API_KEY already configured for AI sentences.
+  // Gemini Flash: 2-3s, excellent accuracy, ~2-3x cheaper per image than
+  // Claude Haiku Vision (and a free tier), decodes HEIC/HEIF natively, 0 MB
+  // RAM. An earlier iteration briefly used Claude Haiku Vision; that's why a
+  // stale "Claude Haiku Vision" note used to sit here — corrected 2026-06.
 
   // Auth gate for the OCR diagnostic endpoints. Both reveal partial details
   // about GOOGLE_AI_API_KEY (boolean presence, prefix/suffix, length, error
