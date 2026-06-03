@@ -382,6 +382,32 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
+
+  // Achievement snapshot — rebuilt whenever xp / streak / progress changes
+  // and handed to `recordEvent` so the hook can re-evaluate every locked
+  // achievement. MUST live here with the top-level hooks: it was previously
+  // placed after the view-routing early returns near the render tail, so it
+  // ran on the in-game render but NOT on the student-dashboard render (which
+  // early-returns earlier) — flipping App's hook count between those two
+  // views and throwing React #310 on the dashboard→game transition. The
+  // arcadeActive guard inside keeps it a no-op for non-arcade sessions.
+  // Word-mastered uses a coarse proxy (distinct progress rows ≥80) until the
+  // mastery ledger is wired in.
+  useEffect(() => {
+    if (!arcadeActive) return;
+    const perfectScores = studentProgress.filter((p) => p.score >= 100).length;
+    const modesPlayed = new Set(studentProgress.map((p) => p.mode));
+    const wordsMastered = studentProgress.filter((p) => p.score >= 80).length * 5;
+    void achievements.recordEvent({
+      xp,
+      streak,
+      gamesPlayed: studentProgress.length,
+      perfectScores,
+      wordsMastered,
+      modesPlayed,
+    });
+  }, [arcadeActive, xp, streak, studentProgress, achievements]);
+
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
   // Warm the audio cache for the active assignment so a student who loses
   // Wi-Fi mid-lesson can still hear the words. Idle-scheduled, skipped on
@@ -718,6 +744,26 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     view, setView, user,
     showExitConfirmModal, setShowExitConfirmModal,
     restoreInProgressRef: restoreInProgress,
+  });
+
+  // Re-consent, exit-confirm, class-not-found, class-switch overlay markup.
+  // MUST stay here with the other top-level hooks — above every early
+  // return below. It was previously called further down (after the public /
+  // quick-play-exit / student-auth early returns), so a student
+  // transitioning from the join form (early-returned) into the dashboard or
+  // live-challenge game (not early-returned) ran this hook on one render but
+  // not the previous one — React #310 ("Rendered more hooks than during the
+  // previous render"), which crashed the live-challenge join. The returned
+  // overlay nodes are only consumed by the authenticated branches further
+  // down, so hoisting the call changes nothing visible.
+  const { consentModal, exitConfirmModal, classNotFoundBanner, classSwitchModal } = useAppOverlays({
+    user, needsConsent, showOnboarding,
+    consentChecked, setConsentChecked,
+    consentMode, dontShowAgain, setDontShowAgain,
+    recordConsent,
+    showExitConfirmModal, setShowExitConfirmModal, beginExitFlow,
+    classNotFoundIntent, setClassNotFoundIntent, setView,
+    pendingClassSwitch, handleConfirmClassSwitch, handleCancelClassSwitch,
   });
 
   // Apply teacher dashboard theme to document root.  Extract theme ID
@@ -1073,18 +1119,6 @@ export default function App({ initialView }: { initialView?: View } = {}) {
 
 
 
-  // Re-consent, exit-confirm, class-not-found, class-switch overlays —
-  // markup lives in useAppOverlays.
-  const { consentModal, exitConfirmModal, classNotFoundBanner, classSwitchModal } = useAppOverlays({
-    user, needsConsent, showOnboarding,
-    consentChecked, setConsentChecked,
-    consentMode, dontShowAgain, setDontShowAgain,
-    recordConsent,
-    showExitConfirmModal, setShowExitConfirmModal, beginExitFlow,
-    classNotFoundIntent, setClassNotFoundIntent, setView,
-    pendingClassSwitch, handleConfirmClassSwitch, handleCancelClassSwitch,
-  });
-
   if (user?.role === "student" && view === "student-dashboard") {
     return StudentDashboardSection({
       user, xp, streak, badges, setXp, setBadges, setUser,
@@ -1272,29 +1306,6 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     && !showModeSelection
     && !showModeIntro;
 
-  // Achievement snapshot — rebuilt whenever xp / streak / progress
-  // changes and handed to `recordEvent` so the hook can re-evaluate
-  // every locked achievement.  Word-mastered count uses a coarse
-  // approximation (distinct words touched in progress rows) because
-  // word_attempts isn't loaded at the App level; an Achievement that
-  // wants exact mastery counts (words_50/250/1000) is therefore a
-  // slight under-estimate until the ledger is wired in Phase 6.
-  useEffect(() => {
-    if (!arcadeActive) return;
-    const perfectScores = studentProgress.filter((p) => p.score >= 100).length;
-    const modesPlayed = new Set(studentProgress.map((p) => p.mode));
-    // Coarse mastery proxy — distinct assignments fully played at 80+
-    // is a decent stand-in until the word-mastery hook surfaces here.
-    const wordsMastered = studentProgress.filter((p) => p.score >= 80).length * 5;
-    void achievements.recordEvent({
-      xp,
-      streak,
-      gamesPlayed: studentProgress.length,
-      perfectScores,
-      wordsMastered,
-      modesPlayed,
-    });
-  }, [arcadeActive, xp, streak, studentProgress, achievements]);
   // Floating help button mirrors the reaction bar's gating: visible
   // only mid-Quick-Play game so unauthenticated kids who are stuck
   // have a one-tap escape hatch without being able to invoke it from

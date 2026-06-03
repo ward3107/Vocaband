@@ -20,16 +20,21 @@ interface Props {
 }
 
 export default function VocabagrutShell({ user, classes, teacherAssignments, onExit, showToast }: Props) {
+  // All hooks first, above every early return — the teacher sub-view state.
+  // The student early return below used to sit ABOVE these useState calls,
+  // so a student render ran 0 hooks while a teacher render ran 4; any render
+  // where role resolved differently on the same instance changed the hook
+  // count → React #310. Students simply don't use this state.
+  const [sub, setSub] = useState<SubView>('landing');
+  const [test, setTest] = useState<BagrutTest | null>(null);
+  const [sourceWords, setSourceWords] = useState<string[]>([]);
+  const [existingId, setExistingId] = useState<string | null>(null);
+
   // Students see the student view exclusively — no internal navigation
   // beyond list ↔ test which the student view handles itself.
   if (user.role === 'student') {
     return <BagrutStudentView user={user} onBack={onExit} showToast={showToast} />;
   }
-
-  const [sub, setSub] = useState<SubView>('landing');
-  const [test, setTest] = useState<BagrutTest | null>(null);
-  const [sourceWords, setSourceWords] = useState<string[]>([]);
-  const [existingId, setExistingId] = useState<string | null>(null);
 
   if (sub === 'landing' || !test) {
     return (
