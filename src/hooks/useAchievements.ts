@@ -4,15 +4,19 @@
  * snapshot, and persists any newly-met achievements append-only.
  *
  * Flow:
- *   1. Mount: fetch all existing rows for the user; cache the set.
- *   2. First-run seed: if `voca:ach-seeded:<uid>` is absent in
- *      localStorage, every currently-met achievement is inserted
- *      *silently* (no toast, no XP) — back-fill protection so a
- *      student already at XP 6000 doesn't get spammed at first login.
- *      The seed flag prevents re-seeding on subsequent loads.
- *   3. recordEvent(snapshot): re-evaluate every still-locked
- *      achievement against the new snapshot.  For each that flips
- *      from locked → unlocked:
+ *   1. Mount: fetch all existing rows for the user. `unlocked` mirrors
+ *      the DB, and `recordEvent` stays INERT until that read resolves
+ *      (`ready`). This is the linchpin: if we evaluated before the
+ *      unlock set loaded, every already-earned achievement would look
+ *      "newly unlocked" and re-toast on every page reload.
+ *   2. First-run back-fill: when the DB returns ZERO rows the student has
+ *      never had achievements evaluated. The first evaluation then seeds
+ *      whatever is already met *silently* (no toast, no XP) so a student
+ *      who was already at XP 6000 before this feature shipped doesn't get
+ *      spammed. The DB is the source of truth here — not a per-device
+ *      localStorage flag — so the seed is correct across devices.
+ *   3. recordEvent(snapshot): re-evaluate every still-locked achievement.
+ *      For each that flips from locked → unlocked:
  *         - INSERT into student_achievements (ON CONFLICT DO NOTHING)
  *         - queue an AchievementToast item
  *         - call onGrantXp(xpReward, label) so the economy stays in
@@ -23,8 +27,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ACHIEVEMENTS, type AchievementSnapshot } from "../constants/game";
 import { supabase } from "../core/supabase";
-
-const seedKey = (uid: string) => `voca:ach-seeded:${uid}`;
 
 export interface AchievementToastItem {
   id: string;
@@ -59,39 +61,43 @@ export function useAchievements({
 }: UseAchievementsOptions): UseAchievementsApi {
   const [unlocked, setUnlocked] = useState<Set<string>>(() => new Set());
   const [toasts, setToasts] = useState<AchievementToastItem[]>([]);
-  const seededRef = useRef(false);
+  // Flips true only once the initial DB read resolves. recordEvent is a
+  // no-op until then so a snapshot that hydrates before the unlock set
+  // can't mistake already-earned achievements for fresh unlocks.
+  const [ready, setReady] = useState(false);
+  // True when the DB held zero rows at load — i.e. achievements have never
+  // been evaluated for this student. The first evaluation back-fills the
+  // already-met set silently; everything after that is a real unlock.
+  const needsSeedRef = useRef(false);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Initial fetch + first-run seed.
+  // Initial fetch. Establishes the unlock set from the DB before any
+  // evaluation can run, and decides whether a silent back-fill is due.
   useEffect(() => {
-    if (!enabled || !uid) return;
+    if (!enabled || !uid) {
+      setReady(false);
+      return;
+    }
     let cancelled = false;
+    setReady(false);
     void (async () => {
       const { data, error } = await supabase
         .from("student_achievements")
         .select("achievement_id")
         .eq("user_uid", uid);
       if (cancelled) return;
+      // On a failed read we deliberately stay not-ready: evaluating against
+      // an empty set here is exactly what produced the reload spam.
       if (error) return;
-      const ids = new Set<string>((data ?? []).map((r: { achievement_id: string }) => r.achievement_id));
+      const ids = new Set<string>(
+        (data ?? []).map((r: { achievement_id: string }) => r.achievement_id),
+      );
       setUnlocked(ids);
-      // If no seed marker exists, this is the first time the user has
-      // had achievements evaluated on this device.  We don't seed
-      // proactively here — `recordEvent` will seed silently on its
-      // first call (when the caller's first real snapshot is built).
-      try {
-        if (!localStorage.getItem(seedKey(uid))) {
-          // Mark uninitialised; first recordEvent call performs the seed.
-          seededRef.current = false;
-        } else {
-          seededRef.current = true;
-        }
-      } catch {
-        seededRef.current = false;
-      }
+      needsSeedRef.current = ids.size === 0;
+      setReady(true);
     })();
     return () => {
       cancelled = true;
@@ -100,42 +106,35 @@ export function useAchievements({
 
   const recordEvent = useCallback(
     async (snapshot: AchievementSnapshot) => {
-      if (!enabled || !uid) return;
-      // Evaluate every locked achievement against the snapshot.
-      const newly: typeof ACHIEVEMENTS = [];
-      for (const ach of ACHIEVEMENTS) {
-        if (unlocked.has(ach.id)) continue;
-        if (ach.predicate(snapshot)) newly.push(ach);
-      }
+      // Gate on `ready`: until the DB read lands, `unlocked` is unreliable.
+      if (!enabled || !uid || !ready) return;
+
+      const newly = ACHIEVEMENTS.filter(
+        (ach) => !unlocked.has(ach.id) && ach.predicate(snapshot),
+      );
+
       if (newly.length === 0) {
-        // First snapshot matched nothing (e.g. a brand-new student with no
-        // qualifying achievements yet): the seed is still "done" — there was
-        // simply nothing to back-fill. Mark it so the student's first REAL
-        // unlock later isn't mistaken for a silent seed (which would insert
-        // it at 0 XP, suppress its toast, and block the real award forever).
-        if (!seededRef.current) {
-          seededRef.current = true;
-          try { localStorage.setItem(seedKey(uid), "1"); } catch { /* private-mode */ }
-        }
+        // Nothing met. The back-fill window is over the moment we evaluate a
+        // real snapshot with nothing pending, so a brand-new student's first
+        // genuine unlock later isn't swallowed as a silent seed.
+        needsSeedRef.current = false;
         return;
       }
 
-      const isSilentSeed = !seededRef.current;
-      // Bulk insert — Supabase upsert with ignoreDuplicates so any
-      // RLS-permitted concurrent unlock doesn't fail the whole batch.
-      const { error } = await supabase
-        .from("student_achievements")
-        .upsert(
-          newly.map((ach) => ({
-            user_uid: uid,
-            achievement_id: ach.id,
-            xp_awarded: isSilentSeed ? 0 : ach.xpReward,
-          })),
-          { onConflict: "user_uid,achievement_id", ignoreDuplicates: true },
-        );
+      const isSilentSeed = needsSeedRef.current;
+      // Bulk insert — upsert with ignoreDuplicates so an RLS-permitted
+      // concurrent unlock doesn't fail the whole batch.
+      const { error } = await supabase.from("student_achievements").upsert(
+        newly.map((ach) => ({
+          user_uid: uid,
+          achievement_id: ach.id,
+          xp_awarded: isSilentSeed ? 0 : ach.xpReward,
+        })),
+        { onConflict: "user_uid,achievement_id", ignoreDuplicates: true },
+      );
       if (error) return;
 
-      // Optimistic local set update regardless of seed/real unlock.
+      // Mirror the new ids locally so they're never re-evaluated this session.
       setUnlocked((prev) => {
         const next = new Set(prev);
         for (const ach of newly) next.add(ach.id);
@@ -143,11 +142,8 @@ export function useAchievements({
       });
 
       if (isSilentSeed) {
-        // First-run seed completes; mark and skip toasts + XP grants.
-        seededRef.current = true;
-        try {
-          localStorage.setItem(seedKey(uid), "1");
-        } catch {/* private-mode */}
+        // First-run back-fill done — persisted, but no toast and no XP.
+        needsSeedRef.current = false;
         return;
       }
 
@@ -172,7 +168,7 @@ export function useAchievements({
         setTimeout(() => dismissToast(tid), TOAST_DURATION_MS + i * 800);
       });
     },
-    [enabled, uid, unlocked, onGrantXp, dismissToast],
+    [enabled, uid, ready, unlocked, onGrantXp, dismissToast],
   );
 
   return { unlocked, toasts, dismissToast, recordEvent };
