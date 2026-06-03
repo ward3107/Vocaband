@@ -4,6 +4,25 @@ Tracking known issues with their diagnosis status.
 
 ---
 
+## Perf — Supabase + lucide hoisted onto the every-page entry chunk (2026-06-03)
+
+**Status:** Diagnosed, not yet fixed. Full write-up in
+`docs/perf-audit-2026-06-03.md`.
+
+The built entry chunk (`assets/index-*.js`, loaded on every page incl. the
+cold landing) statically imports the Supabase client (~51 kB gz) and the
+shared lucide icon chunk (~19 kB gz) even though **no entry-level source
+module imports either** — a rolldown `manualChunks` hoisting artifact. The
+2026-05-28 `modulePreload.resolveDependencies` filter only dropped the
+*preload hint*, not the static import, so supabase still loads. Removing both
+would cut the every-page entry closure ~131 kB gz → ~64 kB gz. Fix is
+build-tooling surgery on the auth-critical supabase boundary — needs a
+focused pass with browser-Network verification (see the audit's "Recommended
+fix direction"). A quick `manualChunks` experiment regressed (lucide split
+into ~291 per-icon chunks), so don't change it blindly.
+
+---
+
 ## Feature — School Manager (principal) Console (2026-05-25)
 
 **Status:** Shipped on `claude/compassionate-goldberg-qNWvm`. Read-only
