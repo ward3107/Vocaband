@@ -20,6 +20,12 @@ import { appToastsT } from "./locales/app-toasts";
 import { useRetention } from "./hooks/useRetention";
 import { useSavedTasks } from "./hooks/useSavedTasks";
 import { useBoosters } from "./hooks/useBoosters";
+import { useFeatureFlag } from "./hooks/useFeatureFlag";
+import { useLevelUp } from "./hooks/useLevelUp";
+import { useAchievements } from "./hooks/useAchievements";
+import LevelUpModal from "./components/arcade/LevelUpModal";
+import AchievementToast from "./components/arcade/AchievementToast";
+import { grantRetentionXp } from "./handlers/retentionGrants";
 import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
 import { createGuestUser } from "./utils/createGuestUser";
@@ -194,6 +200,11 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // rotating item, pet evolution milestones).  Scoped per-user via uid.
   const retention = useRetention(user?.uid, xp);
 
+  // Arcade flag — drives both the level-up modal and the achievement
+  // system below.  Resolved early because several effects gate on it.
+  const arcadeHubEnabled = useFeatureFlag("arcade_hub", false);
+  const arcadeActive = arcadeHubEnabled && user?.role === "student" && !user?.isGuest;
+
   // Saved task templates — teacher-side localStorage of full assignment /
   // quick-play snapshots so a teacher can rebuild the same task in one
   // tap.  Hook returns sorted list (pinned → most-used → most-recent).
@@ -308,6 +319,24 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // Toast notifications — state + showToast (stable identity for dep
   // arrays) + paywall-toast helper. See useToasts.
   const { toasts, setToasts, showToast, showPaywallToast } = useToasts();
+
+  // Arcade level-up modal — fires once per XP_TITLES tier crossing.
+  const levelUp = useLevelUp({
+    uid: user?.uid ?? null,
+    xp,
+    enabled: arcadeActive,
+  });
+  // Arcade achievement system — append-only Supabase table + slide-in
+  // toasts.  Grants are routed through grantRetentionXp so the XP
+  // economy lives in one RPC.  On first run per device the hook
+  // silently seeds any currently-met achievements without toasting,
+  // so a long-time student doesn't get back-fill spam.
+  const achievements = useAchievements({
+    uid: user?.uid ?? null,
+    enabled: arcadeActive,
+    onGrantXp: (amount, reason) =>
+      grantRetentionXp(amount, reason, { user, setXp, showToast }),
+  });
 
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
     show: false, message: '', onConfirm: () => {},
@@ -1242,6 +1271,30 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     && !isFinished
     && !showModeSelection
     && !showModeIntro;
+
+  // Achievement snapshot — rebuilt whenever xp / streak / progress
+  // changes and handed to `recordEvent` so the hook can re-evaluate
+  // every locked achievement.  Word-mastered count uses a coarse
+  // approximation (distinct words touched in progress rows) because
+  // word_attempts isn't loaded at the App level; an Achievement that
+  // wants exact mastery counts (words_50/250/1000) is therefore a
+  // slight under-estimate until the ledger is wired in Phase 6.
+  useEffect(() => {
+    if (!arcadeActive) return;
+    const perfectScores = studentProgress.filter((p) => p.score >= 100).length;
+    const modesPlayed = new Set(studentProgress.map((p) => p.mode));
+    // Coarse mastery proxy — distinct assignments fully played at 80+
+    // is a decent stand-in until the word-mastery hook surfaces here.
+    const wordsMastered = studentProgress.filter((p) => p.score >= 80).length * 5;
+    void achievements.recordEvent({
+      xp,
+      streak,
+      gamesPlayed: studentProgress.length,
+      perfectScores,
+      wordsMastered,
+      modesPlayed,
+    });
+  }, [arcadeActive, xp, streak, studentProgress, achievements]);
   // Floating help button mirrors the reaction bar's gating: visible
   // only mid-Quick-Play game so unauthenticated kids who are stuck
   // have a one-tap escape hatch without being able to invoke it from
@@ -1292,6 +1345,8 @@ export default function App({ initialView }: { initialView?: View } = {}) {
           />
         </Suspense>
       )}
+      <LevelUpModal tier={levelUp.pending} onClose={levelUp.dismiss} />
+      <AchievementToast toasts={achievements.toasts} onDismiss={achievements.dismissToast} />
     </>
   );
 };

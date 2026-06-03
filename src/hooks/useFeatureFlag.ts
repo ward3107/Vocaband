@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../core/supabase";
 
 interface FlagRow {
-  key: string;
+  name: string;
   enabled: boolean;
 }
 
@@ -30,14 +30,18 @@ const notify = () => listeners.forEach((fn) => fn());
 async function loadFlags(): Promise<Map<string, boolean>> {
   if (inflight) return inflight;
   inflight = (async () => {
+    // The applied schema (20260514074413_feature_flags) uses `name` as
+    // the primary-key column; an unapplied 20260627 migration tried to
+    // rename it to `key`, which never made it to the live database.
+    // Querying `name` matches what's actually there.
     const { data, error } = await supabase
       .from("feature_flags")
-      .select("key, enabled");
+      .select("name, enabled");
     if (error) {
       // Table missing / RLS denied → empty snapshot, callers fall back to default.
       flagsSnapshot = new Map();
     } else {
-      flagsSnapshot = new Map((data ?? []).map((r: FlagRow) => [r.key, r.enabled]));
+      flagsSnapshot = new Map((data ?? []).map((r: FlagRow) => [r.name, r.enabled]));
     }
     lastFetchedAt = Date.now();
     notify();
