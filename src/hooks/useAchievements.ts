@@ -107,7 +107,18 @@ export function useAchievements({
         if (unlocked.has(ach.id)) continue;
         if (ach.predicate(snapshot)) newly.push(ach);
       }
-      if (newly.length === 0) return;
+      if (newly.length === 0) {
+        // First snapshot matched nothing (e.g. a brand-new student with no
+        // qualifying achievements yet): the seed is still "done" — there was
+        // simply nothing to back-fill. Mark it so the student's first REAL
+        // unlock later isn't mistaken for a silent seed (which would insert
+        // it at 0 XP, suppress its toast, and block the real award forever).
+        if (!seededRef.current) {
+          seededRef.current = true;
+          try { localStorage.setItem(seedKey(uid), "1"); } catch { /* private-mode */ }
+        }
+        return;
+      }
 
       const isSilentSeed = !seededRef.current;
       // Bulk insert — Supabase upsert with ignoreDuplicates so any
