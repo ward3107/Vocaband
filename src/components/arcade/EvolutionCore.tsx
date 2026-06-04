@@ -1,75 +1,86 @@
 /**
- * EvolutionCore — the arcade hub's hero. Makes pet EVOLUTION the focal
- * point by combining the app's two pet systems:
+ * EvolutionCore — the arcade hub's hero. Makes pet EVOLUTION the focal point
+ * by combining the app's two pet systems:
  *
- *   - Appearance + rewards = the XP ladder (PET_MILESTONES via
- *     useRetention), passed in as currentStage / nextStage / xp /
- *     claimableMilestone. This is the ONLY source of how the pet looks.
- *   - Mood = daily activity (usePetEvolution → petMoodFor), used ONLY
- *     for the little mood face — never for appearance.
+ *   - Appearance + rewards = the XP ladder (PET_MILESTONES via useRetention),
+ *     passed in as currentStage / nextStage / xp / claimableMilestone. This
+ *     is the ONLY source of how the pet looks and what it unlocks.
+ *   - Mood = daily activity (usePetEvolution → petMoodFor), used ONLY for the
+ *     mood face + the "played today / N days away" chip, never for appearance.
  *
- * The pet itself is rendered by CharacterStage (size-scale, aura halo,
- * idle motion, evolution burst, Lottie/emoji). EvolutionCore frames it
- * with tier progress, the mood face, the claimable reward, and an
- * 8-stage ladder. Arcade-only: it mounts solely inside the flagged hub,
- * so usePetEvolution runs there and nowhere else.
+ * Composition (top → bottom):
+ *   EvolutionRing (pet + XP ring + mood + next-evolution preview)
+ *   → stage name → mood/streak chip → "X XP → next" → reward (claim or
+ *   preview) → PLAY-to-grow pill → EvolutionLadder (the full journey).
+ *
+ * Owns the PLAY action now (passed `onPlay`), so the hub no longer renders a
+ * separate BigPlayButton — playing and growing the pet are one and the same.
  */
-import { motion } from "motion/react";
-import CharacterStage from "./CharacterStage";
 import { usePetEvolution, petMoodFor, type PetMood } from "../../hooks/usePetEvolution";
-import { PET_MILESTONES, type PetMilestone } from "../../constants/game";
+import type { PetMilestone } from "../../constants/game";
 import { useLanguage } from "../../hooks/useLanguage";
 import type { Language } from "../../hooks/useLanguage";
-import { useReducedMotion } from "../../hooks/useReducedMotion";
-import {
-  ARCADE_CARD,
-  ARCADE_HERO_GRADIENT,
-  ARCADE_REWARD_GRADIENT,
-  ARCADE_PLAY_RING,
-  ARCADE_BUTTON_TOUCH,
-} from "./theme";
+import { ARCADE_REWARD_GRADIENT, ARCADE_PLAY_RING, ARCADE_BUTTON_TOUCH } from "./theme";
+import EvolutionRing from "./EvolutionRing";
+import EvolutionLadder from "./EvolutionLadder";
 
-const MOOD_FACE: Record<PetMood, string> = {
-  happy: "😊",
-  neutral: "😐",
-  sad: "😟",
-  "very-sad": "😢",
+const MOOD_FACE: Record<PetMood, string> = { happy: "😊", neutral: "😐", sad: "😟", "very-sad": "😢" };
+const MOOD_CHIP: Record<PetMood, string> = {
+  happy: "bg-gradient-to-r from-emerald-400 to-teal-500 text-emerald-950",
+  neutral: "bg-gradient-to-r from-amber-400 to-orange-500 text-amber-950",
+  sad: "bg-gradient-to-r from-rose-400 to-rose-500 text-white",
+  "very-sad": "bg-gradient-to-r from-rose-500 to-rose-700 text-white",
 };
 
 const STRINGS: Record<Language, {
-  eyebrow: string;
-  toNext: (n: number, stage: string) => string;
+  mood: Record<PetMood, string>;
+  playedToday: string;
+  daysAway: (n: number) => string;
+  nextUnlock: string;
+  playToGrow: (stage: string) => string;
+  play: string;
   maxStage: string;
   claim: string;
-  mood: Record<PetMood, string>;
 }> = {
   en: {
-    eyebrow: "Evolution Core",
-    toNext: (n, s) => `${n} XP → ${s}`,
+    mood: { happy: "Happy", neutral: "Doing OK", sad: "Missing you", "very-sad": "Lonely" },
+    playedToday: "played today",
+    daysAway: (n) => `${n}d away`,
+    nextUnlock: "Next unlock",
+    playToGrow: (s) => `PLAY to grow your ${s}`,
+    play: "PLAY",
     maxStage: "Top form! ✨",
     claim: "Claim",
-    mood: { happy: "Thriving", neutral: "Doing OK", sad: "Missing you", "very-sad": "Lonely" },
   },
   he: {
-    eyebrow: "ליבת האבולוציה",
-    toNext: (n, s) => `${n} XP ← ${s}`,
+    mood: { happy: "שמח", neutral: "בסדר", sad: "מתגעגע", "very-sad": "בודד" },
+    playedToday: "שיחקת היום",
+    daysAway: (n) => `לפני ${n} ימים`,
+    nextUnlock: "פתיחה הבאה",
+    playToGrow: (s) => `שחק כדי לפתח את ${s}`,
+    play: "שחק",
     maxStage: "בשיא! ✨",
     claim: "אסוף",
-    mood: { happy: "פורח", neutral: "בסדר", sad: "מתגעגע", "very-sad": "בודד" },
   },
   ar: {
-    eyebrow: "نواة التطور",
-    toNext: (n, s) => `${n} XP ← ${s}`,
+    mood: { happy: "سعيد", neutral: "بخير", sad: "يشتاق إليك", "very-sad": "وحيد" },
+    playedToday: "لعبت اليوم",
+    daysAway: (n) => `منذ ${n} أيام`,
+    nextUnlock: "الفتح التالي",
+    playToGrow: (s) => `العب لتنمية ${s}`,
+    play: "العب",
     maxStage: "في القمة! ✨",
     claim: "استلم",
-    mood: { happy: "مزدهر", neutral: "بخير", sad: "يشتاق إليك", "very-sad": "وحيد" },
   },
   ru: {
-    eyebrow: "Ядро эволюции",
-    toNext: (n, s) => `${n} XP → ${s}`,
+    mood: { happy: "Рад", neutral: "Нормально", sad: "Скучает", "very-sad": "Одинок" },
+    playedToday: "играл сегодня",
+    daysAway: (n) => `${n} дн. назад`,
+    nextUnlock: "Следующая награда",
+    playToGrow: (s) => `Играй, чтобы вырастить ${s}`,
+    play: "ИГРАТЬ",
     maxStage: "На пике! ✨",
     claim: "Забрать",
-    mood: { happy: "Процветает", neutral: "Нормально", sad: "Скучает", "very-sad": "Одинок" },
   },
 };
 
@@ -80,7 +91,9 @@ interface EvolutionCoreProps {
   evolutionPending: boolean;
   claimableMilestone: PetMilestone | null;
   onClaim: (milestone: PetMilestone) => void;
-  displayName?: string;
+  /** Launches the next assignment — the PLAY pill lives here now. */
+  onPlay?: () => void;
+  streak?: number;
 }
 
 export default function EvolutionCore({
@@ -90,19 +103,20 @@ export default function EvolutionCore({
   evolutionPending,
   claimableMilestone,
   onClaim,
-  displayName,
+  onPlay,
+  streak = 0,
 }: EvolutionCoreProps) {
-  const { language, dir } = useLanguage();
-  const reduced = useReducedMotion();
+  const { language, dir, isRTL } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
-  // Mood is daily-activity ONLY (drives just the face). The hook lives
-  // here because EvolutionCore mounts solely inside the arcade hub.
+  // Mood is daily-activity ONLY (drives the face + chip). The hook lives here
+  // because EvolutionCore mounts solely inside the arcade hub.
   const { state } = usePetEvolution({ enabled: true });
-  const mood = petMoodFor(state?.daysSinceLastActive ?? 0);
+  const daysSince = state?.daysSinceLastActive ?? 0;
+  const mood = petMoodFor(daysSince);
+  const activity = daysSince === 0 ? t.playedToday : t.daysAway(daysSince);
 
-  // Progress within the current XP tier (this stage's floor → next
-  // stage's floor). Mirrors CharacterStage's size math.
+  // Progress within the current XP tier (this stage's floor → next floor).
   const floor = currentStage.xpRequired;
   const ceil = nextStage ? nextStage.xpRequired : floor + 1;
   const pct = Math.min(100, Math.max(0, ((xp - floor) / (ceil - floor)) * 100));
@@ -110,84 +124,59 @@ export default function EvolutionCore({
 
   return (
     <section dir={dir} className="flex w-full flex-col items-center gap-3">
-      {/* The pet — appearance + all animations come from the XP ladder. */}
-      <CharacterStage
+      <EvolutionRing
         currentStage={currentStage}
         nextStage={nextStage}
         xp={xp}
         evolutionPending={evolutionPending}
-        hasClaimable={!!claimableMilestone}
-        displayName={displayName}
+        mood={mood}
+        pct={pct}
       />
 
-      <div className={`${ARCADE_CARD} w-full max-w-sm p-4`}>
-        {/* Eyebrow + mood face (the only activity-driven element). */}
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-widest text-cyan-200">
-            {t.eyebrow}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs font-bold text-cyan-100">
-            <span aria-hidden className="text-sm leading-none">{MOOD_FACE[mood]}</span>
-            {t.mood[mood]}
-          </span>
-        </div>
-
-        {/* Current stage name (from the XP ladder). */}
-        <div className="mt-1 flex items-center gap-2 text-lg font-extrabold text-white">
-          <span aria-hidden>{currentStage.emoji}</span>
-          {currentStage.stage}
-        </div>
-
-        {/* Progress to the next stage, or a max-stage flourish. */}
-        {nextStage ? (
-          <>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/15">
-              <motion.div
-                className={`h-full rounded-full ${ARCADE_HERO_GRADIENT}`}
-                initial={reduced ? false : { width: 0 }}
-                animate={{ width: `${pct}%` }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-              />
-            </div>
-            <p className="mt-1 text-xs font-bold tabular-nums text-cyan-100">
-              {t.toNext(remaining, nextStage.stage)}
-            </p>
-          </>
-        ) : (
-          <p className="mt-2 text-xs font-bold text-cyan-100">{t.maxStage}</p>
-        )}
-
-        {/* Claimable evolution reward — the hero's call to action. */}
-        {claimableMilestone && (
-          <button
-            type="button"
-            onClick={() => onClaim(claimableMilestone)}
-            className={`${ARCADE_REWARD_GRADIENT} ${ARCADE_PLAY_RING} ${ARCADE_BUTTON_TOUCH} mt-3 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-full px-4 py-3 text-sm font-extrabold text-amber-950`}
-          >
-            🎁 {t.claim}: {claimableMilestone.reward.label}
-          </button>
-        )}
-
-        {/* 8-stage ladder — reached stages lit, current one emphasised. */}
-        <div className="mt-3 flex items-center justify-between">
-          {PET_MILESTONES.map((m) => {
-            const reached = xp >= m.xpRequired;
-            const current = m.stage === currentStage.stage;
-            return (
-              <span
-                key={m.stage}
-                title={m.stage}
-                aria-hidden
-                className={`text-base transition-transform ${current ? "scale-125" : ""} ${
-                  reached ? "opacity-100" : "opacity-30 grayscale"
-                }`}
-              >
-                {m.emoji}
-              </span>
-            );
-          })}
-        </div>
+      <div className="flex items-center gap-2 text-2xl font-extrabold text-white">
+        <span aria-hidden>{currentStage.emoji}</span>
+        {currentStage.stage}
       </div>
+
+      <span className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-extrabold ${MOOD_CHIP[mood]}`}>
+        <span aria-hidden className="text-sm leading-none">{MOOD_FACE[mood]}</span>
+        {t.mood[mood]} · {activity}{streak > 0 ? ` · ${streak}🔥` : ""}
+      </span>
+
+      {nextStage ? (
+        <p className="text-base font-bold text-white">
+          <span className="tabular-nums">{remaining} XP</span> {isRTL ? "←" : "→"}{" "}
+          <span aria-hidden>{nextStage.emoji}</span> {nextStage.stage}
+        </p>
+      ) : (
+        <p className="text-sm font-bold text-cyan-100">{t.maxStage}</p>
+      )}
+
+      {claimableMilestone ? (
+        <button
+          type="button"
+          onClick={() => onClaim(claimableMilestone)}
+          className={`${ARCADE_REWARD_GRADIENT} ${ARCADE_PLAY_RING} ${ARCADE_BUTTON_TOUCH} flex min-h-[44px] items-center justify-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-extrabold text-amber-950`}
+        >
+          🎁 {t.claim}: {claimableMilestone.reward.label}
+        </button>
+      ) : nextStage ? (
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-300/10 px-3.5 py-1.5 text-xs font-bold text-amber-200">
+          🎁 {t.nextUnlock}: {nextStage.reward.label}
+        </div>
+      ) : null}
+
+      {onPlay && (
+        <button
+          type="button"
+          onClick={onPlay}
+          className={`bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 ${ARCADE_PLAY_RING} ${ARCADE_BUTTON_TOUCH} mt-0.5 flex min-h-[48px] w-full max-w-sm items-center justify-center gap-2 rounded-full px-6 py-3 text-base font-extrabold text-slate-900`}
+        >
+          <span aria-hidden>▶</span> {nextStage ? t.playToGrow(currentStage.stage) : t.play}
+        </button>
+      )}
+
+      <EvolutionLadder xp={xp} currentStage={currentStage} nextStage={nextStage} />
     </section>
   );
 }

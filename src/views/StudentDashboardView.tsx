@@ -21,8 +21,6 @@ import { useDueReviews } from "../hooks/useDueReviews";
 import { useFeatureFlag } from "../hooks/useFeatureFlag";
 import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
 import ArcadeStatsBar from "../components/arcade/ArcadeStatsBar";
-import TrophyRoadStrip from "../components/arcade/TrophyRoadStrip";
-import BigPlayButton from "../components/arcade/BigPlayButton";
 import EvolutionCore from "../components/arcade/EvolutionCore";
 import { THEMES, getXpTitle, type PetRewardKind } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
@@ -215,10 +213,11 @@ export default function StudentDashboardView({
     : activeThemeConfig.colors.bg;
 
   // Feature-flagged Brawl-Stars-style hub.  Wraps the legacy dashboard
-  // panels inside a vibrant ArcadeHubLayout with hero PLAY button +
-  // trophy road.  Default OFF; admin enables via `arcade_hub` flag.
-  // When the flag is on we skip rendering StudentGreetingCard /
-  // NextUpCard — ArcadeStatsBar and BigPlayButton supersede them.
+  // panels inside a vibrant ArcadeHubLayout with the EvolutionCore hero
+  // (pet + XP ring + evolution ladder + integrated PLAY).  Default OFF;
+  // admin enables via `arcade_hub` flag.  When the flag is on we skip
+  // rendering StudentGreetingCard / NextUpCard — ArcadeStatsBar and
+  // EvolutionCore supersede them.
   const arcadeHubEnabled = useFeatureFlag('arcade_hub', false);
 
   // ── DASHBOARD RENDER ──────────────────────────────────────────────
@@ -248,7 +247,6 @@ export default function StudentDashboardView({
         )}
         <ArcadeHubLayout
           statsBar={<ArcadeStatsBar xp={xp} streak={streak} />}
-          trophyRoad={<TrophyRoadStrip xp={xp} />}
           character={
             <EvolutionCore
               currentStage={retention.currentPetStage}
@@ -257,10 +255,10 @@ export default function StudentDashboardView({
               evolutionPending={evolutionPending}
               claimableMilestone={retention.claimablePetMilestone}
               onClaim={handleClaimMilestone}
-              displayName={user.displayName}
+              onPlay={launchNextAssignment}
+              streak={streak}
             />
           }
-          playButton={<BigPlayButton onPlay={launchNextAssignment} />}
         >
           {classNotFoundBanner}
           <StudentTopBar onRequestLogout={onRequestLogout} />
