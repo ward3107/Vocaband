@@ -9,7 +9,7 @@ import BagrutLandingView from './views/BagrutLandingView';
 import BagrutEditorView from './views/BagrutEditorView';
 import BagrutStudentView from './views/BagrutStudentView';
 
-type SubView = 'landing' | 'editor' | 'preview';
+type SubView = 'landing' | 'editor';
 
 interface Props {
   user: AppUser;
@@ -62,7 +62,6 @@ export default function VocabagrutShell({ user, classes, teacherAssignments, onE
       sourceWords={sourceWords}
       existingId={existingId}
       onBack={() => { setTest(null); setExistingId(null); setSub('landing'); }}
-      onPreview={() => { /* future: dedicated preview view; v1 uses PDF export */ }}
       showToast={showToast}
     />
   );

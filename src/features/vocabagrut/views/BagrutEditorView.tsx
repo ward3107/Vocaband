@@ -2,12 +2,12 @@
 // edits, export PDF, save draft, optionally publish to a class.
 
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Copy, Download, Save, Upload, Loader2, FileText, Eye, Share2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { ArrowLeft, Copy, Download, Save, Upload, Loader2, FileText, Eye, Share2, Minus, Plus } from 'lucide-react';
 import type { AppUser, ClassData } from '../../../core/supabase';
 import type { BagrutTest } from '../types';
 import { MODULE_SPECS } from '../lib/moduleMap';
 import { exportBagrutPdf } from '../lib/bagrutPdf';
+import BagrutPreviewModal from './BagrutPreviewModal';
 import { saveBagrutDraft, updateBagrutTest } from '../hooks/useBagrutTests';
 import { ALL_WORDS } from '../../../data/vocabulary';
 import { ShareWorksheetDialog, type ShareSource } from '../../../components/ShareWorksheetDialog';
@@ -22,11 +22,10 @@ interface Props {
   // If we loaded an existing draft, this is its row id (so save updates instead of inserting).
   existingId: string | null;
   onBack: () => void;
-  onPreview: (test: BagrutTest) => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
-export default function BagrutEditorView({ user, classes, test, sourceWords, existingId, onBack, onPreview, showToast }: Props) {
+export default function BagrutEditorView({ user, classes, test, sourceWords, existingId, onBack, showToast }: Props) {
   const { language, dir } = useLanguage();
   const t = vocabagrutT[language];
   const [draft, setDraft] = useState<BagrutTest>(test);
@@ -36,6 +35,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [shareSource, setShareSource] = useState<ShareSource | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const teacherClasses = classes.filter(c => c.teacherUid === user.uid);
   const spec = MODULE_SPECS[draft.module];
@@ -91,13 +91,32 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
     }));
   }
 
+  // Teacher adjusts a question's points (±1, floored at 0). The section
+  // subtotal and the paper total are derived from the questions so the
+  // header, the section chips, and the exported/printed paper all stay in
+  // sync with the edit instead of showing a stale AI-assigned figure.
+  function bumpQuestionPoints(secIdx: number, qIdx: number, delta: number) {
+    setDraft(d => {
+      const sections = d.sections.map((s, i) => {
+        if (i !== secIdx) return s;
+        const questions = s.questions.map((q, j) =>
+          j === qIdx ? { ...q, points: Math.max(0, q.points + delta) } : q,
+        );
+        const total_points = questions.reduce((sum, q) => sum + q.points, 0);
+        return { ...s, questions, total_points };
+      });
+      const total_points = sections.reduce((sum, s) => sum + s.total_points, 0);
+      return { ...d, sections, total_points };
+    });
+  }
+
   async function handleExport() {
     setExporting(true);
     try {
       await exportBagrutPdf(draft, { withAnswerKey });
       showToast(t.toastPdfExported, 'success');
-    } catch (err: any) {
-      showToast(err?.message || t.toastPdfFailed, 'error');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t.toastPdfFailed, 'error');
     } finally {
       setExporting(false);
     }
@@ -167,7 +186,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => onPreview(draft)}
+              onClick={() => setShowPreview(true)}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border"
               style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
             >
@@ -324,10 +343,36 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
             <div className="space-y-3 mt-4">
               {section.questions.map((q, qIdx) => (
                 <div key={q.id} className="rounded-lg p-3 border" style={{ borderColor: 'var(--vb-border)' }}>
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-bold mt-0.5 px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-muted)' }}>
-                      {q.type.toUpperCase()} · {t.pointsShort(q.points)}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-muted)' }}>
+                      {q.type.toUpperCase()}
                     </span>
+                    {/* Points stepper — teacher can raise or lower the
+                        weight of any question; section + total update live. */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => bumpQuestionPoints(secIdx, qIdx, -1)}
+                        disabled={q.points <= 0}
+                        aria-label={t.decreasePointsAria}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-md border disabled:opacity-40"
+                        style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="text-xs font-bold tabular-nums text-center" style={{ minWidth: '3.5rem', color: 'var(--vb-text-primary)' }}>
+                        {t.pointsShort(q.points)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => bumpQuestionPoints(secIdx, qIdx, 1)}
+                        aria-label={t.increasePointsAria}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-md border"
+                        style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
                   </div>
                   <textarea
                     value={q.prompt}
@@ -387,6 +432,14 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
           source={shareSource}
           defaultLang="he"
           onClose={() => setShareSource(null)}
+        />
+      )}
+
+      {showPreview && (
+        <BagrutPreviewModal
+          test={draft}
+          withAnswerKey={withAnswerKey}
+          onClose={() => setShowPreview(false)}
         />
       )}
     </div>

@@ -209,7 +209,7 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
     }
   }
 
-  doc.save(`${safeFileName(test.title)}.pdf`);
+  savePdf(doc, `${safeFileName(test.title)}.pdf`);
 
   // ── Renderers ───────────────────────────────────────────────────────
   //
@@ -420,6 +420,31 @@ export async function exportBagrutPdf(test: BagrutTest, opts: ExportOpts = {}): 
   }
 }
 
+// Deliver the finished PDF.
+//
+// jsPDF's doc.save() builds an `<a download>` and clicks it. iOS Safari
+// ignores the `download` attribute, so on iPhones/iPads the tap produced
+// NOTHING — the reported "export isn't working" on a teacher's phone. There
+// we open the PDF in a new tab instead (a real navigation iOS honours), so
+// the teacher gets the native viewer + Share → Save to Files. Desktop keeps
+// the direct download.
+function savePdf(doc: import('jspdf').jsPDF, filename: string): void {
+  const isIOS =
+    typeof navigator !== 'undefined' &&
+    (/iP(hone|ad|od)/.test(navigator.userAgent) ||
+      // iPadOS 13+ reports as desktop Safari; detect via touch + Mac.
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+  if (isIOS) {
+    try {
+      const url = doc.output('bloburl');
+      // Same-gesture window.open is allowed (this runs from the export tap).
+      const win = window.open(url as unknown as string, '_blank');
+      if (win) return;
+    } catch { /* fall through to the default download */ }
+  }
+  doc.save(filename);
+}
+
 function safeFileName(s: string): string {
   return s.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_').slice(0, 80) || 'practice-test';
 }
@@ -428,7 +453,7 @@ function safeFileName(s: string): string {
 // reaches paper.  Belt-and-braces: the prompt also tells the model not
 // to emit these tokens, but cached tests generated before the prompt
 // update still flow through `exportBagrutPdf`.
-function sanitizeTitle(raw: string): string {
+export function sanitizeTitle(raw: string): string {
   return raw
     .replace(/\bvocabagrut\b/gi, 'Practice')
     .replace(/\bpractice\s+bagrut\b/gi, 'Practice Test')
