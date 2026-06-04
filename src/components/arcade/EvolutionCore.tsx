@@ -81,6 +81,11 @@ interface EvolutionCoreProps {
   claimableMilestone: PetMilestone | null;
   onClaim: (milestone: PetMilestone) => void;
   displayName?: string;
+  /** When the pet is already rendered elsewhere (e.g. the orbital hub
+   *  centre), suppress this component's own CharacterStage so the same
+   *  pet isn't drawn twice. The progress / mood / claim / ladder card
+   *  still renders — it becomes a pure "pet status" panel. */
+  hidePet?: boolean;
 }
 
 export default function EvolutionCore({
@@ -91,6 +96,7 @@ export default function EvolutionCore({
   claimableMilestone,
   onClaim,
   displayName,
+  hidePet = false,
 }: EvolutionCoreProps) {
   const { language, dir } = useLanguage();
   const reduced = useReducedMotion();
@@ -110,15 +116,19 @@ export default function EvolutionCore({
 
   return (
     <section dir={dir} className="flex w-full flex-col items-center gap-3">
-      {/* The pet — appearance + all animations come from the XP ladder. */}
-      <CharacterStage
-        currentStage={currentStage}
-        nextStage={nextStage}
-        xp={xp}
-        evolutionPending={evolutionPending}
-        hasClaimable={!!claimableMilestone}
-        displayName={displayName}
-      />
+      {/* The pet — appearance + all animations come from the XP ladder.
+          Hidden when the orbital hub already renders the pet in its
+          centre (avoids two identical pets on screen). */}
+      {!hidePet && (
+        <CharacterStage
+          currentStage={currentStage}
+          nextStage={nextStage}
+          xp={xp}
+          evolutionPending={evolutionPending}
+          hasClaimable={!!claimableMilestone}
+          displayName={displayName}
+        />
+      )}
 
       <div className={`${ARCADE_CARD} w-full max-w-sm p-4`}>
         {/* Eyebrow + mood face (the only activity-driven element). */}
