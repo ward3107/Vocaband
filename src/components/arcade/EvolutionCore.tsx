@@ -16,6 +16,7 @@
  */
 import { motion } from "motion/react";
 import CharacterStage from "./CharacterStage";
+import { Fragment } from "react";
 import { usePetEvolution, petMoodFor, type PetMood } from "../../hooks/usePetEvolution";
 import { PET_MILESTONES, type PetMilestone } from "../../constants/game";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -72,6 +73,19 @@ const STRINGS: Record<Language, {
     mood: { happy: "Процветает", neutral: "Нормально", sad: "Скучает", "very-sad": "Одинок" },
   },
 };
+
+const START_WORD: Record<Language, string> = { en: "Start", he: "התחלה", ar: "البداية", ru: "Старт" };
+
+/** Short reward chip per evolution stage: "Start", "+50 XP" → "+50", or the
+ *  unlocked avatar / title / frame emoji. */
+function rewardBadge(m: PetMilestone, startWord: string): string {
+  const r = m.reward;
+  if (r.kind === "xp") return r.value === 0 ? startWord : `+${r.value}`;
+  if (r.kind === "unlock_avatar") return String(r.value);
+  if (r.kind === "unlock_title") return "👑";
+  if (r.kind === "unlock_frame") return r.value === "gold" ? "🥇" : r.value === "holographic" ? "✨" : "🖼️";
+  return "";
+}
 
 interface EvolutionCoreProps {
   currentStage: PetMilestone;
@@ -178,22 +192,39 @@ export default function EvolutionCore({
           </button>
         )}
 
-        {/* 8-stage ladder — reached stages lit, current one emphasised. */}
-        <div className="mt-3 flex items-center justify-between">
-          {PET_MILESTONES.map((m) => {
+        {/* 8-stage evolution ladder — each node shows the reward it grants;
+            current is amber-ringed, the next is dashed, locked ones show 🔒. */}
+        <div className="mt-3 flex items-start justify-between">
+          {PET_MILESTONES.map((m, i) => {
             const reached = xp >= m.xpRequired;
-            const current = m.stage === currentStage.stage;
+            const isCurrent = m.stage === currentStage.stage;
+            const isNext = !!nextStage && m.stage === nextStage.stage;
+            const connectorFilled = i < PET_MILESTONES.length - 1 && xp >= PET_MILESTONES[i + 1].xpRequired;
             return (
-              <span
-                key={m.stage}
-                title={m.stage}
-                aria-hidden
-                className={`text-base transition-transform ${current ? "scale-125" : ""} ${
-                  reached ? "opacity-100" : "opacity-30 grayscale"
-                }`}
-              >
-                {m.emoji}
-              </span>
+              <Fragment key={m.stage}>
+                <div className="flex shrink-0 flex-col items-center" style={{ width: 30 }}>
+                  <div
+                    className={[
+                      "flex h-8 w-8 items-center justify-center rounded-lg text-sm",
+                      reached ? ARCADE_HERO_GRADIENT : "bg-white/10",
+                      isCurrent ? "ring-2 ring-amber-300 shadow-md shadow-amber-500/40" : "",
+                    ].join(" ")}
+                    style={isNext ? { outline: "2px dashed rgba(255,255,255,0.5)", outlineOffset: 1 } : undefined}
+                  >
+                    {reached || isNext ? (
+                      <span aria-hidden className={isNext ? "opacity-70" : undefined}>{m.emoji}</span>
+                    ) : (
+                      <span aria-hidden className="text-xs">🔒</span>
+                    )}
+                  </div>
+                  <span className={`mt-1 text-center text-[9px] font-bold leading-none ${reached ? "text-white" : "text-white/40"}`}>
+                    {rewardBadge(m, START_WORD[language] ?? START_WORD.en)}
+                  </span>
+                </div>
+                {i < PET_MILESTONES.length - 1 && (
+                  <div className={`mt-4 h-[3px] flex-1 rounded-full ${connectorFilled ? ARCADE_HERO_GRADIENT : "bg-white/15"}`} />
+                )}
+              </Fragment>
             );
           })}
         </div>

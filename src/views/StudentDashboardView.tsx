@@ -20,7 +20,7 @@ import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
 import ArcadeStatsBar from "../components/arcade/ArcadeStatsBar";
 import TrophyRoadStrip from "../components/arcade/TrophyRoadStrip";
 import EvolutionCore from "../components/arcade/EvolutionCore";
-import CharacterStage from "../components/arcade/CharacterStage";
+import EvolutionRing from "../components/arcade/EvolutionRing";
 import OrbitalHub, { type OrbitItem } from "../components/arcade/OrbitalHub";
 import { getXpTitle, type PetRewardKind, type PetMilestone } from "../constants/game";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
@@ -262,13 +262,12 @@ export default function StudentDashboardView({
           <OrbitalHub
             items={orbitItems}
             center={
-              <CharacterStage
+              <EvolutionRing
                 currentStage={retention.currentPetStage}
                 nextStage={retention.nextPetStage}
                 xp={xp}
                 evolutionPending={evolutionPending}
                 hasClaimable={!!retention.claimablePetMilestone}
-                displayName={user.displayName}
               />
             }
           />
