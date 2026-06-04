@@ -6,7 +6,6 @@ import { ArrowLeft, Copy, Download, Save, Upload, Loader2, FileText, Eye, Share2
 import type { AppUser, ClassData } from '../../../core/supabase';
 import type { BagrutTest } from '../types';
 import { MODULE_SPECS } from '../lib/moduleMap';
-import { exportBagrutPdf } from '../lib/bagrutPdf';
 import BagrutPreviewModal from './BagrutPreviewModal';
 import { saveBagrutDraft, updateBagrutTest } from '../hooks/useBagrutTests';
 import { ALL_WORDS } from '../../../data/vocabulary';
@@ -32,10 +31,11 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
   const [savedId, setSavedId] = useState<string | null>(existingId);
   const [classId, setClassId] = useState<string | null>(null);
   const [withAnswerKey, setWithAnswerKey] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [shareSource, setShareSource] = useState<ShareSource | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
+  // Preview / export both use the print-ready modal. autoPrint=true is the
+  // "Export PDF" path (opens straight into the Save-as-PDF dialog).
+  const [preview, setPreview] = useState<{ open: boolean; autoPrint: boolean }>({ open: false, autoPrint: false });
 
   const teacherClasses = classes.filter(c => c.teacherUid === user.uid);
   const spec = MODULE_SPECS[draft.module];
@@ -110,17 +110,6 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
     });
   }
 
-  async function handleExport() {
-    setExporting(true);
-    try {
-      await exportBagrutPdf(draft, { withAnswerKey });
-      showToast(t.toastPdfExported, 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : t.toastPdfFailed, 'error');
-    } finally {
-      setExporting(false);
-    }
-  }
 
   async function handleSaveDraft() {
     setSaving(true);
@@ -186,7 +175,7 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => setShowPreview(true)}
+              onClick={() => setPreview({ open: true, autoPrint: false })}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border"
               style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
             >
@@ -249,11 +238,10 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
             </button>
             <button
               type="button"
-              onClick={handleExport}
-              disabled={exporting}
+              onClick={() => setPreview({ open: true, autoPrint: true })}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow"
             >
-              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} {t.exportPdf}
+              <Download size={16} /> {t.exportPdf}
             </button>
           </div>
         </div>
@@ -435,11 +423,12 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
         />
       )}
 
-      {showPreview && (
+      {preview.open && (
         <BagrutPreviewModal
           test={draft}
           withAnswerKey={withAnswerKey}
-          onClose={() => setShowPreview(false)}
+          autoPrint={preview.autoPrint}
+          onClose={() => setPreview({ open: false, autoPrint: false })}
         />
       )}
     </div>

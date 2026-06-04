@@ -11,10 +11,11 @@
 // has the answer-key toggle on, a key section is appended — matching the
 // jsPDF export exactly so what they preview is what they print.
 
+import { useEffect } from 'react';
 import { X, Printer } from 'lucide-react';
 import type { BagrutTest } from '../types';
 import { MODULE_SPECS } from '../lib/moduleMap';
-import { sanitizeTitle } from '../lib/bagrutPdf';
+import { sanitizeTitle } from '../lib/sanitizeTitle';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { vocabagrutT } from '../../../locales/teacher/vocabagrut';
 
@@ -22,12 +23,25 @@ interface Props {
   test: BagrutTest;
   withAnswerKey: boolean;
   onClose: () => void;
+  /** Open straight into the browser print dialog (the "Export PDF" path).
+   *  Print-to-PDF is the reliable cross-device export — jsPDF's download
+   *  silently failed for some teachers (notably iOS Safari). */
+  autoPrint?: boolean;
 }
 
-export default function BagrutPreviewModal({ test, withAnswerKey, onClose }: Props) {
+export default function BagrutPreviewModal({ test, withAnswerKey, onClose, autoPrint }: Props) {
   const { language } = useLanguage();
   const t = vocabagrutT[language];
   const spec = MODULE_SPECS[test.module];
+
+  // When opened via "Export PDF", jump straight to the print dialog once
+  // the paper has painted. window.print() is allowed without a fresh user
+  // gesture, so this reliably reaches "Save as PDF" on desktop and mobile.
+  useEffect(() => {
+    if (!autoPrint) return;
+    const id = window.setTimeout(() => window.print(), 350);
+    return () => window.clearTimeout(id);
+  }, [autoPrint]);
 
   // Continuous question numbering across the whole paper (matches the PDF).
   // Precompute each section's starting number so the JSX stays pure (no
