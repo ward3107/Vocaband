@@ -105,6 +105,14 @@ export interface VocabagrutStrings {
   practicePaperFooter: string;
   decreasePointsAria: string;
   increasePointsAria: string;
+
+  // Add / remove questions (with context-suggested type)
+  addQuestion: string;
+  qTypeMc: string;
+  qTypeShort: string;
+  qTypeWriting: string;
+  suggestedTag: string;
+  removeQuestionAria: string;
 }
 
 export const vocabagrutT: Record<Language, VocabagrutStrings> = {
@@ -183,6 +191,12 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     practicePaperFooter: "Practice paper — not an official Ministry of Education document.",
     decreasePointsAria: "Decrease points",
     increasePointsAria: "Increase points",
+    addQuestion: "Add question",
+    qTypeMc: "Multiple choice",
+    qTypeShort: "Short answer",
+    qTypeWriting: "Writing task",
+    suggestedTag: "Suggested",
+    removeQuestionAria: "Remove question",
   },
   he: {
     back: "חזרה",
@@ -259,6 +273,12 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     practicePaperFooter: "דף תרגול — אינו מסמך רשמי של משרד החינוך.",
     decreasePointsAria: "הפחתת נקודות",
     increasePointsAria: "הוספת נקודות",
+    addQuestion: "הוספת שאלה",
+    qTypeMc: "רב‑ברירה",
+    qTypeShort: "תשובה קצרה",
+    qTypeWriting: "משימת כתיבה",
+    suggestedTag: "מומלץ",
+    removeQuestionAria: "הסרת שאלה",
   },
   ar: {
     back: "رجوع",
@@ -335,6 +355,12 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     practicePaperFooter: "ورقة تدريب — ليست وثيقة رسمية من وزارة التربية والتعليم.",
     decreasePointsAria: "إنقاص النقاط",
     increasePointsAria: "زيادة النقاط",
+    addQuestion: "إضافة سؤال",
+    qTypeMc: "اختيار من متعدد",
+    qTypeShort: "إجابة قصيرة",
+    qTypeWriting: "مهمة كتابة",
+    suggestedTag: "مقترح",
+    removeQuestionAria: "إزالة السؤال",
   },
   ru: {
     back: "Back",
@@ -411,5 +437,11 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     practicePaperFooter: "Practice paper — not an official Ministry of Education document.",
     decreasePointsAria: "Decrease points",
     increasePointsAria: "Increase points",
+    addQuestion: "Add question",
+    qTypeMc: "Multiple choice",
+    qTypeShort: "Short answer",
+    qTypeWriting: "Writing task",
+    suggestedTag: "Suggested",
+    removeQuestionAria: "Remove question",
   },
 };
