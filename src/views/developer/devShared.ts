@@ -42,10 +42,28 @@ export interface DevEntitlement {
 export interface DevSchool {
   id: string;
   name: string;
+  school_code: string | null;
   created_at: string;
   teachers: number;
   students: number;
   managers: string[];
+}
+
+/** One class returned by admin_bulk_seed_school for the printable handoff. */
+export interface SeededClass {
+  class_code: string;
+  class_name: string;
+  grade: number;
+  branch: number;
+  teacher_email: string | null;
+  claimed: boolean;
+  students: { code: string; pin: string }[];
+}
+
+export interface SeedSchoolResult {
+  success: boolean;
+  school_code: string;
+  classes: SeededClass[];
 }
 
 export interface ProviderCost {
