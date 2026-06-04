@@ -19,11 +19,14 @@ import { supabase } from "../../../core/supabase";
 import { logAudit } from "../../../utils/audit";
 import { useLanguage } from "../../../hooks/useLanguage";
 import { useIsMobile } from "../../../hooks/useIsMobile";
+import { useFeatureFlag } from "../../../hooks/useFeatureFlags";
 import { classRosterT } from "../../../locales/teacher/roster";
 import AddStudentRow, { TipCard } from "./AddStudentRow";
+import BulkAddCodedRow from "./BulkAddCodedRow";
 import RosterHeader from "./RosterHeader";
 import StudentCard, { type RosterStudentV2 } from "./StudentCard";
 import { accentForStudent } from "./constants";
+import { printRosterSheet } from "./printRosterSheet";
 
 interface Props {
   open: boolean;
@@ -62,13 +65,10 @@ interface RawRosterRow {
   joinedAt: string | null;
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+// Natural sort so coded names order correctly (07-5-2-2 before 07-5-2-14)
+// and ordinary names still sort alphabetically.
+function byName(a: { displayName: string }, b: { displayName: string }): number {
+  return a.displayName.localeCompare(b.displayName, undefined, { numeric: true });
 }
 
 export default function RosterModalV2({
@@ -80,12 +80,14 @@ export default function RosterModalV2({
 }: Props) {
   const { language, dir, isRTL } = useLanguage();
   const isMobile = useIsMobile();
+  const { isOn } = useFeatureFlag();
   const t = classRosterT[language];
 
   const [rows, setRows] = useState<RawRosterRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [allRevealed, setAllRevealed] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
@@ -192,9 +194,7 @@ export default function RosterModalV2({
         lastPinResetAt: null,
         joinedAt: new Date().toISOString(),
       };
-      setRows((prev) =>
-        [...prev, newRow].sort((a, b) => a.displayName.localeCompare(b.displayName)),
-      );
+      setRows((prev) => [...prev, newRow].sort(byName));
       setRevealedIds((prev) => new Set(prev).add(newRow.id));
       return true;
     } catch (e) {
@@ -204,6 +204,59 @@ export default function RosterModalV2({
       return false;
     } finally {
       setAdding(false);
+    }
+  };
+
+  // Bulk path: mint N anonymous coded students (no names). The server
+  // returns each structured code + PIN; we append them, reveal the new
+  // PINs, and offer to print the handoff sheet straight away.
+  const handleBulkAdd = async (
+    grade: number,
+    branch: number,
+    count: number,
+  ): Promise<boolean> => {
+    if (bulkBusy) return false;
+    setBulkBusy(true);
+    setError(null);
+    try {
+      const { data, error: rpcError } = await supabase.rpc("teacher_bulk_create_roster", {
+        p_class_code: classCode,
+        p_grade: grade,
+        p_branch: branch,
+        p_count: count,
+      });
+      if (rpcError) throw rpcError;
+      const created = (data ?? []) as { structured_id: string; pin: string }[];
+      const newRows: RawRosterRow[] = created.map((c) => ({
+        id: `tmp-${c.structured_id}`,
+        displayName: c.structured_id,
+        avatar: "🦊",
+        xp: 0,
+        pin: c.pin,
+        lastLoginAt: null,
+        lastPinResetAt: null,
+        joinedAt: new Date().toISOString(),
+      }));
+      setRows((prev) => [...prev, ...newRows].sort(byName));
+      setRevealedIds((prev) => {
+        const next = new Set(prev);
+        for (const r of newRows) next.add(r.id);
+        return next;
+      });
+      flashToast(t.bulkSuccess(created.length));
+      // Re-sync from the server so rows carry their real profile ids
+      // (needed for reset/delete). Best-effort — the optimistic rows
+      // already show the codes + PINs the teacher needs to print.
+      void loadRoster();
+      return true;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : t.errorAddFailed;
+      if (/free_tier_cap/i.test(msg)) setError(t.bulkCapError);
+      else if (/invalid (grade|branch|count)/i.test(msg)) setError(t.bulkInvalid);
+      else setError(msg);
+      return false;
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -319,45 +372,23 @@ export default function RosterModalV2({
       setError(t.errorAddStudentsFirst);
       return;
     }
-    const rowsHtml = withPins
-      .map(
-        (s) =>
-          `<tr><td>${escapeHtml(s.name)}</td><td class="pin">${escapeHtml(s.pin || "")}</td></tr>`,
-      )
-      .join("");
-    const docDir = isRTL ? "rtl" : "ltr";
-    const align = isRTL ? "right" : "left";
-    const html = `<!doctype html><html lang="${language}" dir="${docDir}"><head><meta charset="utf-8"><title>${escapeHtml(t.printTitle(className))}</title>
-      <style>
-        body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 32px; color: #1c1917; }
-        h1 { font-size: 22px; margin: 0 0 4px; }
-        .meta { color: #57534e; font-size: 13px; margin-bottom: 16px; }
-        .code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #e7e5e4; padding: 10px 14px; text-align: ${align}; }
-        th { background: #fafaf9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #57534e; }
-        td.pin { font-family: ui-monospace, Menlo, monospace; font-weight: 700; letter-spacing: 0.1em; font-size: 15px; }
-        .footer { margin-top: 18px; color: #78716c; font-size: 11px; }
-        @media print { body { margin: 16mm; } }
-      </style>
-    </head><body>
-      <h1>${escapeHtml(t.printTitle(className))}</h1>
-      <p class="meta">${escapeHtml(t.printClassCodeLabel)}: <span class="code">${escapeHtml(classCode)}</span></p>
-      <table>
-        <thead><tr><th>${escapeHtml(t.copyNameHeader)}</th><th>${escapeHtml(t.copyPinHeader)}</th></tr></thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-      <p class="footer">${escapeHtml(t.printInstructions)}</p>
-      <script>setTimeout(() => window.print(), 50);</script>
-    </body></html>`;
-    const w = window.open("", "_blank");
-    if (!w) {
-      setError(t.errorPopupBlocked);
-      return;
-    }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
+    // Coded rosters (anonymous codes like "07-5-2-14") get a "Student code"
+    // header instead of "Name".
+    const coded = withPins.every((s) => /^\d/.test(s.name));
+    const ok = printRosterSheet({
+      title: t.printTitle(className),
+      classCode,
+      rows: withPins.map((s) => ({ label: s.name, pin: s.pin || "" })),
+      dir: isRTL ? "rtl" : "ltr",
+      language,
+      labels: {
+        labelHeader: coded ? t.codeHeader : t.copyNameHeader,
+        pinHeader: t.copyPinHeader,
+        classCodeLabel: t.printClassCodeLabel,
+        instructions: t.printInstructions,
+      },
+    });
+    if (!ok) setError(t.errorPopupBlocked);
   };
 
   const togglePin = (id: string) => {
@@ -448,6 +479,22 @@ export default function RosterModalV2({
                 onAdd={handleAdd}
                 busy={adding}
               />
+
+              {isOn("anon_coded_classrooms", classCode) && (
+                <BulkAddCodedRow
+                  mobile={isMobile}
+                  busy={bulkBusy}
+                  onGenerate={handleBulkAdd}
+                  labels={{
+                    blurb: t.bulkBlurb,
+                    gradeLabel: t.bulkGradeLabel,
+                    branchLabel: t.bulkBranchLabel,
+                    countLabel: t.bulkCountLabel,
+                    generate: t.bulkGenerate,
+                    generating: t.bulkGenerating,
+                  }}
+                />
+              )}
 
               <TipCard strong="" body={t.privacyTip} />
 

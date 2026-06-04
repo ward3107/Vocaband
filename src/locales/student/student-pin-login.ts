@@ -14,6 +14,9 @@ export interface StudentPinLoginStrings {
   pickYourName: string;
   loading: string;
   findYourName: string;
+  /** Placeholder when the roster shows anonymous codes (e.g. 07-5-2-14)
+   *  rather than names. */
+  findYourCode: string;
   noMatches: (filter: string) => string;
   emptyRosterTitle: string;
   emptyRosterBody: string;
@@ -41,6 +44,7 @@ export const studentPinLoginT: Record<Language, StudentPinLoginStrings> = {
     pickYourName: "Pick your name",
     loading: "Loading class list…",
     findYourName: "Find your name…",
+    findYourCode: "Type your code (e.g. 07-5-2-14)…",
     noMatches: (filter) => `No names match "${filter}".`,
     emptyRosterTitle: "No students yet in this class",
     emptyRosterBody: "Ask your teacher to add you to the class roster, then come back. Or use a different sign-in method below.",
@@ -60,6 +64,7 @@ export const studentPinLoginT: Record<Language, StudentPinLoginStrings> = {
     pickYourName: "בחרו את השם שלכם",
     loading: "טוען את רשימת הכיתה…",
     findYourName: "חפשו את השם שלכם…",
+    findYourCode: "הקלידו את הקוד שלכם (לדוגמה 07-5-2-14)…",
     noMatches: (filter) => `אין שמות שתואמים ל-"${filter}".`,
     emptyRosterTitle: "אין עדיין תלמידים בכיתה הזו",
     emptyRosterBody: "בקשו מהמורה להוסיף אתכם לרשימת הכיתה, ואז חזרו. או השתמשו בשיטת התחברות אחרת למטה.",
@@ -79,6 +84,7 @@ export const studentPinLoginT: Record<Language, StudentPinLoginStrings> = {
     pickYourName: "اختر اسمك",
     loading: "جارٍ تحميل قائمة الصف…",
     findYourName: "ابحث عن اسمك…",
+    findYourCode: "اكتب رمزك (مثال 07-5-2-14)…",
     noMatches: (filter) => `لا توجد أسماء تطابق "${filter}".`,
     emptyRosterTitle: "لا يوجد طلاب بعد في هذا الصف",
     emptyRosterBody: "اطلب من معلمك إضافتك إلى قائمة الصف ثم عُد. أو استخدم طريقة تسجيل دخول أخرى أدناه.",
@@ -98,6 +104,7 @@ export const studentPinLoginT: Record<Language, StudentPinLoginStrings> = {
     pickYourName: "Pick your name",
     loading: "Loading class list…",
     findYourName: "Find your name…",
+    findYourCode: "Type your code (e.g. 07-5-2-14)…",
     noMatches: (filter) => `No names match "${filter}".`,
     emptyRosterTitle: "No students yet in this class",
     emptyRosterBody: "Ask your teacher to add you to the class roster, then come back. Or use a different sign-in method below.",

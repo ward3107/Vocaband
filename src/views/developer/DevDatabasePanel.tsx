@@ -1,5 +1,6 @@
 import DevEntitlementsSection from "./DevEntitlementsSection";
 import DevSchoolsSection from "./DevSchoolsSection";
+import DevSchoolSeedSection from "./DevSchoolSeedSection";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -17,6 +18,10 @@ export default function DevDatabasePanel({ showToast }: Props) {
       <section className="space-y-3">
         <h3 className="text-white/80 font-black text-base uppercase tracking-widest">Schools</h3>
         <DevSchoolsSection showToast={showToast} />
+      </section>
+      <section className="space-y-3">
+        <h3 className="text-white/80 font-black text-base uppercase tracking-widest">Seed classes &amp; coded students</h3>
+        <DevSchoolSeedSection showToast={showToast} />
       </section>
     </div>
   );

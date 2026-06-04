@@ -86,6 +86,12 @@ export function useTeacherData(params: UseTeacherDataParams) {
     // (new teacher with no classes yet) is still a valid result and
     // gets cached normally.
     try {
+      // Zero-touch onboarding: attach any classes an admin pre-seeded for this
+      // teacher's email before they first signed in. Best-effort and cheap —
+      // a no-op UPDATE when nothing is pending. Awaited so the fresh read below
+      // includes freshly-claimed classes.
+      await Promise.resolve(supabase.rpc('claim_pending_classes')).catch(() => {});
+
       const fresh = await cachedRead<ClassData[]>(
         'classes',
         async () => {

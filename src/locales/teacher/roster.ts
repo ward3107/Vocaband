@@ -23,6 +23,20 @@ export interface ClassRosterStrings {
   addStudentPlaceholder: string;
   addButton: string;
   addHelp: string;
+
+  // Bulk "add coded students" (anonymous codes — no names). grade/branch/count.
+  bulkLabel: string;
+  bulkBlurb: string;
+  bulkGradeLabel: string;
+  bulkBranchLabel: string;
+  bulkCountLabel: string;
+  bulkGenerate: string;
+  bulkGenerating: string;
+  bulkSuccess: (n: number) => string;
+  bulkCapError: string;
+  bulkInvalid: string;
+  /** Column header used in print/copy when the roster is coded (no names). */
+  codeHeader: string;
   /**
    * Privacy nudge shown under the add-student input.  Discourages teachers
    * from typing full last names — first names / nicknames keep the roster
@@ -114,6 +128,17 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     addStudentPlaceholder: 'e.g. "Yossi K" (first name + last initial)',
     addButton: "Add",
     addHelp: "A 6-character PIN is generated automatically. The student logs in with the class code + their name + this PIN.",
+    bulkLabel: "Add a whole class at once",
+    bulkBlurb: "No names needed. Each student gets an anonymous code (school-grade-branch-number) and a PIN. You keep the name↔code list on the printed sheet.",
+    bulkGradeLabel: "Grade",
+    bulkBranchLabel: "Branch",
+    bulkCountLabel: "Students",
+    bulkGenerate: "Generate codes",
+    bulkGenerating: "Generating…",
+    bulkSuccess: (n) => `Created ${n} student ${n === 1 ? "code" : "codes"}. Print the sheet to hand out.`,
+    bulkCapError: "Free plan is limited to 30 students per class. Upgrade for unlimited.",
+    bulkInvalid: "Enter a grade, branch, and how many students (1–60).",
+    codeHeader: "Student code",
     privacyTip: "Tip: First names or nicknames are best — full last names aren't needed. The gradebook shows whatever you type here, so keep it minimal.",
     emptyTitle: "No students yet",
     emptyBody: "Add your first student above.",
@@ -179,6 +204,17 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     addStudentPlaceholder: 'לדוגמה: "יוסי כ" (שם פרטי + אות ראשונה של שם המשפחה)',
     addButton: "הוסף",
     addHelp: "קוד PIN בן 6 תווים נוצר אוטומטית. התלמיד מתחבר עם קוד הכיתה + השם שלו + הקוד הזה.",
+    bulkLabel: "הוספת כיתה שלמה בבת אחת",
+    bulkBlurb: "ללא שמות. כל תלמיד מקבל קוד אנונימי (בית-ספר-שכבה-כיתה-מספר) ו-PIN. רשימת השם↔קוד נשארת אצלכם על הדף המודפס.",
+    bulkGradeLabel: "שכבה",
+    bulkBranchLabel: "כיתה",
+    bulkCountLabel: "תלמידים",
+    bulkGenerate: "צור קודים",
+    bulkGenerating: "יוצר…",
+    bulkSuccess: (n) => `נוצרו ${n} קודי תלמידים. הדפיסו את הדף לחלוקה.`,
+    bulkCapError: "התוכנית החינמית מוגבלת ל-30 תלמידים בכיתה. שדרגו ללא הגבלה.",
+    bulkInvalid: "הזינו שכבה, כיתה, וכמה תלמידים (1–60).",
+    codeHeader: "קוד תלמיד",
     privacyTip: "טיפ: שמות פרטיים או כינויים הם הבחירה הטובה ביותר — אין צורך בשמות משפחה מלאים. השם שתכתבו כאן מופיע בגרדבוק, אז כדאי לשמור על מינימום.",
     emptyTitle: "אין עדיין תלמידים",
     emptyBody: "הוסיפו את התלמיד הראשון שלכם למעלה.",
@@ -247,6 +283,17 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     addStudentPlaceholder: 'مثال: "يوسي ك" (الاسم الأول + أول حرف من اسم العائلة)',
     addButton: "إضافة",
     addHelp: "يتم إنشاء رمز PIN مكوّن من 6 أحرف تلقائياً. يسجّل الطالب الدخول برمز الصف + اسمه + هذا الرمز.",
+    bulkLabel: "إضافة صف كامل دفعة واحدة",
+    bulkBlurb: "بدون أسماء. يحصل كل طالب على رمز مجهول (مدرسة-صف-شعبة-رقم) ورمز PIN. تبقى قائمة الاسم↔الرمز معك على الورقة المطبوعة.",
+    bulkGradeLabel: "الصف",
+    bulkBranchLabel: "الشعبة",
+    bulkCountLabel: "الطلاب",
+    bulkGenerate: "إنشاء الرموز",
+    bulkGenerating: "جارٍ الإنشاء…",
+    bulkSuccess: (n) => `تم إنشاء ${n} رمز طالب. اطبع الورقة للتوزيع.`,
+    bulkCapError: "الخطة المجانية محدودة بـ 30 طالباً لكل صف. قم بالترقية لعدد غير محدود.",
+    bulkInvalid: "أدخل الصف والشعبة وعدد الطلاب (1–60).",
+    codeHeader: "رمز الطالب",
     privacyTip: "نصيحة: الأسماء الأولى أو الكنى هي الأفضل — لا حاجة لأسماء العائلة الكاملة. يظهر دفتر العلامات بما تكتبه هنا، لذا اجعله بسيطاً قدر الإمكان.",
     emptyTitle: "لا يوجد طلاب بعد",
     emptyBody: "أضف أول طالب أعلاه.",
@@ -315,6 +362,17 @@ export const classRosterT: Record<Language, ClassRosterStrings> = {
     addStudentPlaceholder: 'e.g. "Yossi K" (first name + last initial)',
     addButton: "Add",
     addHelp: "A 6-character PIN is generated automatically. The student logs in with the class code + their name + this PIN.",
+    bulkLabel: "Add a whole class at once",
+    bulkBlurb: "No names needed. Each student gets an anonymous code (school-grade-branch-number) and a PIN. You keep the name↔code list on the printed sheet.",
+    bulkGradeLabel: "Grade",
+    bulkBranchLabel: "Branch",
+    bulkCountLabel: "Students",
+    bulkGenerate: "Generate codes",
+    bulkGenerating: "Generating…",
+    bulkSuccess: (n) => `Created ${n} student ${n === 1 ? "code" : "codes"}. Print the sheet to hand out.`,
+    bulkCapError: "Free plan is limited to 30 students per class. Upgrade for unlimited.",
+    bulkInvalid: "Enter a grade, branch, and how many students (1–60).",
+    codeHeader: "Student code",
     privacyTip: "Tip: First names or nicknames are best — full last names aren't needed. The gradebook shows whatever you type here, so keep it minimal.",
     emptyTitle: "No students yet",
     emptyBody: "Add your first student above.",
