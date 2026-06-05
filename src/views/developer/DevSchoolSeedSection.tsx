@@ -122,11 +122,11 @@ export default function DevSchoolSeedSection({ showToast }: Props) {
     <div className="space-y-5">
       {/* School + code */}
       <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={schoolId}
             onChange={(e) => pickSchool(e.target.value)}
-            className={`flex-1 ${input}`}
+            className={`flex-1 min-w-[140px] ${input}`}
           >
             <option value="" className="bg-slate-800">Select school…</option>
             {schools.map((s) => (
@@ -146,7 +146,7 @@ export default function DevSchoolSeedSection({ showToast }: Props) {
             onClick={() => void saveCode()}
             disabled={busy || !schoolId || !/^[0-9]{1,4}$/.test(code)}
             style={{ touchAction: "manipulation" }}
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm"
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm whitespace-nowrap shrink-0"
           >
             Save code
           </button>
@@ -159,11 +159,11 @@ export default function DevSchoolSeedSection({ showToast }: Props) {
       {/* Rows */}
       <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-2">
         {rows.map((r, i) => (
-          <div key={i} className="flex gap-2 items-center">
+          <div key={i} className="flex flex-wrap gap-2 items-center">
             <input value={r.grade} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, grade: onlyDigits(e.target.value) } : x))} placeholder="Grade" className={`w-20 ${input}`} inputMode="numeric" />
             <input value={r.branch} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, branch: onlyDigits(e.target.value) } : x))} placeholder="Branch" className={`w-20 ${input}`} inputMode="numeric" />
             <input value={r.count} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, count: onlyDigits(e.target.value) } : x))} placeholder="Students" className={`w-24 ${input}`} inputMode="numeric" />
-            <input value={r.teacher_email} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, teacher_email: e.target.value } : x))} placeholder="teacher@school.edu (optional)" className={`flex-1 ${input}`} type="email" />
+            <input value={r.teacher_email} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, teacher_email: e.target.value } : x))} placeholder="teacher@school.edu (optional)" className={`flex-1 min-w-[180px] ${input}`} type="email" />
             <button type="button" onClick={() => setRows((p) => p.length > 1 ? p.filter((_, j) => j !== i) : p)} className="p-2 text-white/40 hover:text-rose-300" aria-label="Remove row">
               <Trash2 className="w-4 h-4" />
             </button>

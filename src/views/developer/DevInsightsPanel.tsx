@@ -148,18 +148,22 @@ export default function DevInsightsPanel({ showToast }: Props) {
           {(modes?.modes ?? []).length === 0 ? (
             <p className="px-5 py-6 text-white/40 text-base">No plays in this window.</p>
           ) : (
-            <table className="w-full text-base">
-              <tbody>
-                {modes!.modes.map((m) => (
-                  <tr key={m.mode} className="border-t border-white/5 first:border-0">
-                    <td className="px-5 py-2 text-white font-bold">{MODE_LABELS[m.mode] ?? m.mode}</td>
-                    <td className="px-5 py-2 text-white/60 text-right">{fmtNum(m.plays)} plays</td>
-                    <td className="px-5 py-2 text-white/60 text-right">{fmtNum(m.players)} players</td>
-                    <td className="px-5 py-2 text-emerald-300 font-bold text-right">avg {m.avg_score}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            // Four columns don't fit a phone — scroll horizontally so the
+            // trailing "avg" column stays reachable instead of being clipped.
+            <div className="overflow-x-auto">
+              <table className="w-full text-base">
+                <tbody>
+                  {modes!.modes.map((m) => (
+                    <tr key={m.mode} className="border-t border-white/5 first:border-0">
+                      <td className="px-4 sm:px-5 py-2 text-white font-bold whitespace-nowrap">{MODE_LABELS[m.mode] ?? m.mode}</td>
+                      <td className="px-4 sm:px-5 py-2 text-white/60 text-right whitespace-nowrap">{fmtNum(m.plays)} plays</td>
+                      <td className="px-4 sm:px-5 py-2 text-white/60 text-right whitespace-nowrap">{fmtNum(m.players)} players</td>
+                      <td className="px-4 sm:px-5 py-2 text-emerald-300 font-bold text-right whitespace-nowrap">avg {m.avg_score}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </section>
