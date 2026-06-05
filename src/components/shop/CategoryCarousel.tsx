@@ -28,9 +28,9 @@ export default function CategoryCarousel<T>({
     <section className="space-y-2.5">
       <header className={`flex items-baseline gap-2 px-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
         <span className="text-2xl leading-none" aria-hidden>{emoji}</span>
-        <h2 className="text-lg font-black tracking-tight text-stone-900">{title}</h2>
+        <h2 className="text-lg font-black tracking-tight text-white">{title}</h2>
         {subtitle && (
-          <span className="text-xs font-medium text-stone-500">{subtitle}</span>
+          <span className="text-xs font-medium text-white/60">{subtitle}</span>
         )}
       </header>
       <div

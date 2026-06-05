@@ -27,6 +27,12 @@ export type View =
   | "teacher-approvals"
   | "worksheet-attempts"
   | "student-dashboard"
+  // Student hub sub-pages — dedicated screens reached from the orbital
+  // ring. Practice = review/class-minute/idioms; Daily = chest + weekly
+  // challenge + missions + daily goal + active boosts + badges. See
+  // src/views/StudentHubSubView.tsx.
+  | "student-practice"
+  | "student-daily"
   | "create-assignment"
   | "gradebook"
   | "classroom"

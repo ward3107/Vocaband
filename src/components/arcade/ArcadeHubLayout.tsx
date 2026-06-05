@@ -21,6 +21,8 @@ import { useLanguage } from "../../hooks/useLanguage";
 import { ARCADE_BG } from "./theme";
 
 interface ArcadeHubLayoutProps {
+  /** Thin top row (e.g. logout) pinned above the stats bar. */
+  topBar?: ReactNode;
   statsBar?: ReactNode;
   trophyRoad?: ReactNode;
   character?: ReactNode;
@@ -29,6 +31,7 @@ interface ArcadeHubLayoutProps {
 }
 
 export default function ArcadeHubLayout({
+  topBar,
   statsBar,
   trophyRoad,
   character,
@@ -68,6 +71,7 @@ export default function ArcadeHubLayout({
           PetCompanion) and the iOS safe area so the last card stays
           fully visible above them. */}
       <div className="relative z-10 mx-auto max-w-3xl space-y-4 p-4 pb-[calc(env(safe-area-inset-bottom)+10rem)] sm:space-y-6 sm:p-6 sm:pb-[calc(env(safe-area-inset-bottom)+10rem)]">
+        {topBar}
         {statsBar}
         {trophyRoad}
         <div className="flex flex-col items-center justify-center gap-2 py-2 sm:gap-4 sm:py-4">

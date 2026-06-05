@@ -13,11 +13,27 @@ import {
   claimBadgeXp,
   grantNonXpReward,
 } from '../handlers/retentionGrants';
+import { pickNextAssignment } from '../utils/pickNextAssignment';
+import { resolveAssignmentWords } from '../utils/resolveAssignmentWords';
 import type { AppUser, AssignmentData, ProgressData } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 
 const StudentDashboardView = lazyWithRetry(() => import('./StudentDashboardView'));
+const StudentHubSubView = lazyWithRetry(() => import('./StudentHubSubView'));
+
+/** Maps the four student-hub views to the section the page renders. */
+const HUB_SECTION_BY_VIEW = {
+  'student-practice': 'practice',
+  'student-daily': 'daily',
+} as const;
+
+export type StudentHubView = keyof typeof HUB_SECTION_BY_VIEW;
+
+/** True when `view` is one of the dedicated student-hub sub-pages. */
+export function isStudentHubView(view: View): view is StudentHubView {
+  return view in HUB_SECTION_BY_VIEW;
+}
 
 // Generic typing for the retention / boosters / structure props —
 // the StudentDashboardView types these tightly, but we don't need
@@ -151,6 +167,78 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
         onGrantReward={(kind, value) => grantNonXpReward(kind, value, { user, setUser })}
         onRenameDisplayName={renameStudentDisplayName}
         onRequestLogout={onRequestLogout}
+      />
+    </LazyWrapper>
+  );
+}
+
+/**
+ * The student-hub sub-page branch — Practice / Missions / Boosters /
+ * Badges, each on its own screen.  Reuses the same practice/idiom entry
+ * handlers and the badge-XP claim path as the dashboard so behaviour is
+ * identical to the old inline cards; only the surface changed.
+ */
+export function StudentHubSection(
+  deps: StudentDashboardSectionDeps & { view: StudentHubView },
+): ReactNode {
+  const {
+    view, user, badges, setXp, showToast,
+    studentAssignments, studentProgress, studentDataLoading,
+    setView, setActiveAssignment, setAssignmentWords, setShowModeSelection,
+    setGameMode, setIsFinished,
+    startClassMinute, boosters, retention,
+  } = deps;
+
+  // Rewards page's Daily Goal "play now" — launches the single most-
+  // relevant assignment, same picker the dashboard's Play circle uses.
+  const nextPick = pickNextAssignment(studentAssignments, studentProgress, user.uid);
+  const onPlay = nextPick
+    ? async () => {
+        const words = await resolveAssignmentWords(nextPick.assignment);
+        setActiveAssignment(nextPick.assignment);
+        setAssignmentWords(words);
+        setView('game');
+        setShowModeSelection(true);
+      }
+    : undefined;
+
+  return (
+    <LazyWrapper loadingMessage="Loading...">
+      <StudentHubSubView
+        section={HUB_SECTION_BY_VIEW[view]}
+        user={user}
+        onBack={() => setView('student-dashboard')}
+        studentProgress={studentProgress}
+        studentDataLoading={studentDataLoading}
+        retention={retention}
+        onGrantXp={(amount, reason) => grantRetentionXp(amount, reason, { user, setXp, showToast })}
+        onPlay={onPlay}
+        onStartReview={() => {
+          // Same spaced-repetition entry as the dashboard — bypasses the
+          // mode picker, so prime iOS audio on this tap.
+          primeAudio();
+          setGameMode('review');
+          setIsFinished(false);
+          setShowModeSelection(false);
+          setView('game');
+        }}
+        onStartClassMinute={startClassMinute}
+        onStartIdioms={() => {
+          primeAudio();
+          setGameMode('idiom');
+          setIsFinished(false);
+          setShowModeSelection(false);
+          setView('game');
+        }}
+        boosters={{
+          isXpBoosterActive: boosters.isXpBoosterActive,
+          isFocusModeActive: boosters.isFocusModeActive,
+          isWeekendWarriorActive: boosters.isWeekendWarriorActive,
+          streakFreezes: boosters.streakFreezes,
+          luckyCharms: boosters.luckyCharms,
+        }}
+        badges={badges}
+        onClaimBadgeXp={(badgeId, xp, reason) => claimBadgeXp(badgeId, xp, reason, { setXp, showToast })}
       />
     </LazyWrapper>
   );
