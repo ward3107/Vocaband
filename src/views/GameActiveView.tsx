@@ -60,7 +60,6 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
  *  HE/AR translation correctly. */
 const ENGLISH_ANSWER_MODES = new Set(["reverse", "spelling", "scramble", "letter-sounds", "fill-blank"]);
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
-import FloatingButtons from "../components/FloatingButtons";
 import ClassicModeGame from "../components/ClassicModeGame";
 import GameHeader from "../components/game/GameHeader";
 import WordPromptCard from "../components/game/WordPromptCard";
@@ -437,14 +436,15 @@ export default function GameActiveView({
   };
 
   return (
-    // Bottom padding accounts for two stacked floaters that overlay the
-    // page in Quick Play: the device's safe-area inset (home indicator
-    // / iOS browser chrome) plus the QpReactionBar pill that docks at
-    // bottom-3/4. Without the reserve, the last row of game UI (e.g.
-    // Spelling's Check button) sits under the reaction bar and is
-    // unreachable on phones.
+    // Viewport-locked game frame: the whole screen is pinned to the
+    // dynamic viewport height (100dvh) and never grows past it, so the
+    // page itself can't scroll and the mobile URL bar stops toggling
+    // mid-game. The header stays at the top, the mode body scrolls
+    // *inside* a contained region (see below), and the progress footer
+    // is pinned at the bottom — so students always know the primary
+    // controls are on-screen and never have to guess whether to scroll.
     <div
-      className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] font-sans max-w-7xl mx-auto`}>
+      className={`h-[100dvh] ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 font-sans max-w-7xl mx-auto overflow-hidden`}>
       {arcadeHubEnabled && (
         <CombosOverlay chain={combo.chain} multiplier={combo.multiplier} />
       )}
@@ -477,25 +477,17 @@ export default function GameActiveView({
         onExit={handleExitGame}
       />
 
-      {/* After the Live Rank sidebar was removed, the old 4-column grid
-          left the cards hugging the left edge with a blank 4th column
-          where the widget used to be. Collapse to a single centered
-          column so matching cards + quiz cards sit centered on the
-          screen. Matching mode also gets vertical breathing room via
-          a min-height so the grid sits mid-viewport instead of pinned
-          under the header. */}
-      {/* Phase-1 redesign (2026-04-30): every mode now sits in the
-          vertical centre of the viewport on phones, not glued to the
-          top with empty dead space below.  Previously only matching
-          mode had this; other modes had `text-3xl` prompts hanging at
-          the very top of the screen with the answer cards immediately
-          below and a huge gap underneath.  Generalising the
-          `flex items-center justify-center` wrapper centres every
-          mode's content vertically — matching keeps its
-          slightly-larger min-h-[60vh] for the larger pair grid, the
-          rest land at min-h-[55vh]. */}
-      <div className={`w-full max-w-4xl mx-auto ${(gameMode === 'matching' || gameMode === 'memory-flip') ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
-        <div className="w-full">
+      {/* Single centered column (the Live Rank sidebar was removed long
+          ago — every mode, matching/quiz alike, sits centered).
+          Contained scroll region: fills the space between the header and
+          the pinned footer. `m-auto` on the inner column centres the
+          mode vertically when it fits, and lets it scroll *within this
+          region* (never the whole page) when a mode is genuinely taller
+          than the screen — auto-margins, unlike flex centring, keep the
+          top of overflowing content reachable. `pb` clears any docked
+          Quick Play reaction bar so the last control is never hidden. */}
+      <div className="w-full flex-1 min-h-0 overflow-y-auto flex flex-col">
+        <div className="w-full max-w-4xl mx-auto m-auto py-2 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
               <MatchingModeGame
@@ -615,7 +607,7 @@ export default function GameActiveView({
       </div>
 
       {!isSelfContainedMode && gameMode !== "matching" && gameMode !== "memory-flip" && (
-        <div className="w-full max-w-5xl mt-12 flex justify-center">
+        <div className="w-full max-w-5xl shrink-0 pt-2 pb-[env(safe-area-inset-bottom)] flex justify-center">
           <div className="w-full max-w-md">
             <progress
               className="h-2 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
@@ -628,7 +620,6 @@ export default function GameActiveView({
           </div>
         </div>
       )}
-      <FloatingButtons showBackToTop={true} />
     </div>
   );
 }
