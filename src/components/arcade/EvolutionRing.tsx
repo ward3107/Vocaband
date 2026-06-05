@@ -29,6 +29,10 @@ interface EvolutionRingProps {
   xp: number;
   evolutionPending: boolean;
   hasClaimable?: boolean;
+  /** Tap handler for the centre pet — opens the pet info/claim card.
+   *  When omitted the pet renders non-interactive (its delight taps
+   *  still play, but nothing opens). */
+  onTap?: () => void;
 }
 
 export default function EvolutionRing({
@@ -37,6 +41,7 @@ export default function EvolutionRing({
   xp,
   evolutionPending,
   hasClaimable,
+  onTap,
 }: EvolutionRingProps) {
   const reduced = useReducedMotion();
   const { isRTL } = useLanguage();
@@ -80,6 +85,7 @@ export default function EvolutionRing({
           xp={xp}
           evolutionPending={evolutionPending}
           hasClaimable={hasClaimable}
+          onTap={onTap}
         />
       </div>
 

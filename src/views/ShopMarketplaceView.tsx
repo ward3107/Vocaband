@@ -14,6 +14,7 @@ import { catalogName, catalogDesc, catalogDisplay } from "../locales/student/sho
 import FloatingButtons from "../components/FloatingButtons";
 import CategoryCarousel from "../components/shop/CategoryCarousel";
 import Spotlight from "../components/shop/Spotlight";
+import { ARCADE_BG } from "../components/arcade/theme";
 import {
   PREMIUM_AVATARS, THEMES, POWER_UP_DEFS, BOOSTERS_DEFS,
   NAME_FRAMES, NAME_TITLES, MYSTERY_EGGS,
@@ -31,14 +32,6 @@ interface Props {
   activateBooster: (id: 'streak_freeze' | 'lucky_spin' | 'xp_booster' | 'lucky_charm' | 'focus_mode' | 'weekend_warrior') => void;
 }
 
-const RARITY_STYLES: Record<string, { bg: string; ring: string; badge: string; glow: string }> = {
-  common:    { bg: 'from-stone-100 to-stone-200',                         ring: 'ring-stone-300',   badge: 'bg-stone-200 text-stone-700',                                              glow: 'from-stone-200/0 to-stone-300/0' },
-  rare:      { bg: 'from-sky-100 to-blue-200',                            ring: 'ring-blue-300',    badge: 'bg-blue-200 text-blue-800',                                                glow: 'from-sky-300/40 to-blue-400/40' },
-  epic:      { bg: 'from-violet-100 to-purple-200',                       ring: 'ring-violet-300',  badge: 'bg-violet-200 text-violet-800',                                            glow: 'from-violet-400/40 to-purple-500/40' },
-  legendary: { bg: 'from-amber-100 via-yellow-100 to-orange-200',         ring: 'ring-amber-300',   badge: 'bg-amber-200 text-amber-800',                                              glow: 'from-amber-400/50 to-orange-500/50' },
-  mythic:    { bg: 'from-pink-200 via-fuchsia-200 to-violet-200',         ring: 'ring-fuchsia-400', badge: 'bg-gradient-to-r from-pink-400 to-violet-500 text-white',                  glow: 'from-pink-400/60 via-fuchsia-500/60 to-violet-500/60' },
-};
-
 const BOOSTER_STYLES: Record<string, string> = {
   streak_freeze:   'from-sky-400 via-cyan-500 to-blue-600',
   xp_booster:      'from-amber-500 via-orange-500 to-rose-500',
@@ -51,6 +44,23 @@ const POWERUP_STYLES: Record<string, string> = {
   fifty_fifty:   'from-blue-500 via-indigo-500 to-violet-600',
   reveal_letter: 'from-amber-400 via-yellow-500 to-orange-500',
 };
+
+// Dark frosted-card rarity system — the ring + glow that makes an item
+// read as collectible against the deep-violet shop backdrop. Higher tiers
+// glow harder; mythic gets a multi-stop shimmer.
+type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
+const RARITY_DARK: Record<Rarity, { ring: string; glow: string; badge: string; label: string }> = {
+  common:    { ring: 'ring-white/25',       glow: 'from-slate-300/10 to-slate-400/10',                badge: 'bg-white/15 text-white/70',                              label: 'Common' },
+  rare:      { ring: 'ring-sky-400/60',     glow: 'from-sky-400/30 to-blue-500/30',                   badge: 'bg-sky-400/20 text-sky-100',                             label: 'Rare' },
+  epic:      { ring: 'ring-violet-400/70',  glow: 'from-violet-500/40 to-fuchsia-500/40',             badge: 'bg-violet-400/25 text-violet-100',                       label: 'Epic' },
+  legendary: { ring: 'ring-amber-300/80',   glow: 'from-amber-400/50 to-orange-500/50',               badge: 'bg-amber-400/25 text-amber-100',                         label: 'Legendary' },
+  mythic:    { ring: 'ring-fuchsia-400/80', glow: 'from-pink-500/50 via-fuchsia-500/50 to-violet-500/50', badge: 'bg-gradient-to-r from-pink-400 to-violet-500 text-white', label: 'Mythic' },
+};
+
+// Items without an explicit rarity (avatars/frames/titles) derive one from
+// their XP cost, so pricier cosmetics shimmer brighter.
+const rarityForCost = (cost: number): Rarity =>
+  cost >= 1500 ? 'mythic' : cost >= 800 ? 'legendary' : cost >= 400 ? 'epic' : cost >= 150 ? 'rare' : 'common';
 
 export default function ShopMarketplaceView({
   user, xp, setXp, setUser, setView, showToast, activateBooster,
@@ -205,7 +215,9 @@ export default function ShopMarketplaceView({
   // --- Theme bg for the page (matches old ShopView) ---
   const activeThemeConfig = THEMES.find(th => th.id === (user.activeTheme ?? 'default')) ?? THEMES[0];
   const isDefault = (user?.activeTheme ?? 'default') === 'default';
-  const pageBg = isDefault ? 'bg-gradient-to-b from-violet-50 via-stone-50 to-white' : activeThemeConfig.colors.bg;
+  // Default shop now wears the dark arcade backdrop so it matches the hub
+  // + sub-pages; a purchased theme still overrides it (the student chose it).
+  const pageBg = isDefault ? ARCADE_BG : activeThemeConfig.colors.bg;
 
   // --- Helpers for card states ---
   const ownsAvatar = (emoji: string) => !!user.unlockedAvatars?.includes(emoji);
@@ -269,34 +281,83 @@ export default function ShopMarketplaceView({
     </button>
   );
 
+  // Sticky jump-chip nav targets — keyed to the section ids below.
+  const categories: { id: string; emoji: string; label: string }[] = [
+    { id: 'section-eggs', emoji: '🥚', label: t.mysteryEggsAndChests },
+    { id: 'section-avatars', emoji: '🎭', label: t.featuredAvatars },
+    { id: 'section-themes', emoji: '🎨', label: t.themes },
+    { id: 'section-powerups', emoji: '⚡', label: t.powerUps },
+    { id: 'section-boosters', emoji: '🚀', label: t.boosters },
+    { id: 'section-frames', emoji: '🖼️', label: t.avatarFrames },
+    { id: 'section-titles', emoji: '👑', label: t.nameTitles },
+  ];
+  const jumpTo = (id: string) => {
+    if (typeof document === 'undefined') return;
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Frosted dark card shell with a rarity-tinted ring + glow. `active`
+  // (equipped) overrides the rarity ring with the cyan "selected" look.
+  const ItemShell = ({ rarity, active, width, children }: {
+    rarity: Rarity; active?: boolean; width: string; children: React.ReactNode;
+  }) => (
+    <div
+      className={`relative ${width} overflow-hidden rounded-2xl bg-white/10 p-3 shadow-lg shadow-violet-900/30 ring-2 backdrop-blur-md ${
+        active ? 'ring-cyan-300 shadow-cyan-500/30' : RARITY_DARK[rarity].ring
+      }`}
+    >
+      <div aria-hidden className={`pointer-events-none absolute -top-8 -end-8 h-24 w-24 rounded-full bg-gradient-to-br ${RARITY_DARK[rarity].glow} blur-2xl`} />
+      <div className="relative">{children}</div>
+    </div>
+  );
+
+  // Locked-item footer — a progress bar toward affording the item plus a
+  // "play to earn" nudge that routes back to the hub, so an unaffordable
+  // item becomes a reason to play instead of a dead end.
+  const LockedFooter = ({ cost }: { cost: number }) => {
+    const pct = Math.min(100, Math.round((xp / Math.max(1, cost)) * 100));
+    return (
+      <div className="space-y-1.5">
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/15 ring-1 ring-white/10">
+          <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style={{ width: `${pct}%` }} />
+        </div>
+        <button
+          type="button"
+          onClick={() => setView('student-dashboard')}
+          style={{ touchAction: 'manipulation' }}
+          className="inline-flex w-full items-center justify-center gap-1 rounded-full bg-white/15 py-1.5 text-[10px] font-black text-white ring-1 ring-white/20 hover:bg-white/25"
+        >
+          <Lock size={10} /> {t.needed(`${cost - xp} XP`)} · {t.playToEarn}
+        </button>
+      </div>
+    );
+  };
+
   // ---------- Card renderers ----------
 
   const renderEgg = (egg: typeof MYSTERY_EGGS[0]) => {
-    const rarity = RARITY_STYLES[egg.rarity] ?? RARITY_STYLES.common;
+    const rarity: Rarity = (egg.rarity as Rarity) in RARITY_DARK ? (egg.rarity as Rarity) : 'common';
     const canAfford = xp >= egg.cost;
     return (
-      <button
-        type="button"
-        onClick={() => canAfford && purchaseEgg(egg)}
-        disabled={!canAfford}
-        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-        className={`relative w-44 sm:w-48 rounded-2xl bg-gradient-to-br ${rarity.bg} p-4 ring-2 ${rarity.ring} shadow-md hover:shadow-xl transition-all ${!canAfford ? 'opacity-70' : ''}`}
-      >
-        <div aria-hidden className={`pointer-events-none absolute -top-8 -end-8 w-28 h-28 rounded-full blur-3xl bg-gradient-to-br ${rarity.glow}`} />
-        <div className="relative flex justify-end">
-          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${rarity.badge}`}>{egg.rarity}</span>
+      <ItemShell rarity={rarity} width="w-44 sm:w-48">
+        <div className="flex justify-end">
+          <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${RARITY_DARK[rarity].badge}`}>{RARITY_DARK[rarity].label}</span>
         </div>
-        <div className="relative flex justify-center my-2">
-          <span className="text-5xl sm:text-6xl drop-shadow-lg">{egg.emoji}</span>
+        <div className="my-2 flex justify-center">
+          <span className="text-5xl drop-shadow-lg sm:text-6xl">{egg.emoji}</span>
         </div>
-        <h3 className="relative text-sm font-black text-stone-900 text-center">{catalogName('eggs', egg.id, language, egg.name)}</h3>
-        <p className="relative text-[11px] text-stone-700/80 text-center mt-1 line-clamp-2 min-h-[2rem]">{catalogDesc('eggs', egg.id, language, egg.desc)}</p>
-        <div className="relative mt-2 flex items-center justify-center gap-1.5 text-xs font-bold">
-          <span className="inline-flex items-center gap-0.5 bg-white/80 px-2 py-0.5 rounded-full text-stone-700">
-            <Zap size={10} className="text-amber-500 fill-amber-500" /> {egg.cost}
-          </span>
+        <h3 className="text-center text-sm font-black text-white">{catalogName('eggs', egg.id, language, egg.name)}</h3>
+        <p className="mt-1 line-clamp-2 min-h-[2rem] text-center text-[11px] text-white/70">{catalogDesc('eggs', egg.id, language, egg.desc)}</p>
+        <div className="mt-2">
+          {canAfford ? (
+            <motion.button
+              type="button" whileTap={{ scale: 0.97 }}
+              onClick={() => purchaseEgg(egg)}
+              className="inline-flex w-full items-center justify-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 py-1.5 text-[11px] font-black text-white"
+            ><Zap size={10} className="fill-white" /> {egg.cost}</motion.button>
+          ) : <LockedFooter cost={egg.cost} />}
         </div>
-      </button>
+      </ItemShell>
     );
   };
 
@@ -306,50 +367,44 @@ export default function ShopMarketplaceView({
     const owned = ownsAvatar(a.emoji);
     const equipped = user.avatar === a.emoji;
     const canAfford = xp >= a.cost;
-    const gap = a.cost - xp;
+    const rarity = rarityForCost(a.cost);
     return (
-      <div
-        className={`relative w-32 sm:w-36 rounded-2xl bg-white p-3 ring-2 ${equipped ? 'ring-violet-500 shadow-lg shadow-violet-500/30' : 'ring-stone-200'} shadow-sm hover:shadow-md transition-all ${!owned && !canAfford ? 'opacity-75' : ''}`}
-      >
+      <ItemShell rarity={rarity} active={equipped} width="w-32 sm:w-36">
         {!owned && <PinButton kind="avatar" id={a.id} />}
-        <div className="flex justify-center my-1">
-          <span className={`text-5xl ${!owned && !canAfford ? 'grayscale' : ''}`}>{a.emoji}</span>
+        <div className="my-1 flex justify-center">
+          <span className={`text-5xl ${!owned && !canAfford ? 'opacity-50 grayscale' : ''}`}>{a.emoji}</span>
         </div>
-        <h3 className="text-xs font-black text-stone-900 text-center truncate">
+        <h3 className="truncate text-center text-xs font-black text-white">
           {catalogName('avatars', a.id, language, a.name)}
         </h3>
         <div className="mt-2">
           {owned ? (
             equipped ? (
-              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600">
-                <Check size={11} className="inline -mt-0.5 me-0.5" /> {t.unlocked}
+              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-cyan-300">
+                <Check size={11} className="-mt-0.5 me-0.5 inline" /> {t.unlocked}
               </span>
             ) : (
               <motion.button
-                type="button"
-                whileTap={{ scale: 0.97 }}
+                type="button" whileTap={{ scale: 0.97 }}
                 onClick={() => equipAvatar(a.emoji)}
-                className="w-full text-[11px] font-black bg-violet-600 text-white rounded-full py-1.5"
+                className="w-full rounded-full bg-violet-600 py-1.5 text-[11px] font-black text-white"
               >
                 Equip
               </motion.button>
             )
           ) : canAfford ? (
             <motion.button
-              type="button"
-              whileTap={{ scale: 0.97 }}
+              type="button" whileTap={{ scale: 0.97 }}
               onClick={() => purchaseAvatar(a)}
-              className="w-full inline-flex items-center justify-center gap-0.5 text-[11px] font-black bg-stone-900 text-white rounded-full py-1.5"
+              className="inline-flex w-full items-center justify-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 py-1.5 text-[11px] font-black text-white"
             >
-              <Zap size={10} className="text-amber-300 fill-amber-300" /> {a.cost}
+              <Zap size={10} className="fill-white" /> {a.cost}
             </motion.button>
           ) : (
-            <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-stone-500">
-              <Lock size={10} /> {t.needed(`${gap} XP`)}
-            </div>
+            <LockedFooter cost={a.cost} />
           )}
         </div>
-      </div>
+      </ItemShell>
     );
   };
 
@@ -403,29 +458,30 @@ export default function ShopMarketplaceView({
     const owned = ownsFrame(f.id);
     const active = user.activeFrame === f.id;
     const canAfford = xp >= f.cost;
+    const rarity = rarityForCost(f.cost);
     return (
-      <div className={`relative w-36 sm:w-40 rounded-2xl bg-white p-3 ${active ? 'ring-2 ring-violet-500' : 'ring-1 ring-stone-200'} shadow-sm`}>
+      <ItemShell rarity={rarity} active={active} width="w-36 sm:w-40">
         {!owned && <PinButton kind="frame" id={f.id} />}
-        <div className="flex justify-center my-1">
-          <div className={`w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center text-3xl ${f.border}`}>{f.preview}</div>
+        <div className="my-1 flex justify-center">
+          <div className={`flex h-16 w-16 items-center justify-center rounded-full bg-white/15 text-3xl ${f.border}`}>{f.preview}</div>
         </div>
-        <h3 className="text-xs font-black text-stone-900 text-center truncate">
+        <h3 className="truncate text-center text-xs font-black text-white">
           {catalogName('frames', f.id, language, f.name)}
         </h3>
         <div className="mt-2">
           {owned ? (
             active ? (
-              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600"><Check size={11} className="inline -mt-0.5 me-0.5" />Equipped</span>
+              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-cyan-300"><Check size={11} className="-mt-0.5 me-0.5 inline" />Equipped</span>
             ) : (
-              <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => equipFrame(f.id)} className="w-full text-[11px] font-black bg-violet-600 text-white rounded-full py-1.5">Equip</motion.button>
+              <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => equipFrame(f.id)} className="w-full rounded-full bg-violet-600 py-1.5 text-[11px] font-black text-white">Equip</motion.button>
             )
           ) : canAfford ? (
-            <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => purchaseFrame(f)} className="w-full inline-flex items-center justify-center gap-0.5 text-[11px] font-black bg-stone-900 text-white rounded-full py-1.5"><Zap size={10} className="text-amber-300 fill-amber-300" /> {f.cost}</motion.button>
+            <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => purchaseFrame(f)} className="inline-flex w-full items-center justify-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 py-1.5 text-[11px] font-black text-white"><Zap size={10} className="fill-white" /> {f.cost}</motion.button>
           ) : (
-            <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-stone-500"><Lock size={10} />{f.cost} XP</div>
+            <LockedFooter cost={f.cost} />
           )}
         </div>
-      </div>
+      </ItemShell>
     );
   };
 
@@ -433,27 +489,28 @@ export default function ShopMarketplaceView({
     const owned = ownsTitle(ti.id);
     const active = user.activeTitle === ti.id;
     const canAfford = xp >= ti.cost;
-    const style = TITLE_STYLES[ti.id] ?? 'text-stone-900 font-black';
+    const style = TITLE_STYLES[ti.id] ?? 'text-white font-black';
+    const rarity = rarityForCost(ti.cost);
     return (
-      <div className={`relative w-44 sm:w-48 rounded-2xl bg-white p-3 ${active ? 'ring-2 ring-violet-500' : 'ring-1 ring-stone-200'} shadow-sm`}>
+      <ItemShell rarity={rarity} active={active} width="w-44 sm:w-48">
         {!owned && <PinButton kind="title" id={ti.id} />}
-        <div className="flex justify-center my-2">
+        <div className="my-2 flex justify-center">
           <span className={`text-lg ${style}`}>{catalogDisplay('titles', ti.id, language, ti.display)}</span>
         </div>
         <div className="mt-2">
           {owned ? (
             active ? (
-              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-violet-600"><Check size={11} className="inline -mt-0.5 me-0.5" />Equipped</span>
+              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-cyan-300"><Check size={11} className="-mt-0.5 me-0.5 inline" />Equipped</span>
             ) : (
-              <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => equipTitle(ti.id)} className="w-full text-[11px] font-black bg-violet-600 text-white rounded-full py-1.5">Equip</motion.button>
+              <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => equipTitle(ti.id)} className="w-full rounded-full bg-violet-600 py-1.5 text-[11px] font-black text-white">Equip</motion.button>
             )
           ) : canAfford ? (
-            <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => purchaseTitle(ti)} className="w-full inline-flex items-center justify-center gap-0.5 text-[11px] font-black bg-stone-900 text-white rounded-full py-1.5"><Zap size={10} className="text-amber-300 fill-amber-300" /> {ti.cost}</motion.button>
+            <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => purchaseTitle(ti)} className="inline-flex w-full items-center justify-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 py-1.5 text-[11px] font-black text-white"><Zap size={10} className="fill-white" /> {ti.cost}</motion.button>
           ) : (
-            <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-stone-500"><Lock size={10} />{ti.cost} XP</div>
+            <LockedFooter cost={ti.cost} />
           )}
         </div>
-      </div>
+      </ItemShell>
     );
   };
 
@@ -505,6 +562,16 @@ export default function ShopMarketplaceView({
     );
   };
 
+  // ---------- Featured deals ----------
+  // A curated hero strip of the highest-value items across categories —
+  // the dopamine shelf at the top. Deterministic (priciest first) so it's
+  // stable across renders.
+  const byCostDesc = <T extends { cost: number }>(a: T, b: T) => b.cost - a.cost;
+  const featuredEgg = [...MYSTERY_EGGS].sort(byCostDesc)[0];
+  const featuredAvatars = [...PREMIUM_AVATARS].sort(byCostDesc).slice(0, 2);
+  const featuredTitle = [...NAME_TITLES].sort(byCostDesc)[0];
+  const featuredLabel = ({ en: 'Featured', he: 'מומלצים', ar: 'مميز', ru: 'Рекомендуемые' } as Record<string, string>)[language] ?? 'Featured';
+
   // ---------- Layout ----------
 
   return (
@@ -516,17 +583,39 @@ export default function ShopMarketplaceView({
             onClick={() => setView("student-dashboard")}
             type="button"
             style={{ touchAction: 'manipulation' }}
-            className={`inline-flex items-center gap-1 text-sm font-semibold text-stone-500 hover:text-stone-900 transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
+            className={`inline-flex items-center gap-1 text-sm font-semibold text-white/70 hover:text-white transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
           >
             <ChevronLeft size={16} className={isRTL ? 'rotate-180' : ''} />
             Dashboard
           </button>
-          <div className="flex items-center gap-2 bg-white rounded-full ps-2 pe-3 py-1.5 border border-stone-200 shadow-sm">
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full ps-2 pe-3 py-1.5 ring-1 ring-white/20 shadow-lg shadow-violet-900/30">
             <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
               <Zap size={14} className="text-white fill-white" />
             </span>
-            <span className="font-black text-stone-900 tabular-nums">{xp}</span>
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">XP</span>
+            <span className="font-black text-white tabular-nums">{xp}</span>
+            <span className="text-xs font-bold text-cyan-200 uppercase tracking-wider">XP</span>
+          </div>
+        </div>
+
+        {/* Sticky category jump-chips — kids tap to leap straight to a
+            section instead of long-scrolling. Sticks to the top of the
+            viewport with a blurred backdrop as the catalogue scrolls under. */}
+        <div className="sticky top-0 z-20 -mx-4 mb-4 bg-violet-950/60 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6">
+          <div
+            className={`flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${isRTL ? 'flex-row-reverse' : ''}`}
+          >
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => jumpTo(c.id)}
+                style={{ touchAction: 'manipulation' }}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
+              >
+                <span aria-hidden>{c.emoji}</span>
+                {c.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -544,7 +633,23 @@ export default function ShopMarketplaceView({
           onShop={handleSpotlightShop}
         />
 
-        <div className="space-y-6">
+        {/* Featured deals — curated hero strip of the priciest items, in a
+            glowing frame so it reads as the shop's headline shelf. */}
+        <section className="mt-4 rounded-3xl bg-white/5 p-3 ring-1 ring-white/15 sm:p-4">
+          <header className={`mb-2.5 flex items-center gap-2 px-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <span className="text-2xl leading-none" aria-hidden>⭐</span>
+            <h2 className="text-lg font-black tracking-tight text-white">{featuredLabel}</h2>
+          </header>
+          <div className={`flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <div className="shrink-0">{renderEgg(featuredEgg)}</div>
+            {featuredAvatars.map((a) => (
+              <div key={a.id} className="shrink-0">{renderAvatar(a)}</div>
+            ))}
+            <div className="shrink-0">{renderTitle(featuredTitle)}</div>
+          </div>
+        </section>
+
+        <div className="mt-6 space-y-6">
           {/* Your collection — flat list of equippable cosmetics the
               student already owns.  Hidden when they own nothing so a
               brand-new student doesn't see an empty rail. */}
@@ -557,16 +662,16 @@ export default function ShopMarketplaceView({
                 keyFor={(o) => `${o.kind}-${o.id}`}
                 renderCard={(o) => (
                   <div
-                    className={`relative w-32 sm:w-36 rounded-2xl bg-white p-3 ring-2 shadow-sm transition-all ${
+                    className={`relative w-32 rounded-2xl bg-white/10 p-3 ring-2 shadow-lg shadow-violet-900/30 backdrop-blur-md transition-all sm:w-36 ${
                       o.equipped
-                        ? 'ring-violet-500 shadow-lg shadow-violet-500/30'
-                        : 'ring-stone-200 hover:shadow-md'
+                        ? 'ring-cyan-300 shadow-cyan-500/30'
+                        : 'ring-white/20'
                     }`}
                   >
-                    <div className="flex justify-center my-1">
+                    <div className="my-1 flex justify-center">
                       <span className="text-4xl">{o.emoji}</span>
                     </div>
-                    <h3 className="text-xs font-black text-stone-900 text-center truncate">
+                    <h3 className="truncate text-center text-xs font-black text-white">
                       {o.label}
                     </h3>
                     <div className="mt-2">

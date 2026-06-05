@@ -1,25 +1,15 @@
 import StudentOnboarding from "../components/StudentOnboarding";
 import FloatingButtons from "../components/FloatingButtons";
 import StudentTopBar from "../components/dashboard/StudentTopBar";
-import StudentStatsRow from "../components/dashboard/StudentStatsRow";
-import DailyGoalBanner from "../components/dashboard/DailyGoalBanner";
-import BadgesStrip from "../components/dashboard/BadgesStrip";
-import LeaderboardTeaser from "../components/dashboard/LeaderboardTeaser";
 import PetCompanion from "../components/dashboard/PetCompanion";
-import RetentionStrip from "../components/dashboard/RetentionStrip";
-import ActiveBoostersStrip from "../components/dashboard/ActiveBoostersStrip";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
-import DailyPracticeRow from "../components/dashboard/DailyPracticeRow";
 import StudentWelcomeCard from "../components/dashboard/StudentWelcomeCard";
 import { useCompetitionsForClass } from "../hooks/useCompetitions";
-import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
-import { useDailyMissions } from "../hooks/useDailyMissions";
 import { useDueReviews } from "../hooks/useDueReviews";
 import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
 import ArcadeStatsBar from "../components/arcade/ArcadeStatsBar";
 import TrophyRoadStrip from "../components/arcade/TrophyRoadStrip";
-import EvolutionCore from "../components/arcade/EvolutionCore";
 import EvolutionRing from "../components/arcade/EvolutionRing";
 import OrbitalHub, { type OrbitItem } from "../components/arcade/OrbitalHub";
 import { getXpTitle, type PetRewardKind, type PetMilestone } from "../constants/game";
@@ -110,13 +100,13 @@ interface StudentDashboardViewProps {
 }
 
 export default function StudentDashboardView({
-  user, xp, streak, badges,
+  user, xp, streak,
   studentAssignments, studentProgress, studentDataLoading,
   showStudentOnboarding, setShowStudentOnboarding,
   consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
   setView,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
-  retention, onGrantXp, onClaimBadgeXp, onGrantReward, onApplyServerRewards, boosters,
+  retention, onGrantXp, onGrantReward, onApplyServerRewards,
   evolutionPending,
   onStartReview,
   onStartClassMinute,
@@ -151,58 +141,27 @@ export default function StudentDashboardView({
       }
     : undefined;
 
-  // Daily missions — three rotating tasks per user-local calendar day.
-  // Hook only fires for authenticated students; guests + Quick-Play
-  // shouldn't see the card (no schema-bound XP loop).
-  const dailyMissions = useDailyMissions({
-    enabled: Boolean(user?.role === 'student' && !user?.isGuest),
-  });
-
   // Spaced repetition — surfaces today's due-for-review words.  Hook
-  // only activates when a parent supplied an onStartReview callback
-  // (so the card can route into the Review mode); without that the
-  // hook stays idle.
+  // only activates when a parent supplied an onStartReview callback;
+  // without that the hook stays idle.  Used here purely for the count
+  // chip on the Practice orbit circle — the Practice page itself
+  // re-fetches the queue when opened.
   const dueReviews = useDueReviews({
     enabled: Boolean(user?.role === 'student' && !user?.isGuest && onStartReview),
   });
 
-  // Class Minute — daily 60-second drill.  Derived purely from
-  // `studentProgress` so the dashboard already has the data it
-  // needs (no extra round-trip).  `doneToday` flips the card to the
-  // emerald "see you tomorrow" state; `classMinuteStreak` counts
-  // consecutive days back from today with at least one class-minute
-  // completion — gap of one day breaks the streak.
-  const { classMinuteDoneToday, classMinuteStreak } = (() => {
-    const todayKey = new Intl.DateTimeFormat('sv-SE').format(new Date());
-    const daysWithPlay = new Set<string>();
-    for (const row of studentProgress) {
-      if (row.mode !== 'class-minute') continue;
-      const dayKey = new Intl.DateTimeFormat('sv-SE').format(new Date(row.completedAt));
-      daysWithPlay.add(dayKey);
-    }
-    const doneToday = daysWithPlay.has(todayKey);
-    // Walk back day-by-day from today until we hit a gap.  If the
-    // student hasn't played today yet, the streak still counts
-    // yesterday-and-earlier consecutive days — they're "carrying" a
-    // streak that today's session would extend.
-    let streak = 0;
-    const cursor = new Date();
-    if (!doneToday) cursor.setDate(cursor.getDate() - 1);
-    while (true) {
-      const key = new Intl.DateTimeFormat('sv-SE').format(cursor);
-      if (daysWithPlay.has(key)) {
-        streak += 1;
-        cursor.setDate(cursor.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    return { classMinuteDoneToday: doneToday, classMinuteStreak: streak };
-  })();
+  // Pet info card — opened by tapping the central orbital pet, or auto-
+  // opened the moment a milestone becomes claimable so the student never
+  // misses an unlock. Keyed on the stage string (not the object) so the
+  // effect fires once per new claimable, not on every render.
+  const [petCardOpen, setPetCardOpen] = React.useState(false);
+  const claimableStage = retention.claimablePetMilestone?.stage;
+  React.useEffect(() => {
+    if (claimableStage) setPetCardOpen(true);
+  }, [claimableStage]);
 
-  // Shared pet-milestone claim — used by both the EvolutionCore status
-  // panel and the floating PetCompanion. Grants the reward, then records
-  // the claim so it won't re-surface.
+  // Pet-milestone claim — used by the pet info card (PetCompanion).
+  // Grants the reward, then records the claim so it won't re-surface.
   const handleClaimMilestone = (milestone: PetMilestone | null) => {
     if (!milestone) return;
     if (milestone.reward.kind === "xp" && typeof milestone.reward.value === "number") {
@@ -213,30 +172,30 @@ export default function StudentDashboardView({
     retention.claimPetMilestone(milestone);
   };
 
-  // Orbit circles route to a destination view, launch Play, or smooth-
-  // scroll to the matching content card rendered below the ring. The
-  // content lives below so each circle has a real surface to land on —
-  // the ring is the launcher, the cards are the detail.
+  // Orbit circles either launch Play, navigate to a dedicated view, or
+  // smooth-scroll to a card still rendered on the home screen. Tasks is
+  // the only remaining scroll target — Assignments stays on the home page
+  // as the core loop. Practice / Missions / Boosts / Badges each open
+  // their own full-screen page (StudentHubSubView).
   const scrollToId = (id: string) => {
     if (typeof document === "undefined") return;
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // Six circles, one clear hero. Everything secondary is grouped so kids
+  // see a handful of obvious destinations, not a wall of choices:
+  //   Play · Tasks · Practice · Daily · Shop · Ranks
+  // Daily folds chest/weekly + missions + goal + active boosts + badges.
+  // Order = clockwise from the top so Play sits dead-centre at 12 o'clock.
   const orbitItems: OrbitItem[] = [
     { key: "play", onClick: () => { void launchNextAssignment?.(); }, disabled: !launchNextAssignment },
     { key: "tasks", onClick: () => scrollToId("dash-assignments"), badge: studentAssignments.length || undefined },
     { key: "shop", onClick: () => setView("shop") },
     { key: "leaderboard", onClick: () => setView("global-leaderboard") },
+    { key: "daily", onClick: () => setView("student-daily") },
   ];
   if (onStartReview || onStartClassMinute || onStartIdioms) {
-    orbitItems.push({ key: "practice", onClick: () => scrollToId("dash-practice"), badge: dueReviews.dueCount || undefined });
-  }
-  if (user?.role === "student" && !user?.isGuest) {
-    orbitItems.push({ key: "missions", onClick: () => scrollToId("dash-missions") });
-  }
-  orbitItems.push({ key: "boosters", onClick: () => scrollToId("dash-boosters") });
-  if (badges.length > 0) {
-    orbitItems.push({ key: "badges", onClick: () => scrollToId("dash-badges") });
+    orbitItems.push({ key: "practice", onClick: () => setView("student-practice"), badge: dueReviews.dueCount || undefined });
   }
 
   // ── DASHBOARD RENDER ──────────────────────────────────────────────
@@ -256,6 +215,7 @@ export default function StudentDashboardView({
         />
       )}
       <ArcadeHubLayout
+        topBar={<StudentTopBar onRequestLogout={onRequestLogout} />}
         statsBar={<ArcadeStatsBar xp={xp} streak={streak} />}
         trophyRoad={<TrophyRoadStrip xp={xp} />}
         character={
@@ -268,13 +228,13 @@ export default function StudentDashboardView({
                 xp={xp}
                 evolutionPending={evolutionPending}
                 hasClaimable={!!retention.claimablePetMilestone}
+                onTap={() => setPetCardOpen((v) => !v)}
               />
             }
           />
         }
       >
         {classNotFoundBanner}
-        <StudentTopBar onRequestLogout={onRequestLogout} />
         {/* Teacher rewards land here FIRST so the student sees the
             celebration before anything else. Hides itself when empty. */}
         <RewardInboxCard
@@ -286,45 +246,10 @@ export default function StudentDashboardView({
         {!studentDataLoading && studentAssignments.length === 0 && (
           <StudentWelcomeCard displayName={user.displayName} />
         )}
-        {/* Pet status — progress / mood / claimable reward / 8-stage
-            ladder. The pet itself is drawn in the orbital centre, so we
-            hide EvolutionCore's own copy (hidePet) to avoid two pets. */}
-        <EvolutionCore
-          currentStage={retention.currentPetStage}
-          nextStage={retention.nextPetStage}
-          xp={xp}
-          evolutionPending={evolutionPending}
-          claimableMilestone={retention.claimablePetMilestone}
-          onClaim={handleClaimMilestone}
-          displayName={user.displayName}
-          hidePet
-        />
-        <div id="dash-practice">
-          <DailyPracticeRow
-            review={onStartReview ? {
-              dueCount: dueReviews.dueCount,
-              isLoading: dueReviews.isLoading,
-              onStart: onStartReview,
-            } : undefined}
-            classMinute={onStartClassMinute ? {
-              doneToday: classMinuteDoneToday,
-              streak: classMinuteStreak,
-              isLoading: studentDataLoading,
-              onStart: onStartClassMinute,
-            } : undefined}
-            idioms={onStartIdioms ? { onStart: onStartIdioms } : undefined}
-          />
-        </div>
-        <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
-        <DailyGoalBanner studentProgress={studentProgress} onPlay={launchNextAssignment} />
-        {(user?.role === 'student' && !user?.isGuest) && (
-          <div id="dash-missions">
-            <DailyMissionsCard
-              missions={dailyMissions.missions}
-              isLoading={dailyMissions.isLoading}
-            />
-          </div>
-        )}
+        {/* Home is intentionally just the orbital hub + Assignments. Pet
+            status opens by tapping the centre pet; XP / streak live in the
+            top pill; daily rewards + goal moved to the Rewards page; ranks
+            to the Ranks circle. */}
         <div id="dash-assignments">
           <StudentAssignmentsList
             studentAssignments={studentAssignments}
@@ -338,33 +263,12 @@ export default function StudentDashboardView({
             setShowModeSelection={setShowModeSelection}
           />
         </div>
-        <StudentStatsRow
-          xp={xp}
-          streak={streak}
-          studentAssignments={studentAssignments}
-          studentProgress={studentProgress}
-        />
-        <LeaderboardTeaser
-          classCode={user.classCode}
-          currentStudentUid={user.uid}
-          currentXp={xp}
-          setView={setView}
-        />
-        <div id="dash-boosters">
-          <ActiveBoostersStrip {...boosters} />
-        </div>
-        {/* Hidden for day-one students with no badges yet — otherwise the
-            strip reads as a row of broken locked tiles. */}
-        {badges.length > 0 && (
-          <div id="dash-badges">
-            <BadgesStrip earned={badges} userUid={user.uid} onClaimBadgeXp={onClaimBadgeXp} />
-          </div>
-        )}
       </ArcadeHubLayout>
       <PetCompanion
+        open={petCardOpen}
+        onClose={() => setPetCardOpen(false)}
         xp={xp}
         displayName={user.displayName}
-        streak={streak}
         currentStage={retention.currentPetStage}
         nextStage={retention.nextPetStage}
         claimableMilestone={retention.claimablePetMilestone}

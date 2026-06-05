@@ -46,7 +46,7 @@ import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
 import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
-import { StudentDashboardSection } from "./views/StudentDashboardSection";
+import { StudentDashboardSection, StudentHubSection, isStudentHubView } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
 import { renderGameRoute } from "./views/GameRoutes";
 import { renderStudentAuthRoute } from "./views/StudentAuthRoutes";
@@ -1114,8 +1114,10 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   });
   if (studentAuthRoute) return studentAuthRoute;
 
-  if (user?.role === "student" && view === "student-dashboard") {
-    const dashboardSection = StudentDashboardSection({
+  if (user?.role === "student" && (view === "student-dashboard" || isStudentHubView(view))) {
+    // Shared prop bag — the dashboard and its hub sub-pages (Practice /
+    // Missions / Boosters / Badges) need the same handlers + state.
+    const studentSectionDeps = {
       user, xp, streak, badges, setXp, setBadges, setUser,
       copiedCode, setCopiedCode,
       studentAssignments, studentProgress, studentDataLoading,
@@ -1133,16 +1135,19 @@ export default function App({ initialView }: { initialView?: View } = {}) {
       // hardware back button uses, so a stray tap doesn't drop the kid
       // straight out of their session.
       onRequestLogout: () => setShowExitConfirmModal(true),
-    });
-    // Celebrations must mount on the dashboard return path too: XP grants,
+    };
+    const section = isStudentHubView(view)
+      ? StudentHubSection({ ...studentSectionDeps, view })
+      : StudentDashboardSection(studentSectionDeps);
+    // Celebrations must mount on these return paths too: XP grants,
     // badge claims and achievement unlocks all happen here, and the pet
     // transformation above already keys off levelUp.pending. Without these
     // the student never sees the level-up modal / achievement toasts that
-    // their dashboard actions trigger (they only mounted in the final
-    // render branch, which the dashboard early-returns past).
+    // their actions trigger (they only mounted in the final render branch,
+    // which these early-return past).
     return (
       <>
-        {dashboardSection}
+        {section}
         <LevelUpModal tier={levelUp.pending} onClose={levelUp.dismiss} />
         <AchievementToast toasts={achievements.toasts} onDismiss={achievements.dismissToast} />
       </>
