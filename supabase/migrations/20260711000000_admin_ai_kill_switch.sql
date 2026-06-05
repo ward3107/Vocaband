@@ -44,6 +44,12 @@ COMMENT ON COLUMN public.users.ai_disabled IS
 
 DROP POLICY IF EXISTS users_update ON public.users;
 
+-- Drop every prior overload so only the 6-arg form remains afterwards.
+-- Older overloads (3-arg from 20260406, 5-arg from the plan/trial lock) can
+-- linger across environments; leaving any in place makes the bare
+-- COMMENT ON FUNCTION below ambiguous (ERROR 42725 "function name is not
+-- unique"). Each DROP is IF EXISTS, so absent overloads are a no-op.
+DROP FUNCTION IF EXISTS public.check_user_update_allowed(text, text, text);
 DROP FUNCTION IF EXISTS public.check_user_update_allowed(text, text, text, text, timestamptz);
 
 CREATE OR REPLACE FUNCTION public.check_user_update_allowed(
@@ -73,7 +79,7 @@ AS $$
   );
 $$;
 
-COMMENT ON FUNCTION public.check_user_update_allowed IS
+COMMENT ON FUNCTION public.check_user_update_allowed(text, text, text, text, timestamptz, boolean) IS
   'Returns TRUE only if role, class_code, plan, trial_ends_at, AND ai_disabled '
   'on the proposed row match the existing values for this uid — i.e. the caller '
   'is not trying to self-promote or self-unblock. Used by the users_update RLS '
