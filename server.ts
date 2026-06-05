@@ -1155,6 +1155,23 @@ async function startServer() {
     }));
   }
 
+  // Public-info limiter — for the handful of UNAUTHENTICATED endpoints that
+  // still do real work (a DB round-trip or a plan lookup): /api/features,
+  // /api/health/audit-log, /api/health/redis. The global 200/min/IP net
+  // already covers them, but these are cheap to hammer and answer to anyone,
+  // so a tighter per-IP cap stops a bot from churning DB/Redis calls for free.
+  // 60/min is generous for legitimate dashboard polling (a few hits/min) while
+  // cutting off a flood. NOT applied to /api/health itself — that returns a
+  // bare timestamp and is polled constantly by Fly + uptime monitors, so a
+  // tight cap there would risk false-alarming the monitors for no real gain.
+  const publicInfoLimiter = createSharedRateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later." },
+  });
+
   // CORS for /api/* routes (needed when SPA is served from Cloudflare Pages
   // or a preview URL on workers.dev). Uses the shared isOriginAllowed helper
   // so static prod origins + dynamic preview-URL pattern both work.
@@ -2769,7 +2786,7 @@ async function startServer() {
   //
   // No auth required: returns only boolean presence, no DB contents,
   // so it's safe to expose for uptime monitoring.
-  app.get("/api/health/audit-log", async (_req, res) => {
+  app.get("/api/health/audit-log", publicInfoLimiter, async (_req, res) => {
     if (!supabaseAdmin) {
       res.status(503).json({ status: "unavailable", reason: "supabase not configured" });
       return;
@@ -2806,7 +2823,7 @@ async function startServer() {
   // after `fly secrets set REDIS_URL=...` to confirm the adapter actually
   // attached and pub/sub round-trips work. Returns 200 in single-VM mode
   // too (status: "disabled") so monitors don't false-alarm before rollout.
-  app.get("/api/health/redis", async (_req, res) => {
+  app.get("/api/health/redis", publicInfoLimiter, async (_req, res) => {
     const body: {
       adapter: typeof redisAdapterStatus;
       error: string | null;
@@ -3969,7 +3986,7 @@ Quality rules:
   // When the query param ?debug=1 is passed, the response body includes a
   // `reason` field so the user can see the failure mode in the browser DevTools
   // Network tab.  Safe to expose because the reasons are generic enum strings.
-  app.get("/api/features", async (req, res) => {
+  app.get("/api/features", publicInfoLimiter, async (req, res) => {
     const debug = req.query.debug === "1";
     const reply = (aiSentences: boolean, reason?: string, extra?: Record<string, unknown>) =>
       res.json(debug ? { aiSentences, reason, ...extra } : { aiSentences });
