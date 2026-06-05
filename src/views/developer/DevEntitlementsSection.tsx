@@ -14,6 +14,27 @@ const PLAN_BADGE: Record<string, string> = {
   free: "bg-white/10 text-white/50",
 };
 
+/**
+ * Trial countdown for a free teacher's 14-day Pro trial. Returns null when
+ * there's nothing to count down — paid plans, no trial set, or already lapsed.
+ * `label` is the badge text; `cls` colours it by urgency (red ≤1d → amber ≤3d
+ * → emerald otherwise), matching the Trial-funnel panel's convention.
+ */
+function trialBadge(plan: string | null, trialEndsAt: string | null): { label: string; cls: string } | null {
+  if (plan && plan !== "free") return null;
+  if (!trialEndsAt) return null;
+  const ms = new Date(trialEndsAt).getTime() - Date.now();
+  if (ms <= 0) return { label: "trial expired", cls: "bg-white/5 text-white/40" };
+  const hours = Math.floor(ms / 3_600_000);
+  const label = hours < 48 ? `${hours}h left` : `${Math.ceil(hours / 24)}d left`;
+  const daysLeft = ms / 86_400_000;
+  const cls =
+    daysLeft <= 1 ? "bg-rose-500/15 text-rose-300"
+    : daysLeft <= 3 ? "bg-amber-500/15 text-amber-300"
+    : "bg-emerald-500/10 text-emerald-300";
+  return { label, cls };
+}
+
 export default function DevEntitlementsSection({ showToast }: Props) {
   const [items, setItems] = useState<DevEntitlement[]>([]);
   const [newEmail, setNewEmail] = useState("");
@@ -110,6 +131,12 @@ export default function DevEntitlementsSection({ showToast }: Props) {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-black uppercase ${PLAN_BADGE[it.plan ?? "free"]}`}>
                   {it.plan ?? "free"}
                 </span>
+                {(() => {
+                  const t = trialBadge(it.plan, it.trial_ends_at);
+                  return t ? (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-black ${t.cls}`}>{t.label}</span>
+                  ) : null;
+                })()}
                 {it.role && it.role !== "teacher" && (
                   <span className="px-2 py-0.5 rounded-full text-xs font-black uppercase bg-sky-500/20 text-sky-200">{it.role}</span>
                 )}

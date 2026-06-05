@@ -13,11 +13,13 @@ function BillingRow({ label, cost, setupHint }: { label: string; cost?: Provider
       ) : cost.configured && cost.ok ? (
         <span className="text-emerald-300 font-black">${(cost.costUsd ?? 0).toFixed(2)}</span>
       ) : cost.configured ? (
-        <span className="text-rose-300 text-xs font-bold text-right max-w-[60%]">
+        // Provider errors echo a raw JSON body with an unbreakable request_id —
+        // break-all keeps that long token from blowing out the page width on mobile.
+        <span className="text-rose-300 text-xs font-bold text-right max-w-[60%] min-w-0 break-all">
           Error {cost.status ?? ""}: {cost.message ?? "request failed"}
         </span>
       ) : (
-        <span className="text-white/40 text-xs text-right max-w-[60%]">{setupHint}</span>
+        <span className="text-white/40 text-xs text-right max-w-[60%] min-w-0 break-words">{setupHint}</span>
       )}
     </div>
   );
@@ -104,17 +106,19 @@ export default function DevAiCostPanel({ showToast }: Props) {
         {(data?.by_action ?? []).length === 0 ? (
           <p className="px-5 pb-4 text-white/40 text-base">No usage in this window.</p>
         ) : (
-          <table className="w-full text-base">
-            <tbody>
-              {(data?.by_action ?? []).map((a) => (
-                <tr key={a.action} className="border-t border-white/5">
-                  <td className="px-5 py-2 text-white/80 font-bold">{ACTION_LABELS[a.action] ?? a.action}</td>
-                  <td className="px-5 py-2 text-white/50 text-right">{fmtNum(a.calls)} calls</td>
-                  <td className="px-5 py-2 text-emerald-300 font-bold text-right">{fmtUsd(a.cost_micro)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-base">
+              <tbody>
+                {(data?.by_action ?? []).map((a) => (
+                  <tr key={a.action} className="border-t border-white/5">
+                    <td className="px-5 py-2 text-white/80 font-bold whitespace-nowrap">{ACTION_LABELS[a.action] ?? a.action}</td>
+                    <td className="px-5 py-2 text-white/50 text-right whitespace-nowrap">{fmtNum(a.calls)} calls</td>
+                    <td className="px-5 py-2 text-emerald-300 font-bold text-right whitespace-nowrap">{fmtUsd(a.cost_micro)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -123,17 +127,19 @@ export default function DevAiCostPanel({ showToast }: Props) {
         {(data?.top_teachers ?? []).length === 0 ? (
           <p className="px-5 pb-4 text-white/40 text-base">No usage in this window.</p>
         ) : (
-          <table className="w-full text-base">
-            <tbody>
-              {(data?.top_teachers ?? []).map((t) => (
-                <tr key={t.teacher_uid} className="border-t border-white/5">
-                  <td className="px-5 py-2 text-white/80 font-bold truncate max-w-[200px]">{t.email ?? t.teacher_uid}</td>
-                  <td className="px-5 py-2 text-white/50 text-right">{fmtNum(t.calls)} calls</td>
-                  <td className="px-5 py-2 text-emerald-300 font-bold text-right">{fmtUsd(t.cost_micro)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-base">
+              <tbody>
+                {(data?.top_teachers ?? []).map((t) => (
+                  <tr key={t.teacher_uid} className="border-t border-white/5">
+                    <td className="px-5 py-2 text-white/80 font-bold truncate max-w-[200px]">{t.email ?? t.teacher_uid}</td>
+                    <td className="px-5 py-2 text-white/50 text-right whitespace-nowrap">{fmtNum(t.calls)} calls</td>
+                    <td className="px-5 py-2 text-emerald-300 font-bold text-right whitespace-nowrap">{fmtUsd(t.cost_micro)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
