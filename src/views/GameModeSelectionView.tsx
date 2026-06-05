@@ -5,65 +5,66 @@ import {
   Volume2,
   PenTool,
   Zap,
-  CheckCircle2,
+  Check,
   Layers,
   Shuffle,
   Repeat,
   X,
-  GraduationCap,
-  Sparkles,
+  Lock,
   Star,
   Edit3,
   Brain,
+  ChevronRight,
+  Play,
 } from "lucide-react";
 import type { GameMode } from "../constants/game";
+import { MAX_ASSIGNMENT_ROUNDS } from "../constants/game";
 import type { AssignmentData, ProgressData } from "../core/supabase";
 import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
+import { computeRoundsCompleted, sumPlayCountFromProgress } from "../hooks/useAssignmentPlays";
 import { useLanguage } from "../hooks/useLanguage";
+import type { Language } from "../hooks/useLanguage";
 import { gameModesT, type GameModeId } from "../locales/student/game-modes";
+import { ARCADE_BG, ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
 
-// Small star-rating component — 3 stars with N filled. Same visual
-// vocabulary as app-store difficulty ratings, so it reads as a
-// difficulty indicator with no legend required. Used on every mode
-// tile AND in the legend row.
-function DifficultyStars({ filled, colour, size = 12 }: { filled: number; colour: string; size?: number }) {
+// Tiny gold mastery dots — N filled out of 3, earned by score. Kept small
+// and only shown on completed list rows so they read as a quiet reward,
+// not clutter.
+function MasteryDots({ filled }: { filled: number }) {
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`Difficulty ${filled} of 3`}>
-      {[0, 1, 2].map(i => (
-        <Star
-          key={i}
-          size={size}
-          strokeWidth={2}
-          className={i < filled ? colour : 'text-stone-300'}
-          fill={i < filled ? 'currentColor' : 'none'}
-        />
+    <span className="inline-flex items-center gap-0.5" aria-label={`Mastery ${filled} of 3`}>
+      {[0, 1, 2].map((i) => (
+        <Star key={i} size={9} strokeWidth={2} className={i < filled ? "text-amber-300" : "text-white/20"} fill={i < filled ? "currentColor" : "none"} />
       ))}
     </span>
   );
 }
 
-// 3-pill legend shown above the mode grid. Same star pattern as each
-// tile, so the player learns the vocabulary once.
-function DifficultyLegend() {
-  const tiers: Array<keyof typeof DIFFICULTY_META> = ['easy', 'medium', 'hard'];
-  return (
-    <div className="flex items-center justify-center gap-2 sm:gap-3 mb-5 flex-wrap">
-      {tiers.map(tier => {
-        const m = DIFFICULTY_META[tier];
-        return (
-          <div
-            key={tier}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${m.badgeBg} ${m.badgeText}`}
-            title={m.description}
-          >
-            <DifficultyStars filled={m.stars} colour={m.starColor} />
-            {m.label}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+// Per-mode medallion gradient, keyed by the mode's colour token.
+const MODE_GRADIENTS: Record<string, string> = {
+  cyan: "from-cyan-400 to-blue-500",
+  emerald: "from-emerald-400 to-teal-500",
+  lime: "from-lime-400 to-green-500",
+  blue: "from-blue-400 to-indigo-500",
+  purple: "from-purple-400 to-violet-600",
+  amber: "from-amber-400 to-orange-500",
+  pink: "from-pink-400 to-rose-500",
+  rose: "from-rose-400 to-pink-600",
+  indigo: "from-indigo-400 to-violet-600",
+  fuchsia: "from-fuchsia-400 to-purple-600",
+  violet: "from-violet-400 to-purple-600",
+  teal: "from-teal-400 to-cyan-500",
+  red: "from-red-400 to-rose-600",
+};
+
+const QUEST_STRINGS: Record<Language, {
+  playNext: string; start: string; round: string; modesDone: string; allModes: string;
+}> = {
+  en: { playNext: "Play next", start: "Start here", round: "Round", modesDone: "modes", allModes: "All modes" },
+  he: { playNext: "שחק עכשיו", start: "התחל כאן", round: "סבב", modesDone: "מצבים", allModes: "כל המצבים" },
+  ar: { playNext: "العب الآن", start: "ابدأ هنا", round: "جولة", modesDone: "أوضاع", allModes: "كل الأوضاع" },
+  ru: { playNext: "Играть", start: "Начни здесь", round: "Раунд", modesDone: "режимов", allModes: "Все режимы" },
+};
 
 interface GameModeSelectionViewProps {
   activeAssignment: AssignmentData | null;
@@ -86,247 +87,206 @@ export default function GameModeSelectionView({
   setShowModeIntro,
   handleExitGame,
 }: GameModeSelectionViewProps) {
-  // i18n: pull every visible string from the locale file. Mode names,
-  // descriptions, tooltips, and chrome copy all live in
-  // src/locales/student/game-modes.ts (EN / HE / AR). Adding a new
-  // language = add it to the union in useLanguage + drop a new key
-  // in that file. See docs/I18N-MIGRATION.md for the pattern.
-  const { language, dir } = useLanguage();
-  const t = gameModesT[language];
+  const { language, dir, isRTL } = useLanguage();
+  const t = gameModesT[language] ?? gameModesT.en;
+  const qs = QUEST_STRINGS[language] ?? QUEST_STRINGS.en;
 
-  // Layout-only metadata (id, color, icon, learn-mode flag) stays in
-  // the view because it's not localisable. The visible strings
-  // (name/desc/tooltip) come from `t.modes[id]`.
   const modesMeta: Array<{ id: GameMode; color: string; icon: React.ReactNode; isLearnMode?: boolean }> = [
-    { id: "flashcards",        color: "cyan",    icon: <Layers size={28} />,         isLearnMode: true },
-    { id: "classic",           color: "emerald", icon: <BookOpen size={24} /> },
-    { id: "fill-blank",        color: "lime",    icon: <Edit3 size={24} /> },
-    { id: "listening",         color: "blue",    icon: <Volume2 size={24} /> },
-    { id: "spelling",          color: "purple",  icon: <PenTool size={24} /> },
-    { id: "matching",          color: "amber",   icon: <Zap size={24} /> },
-    { id: "memory-flip",       color: "pink",    icon: <Brain size={24} /> },
-    { id: "true-false",        color: "rose",    icon: <CheckCircle2 size={24} /> },
-    { id: "scramble",          color: "indigo",  icon: <Shuffle size={24} /> },
-    { id: "reverse",           color: "fuchsia", icon: <Repeat size={24} /> },
-    { id: "letter-sounds",     color: "violet",  icon: <span className="text-2xl">🔡</span> },
-    { id: "sentence-builder",  color: "teal",    icon: <span className="text-2xl">🧩</span> },
-    { id: "speed-round",       color: "red",     icon: <span className="text-2xl">⚡</span> },
+    { id: "flashcards",        color: "cyan",    icon: <Layers size={24} />,        isLearnMode: true },
+    { id: "classic",           color: "emerald", icon: <BookOpen size={22} /> },
+    { id: "fill-blank",        color: "lime",    icon: <Edit3 size={22} /> },
+    { id: "listening",         color: "blue",    icon: <Volume2 size={22} /> },
+    { id: "spelling",          color: "purple",  icon: <PenTool size={22} /> },
+    { id: "matching",          color: "amber",   icon: <Zap size={22} /> },
+    { id: "memory-flip",       color: "pink",    icon: <Brain size={22} /> },
+    { id: "true-false",        color: "rose",    icon: <Check size={22} /> },
+    { id: "scramble",          color: "indigo",  icon: <Shuffle size={22} /> },
+    { id: "reverse",           color: "fuchsia", icon: <Repeat size={22} /> },
+    { id: "letter-sounds",     color: "violet",  icon: <span className="text-xl">🔡</span> },
+    { id: "sentence-builder",  color: "teal",    icon: <span className="text-xl">🧩</span> },
+    { id: "speed-round",       color: "red",     icon: <span className="text-xl">⚡</span> },
   ];
 
-  // Combined modes array — layout metadata + localised strings keyed
-  // by the mode id.  Same shape the rest of this view consumes (name,
-  // desc, tooltip), so the JSX below is unchanged.
-  const modes = modesMeta.map(m => {
-    const strings = t.modes[m.id as GameModeId];
-    return {
-      ...m,
-      name: strings.name,
-      desc: strings.desc,
-      tooltip: strings.tooltip as unknown as string[],
-    };
-  });
+  const modes = modesMeta.map((m) => ({
+    ...m,
+    name: t.modes[m.id as GameModeId].name,
+    desc: t.modes[m.id as GameModeId].desc,
+  }));
 
-  const allowedModes = activeAssignment?.allowedModes || modes.map(m => m.id);
-  const filteredModes = modes.filter(m => allowedModes.includes(m.id));
-  // Flashcards is special-cased: it's the LEARNING mode, not a practice
-  // mode, so even when a teacher's assignment doesn't include it in
-  // allowedModes the student should still be able to learn the words
-  // before tackling the practice modes. Pull it from the unfiltered
-  // `modes` list so the hero card always shows.
-  const learnMode = modes.find(m => m.isLearnMode);
-  const practiceModes = filteredModes.filter(m => !m.isLearnMode);
+  const allowedModes = activeAssignment?.allowedModes || modes.map((m) => m.id);
+  const filteredModes = modes.filter((m) => allowedModes.includes(m.id));
+  const learnMode = modes.find((m) => m.isLearnMode);
+  const practiceModes = filteredModes.filter((m) => !m.isLearnMode);
 
-  if (filteredModes.length === 0 && !learnMode) {
-    console.error('[Mode Selection] No modes available!');
+  // --- Per-mode state ---
+  const rowsFor = (id: string) =>
+    studentProgress.filter((p) => p.assignmentId === activeAssignment?.id && p.mode === id);
+  const isCompleted = (id: string) => rowsFor(id).length > 0;
+  const isLocked = (id: string) => isQuickPlayGuest && quickPlayCompletedModes.has(id);
+  const masteryStars = (id: string) => {
+    if (!isCompleted(id)) return 0;
+    const best = Math.max(0, ...rowsFor(id).map((r) => r.score ?? 0));
+    return best >= 90 ? 3 : best >= 60 ? 2 : 1;
+  };
+
+  // Ordered list: Flashcards (start) first, then practice modes.
+  const stops = [learnMode, ...practiceModes].filter(Boolean) as typeof modes;
+
+  // Recommended-next: first playable, not-yet-completed stop; else the
+  // weakest-mastery one (replaying for the next round).
+  let recommendedId: GameMode | undefined = stops.find((m) => !isLocked(m.id) && !isCompleted(m.id))?.id;
+  if (!recommendedId) {
+    const playable = practiceModes.filter((m) => !isLocked(m.id));
+    recommendedId = [...playable].sort((a, b) => masteryStars(a.id) - masteryStars(b.id))[0]?.id;
   }
+  const hero = stops.find((m) => m.id === recommendedId) ?? stops[0];
 
-  const colorClasses: Record<string, string> = {
-    emerald: "bg-emerald-50 border-emerald-100 hover:bg-emerald-100 text-emerald-700",
-    blue: "bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700",
-    purple: "bg-purple-50 border-purple-100 hover:bg-purple-100 text-purple-700",
-    amber: "bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-700",
-    rose: "bg-rose-50 border-rose-100 hover:bg-rose-100 text-rose-700",
-    cyan: "bg-cyan-50 border-cyan-100 hover:bg-cyan-100 text-cyan-700",
-    indigo: "bg-indigo-50 border-indigo-100 hover:bg-indigo-100 text-indigo-700",
-    fuchsia: "bg-fuchsia-50 border-fuchsia-100 hover:bg-fuchsia-100 text-fuchsia-700",
-    violet: "bg-violet-50 border-violet-100 hover:bg-violet-100 text-violet-700",
-    teal: "bg-teal-50 border-teal-100 hover:bg-teal-100 text-teal-700",
-    lime: "bg-lime-50 border-lime-100 hover:bg-lime-100 text-lime-700",
-    pink: "bg-pink-50 border-pink-100 hover:bg-pink-100 text-pink-700",
-    orange: "bg-orange-50 border-orange-100 hover:bg-orange-100 text-orange-700",
-    sky: "bg-sky-50 border-sky-100 hover:bg-sky-100 text-sky-700",
-    red: "bg-red-50 border-red-100 hover:bg-red-100 text-red-700",
+  // The quiet list = everything except the hero, ordered to-do → done →
+  // locked so what's left to play floats to the top.
+  const rank = (m: typeof modes[number]) => (isLocked(m.id) ? 2 : isCompleted(m.id) ? 1 : 0);
+  const listModes = stops.filter((m) => m.id !== hero?.id).sort((a, b) => rank(a) - rank(b));
+
+  // --- Round / progress pill ---
+  const totalModes = practiceModes.length;
+  const completedCount = practiceModes.filter((m) => isCompleted(m.id)).length;
+  const totalPlays = activeAssignment ? sumPlayCountFromProgress(studentProgress, activeAssignment.id) : 0;
+  const currentRound = Math.min(MAX_ASSIGNMENT_ROUNDS, computeRoundsCompleted(totalPlays, totalModes) + 1);
+  const showRoundPill = Boolean(activeAssignment) && totalModes > 0;
+
+  const launch = (id: GameMode) => {
+    setGameMode(id);
+    setShowModeSelection(false);
+    setShowModeIntro(true);
   };
 
-  const iconColorClasses: Record<string, string> = {
-    emerald: "text-emerald-600",
-    blue: "text-blue-600",
-    purple: "text-purple-600",
-    amber: "text-amber-600",
-    rose: "text-rose-600",
-    cyan: "text-cyan-600",
-    indigo: "text-indigo-600",
-    fuchsia: "text-fuchsia-600",
-    violet: "text-violet-600",
-    teal: "text-teal-600",
-    lime: "text-lime-600",
-    pink: "text-pink-600",
-    orange: "text-orange-600",
-    sky: "text-sky-600",
-    red: "text-red-600",
-  };
+  const heroGrad = hero ? MODE_GRADIENTS[hero.color] ?? "from-violet-400 to-fuchsia-500" : "";
+  const heroDiff = hero ? DIFFICULTY_META[getModeDifficulty(hero.id)] : null;
 
   return (
-    <div dir={dir} className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 sm:p-12 text-center relative overflow-hidden">
-        <div className="absolute top-0 start-0 w-full h-3 bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600" />
-        <button
-          onClick={handleExitGame}
-          className="absolute top-4 end-4 sm:top-10 sm:end-10 text-stone-400 hover:text-stone-600 transition-colors bg-stone-50 p-3 rounded-full hover:rotate-90 transition-all duration-300"
-          aria-label={t.closeAria}
-          title={t.closeAria}
-        >
-          <X size={28} />
-        </button>
+    <div dir={dir} className={`min-h-screen ${ARCADE_BG} relative overflow-hidden`}>
+      {/* Starfield — matches the hub so launching a game feels continuous. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          backgroundImage: [
+            "radial-gradient(circle at 15% 12%, rgba(255,255,255,0.6) 0 1px, transparent 2px)",
+            "radial-gradient(circle at 78% 22%, rgba(255,255,255,0.5) 0 1px, transparent 2px)",
+            "radial-gradient(circle at 42% 58%, rgba(255,255,255,0.45) 0 1px, transparent 2px)",
+            "radial-gradient(circle at 88% 75%, rgba(255,255,255,0.5) 0 1px, transparent 2px)",
+            "radial-gradient(circle at 25% 90%, rgba(255,255,255,0.55) 0 1px, transparent 2px)",
+          ].join(","),
+        }}
+      />
 
-        {/* Language picker intentionally removed — students choose their
-            instruction language once at login and it stays locked, so
-            mid-flow screens like the mode picker don't offer a change. */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 sm:mb-10 mt-4 sm:mt-0"
-        >
-          <h2 className="text-3xl sm:text-5xl font-black mb-3 text-stone-900 tracking-tight">{t.chooseYourMode}</h2>
-          <p className="text-stone-500 text-base sm:text-xl font-medium">{t.tagline}</p>
-        </motion.div>
-
-        {/* Learning hero — Flashcards is promoted above the practice grid
-            with its own big card so new students know to start here.
-            Still earns XP and counts as a completed mode. */}
-        {learnMode && (() => {
-          const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === learnMode.id);
-          const isQpLocked = isQuickPlayGuest && quickPlayCompletedModes.has(learnMode.id);
-          return (
-            <motion.button
-              key={learnMode.id}
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-              whileHover={!isQpLocked ? { scale: 1.02, translateY: -4 } : undefined}
-              whileTap={!isQpLocked ? { scale: 0.98 } : undefined}
-              disabled={isQpLocked}
-              onClick={() => {
-                if (isQpLocked) return;
-                console.log('[Mode Selection] Tapped learn mode:', learnMode.id);
-                setGameMode(learnMode.id);
-                setShowModeSelection(false);
-                setShowModeIntro(true);
-              }}
-              className={`w-full mb-6 sm:mb-8 p-5 sm:p-8 rounded-2xl text-start relative overflow-hidden shadow-xl transition-all ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-2xl'} bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white`}
-              style={{ touchAction: 'manipulation' }}
-              dir={dir}
-            >
-              <div className="absolute -top-8 -end-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
-              <div className="absolute top-0 start-0 end-0 flex justify-between items-start px-5 pt-4">
-                <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
-                  <Sparkles size={12} />
-                  {t.startHereBadge}
-                </span>
-                {(isCompleted || isQpLocked) && (
-                  <span className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
-                    <CheckCircle2 size={16} className="text-white" />
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-4 sm:gap-6 mt-10 sm:mt-6">
-                <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
-                  <GraduationCap size={32} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-black text-xl sm:text-3xl mb-1">{learnMode.name}</p>
-                  <p className="text-white/90 text-sm sm:text-base font-semibold leading-snug">{learnMode.desc}</p>
-                </div>
-                <div className="hidden sm:flex shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-                  <Layers size={28} />
-                </div>
-              </div>
-            </motion.button>
-          );
-        })()}
-
-        {practiceModes.length > 0 && (
-          <div className="mb-3 text-start" dir={dir}>
-            <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-stone-400">{t.thenPractiseWith}</p>
+      <div className="relative z-10 mx-auto max-w-xl space-y-5 p-4 pb-16 sm:p-6">
+        {/* Header — close + title + round pill. */}
+        <header className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+          <button
+            type="button"
+            onClick={handleExitGame}
+            aria-label={t.closeAria}
+            title={t.closeAria}
+            className={`${ARCADE_BUTTON_TOUCH} flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-md transition hover:bg-white/20`}
+          >
+            <X size={20} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-black text-white sm:text-2xl">{t.chooseYourMode}</h1>
+            {activeAssignment?.title && (
+              <p className="truncate text-xs font-semibold text-white/60">{activeAssignment.title}</p>
+            )}
           </div>
+          {showRoundPill && (
+            <span className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-center text-[11px] font-bold text-cyan-100 ring-1 ring-white/20 backdrop-blur-md">
+              {completedCount}/{totalModes} {qs.modesDone}
+              <span className="block text-[10px] text-white/60">{qs.round} {currentRound}/{MAX_ASSIGNMENT_ROUNDS}</span>
+            </span>
+          )}
+        </header>
+
+        {/* Next-up hero — the single clear thing to play. */}
+        {hero && (
+          <motion.button
+            type="button"
+            onClick={() => launch(hero.id)}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 22 }}
+            whileTap={{ scale: 0.98 }}
+            className={`${ARCADE_BUTTON_TOUCH} relative w-full overflow-hidden rounded-3xl bg-gradient-to-br ${heroGrad} p-5 text-start text-white shadow-xl ring-2 ring-white/30`}
+            dir={dir}
+          >
+            <div aria-hidden className="pointer-events-none absolute -top-10 -end-10 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
+            <div className={`relative flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white backdrop-blur-sm sm:h-20 sm:w-20">
+                <span className="scale-125">{hero.icon}</span>
+              </span>
+              <div className="min-w-0 flex-1">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">
+                  {hero.isLearnMode ? qs.start : qs.playNext}
+                </span>
+                <p className="mt-1 text-2xl font-black leading-tight">{hero.name}</p>
+                <p className="text-sm font-semibold text-white/85 leading-snug line-clamp-2">{hero.desc}</p>
+              </div>
+            </div>
+            <div className={`relative mt-4 flex items-center justify-between gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+              {heroDiff && (
+                <span className="text-xs font-bold text-white/85">{"★".repeat(heroDiff.stars)} {heroDiff.label}</span>
+              )}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-black text-stone-900 shadow">
+                <Play size={15} className="fill-stone-900" /> {qs.playNext}
+              </span>
+            </div>
+          </motion.button>
         )}
 
-        {/* Difficulty legend — tells the player what the coloured dots on
-            each tile below mean. Only renders when there are tiles to
-            label. */}
-        {practiceModes.length > 0 && <DifficultyLegend />}
-
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-          {practiceModes.map((mode, idx) => {
-            const isCompleted = studentProgress.some(p => p.assignmentId === activeAssignment?.id && p.mode === mode.id);
-            // In Quick Play: lock modes that were already completed this session
-            const isQpLocked = isQuickPlayGuest && quickPlayCompletedModes.has(mode.id);
-
-            return (
-              <motion.button
-                key={mode.id}
-                onClick={() => {
-                  if (isQpLocked) {
-                    console.warn('[Mode Selection] Click blocked — mode locked by Quick Play:', mode.id);
-                    return;
-                  }
-                  // Defensive log — helps diagnose the "clicked card but
-                  // nothing happens" bug by making the click trail
-                  // visible in the console.  If a student reports a
-                  // non-clickable mode, this reveals whether the handler
-                  // ran at all.
-                  console.log('[Mode Selection] Tapped mode:', mode.id);
-                  setGameMode(mode.id);
-                  setShowModeSelection(false);
-                  setShowModeIntro(true);
-                }}
-                disabled={isQpLocked}
-                className={`p-4 sm:p-8 rounded-2xl sm:rounded-2xl text-center transition-all border-2 border-transparent flex flex-col items-center ${isQpLocked ? 'opacity-40 cursor-not-allowed grayscale' : ''} ${colorClasses[mode.color]} group relative shadow-sm hover:shadow-xl active:shadow-xl active:scale-95`}
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                whileHover={{ scale: 1.05, translateY: -8 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center mb-3 sm:mb-6 shadow-sm group-hover:shadow-md transition-all ${iconColorClasses[mode.color]} relative`}>
-                  {mode.icon}
-                  {(isCompleted || isQpLocked) && (
-                    <div className={`absolute -top-2 -end-2 ${isQpLocked ? 'bg-gray-500' : 'bg-blue-600'} text-white rounded-full p-1 shadow-md`}>
-                      <CheckCircle2 size={16} />
-                    </div>
-                  )}
-                </div>
-                <p className="font-black text-base sm:text-xl mb-1 sm:mb-2 leading-tight">{mode.name}</p>
-                <p className="opacity-70 text-xs sm:text-sm font-bold leading-snug mb-2">{mode.desc}</p>
-                {/* Difficulty stars — N filled out of 3. Same visual
-                    language the legend above uses, so players see a
-                    tile's star count and instantly know its difficulty
-                    without a colour lookup. */}
-                {(() => {
-                  const tier = getModeDifficulty(mode.id);
-                  const meta = DIFFICULTY_META[tier];
-                  return (
-                    <DifficultyStars filled={meta.stars} colour={meta.starColor} size={12} />
-                  );
-                })()}
-
-                <div className="absolute bottom-4 end-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Zap size={20} className="animate-pulse" />
-                </div>
-              </motion.button>
-            );
-          })}
-        </div>
+        {/* Quiet list — everything else, icon + name + state only. */}
+        {listModes.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="px-1 text-xs font-bold uppercase tracking-widest text-cyan-200">{qs.allModes}</h2>
+            <div className="overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
+              {listModes.map((mode, i) => {
+                const completed = isCompleted(mode.id);
+                const locked = isLocked(mode.id);
+                const grad = MODE_GRADIENTS[mode.color] ?? "from-violet-400 to-fuchsia-500";
+                return (
+                  <motion.button
+                    key={mode.id}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => !locked && launch(mode.id)}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.03 * i }}
+                    whileTap={locked ? undefined : { scale: 0.99 }}
+                    className={`${ARCADE_BUTTON_TOUCH} flex w-full items-center gap-3 px-3 py-2.5 text-start transition hover:bg-white/5 ${
+                      i > 0 ? "border-t border-white/10" : ""
+                    } ${locked ? "opacity-40" : ""}`}
+                    dir={dir}
+                  >
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${grad} text-white shadow ${completed ? "opacity-80" : ""}`}>
+                      {mode.icon}
+                    </span>
+                    <span className={`min-w-0 flex-1 truncate text-sm font-bold ${completed ? "text-white/70" : "text-white"}`}>
+                      {mode.name}
+                    </span>
+                    {completed ? (
+                      <span className={`flex shrink-0 items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+                        <MasteryDots filled={masteryStars(mode.id)} />
+                        <Check size={16} className="text-emerald-400" strokeWidth={3} />
+                      </span>
+                    ) : locked ? (
+                      <Lock size={15} className="shrink-0 text-white/50" />
+                    ) : (
+                      <ChevronRight size={18} className={`shrink-0 text-white/40 ${isRTL ? "rotate-180" : ""}`} />
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
