@@ -436,15 +436,15 @@ export default function GameActiveView({
   };
 
   return (
-    // Viewport-locked game frame: the whole screen is pinned to the
-    // dynamic viewport height (100dvh) and never grows past it, so the
-    // page itself can't scroll and the mobile URL bar stops toggling
-    // mid-game. The header stays at the top, the mode body scrolls
-    // *inside* a contained region (see below), and the progress footer
-    // is pinned at the bottom — so students always know the primary
-    // controls are on-screen and never have to guess whether to scroll.
+    // Natural-flow page: short modes fit the screen with no scroll at
+    // all; a mode that's genuinely taller than the viewport scrolls the
+    // whole page normally (no inner scroll region). Bottom padding
+    // reserves space for the two stacked floaters that overlay the page
+    // in Quick Play — the device safe-area inset plus the QpReactionBar
+    // pill at bottom-3/4 — so the last control (e.g. Spelling's Check)
+    // never sits under the reaction bar on phones.
     <div
-      className={`h-[100dvh] ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 font-sans max-w-7xl mx-auto overflow-hidden`}>
+      className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] font-sans max-w-7xl mx-auto`}>
       {arcadeHubEnabled && (
         <CombosOverlay chain={combo.chain} multiplier={combo.multiplier} />
       )}
@@ -478,16 +478,12 @@ export default function GameActiveView({
       />
 
       {/* Single centered column (the Live Rank sidebar was removed long
-          ago — every mode, matching/quiz alike, sits centered).
-          Contained scroll region: fills the space between the header and
-          the pinned footer. `m-auto` on the inner column centres the
-          mode vertically when it fits, and lets it scroll *within this
-          region* (never the whole page) when a mode is genuinely taller
-          than the screen — auto-margins, unlike flex centring, keep the
-          top of overflowing content reachable. `pb` clears any docked
-          Quick Play reaction bar so the last control is never hidden. */}
-      <div className="w-full flex-1 min-h-0 overflow-y-auto flex flex-col">
-        <div className="w-full max-w-4xl mx-auto m-auto py-2 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+          ago — every mode, matching/quiz alike, sits centered). The
+          min-height pulls content to the vertical centre of the viewport
+          on phones; matching/memory get a touch more room for their
+          larger grids. Content shorter than this never scrolls. */}
+      <div className={`w-full max-w-4xl mx-auto ${(gameMode === 'matching' || gameMode === 'memory-flip') ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
+        <div className="w-full">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
               <MatchingModeGame
@@ -607,7 +603,7 @@ export default function GameActiveView({
       </div>
 
       {!isSelfContainedMode && gameMode !== "matching" && gameMode !== "memory-flip" && (
-        <div className="w-full max-w-5xl shrink-0 pt-2 pb-[env(safe-area-inset-bottom)] flex justify-center">
+        <div className="w-full max-w-5xl mt-12 flex justify-center">
           <div className="w-full max-w-md">
             <progress
               className="h-2 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
