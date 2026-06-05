@@ -182,12 +182,7 @@ export default function GameFinishedView({
   };
 
   return (
-    <div dir={dir} className={`h-[100dvh] overflow-y-auto ${t.bg} flex flex-col items-center p-4 sm:p-6 text-center`}>
-      {/* my-auto centres the results column when it fits the screen, but
-          lets it scroll within this frame when it's tall (many badges,
-          streak card, certificate button) so the primary "Back to Modes"
-          action is always reachable instead of falling below the fold. */}
-      <div className="w-full flex flex-col items-center my-auto">
+    <div dir={dir} className={`min-h-screen ${t.bg} flex flex-col items-center justify-center p-4 sm:p-6 text-center`}>
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -396,7 +391,6 @@ export default function GameFinishedView({
           )}
         </div>
       </motion.div>
-      </div>
 
       {/* Toast Notifications */}
       <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">
