@@ -35,6 +35,9 @@ export interface DevEntitlement {
   school_id: string | null;
   school_name: string | null;
   ai_enabled: boolean;
+  /** Admin kill-switch: when true, all AI is denied for this teacher
+   *  regardless of plan/trial. Toggled via admin_set_ai_disabled. */
+  ai_disabled: boolean;
   allowlisted: boolean;
   signed_up: boolean;
 }
