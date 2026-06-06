@@ -135,36 +135,47 @@ jobs:
             20260428 \
             20260517 || echo "No phantom entries to repair (already clean)."
 
-      - name: Mark already-applied migrations as applied
-        # Every local migration's SQL body is idempotent (CREATE TABLE
-        # IF NOT EXISTS / DROP POLICY IF EXISTS / etc.) — but their
-        # bookkeeping rows in schema_migrations occasionally drift out
-        # of sync with the actual schema, especially when migrations
-        # are applied via the dashboard SQL editor instead of the CLI.
-        # Without a bookkeeping row, `db push` re-runs the SQL (no-op)
-        # but then tries to INSERT into schema_migrations and hits
-        # "duplicate key value violates unique constraint" if a row
-        # with the same version already exists from an earlier
-        # workflow run.
+      - name: Mark historical migrations as applied (frontier-gated)
+        # Mark migrations AT OR BELOW a frontier as applied so `db push`
+        # skips them; leave everything ABOVE the frontier for `db push` to
+        # actually run.
         #
-        # Strategy: dynamically iterate over EVERY local
-        # supabase/migrations/*.sql file and run repair-as-applied.
-        # Using a glob instead of a hard-coded range means the range
-        # auto-extends every time we add a new migration; no risk of
-        # forgetting to update CI when shipping (which is what bit us
-        # on 2026-04-25 with the 20260406 collision after I added
-        # 20260514–20260516).
+        # WHY A FRONTIER (this was a real production bug):
+        #   The previous version ran `migration repair --status applied` on
+        #   EVERY local migration file — including brand-new ones whose SQL
+        #   had never run.  `db push` then saw them as "applied" and SKIPPED
+        #   them, so newly-added migrations silently never reached the
+        #   database.  That is exactly how `admin_bulk_seed_school` (and the
+        #   rest of the post-2026-06-21 batch) ended up 404-ing in prod: the
+        #   files were committed and marked applied, but their SQL never ran.
         #
-        # The `supabase migration repair` command is a no-op when the
-        # row is already correctly applied, so re-running this on every
-        # CI invocation is safe.  `|| echo …` keeps any individual
-        # failure from aborting the whole loop.
+        #   A new migration always carries a higher 14-digit version than the
+        #   frontier, so it now falls ABOVE the frontier and `db push` runs it.
+        #
+        # APPLIED_THROUGH:
+        #   The highest migration version that is genuinely live in prod and
+        #   must NOT be re-run by CI.  Set to the current max so this change is
+        #   a no-op for today's schema (nothing historical is disturbed) while
+        #   fixing the forward path.  After you reconcile a backlog by hand
+        #   (e.g. pasting the missing migrations into the Supabase SQL editor),
+        #   bump this to that batch's max version so CI keeps treating it as
+        #   applied.  NOTE: the post-2026-06-21 backlog is intentionally still
+        #   marked applied here because several of those migrations alter RLS
+        #   on core tables under drifted version numbers — re-running them
+        #   blindly via CI is unsafe.  Apply that backlog deliberately, then
+        #   leave this frontier where it is.
+        env:
+          APPLIED_THROUGH: "20260712000000"
         run: |
           for f in supabase/migrations/*.sql; do
             v=$(basename "$f" | sed -E 's/^([0-9]+)_.*/\1/')
             if [ -z "$v" ] || ! [[ "$v" =~ ^[0-9]+$ ]]; then continue; fi
-            supabase migration repair --status applied "$v" 2>&1 \
-              || echo "  (repair $v skipped — already applied or unknown)"
+            if [ "$v" -le "$APPLIED_THROUGH" ]; then
+              supabase migration repair --status applied "$v" 2>&1 \
+                || echo "  (repair $v skipped — already applied or unknown)"
+            else
+              echo "  (above frontier $APPLIED_THROUGH — leaving $v for db push to apply)"
+            fi
           done
 
       - name: Push migrations (non-interactive)
