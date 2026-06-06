@@ -21,10 +21,14 @@ interface ArcadeStatsBarProps {
 }
 
 /**
- * ArcadeStatsBar — a single slim pill at the top of the hub: tier emoji,
- * title, a thin inline XP-to-next bar, the XP count, and a streak chip,
- * all on one line.  Deliberately low-profile (a "status line", not a
- * card) so the orbital pet below stays the visual hero.
+ * ArcadeStatsBar — the single status pill at the top of the hub. Folds in
+ * what the old TrophyRoadStrip showed (current → next tier + XP remaining)
+ * so there's ONE progress element, not two stacked duplicates:
+ *
+ *   [emoji] Legend → 🔮 Mythic   [▓▓░ bar]   2231 XP   🔥 streak
+ *
+ * On a phone the next-tier name hides (emoji alone implies the goal) so
+ * the pill stays one slim line; the full name returns at sm+.
  */
 export default function ArcadeStatsBar({ xp, streak }: ArcadeStatsBarProps) {
   const { isRTL } = useLanguage();
@@ -36,7 +40,7 @@ export default function ArcadeStatsBar({ xp, streak }: ArcadeStatsBarProps) {
   // full bar so the student feels the cap as a flex, not a wall.
   const span = next ? next.min - current.min : 1;
   const progress = next ? Math.min(1, Math.max(0, (xp - current.min) / span)) : 1;
-  const xpIntoTier = xp - current.min;
+  const toGo = next ? next.min - xp : 0;
 
   return (
     <div className="flex justify-center">
@@ -44,17 +48,30 @@ export default function ArcadeStatsBar({ xp, streak }: ArcadeStatsBarProps) {
         className={`flex max-w-full items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/20 backdrop-blur-md shadow-lg shadow-violet-900/30 sm:gap-3 sm:px-4 ${isRTL ? "flex-row-reverse" : ""}`}
       >
         <span aria-hidden className="text-lg leading-none sm:text-xl">{current.emoji}</span>
-        <span className="shrink-0 truncate text-sm font-bold text-white sm:text-base">{current.title}</span>
+
+        {/* Current → next tier (next name hides on small screens). */}
+        <span className="flex shrink-0 items-center gap-1 text-sm font-bold text-white sm:text-base">
+          <span className="truncate">{current.title}</span>
+          {next && (
+            <>
+              <span aria-hidden className="text-white/40">→</span>
+              <span aria-label={next.title}>{next.emoji}</span>
+              <span className="hidden truncate text-white/70 sm:inline">{next.title}</span>
+            </>
+          )}
+        </span>
 
         {/* Thin inline XP-to-next bar */}
-        <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-white/15 ring-1 ring-white/10 sm:w-28">
+        <div className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-white/15 ring-1 ring-white/10 sm:w-24">
           <div
             className={`${ARCADE_HERO_GRADIENT} h-full rounded-full transition-[width] duration-500 ease-out`}
             style={{ width: `${Math.round(progress * 100)}%` }}
           />
         </div>
-        <span className="shrink-0 text-xs font-semibold tabular-nums text-cyan-200 sm:text-sm">
-          {next ? `${xpIntoTier}/${span}` : "MAX"}
+
+        {/* XP remaining to the next tier (or MAX at the cap). */}
+        <span className="shrink-0 text-xs font-semibold tabular-nums text-amber-300 sm:text-sm">
+          {next ? `${toGo} XP` : "MAX"}
         </span>
 
         {/* Streak chip */}
