@@ -78,46 +78,57 @@ export default function DevSchoolsSection({ showToast }: Props) {
 
       <div className="rounded-2xl bg-white/5 border border-white/10 divide-y divide-white/5">
         {schools.length === 0 && <p className="px-5 py-4 text-white/40 text-base">No schools yet.</p>}
-        {schools.map((s) => (
-          <div key={s.id} className="px-5 py-3 flex items-center gap-3">
-            <School className="w-5 h-5 text-indigo-300 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-white font-bold text-base truncate">{s.name}</div>
-              <div className="text-white/40 text-xs">
-                {s.teachers} staff · {s.students} students
-              </div>
-              {/* Managers each get a remove (×) chip so a mis-assignment can be undone. */}
-              {s.managers.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {s.managers.map((m) => (
-                    <span key={m} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-white/10 text-white/70 text-xs">
-                      {m}
-                      <button
-                        type="button"
-                        onClick={() => removeManager(m)}
-                        disabled={busy}
-                        aria-label={`Remove manager ${m}`}
-                        className="p-0.5 rounded-full hover:bg-rose-500/30 hover:text-rose-200 disabled:opacity-50"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
+        {schools.map((s) => {
+          // admin_delete_school refuses (409) while a school still has members
+          // or classes. Disable the button up front and name what's blocking it,
+          // rather than letting the operator discover it through a failed call.
+          const blockers: string[] = [];
+          if (s.teachers > 0) blockers.push(`${s.teachers} staff`);
+          if (s.students > 0) blockers.push(`${s.students} students`);
+          if (s.classes > 0) blockers.push(`${s.classes} classes`);
+          const deletable = blockers.length === 0;
+          return (
+            <div key={s.id} className="px-5 py-3 flex items-center gap-3">
+              <School className="w-5 h-5 text-indigo-300 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-white font-bold text-base truncate">{s.name}</div>
+                <div className="text-white/40 text-xs">
+                  {s.teachers} staff · {s.students} students · {s.classes} classes
                 </div>
-              )}
+                {/* Managers each get a remove (×) chip so a mis-assignment can be undone. */}
+                {s.managers.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {s.managers.map((m) => (
+                      <span key={m} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-white/10 text-white/70 text-xs">
+                        {m}
+                        <button
+                          type="button"
+                          onClick={() => removeManager(m)}
+                          disabled={busy}
+                          aria-label={`Remove manager ${m}`}
+                          className="p-0.5 rounded-full hover:bg-rose-500/30 hover:text-rose-200 disabled:opacity-50"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => deleteSchool(s)}
+                disabled={busy || !deletable}
+                aria-label={deletable ? `Delete school ${s.name}` : `Cannot delete ${s.name} — clear ${blockers.join(", ")} first`}
+                title={deletable ? undefined : `Clear ${blockers.join(", ")} first`}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className="p-2 rounded-lg text-white/40 hover:text-rose-300 hover:bg-rose-500/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-white/40 disabled:hover:bg-transparent shrink-0"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => deleteSchool(s)}
-              disabled={busy}
-              aria-label={`Delete school ${s.name}`}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="p-2 rounded-lg text-white/40 hover:text-rose-300 hover:bg-rose-500/10 disabled:opacity-50 shrink-0"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <form
