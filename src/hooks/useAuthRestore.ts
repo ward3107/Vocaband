@@ -456,7 +456,11 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                 avatar: studentProfile.avatar,
               };
               await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
-              setUser(studentUser);
+              // Coins live only on public.users (not student_profiles), so read the
+              // authoritative balance back instead of trusting the 0 placeholder above.
+              const { data: coinRow } = await supabase
+                .from('users').select('coins').eq('uid', supabaseUser.id).maybeSingle();
+              setUser({ ...studentUser, coins: coinRow?.coins ?? 0 });
               if (studentProfile.class_code) {
                 const { data: classRows } = await supabase
                   .from('classes').select(CLASS_COLUMNS).eq('code', studentProfile.class_code);
@@ -633,7 +637,11 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                 avatar: studentProfile.avatar,
               };
               await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
-              setUser(studentUser);
+              // Coins live only on public.users (not student_profiles), so read the
+              // authoritative balance back instead of trusting the 0 placeholder above.
+              const { data: coinRow } = await supabase
+                .from('users').select('coins').eq('uid', supabaseUser.id).maybeSingle();
+              setUser({ ...studentUser, coins: coinRow?.coins ?? 0 });
               if (studentProfile.class_code) {
                 const { data: classRows } = await supabase
                   .from('classes').select(CLASS_COLUMNS).eq('code', studentProfile.class_code);

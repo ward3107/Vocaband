@@ -198,6 +198,9 @@ export function useStudentLogin(params: UseStudentLoginParams) {
       if (updateError) {
         trackAutoError(updateError, 'Failed to update student user record during login');
       }
+      // existingUser came from the users table (USER_COLUMNS includes coins),
+      // so use its authoritative balance — userData was built with a 0 placeholder.
+      setUser({ ...userData, coins: existingUser.coins ?? 0 });
     }
 
     // Fetch class data and assignments using RPC to bypass RLS
