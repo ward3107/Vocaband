@@ -48,12 +48,13 @@ export default function IslandDetailSheet({ open, mode, onClose, onPlay, reduced
       {open && mode && (
         <>
           <motion.div
+            aria-hidden="true"
             className="fixed inset-0 z-40 bg-black/50"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
           />
           <motion.div
-            role="dialog" aria-label={mode.name} dir={dir}
+            role="dialog" aria-modal="true" aria-label={mode.name} dir={dir}
             className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-xl rounded-t-3xl bg-gradient-to-b from-indigo-950 to-violet-900 p-5 shadow-2xl ring-1 ring-white/10"
             initial={reduced ? { opacity: 0 } : { y: "100%" }}
             animate={reduced ? { opacity: 1 } : { y: 0 }}
@@ -86,7 +87,7 @@ export default function IslandDetailSheet({ open, mode, onClose, onPlay, reduced
               <div className="rounded-xl bg-white/10 p-2 text-center text-[11px] font-bold text-amber-200">
                 ⭐ {s.bestLabel}<br />{mode.best == null ? s.bestNone : `${mode.best}%`}
               </div>
-              <div className="rounded-xl bg-white/10 p-2 text-center text-[11px] font-bold text-emerald-200">{s.xpOnFinish}</div>
+              <div className="rounded-xl bg-white/10 p-2 text-center text-[11px] font-bold text-emerald-200">✨ {s.xpOnFinish}</div>
             </div>
 
             <button
