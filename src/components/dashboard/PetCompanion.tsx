@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, Sparkles, X, Gift, Flame } from "lucide-react";
 import { PET_MILESTONES, type PetMilestone } from "../../constants/game";
+import CrackingEgg from "./CrackingEgg";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 
@@ -90,7 +91,9 @@ export default function PetCompanion({
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           className="text-2xl sm:text-3xl"
         >
-          {currentStage.emoji}
+          {currentStage.stage === 'Egg'
+            ? <CrackingEgg progress={pct / 100} size={30} alt={currentStage.stage} />
+            : currentStage.emoji}
         </motion.span>
         {/* Reward-pending indicator — pulsing red dot */}
         {claimableMilestone && (
@@ -142,7 +145,9 @@ export default function PetCompanion({
 
             <div className="flex items-center gap-3 mb-3">
               <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${glow} flex items-center justify-center text-3xl shadow-sm`}>
-                {currentStage.emoji}
+                {currentStage.stage === 'Egg'
+                  ? <CrackingEgg progress={pct / 100} size={44} alt={currentStage.stage} />
+                  : currentStage.emoji}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{t.yourCompanion}</p>

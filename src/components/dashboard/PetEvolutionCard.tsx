@@ -20,6 +20,7 @@ import {
   petMoodFor,
   type PetEvolutionState,
 } from '../../hooks/usePetEvolution';
+import CrackingEgg from './CrackingEgg';
 import { useLanguage } from '../../hooks/useLanguage';
 import type { Language } from "../../hooks/useLanguage";
 
@@ -153,7 +154,9 @@ export default function PetEvolutionCard({ state, isLoading }: PetEvolutionCardP
             className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/80 ring-4 ${moodMeta.ring} flex items-center justify-center text-5xl sm:text-6xl shadow-md`}
             aria-label={`${t.stages[stage.stage]} pet`}
           >
-            {stage.emoji}
+            {stage.stage === 'egg'
+              ? <CrackingEgg progress={stageProgress} size={76} alt={t.stages[stage.stage]} />
+              : stage.emoji}
           </motion.div>
           <div className="absolute -bottom-1 -end-1 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white shadow flex items-center justify-center text-base sm:text-lg" aria-hidden>
             {moodMeta.emoji}
