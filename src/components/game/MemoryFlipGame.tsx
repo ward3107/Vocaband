@@ -148,7 +148,7 @@ export default function MemoryFlipGame({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="w-full max-w-2xl grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3"
+        className="w-full max-w-2xl grid grid-cols-4 gap-2 sm:gap-3"
       >
         <AnimatePresence>
           {matchingPairs
@@ -179,7 +179,7 @@ export default function MemoryFlipGame({
                   dir={item.type === 'english' ? 'ltr' : 'auto'}
                   aria-label={faceUp ? t.ariaCardShowing(item.text) : t.ariaFaceDownCard}
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className="relative w-full aspect-[3/4] cursor-pointer disabled:cursor-default"
+                  className="relative w-full aspect-square cursor-pointer disabled:cursor-default"
                 >
                   <motion.div
                     animate={{ rotateY: faceUp ? 180 : 0 }}

@@ -302,6 +302,11 @@ const StudentRtlPreview = lazyWithRetry(() => import('./dev/StudentRtlPreview'))
 // data so the projector / theme / plan-status surfaces can be
 // inspected without logging in as a real teacher.
 const TeacherAffordancesPreview = lazyWithRetry(() => import('./dev/TeacherAffordancesPreview'));
+// Dev-only short-circuit: `/dev/teacher-theme` mounts the REAL English
+// teacher dashboard against fake data with a live Daylight / Midnight /
+// Graphite switcher, so the theme palettes can be inspected without a
+// teacher login.
+const TeacherThemePreview = lazyWithRetry(() => import('./dev/TeacherThemePreview'));
 // Dev-only short-circuit: `/dev/live-podium` mounts the teacher Live
 // Challenge podium (LiveChallengeView) against a fake leaderboard so the
 // real-time scoreboard layout can be inspected without a socket
@@ -419,14 +424,16 @@ async function bootstrap() {
   const devPath = import.meta.env.DEV ? window.location.pathname : '';
   const isStudentRtlPreview = devPath === '/dev/student-rtl-preview';
   const isTeacherAffordancesPreview = devPath === '/dev/teacher-affordances';
+  const isTeacherThemePreview = devPath === '/dev/teacher-theme';
   const isLivePodiumPreview = devPath === '/dev/live-podium';
-  const isDevPreview = isStudentRtlPreview || isTeacherAffordancesPreview || isLivePodiumPreview;
+  const isDevPreview = isStudentRtlPreview || isTeacherAffordancesPreview || isTeacherThemePreview || isLivePodiumPreview;
 
   createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <Suspense fallback={<Loading />}>
         {isDevPreview ? (
           isTeacherAffordancesPreview ? <TeacherAffordancesPreview /> :
+          isTeacherThemePreview ? <TeacherThemePreview /> :
           isLivePodiumPreview ? <LivePodiumPreview /> :
           <StudentRtlPreview />
         ) : (

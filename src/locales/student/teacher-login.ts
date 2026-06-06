@@ -26,14 +26,21 @@ export interface TeacherLoginT {
   enterCodeLabel: string;
   verifyButton: string;
   verifying: string;
-  /** "Didn't get it? Resend in {seconds}s" */
+  /** Countdown until a new code can be requested, e.g. "New code in 58s". */
   resendIn: (seconds: number) => string;
   resendButton: string;
+  /** Reassurance shown on the code screen while the resend timer runs,
+   *  so teachers check spam instead of mashing a throttled button. */
+  resendHint: string;
   useDifferentEmail: string;
   /** Surfaced when verifyOtp fails (bad/expired code). */
   errorInvalidCode: string;
-  /** Surfaced when sendOtp fails (bad email, rate limit, etc.). */
+  /** Surfaced when sendOtp fails for an unknown reason (SMTP, network). */
   errorSendFailed: string;
+  /** Surfaced when the email itself is malformed. */
+  errorInvalidEmail: string;
+  /** Surfaced when GoTrue throttles a quick resend (per-email cooldown). */
+  errorRateLimited: string;
   /** When the email isn't on the allowlist after successful verify. */
   errorNotAllowlisted: string;
   /** Tiny print explaining what the code is for. */
@@ -69,11 +76,14 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     enterCodeLabel: "Enter the code",
     verifyButton: "Verify and sign in",
     verifying: "Verifying…",
-    resendIn: (s) => `Resend in ${s}s`,
+    resendIn: (s) => `New code in ${s}s`,
     resendButton: "Resend code",
+    resendHint: "Didn't get it? Check your spam folder. You can request a new code when the timer ends.",
     useDifferentEmail: "← Use a different email",
     errorInvalidCode: "That code didn't work. Try again or request a new one.",
     errorSendFailed: "We couldn't send the code. Check the email and try again.",
+    errorInvalidEmail: "That doesn't look like a valid email. Check it and try again.",
+    errorRateLimited: "You just requested a code. Wait a minute, then tap Send again — your last code may still be on its way.",
     errorNotAllowlisted: "That email isn't approved as a teacher account yet. Ask the admin to add it.",
     helpText: "We never store passwords. The code expires in 10 minutes.",
     rememberMe: "Remember my email on this device",
@@ -100,11 +110,14 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     enterCodeLabel: "הזן את הקוד",
     verifyButton: "אמת והתחבר",
     verifying: "מאמת…",
-    resendIn: (s) => `שלח שוב בעוד ${s} שניות`,
+    resendIn: (s) => `קוד חדש בעוד ${s} שניות`,
     resendButton: "שלח שוב",
+    resendHint: "לא קיבלת? בדוק את תיקיית הספאם. תוכל לבקש קוד חדש כשהטיימר יסתיים.",
     useDifferentEmail: "← השתמש באימייל אחר",
     errorInvalidCode: "הקוד אינו תקף. נסה שוב או בקש קוד חדש.",
     errorSendFailed: "לא הצלחנו לשלוח את הקוד. בדוק את האימייל ונסה שוב.",
+    errorInvalidEmail: "כתובת האימייל לא נראית תקינה. בדוק אותה ונסה שוב.",
+    errorRateLimited: "בדיוק ביקשת קוד. המתן דקה ולחץ שוב על שליחה — ייתכן שהקוד הקודם עדיין בדרך.",
     errorNotAllowlisted: "האימייל הזה עדיין לא מאושר כחשבון מורה. בקש מהמנהל להוסיף אותו.",
     helpText: "אנחנו לא שומרים סיסמאות. הקוד יפוג תוך 10 דקות.",
     rememberMe: "זכור את האימייל שלי במכשיר זה",
@@ -131,11 +144,14 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     enterCodeLabel: "أدخل الرمز",
     verifyButton: "تحقق وسجل الدخول",
     verifying: "جارٍ التحقق…",
-    resendIn: (s) => `إعادة الإرسال خلال ${s} ث`,
+    resendIn: (s) => `رمز جديد خلال ${s} ث`,
     resendButton: "إعادة إرسال الرمز",
+    resendHint: "لم يصلك الرمز؟ تحقق من مجلد البريد العشوائي. يمكنك طلب رمز جديد عند انتهاء المؤقت.",
     useDifferentEmail: "← استخدم بريدًا إلكترونيًا مختلفًا",
     errorInvalidCode: "الرمز غير صحيح. حاول مرة أخرى أو اطلب رمزًا جديدًا.",
     errorSendFailed: "لم نتمكن من إرسال الرمز. تحقق من البريد الإلكتروني وحاول مرة أخرى.",
+    errorInvalidEmail: "لا يبدو هذا بريدًا إلكترونيًا صالحًا. تحقق منه وحاول مرة أخرى.",
+    errorRateLimited: "لقد طلبت رمزًا للتو. انتظر دقيقة ثم اضغط على إرسال مجددًا — قد يكون رمزك السابق في طريقه إليك.",
     errorNotAllowlisted: "هذا البريد الإلكتروني غير معتمد بعد كحساب معلم. اطلب من المسؤول إضافته.",
     helpText: "نحن لا نخزن كلمات المرور أبدًا. ينتهي الرمز خلال 10 دقائق.",
     rememberMe: "تذكر بريدي الإلكتروني على هذا الجهاز",
@@ -162,11 +178,14 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     enterCodeLabel: "Enter the code",
     verifyButton: "Verify and sign in",
     verifying: "Verifying…",
-    resendIn: (s) => `Resend in ${s}s`,
+    resendIn: (s) => `New code in ${s}s`,
     resendButton: "Resend code",
+    resendHint: "Didn't get it? Check your spam folder. You can request a new code when the timer ends.",
     useDifferentEmail: "← Use a different email",
     errorInvalidCode: "That code didn't work. Try again or request a new one.",
     errorSendFailed: "We couldn't send the code. Check the email and try again.",
+    errorInvalidEmail: "That doesn't look like a valid email. Check it and try again.",
+    errorRateLimited: "You just requested a code. Wait a minute, then tap Send again — your last code may still be on its way.",
     errorNotAllowlisted: "That email isn't approved as a teacher account yet. Ask the admin to add it.",
     helpText: "We never store passwords. The code expires in 10 minutes.",
     rememberMe: "Remember my email on this device",

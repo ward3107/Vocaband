@@ -10,7 +10,15 @@ Three separate Supabase tables/columns gate what a teacher can do. You have to s
 |---|---|---|
 | Sign-up eligibility | `public.teacher_allowlist` (email) | Whether someone can sign up as teacher. RLS on `public.users` insert calls `is_teacher_allowed(email)`. |
 | Role flag | `public.users.role = 'teacher'` | Set automatically on first sign-up if email is in `teacher_allowlist`. **OCR access is gated on this alone — no separate OCR allowlist.** |
-| AI sentences | `public.ai_allowlist` (email) | Extra gate on top of `role='teacher'`. Controls AI Sentence Builder button in assignment wizard Step 3. |
+| Vocabagrut | `public.ai_allowlist` (email) | Extra opt-in gate for the **Vocabagrut** mock-exam generator only. The main AI features (sentence generation, OCR, worksheets) are gated by plan/trial, **not** this table. |
+
+> **Per-teacher AI kill-switch.** `public.users.ai_disabled` (boolean, default
+> `false`) is an admin override that turns **all** AI off for one teacher —
+> including a teacher mid-14-day-trial — regardless of plan/trial or
+> `ai_allowlist`. Flip it from the **Developer Dashboard → Database →
+> Entitlements** panel (the green/rose **AI on/off** button), or via the
+> `admin_set_ai_disabled(p_uid, p_disabled)` RPC. It is pinned against
+> self-edit, so a blocked teacher cannot clear it from DevTools.
 
 ---
 
@@ -85,7 +93,14 @@ If you see `aiSentences=false: <email> is not in ai_allowlist`, you missed step 
 ## Revoking access
 
 ```sql
--- AI only (keep them as teacher)
+-- Kill all AI for one teacher (keep their plan/trial intact). Reverse with false.
+-- Prefer the Developer Dashboard button; this is the SQL equivalent.
+SELECT public.admin_set_ai_disabled(
+  (SELECT uid FROM public.users WHERE lower(email) = lower('teacher@school.edu')),
+  true
+);
+
+-- Vocabagrut only (keep them as teacher)
 DELETE FROM public.ai_allowlist WHERE lower(email) = lower('teacher@school.edu');
 
 -- Block future sign-ups (does NOT touch existing accounts)

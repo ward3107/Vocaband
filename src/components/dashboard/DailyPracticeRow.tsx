@@ -17,6 +17,13 @@ import { motion } from "motion/react";
 import { Brain, Timer, ArrowRight, CheckCircle2, Flame } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import type { Language } from "../../hooks/useLanguage";
+import { useFeatureFlag } from "../../hooks/useFeatureFlag";
+import {
+  ARCADE_CARD,
+  ARCADE_HERO_GRADIENT,
+  ARCADE_REWARD_GRADIENT,
+  ARCADE_STREAK_GRADIENT,
+} from "../arcade/theme";
 
 interface DailyPracticeRowProps {
   /** Spaced-Repetition Review Queue — when omitted, the Review tile
@@ -113,24 +120,30 @@ interface PracticeTileProps {
   loading?: boolean;
   onClick: () => void;
   disabled?: boolean;
+  /** Arcade theme — dark frosted row with white text on the colored
+   *  tile gradient (the surface/ring/icon backgrounds are chosen by
+   *  the caller; the text + chrome colors are switched here). */
+  arcade?: boolean;
 }
 
 function PracticeTile({
   icon, iconBg, surfaceClass, ringClass,
   title, caption, badge, done, loading,
-  onClick, disabled,
+  onClick, disabled, arcade,
 }: PracticeTileProps) {
   const badgeClass =
     badge?.tone === "live"
       ? "bg-violet-500 text-white"
       : badge?.tone === "ok"
         ? "bg-emerald-500 text-white"
-        : "bg-stone-200 text-stone-700";
+        : arcade
+          ? "bg-white/20 text-white"
+          : "bg-stone-200 text-stone-700";
 
   if (loading) {
     return (
       <div
-        className={`rounded-2xl border border-white/80 shadow-sm ${surfaceClass} p-3 sm:p-4 animate-pulse`}
+        className={`rounded-2xl border ${ringClass} shadow-sm ${surfaceClass} p-3 sm:p-4 animate-pulse`}
         style={{ minHeight: 96 }}
       >
         <div className="h-8 w-8 rounded-lg bg-white/60 mb-2" />
@@ -157,24 +170,24 @@ function PracticeTile({
           {icon}
         </div>
         {done && (
-          <span className="ms-auto inline-flex items-center gap-1 text-[10px] font-black text-emerald-700">
+          <span className={`ms-auto inline-flex items-center gap-1 text-[10px] font-black ${arcade ? "text-white" : "text-emerald-700"}`}>
             <CheckCircle2 size={12} className="fill-emerald-200" />
           </span>
         )}
       </div>
       <div className="flex items-center gap-1.5 mb-0.5">
-        <h3 className="text-xs sm:text-sm font-black text-stone-800 leading-tight truncate flex-1 min-w-0">
+        <h3 className={`text-xs sm:text-sm font-black ${arcade ? "text-white" : "text-stone-800"} leading-tight truncate flex-1 min-w-0`}>
           {title}
         </h3>
         {!done && (
           <ArrowRight
             size={12}
-            className="text-stone-400 shrink-0 group-hover:translate-x-0.5 transition-transform rtl:rotate-180 rtl:group-hover:-translate-x-0.5"
+            className={`${arcade ? "text-white/70" : "text-stone-400"} shrink-0 group-hover:translate-x-0.5 transition-transform rtl:rotate-180 rtl:group-hover:-translate-x-0.5`}
           />
         )}
       </div>
       <div className="flex items-center gap-1.5 flex-wrap">
-        <p className="text-[10px] sm:text-[11px] text-stone-600 font-bold truncate">
+        <p className={`text-[10px] sm:text-[11px] ${arcade ? "text-cyan-200" : "text-stone-600"} font-bold truncate`}>
           {caption}
         </p>
         {badge && (
@@ -194,13 +207,21 @@ export default function DailyPracticeRow({
 }: DailyPracticeRowProps) {
   const { language, dir } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
+  // Arcade theme: dark frosted row, vivid per-tile gradients, white
+  // text. Falls back to the existing light styling when off.
+  const arcade = useFeatureFlag("arcade_hub", false);
 
   // Hide the whole row when none of the three are wired.
   if (!review && !classMinute && !idioms) return null;
 
+  // Shared arcade overrides reused across all three tiles.
+  const arcadeIconBg = "bg-white/20 backdrop-blur-sm";
+  const arcadeRing = "border-white/25";
+  const iconClass = arcade ? "text-white drop-shadow" : "text-white";
+
   return (
-    <div dir={dir}>
-      <div className="mb-2 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+    <div dir={dir} className={arcade ? `${ARCADE_CARD} p-3 sm:p-4` : undefined}>
+      <div className={`mb-2 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] ${arcade ? "text-cyan-200" : "text-[#8B5CF6]"}`}>
         <span
           className="inline-block h-1.5 w-1.5 rounded-full"
           style={{ background: "linear-gradient(135deg,#8B5CF6,#D946EF)" }}
@@ -210,14 +231,17 @@ export default function DailyPracticeRow({
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {review && (
           <PracticeTile
-            icon={<Brain size={16} className="text-white" />}
-            iconBg="bg-gradient-to-br from-violet-500 to-purple-600"
+            icon={<Brain size={16} className={iconClass} />}
+            iconBg={arcade ? arcadeIconBg : "bg-gradient-to-br from-violet-500 to-purple-600"}
             surfaceClass={
-              review.dueCount === 0
-                ? "bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50"
-                : "bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50"
+              arcade
+                ? ARCADE_HERO_GRADIENT
+                : review.dueCount === 0
+                  ? "bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50"
+                  : "bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50"
             }
-            ringClass="border-white/80"
+            ringClass={arcade ? arcadeRing : "border-white/80"}
+            arcade={arcade}
             title={t.review}
             caption={review.dueCount === 0 ? t.reviewClear : t.reviewDue(review.dueCount)}
             done={review.dueCount === 0}
@@ -228,18 +252,23 @@ export default function DailyPracticeRow({
         )}
         {classMinute && (
           <PracticeTile
-            icon={<Timer size={16} className="text-white" />}
+            icon={<Timer size={16} className={iconClass} />}
             iconBg={
-              classMinute.doneToday
-                ? "bg-gradient-to-br from-emerald-400 to-teal-500"
-                : "bg-gradient-to-br from-amber-500 to-orange-600"
+              arcade
+                ? arcadeIconBg
+                : classMinute.doneToday
+                  ? "bg-gradient-to-br from-emerald-400 to-teal-500"
+                  : "bg-gradient-to-br from-amber-500 to-orange-600"
             }
             surfaceClass={
-              classMinute.doneToday
-                ? "bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50"
-                : "bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50"
+              arcade
+                ? ARCADE_REWARD_GRADIENT
+                : classMinute.doneToday
+                  ? "bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50"
+                  : "bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50"
             }
-            ringClass="border-white/80"
+            ringClass={arcade ? arcadeRing : "border-white/80"}
+            arcade={arcade}
             title={t.classMinute}
             caption={classMinute.doneToday ? t.classMinuteDone : t.classMinuteSubtitle}
             badge={
@@ -258,10 +287,11 @@ export default function DailyPracticeRow({
         )}
         {idioms && (
           <PracticeTile
-            icon={<span className="text-base" aria-hidden>💭</span>}
-            iconBg="bg-gradient-to-br from-sky-400 to-blue-500"
-            surfaceClass="bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50"
-            ringClass="border-white/80"
+            icon={<span className={arcade ? "text-base drop-shadow" : "text-base"} aria-hidden>💭</span>}
+            iconBg={arcade ? arcadeIconBg : "bg-gradient-to-br from-sky-400 to-blue-500"}
+            surfaceClass={arcade ? ARCADE_STREAK_GRADIENT : "bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50"}
+            ringClass={arcade ? arcadeRing : "border-white/80"}
+            arcade={arcade}
             title={t.idioms}
             caption={t.idiomsSubtitle}
             onClick={idioms.onStart}

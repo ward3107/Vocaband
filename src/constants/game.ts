@@ -45,6 +45,15 @@ export const WORD_MASTERY_BONUS = 5;
 // One-shot bonus when the student hits today's daily goal.
 export const DAILY_GOAL_BONUS = 30;
 
+// --- COIN ECONOMY (2026 shop remake) ---
+// Coins are the spend currency; XP is rank-only. A game grants a flat base
+// plus a score-scaled bonus, so a good game pays ~2× a bad one but every
+// completed game pays something. Tuned to ~10-20 coins/game → casual
+// ≈150/week, regular ≈300, grinder ≈500 (see spec §1).
+export const COIN_BASE_PER_GAME = 10;
+// Score is 0-100 after normalisation; //10 gives 0-10 bonus coins.
+export const COIN_SCORE_DIVISOR = 10;
+
 // Thresholds used across the shop + pet evolution to gate progression.
 export const MASTERY_THRESHOLD = 5; // correct answers before a word counts as "mastered"
 
@@ -388,6 +397,10 @@ export const DAILY_CHEST_XP = { min: 20, max: 60 };
 export const WEEKLY_CHALLENGE_PLAYS = 5;      // plays required
 export const WEEKLY_CHALLENGE_REWARD_XP = 100; // + a free common egg (granted via RPC)
 export const COMEBACK_AFTER_DAYS = 3;          // offline this many days → free golden egg on return
+// One-shot XP a student collects by tapping an earned badge on the
+// dashboard. Claimed state persists in localStorage (per uid) to stop
+// re-claim spam — same pattern as the pet-evolution rewards above.
+export const BADGE_CLAIM_XP = 50;
 // --- GAME: LETTER COLORS ---
 export const LETTER_COLORS = ["#EF4444","#F97316","#EAB308","#22C55E","#3B82F6","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#6366F1"];
 
@@ -549,3 +562,72 @@ export const STRUCTURE_KINDS: StructureKindMeta[] = [
 /** mastery ledger comes online in Phase 2 and we can use real word     */
 /** mastery instead of game count as the trigger.                        */
 export const STRUCTURE_WORDS_PER_EVENT = 2;
+
+// =============================================================================
+// ARCADE ACHIEVEMENTS — student-earned, append-only.
+// Persisted in supabase.student_achievements (RLS-scoped per student).
+// `predicate` receives the snapshot the hook builds on each event and
+// returns true the moment the criterion is met.  XP grant is fixed per
+// achievement (xpReward) and routed through the existing onGrantXp path
+// so the economy stays in one place.
+// =============================================================================
+export type AchievementCategory = 'milestone' | 'streak' | 'mastery' | 'skill' | 'discovery';
+
+export interface AchievementSnapshot {
+  xp: number;
+  streak: number;
+  gamesPlayed: number;       // total progress rows
+  perfectScores: number;     // progress rows with score = 100
+  wordsMastered: number;     // count of mastered words
+  modesPlayed: Set<string>;  // distinct gameMode values seen
+  /** Provided when a combo event triggers the evaluation pass. */
+  comboPeak?: number;
+}
+
+export interface Achievement {
+  id: string;
+  category: AchievementCategory;
+  emoji: string;
+  name: string;
+  description: string;
+  xpReward: number;
+  predicate: (s: AchievementSnapshot) => boolean;
+}
+
+export const ACHIEVEMENTS: Achievement[] = [
+  // ── Milestones ────────────────────────────────────────────────────
+  { id: 'first_game',    category: 'milestone', emoji: '🎮', name: 'First Quest',     description: 'Play your first game.',                   xpReward: 20,  predicate: (s) => s.gamesPlayed >= 1 },
+  { id: 'games_10',      category: 'milestone', emoji: '🕹️', name: 'Veteran Player',  description: 'Play 10 games.',                          xpReward: 40,  predicate: (s) => s.gamesPlayed >= 10 },
+  { id: 'games_50',      category: 'milestone', emoji: '🏆', name: 'Game Champion',   description: 'Play 50 games.',                          xpReward: 100, predicate: (s) => s.gamesPlayed >= 50 },
+  { id: 'games_100',     category: 'milestone', emoji: '👑', name: 'Game Royalty',    description: 'Play 100 games.',                         xpReward: 200, predicate: (s) => s.gamesPlayed >= 100 },
+
+  // ── XP tiers (mirrors XP_TITLES but tracked as achievements too,
+  //    so the badge wall stays full as the student climbs) ──────────
+  { id: 'xp_100',        category: 'milestone', emoji: '📚', name: 'Learner',         description: 'Earn 100 XP.',                            xpReward: 20,  predicate: (s) => s.xp >= 100 },
+  { id: 'xp_500',        category: 'milestone', emoji: '🎓', name: 'Knowledge Seeker', description: 'Earn 500 XP.',                            xpReward: 50,  predicate: (s) => s.xp >= 500 },
+  { id: 'xp_1500',       category: 'milestone', emoji: '🏅', name: 'XP Hunter',       description: 'Earn 1,500 XP.',                          xpReward: 100, predicate: (s) => s.xp >= 1500 },
+  { id: 'xp_3000',       category: 'milestone', emoji: '🌟', name: 'Legendary',       description: 'Earn 3,000 XP.',                          xpReward: 150, predicate: (s) => s.xp >= 3000 },
+  { id: 'xp_6000',       category: 'milestone', emoji: '🔮', name: 'Mythic',          description: 'Earn 6,000 XP.',                          xpReward: 200, predicate: (s) => s.xp >= 6000 },
+  { id: 'xp_12000',      category: 'milestone', emoji: '✨', name: 'Ascended',        description: 'Earn 12,000 XP — you reached the top!',  xpReward: 500, predicate: (s) => s.xp >= 12000 },
+
+  // ── Streaks ───────────────────────────────────────────────────────
+  { id: 'streak_3',      category: 'streak',    emoji: '🔥', name: 'Heating Up',      description: 'Keep a 3-day streak.',                    xpReward: 30,  predicate: (s) => s.streak >= 3 },
+  { id: 'streak_7',      category: 'streak',    emoji: '🌶️', name: 'Week Warrior',    description: 'Keep a 7-day streak.',                    xpReward: 70,  predicate: (s) => s.streak >= 7 },
+  { id: 'streak_14',     category: 'streak',    emoji: '⚡', name: 'Fortnight',       description: 'Keep a 14-day streak.',                   xpReward: 140, predicate: (s) => s.streak >= 14 },
+  { id: 'streak_30',     category: 'streak',    emoji: '☄️', name: 'Iron Habit',      description: 'Keep a 30-day streak.',                   xpReward: 300, predicate: (s) => s.streak >= 30 },
+  { id: 'streak_100',    category: 'streak',    emoji: '🌌', name: 'Unstoppable',     description: 'Keep a 100-day streak.',                  xpReward: 1000, predicate: (s) => s.streak >= 100 },
+
+  // ── Mastery ───────────────────────────────────────────────────────
+  { id: 'perfect_1',     category: 'mastery',   emoji: '🎯', name: 'Bullseye',        description: 'Score 100 on a game.',                    xpReward: 25,  predicate: (s) => s.perfectScores >= 1 },
+  { id: 'perfect_10',    category: 'mastery',   emoji: '💯', name: 'Perfectionist',   description: 'Score 100 on 10 games.',                  xpReward: 100, predicate: (s) => s.perfectScores >= 10 },
+  { id: 'perfect_50',    category: 'mastery',   emoji: '🏵️', name: 'Flawless',        description: 'Score 100 on 50 games.',                  xpReward: 250, predicate: (s) => s.perfectScores >= 50 },
+  { id: 'words_50',      category: 'mastery',   emoji: '📖', name: 'Word Collector',  description: 'Master 50 words.',                        xpReward: 75,  predicate: (s) => s.wordsMastered >= 50 },
+  { id: 'words_250',     category: 'mastery',   emoji: '📚', name: 'Vocab Builder',   description: 'Master 250 words.',                       xpReward: 200, predicate: (s) => s.wordsMastered >= 250 },
+  { id: 'words_1000',    category: 'mastery',   emoji: '🧠', name: 'Walking Thesaurus', description: 'Master 1,000 words.',                   xpReward: 500, predicate: (s) => s.wordsMastered >= 1000 },
+
+  // ── Skill (combo + discovery) ─────────────────────────────────────
+  { id: 'combo_5',       category: 'skill',     emoji: '⚡', name: 'On Fire',         description: 'Get a 5× combo.',                         xpReward: 30,  predicate: (s) => (s.comboPeak ?? 0) >= 5 },
+  { id: 'combo_10',      category: 'skill',     emoji: '💥', name: 'Mega Combo',      description: 'Get a 10× combo.',                        xpReward: 75,  predicate: (s) => (s.comboPeak ?? 0) >= 10 },
+  { id: 'combo_20',      category: 'skill',     emoji: '🌠', name: 'Untouchable',     description: 'Get a 20× combo.',                        xpReward: 200, predicate: (s) => (s.comboPeak ?? 0) >= 20 },
+  { id: 'all_modes_5',   category: 'discovery', emoji: '🎲', name: 'Explorer',        description: 'Try 5 different game modes.',             xpReward: 60,  predicate: (s) => s.modesPlayed.size >= 5 },
+];

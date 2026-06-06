@@ -86,7 +86,7 @@ export default function LetterSoundsGame({
           let charOffset = 0;
           for (let j = 0; j < wordIdx; j++) charOffset += allWords[j].length + 1;
           return (
-            <div key={wordIdx} className="flex justify-center gap-1.5 sm:gap-2">
+            <div key={wordIdx} className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
               {word.split("").map((letter, i) => {
                 const globalIdx = charOffset + i;
                 const revealed = globalIdx < revealedLetters;
@@ -105,7 +105,7 @@ export default function LetterSoundsGame({
                       stiffness: 320,
                       damping: 18,
                     }}
-                    className="w-12 h-14 sm:w-16 sm:h-20 rounded-xl font-black text-2xl sm:text-4xl flex items-center justify-center border-4 flex-shrink-0 shadow-md"
+                    className="w-10 h-12 sm:w-16 sm:h-20 rounded-xl font-black text-xl sm:text-4xl flex items-center justify-center border-4 flex-shrink-0 shadow-md"
                     style={{
                       color: revealed ? color : color + "40",
                       borderColor: revealed ? color : color + "40",

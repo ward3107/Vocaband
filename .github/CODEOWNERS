@@ -1,0 +1,65 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CODEOWNERS — merge-time guardrail for Vocaband's critical flows.
+#
+# A pull request that touches any path below cannot be merged until the listed
+# owner approves it — BUT only once "Require review from Code Owners" is turned
+# on in the branch-protection rule for `main`. Until that switch is flipped in
+# GitHub settings, this file only AUTO-REQUESTS the owner's review; it does not
+# block merges. See docs/operator-tasks.md for the one-time setup checklist.
+#
+# This is intentionally NOT a global `*` rule: only the auth / AI / backend /
+# database / config paths that silently break the whole app are gated.
+# Everything else merges under the normal review flow, so day-to-day work
+# (UI tweaks, copy, new game content) is never slowed down.
+#
+# The owner handle below assumes the repo owner is @ward3107 — change it if you
+# use a different GitHub username or want a team (e.g. @your-org/maintainers).
+# An invalid handle silently disables enforcement, so double-check it matches.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Authentication & session (login, OAuth, OTP, PIN, session restore) ──
+# A regression here locks every teacher and student out of the app.
+/src/hooks/useTeacherOtpAuth.ts         @ward3107
+/src/hooks/useStudentLogin.ts           @ward3107
+/src/hooks/useAuthRestore.ts            @ward3107
+/src/hooks/useAuthFlowRefs.ts           @ward3107
+/src/hooks/useOAuthState.ts             @ward3107
+/src/api/studentLogin.ts                @ward3107
+/src/utils/oauthIntent.ts               @ward3107
+/src/utils/authViews.ts                 @ward3107
+/src/components/TeacherLoginCard.tsx    @ward3107
+/src/components/StudentPinLoginCard.tsx @ward3107
+/src/views/StudentAuthRoutes.tsx        @ward3107
+/src/views/TeacherLoginView.tsx         @ward3107
+/src/views/StudentAccountLoginView.tsx  @ward3107
+/src/core/bootstrap.ts                  @ward3107
+# Safety net — any future auth/login file dropped into these dirs is covered.
+/src/hooks/*Auth*                       @ward3107
+/src/hooks/*Login*                      @ward3107
+/src/api/*Login*                        @ward3107
+
+# ── AI flow (OCR, sentence generation, translation, lesson builder) ──
+# The Gemini API calls themselves live server-side in server.ts (gated below).
+/src/components/ai-lesson-builder/      @ward3107
+/src/hooks/useTranslate.ts              @ward3107
+
+# ── Backend, proxy & deploy config ──
+# A break takes the API + WebSocket layer offline or stops deploys.
+/server.ts                              @ward3107
+/worker/index.ts                        @ward3107
+/.github/                               @ward3107
+
+# ── Database (schema + migrations — hard to reverse, can drop data or RLS) ──
+/supabase/                              @ward3107
+
+# ── Shared contracts — every screen imports these; changes ripple app-wide. ──
+/src/core/                              @ward3107
+
+# ── Dependency & build config (supply-chain + build integrity) ──
+/package.json                           @ward3107
+/package-lock.json                      @ward3107
+
+# ── The guardrails themselves (so they can't be quietly weakened) ──
+# Note: /.github/ above already covers /.github/CODEOWNERS.
+/CLAUDE.md                              @ward3107
+/.claude/                               @ward3107

@@ -195,6 +195,12 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     ? roster.filter(r => r.displayName.toLowerCase().includes(filter.trim().toLowerCase()))
     : roster;
 
+  // Coded classes (anonymous codes like "07-5-2-14") are far less scannable
+  // than names, so always show the filter and ask the student to type their
+  // code rather than hunt the grid.
+  const isCoded = roster.length > 0 && roster.every(r => /^\d/.test(r.displayName));
+  const showFilter = roster.length > 8 || isCoded;
+
   // -------- Render: PIN step --------
   if (step === "pin" && selected) {
     return (
@@ -309,14 +315,14 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
         </div>
       ) : (
         <>
-          {roster.length > 8 && (
+          {showFilter && (
             <div className="relative">
               <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
                 type="search"
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
-                placeholder={t.findYourName}
+                placeholder={isCoded ? t.findYourCode : t.findYourName}
                 className="w-full ps-9 pe-3 py-2 rounded-lg border-2 border-stone-200 focus:border-indigo-500 outline-none text-sm font-medium"
               />
             </div>

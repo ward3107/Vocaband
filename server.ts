@@ -132,6 +132,7 @@ import {
   type QpRaceSubmitPayload,
   type QpRaceEndRoundPayload,
   type QpRaceCellResult,
+  type QpRaceResultPayload,
 } from "./src/core/quickPlayProtocol";
 import { containsProfanity } from "./src/utils/nicknameProfanity";
 import {
@@ -271,6 +272,73 @@ const supabaseAdmin = hasSupabaseConfig
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
   : null;
+
+// ── Generic AI result cache ────────────────────────────────────────────
+// Pure, deterministic AI generators (text analysis, lesson generation)
+// return the same payload for the same inputs, so there's no reason to
+// re-pay the model — or re-wait for it — when an identical request comes
+// back (double-submit, navigation, two teachers in the same set).  These
+// helpers wrap a single `ai_cache(feature, cache_key, content)` table.
+//
+// IMPORTANT: every call is best-effort.  A missing table (migration not
+// applied yet) or a transient Supabase error must NEVER break generation —
+// it just means a cache miss and we fall through to the live model.  This
+// mirrors the bagrut_cache pattern.
+//
+// Only cache generators that are (a) pure (no DB side-effects) and
+// (b) meant to be reproducible.  Do NOT cache the library sentence /
+// distractor generators: they persist candidates to the DB and exist to
+// give teachers FRESH variety on each "Regenerate" tap — a cache hit
+// there would hand back the identical batch and defeat the feature.
+function aiCacheKey(parts: unknown): string {
+  return createHash("sha256").update(JSON.stringify(parts)).digest("hex");
+}
+
+async function aiCacheGet<T>(feature: string, key: string): Promise<T | null> {
+  if (!supabaseAdmin) return null;
+  try {
+    const { data } = await supabaseAdmin
+      .from("ai_cache")
+      .select("content")
+      .eq("feature", feature)
+      .eq("cache_key", key)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (data?.content) {
+      // Fire-and-forget hit counter; don't block the response on it.
+      supabaseAdmin
+        .rpc("touch_ai_cache", { p_feature: feature, p_cache_key: key })
+        .then(() => {}, () => {});
+      return data.content as T;
+    }
+  } catch (err) {
+    console.warn(`[ai_cache] lookup failed (${feature}):`, (err as Error)?.message || err);
+  }
+  return null;
+}
+
+// TTL default 30 days — pure generators are stable, but an expiry keeps the
+// table from growing unbounded and lets prompt/model improvements roll in.
+function aiCacheSet(feature: string, key: string, content: unknown, ttlMs = 30 * 24 * 60 * 60 * 1000): void {
+  if (!supabaseAdmin) return;
+  void withRetry(
+    async () => {
+      const { error } = await supabaseAdmin!
+        .from("ai_cache")
+        .upsert(
+          {
+            feature,
+            cache_key: key,
+            content,
+            expires_at: new Date(Date.now() + ttlMs).toISOString(),
+          },
+          { onConflict: "feature,cache_key" },
+        );
+      if (error) throw error;
+    },
+    { label: `ai_cache:upsert:${feature}` },
+  ).catch((err) => console.warn(`[ai_cache] upsert failed (${feature}):`, err?.message || err));
+}
 
 // Public (publishable/anon) key used by the Tier-2 /api/student/login
 // endpoint to sign a student in NEXT TO the database instead of from the
@@ -427,6 +495,26 @@ async function isPremiumTeacher(email: string): Promise<{ allowed: boolean; erro
     return { allowed: !!data };
   } catch (err) {
     return { allowed: false, error: String(err) };
+  }
+}
+
+// Admin per-teacher AI kill-switch. Returns true when an admin has turned AI
+// off for this teacher (users.ai_disabled). requireProTeacher + /api/features
+// read the flag inline from rows they already fetch; this helper covers the
+// Vocabagrut path, which gates on ai_allowlist (isPremiumTeacher) rather than
+// the plan check. Fails open (false) on lookup error so a transient DB blip
+// doesn't blanket-block AI — the allowlist/plan gates still apply.
+async function isAiDisabledByAdmin(uid: string): Promise<boolean> {
+  if (!supabaseAdmin) return false;
+  try {
+    const { data } = await supabaseAdmin
+      .from("users")
+      .select("ai_disabled")
+      .eq("uid", uid)
+      .maybeSingle();
+    return (data as { ai_disabled?: boolean } | null)?.ai_disabled === true;
+  } catch {
+    return false;
   }
 }
 
@@ -1087,6 +1175,23 @@ async function startServer() {
     }));
   }
 
+  // Public-info limiter — for the handful of UNAUTHENTICATED endpoints that
+  // still do real work (a DB round-trip or a plan lookup): /api/features,
+  // /api/health/audit-log, /api/health/redis. The global 200/min/IP net
+  // already covers them, but these are cheap to hammer and answer to anyone,
+  // so a tighter per-IP cap stops a bot from churning DB/Redis calls for free.
+  // 60/min is generous for legitimate dashboard polling (a few hits/min) while
+  // cutting off a flood. NOT applied to /api/health itself — that returns a
+  // bare timestamp and is polled constantly by Fly + uptime monitors, so a
+  // tight cap there would risk false-alarming the monitors for no real gain.
+  const publicInfoLimiter = createSharedRateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later." },
+  });
+
   // CORS for /api/* routes (needed when SPA is served from Cloudflare Pages
   // or a preview URL on workers.dev). Uses the shared isOriginAllowed helper
   // so static prod origins + dynamic preview-URL pattern both work.
@@ -1580,6 +1685,22 @@ async function startServer() {
   const qpPendingBroadcasts = new Set<string>();
   let qpBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Opaque per-process id stamped onto every leaderboard snapshot. `qpSessions`
+  // is per-VM, so once Fly runs >1 machine a single session's students are
+  // split across processes and each VM broadcasts only the subset it knows.
+  // The client keeps the latest snapshot PER serverId and renders their union
+  // (max score per clientId) — see QpLeaderboardPayload.serverId.
+  const QP_SERVER_ID = randomUUID();
+
+  // Cross-VM (server-to-server) event for a Category Race submit that landed
+  // on a VM which doesn't own the active round. The round + its scoring live
+  // only on the VM where the teacher pressed Start; with ≥2 Fly machines a
+  // student's socket can land elsewhere. serverSideEmit (Redis-adapter backed)
+  // forwards this to every OTHER VM; the owner scores it and replies straight
+  // to the student's socket. Plain string — serverSideEmit forbids reserved
+  // names. (2026-06: fixes "submit dropped, no podium points, stuck on lobby".)
+  const QP_RACE_SUBMIT_FANOUT = "qp:internal:race-submit";
+
   // Rate limiters — sized for a real classroom on a school's NAT'd
   // Wi-Fi where ALL students hit the server from one external IP.
   //
@@ -1625,6 +1746,7 @@ async function startServer() {
           qpIo.to(code).emit(QP_SERVER_EVENTS.LEADERBOARD, {
             sessionCode: code,
             students: Array.from(s.students.values()),
+            serverId: QP_SERVER_ID,
           });
           // Clear the one-shot perfectRound flag after each broadcast so
           // the next leaderboard tick doesn't re-fire the achievement
@@ -1638,6 +1760,135 @@ async function startServer() {
       qpBroadcastTimer = null;
     }, QP_BROADCAST_INTERVAL_MS);
   }
+
+  // ─── Category Race scoring (shared by the local + cross-VM submit paths) ──
+  // Students send TEXT, never a number — the server scores it against the
+  // bank so a tampered client can't claim arbitrary points.
+  function qpScoreRaceCells(
+    race: NonNullable<QpSessionState["currentRace"]>,
+    answers: Record<string, unknown>,
+    helped: string[],
+  ): { cells: QpRaceCellResult[]; roundPoints: number } {
+    const helpedSet = new Set<string>(helped);
+    const cells: QpRaceCellResult[] = race.categories.map((catId) => {
+      const raw = answers[catId];
+      const typed = typeof raw === "string" ? raw.trim().slice(0, 60) : "";
+      const result = typed
+        ? raceValidateAnswer(catId, race.letter, typed)
+        : { valid: false, matchedEn: null, matchedLanguage: null };
+      // Hinted cells score at the reduced (L1) rate even in English so help
+      // stays fair.
+      const points = result.valid
+        ? (helpedSet.has(catId) ? QP_RACE_PTS_L1 : (result.matchedLanguage === "en" ? QP_RACE_PTS_EN : QP_RACE_PTS_L1))
+        : 0;
+      return {
+        categoryId: catId, typed, valid: result.valid,
+        matchedEn: result.matchedEn, matchedLanguage: result.matchedLanguage, points,
+      };
+    });
+    return { cells, roundPoints: cells.reduce((sum, c) => sum + c.points, 0) };
+  }
+
+  // Apply a submission to the session that owns the round. Used by BOTH the
+  // local handler (student co-located with the round owner) and the cross-VM
+  // fanout handler (student on another VM). Creates the student's leaderboard
+  // entry if this VM never saw their JOIN — the round owner is authoritative
+  // for the race score, so a remote student's row is born here from the
+  // nickname/avatar carried on the submit. Returns the RACE_RESULT payload to
+  // deliver, or null when the submit must be ignored (too late / duplicate).
+  function qpApplyRaceSubmission(
+    state: QpSessionState,
+    race: NonNullable<QpSessionState["currentRace"]>,
+    args: { clientId: string; nickname: string; avatar: string; answers: Record<string, unknown>; helped: string[] },
+  ): QpRaceResultPayload | null {
+    if (race.submitted.has(args.clientId)) return null;                       // one submit per round
+    if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) return null;  // too late
+
+    const { cells, roundPoints } = qpScoreRaceCells(race, args.answers, args.helped);
+
+    // Speed bonus — reward decisive answers. Scales from SPEED_BONUS_MAX
+    // (instant) to 0 (clock expired); only when they scored, never untimed.
+    let speedBonus = 0;
+    if (!race.untimed && roundPoints > 0) {
+      const totalMs = Math.max(1, race.deadlineTs - race.startTs);
+      const remainingMs = Math.max(0, race.deadlineTs - Date.now());
+      speedBonus = Math.round(QP_RACE_SPEED_BONUS_MAX * Math.max(0, Math.min(1, remainingMs / totalMs)));
+    }
+
+    let entry = state.students.get(args.clientId);
+    if (!entry) {
+      entry = { clientId: args.clientId, nickname: args.nickname, avatar: args.avatar || "🦊", score: 0, lastSeen: Date.now() };
+      state.students.set(args.clientId, entry);
+    }
+    race.submitted.add(args.clientId);
+    entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints + speedBonus);
+    entry.lastSeen = Date.now();
+
+    return { sessionCode: state.sessionCode, roundId: race.roundId, cells, roundPoints, speedBonus, totalScore: entry.score };
+  }
+
+  // Auto-end the round once EVERY connected student has submitted, so a quick
+  // class doesn't wait out the clock. Student sockets can be spread across
+  // VMs, so we count them with the adapter-aware `fetchSockets()` (returns the
+  // whole room across every machine) rather than this VM's local socket map —
+  // a local-only count would end the round as soon as the owner-VM students
+  // were done, cutting off everyone who landed on another VM.
+  async function qpMaybeAutoEndRace(
+    sessionCode: string,
+    race: NonNullable<QpSessionState["currentRace"]>,
+  ): Promise<void> {
+    let connectedStudentIds: Set<string>;
+    try {
+      const sockets = await qpIo.in(sessionCode).fetchSockets();
+      connectedStudentIds = new Set(
+        sockets
+          .filter((s) => s.data?.qpRole === "student" && typeof s.data?.qpClientId === "string")
+          .map((s) => s.data.qpClientId as string),
+      );
+    } catch {
+      // Redis mid-reconnect — fall back to the local map so single-VM still
+      // auto-ends; multi-VM just waits out the clock this round.
+      const local = qpSessions.get(sessionCode);
+      connectedStudentIds = new Set(local ? local.socketToClient.values() : []);
+    }
+    if (connectedStudentIds.size === 0) return;
+    if (![...connectedStudentIds].every((id) => race.submitted.has(id))) return;
+    // Re-check we still own this exact round before announcing the close.
+    const state = qpSessions.get(sessionCode);
+    if (!state?.currentRace || state.currentRace.roundId !== race.roundId) return;
+    if (state.currentRace.timer) { clearTimeout(state.currentRace.timer); state.currentRace.timer = null; }
+    qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId: race.roundId });
+  }
+
+  // Cross-VM Category Race submit (see QP_RACE_SUBMIT_FANOUT). Fires on every
+  // VM; only the one that owns the round acts. serverSideEmit delivers to all
+  // OTHER instances (never the sender), so the sending VM already handled the
+  // "round is local" case before fanning out.
+  qpIo.on(QP_RACE_SUBMIT_FANOUT, (data: {
+    sessionCode: string; roundId: string; clientId: string;
+    nickname: string; avatar: string; socketId: string;
+    answers: Record<string, unknown>; helped: string[];
+  }) => {
+    try {
+      if (!data || typeof data !== "object") return;
+      const state = qpSessions.get(data.sessionCode);
+      if (!state?.currentRace || state.currentRace.roundId !== data.roundId) return; // not the owner
+      const race = state.currentRace;
+      const result = qpApplyRaceSubmission(state, race, {
+        clientId: data.clientId, nickname: data.nickname, avatar: data.avatar,
+        answers: data.answers, helped: Array.isArray(data.helped) ? data.helped : [],
+      });
+      if (!result) return; // too late / duplicate
+      // Reply straight to the student's socket on its own VM — the Redis
+      // adapter routes `to(socketId)` across machines.
+      qpIo.to(data.socketId).emit(QP_SERVER_EVENTS.RACE_RESULT, result);
+      qpScheduleBroadcast(data.sessionCode);
+      console.log(`[QP RACE submit xvm] session=${data.sessionCode} client=${data.clientId.slice(0, 8)} round=${data.roundId.slice(0, 8)} → ${result.totalScore}`);
+      void qpMaybeAutoEndRace(data.sessionCode, race);
+    } catch (err) {
+      console.warn("[QP RACE submit xvm] handler threw", err);
+    }
+  });
 
   function qpEmitError(
     socket: import("socket.io").Socket,
@@ -1820,11 +2071,17 @@ async function startServer() {
         authUid: incomingAuthUid ?? prev?.authUid,
       });
       state.socketToClient.set(socket.id, clientId);
+      // Stamp role + clientId on the socket so the adapter-aware
+      // `fetchSockets()` (whole room, across VMs) can count connected
+      // students for the Category Race all-submitted auto-end.
+      socket.data.qpRole = "student";
+      socket.data.qpClientId = clientId;
       socket.join(sessionCode);
 
       socket.emit(QP_SERVER_EVENTS.JOINED, {
         clientId,
         leaderboard: Array.from(state.students.values()),
+        serverId: QP_SERVER_ID,
       });
       qpScheduleBroadcast(sessionCode);
     });
@@ -1859,6 +2116,8 @@ async function startServer() {
         // socket→client mapping (post-reconnect race).
         if (state.students.has(clientId)) {
           state.socketToClient.set(socket.id, clientId);
+          socket.data.qpRole = "student";
+          socket.data.qpClientId = clientId;
           socket.join(sessionCode);
           console.log(
             `[QP SCORE self-heal] reattached socket=${socket.id} ` +
@@ -2016,10 +2275,14 @@ async function startServer() {
       const state = qpGetOrCreateSession(sessionCode);
       state.teacherSockets.add(socket.id);
       state.lastTeacherSeenAt = Date.now();
+      // Tag as a teacher so the Category Race all-submitted count (which uses
+      // the cross-VM `fetchSockets()`) doesn't mistake an observer for a player.
+      socket.data.qpRole = "teacher";
       socket.join(sessionCode);
       socket.emit(QP_SERVER_EVENTS.LEADERBOARD, {
         sessionCode,
         students: Array.from(state.students.values()),
+        serverId: QP_SERVER_ID,
       });
     });
 
@@ -2291,11 +2554,6 @@ async function startServer() {
     // Students send TEXT, not a score — the server scores it against the
     // bank, so a tampered client can never claim arbitrary points.
     socket.on(QP_EVENTS.RACE_SUBMIT, (payload: QpRaceSubmitPayload) => {
-      // ── Diagnostic (2026-06 #2/#3) ──────────────────────────────────────
-      // A dropped RACE_SUBMIT is silent: the student never gets a
-      // RACE_RESULT and the host never sees the score move. Both reported
-      // symptoms are this. Log WHICH guard rejects so one repro + `fly logs`
-      // pinpoints the cause. Purely additive — no behaviour change.
       const dropLog = (reason: string, extra?: Record<string, unknown>) => {
         try {
           const p = payload as { sessionCode?: unknown; clientId?: unknown; roundId?: unknown };
@@ -2303,10 +2561,6 @@ async function startServer() {
           const c = typeof p?.clientId === "string" ? p.clientId.slice(0, 8) : "?";
           const r = typeof p?.roundId === "string" ? p.roundId.slice(0, 8) : "?";
           console.warn(`[QP RACE submit DROP] reason=${reason} session=${s} client=${c} round=${r}`, extra ?? "");
-          // Also echo the reason back to the submitting student so it shows in
-          // their browser console (DevTools) — no Fly log access needed to
-          // diagnose. Temporary; remove once the drop cause is fixed.
-          socket.emit("qp:race:submit:rejected", { reason });
         } catch { /* logging must never throw */ }
       };
       if (!payload || typeof payload !== "object") { dropLog("bad_payload"); return; }
@@ -2316,85 +2570,74 @@ async function startServer() {
       if (!answers || typeof answers !== "object") { dropLog("bad_answers"); return; }
       if (!qpScoreLimiter.checkLimit(socket.id)) { dropLog("rate_limited"); return; }
 
+      const helped = Array.isArray(payload.helped)
+        ? payload.helped.filter((c): c is string => typeof c === "string")
+        : [];
       const state = qpSessions.get(sessionCode);
-      if (!state || !state.currentRace) { dropLog("no_session_or_race", { hasState: !!state }); return; }
-      const race = state.currentRace;
-      if (race.roundId !== roundId) { dropLog("stale_round", { serverRound: race.roundId.slice(0, 8) }); return; } // stale round
-      if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late", { lateMs: Date.now() - (race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) }); return; } // too late
-      if (race.submitted.has(clientId)) { dropLog("already_submitted"); return; }                          // one submit per round
 
-      // Self-heal the socket→client mapping (mirrors SCORE_UPDATE) in
-      // case a reconnect raced the submit.
-      const owned = state.socketToClient.get(socket.id);
-      if (owned !== clientId) {
-        if (state.students.has(clientId)) {
-          state.socketToClient.set(socket.id, clientId);
-          socket.join(sessionCode);
-        } else {
-          dropLog("not_in_students", { owned: owned ?? null, knownClients: state.students.size });
-          return;
+      // Does THIS VM own the active round? `qpSessions` is per-process and Fly
+      // runs ≥2 machines, so the round (created where the teacher pressed
+      // Start) often lives on a DIFFERENT VM than the student's socket.
+      //   • Local match → score here, reply on this socket (single-VM, or the
+      //     student happens to share the teacher's VM).
+      //   • No local match → fan the submit out to every VM (serverSideEmit);
+      //     the owner scores it and replies to this socket cross-VM. This
+      //     replaces the old silent "no_session_or_race"/"stale_round" drop
+      //     that left split-class students unscored and stranded on the lobby.
+      if (state?.currentRace && state.currentRace.roundId === roundId) {
+        const race = state.currentRace;
+        if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late", { lateMs: Date.now() - (race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) }); return; }
+        if (race.submitted.has(clientId)) { dropLog("already_submitted"); return; }
+
+        // Self-heal the socket→client mapping (mirrors SCORE_UPDATE) in case a
+        // reconnect raced the submit.
+        const owned = state.socketToClient.get(socket.id);
+        if (owned !== clientId) {
+          if (state.students.has(clientId)) {
+            state.socketToClient.set(socket.id, clientId);
+            socket.data.qpClientId = clientId;
+            socket.join(sessionCode);
+          } else {
+            dropLog("not_in_students", { owned: owned ?? null, knownClients: state.students.size });
+            return;
+          }
         }
+        const entry = state.students.get(clientId);
+        if (!entry) { dropLog("no_entry"); return; }
+
+        const result = qpApplyRaceSubmission(state, race, {
+          clientId, nickname: entry.nickname, avatar: entry.avatar,
+          answers: answers as Record<string, unknown>, helped,
+        });
+        if (!result) return; // too late / duplicate (already screened above)
+        socket.emit(QP_SERVER_EVENTS.RACE_RESULT, result);
+        qpScheduleBroadcast(sessionCode);
+        console.log(`[QP RACE submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} +${result.roundPoints}${result.speedBonus ? `+${result.speedBonus}⚡` : ""} → ${result.totalScore}`);
+        void qpMaybeAutoEndRace(sessionCode, race);
+        return;
       }
-      const entry = state.students.get(clientId);
-      if (!entry) { dropLog("no_entry"); return; }
 
-      // Categories where the student used a hint/suggestion — those cells
-      // score at the reduced (L1) rate even in English, so help is fair.
-      const helpedSet = new Set<string>(
-        Array.isArray(payload.helped)
-          ? payload.helped.filter((c): c is string => typeof c === "string")
-          : [],
-      );
-
-      const cells: QpRaceCellResult[] = race.categories.map((catId) => {
-        const raw = (answers as Record<string, unknown>)[catId];
-        const typed = typeof raw === "string" ? raw.trim().slice(0, 60) : "";
-        const result = typed
-          ? raceValidateAnswer(catId, race.letter, typed)
-          : { valid: false, matchedEn: null, matchedLanguage: null };
-        const points = result.valid
-          ? (helpedSet.has(catId) ? QP_RACE_PTS_L1 : (result.matchedLanguage === "en" ? QP_RACE_PTS_EN : QP_RACE_PTS_L1))
-          : 0;
-        return {
-          categoryId: catId,
-          typed,
-          valid: result.valid,
-          matchedEn: result.matchedEn,
-          matchedLanguage: result.matchedLanguage,
-          points,
-        };
+      // No local round for this roundId. With the Redis adapter attached the
+      // round may simply live on another VM → fan the submit out so the owner
+      // can score it. Without the adapter there are no other VMs, so this is a
+      // genuinely stale / unknown round → drop it exactly as before (the
+      // default adapter's serverSideEmit is a no-op + warning anyway).
+      if (redisAdapterStatus !== "attached") {
+        dropLog(state ? "stale_round" : "no_session_or_race", { hasState: !!state });
+        return;
+      }
+      // Send the student's nickname/avatar from this VM's roster (they joined
+      // here) so the owner can mint their leaderboard row if it never saw their
+      // JOIN.
+      const local = state?.students.get(clientId);
+      qpIo.serverSideEmit(QP_RACE_SUBMIT_FANOUT, {
+        sessionCode, roundId, clientId,
+        nickname: local?.nickname ?? "Player",
+        avatar: local?.avatar ?? "🦊",
+        socketId: socket.id,
+        answers: answers as Record<string, unknown>,
+        helped,
       });
-      const roundPoints = cells.reduce((sum, c) => sum + c.points, 0);
-
-      // Speed bonus — reward decisive answers. Scales from SPEED_BONUS_MAX
-      // (instant) down to 0 (clock expired). Only when they actually scored,
-      // and never in untimed mode (no clock to race against).
-      let speedBonus = 0;
-      if (!race.untimed && roundPoints > 0) {
-        const totalMs = Math.max(1, race.deadlineTs - race.startTs);
-        const remainingMs = Math.max(0, race.deadlineTs - Date.now());
-        const fraction = Math.max(0, Math.min(1, remainingMs / totalMs));
-        speedBonus = Math.round(QP_RACE_SPEED_BONUS_MAX * fraction);
-      }
-
-      race.submitted.add(clientId);
-      entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints + speedBonus);
-      entry.lastSeen = Date.now();
-
-      socket.emit(QP_SERVER_EVENTS.RACE_RESULT, {
-        sessionCode, roundId, cells, roundPoints, speedBonus, totalScore: entry.score,
-      });
-      qpScheduleBroadcast(sessionCode);
-
-      // Auto-end the round once every CONNECTED student has submitted, so a
-      // quick class never waits out the clock. Disconnected students don't
-      // block it — they're not in the live socket→client map.
-      const connectedIds = new Set(state.socketToClient.values());
-      if (connectedIds.size > 0 && [...connectedIds].every((id) => race.submitted.has(id))) {
-        if (race.timer) { clearTimeout(race.timer); race.timer = null; }
-        qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
-      }
-      console.log(`[QP RACE submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} +${roundPoints}${speedBonus ? `+${speedBonus}⚡` : ""} → ${entry.score}`);
     });
 
     // ─── Category Race: teacher ends the active round early ────────────
@@ -2563,7 +2806,7 @@ async function startServer() {
   //
   // No auth required: returns only boolean presence, no DB contents,
   // so it's safe to expose for uptime monitoring.
-  app.get("/api/health/audit-log", async (_req, res) => {
+  app.get("/api/health/audit-log", publicInfoLimiter, async (_req, res) => {
     if (!supabaseAdmin) {
       res.status(503).json({ status: "unavailable", reason: "supabase not configured" });
       return;
@@ -2600,7 +2843,7 @@ async function startServer() {
   // after `fly secrets set REDIS_URL=...` to confirm the adapter actually
   // attached and pub/sub round-trips work. Returns 200 in single-VM mode
   // too (status: "disabled") so monitors don't false-alarm before rollout.
-  app.get("/api/health/redis", async (_req, res) => {
+  app.get("/api/health/redis", publicInfoLimiter, async (_req, res) => {
     const body: {
       adapter: typeof redisAdapterStatus;
       error: string | null;
@@ -2951,14 +3194,19 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     return res.json({ hebrew, arabic, russian });
   });
 
-  // ── OCR via Claude Haiku Vision ───────────────────────────────────────────
-  // Replaces Tesseract.js entirely. Tesseract had three problems:
+  // ── OCR via Google Gemini Vision ──────────────────────────────────────────
+  // The OCR handler lives at app.post("/api/ocr", …) further down. It runs
+  // gemini-2.5-flash (GOOGLE_AI_API_KEY) at temperature 0 — NOT Claude.
+  //
+  // History: replaced Tesseract.js, which had three problems:
   //   1. ~300 MB RAM per worker → crashed Render's 512 MB free tier
   //   2. 10-15s per request (cold start + recognition)
   //   3. Poor accuracy on phone photos (angles, shadows, blur)
   //
-  // Claude Haiku Vision: 2-3s, excellent accuracy, ~$0.002/image, 0 MB RAM.
-  // Uses the same ANTHROPIC_API_KEY already configured for AI sentences.
+  // Gemini Flash: 2-3s, excellent accuracy, ~2-3x cheaper per image than
+  // Claude Haiku Vision (and a free tier), decodes HEIC/HEIF natively, 0 MB
+  // RAM. An earlier iteration briefly used Claude Haiku Vision; that's why a
+  // stale "Claude Haiku Vision" note used to sit here — corrected 2026-06.
 
   // Auth gate for the OCR diagnostic endpoints. Both reveal partial details
   // about GOOGLE_AI_API_KEY (boolean presence, prefix/suffix, length, error
@@ -3044,7 +3292,7 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     try {
       const { data, error } = await supabaseAdmin
         .from("users")
-        .select("plan, trial_ends_at, role, email, schools(plan, trial_ends_at)")
+        .select("plan, trial_ends_at, role, email, ai_disabled, schools(plan, trial_ends_at)")
         .eq("uid", baseAuth.uid)
         .maybeSingle();
       if (error || !data) {
@@ -3073,6 +3321,19 @@ ${JSON.stringify(uncachedOriginalCase)}`;
       const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
       const isAdmin = role === "admin";
       const isDev = isDevEmail(email);
+      // Admin per-teacher kill-switch wins over plan/trial/admin so an operator
+      // can revoke AI for one teacher (e.g. mid-trial abuse) without ending
+      // their trial. Dev allowlist emails stay exempt as the escape hatch.
+      if ((data as { ai_disabled?: boolean }).ai_disabled === true && !isDev) {
+        logAuthzFailure(req, req.originalUrl || req.url, "requireProTeacher_ai_disabled", {
+          metadata: { uid: baseAuth.uid, plan, role },
+        });
+        res.status(403).json({
+          error: "ai_disabled",
+          message: "AI has been disabled for this account by an administrator.",
+        });
+        return null;
+      }
       if (!isPaid && !isTrialing && !isAdmin && !isDev) {
         logAuthzFailure(req, req.originalUrl || req.url, "requireProTeacher_plan_too_low", {
           metadata: { uid: baseAuth.uid, plan, role, trialing: isTrialing },
@@ -3758,7 +4019,7 @@ Quality rules:
   // When the query param ?debug=1 is passed, the response body includes a
   // `reason` field so the user can see the failure mode in the browser DevTools
   // Network tab.  Safe to expose because the reasons are generic enum strings.
-  app.get("/api/features", async (req, res) => {
+  app.get("/api/features", publicInfoLimiter, async (req, res) => {
     const debug = req.query.debug === "1";
     const reply = (aiSentences: boolean, reason?: string, extra?: Record<string, unknown>) =>
       res.json(debug ? { aiSentences, reason, ...extra } : { aiSentences });
@@ -3783,7 +4044,7 @@ Quality rules:
     }
     const { data: userRow, error: userErr } = await supabaseAdmin
       .from("users")
-      .select("plan, trial_ends_at, role, email, schools(plan, trial_ends_at)")
+      .select("plan, trial_ends_at, role, email, ai_disabled, schools(plan, trial_ends_at)")
       .eq("uid", authData.uid)
       .maybeSingle();
     if (userErr || !userRow) {
@@ -3810,6 +4071,12 @@ Quality rules:
     const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
     const isAdmin = role === "admin";
     const isDev = isDevEmail(email);
+    // Admin per-teacher kill-switch — mirrors requireProTeacher so the AI
+    // buttons hide for a blocked teacher instead of showing then 403-ing.
+    if ((userRow as { ai_disabled?: boolean }).ai_disabled === true && !isDev) {
+      console.log(`[features] aiSentences=false: ${redactEmail(email)} blocked by admin kill-switch (ai_disabled)`);
+      return reply(false, "ai_disabled_by_admin", { plan, trialEndsAt });
+    }
     if (!isPaid && !isTrialing && !isAdmin && !isDev) {
       console.log(`[features] aiSentences=false: ${redactEmail(email)} is on free plan with no trial (plan=${plan ?? "null"}, trial=${trialEndsAt ?? "null"})`);
       return reply(false, "not_pro", { plan, trialEndsAt });
@@ -4853,7 +5120,10 @@ Return JSON: an array, one item per word, each with { word, distractors: [string
           // word + sentence per entry, so it needs more headroom than the
           // old one-sentence-per-line text reply. Billed on actual usage.
           max_tokens: 2048,
-          system: `You generate English sentences for Israeli EFL students (grades 4-9) used in vocabulary practice games.  Output is consumed by two modes: Sentence Builder (student rebuilds the sentence from shuffled words) and Fill in the Blank (the target word is removed and the student picks it from a 4-option list).  Both modes need the SAME quality from a sentence — the target word must fit naturally and the rest of the sentence must hint at it.
+          // System block is cached (per-difficulty): the rules are static
+          // across the batch, so repeat calls in the 5-min window skip
+          // re-processing the prompt prefix.
+          system: [{ type: "text", cache_control: { type: "ephemeral" }, text: `You generate English sentences for Israeli EFL students (grades 4-9) used in vocabulary practice games.  Output is consumed by two modes: Sentence Builder (student rebuilds the sentence from shuffled words) and Fill in the Blank (the target word is removed and the student picks it from a 4-option list).  Both modes need the SAME quality from a sentence — the target word must fit naturally and the rest of the sentence must hint at it.
 
 CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-violated rule; obey its word count strictly.
 
@@ -4866,7 +5136,7 @@ CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-
 5. Statements only — never write a question. Question word order is awkward in Sentence Builder.
 6. Do NOT reuse any OTHER word from the input batch inside the sentence. The blank must be uniquely answerable; if two batch words both fit, the question is broken.
 7. Concrete and visual — avoid abstract metaphors or idioms. Vocabulary level for grades 4-9.
-8. Return your answer ONLY through the submit_sentences tool: one entry per input word, echoing the exact input word in "word" and its sentence in "sentence".`,
+8. Return your answer ONLY through the submit_sentences tool: one entry per input word, echoing the exact input word in "word" and its sentence in "sentence".` }],
           // Tool use instead of free-text + line splitting. The old code split
           // the reply on "\n" and paired line[i] → word[i] by position — one
           // stray blank line or numbered prefix silently shifted every
@@ -4993,6 +5263,15 @@ CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-
     if (injection.detected) {
       console.warn(`[AI Text] uid=${auth.uid}: prompt-injection rejected (pattern=${injection.pattern})`);
       return res.status(400).json({ error: "Text contains disallowed pattern" });
+    }
+
+    // Cache hit short-circuit — same text + level + flags always yields the
+    // same analysis (temperature 0.2), so skip the (paid, ~2-4s) Gemini call.
+    const aiTextKey = aiCacheKey({ text: text.trim(), level, extractVocab, generateQuestions });
+    const cachedText = await aiCacheGet<{ vocabulary: unknown[]; questions: unknown[] }>("ai_process_text", aiTextKey);
+    if (cachedText) {
+      console.log(`[AI Text] uid=${auth.uid}: cache hit`);
+      return res.json(cachedText);
     }
 
     try {
@@ -5140,6 +5419,7 @@ Output ONLY the JSON, no markdown, no explanations.
         questions: sanitizedQuestions,
       };
 
+      aiCacheSet("ai_process_text", aiTextKey, responsePayload);
       return res.json(responsePayload);
     } catch (error: any) {
       console.error("[AI Text] processing error:", error?.message || error);
@@ -5200,6 +5480,19 @@ Output ONLY the JSON, no markdown, no explanations.
           return res.status(400).json({ error: "A vocabulary word contains a disallowed pattern" });
         }
       }
+    }
+
+    // Cache hit short-circuit — identical words + config yields an
+    // equivalent lesson, so skip the (paid, multi-call: generate + coverage
+    // repair) Gemini round-trip.  A teacher who wants a different lesson
+    // changes a config knob (length, text type, question mix), which
+    // changes the key; an unchanged re-submit reuses the prior result.
+    const lessonWords = words.map((w: any) => (typeof w === "string" ? w : w?.english || ""));
+    const lessonKey = aiCacheKey({ words: lessonWords, config });
+    const cachedLesson = await aiCacheGet<{ text: string; wordCount: number; questions: unknown[]; missingWords: string[] }>("ai_generate_lesson", lessonKey);
+    if (cachedLesson) {
+      console.log(`[AI Lesson] uid=${auth.uid}: cache hit`);
+      return res.json(cachedLesson);
     }
 
     try {
@@ -5446,12 +5739,14 @@ ${sanitizedText}`;
       const finalWordCount = finalText.split(/\s+/).length;
       console.log(`[AI Lesson] uid=${auth.uid}: generated ${finalWordCount} words, ${sanitizedQuestions.length} questions, missing=${missingWords.length}`);
 
-      return res.json({
+      const lessonPayload = {
         text: finalText,
         wordCount: finalWordCount,
         questions: sanitizedQuestions,
         missingWords,
-      });
+      };
+      aiCacheSet("ai_generate_lesson", lessonKey, lessonPayload);
+      return res.json(lessonPayload);
     } catch (error: any) {
       console.error("[AI Lesson] generation error:", error?.message || error);
       return res.status(500).json({ error: "AI lesson generation failed" });
@@ -5525,6 +5820,11 @@ ${sanitizedText}`;
     const userData = await getUserRoleAndClass(auth.uid);
     if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
       return res.status(403).json({ error: "Only teachers can generate mock exams" });
+    }
+
+    // Admin per-teacher kill-switch wins over the allowlist below.
+    if (await isAiDisabledByAdmin(auth.uid)) {
+      return res.status(403).json({ error: "ai_disabled", message: "AI has been disabled for this account by an administrator." });
     }
 
     // Same gate as other premium AI features — must be in ai_allowlist.
@@ -5625,7 +5925,11 @@ ${sanitizedText}`;
               cache_control: { type: "ephemeral" },
             },
           ],
-          tools: [BAGRUT_TOOL as any],
+          // Cache the (large, static) tool schema alongside the system
+          // prompt so repeat generations in the 5-minute window skip
+          // re-processing both blocks — trims input latency + ~90% of the
+          // input-token cost when a teacher batches tests.
+          tools: [{ ...(BAGRUT_TOOL as any), cache_control: { type: "ephemeral" } }],
           tool_choice: { type: "tool", name: "bagrut_test" },
           messages: [
             {

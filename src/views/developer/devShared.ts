@@ -35,6 +35,9 @@ export interface DevEntitlement {
   school_id: string | null;
   school_name: string | null;
   ai_enabled: boolean;
+  /** Admin kill-switch: when true, all AI is denied for this teacher
+   *  regardless of plan/trial. Toggled via admin_set_ai_disabled. */
+  ai_disabled: boolean;
   allowlisted: boolean;
   signed_up: boolean;
 }
@@ -42,10 +45,28 @@ export interface DevEntitlement {
 export interface DevSchool {
   id: string;
   name: string;
+  school_code: string | null;
   created_at: string;
   teachers: number;
   students: number;
   managers: string[];
+}
+
+/** One class returned by admin_bulk_seed_school for the printable handoff. */
+export interface SeededClass {
+  class_code: string;
+  class_name: string;
+  grade: number;
+  branch: number;
+  teacher_email: string | null;
+  claimed: boolean;
+  students: { code: string; pin: string }[];
+}
+
+export interface SeedSchoolResult {
+  success: boolean;
+  school_code: string;
+  classes: SeededClass[];
 }
 
 export interface ProviderCost {

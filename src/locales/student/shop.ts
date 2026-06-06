@@ -62,9 +62,12 @@ export interface ShopStrings {
   unlocked: string;
   /** "{label} needed" — e.g. "500 XP needed" or "Tier 3 needed" */
   needed: (label: string) => string;
+  /** CTA on locked items — routes the student back to play and earn XP. */
+  playToEarn: string;
 
   // Common toasts
   notEnoughXp: string;
+  notEnoughCoins: string;
   purchaseFailed: string;
   avatarEquipped: string;
   themeApplied: string;
@@ -115,7 +118,9 @@ export const shopT: Record<Language, ShopStrings> = {
     free: "Free",
     unlocked: "Unlocked!",
     needed: (label) => `${label} needed`,
+    playToEarn: "Play to earn",
     notEnoughXp: "Not enough XP!",
+    notEnoughCoins: "Not enough coins 🪙",
     purchaseFailed: "Purchase failed!",
     avatarEquipped: "Avatar equipped!",
     themeApplied: "Theme applied!",
@@ -162,7 +167,9 @@ export const shopT: Record<Language, ShopStrings> = {
     free: "חינם",
     unlocked: "פתוח!",
     needed: (label) => `נדרש ${label}`,
+    playToEarn: "שחק כדי להרוויח",
     notEnoughXp: "אין מספיק XP!",
+    notEnoughCoins: "אין מספיק מטבעות 🪙",
     purchaseFailed: "הרכישה נכשלה!",
     avatarEquipped: "האווטר צויד!",
     themeApplied: "ערכת הנושא הוחלה!",
@@ -209,7 +216,9 @@ export const shopT: Record<Language, ShopStrings> = {
     free: "مجاني",
     unlocked: "مفتوح!",
     needed: (label) => `يلزم ${label}`,
+    playToEarn: "العب لتكسب",
     notEnoughXp: "لا يوجد XP كافٍ!",
+    notEnoughCoins: "لا توجد عملات كافية 🪙",
     purchaseFailed: "فشل الشراء!",
     avatarEquipped: "تم تجهيز الأفاتار!",
     themeApplied: "تم تطبيق السمة!",
@@ -256,7 +265,9 @@ export const shopT: Record<Language, ShopStrings> = {
     free: "Free",
     unlocked: "Unlocked!",
     needed: (label) => `${label} needed`,
+    playToEarn: "Play to earn",
     notEnoughXp: "Not enough XP!",
+    notEnoughCoins: "Not enough coins 🪙",
     purchaseFailed: "Purchase failed!",
     avatarEquipped: "Avatar equipped!",
     themeApplied: "Theme applied!",

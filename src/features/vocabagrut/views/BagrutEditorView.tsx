@@ -2,17 +2,58 @@
 // edits, export PDF, save draft, optionally publish to a class.
 
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Copy, Download, Save, Upload, Loader2, FileText, Eye, Share2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { ArrowLeft, Copy, Download, Save, Upload, Loader2, FileText, Eye, Share2, Minus, Plus, Trash2 } from 'lucide-react';
 import type { AppUser, ClassData } from '../../../core/supabase';
-import type { BagrutTest } from '../types';
-import { MODULE_SPECS } from '../lib/moduleMap';
-import { exportBagrutPdf } from '../lib/bagrutPdf';
+import type { BagrutTest, BagrutQuestion, BagrutQuestionType, BagrutSectionKind } from '../types';
+import { MODULE_SPECS, type ModuleSpec } from '../lib/moduleMap';
+import BagrutPreviewModal from './BagrutPreviewModal';
 import { saveBagrutDraft, updateBagrutTest } from '../hooks/useBagrutTests';
 import { ALL_WORDS } from '../../../data/vocabulary';
 import { ShareWorksheetDialog, type ShareSource } from '../../../components/ShareWorksheetDialog';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { vocabagrutT } from '../../../locales/teacher/vocabagrut';
+
+// Which question type the app suggests when the teacher adds one — driven
+// by the SECTION's context (reading sections lean MCQ, vocab sections lean
+// short-answer, writing sections lean a writing task). The teacher can pick
+// any type; this just orders + flags the recommended one.
+const SUGGESTED_BY_KIND: Record<BagrutSectionKind, BagrutQuestionType> = {
+  reading: 'mc',
+  vocab_in_context: 'short',
+  writing: 'writing',
+};
+
+/** All types, suggested one first, for the section's add-question bar. */
+function orderedTypes(kind: BagrutSectionKind): BagrutQuestionType[] {
+  const suggested = SUGGESTED_BY_KIND[kind] ?? 'mc';
+  return [suggested, ...(['mc', 'short', 'writing'] as BagrutQuestionType[]).filter(t => t !== suggested)];
+}
+
+function newQuestionId(): string {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** A blank, editable question of the requested type with sensible default
+ *  points (the teacher tunes them with the ± stepper). */
+function buildBlankQuestion(type: BagrutQuestionType, spec: ModuleSpec): BagrutQuestion {
+  const id = newQuestionId();
+  if (type === 'mc') {
+    return {
+      id, type: 'mc', prompt: '', points: 5,
+      options: (['A', 'B', 'C', 'D'] as const).map(letter => ({ letter, text: '' })),
+      correct_answer: 'A',
+    };
+  }
+  if (type === 'writing') {
+    return {
+      id, type: 'writing', prompt: '', points: 15, bullets: [],
+      word_count_min: spec.writingWords.min, word_count_max: spec.writingWords.max,
+    };
+  }
+  return { id, type: 'short', prompt: '', points: 5 };
+}
 
 interface Props {
   user: AppUser;
@@ -22,20 +63,21 @@ interface Props {
   // If we loaded an existing draft, this is its row id (so save updates instead of inserting).
   existingId: string | null;
   onBack: () => void;
-  onPreview: (test: BagrutTest) => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
-export default function BagrutEditorView({ user, classes, test, sourceWords, existingId, onBack, onPreview, showToast }: Props) {
+export default function BagrutEditorView({ user, classes, test, sourceWords, existingId, onBack, showToast }: Props) {
   const { language, dir } = useLanguage();
   const t = vocabagrutT[language];
   const [draft, setDraft] = useState<BagrutTest>(test);
   const [savedId, setSavedId] = useState<string | null>(existingId);
   const [classId, setClassId] = useState<string | null>(null);
   const [withAnswerKey, setWithAnswerKey] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [shareSource, setShareSource] = useState<ShareSource | null>(null);
+  // Preview / export both use the print-ready modal. autoPrint=true is the
+  // "Export PDF" path (opens straight into the Save-as-PDF dialog).
+  const [preview, setPreview] = useState<{ open: boolean; autoPrint: boolean }>({ open: false, autoPrint: false });
 
   const teacherClasses = classes.filter(c => c.teacherUid === user.uid);
   const spec = MODULE_SPECS[draft.module];
@@ -91,17 +133,49 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
     }));
   }
 
-  async function handleExport() {
-    setExporting(true);
-    try {
-      await exportBagrutPdf(draft, { withAnswerKey });
-      showToast(t.toastPdfExported, 'success');
-    } catch (err: any) {
-      showToast(err?.message || t.toastPdfFailed, 'error');
-    } finally {
-      setExporting(false);
-    }
+  // Teacher adjusts a question's points (±1, floored at 0). The section
+  // subtotal and the paper total are derived from the questions so the
+  // header, the section chips, and the exported/printed paper all stay in
+  // sync with the edit instead of showing a stale AI-assigned figure.
+  function bumpQuestionPoints(secIdx: number, qIdx: number, delta: number) {
+    setDraft(d => {
+      const sections = d.sections.map((s, i) => {
+        if (i !== secIdx) return s;
+        const questions = s.questions.map((q, j) =>
+          j === qIdx ? { ...q, points: Math.max(0, q.points + delta) } : q,
+        );
+        const total_points = questions.reduce((sum, q) => sum + q.points, 0);
+        return { ...s, questions, total_points };
+      });
+      const total_points = sections.reduce((sum, s) => sum + s.total_points, 0);
+      return { ...d, sections, total_points };
+    });
   }
+
+  // Add / remove questions. Section + paper totals are kept derived from the
+  // questions so the header, chips, and printed paper stay correct.
+  function addQuestion(secIdx: number, type: BagrutQuestionType) {
+    setDraft(d => {
+      const sections = d.sections.map((s, i) => {
+        if (i !== secIdx) return s;
+        const questions = [...s.questions, buildBlankQuestion(type, spec)];
+        return { ...s, questions, total_points: questions.reduce((sum, q) => sum + q.points, 0) };
+      });
+      return { ...d, sections, total_points: sections.reduce((sum, s) => sum + s.total_points, 0) };
+    });
+  }
+
+  function removeQuestion(secIdx: number, qIdx: number) {
+    setDraft(d => {
+      const sections = d.sections.map((s, i) => {
+        if (i !== secIdx) return s;
+        const questions = s.questions.filter((_, j) => j !== qIdx);
+        return { ...s, questions, total_points: questions.reduce((sum, q) => sum + q.points, 0) };
+      });
+      return { ...d, sections, total_points: sections.reduce((sum, s) => sum + s.total_points, 0) };
+    });
+  }
+
 
   async function handleSaveDraft() {
     setSaving(true);
@@ -156,14 +230,18 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
     <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-bg)' }}>
       {/* Sticky action bar */}
       <div className="sticky top-0 z-20 backdrop-blur" style={{ backgroundColor: 'rgba(255,255,255,0.85)', borderBottom: '1px solid var(--vb-border)' }}>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <button onClick={onBack} type="button" className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--vb-text-secondary)' }}>
+        {/* flex-wrap on both rows so the 5 action buttons reflow onto a
+            second/third line on narrow phones instead of overflowing the
+            viewport — previously "Copy as text" and "Export PDF" were
+            pushed off the right edge and became untappable on mobile. */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-y-2 gap-x-3">
+          <button onClick={onBack} type="button" className="inline-flex items-center gap-1.5 text-sm font-medium shrink-0" style={{ color: 'var(--vb-text-secondary)' }}>
             <ArrowLeft size={16} /> {t.newTest}
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => onPreview(draft)}
+              onClick={() => setPreview({ open: true, autoPrint: false })}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border"
               style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
             >
@@ -226,11 +304,10 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
             </button>
             <button
               type="button"
-              onClick={handleExport}
-              disabled={exporting}
+              onClick={() => setPreview({ open: true, autoPrint: true })}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow"
             >
-              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} {t.exportPdf}
+              <Download size={16} /> {t.exportPdf}
             </button>
           </div>
         </div>
@@ -320,10 +397,45 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
             <div className="space-y-3 mt-4">
               {section.questions.map((q, qIdx) => (
                 <div key={q.id} className="rounded-lg p-3 border" style={{ borderColor: 'var(--vb-border)' }}>
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-bold mt-0.5 px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-muted)' }}>
-                      {q.type.toUpperCase()} · {t.pointsShort(q.points)}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-muted)' }}>
+                      {q.type.toUpperCase()}
                     </span>
+                    {/* Points stepper — teacher can raise or lower the
+                        weight of any question; section + total update live. */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => bumpQuestionPoints(secIdx, qIdx, -1)}
+                        disabled={q.points <= 0}
+                        aria-label={t.decreasePointsAria}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-md border disabled:opacity-40"
+                        style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="text-xs font-bold tabular-nums text-center" style={{ minWidth: '3.5rem', color: 'var(--vb-text-primary)' }}>
+                        {t.pointsShort(q.points)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => bumpQuestionPoints(secIdx, qIdx, 1)}
+                        aria-label={t.increasePointsAria}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-md border"
+                        style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                      >
+                        <Plus size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeQuestion(secIdx, qIdx)}
+                        aria-label={t.removeQuestionAria}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-md border ms-1 text-rose-600 hover:bg-rose-50"
+                        style={{ borderColor: 'var(--vb-border)', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                   <textarea
                     value={q.prompt}
@@ -336,9 +448,16 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
                     <div className="mt-2 space-y-1.5">
                       {q.options.map((opt, optIdx) => (
                         <div key={opt.letter} className="flex items-center gap-2">
-                          <span className="font-mono text-xs w-6" style={{ color: q.correct_answer === opt.letter ? 'var(--vb-accent)' : 'var(--vb-text-muted)' }}>
+                          {/* Tap the letter to mark it the correct answer. */}
+                          <button
+                            type="button"
+                            onClick={() => patchQuestion(secIdx, qIdx, { correct_answer: opt.letter })}
+                            title={t.qTypeMc}
+                            className="font-mono text-xs w-7 shrink-0 rounded"
+                            style={{ color: q.correct_answer === opt.letter ? 'var(--vb-accent)' : 'var(--vb-text-muted)', touchAction: 'manipulation' }}
+                          >
                             ({opt.letter}){q.correct_answer === opt.letter ? '✓' : ''}
-                          </span>
+                          </button>
                           <input
                             value={opt.text}
                             onChange={e => {
@@ -359,6 +478,34 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
                   )}
                 </div>
               ))}
+
+              {/* Add a question — type suggested from the section's context
+                  (reading → MCQ, vocab → short answer, writing → writing task). */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--vb-text-muted)' }}>
+                  {t.addQuestion}
+                </span>
+                {orderedTypes(section.kind).map((type, ti) => {
+                  const label = type === 'mc' ? t.qTypeMc : type === 'short' ? t.qTypeShort : t.qTypeWriting;
+                  const suggested = ti === 0;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => addQuestion(secIdx, type)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border"
+                      style={{ borderColor: suggested ? 'var(--vb-accent)' : 'var(--vb-border)', color: 'var(--vb-text-primary)', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    >
+                      <Plus size={13} /> {label}
+                      {suggested && (
+                        <span className="ms-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white" style={{ backgroundColor: 'var(--vb-accent)' }}>
+                          {t.suggestedTag}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ))}
@@ -383,6 +530,15 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
           source={shareSource}
           defaultLang="he"
           onClose={() => setShareSource(null)}
+        />
+      )}
+
+      {preview.open && (
+        <BagrutPreviewModal
+          test={draft}
+          withAnswerKey={withAnswerKey}
+          autoPrint={preview.autoPrint}
+          onClose={() => setPreview({ open: false, autoPrint: false })}
         />
       )}
     </div>

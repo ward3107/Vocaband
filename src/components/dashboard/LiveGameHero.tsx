@@ -59,7 +59,7 @@ export default function LiveGameHero({
         background,
         boxShadow,
       }}
-      className="group relative flex h-full w-full flex-col overflow-hidden rounded-[28px] p-6 text-white text-start active:scale-[0.99] transition-transform"
+      className="group relative flex h-full w-full flex-col overflow-hidden rounded-[28px] px-6 py-4 text-white text-start active:scale-[0.99] transition-transform"
     >
       {/* Top-end corner blob */}
       <div
@@ -89,8 +89,8 @@ export default function LiveGameHero({
       </svg>
 
       {/* Icon + badge row */}
-      <div className="relative flex items-center justify-between gap-3 mb-4">
-        <FrostedEmoji emoji={emoji} size={60} tone="gradient" />
+      <div className="relative flex items-center justify-between gap-3 mb-3">
+        <FrostedEmoji emoji={emoji} size={48} tone="gradient" />
         <span className="inline-flex items-center rounded-full border border-white/35 bg-white/20 px-[10px] py-1 text-[11px] font-bold uppercase tracking-[0.08em] backdrop-blur-md">
           {badge}
         </span>
@@ -104,8 +104,12 @@ export default function LiveGameHero({
       </p>
 
       <div
-        className="relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-3 font-bold text-sm sm:text-base"
-        style={{ color: accent, boxShadow: ctaShadow }}
+        className="relative mt-3.5 flex w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 font-bold text-sm sm:text-base"
+        // The hero is a fixed vivid gradient in every theme, so the CTA pill
+        // must stay genuinely white — pin it inline so the global
+        // `.bg-white -> var(--vb-surface)` dark remap can't turn it dark
+        // (which left the deep-tint label unreadable on dark themes).
+        style={{ backgroundColor: "#ffffff", color: accent, boxShadow: ctaShadow }}
       >
         <span>{ctaLabel}</span>
         <ArrowRight size={18} className={isRTL ? "-scale-x-100" : ""} />

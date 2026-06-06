@@ -31,7 +31,7 @@ export default function StudentTopBar({ onRequestLogout }: StudentTopBarProps = 
   // Quick Play join) and it stays locked, so mid-flow screens no longer
   // offer a way to change it. Only the logout affordance remains here.
   return (
-    <div className="flex justify-end items-center gap-2 mb-4">
+    <div className="flex justify-end items-center gap-2">
       <button
         onClick={() => {
           if (onRequestLogout) onRequestLogout();
@@ -39,7 +39,7 @@ export default function StudentTopBar({ onRequestLogout }: StudentTopBarProps = 
         }}
         type="button"
         style={{ touchAction: 'manipulation' }}
-        className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-stone-400 hover:text-rose-600 hover:bg-white/60 rounded-lg text-xs sm:text-sm font-semibold transition-all"
+        className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/70 ring-1 ring-white/15 backdrop-blur-md transition-all hover:bg-white/20 hover:text-white sm:text-sm"
         title={t.signOut}
       >
         <LogOut size={14} />

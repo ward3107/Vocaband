@@ -130,8 +130,11 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
         </nav>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 min-w-0">
+      {/* Main — overflow-x-hidden is a backstop so a stray wide child (long
+          error string, table) can't drag the whole page into a horizontal
+          scroll and expose a blank gutter on mobile. Panels that genuinely
+          need width scroll inside their own overflow-x-auto wrapper. */}
+      <main className="flex-1 min-w-0 overflow-x-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             {kpis.map((k) => (

@@ -52,6 +52,7 @@ export interface StudentDashboardStrings {
   weeklyProgressText: (plays: number, target: number) => string;
   dailyChestXpToast: (xp: number) => string;
   weeklyChallengeXpToast: (xp: number) => string;
+  badgeClaimXpToast: (xp: number) => string;
 
   // PowerUpsStrip
   yourPowerUps: string;
@@ -77,6 +78,7 @@ export interface StudentDashboardStrings {
   keepClimbing: string;
   /** "{gap} XP behind {name}" */
   xpBehind: (gap: number, name: string) => string;
+  seeFullLeaderboard: string;
 
   // PetCompanion
   openPetCompanion: string;
@@ -96,6 +98,10 @@ export interface StudentDashboardStrings {
   boosterFocusMode: string;
   boosterStreakFreeze: (n: number) => string;
   boosterLuckyCharm: (n: number) => string;
+  boosterStreakFreezeName: string;
+  boosterLuckyCharmName: string;
+  powerUps: string;
+  noActiveBoosters: string;
 
   // PowerUpsStrip
   powerUpSkip: string;
@@ -160,6 +166,7 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     weeklyProgressText: (plays, target) => `${plays} / ${target} games this week`,
     dailyChestXpToast: (xp) =>`Daily chest: +${xp} XP`,
     weeklyChallengeXpToast: (xp) => `Weekly challenge complete! +${xp} XP`,
+    badgeClaimXpToast: (xp) => `Badge reward claimed! +${xp} XP`,
     yourPowerUps: "Your power-ups",
     badges: "Badges",
     dailyGoal: "Daily goal",
@@ -172,6 +179,7 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     tiedWith: (name) => `Tied with ${name} — push ahead!`,
     keepClimbing: "Keep earning XP to climb the class rank!",
     xpBehind: (gap, name) => `${gap} XP behind ${name}`,
+    seeFullLeaderboard: "See full leaderboard",
     openPetCompanion: "Open pet companion",
     close: "Close",
     yourCompanion: "Your companion",
@@ -187,6 +195,10 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     boosterFocusMode: "Focus mode",
     boosterStreakFreeze: (n) => `Streak Freeze ×${n}`,
     boosterLuckyCharm: (n) => `Lucky Charm ×${n}`,
+    boosterStreakFreezeName: "Streak Freeze",
+    boosterLuckyCharmName: "Lucky Charm",
+    powerUps: "Power-ups",
+    noActiveBoosters: "No active power-ups",
     powerUpSkip: "Skip",
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "Reveal Letter",
@@ -239,6 +251,7 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     weeklyProgressText: (plays, target) => `${plays} / ${target} משחקים השבוע`,
     dailyChestXpToast: (xp) => `תיבה יומית: +${xp} XP`,
     weeklyChallengeXpToast: (xp) => `אתגר שבועי הושלם! +${xp} XP`,
+    badgeClaimXpToast: (xp) => `תגמול תג נאסף! +${xp} XP`,
     yourPowerUps: "הכוחות שלך",
     badges: "תגים",
     dailyGoal: "יעד יומי",
@@ -251,6 +264,7 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     tiedWith: (name) => `שוויון עם ${name} — דחוף קדימה!`,
     keepClimbing: "המשך לצבור XP כדי לטפס בדירוג!",
     xpBehind: (gap, name) => `${gap} XP מאחורי ${name}`,
+    seeFullLeaderboard: "צפה בדירוג המלא",
     openPetCompanion: "פתח את חבר החיה",
     close: "סגור",
     yourCompanion: "החבר שלך",
@@ -266,6 +280,10 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     boosterFocusMode: "מצב ריכוז",
     boosterStreakFreeze: (n) => `הקפאת רצף ×${n}`,
     boosterLuckyCharm: (n) => `קמע מזל ×${n}`,
+    boosterStreakFreezeName: "הקפאת רצף",
+    boosterLuckyCharmName: "קמע מזל",
+    powerUps: "כוח-על",
+    noActiveBoosters: "אין חיזוקים פעילים",
     powerUpSkip: "דלג",
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "חשוף אות",
@@ -318,6 +336,7 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     weeklyProgressText: (plays, target) => `${plays} / ${target} ألعاب هذا الأسبوع`,
     dailyChestXpToast: (xp) => `صندوق يومي: +${xp} XP`,
     weeklyChallengeXpToast: (xp) => `اكتمل التحدي الأسبوعي! +${xp} XP`,
+    badgeClaimXpToast: (xp) => `تم استلام مكافأة الشارة! +${xp} XP`,
     yourPowerUps: "قواك",
     badges: "الشارات",
     dailyGoal: "الهدف اليومي",
@@ -330,6 +349,7 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     tiedWith: (name) => `متعادل مع ${name} — اندفع للأمام!`,
     keepClimbing: "استمر في كسب XP للصعود في ترتيب الصف!",
     xpBehind: (gap, name) => `${gap} XP خلف ${name}`,
+    seeFullLeaderboard: "عرض الترتيب الكامل",
     openPetCompanion: "افتح رفيق الحيوان",
     close: "إغلاق",
     yourCompanion: "رفيقك",
@@ -345,6 +365,10 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     boosterFocusMode: "وضع التركيز",
     boosterStreakFreeze: (n) => `تجميد السلسلة ×${n}`,
     boosterLuckyCharm: (n) => `تعويذة الحظ ×${n}`,
+    boosterStreakFreezeName: "تجميد السلسلة",
+    boosterLuckyCharmName: "تعويذة الحظ",
+    powerUps: "تعزيزات",
+    noActiveBoosters: "لا توجد تعزيزات نشطة",
     powerUpSkip: "تخطّي",
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "كشف حرف",
@@ -397,6 +421,7 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     weeklyProgressText: (plays, target) => `${plays} / ${target} games this week`,
     dailyChestXpToast: (xp) =>`Daily chest: +${xp} XP`,
     weeklyChallengeXpToast: (xp) => `Weekly challenge complete! +${xp} XP`,
+    badgeClaimXpToast: (xp) => `Badge reward claimed! +${xp} XP`,
     yourPowerUps: "Your power-ups",
     badges: "Badges",
     dailyGoal: "Daily goal",
@@ -409,6 +434,7 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     tiedWith: (name) => `Tied with ${name} — push ahead!`,
     keepClimbing: "Keep earning XP to climb the class rank!",
     xpBehind: (gap, name) => `${gap} XP behind ${name}`,
+    seeFullLeaderboard: "See full leaderboard",
     openPetCompanion: "Open pet companion",
     close: "Close",
     yourCompanion: "Your companion",
@@ -424,6 +450,10 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     boosterFocusMode: "Focus mode",
     boosterStreakFreeze: (n) => `Streak Freeze ×${n}`,
     boosterLuckyCharm: (n) => `Lucky Charm ×${n}`,
+    boosterStreakFreezeName: "Streak Freeze",
+    boosterLuckyCharmName: "Lucky Charm",
+    powerUps: "Power-ups",
+    noActiveBoosters: "No active power-ups",
     powerUpSkip: "Skip",
     powerUpFiftyFifty: "50/50",
     powerUpRevealLetter: "Reveal Letter",
@@ -441,5 +471,55 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     welcomeSubtitle: "Your teacher hasn't shared an assignment yet — they'll show up here when they do. In the meantime, try the practice tiles below to start earning XP.",
     dismissReward: "Dismiss reward",
     thanks: "Thanks!",
+  },
+};
+
+// Encouragement lines the dashboard pet speaks idly, keyed by evolution
+// stage so it gets "smarter" as it grows. EN ships 6+ per stage; HE/AR/RU
+// start at 4 each (top up later). Stage keys match CharacterStage's.
+export type PetStageKey =
+  | "egg" | "hatchling" | "fox" | "eagle"
+  | "dragon" | "unicorn" | "mythic" | "ascended";
+
+export const petLines: Record<Language, Record<PetStageKey, string[]>> = {
+  en: {
+    egg: ["Almost ready to hatch!", "I can feel something stirring...", "Play more — I'll grow!", "Are you there?", "Crack, crack!", "Soon, soon..."],
+    hatchling: ["I just hatched — let's learn!", "New words, please!", "Peep peep! Quiz time?", "I'm tiny but eager!", "Teach me something!", "One more round?"],
+    fox: ["Let's pounce on a quiz!", "I'm getting fast!", "More words!", "Sly and ready!", "Quick — another one!", "I love a good streak!"],
+    eagle: ["Let's soar through these!", "I see the answer from up here!", "Sharp eyes, sharp mind!", "Aim high today!", "Catch the next word!", "Nothing escapes us!"],
+    dragon: ["Let's blaze through this!", "Feel the fire — keep going!", "Mighty words, mighty you!", "I'm warmed up — are you?", "Breathe fire on that quiz!", "Legendary effort!"],
+    unicorn: ["A little magic in every word!", "You're sparkling today!", "Believe — then answer!", "Rare and brilliant, like you!", "Let's make it magical!", "Dream big, learn bigger!"],
+    mythic: ["Few reach this far — well done!", "Ancient words await!", "Your mind is a marvel!", "Mythic focus — let's go!", "Beyond ordinary, that's us!", "The legends speak of you!"],
+    ascended: ["You've transcended — keep climbing!", "Pure brilliance!", "The peak is just the start!", "Limitless, like your learning!", "Radiate that knowledge!", "Unstoppable!"],
+  },
+  he: {
+    egg: ["כמעט מוכן לבקוע!", "משהו מתעורר בפנים...", "שחק עוד ואגדל!", "אתה שם?"],
+    hatchling: ["בקעתי! בוא נלמד!", "עוד מילים בבקשה!", "פיפ! זמן חידון?", "קטן אבל נלהב!"],
+    fox: ["בוא נזנק לחידון!", "אני נעשה מהיר!", "עוד מילים!", "ערמומי ומוכן!"],
+    eagle: ["בוא נמריא דרכן!", "אני רואה הכול מלמעלה!", "עין חדה, מוח חד!", "תכוון גבוה!"],
+    dragon: ["בוא נבעיר את זה!", "תרגיש את האש — תמשיך!", "מילים אדירות, אתה אדיר!", "אני מחומם — ואתה?"],
+    unicorn: ["קצת קסם בכל מילה!", "אתה נוצץ היום!", "תאמין — ואז תענה!", "נדיר ומבריק, כמוך!"],
+    mythic: ["מעטים מגיעים לכאן — כל הכבוד!", "מילים עתיקות מחכות!", "המוח שלך פלא!", "ריכוז מיתי — קדימה!"],
+    ascended: ["התעלית — תמשיך לטפס!", "מבריק לחלוטין!", "הפסגה היא רק ההתחלה!", "ללא גבולות!"],
+  },
+  ar: {
+    egg: ["جاهز تقريبًا للفقس!", "أشعر بشيء يتحرك...", "العب أكثر لأكبر!", "هل أنت هناك؟"],
+    hatchling: ["لقد فقست! لنتعلم!", "كلمات جديدة من فضلك!", "وقت الاختبار؟", "صغير لكن متحمس!"],
+    fox: ["لننقضّ على اختبار!", "أصبح سريعًا!", "المزيد من الكلمات!", "ماكر وجاهز!"],
+    eagle: ["لنحلّق عبرها!", "أرى الإجابة من الأعلى!", "عين حادة، عقل حاد!", "صوّب عاليًا!"],
+    dragon: ["لنشعلها!", "اشعر بالنار وواصل!", "كلمات عظيمة، وأنت عظيم!", "أنا متحمّس، وأنت؟"],
+    unicorn: ["سحر في كل كلمة!", "أنت متألق اليوم!", "آمن ثم أجب!", "نادر ولامع مثلك!"],
+    mythic: ["قلة تصل إلى هنا — أحسنت!", "كلمات قديمة تنتظر!", "عقلك أعجوبة!", "تركيز أسطوري — هيا!"],
+    ascended: ["لقد تساميت — واصل الصعود!", "تألق خالص!", "القمة مجرد البداية!", "بلا حدود!"],
+  },
+  ru: {
+    egg: ["Почти готов вылупиться!", "Что-то шевелится внутри...", "Играй больше — я вырасту!", "Ты здесь?"],
+    hatchling: ["Я вылупился! Давай учиться!", "Больше слов, пожалуйста!", "Время викторины?", "Маленький, но рвусь в бой!"],
+    fox: ["Прыгнем в викторину!", "Я становлюсь быстрым!", "Ещё слова!", "Хитрый и готов!"],
+    eagle: ["Взлетим над ними!", "Я вижу ответ свысока!", "Острый глаз, острый ум!", "Целься выше!"],
+    dragon: ["Прожжём это насквозь!", "Почувствуй огонь — вперёд!", "Великие слова, великий ты!", "Я разогрелся, а ты?"],
+    unicorn: ["Немного магии в каждом слове!", "Ты сегодня сияешь!", "Поверь — и отвечай!", "Редкий и блестящий, как ты!"],
+    mythic: ["Немногие дошли — молодец!", "Древние слова ждут!", "Твой ум — чудо!", "Мифическая концентрация — вперёд!"],
+    ascended: ["Ты превзошёл себя — продолжай!", "Чистый блеск!", "Вершина — только начало!", "Безграничен!"],
   },
 };

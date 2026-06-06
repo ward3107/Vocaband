@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
 import { motion } from "motion/react";
 import { TrendingUp, ChevronRight } from "lucide-react";
 import { supabase } from "../../core/supabase";
 import type { View } from "../../core/views";
 import { useLanguage } from "../../hooks/useLanguage";
+import { useFeatureFlag } from "../../hooks/useFeatureFlag";
+import { ARCADE_CARD } from "../arcade/theme";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 
 interface LeaderboardTeaserProps {
   classCode: string | undefined;
   currentStudentUid: string;
   currentXp: number;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
 }
 
 interface ClassmateRow {
@@ -34,6 +36,10 @@ export default function LeaderboardTeaser({
 }: LeaderboardTeaserProps) {
   const { language } = useLanguage();
   const t = studentDashboardT[language];
+  // Arcade theme: a frosted top-3 podium preview with a "You" row and
+  // a pill CTA, instead of the compact single-row teaser. Falls back
+  // to the existing teaser when off.
+  const arcade = useFeatureFlag('arcade_hub', false);
   const [rows, setRows] = useState<ClassmateRow[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -73,10 +79,72 @@ export default function LeaderboardTeaser({
   const ahead = myIndex > 0 ? rows[myIndex - 1] : null;
   const gap = ahead ? Math.max(0, ahead.xp - currentXp) : 0;
 
+  if (arcade) {
+    const top3 = rows.slice(0, 3);
+    const medals = ["🥇", "🥈", "🥉"];
+    const rankRow = [
+      "bg-amber-400/30 ring-2 ring-amber-300/60",
+      "bg-slate-300/20 ring-2 ring-slate-300/40",
+      "bg-orange-700/30 ring-2 ring-orange-400/40",
+    ];
+    // Show a dedicated "You" row only when the student isn't already
+    // on the podium above.
+    const youOutsideTop3 = myIndex < 0 || myIndex >= 3;
+    return (
+      <div className={`w-full mb-6 ${ARCADE_CARD} p-4 sm:p-5`}>
+        <div className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-cyan-200">
+          <TrendingUp size={12} />
+          {t.classRank}
+        </div>
+
+        <div className="space-y-2">
+          {top3.map((r, i) => {
+            const isYou = r.uid === currentStudentUid;
+            // On the light amber #1 row, white/amber-200 text washes
+            // out — use dark, bold text so the name + XP stay legible.
+            const gold = i === 0 && !isYou;
+            return (
+              <div
+                key={r.uid}
+                className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${isYou ? "bg-cyan-500/15 ring-2 ring-cyan-300/60" : rankRow[i]}`}
+              >
+                <span className="text-xl shrink-0" aria-hidden>{medals[i]}</span>
+                <span className={`flex-1 min-w-0 truncate ${gold ? "text-amber-950 font-extrabold" : "text-white font-bold"}`}>
+                  {r.displayName}{isYou ? " (You)" : ""}
+                </span>
+                <span className={`tabular-nums font-black ${gold ? "text-amber-950" : "text-amber-200"}`}>
+                  {r.xp}
+                </span>
+              </div>
+            );
+          })}
+
+          {youOutsideTop3 && myIndex >= 0 && (
+            <div className="flex items-center gap-3 rounded-2xl px-3 py-2 bg-cyan-500/15 ring-2 ring-cyan-300/60">
+              <span className="w-7 text-center shrink-0 font-black tabular-nums text-white/80">#{myRank}</span>
+              <span className="flex-1 min-w-0 truncate text-white font-bold">{rows[myIndex].displayName} (You)</span>
+              <span className="tabular-nums font-black text-amber-200">{currentXp}</span>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={() => setView("global-leaderboard")}
+          type="button"
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+          className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/20 px-4 py-2 text-cyan-100 font-bold active:scale-95 transition-transform"
+        >
+          {t.seeFullLeaderboard}
+          <ChevronRight size={16} className="rtl:-scale-x-100" />
+        </button>
+      </div>
+    );
+  }
+
   // Rank-coloured badge gradient — gold for 1st, silver for 2nd,
   // bronze for 3rd, brand violet otherwise.  Same family as the
   // podium colours used by QuickPlaySessionEndScreen.
-  const rankStyle: React.CSSProperties =
+  const rankStyle: CSSProperties =
     myRank === 1
       ? { background: "linear-gradient(135deg, #F0CC78, #D89B3F)" }
       : myRank === 2

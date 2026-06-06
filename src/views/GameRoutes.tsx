@@ -49,6 +49,14 @@ export interface GameRoutesDeps {
   handleExitGame: () => void;
   quickPlayCompletedModes: Set<string>;
 
+  // Mode-selection branch — explorer pet (island picker)
+  petDisplayName: string;
+  petXp: number;
+  petCurrentStage: import('../constants/game').PetMilestone;
+  petNextStage: import('../constants/game').PetMilestone | null;
+  petClaimableMilestone: import('../constants/game').PetMilestone | null;
+  onClaimPetMilestone: (milestone: import('../constants/game').PetMilestone) => void;
+
   // Mode-intro branch
   showModeIntro: boolean;
   hasChosenLanguage: boolean;
@@ -138,6 +146,7 @@ export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
     view, user, setUser, language,
     showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
     setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
+    petDisplayName, petXp, petCurrentStage, petNextStage, petClaimableMilestone, onClaimPetMilestone,
     showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
     gameDebug, gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
     score, xp, streak, badges, mistakes, gameWords, quickPlayActiveSession,
@@ -189,6 +198,12 @@ export function renderGameRoute(deps: GameRoutesDeps): ReactNode {
           setShowModeSelection={setShowModeSelection}
           setShowModeIntro={setShowModeIntro}
           handleExitGame={handleExitGame}
+          petDisplayName={petDisplayName}
+          petXp={petXp}
+          petCurrentStage={petCurrentStage}
+          petNextStage={petNextStage}
+          petClaimableMilestone={petClaimableMilestone}
+          onClaimPetMilestone={onClaimPetMilestone}
         />
       </LazyWrapper>
     );

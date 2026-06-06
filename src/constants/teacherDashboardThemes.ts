@@ -132,63 +132,74 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     id: 'midnight',
     name: 'Midnight',
     emoji: '🌙',
-    bg: 'bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-900',
+    // Page bg lifted off pure slate-950 (was muddy/flat) to a navy with a
+    // faint indigo middle, so surfaces have something to sit ON instead of
+    // merging into a black void.
+    bg: 'bg-gradient-to-b from-[#0e1322] via-[#141a30] to-[#0e1322]',
     swatch: 'bg-gradient-to-br from-slate-800 via-indigo-900 to-slate-950',
     dark: true,
     palette: {
-      surface: '#161b2c',
-      surfaceAlt: '#1e243a',
-      border: '#2d3450',
-      textPrimary: '#f1f5f9',
-      textSecondary: '#cbd5e1',
-      textMuted: '#94a3b8',
-      accent: '#818cf8',
-      accentSoft: '#2a3257',
+      // Surfaces clearly ELEVATED above the bg (was #161b2c, barely above
+      // slate-900) so cards read as distinct panels.  Border bumped to a
+      // visible indigo-tinted line so card edges are crisp, not implied.
+      surface: '#1d2440',
+      surfaceAlt: '#28304e',
+      border: '#3f497a',
+      textPrimary: '#f8fafc',
+      textSecondary: '#c7d2e4',
+      textMuted: '#8b95ad',
+      accent: '#8b93f9',
+      accentSoft: '#2c3563',
       accentText: '#ffffff',
       // Brighter Tailwind-400 saturates for foreground readability on
-      // dark slate.  Soft variants are deeply darkened tints with a
-      // cool undertone so they sit one notch above surface-alt without
-      // ever glowing like the light-theme Tailwind-50 leaks did.
+      // dark slate.  Soft variants are darkened tints tuned ONE notch
+      // above the new lighter surface so badges still pop without glowing.
       success: '#34d399',
-      successSoft: '#0f2a23',
+      successSoft: '#123127',
       danger: '#fb7185',
-      dangerSoft: '#2b1015',
+      dangerSoft: '#3a1620',
       warning: '#fbbf24',
-      warningSoft: '#2a1f08',
+      warningSoft: '#352608',
       info: '#a5b4fc',
-      infoSoft: '#1f2547',
+      infoSoft: '#232a52',
     },
   },
   {
     id: 'graphite',
     name: 'Graphite',
     emoji: '🌑',
-    bg: 'bg-gradient-to-b from-stone-950 via-zinc-950 to-neutral-950',
+    // Warm near-black with a faint graphite lift (was pure stone/zinc-950
+    // which read as a dead flat black) so the amber accent and surfaces
+    // have warmth to sit against.
+    bg: 'bg-gradient-to-b from-[#17140f] via-[#1d1a14] to-[#15120e]',
     swatch: 'bg-gradient-to-br from-stone-800 via-zinc-900 to-neutral-950',
     dark: true,
     palette: {
-      surface: '#1c1b1a',
-      surfaceAlt: '#262524',
-      border: '#3a3835',
+      // Surfaces lifted well clear of the bg (was #1c1b1a, almost the same
+      // as the page) and a warmer, more visible border so cards define
+      // themselves on the dark graphite ground.
+      surface: '#2a2722',
+      surfaceAlt: '#353129',
+      border: '#4d473e',
       textPrimary: '#fafaf9',
-      textSecondary: '#d6d3d1',
-      textMuted: '#a8a29e',
-      accent: '#f59e0b',
-      accentSoft: '#3d2e0e',
+      textSecondary: '#d9d5cf',
+      textMuted: '#a39c92',
+      accent: '#fbac1c',
+      accentSoft: '#3f2f12',
       accentText: '#1c1917',
       // Brighter saturates for dark-on-dark readability, soft variants
       // carry a warm undertone so they harmonise with the graphite
       // neutrals.  Warning is bumped slightly brighter than the accent
-      // amber (#f59e0b) so warning callouts stay visually distinct from
+      // amber so warning callouts stay visually distinct from
       // primary-accent UI in this theme.
       success: '#34d399',
-      successSoft: '#11241f',
+      successSoft: '#14241d',
       danger: '#fb7185',
-      dangerSoft: '#2d1518',
+      dangerSoft: '#311619',
       warning: '#fbbf24',
       warningSoft: '#3a2a0c',
       info: '#a5b4fc',
-      infoSoft: '#1c1d3a',
+      infoSoft: '#20223e',
     },
   },
 ];

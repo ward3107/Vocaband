@@ -119,6 +119,34 @@ function clientIdForJoin(nickname: string): string {
   return fresh;
 }
 
+/**
+ * Merge per-VM leaderboard snapshots into one board.
+ *
+ * The server's in-memory state is per-process, so with >1 Fly VM a single
+ * session's students are split across machines and each VM broadcasts only
+ * its own subset (every broadcast carries the VM's `serverId`). We keep the
+ * latest snapshot PER serverId and render their union here:
+ *   - Highest score per clientId wins. Scores are monotonic, so the highest
+ *     is the freshest authoritative value — and for Category Race it beats a
+ *     peer VM's stale score=0 for a student the round-owner VM scored.
+ *   - Tie on score → keep the more recently-seen row.
+ * Per-VM replacement (done by the caller) preserves removals: a kicked or
+ * departed student drops out of their VM's next snapshot, so the union drops
+ * them too. Single-VM deployments send one serverId → behaviour unchanged.
+ */
+export function mergeLeaderboardSources(bySource: Map<string, QpStudentEntry[]>): QpStudentEntry[] {
+  const byClient = new Map<string, QpStudentEntry>();
+  for (const snapshot of bySource.values()) {
+    for (const e of snapshot) {
+      const existing = byClient.get(e.clientId);
+      if (!existing || e.score > existing.score || (e.score === existing.score && e.lastSeen >= existing.lastSeen)) {
+        byClient.set(e.clientId, e);
+      }
+    }
+  }
+  return [...byClient.values()];
+}
+
 export type QuickPlaySocketStatus =
   | "idle"
   | "connecting"
@@ -293,6 +321,19 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const [joinedSessionCode, setJoinedSessionCode] = useState<string | null>(null);
   const [currentRace, setCurrentRace] = useState<QpRaceRoundPayload | null>(null);
 
+  // Latest leaderboard snapshot per VM (keyed by the broadcast's serverId).
+  // `leaderboard` is always the merged union of these — see
+  // mergeLeaderboardSources for why this split exists (multi-VM aggregation).
+  const leaderboardBySourceRef = useRef<Map<string, QpStudentEntry[]>>(new Map());
+
+  // Drop all cached snapshots when the session changes (e.g. teacher taps
+  // "New race") so last session's students don't bleed into the next board.
+  useEffect(() => {
+    leaderboardBySourceRef.current = new Map();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clears stale board when the session changes; matches existing convention in this hook
+    setLeaderboard([]);
+  }, [sessionCode]);
+
   const socketRef = useRef<Socket | null>(null);
   // clientId starts as whatever's cached (or a fresh UUID if nothing is).
   // It's MUTABLE — `joinAsStudent` may swap it out when a different
@@ -371,7 +412,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       const onConnectError = () => setStatus("error");
 
       const onJoined = (p: QpJoinedPayload) => {
-        if (p?.leaderboard) setLeaderboard(p.leaderboard);
+        if (p?.leaderboard) {
+          leaderboardBySourceRef.current.set(p.serverId ?? "default", p.leaderboard);
+          setLeaderboard(mergeLeaderboardSources(leaderboardBySourceRef.current));
+        }
         // Mark the session as confirmed-joined so the UI can advance.
         // Without this signal, optimistic UIs render game state while
         // the server is silently rejecting (nickname_taken etc.) and
@@ -380,7 +424,12 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       };
       const onLeaderboard = (p: QpLeaderboardPayload) => {
         if (p?.students && p.sessionCode === sessionCode) {
-          setLeaderboard(p.students);
+          // Keep this VM's snapshot and render the union of all VMs — see
+          // mergeLeaderboardSources. Without this, the teacher's board would
+          // flip-flop between per-VM subsets (and a remote student's stale
+          // score=0 would clobber the round-owner's real Category Race score).
+          leaderboardBySourceRef.current.set(p.serverId ?? "default", p.students);
+          setLeaderboard(mergeLeaderboardSources(leaderboardBySourceRef.current));
         }
       };
       const onKicked = (p: QpKickedPayload) => {
@@ -421,12 +470,6 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       const onRaceResult = (p: QpRaceResultPayload) => {
         if (p?.sessionCode === sessionCode) raceResultRef.current?.(p);
       };
-      // Temporary diagnostic (#2/#3): server echoes WHY a RACE_SUBMIT was
-      // dropped so it surfaces in the student's DevTools console without
-      // needing Fly logs. Remove once the drop cause is found + fixed.
-      const onRaceRejected = (p: { reason?: string }) => {
-        console.warn("[CR submit rejected by server] reason=", p?.reason ?? "unknown");
-      };
       const onRaceEnded = (p: QpRaceEndedPayload) => {
         if (p?.sessionCode !== sessionCode) return;
         // Only clear if it's the round that ended — a fresh round may
@@ -447,7 +490,6 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
       socket.on(QP_SERVER_EVENTS.RACE_RESULT,   onRaceResult);
       socket.on(QP_SERVER_EVENTS.RACE_ENDED,    onRaceEnded);
-      socket.on("qp:race:submit:rejected",      onRaceRejected);
 
       if (socket.connected) onConnect();
 
@@ -464,7 +506,6 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
         socket.off(QP_SERVER_EVENTS.RACE_RESULT,   onRaceResult);
         socket.off(QP_SERVER_EVENTS.RACE_ENDED,    onRaceEnded);
-        socket.off("qp:race:submit:rejected",      onRaceRejected);
       };
     });
 
@@ -592,6 +633,17 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     socketRef.current.emit(QP_EVENTS.TEACHER_KICK, {
       sessionCode, clientId: targetClientId, token,
     });
+    // Optimistically drop them from every cached snapshot. The kicked
+    // student's VM stops including them in its next broadcast, but the merged
+    // union would otherwise keep showing them from a stale cached snapshot.
+    let changed = false;
+    for (const [src, arr] of leaderboardBySourceRef.current) {
+      if (arr.some(e => e.clientId === targetClientId)) {
+        leaderboardBySourceRef.current.set(src, arr.filter(e => e.clientId !== targetClientId));
+        changed = true;
+      }
+    }
+    if (changed) setLeaderboard(mergeLeaderboardSources(leaderboardBySourceRef.current));
   }, [sessionCode]);
 
   // Teacher-issued bonus — fire-and-forget. Server validates token and

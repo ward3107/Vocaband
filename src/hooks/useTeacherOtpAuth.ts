@@ -37,12 +37,56 @@ export type OtpAuthStage =
   | "error-send"
   | "error-verify";
 
+/**
+ * Category of a failed `signInWithOtp` send.  We surface this instead
+ * of leaving the UI to substring-match the raw GoTrue message — that
+ * string drifts between Supabase releases, and lumping every failure
+ * into one "couldn't send the code" line hides the single most common
+ * cause (a per-email cooldown on a quick retry), which tells the
+ * teacher to re-check a perfectly valid email instead of just waiting.
+ */
+export type OtpSendErrorKind =
+  | "invalid-email"
+  | "rate-limited"
+  | "not-allowed"
+  | "send-failed";
+
+/**
+ * Map a GoTrue send error to a UI-stable category.  Match on the
+ * stable `code`/`status` first, fall back to substring sniffing for
+ * older Supabase releases that only set `message`.
+ */
+function classifySendError(err: { message?: string; status?: number; code?: string }): OtpSendErrorKind {
+  const code = (err.code ?? "").toLowerCase();
+  const msg = (err.message ?? "").toLowerCase();
+  // 429 + "for security purposes, you can only request this after N
+  // seconds" is GoTrue's per-email cooldown — by far the most common
+  // reason a code "won't send" on a retry.  Give it its own category
+  // so we tell the teacher to wait, not to re-check their email.
+  if (
+    err.status === 429 ||
+    code.includes("rate_limit") ||
+    msg.includes("rate limit") ||
+    msg.includes("you can only request this after") ||
+    msg.includes("for security purposes")
+  ) {
+    return "rate-limited";
+  }
+  if (msg.includes("not allow") || msg.includes("not authorized") || code.includes("not_allowed")) {
+    return "not-allowed";
+  }
+  return "send-failed";
+}
+
 export interface UseTeacherOtpAuth {
   stage: OtpAuthStage;
   email: string;
   /** When stage is 'error-send' or 'error-verify', the human-readable
    *  reason from Supabase Auth (or our own validation). */
   error: string | null;
+  /** Category of the last send failure — lets the UI pick accurate
+   *  copy (e.g. "wait a moment" for a cooldown vs "check the email"). */
+  errorKind: OtpSendErrorKind | null;
   /** Seconds until resend is allowed. 0 = enabled. */
   resendInSeconds: number;
   /** Type-and-submit the email to send the OTP. */
@@ -55,12 +99,18 @@ export interface UseTeacherOtpAuth {
   reset: () => void;
 }
 
-const RESEND_COOLDOWN_SECONDS = 30;
+// Match GoTrue's per-email send interval (Supabase default 60s; our
+// Resend "minimum interval between emails" is also 60s — see
+// docs/RESEND-SMTP-SETUP.md).  A shorter client cooldown re-enables the
+// "Resend code" button while the server would still reject the request
+// with a 429, surfacing a spurious "couldn't send the code" error.
+const RESEND_COOLDOWN_SECONDS = 60;
 
 export function useTeacherOtpAuth(): UseTeacherOtpAuth {
   const [stage, setStage] = useState<OtpAuthStage>("idle");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<OtpSendErrorKind | null>(null);
   const [resendInSeconds, setResendInSeconds] = useState(0);
 
   // Tick the cooldown timer down to zero.
@@ -92,6 +142,7 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
     // flashing for an obvious typo.
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setError("Please enter a valid email address.");
+      setErrorKind("invalid-email");
       setStage("error-send");
       return;
     }
@@ -99,6 +150,7 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
     setEmail(trimmed);
     setStage("sending");
     setError(null);
+    setErrorKind(null);
 
     // signInWithOtp sends an email containing BOTH a magic link AND
     // a 6-digit code.  We use the code path so school PCs work even
@@ -119,6 +171,7 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
     if (sendErr) {
       console.warn("[teacher-otp] sendOtp failed:", sendErr);
       setError(sendErr.message);
+      setErrorKind(classifySendError(sendErr));
       setStage("error-send");
       return;
     }
@@ -137,6 +190,7 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
 
     setStage("verifying");
     setError(null);
+    setErrorKind(null);
 
     const { error: verifyErr } = await supabase.auth.verifyOtp({
       email,
@@ -167,6 +221,7 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
   const reset = useCallback(() => {
     setStage("idle");
     setError(null);
+    setErrorKind(null);
     setResendInSeconds(0);
   }, []);
 
@@ -174,6 +229,7 @@ export function useTeacherOtpAuth(): UseTeacherOtpAuth {
     stage,
     email,
     error,
+    errorKind,
     resendInSeconds,
     sendCode,
     verifyCode,

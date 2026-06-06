@@ -726,7 +726,8 @@ export default function GradebookView({
                         onClick={() => openRewardFor(r)}
                         title={t.rewardTitle}
                         aria-label={t.rewardAria(r.studentName)}
-                        className="p-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 transition-colors"
+                        style={{ backgroundColor: 'var(--vb-warning-soft)', color: 'var(--vb-warning)' }}
+                        className="p-2 rounded-lg hover:opacity-90 transition-colors"
                       >
                         <Gift size={16} />
                       </button>
@@ -735,7 +736,8 @@ export default function GradebookView({
                         onClick={() => setCertificateFor(r)}
                         title="Print certificate"
                         aria-label={`Print certificate for ${r.studentName}`}
-                        className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 transition-colors"
+                        style={{ backgroundColor: 'var(--vb-warning-soft)', color: 'var(--vb-warning)' }}
+                        className="p-2 rounded-lg hover:opacity-90 transition-colors"
                       >
                         <Award size={16} />
                       </button>

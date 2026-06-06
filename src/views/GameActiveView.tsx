@@ -1,11 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, X } from "lucide-react";
 import type { AppUser, AssignmentData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { LeaderboardEntry } from "../core/types";
-import { THEMES } from "../constants/game";
+import { THEMES, PET_MILESTONES } from "../constants/game";
 import { useLanguage } from "../hooks/useLanguage";
+import { useCombo } from "../hooks/useCombo";
+import { useFeatureFlag } from "../hooks/useFeatureFlag";
+import CombosOverlay from "../components/arcade/CombosOverlay";
+import InGamePetReactor from "../components/arcade/InGamePetReactor";
 import { gameActiveT } from "../locales/student/game-active";
 import { getThemeColors, type GameThemeColor } from "../components/game/GameShell";
 
@@ -56,7 +60,6 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
  *  HE/AR translation correctly. */
 const ENGLISH_ANSWER_MODES = new Set(["reverse", "spelling", "scramble", "letter-sounds", "fill-blank"]);
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
-import FloatingButtons from "../components/FloatingButtons";
 import ClassicModeGame from "../components/ClassicModeGame";
 import GameHeader from "../components/game/GameHeader";
 import WordPromptCard from "../components/game/WordPromptCard";
@@ -191,6 +194,32 @@ export default function GameActiveView({
   const t = gameActiveT[language];
   const modeTheme: GameThemeColor | undefined = MODE_THEME[gameMode];
   const modeLabel = t.modeLabels[gameMode] ?? gameMode;
+
+  // Combo chain — fires when arcade-hub flag is on.  Watches the
+  // `feedback` prop and translates "correct"/"wrong"/"show-answer" into
+  // combo register calls.  Combo state lives in this hook (per-game-
+  // session), so navigating back to the dashboard resets it naturally
+  // when the view unmounts.
+  const arcadeHubEnabled = useFeatureFlag('arcade_hub', false);
+  const combo = useCombo();
+  // Pet stage emoji for the in-game companion — derived from xp exactly
+  // as useRetention.currentPetStage does, so it matches the dashboard
+  // pet without spinning up a second retention hook here.
+  const petStageEmoji = useMemo(
+    () => ([...PET_MILESTONES].reverse().find((m) => xp >= m.xpRequired) ?? PET_MILESTONES[0]).emoji,
+    [xp],
+  );
+  useEffect(() => {
+    if (!arcadeHubEnabled) return;
+    if (feedback === "correct") combo.registerCorrect();
+    else if (feedback === "wrong" || feedback === "show-answer") combo.registerWrong();
+    // Reset on game finish so the next round starts clean.
+    if (isFinished) combo.reset();
+    // combo functions are stable refs from useCallback — safe to omit
+    // from deps without lint complaining, and including them would
+    // re-fire on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedback, isFinished, arcadeHubEnabled]);
 
   // Warn before the tab closes mid-game.  Without this guard a stray
   // tap on the close button (or a pinch-to-go-back swipe that escapes
@@ -407,14 +436,26 @@ export default function GameActiveView({
   };
 
   return (
-    // Bottom padding accounts for two stacked floaters that overlay the
-    // page in Quick Play: the device's safe-area inset (home indicator
-    // / iOS browser chrome) plus the QpReactionBar pill that docks at
-    // bottom-3/4. Without the reserve, the last row of game UI (e.g.
-    // Spelling's Check button) sits under the reaction bar and is
-    // unreachable on phones.
+    // Natural-flow page: short modes fit the screen with no scroll at
+    // all; a mode that's genuinely taller than the viewport scrolls the
+    // whole page normally (no inner scroll region). Bottom padding
+    // reserves space for the two stacked floaters that overlay the page
+    // in Quick Play — the device safe-area inset plus the QpReactionBar
+    // pill at bottom-3/4 — so the last control (e.g. Spelling's Check)
+    // never sits under the reaction bar on phones.
     <div
       className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] font-sans max-w-7xl mx-auto`}>
+      {arcadeHubEnabled && (
+        <CombosOverlay chain={combo.chain} multiplier={combo.multiplier} />
+      )}
+      {arcadeHubEnabled && !isFinished && (
+        <InGamePetReactor
+          stageEmoji={petStageEmoji}
+          feedback={feedback}
+          comboChain={combo.chain}
+          isFinished={isFinished}
+        />
+      )}
       {saveError && (
         <div className="fixed bottom-4 end-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <AlertTriangle size={18} />
@@ -436,23 +477,11 @@ export default function GameActiveView({
         onExit={handleExitGame}
       />
 
-      {/* After the Live Rank sidebar was removed, the old 4-column grid
-          left the cards hugging the left edge with a blank 4th column
-          where the widget used to be. Collapse to a single centered
-          column so matching cards + quiz cards sit centered on the
-          screen. Matching mode also gets vertical breathing room via
-          a min-height so the grid sits mid-viewport instead of pinned
-          under the header. */}
-      {/* Phase-1 redesign (2026-04-30): every mode now sits in the
-          vertical centre of the viewport on phones, not glued to the
-          top with empty dead space below.  Previously only matching
-          mode had this; other modes had `text-3xl` prompts hanging at
-          the very top of the screen with the answer cards immediately
-          below and a huge gap underneath.  Generalising the
-          `flex items-center justify-center` wrapper centres every
-          mode's content vertically — matching keeps its
-          slightly-larger min-h-[60vh] for the larger pair grid, the
-          rest land at min-h-[55vh]. */}
+      {/* Single centered column (the Live Rank sidebar was removed long
+          ago — every mode, matching/quiz alike, sits centered). The
+          min-height pulls content to the vertical centre of the viewport
+          on phones; matching/memory get a touch more room for their
+          larger grids. Content shorter than this never scrolls. */}
       <div className={`w-full max-w-4xl mx-auto ${(gameMode === 'matching' || gameMode === 'memory-flip') ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
         <div className="w-full">
           <AnimatePresence mode="wait">
@@ -587,7 +616,6 @@ export default function GameActiveView({
           </div>
         </div>
       )}
-      <FloatingButtons showBackToTop={true} />
     </div>
   );
 }

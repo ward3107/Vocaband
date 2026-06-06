@@ -13,13 +13,23 @@
 import { Flame } from "lucide-react";
 import { XP_TITLES, getXpTitle } from "../../constants/game";
 import { useLanguage } from "../../hooks/useLanguage";
-import { ARCADE_CARD, ARCADE_HERO_GRADIENT, ARCADE_STREAK_GRADIENT } from "./theme";
+import { ARCADE_HERO_GRADIENT, ARCADE_STREAK_GRADIENT } from "./theme";
 
 interface ArcadeStatsBarProps {
   xp: number;
   streak: number;
 }
 
+/**
+ * ArcadeStatsBar — the single status pill at the top of the hub. Folds in
+ * what the old TrophyRoadStrip showed (current → next tier + XP remaining)
+ * so there's ONE progress element, not two stacked duplicates:
+ *
+ *   [emoji] Legend → 🔮 Mythic   [▓▓░ bar]   2231 XP   🔥 streak
+ *
+ * On a phone the next-tier name hides (emoji alone implies the goal) so
+ * the pill stays one slim line; the full name returns at sm+.
+ */
 export default function ArcadeStatsBar({ xp, streak }: ArcadeStatsBarProps) {
   const { isRTL } = useLanguage();
   const current = getXpTitle(xp);
@@ -30,41 +40,48 @@ export default function ArcadeStatsBar({ xp, streak }: ArcadeStatsBarProps) {
   // full bar so the student feels the cap as a flex, not a wall.
   const span = next ? next.min - current.min : 1;
   const progress = next ? Math.min(1, Math.max(0, (xp - current.min) / span)) : 1;
-  const xpIntoTier = xp - current.min;
+  const toGo = next ? next.min - xp : 0;
 
   return (
-    <div className={`${ARCADE_CARD} flex items-center gap-3 p-3 sm:gap-4 sm:p-4 ${isRTL ? "flex-row-reverse" : ""}`}>
-      {/* Title medallion */}
+    <div className="flex justify-center">
       <div
-        className={`${ARCADE_HERO_GRADIENT} flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-2xl shadow-lg shadow-violet-900/50 ring-2 ring-white/30 sm:h-16 sm:w-16 sm:text-3xl`}
-        aria-hidden
+        className={`flex max-w-full items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/20 backdrop-blur-md shadow-lg shadow-violet-900/30 sm:gap-3 sm:px-4 ${isRTL ? "flex-row-reverse" : ""}`}
       >
-        {current.emoji}
-      </div>
+        <span aria-hidden className="text-lg leading-none sm:text-xl">{current.emoji}</span>
 
-      {/* Title + XP progress */}
-      <div className="min-w-0 flex-1">
-        <div className={`flex items-baseline gap-2 text-white ${isRTL ? "flex-row-reverse" : ""}`}>
-          <span className="truncate text-base font-bold sm:text-lg">{current.title}</span>
-          <span className="shrink-0 text-xs font-semibold text-cyan-200 sm:text-sm">
-            {next ? `${xpIntoTier} / ${span} XP` : "MAX"}
-          </span>
-        </div>
-        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/15 ring-1 ring-white/10">
+        {/* Current → next tier (next name hides on small screens). */}
+        <span className="flex shrink-0 items-center gap-1 text-sm font-bold text-white sm:text-base">
+          <span className="truncate">{current.title}</span>
+          {next && (
+            <>
+              <span aria-hidden className="text-white/40">→</span>
+              <span aria-label={next.title}>{next.emoji}</span>
+              <span className="hidden truncate text-white/70 sm:inline">{next.title}</span>
+            </>
+          )}
+        </span>
+
+        {/* Thin inline XP-to-next bar */}
+        <div className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-white/15 ring-1 ring-white/10 sm:w-24">
           <div
             className={`${ARCADE_HERO_GRADIENT} h-full rounded-full transition-[width] duration-500 ease-out`}
             style={{ width: `${Math.round(progress * 100)}%` }}
           />
         </div>
-      </div>
 
-      {/* Streak chip */}
-      <div
-        className={`${ARCADE_STREAK_GRADIENT} flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-white shadow-lg shadow-rose-900/40 ring-2 ring-white/30 sm:px-4`}
-        aria-label={`${streak} day streak`}
-      >
-        <Flame className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
-        <span className="text-sm font-extrabold tabular-nums sm:text-base">{streak}</span>
+        {/* XP remaining to the next tier (or MAX at the cap). */}
+        <span className="shrink-0 text-xs font-semibold tabular-nums text-amber-300 sm:text-sm">
+          {next ? `${toGo} XP` : "MAX"}
+        </span>
+
+        {/* Streak chip */}
+        <span
+          className={`${ARCADE_STREAK_GRADIENT} flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-white ring-1 ring-white/30`}
+          aria-label={`${streak} day streak`}
+        >
+          <Flame className="h-3.5 w-3.5" aria-hidden />
+          <span className="text-xs font-extrabold tabular-nums sm:text-sm">{streak}</span>
+        </span>
       </div>
     </div>
   );

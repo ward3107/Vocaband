@@ -20,6 +20,12 @@ import { appToastsT } from "./locales/app-toasts";
 import { useRetention } from "./hooks/useRetention";
 import { useSavedTasks } from "./hooks/useSavedTasks";
 import { useBoosters } from "./hooks/useBoosters";
+import { useFeatureFlag } from "./hooks/useFeatureFlag";
+import { useLevelUp } from "./hooks/useLevelUp";
+import { useAchievements } from "./hooks/useAchievements";
+import LevelUpModal from "./components/arcade/LevelUpModal";
+import AchievementToast from "./components/arcade/AchievementToast";
+import { grantRetentionXp, grantNonXpReward, claimPetMilestoneReward } from "./handlers/retentionGrants";
 import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
 import { createGuestUser } from "./utils/createGuestUser";
@@ -40,7 +46,7 @@ import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
 import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
-import { StudentDashboardSection } from "./views/StudentDashboardSection";
+import { StudentDashboardSection, StudentHubSection, isStudentHubView } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
 import { renderGameRoute } from "./views/GameRoutes";
 import { renderStudentAuthRoute } from "./views/StudentAuthRoutes";
@@ -187,12 +193,18 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     openDropdownClassId, setOpenDropdownClassId,
   } = useTeacherUiModalsState();
   const [xp, setXp] = useState(0);
+  const [coins, setCoins] = useState(0);
   const [streak, setStreak] = useState(0);
   const [badges, setBadges] = useState<string[]>([]);
 
   // Retention state (daily chest, weekly challenge, comeback, limited
   // rotating item, pet evolution milestones).  Scoped per-user via uid.
   const retention = useRetention(user?.uid, xp);
+
+  // Arcade flag — drives both the level-up modal and the achievement
+  // system below.  Resolved early because several effects gate on it.
+  const arcadeHubEnabled = useFeatureFlag("arcade_hub", false);
+  const arcadeActive = arcadeHubEnabled && user?.role === "student" && !user?.isGuest;
 
   // Saved task templates — teacher-side localStorage of full assignment /
   // quick-play snapshots so a teacher can rebuild the same task in one
@@ -309,6 +321,24 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // arrays) + paywall-toast helper. See useToasts.
   const { toasts, setToasts, showToast, showPaywallToast } = useToasts();
 
+  // Arcade level-up modal — fires once per XP_TITLES tier crossing.
+  const levelUp = useLevelUp({
+    uid: user?.uid ?? null,
+    xp,
+    enabled: arcadeActive,
+  });
+  // Arcade achievement system — append-only Supabase table + slide-in
+  // toasts.  Grants are routed through grantRetentionXp so the XP
+  // economy lives in one RPC.  On first run per device the hook
+  // silently seeds any currently-met achievements without toasting,
+  // so a long-time student doesn't get back-fill spam.
+  const achievements = useAchievements({
+    uid: user?.uid ?? null,
+    enabled: arcadeActive,
+    onGrantXp: (amount, reason) =>
+      grantRetentionXp(amount, reason, { user, setXp, showToast }),
+  });
+
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
     show: false, message: '', onConfirm: () => {},
   });
@@ -353,11 +383,36 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
   const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
   const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
+
   const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
   // Warm the audio cache for the active assignment so a student who loses
   // Wi-Fi mid-lesson can still hear the words. Idle-scheduled, skipped on
   // 2G / data-saver. See useAssignmentPrecache for the why.
   useAssignmentPrecache(assignmentWords);
+
+  // Achievement snapshot — rebuilt whenever xp / streak / progress
+  // changes and handed to `recordEvent` to re-evaluate locked
+  // achievements. MUST stay above the early returns further down so
+  // the hook order never changes between renders (Rules of Hooks);
+  // the `arcadeActive` guard lives inside the effect body, not around
+  // the hook call.
+  useEffect(() => {
+    if (!arcadeActive) return;
+    const perfectScores = studentProgress.filter((p) => p.score >= 100).length;
+    const modesPlayed = new Set(studentProgress.map((p) => p.mode));
+    // Coarse mastery proxy — distinct assignments fully played at 80+
+    // is a decent stand-in until the word-mastery hook surfaces here.
+    const wordsMastered = studentProgress.filter((p) => p.score >= 80).length * 5;
+    void achievements.recordEvent({
+      xp,
+      streak,
+      gamesPlayed: studentProgress.length,
+      perfectScores,
+      wordsMastered,
+      modesPlayed,
+    });
+  }, [arcadeActive, xp, streak, studentProgress, achievements]);
+
   // ?assignment=<id> and ?play=<mode> deep-link URL params captured at
   // boot.  See useDeepLinkUrlParams.
   const {
@@ -612,7 +667,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // Student-account login flow (PendingApprovalScreen + OAuth approved branch).
   const { handleLoginAsStudent, renameStudentDisplayName } = useStudentLogin({
     user, setUser, setError, setLoading, setView,
-    setBadges, setXp, setStreak,
+    setBadges, setXp, setCoins, setStreak,
     setStudentAssignments, setStudentProgress,
     showPendingApproval,
     loadAssignmentsForClass,
@@ -669,7 +724,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     checkConsent, fetchTeacherData, fetchTeacherAssignments, stopAllAudio,
     shouldPreserveView,
     setLoading, setError, setLandingTab, setView, setUser,
-    setBadges, setXp, setStreak,
+    setBadges, setXp, setCoins, setStreak,
     setClasses, setStudentAssignments, setStudentProgress,
     setActiveAssignment, setAssignmentWords,
     setQuickPlayActiveSession, setQuickPlaySessionCode,
@@ -691,6 +746,26 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     restoreInProgressRef: restoreInProgress,
   });
 
+  // Re-consent, exit-confirm, class-not-found, class-switch overlay markup.
+  // MUST stay here with the other top-level hooks — above every early
+  // return below. It was previously called further down (after the public /
+  // quick-play-exit / student-auth early returns), so a student
+  // transitioning from the join form (early-returned) into the dashboard or
+  // live-challenge game (not early-returned) ran this hook on one render but
+  // not the previous one — React #310 ("Rendered more hooks than during the
+  // previous render"), which crashed the live-challenge join. The returned
+  // overlay nodes are only consumed by the authenticated branches further
+  // down, so hoisting the call changes nothing visible.
+  const { consentModal, exitConfirmModal, classNotFoundBanner, classSwitchModal } = useAppOverlays({
+    user, needsConsent, showOnboarding,
+    consentChecked, setConsentChecked,
+    consentMode, dontShowAgain, setDontShowAgain,
+    recordConsent,
+    showExitConfirmModal, setShowExitConfirmModal, beginExitFlow,
+    classNotFoundIntent, setClassNotFoundIntent, setView,
+    pendingClassSwitch, handleConfirmClassSwitch, handleCancelClassSwitch,
+  });
+
   // Apply teacher dashboard theme to document root.  Extract theme ID
   // separately so the effect doesn't re-run on unrelated user updates.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -701,6 +776,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   useViewGuards({
     view, setView, user, loading,
     activeAssignment, quickPlayActiveSession,
+    selectedClass,
   });
 
   // Warn before leaving while a score save is in flight.
@@ -793,6 +869,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
         setStudentProgress(boot.progress);
         setBadges(boot.user.badges || []);
         setXp(boot.user.xp ?? 0);
+        setCoins(boot.user.coins ?? 0);
         setStreak(boot.user.streak ?? 0);
         setLoading(false);
         setView('student-dashboard');
@@ -911,7 +988,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
       qpCumulativeScoreRef.current += Math.max(0, finalScore);
       quickPlaySocket.updateScore(qpCumulativeScoreRef.current, extras);
     },
-    xp, setXp, streak, setStreak, badges, studentProgress, setStudentProgress,
+    xp, setXp, coins, setCoins, streak, setStreak, badges, studentProgress, setStudentProgress,
     setIsSaving, setSaveError, setQuickPlayCompletedModes,
     retention, boosters,
     showToast, awardBadge, queueSaveOperation,
@@ -1040,25 +1117,11 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   });
   if (studentAuthRoute) return studentAuthRoute;
 
-  // ── Student Pending Approval Screen ────────────────────────────────────────
-
-
-
-  // Re-consent, exit-confirm, class-not-found, class-switch overlays —
-  // markup lives in useAppOverlays.
-  const { consentModal, exitConfirmModal, classNotFoundBanner, classSwitchModal } = useAppOverlays({
-    user, needsConsent, showOnboarding,
-    consentChecked, setConsentChecked,
-    consentMode, dontShowAgain, setDontShowAgain,
-    recordConsent,
-    showExitConfirmModal, setShowExitConfirmModal, beginExitFlow,
-    classNotFoundIntent, setClassNotFoundIntent, setView,
-    pendingClassSwitch, handleConfirmClassSwitch, handleCancelClassSwitch,
-  });
-
-  if (user?.role === "student" && view === "student-dashboard") {
-    return StudentDashboardSection({
-      user, xp, streak, badges, setXp, setBadges, setUser,
+  if (user?.role === "student" && (view === "student-dashboard" || isStudentHubView(view))) {
+    // Shared prop bag — the dashboard and its hub sub-pages (Practice /
+    // Missions / Boosters / Badges) need the same handlers + state.
+    const studentSectionDeps = {
+      user, xp, coins, streak, badges, setXp, setCoins, setBadges, setUser,
       copiedCode, setCopiedCode,
       studentAssignments, studentProgress, studentDataLoading,
       showStudentOnboarding, setShowStudentOnboarding,
@@ -1067,11 +1130,31 @@ export default function App({ initialView }: { initialView?: View } = {}) {
       setGameMode, setIsFinished,
       startClassMinute, retention, boosters,
       showToast, renameStudentDisplayName,
+      // Same crossing that fires LevelUpModal triggers the pet's
+      // transformation animation (XP_TITLES tiers coincide with
+      // PET_MILESTONES, so the pet has just evolved too).
+      evolutionPending: Boolean(levelUp.pending),
       // Top-bar logout routes through the same soft-landing modal the
       // hardware back button uses, so a stray tap doesn't drop the kid
       // straight out of their session.
       onRequestLogout: () => setShowExitConfirmModal(true),
-    });
+    };
+    const section = isStudentHubView(view)
+      ? StudentHubSection({ ...studentSectionDeps, view })
+      : StudentDashboardSection(studentSectionDeps);
+    // Celebrations must mount on these return paths too: XP grants,
+    // badge claims and achievement unlocks all happen here, and the pet
+    // transformation above already keys off levelUp.pending. Without these
+    // the student never sees the level-up modal / achievement toasts that
+    // their actions trigger (they only mounted in the final render branch,
+    // which these early-return past).
+    return (
+      <>
+        {section}
+        <LevelUpModal tier={levelUp.pending} onClose={levelUp.dismiss} />
+        <AchievementToast toasts={achievements.toasts} onDismiss={achievements.dismissToast} />
+      </>
+    );
   }
 
   // Privacy-settings view (lazy-loaded). See PrivacySettingsSection.
@@ -1204,7 +1287,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const miscView = renderMiscViews({
     view, user, activeVoca, selectedClass, activityNavOrigin,
     setView, setSelectedClass, setIsLiveChallenge, setActiveVoca,
-    xp, setXp, setUser, showToast,
+    xp, setXp, coins, setCoins, setUser, showToast,
     boostersActivate: boosters.activate,
     visibleClasses, visibleAssignments, speakWord, topicPacks: TOPIC_PACKS,
     globalLeaderboard,
@@ -1242,6 +1325,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     && !isFinished
     && !showModeSelection
     && !showModeIntro;
+
   // Floating help button mirrors the reaction bar's gating: visible
   // only mid-Quick-Play game so unauthenticated kids who are stuck
   // have a one-tap escape hatch without being able to invoke it from
@@ -1252,6 +1336,23 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     && !isFinished
     && !showModeSelection
     && !showModeIntro;
+
+  // ── Legacy default-screen safety net ────────────────────────────────
+  // The original app rendered the word game as its root screen, and this
+  // tail still falls back to it.  But the view branches above can be
+  // skipped when a preserved view loses its transient context on a
+  // refresh (e.g. a teacher on `create-assignment` once `selectedClass`
+  // resets to null).  Rendering the game there stranded teachers on the
+  // student SET-2 word list — the "1 / 809 CLASSIC" screen.  Only the
+  // game view should reach the game flow; anything else that falls
+  // through shows the spinner for the frame it takes useViewGuards to
+  // route the user back to a real home.
+  if (view !== "game") {
+    return <div className="min-h-screen flex items-center justify-center bg-stone-100">
+      <SvgSpinner className="animate-spin text-blue-700" size={48} />
+    </div>;
+  }
+
   return (
     <>
       <AnnouncementBanner user={user} />
@@ -1259,6 +1360,17 @@ export default function App({ initialView }: { initialView?: View } = {}) {
         view, user, setUser, language: appLanguage,
         showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
         setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
+        petDisplayName: user?.displayName ?? "",
+        petXp: xp,
+        petCurrentStage: retention.currentPetStage,
+        petNextStage: retention.nextPetStage,
+        petClaimableMilestone: retention.claimablePetMilestone,
+        onClaimPetMilestone: (milestone) => claimPetMilestoneReward(
+          milestone,
+          (v, r) => grantRetentionXp(v, r, { user, setXp, showToast }),
+          (k, v) => grantNonXpReward(k, v, { user, setUser }),
+          retention.claimPetMilestone,
+        ),
         showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
         gameDebug, gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
         score, xp, streak, badges, mistakes, gameWords, quickPlayActiveSession,
@@ -1292,6 +1404,8 @@ export default function App({ initialView }: { initialView?: View } = {}) {
           />
         </Suspense>
       )}
+      <LevelUpModal tier={levelUp.pending} onClose={levelUp.dismiss} />
+      <AchievementToast toasts={achievements.toasts} onDismiss={achievements.dismissToast} />
     </>
   );
 };

@@ -34,6 +34,7 @@ const FAKE_USER: AppUser = {
   displayName: "Dana",
   classCode: "ABCD12",
   avatar: "🦊",
+  coins: 0,
   xp: 1450,
   streak: 7,
 };
@@ -198,12 +199,13 @@ export default function StudentRtlPreview() {
           <div className="h-32" />
         </div>
 
-        {/* Floating bottom-end bubble — exercises PetCompanion's fixed
-            positioning + dropdown alignment in RTL. */}
+        {/* Pet info card — exercises the centred popover + RTL alignment.
+            Always open here so the preview shows the card. */}
         <PetCompanion
+          open
+          onClose={() => {}}
           xp={FAKE_USER.xp ?? 0}
           displayName={FAKE_USER.displayName}
-          streak={FAKE_USER.streak ?? 0}
           currentStage={PET_MILESTONES[2]}
           nextStage={PET_MILESTONES[3]}
           claimableMilestone={null}

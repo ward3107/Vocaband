@@ -129,7 +129,7 @@ export default function NextUpCard({
             <Sparkles size={12} className="fill-white" />
             {t.nextUp}
           </div>
-          <h3 className="truncate text-base font-black leading-tight sm:text-lg">
+          <h3 className="line-clamp-2 text-base font-black leading-tight sm:text-lg">
             {assignment.title}
           </h3>
           <p className="mt-0.5 text-[11px] font-bold text-white/80 sm:text-xs">

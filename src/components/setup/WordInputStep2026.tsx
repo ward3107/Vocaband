@@ -273,8 +273,10 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
           violet focus glow.  All textarea behaviour (autocomplete,
           caret-sync, spell-check, autoCorrect) intact. */}
       <div
-        className="bg-white rounded-[24px] overflow-hidden border border-indigo-500/[0.10]"
+        className="rounded-[24px] overflow-hidden border"
         style={{
+          backgroundColor: 'var(--vb-surface)',
+          borderColor: 'var(--vb-border)',
           boxShadow: '0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)',
         }}
       >
@@ -325,8 +327,8 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
             spellCheck={!isDesktop}
             autoCorrect={isDesktop ? 'off' : 'on'}
             autoCapitalize="off"
-            className="block w-full min-h-[96px] resize-y rounded-2xl border-[1.5px] border-indigo-500/[0.10] bg-white px-[18px] py-3.5 text-[14px] text-[#1F1147] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] leading-relaxed"
-            style={{ textAlign: 'left' }}
+            className="block w-full min-h-[96px] resize-y rounded-2xl border-[1.5px] px-[18px] py-3.5 text-[14px] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] leading-relaxed"
+            style={{ textAlign: 'left', backgroundColor: 'var(--vb-surface)', color: 'var(--vb-text-primary)', borderColor: 'var(--vb-border)' }}
           />
 
           {/* As-you-type autocomplete strip (English curriculum). Sits
@@ -485,10 +487,12 @@ const OptionCard: React.FC<OptionCardProps> = ({
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
       type="button"
-      className="w-full rounded-[22px] border border-indigo-500/[0.10] bg-white px-[18px] pb-4 pt-[18px] text-start transition-[transform,box-shadow]"
+      className="w-full rounded-[22px] border px-[18px] pb-4 pt-[18px] text-start transition-[transform,box-shadow]"
       style={{
         touchAction: 'manipulation',
         WebkitTapHighlightColor: 'transparent' as any,
+        backgroundColor: 'var(--vb-surface)',
+        borderColor: 'var(--vb-border)',
         boxShadow:
           '0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)',
       }}
@@ -516,8 +520,8 @@ const OptionCard: React.FC<OptionCardProps> = ({
         )}
       </div>
 
-      <div className="text-[14px] font-bold text-[#1F1147]">{title}</div>
-      <div className="mt-0.5 text-[12px] text-[#6B6388]">{subtitle}</div>
+      <div className="text-[14px] font-bold" style={{ color: 'var(--vb-text-primary)' }}>{title}</div>
+      <div className="mt-0.5 text-[12px]" style={{ color: 'var(--vb-text-muted)' }}>{subtitle}</div>
     </motion.button>
   );
 };
@@ -686,11 +690,11 @@ const WordCard: React.FC<WordCardProps> = ({
         {/* Word info */}
         <div className="flex-1 min-w-0">
           {/* English */}
-          <p className="font-semibold text-[var(--vb-text-primary)] text-base truncate leading-tight">{word.english}</p>
+          <p className="font-semibold text-[var(--vb-text-primary)] text-lg sm:text-xl truncate leading-tight">{word.english}</p>
 
           {/* Translations */}
           {hasRequiredTranslation ? (
-            <p className="mt-1 text-sm text-[var(--vb-text-secondary)] truncate" dir="auto">
+            <p className="mt-1 text-sm sm:text-base text-[var(--vb-text-secondary)] truncate" dir="auto">
               {getTranslationText()}
             </p>
           ) : (
@@ -1277,7 +1281,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
           <button
             onClick={selectAll}
             type="button"
-            className="flex-1 py-2 bg-indigo-100 text-indigo-700 text-sm font-semibold rounded-lg hover:bg-indigo-200 transition-colors"
+            className="flex-1 py-2 bg-[var(--vb-accent-soft)] text-[var(--vb-accent)] text-sm font-semibold rounded-lg hover:opacity-80 transition-colors"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
           >
             {TEXT.allWords}
@@ -1311,15 +1315,15 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
                     isAlreadyAdded
                       ? 'bg-[var(--vb-surface-alt)] border border-[var(--vb-border)] opacity-60 cursor-not-allowed'
                       : isSelected
-                      ? 'bg-indigo-50 border-2 border-indigo-400'
-                      : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-indigo-300'
+                      ? 'bg-[var(--vb-accent-soft)] border-2 border-[var(--vb-accent)]'
+                      : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-[var(--vb-accent)]'
                   }`}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[var(--vb-text-primary)] truncate">{word.english}</p>
-                      <p className="text-sm text-[var(--vb-text-muted)] truncate" dir="auto">
+                      <p className="font-semibold text-[var(--vb-text-primary)] text-lg truncate">{word.english}</p>
+                      <p className="text-sm sm:text-base text-[var(--vb-text-muted)] truncate" dir="auto">
                         {word.hebrew} • {word.arabic}
                       </p>
                     </div>
@@ -1796,17 +1800,17 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
                   type="button"
                   className={`w-full p-3 rounded-lg text-center transition-all ${
                     isSelected
-                      ? 'bg-violet-50 border-2 border-violet-300'
+                      ? 'bg-[var(--vb-accent-soft)] border-2 border-[var(--vb-accent)]'
                       : isPending
-                      ? 'bg-indigo-50 border-2 border-indigo-300'
+                      ? 'bg-[var(--vb-accent-soft)] border-2 border-[var(--vb-accent)] opacity-80'
                       : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-[var(--vb-text-muted)]'
                   }`}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[var(--vb-text-primary)] truncate">{word.english}</p>
-                      <p className="text-sm text-[var(--vb-text-muted)] truncate" dir="auto">
+                      <p className="font-semibold text-[var(--vb-text-primary)] text-lg truncate">{word.english}</p>
+                      <p className="text-sm sm:text-base text-[var(--vb-text-muted)] truncate" dir="auto">
                         {word.hebrew} • {word.arabic}
                       </p>
                     </div>

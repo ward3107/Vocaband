@@ -231,7 +231,8 @@ export default function AssignmentDetail({
               notStarted.slice(0, 20).map(name => (
                 <div
                   key={name}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/60"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg"
+                  style={{ backgroundColor: 'var(--vb-surface-alt)' }}
                 >
                   <span className="text-lg" aria-hidden>🦊</span>
                   <div className="flex-1 min-w-0">
@@ -248,7 +249,10 @@ export default function AssignmentDetail({
       {/* Sticky footer CTA — the plan's headline action. Only shows
           when there's someone to nudge. */}
       {assignment && strugglerNames.length > 0 && (
-        <div className="sticky bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-[var(--vb-border)] pb-[calc(env(safe-area-inset-bottom)+12px)]">
+        <div
+          className="sticky bottom-0 left-0 right-0 p-3 backdrop-blur-md border-t border-[var(--vb-border)] pb-[calc(env(safe-area-inset-bottom)+12px)]"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--vb-surface) 95%, transparent)' }}
+        >
           <button
             type="button"
             onClick={() => onReassign?.(strugglerNames)}
@@ -296,7 +300,7 @@ function Bucket({
 
 function StudentRow({ student, showScore, rowSummary }: { student: StudentScore; showScore?: boolean; rowSummary: (plays: number, best: number) => string }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/60">
+    <div className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <span className="text-lg shrink-0" aria-hidden>{student.avatar}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-[var(--vb-text-primary)] truncate">{student.name}</p>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { UserPlus, Trash2, Sparkles, UserCog } from "lucide-react";
+import { UserPlus, Trash2, Sparkles, UserCog, Ban } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevEntitlement } from "./devShared";
 
 interface Props {
@@ -13,6 +13,27 @@ const PLAN_BADGE: Record<string, string> = {
   school: "bg-amber-500/20 text-amber-200",
   free: "bg-white/10 text-white/50",
 };
+
+/**
+ * Trial countdown for a free teacher's 14-day Pro trial. Returns null when
+ * there's nothing to count down — paid plans, no trial set, or already lapsed.
+ * `label` is the badge text; `cls` colours it by urgency (red ≤1d → amber ≤3d
+ * → emerald otherwise), matching the Trial-funnel panel's convention.
+ */
+function trialBadge(plan: string | null, trialEndsAt: string | null): { label: string; cls: string } | null {
+  if (plan && plan !== "free") return null;
+  if (!trialEndsAt) return null;
+  const ms = new Date(trialEndsAt).getTime() - Date.now();
+  if (ms <= 0) return { label: "trial expired", cls: "bg-white/5 text-white/40" };
+  const hours = Math.floor(ms / 3_600_000);
+  const label = hours < 48 ? `${hours}h left` : `${Math.ceil(hours / 24)}d left`;
+  const daysLeft = ms / 86_400_000;
+  const cls =
+    daysLeft <= 1 ? "bg-rose-500/15 text-rose-300"
+    : daysLeft <= 3 ? "bg-amber-500/15 text-amber-300"
+    : "bg-emerald-500/10 text-emerald-300";
+  return { label, cls };
+}
 
 export default function DevEntitlementsSection({ showToast }: Props) {
   const [items, setItems] = useState<DevEntitlement[]>([]);
@@ -110,6 +131,12 @@ export default function DevEntitlementsSection({ showToast }: Props) {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-black uppercase ${PLAN_BADGE[it.plan ?? "free"]}`}>
                   {it.plan ?? "free"}
                 </span>
+                {(() => {
+                  const t = trialBadge(it.plan, it.trial_ends_at);
+                  return t ? (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-black ${t.cls}`}>{t.label}</span>
+                  ) : null;
+                })()}
                 {it.role && it.role !== "teacher" && (
                   <span className="px-2 py-0.5 rounded-full text-xs font-black uppercase bg-sky-500/20 text-sky-200">{it.role}</span>
                 )}
@@ -131,16 +158,39 @@ export default function DevEntitlementsSection({ showToast }: Props) {
               </button>
             )}
 
+            {/* Master AI kill-switch (users.ai_disabled). Wins over plan/trial —
+                use this to turn AI off for a teacher who is mid-14-day-trial
+                without ending their trial. Needs a signed-up uid. */}
             <button
               type="button"
-              disabled={busy}
-              onClick={() => void run("admin_set_ai_access", { p_email: it.email, p_enabled: !it.ai_enabled }, it.ai_enabled ? "AI revoked" : "AI granted")}
+              disabled={busy || !it.uid}
+              onClick={() => void run("admin_set_ai_disabled", { p_uid: it.uid, p_disabled: !it.ai_disabled }, it.ai_disabled ? "AI re-enabled" : "AI disabled")}
+              title={it.ai_disabled
+                ? "AI is blocked for this teacher. Click to re-enable."
+                : "Block all AI for this teacher (overrides their plan/trial)."}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className={`px-3 py-2 rounded-xl text-sm font-black flex items-center gap-1.5 ${
-                it.ai_enabled ? "bg-emerald-500/20 text-emerald-200" : "bg-white/5 text-white/40"
+                it.ai_disabled ? "bg-rose-500/20 text-rose-200" : "bg-emerald-500/20 text-emerald-200"
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5" /> AI {it.ai_enabled ? "on" : "off"}
+              {it.ai_disabled ? <Ban className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+              AI {it.ai_disabled ? "off" : "on"}
+            </button>
+
+            {/* Vocabagrut allowlist (ai_allowlist). Separate opt-in gate for the
+                premium mock-exam generator only; the kill-switch above still
+                overrides it when AI is off. */}
+            <button
+              type="button"
+              disabled={busy || it.ai_disabled}
+              onClick={() => void run("admin_set_ai_access", { p_email: it.email, p_enabled: !it.ai_enabled }, it.ai_enabled ? "Vocabagrut revoked" : "Vocabagrut granted")}
+              title="Toggle access to the Vocabagrut mock-exam generator."
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className={`px-3 py-2 rounded-xl text-sm font-black flex items-center gap-1.5 disabled:opacity-40 ${
+                it.ai_enabled ? "bg-violet-500/20 text-violet-200" : "bg-white/5 text-white/40"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Bagrut {it.ai_enabled ? "on" : "off"}
             </button>
 
             <select

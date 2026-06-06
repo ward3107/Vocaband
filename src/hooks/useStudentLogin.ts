@@ -47,6 +47,7 @@ export interface UseStudentLoginParams {
   setView: (v: View) => void;
   setBadges: React.Dispatch<React.SetStateAction<string[]>>;
   setXp: React.Dispatch<React.SetStateAction<number>>;
+  setCoins: React.Dispatch<React.SetStateAction<number>>;
   setStreak: React.Dispatch<React.SetStateAction<number>>;
   setStudentAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
   setStudentProgress: React.Dispatch<React.SetStateAction<ProgressData[]>>;
@@ -77,7 +78,7 @@ interface StudentProfileShape {
 export function useStudentLogin(params: UseStudentLoginParams) {
   const {
     user, setUser, setError, setLoading, setView,
-    setBadges, setXp, setStreak,
+    setBadges, setXp, setCoins, setStreak,
     setStudentAssignments, setStudentProgress,
     showPendingApproval,
     loadAssignmentsForClass,
@@ -148,6 +149,7 @@ export function useStudentLogin(params: UseStudentLoginParams) {
       role: 'student',
       classCode: profile.class_code,
       avatar: profile.avatar || '🦊',
+      coins: 0,
       badges: profile.badges || [],
       xp: profile.xp || 0,
       isGuest: false,
@@ -183,6 +185,7 @@ export function useStudentLogin(params: UseStudentLoginParams) {
       if (insertError) {
         trackAutoError(insertError, 'Failed to create student user record during signup');
       }
+      setCoins(0);
     } else {
       // Update existing user record with latest profile data
       const { error: updateError } = await supabase
@@ -197,6 +200,10 @@ export function useStudentLogin(params: UseStudentLoginParams) {
       if (updateError) {
         trackAutoError(updateError, 'Failed to update student user record during login');
       }
+      // existingUser came from the users table (USER_COLUMNS includes coins),
+      // so use its authoritative balance — userData was built with a 0 placeholder.
+      setUser({ ...userData, coins: existingUser.coins ?? 0 });
+      setCoins(existingUser.coins ?? 0);
     }
 
     // Fetch class data and assignments using RPC to bypass RLS
@@ -232,7 +239,7 @@ export function useStudentLogin(params: UseStudentLoginParams) {
     setStreak(0); // Will fetch from DB later
     setView("student-dashboard");
   }, [
-    showPendingApproval, setLoading, setError, setUser, setBadges, setXp, setStreak,
+    showPendingApproval, setLoading, setError, setUser, setBadges, setXp, setCoins, setStreak,
     setView, setStudentAssignments, setStudentProgress, loadAssignmentsForClass,
   ]);
 

@@ -24,6 +24,7 @@ function buildUser(scenario: PlanScenario): AppUser {
     email: "teacher@example.com",
     role: "teacher",
     displayName: "Ms. Cohen",
+    coins: 0,
     plan: "free",
   };
   switch (scenario) {

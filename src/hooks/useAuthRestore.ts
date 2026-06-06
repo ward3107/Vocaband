@@ -88,6 +88,7 @@ export interface UseAuthRestoreDeps {
   setUser: Dispatch<AppUser | null>;
   setBadges: Dispatch<string[]>;
   setXp: Dispatch<number>;
+  setCoins: Dispatch<number>;
   setStreak: Dispatch<number>;
   setClasses: Dispatch<ClassData[]>;
   setStudentAssignments: Dispatch<AssignmentData[]>;
@@ -148,7 +149,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
     checkConsent, fetchTeacherData, fetchTeacherAssignments, stopAllAudio,
     shouldPreserveView,
     setLoading, setError, setLandingTab, setView, setUser,
-    setBadges, setXp, setStreak,
+    setBadges, setXp, setCoins, setStreak,
     setClasses, setStudentAssignments, setStudentProgress,
     setActiveAssignment, setAssignmentWords,
     setQuickPlayActiveSession, setQuickPlaySessionCode,
@@ -235,6 +236,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                   role: 'student' as const,
                   classCode: saved.classCode,
                   avatar: saved.avatar || '🦊',
+                  coins: 0,
                   badges: [],
                   xp: 0,
                   streak: 0,
@@ -399,6 +401,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
             }
             setBadges(userData.badges || []);
             setXp(userData.xp ?? 0);
+            setCoins(userData.coins ?? 0);
             setStreak(userData.streak ?? 0);
             if (!shouldPreserveView("student", currentViewRef.current)) {
               setView("student-dashboard");
@@ -450,11 +453,17 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                 displayName: studentProfile.display_name || (supabaseUser.user_metadata?.full_name as string) || "Student",
                 role: "student",
                 classCode: studentProfile.class_code,
+                coins: 0,
                 xp: studentProfile.xp || 0,
                 avatar: studentProfile.avatar,
               };
               await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
-              setUser(studentUser);
+              // Coins live only on public.users (not student_profiles), so read the
+              // authoritative balance back instead of trusting the 0 placeholder above.
+              const { data: coinRow } = await supabase
+                .from('users').select('coins').eq('uid', supabaseUser.id).maybeSingle();
+              setUser({ ...studentUser, coins: coinRow?.coins ?? 0 });
+              setCoins(coinRow?.coins ?? 0);
               if (studentProfile.class_code) {
                 const { data: classRows } = await supabase
                   .from('classes').select(CLASS_COLUMNS).eq('code', studentProfile.class_code);
@@ -519,6 +528,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                     }
                     setBadges(boot.user.badges || []);
                     setXp(boot.user.xp ?? 0);
+                    setCoins(boot.user.coins ?? 0);
                     setStreak(boot.user.streak ?? 0);
                     setView(hasTeacherAccess(boot.user) ? "teacher-dashboard" : "student-dashboard");
                     localStorage.setItem('vocaband_student_login', JSON.stringify({
@@ -548,6 +558,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                     }
                     setBadges(restored.badges || []);
                     setXp(restored.xp ?? 0);
+                    setCoins(restored.coins ?? 0);
                     setStreak(restored.streak ?? 0);
                     setView(hasTeacherAccess(restored) ? "teacher-dashboard" : "student-dashboard");
                     localStorage.setItem('vocaband_student_login', JSON.stringify({
@@ -626,11 +637,17 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                 displayName: studentProfile.display_name || (supabaseUser.user_metadata?.full_name as string) || "Student",
                 role: "student",
                 classCode: studentProfile.class_code,
+                coins: 0,
                 xp: studentProfile.xp || 0,
                 avatar: studentProfile.avatar,
               };
               await supabase.from('users').upsert(mapUserToDb(studentUser), { onConflict: 'uid' });
-              setUser(studentUser);
+              // Coins live only on public.users (not student_profiles), so read the
+              // authoritative balance back instead of trusting the 0 placeholder above.
+              const { data: coinRow } = await supabase
+                .from('users').select('coins').eq('uid', supabaseUser.id).maybeSingle();
+              setUser({ ...studentUser, coins: coinRow?.coins ?? 0 });
+              setCoins(coinRow?.coins ?? 0);
               if (studentProfile.class_code) {
                 const { data: classRows } = await supabase
                   .from('classes').select(CLASS_COLUMNS).eq('code', studentProfile.class_code);
@@ -680,6 +697,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               email: supabaseUser.email || "",
               role: "teacher",
               displayName: (supabaseUser.user_metadata?.full_name as string) || (supabaseUser.user_metadata?.name as string) || "Teacher",
+              coins: 0,
               plan: "free",
               trialEndsAt: freshTrialEndsAt(),
             };

@@ -533,10 +533,19 @@ export default function AnalyticsView({
                 {/* 3-CARD DESIGN */}
                 <div className="space-y-6">
                   {/* CARD 1: WHO NEEDS HELP */}
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl shadow-xl border-2 border-amber-200">
+                  <div
+                    className="p-6 rounded-2xl shadow-xl border-2"
+                    style={{
+                      backgroundColor: 'var(--vb-warning-soft)',
+                      borderColor: 'color-mix(in srgb, var(--vb-warning), transparent 60%)',
+                    }}
+                  >
                     <h2 className="font-black text-lg text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                        <Users className="text-amber-700" size={20} />
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: 'color-mix(in srgb, var(--vb-warning), transparent 78%)' }}
+                      >
+                        <Users style={{ color: 'var(--vb-warning)' }} size={20} />
                       </div>
                       {t.whoNeedsHelp}
                     </h2>
@@ -550,7 +559,8 @@ export default function AnalyticsView({
                           return (
                             <div
                               key={s.name}
-                              className="bg-[var(--vb-surface)] p-4 rounded-xl shadow-sm hover:shadow-md transition-all border-2 border-amber-100 hover:border-amber-300"
+                              className="bg-[var(--vb-surface)] p-4 rounded-xl shadow-sm hover:shadow-md transition-all border-2"
+                              style={{ borderColor: 'color-mix(in srgb, var(--vb-warning), transparent 60%)' }}
                             >
                               <button
                                 onClick={() => setSelectedStudent(s.name)}
@@ -561,11 +571,17 @@ export default function AnalyticsView({
                                   <p className="font-bold text-[var(--vb-text-primary)] truncate">{s.name}</p>
                                   <p className="text-[var(--vb-text-muted)] text-sm">{t.attempts(s.attempts)}</p>
                                 </div>
-                                <span className={`font-black text-xl ${s.avg < 50 ? 'text-rose-600' : 'text-amber-600'}`}>
+                                <span
+                                  className="font-black text-xl"
+                                  style={{ color: s.avg < 50 ? 'var(--vb-danger)' : 'var(--vb-warning)' }}
+                                >
                                   {s.avg}%
                                 </span>
                               </button>
-                              <div className="mt-2 pt-2 border-t border-amber-100 flex justify-end">
+                              <div
+                                className="mt-2 pt-2 border-t flex justify-end"
+                                style={{ borderColor: 'color-mix(in srgb, var(--vb-warning), transparent 60%)' }}
+                              >
                                 <button
                                   onClick={() => {
                                     if (!studentInfo) {
@@ -584,7 +600,11 @@ export default function AnalyticsView({
                                     });
                                   }}
                                   type="button"
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold transition-colors"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                  style={{
+                                    backgroundColor: 'color-mix(in srgb, var(--vb-warning), transparent 78%)',
+                                    color: 'var(--vb-warning)',
+                                  }}
                                   title={t.giveRewardTitle}
                                 >
                                   <Gift size={14} />
@@ -605,18 +625,31 @@ export default function AnalyticsView({
                   </div>
 
                   {/* CARD 2: WHAT TO RETEACH (with selection) */}
-                  <div className="bg-gradient-to-br from-rose-50 to-pink-50 p-6 rounded-2xl shadow-xl border-2 border-rose-200">
+                  <div
+                    className="p-6 rounded-2xl shadow-xl border-2"
+                    style={{
+                      backgroundColor: 'var(--vb-danger-soft)',
+                      borderColor: 'color-mix(in srgb, var(--vb-danger), transparent 60%)',
+                    }}
+                  >
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="font-black text-lg text-[var(--vb-text-primary)] flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
-                          <BookOpen className="text-rose-700" size={20} />
+                        <div
+                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: 'color-mix(in srgb, var(--vb-danger), transparent 78%)' }}
+                        >
+                          <BookOpen style={{ color: 'var(--vb-danger)' }} size={20} />
                         </div>
                         {t.whatToReteach}
                       </h2>
                       <div className="flex gap-2">
                         <button
                           onClick={selectAllReteachWords}
-                          className="text-xs font-bold text-rose-600 hover:text-rose-800 px-3 py-1 bg-rose-100 rounded-full"
+                          className="text-xs font-bold px-3 py-1 rounded-full"
+                          style={{
+                            color: 'var(--vb-danger)',
+                            backgroundColor: 'color-mix(in srgb, var(--vb-danger), transparent 78%)',
+                          }}
                         >
                           {t.selectAll}
                         </button>
@@ -644,25 +677,39 @@ export default function AnalyticsView({
                               className={`relative p-4 rounded-xl border-2 transition-all text-left ${
                                 isSelected
                                   ? 'bg-rose-500 border-rose-600 shadow-lg'
-                                  : 'bg-[var(--vb-surface)] border-rose-100 hover:border-rose-300 shadow-sm'
+                                  : 'bg-[var(--vb-surface)] shadow-sm'
                               }`}
+                              style={
+                                isSelected
+                                  ? undefined
+                                  : { borderColor: 'color-mix(in srgb, var(--vb-danger), transparent 60%)' }
+                              }
                             >
                               {/* Selection indicator */}
-                              <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                                isSelected
-                                  ? 'bg-[var(--vb-surface)]'
-                                  : 'bg-rose-100'
-                              }`}>
-                                {isSelected && <Check className="text-rose-600" size={14} />}
+                              <div
+                                className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all"
+                                style={{
+                                  backgroundColor: isSelected
+                                    ? 'var(--vb-surface)'
+                                    : 'color-mix(in srgb, var(--vb-danger), transparent 78%)',
+                                }}
+                              >
+                                {isSelected && <Check style={{ color: 'var(--vb-danger)' }} size={14} />}
                               </div>
 
                               <div className="flex justify-between items-start mb-2 pr-6">
                                 <p className={`font-bold ${isSelected ? 'text-white' : 'text-[var(--vb-text-primary)]'}`}>{word.primary}</p>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                                  isSelected
-                                    ? 'bg-rose-600 text-white'
-                                    : 'bg-rose-100 text-rose-700'
-                                }`}>
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-xs font-bold ${isSelected ? 'bg-rose-600 text-white' : ''}`}
+                                  style={
+                                    isSelected
+                                      ? undefined
+                                      : {
+                                          backgroundColor: 'color-mix(in srgb, var(--vb-danger), transparent 78%)',
+                                          color: 'var(--vb-danger)',
+                                        }
+                                  }
+                                >
                                   {count}×
                                 </span>
                               </div>
@@ -678,20 +725,32 @@ export default function AnalyticsView({
                     )}
 
                     {reteachWords.size > 0 && (
-                      <div className="mt-4 p-3 bg-rose-100 rounded-lg flex items-center justify-between">
-                        <span className="text-rose-700 font-bold text-sm">
+                      <div
+                        className="mt-4 p-3 rounded-lg flex items-center justify-between"
+                        style={{ backgroundColor: 'color-mix(in srgb, var(--vb-danger), transparent 78%)' }}
+                      >
+                        <span className="font-bold text-sm" style={{ color: 'var(--vb-danger)' }}>
                           {t.wordsSelected(reteachWords.size)}
                         </span>
-                        <span className="text-rose-600 text-sm">{t.createAssignmentBelow}</span>
+                        <span className="text-sm" style={{ color: 'var(--vb-danger)' }}>{t.createAssignmentBelow}</span>
                       </div>
                     )}
                   </div>
 
                   {/* CARD 3: CLASS HEALTH */}
-                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-6 rounded-2xl shadow-xl border-2 border-emerald-200">
+                  <div
+                    className="p-6 rounded-2xl shadow-xl border-2"
+                    style={{
+                      backgroundColor: 'var(--vb-success-soft)',
+                      borderColor: 'color-mix(in srgb, var(--vb-success), transparent 60%)',
+                    }}
+                  >
                     <h2 className="font-black text-lg text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                        <TrendingUp className="text-emerald-700" size={20} />
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: 'color-mix(in srgb, var(--vb-success), transparent 78%)' }}
+                      >
+                        <TrendingUp style={{ color: 'var(--vb-success)' }} size={20} />
                       </div>
                       {t.classHealth}
                     </h2>
@@ -719,8 +778,11 @@ export default function AnalyticsView({
                       {/* Best Mode */}
                       <div className="flex items-center justify-between bg-[var(--vb-surface)] p-4 rounded-xl shadow-sm">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                            <Gamepad2 className="text-indigo-600" size={20} />
+                          <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center"
+                            style={{ backgroundColor: 'color-mix(in srgb, var(--vb-accent), transparent 78%)' }}
+                          >
+                            <Gamepad2 style={{ color: 'var(--vb-accent)' }} size={20} />
                           </div>
                           <div>
                             <p className="text-[var(--vb-text-muted)] text-sm">{t.mostPlayedMode}</p>
@@ -729,7 +791,7 @@ export default function AnalyticsView({
                             </p>
                           </div>
                         </div>
-                        <span className="text-indigo-600 font-bold">
+                        <span className="font-bold" style={{ color: 'var(--vb-accent)' }}>
                           {t.playsCount(currentAnalytics.modeCounts[currentAnalytics.bestMode] || 0)}
                         </span>
                       </div>
@@ -737,11 +799,11 @@ export default function AnalyticsView({
                       {/* Engagement Summary */}
                       <div className="flex items-center gap-4">
                         <div className="flex-1 bg-[var(--vb-surface)] p-4 rounded-xl shadow-sm text-center">
-                          <p className="text-3xl font-black text-indigo-600">{currentAnalytics.studentCount}</p>
+                          <p className="text-3xl font-black" style={{ color: 'var(--vb-accent)' }}>{currentAnalytics.studentCount}</p>
                           <p className="text-[var(--vb-text-muted)] text-sm">{t.activeStudents}</p>
                         </div>
                         <div className="flex-1 bg-[var(--vb-surface)] p-4 rounded-xl shadow-sm text-center">
-                          <p className="text-3xl font-black text-indigo-600">{currentAnalytics.totalAttempts}</p>
+                          <p className="text-3xl font-black" style={{ color: 'var(--vb-accent)' }}>{currentAnalytics.totalAttempts}</p>
                           <p className="text-[var(--vb-text-muted)] text-sm">{t.totalAttempts}</p>
                         </div>
                       </div>
@@ -818,11 +880,27 @@ export default function AnalyticsView({
               </div>
 
               {/* Average Score */}
-              <div className={`p-6 rounded-xl mb-6 ${
-                avgScore >= 80 ? 'bg-emerald-50' : avgScore >= 70 ? 'bg-amber-50' : 'bg-rose-50'
-              }`}>
+              <div
+                className="p-6 rounded-xl mb-6"
+                style={{
+                  backgroundColor: avgScore >= 80
+                    ? 'var(--vb-success-soft)'
+                    : avgScore >= 70
+                      ? 'var(--vb-warning-soft)'
+                      : 'var(--vb-danger-soft)',
+                }}
+              >
                 <p className="text-[var(--vb-text-muted)] text-sm font-bold uppercase mb-1">{t.averageScore}</p>
-                <p className={`text-4xl font-black ${avgScore >= 80 ? 'text-emerald-600' : avgScore >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
+                <p
+                  className="text-4xl font-black"
+                  style={{
+                    color: avgScore >= 80
+                      ? 'var(--vb-success)'
+                      : avgScore >= 70
+                        ? 'var(--vb-warning)'
+                        : 'var(--vb-danger)',
+                  }}
+                >
                   {avgScore}%
                 </p>
               </div>
@@ -831,7 +909,7 @@ export default function AnalyticsView({
               {topMistakes.length > 0 && (
                 <div className="mb-6">
                   <h3 className="font-bold text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
-                    <AlertTriangle className="text-rose-500" size={18} />
+                    <AlertTriangle style={{ color: 'var(--vb-danger)' }} size={18} />
                     {t.mostChallengingWords}
                   </h3>
                   <div className="space-y-2">
@@ -841,7 +919,13 @@ export default function AnalyticsView({
                           <p className="font-bold text-[var(--vb-text-primary)]">{word.primary}</p>
                           <p className="text-[var(--vb-text-muted)] text-sm">{word.secondary || ''}</p>
                         </div>
-                        <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-sm font-bold">{count}×</span>
+                        <span
+                          className="px-2 py-1 rounded-full text-sm font-bold"
+                          style={{
+                            backgroundColor: 'color-mix(in srgb, var(--vb-danger), transparent 78%)',
+                            color: 'var(--vb-danger)',
+                          }}
+                        >{count}×</span>
                       </div>
                     ))}
                   </div>
@@ -858,9 +942,19 @@ export default function AnalyticsView({
                     .map(s => (
                       <div
                         key={s.id}
-                        className={`p-4 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all ${
-                          s.score >= 80 ? 'bg-emerald-50 border-emerald-200' : s.score >= 70 ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200'
-                        }`}
+                        className="p-4 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all"
+                        style={{
+                          backgroundColor: s.score >= 80
+                            ? 'var(--vb-success-soft)'
+                            : s.score >= 70
+                              ? 'var(--vb-warning-soft)'
+                              : 'var(--vb-danger-soft)',
+                          borderColor: s.score >= 80
+                            ? 'color-mix(in srgb, var(--vb-success), transparent 60%)'
+                            : s.score >= 70
+                              ? 'color-mix(in srgb, var(--vb-warning), transparent 60%)'
+                              : 'color-mix(in srgb, var(--vb-danger), transparent 60%)',
+                        }}
                         onClick={() => { setSelectedStudent(null); setSelectedScore(s); }}
                       >
                         <div className="flex justify-between items-center">
@@ -868,7 +962,16 @@ export default function AnalyticsView({
                             <p className="font-bold text-[var(--vb-text-primary)]">{matrixData.getAssignmentTitle(s.assignmentId)}</p>
                             <p className="text-[var(--vb-text-muted)] text-sm capitalize">{s.mode.replace(/-/g, ' ')} • {new Date(s.completedAt).toLocaleDateString()}</p>
                           </div>
-                          <span className={`font-black text-lg ${s.score >= 80 ? 'text-emerald-600' : s.score >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
+                          <span
+                            className="font-black text-lg"
+                            style={{
+                              color: s.score >= 80
+                                ? 'var(--vb-success)'
+                                : s.score >= 70
+                                  ? 'var(--vb-warning)'
+                                  : 'var(--vb-danger)',
+                            }}
+                          >
                             {s.score}%
                           </span>
                         </div>
@@ -895,10 +998,26 @@ export default function AnalyticsView({
               </button>
             </div>
 
-            <div className={`p-6 rounded-xl mb-6 text-center ${
-              selectedScore.score >= 80 ? 'bg-emerald-50' : selectedScore.score >= 70 ? 'bg-amber-50' : 'bg-rose-50'
-            }`}>
-              <p className={`text-5xl font-black ${selectedScore.score >= 80 ? 'text-emerald-600' : selectedScore.score >= 70 ? 'text-amber-600' : 'text-rose-600'}`}>
+            <div
+              className="p-6 rounded-xl mb-6 text-center"
+              style={{
+                backgroundColor: selectedScore.score >= 80
+                  ? 'var(--vb-success-soft)'
+                  : selectedScore.score >= 70
+                    ? 'var(--vb-warning-soft)'
+                    : 'var(--vb-danger-soft)',
+              }}
+            >
+              <p
+                className="text-5xl font-black"
+                style={{
+                  color: selectedScore.score >= 80
+                    ? 'var(--vb-success)'
+                    : selectedScore.score >= 70
+                      ? 'var(--vb-warning)'
+                      : 'var(--vb-danger)',
+                }}
+              >
                 {selectedScore.score}%
               </p>
               <p className="text-[var(--vb-text-muted)] mt-1 capitalize">{selectedScore.mode.replace(/-/g, ' ')}</p>
@@ -907,7 +1026,7 @@ export default function AnalyticsView({
             {selectedScore.mistakes && selectedScore.mistakes.length > 0 && (
               <div>
                 <h3 className="font-bold text-[var(--vb-text-primary)] mb-3 flex items-center gap-2">
-                  <AlertTriangle className="text-rose-500" size={18} />
+                  <AlertTriangle style={{ color: 'var(--vb-danger)' }} size={18} />
                   {t.wordsMissed}
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
@@ -917,7 +1036,14 @@ export default function AnalyticsView({
                       wordIdSubjectMap.get(wordId) ?? "english",
                     );
                     return (
-                      <div key={idx} className="bg-rose-50 p-3 rounded-lg border border-rose-200">
+                      <div
+                        key={idx}
+                        className="p-3 rounded-lg border"
+                        style={{
+                          backgroundColor: 'var(--vb-danger-soft)',
+                          borderColor: 'color-mix(in srgb, var(--vb-danger), transparent 60%)',
+                        }}
+                      >
                         <p className="font-bold text-[var(--vb-text-primary)]">{word?.primary || t.unknownWord}</p>
                         <p className="text-[var(--vb-text-muted)] text-sm">{word?.secondary || ''}</p>
                       </div>

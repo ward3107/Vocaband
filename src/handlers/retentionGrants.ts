@@ -12,7 +12,7 @@
  */
 import type React from 'react';
 import { supabase, type AppUser } from '../core/supabase';
-import type { PetRewardKind } from '../constants/game';
+import type { PetMilestone, PetRewardKind } from '../constants/game';
 
 export interface GrantRetentionXpDeps {
   user: AppUser | null;
@@ -41,6 +41,45 @@ export function grantRetentionXp(
       });
   }
   showToast(reason, 'success');
+}
+
+export interface ClaimBadgeXpDeps {
+  setXp: React.Dispatch<React.SetStateAction<number>>;
+  showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+}
+
+/**
+ * Server-authoritative badge XP claim.  Unlike grantRetentionXp (which
+ * blindly adds a delta), this routes through claim_badge_xp, which
+ * dedups against the public.claimed_badges ledger — so a student who
+ * clears localStorage cannot re-collect a badge they already claimed.
+ *
+ * Resolves to whether the badge was already claimed (so the caller can
+ * still flip the tile to "claimed"), or null on RPC failure (caller
+ * reverts its optimistic state).  Only syncs the displayed XP + toasts
+ * on a fresh grant — a replay returns already_claimed and grants nothing.
+ */
+export async function claimBadgeXp(
+  badgeId: string,
+  xp: number,
+  reason: string,
+  deps: ClaimBadgeXpDeps,
+): Promise<{ alreadyClaimed: boolean } | null> {
+  const { data, error } = await supabase.rpc('claim_badge_xp', {
+    p_badge_id: badgeId,
+    p_xp: xp,
+  });
+  if (error) {
+    console.error('[claimBadgeXp] claim_badge_xp failed:', error);
+    return null;
+  }
+  const res = data as { success?: boolean; already_claimed?: boolean; new_xp?: number } | null;
+  if (!res?.success) return null;
+  if (!res.already_claimed) {
+    if (typeof res.new_xp === 'number') deps.setXp(res.new_xp);
+    deps.showToast(reason, 'success');
+  }
+  return { alreadyClaimed: !!res.already_claimed };
 }
 
 export interface ApplyServerRewardsDeps {
@@ -99,4 +138,24 @@ export function grantNonXpReward(
       ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), tagged as string] }
       : prev,
   );
+}
+
+/**
+ * Single source of truth for claiming a pet evolution milestone: grant the
+ * reward (XP or item), then record the claim so it won't re-surface. Used
+ * by both the home dashboard and the island mode-picker so the reward
+ * routing + toast wording can never drift between the two screens.
+ */
+export function claimPetMilestoneReward(
+  milestone: PetMilestone,
+  grantXp: (value: number, reason: string) => void,
+  grantReward: (kind: PetRewardKind, value: number | string) => void,
+  recordClaim: (m: PetMilestone) => void,
+): void {
+  if (milestone.reward.kind === 'xp' && typeof milestone.reward.value === 'number') {
+    grantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
+  } else {
+    grantReward(milestone.reward.kind, milestone.reward.value);
+  }
+  recordClaim(milestone);
 }

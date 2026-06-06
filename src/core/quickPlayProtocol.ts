@@ -229,11 +229,31 @@ export interface QpJoinedPayload {
    *  diff the leaderboard. */
   clientId: string;
   leaderboard: QpStudentEntry[];
+  /** Opaque id of the Fly VM that produced this snapshot — see
+   *  QpLeaderboardPayload.serverId. */
+  serverId?: string;
 }
 
 export interface QpLeaderboardPayload {
   sessionCode: string;
   students: QpStudentEntry[];
+  /** Opaque id of the Fly VM that produced this snapshot.
+   *
+   *  In-memory session state (`qpSessions`) is per-process, so once the
+   *  app runs on more than one VM a single session's students are split
+   *  across machines: each VM only knows the students whose sockets
+   *  landed on it, and the Redis adapter forwards every VM's broadcast
+   *  to the whole room.  If the client just replaced its leaderboard on
+   *  each broadcast it would flip-flop between per-VM subsets (and, for
+   *  Category Race, show a remote student's stale score=0 from their own
+   *  VM clobbering the authoritative score the round-owner VM computed).
+   *
+   *  The client keeps the LATEST snapshot per serverId and renders their
+   *  union (max score wins per clientId).  Per-VM replacement preserves
+   *  removals (a kicked / departed student drops out of their VM's next
+   *  snapshot), while the union aggregates the whole class.  Single-VM
+   *  deployments send one serverId, so behaviour is unchanged there. */
+  serverId?: string;
 }
 
 export interface QpKickedPayload {

@@ -97,6 +97,22 @@ export interface VocabagrutStrings {
   toastDraftSaved: string;
   toastPickClassFirst: string;
   toastPublished: string;
+
+  // Preview modal + per-question point steppers
+  printSavePdf: string;
+  closePreview: string;
+  answerKeyTitle: string;
+  practicePaperFooter: string;
+  decreasePointsAria: string;
+  increasePointsAria: string;
+
+  // Add / remove questions (with context-suggested type)
+  addQuestion: string;
+  qTypeMc: string;
+  qTypeShort: string;
+  qTypeWriting: string;
+  suggestedTag: string;
+  removeQuestionAria: string;
 }
 
 export const vocabagrutT: Record<Language, VocabagrutStrings> = {
@@ -169,6 +185,18 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     toastDraftSaved: "Draft saved",
     toastPickClassFirst: "Pick a class to publish to first",
     toastPublished: "Published — students can now see it",
+    printSavePdf: "Print / Save as PDF",
+    closePreview: "Close",
+    answerKeyTitle: "Teacher's answer key",
+    practicePaperFooter: "Practice paper — not an official Ministry of Education document.",
+    decreasePointsAria: "Decrease points",
+    increasePointsAria: "Increase points",
+    addQuestion: "Add question",
+    qTypeMc: "Multiple choice",
+    qTypeShort: "Short answer",
+    qTypeWriting: "Writing task",
+    suggestedTag: "Suggested",
+    removeQuestionAria: "Remove question",
   },
   he: {
     back: "חזרה",
@@ -239,6 +267,18 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     toastDraftSaved: "טיוטה נשמרה",
     toastPickClassFirst: "בחרו קודם כיתה לפרסום",
     toastPublished: "פורסם — התלמידים יכולים לראות עכשיו",
+    printSavePdf: "הדפסה / שמירה כ‑PDF",
+    closePreview: "סגירה",
+    answerKeyTitle: "מפתח תשובות למורה",
+    practicePaperFooter: "דף תרגול — אינו מסמך רשמי של משרד החינוך.",
+    decreasePointsAria: "הפחתת נקודות",
+    increasePointsAria: "הוספת נקודות",
+    addQuestion: "הוספת שאלה",
+    qTypeMc: "רב‑ברירה",
+    qTypeShort: "תשובה קצרה",
+    qTypeWriting: "משימת כתיבה",
+    suggestedTag: "מומלץ",
+    removeQuestionAria: "הסרת שאלה",
   },
   ar: {
     back: "رجوع",
@@ -309,6 +349,18 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     toastDraftSaved: "تم حفظ المسودة",
     toastPickClassFirst: "اختر صفاً للنشر إليه أولاً",
     toastPublished: "تم النشر — الطلاب يمكنهم الآن رؤيته",
+    printSavePdf: "طباعة / حفظ كـ PDF",
+    closePreview: "إغلاق",
+    answerKeyTitle: "مفتاح إجابات المعلم",
+    practicePaperFooter: "ورقة تدريب — ليست وثيقة رسمية من وزارة التربية والتعليم.",
+    decreasePointsAria: "إنقاص النقاط",
+    increasePointsAria: "زيادة النقاط",
+    addQuestion: "إضافة سؤال",
+    qTypeMc: "اختيار من متعدد",
+    qTypeShort: "إجابة قصيرة",
+    qTypeWriting: "مهمة كتابة",
+    suggestedTag: "مقترح",
+    removeQuestionAria: "إزالة السؤال",
   },
   ru: {
     back: "Back",
@@ -379,5 +431,17 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     toastDraftSaved: "Draft saved",
     toastPickClassFirst: "Pick a class to publish to first",
     toastPublished: "Published — students can now see it",
+    printSavePdf: "Print / Save as PDF",
+    closePreview: "Close",
+    answerKeyTitle: "Teacher's answer key",
+    practicePaperFooter: "Practice paper — not an official Ministry of Education document.",
+    decreasePointsAria: "Decrease points",
+    increasePointsAria: "Increase points",
+    addQuestion: "Add question",
+    qTypeMc: "Multiple choice",
+    qTypeShort: "Short answer",
+    qTypeWriting: "Writing task",
+    suggestedTag: "Suggested",
+    removeQuestionAria: "Remove question",
   },
 };
