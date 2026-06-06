@@ -29,7 +29,7 @@ export default function TravelingPet({
 }: TravelingPetProps) {
   // Pet sits just above its island; scaled down so CharacterStage's large
   // hub footprint fits the map without colliding with neighbours.
-  const target = { left: `${to.xPct}%`, top: `${to.y - 30}px` };
+  const target = { left: `${to.xPct}%`, top: `${to.y - 30}px` }; // -30 lifts the pet so it stands just above the island centre
   const start = from ? { left: `${from.xPct}%`, top: `${from.y - 30}px` } : target;
 
   return (
@@ -38,9 +38,8 @@ export default function TravelingPet({
       initial={reduced ? target : start}
       animate={target}
       transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 90, damping: 16 }}
-      style={{ left: target.left, top: target.top }}
     >
-      <div className="pointer-events-auto origin-center scale-[0.55]">
+      <div className="pointer-events-auto scale-[0.55]">
         <CharacterStage
           currentStage={currentStage}
           nextStage={nextStage}
