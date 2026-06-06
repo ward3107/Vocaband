@@ -78,8 +78,20 @@ export default function DevSchoolSeedSection({ showToast }: Props) {
         teacher_email: r.teacher_email.trim() || undefined,
       }))
       .filter((r) => r.grade >= 1 && r.branch >= 1 && r.count >= 1 && r.count <= 60);
-    if (!schoolId || payload.length === 0) {
-      showToast("Pick a school and add at least one valid row (count 1–60).", "error");
+    // Specific, actionable guidance per missing prerequisite. The button used
+    // to be disabled while no school was selected, which swallowed the tap
+    // silently and read as "nothing happened" — keep it enabled and explain.
+    if (!schoolId) {
+      showToast(
+        schools.length === 0
+          ? "Create a school first (Schools section above), then pick it here."
+          : "Select a school from the dropdown first.",
+        "error",
+      );
+      return;
+    }
+    if (payload.length === 0) {
+      showToast("Add at least one row with Grade, Branch and Students (1–60).", "error");
       return;
     }
     setBusy(true);
@@ -120,8 +132,23 @@ export default function DevSchoolSeedSection({ showToast }: Props) {
 
   return (
     <div className="space-y-5">
+      {/* Ordered-steps primer — the panel is three steps that look like one
+          form; spell them out so admins don't fill the rows and tap a button
+          that silently does nothing because no school is selected. */}
+      <p className="text-white/50 text-xs leading-relaxed">
+        <span className="font-bold text-white/70">How to seed:</span> 1) create the
+        school in the Schools section above · 2) pick it in the dropdown below
+        (and optionally save a code) · 3) add a row per class — grade, branch,
+        student count — then <span className="font-bold text-white/70">Generate &amp; seed</span>.
+      </p>
+
       {/* School + code */}
       <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+        {schools.length === 0 && (
+          <p className="text-amber-300/90 text-xs font-semibold">
+            No schools yet — create one in the Schools section above first, then it appears in this dropdown.
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           <select
             value={schoolId}
@@ -177,7 +204,7 @@ export default function DevSchoolSeedSection({ showToast }: Props) {
       <button
         type="button"
         onClick={() => void seed()}
-        disabled={busy || !schoolId}
+        disabled={busy}
         style={{ touchAction: "manipulation" }}
         className="w-full px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-base flex items-center justify-center gap-2"
       >
