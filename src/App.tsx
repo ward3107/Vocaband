@@ -25,7 +25,7 @@ import { useLevelUp } from "./hooks/useLevelUp";
 import { useAchievements } from "./hooks/useAchievements";
 import LevelUpModal from "./components/arcade/LevelUpModal";
 import AchievementToast from "./components/arcade/AchievementToast";
-import { grantRetentionXp } from "./handlers/retentionGrants";
+import { grantRetentionXp, grantNonXpReward } from "./handlers/retentionGrants";
 import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
 import { createGuestUser } from "./utils/createGuestUser";
@@ -1342,6 +1342,23 @@ export default function App({ initialView }: { initialView?: View } = {}) {
         view, user, setUser, language: appLanguage,
         showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
         setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
+        petDisplayName: user?.displayName ?? "",
+        petXp: xp,
+        petCurrentStage: retention.currentPetStage,
+        petNextStage: retention.nextPetStage,
+        petClaimableMilestone: retention.claimablePetMilestone,
+        onClaimPetMilestone: (milestone) => {
+          if (milestone.reward.kind === "xp" && typeof milestone.reward.value === "number") {
+            grantRetentionXp(
+              milestone.reward.value,
+              `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`,
+              { user, setXp, showToast },
+            );
+          } else {
+            grantNonXpReward(milestone.reward.kind, milestone.reward.value, { user, setUser });
+          }
+          retention.claimPetMilestone(milestone);
+        },
         showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
         gameDebug, gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
         score, xp, streak, badges, mistakes, gameWords, quickPlayActiveSession,

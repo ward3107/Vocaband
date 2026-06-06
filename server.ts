@@ -498,6 +498,26 @@ async function isPremiumTeacher(email: string): Promise<{ allowed: boolean; erro
   }
 }
 
+// Admin per-teacher AI kill-switch. Returns true when an admin has turned AI
+// off for this teacher (users.ai_disabled). requireProTeacher + /api/features
+// read the flag inline from rows they already fetch; this helper covers the
+// Vocabagrut path, which gates on ai_allowlist (isPremiumTeacher) rather than
+// the plan check. Fails open (false) on lookup error so a transient DB blip
+// doesn't blanket-block AI — the allowlist/plan gates still apply.
+async function isAiDisabledByAdmin(uid: string): Promise<boolean> {
+  if (!supabaseAdmin) return false;
+  try {
+    const { data } = await supabaseAdmin
+      .from("users")
+      .select("ai_disabled")
+      .eq("uid", uid)
+      .maybeSingle();
+    return (data as { ai_disabled?: boolean } | null)?.ai_disabled === true;
+  } catch {
+    return false;
+  }
+}
+
 type UserRole = "teacher" | "student" | "admin";
 
 async function getUserRoleAndClass(uid: string): Promise<{ role: UserRole; classCode: string | null } | null> {
@@ -3272,7 +3292,7 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     try {
       const { data, error } = await supabaseAdmin
         .from("users")
-        .select("plan, trial_ends_at, role, email, schools(plan, trial_ends_at)")
+        .select("plan, trial_ends_at, role, email, ai_disabled, schools(plan, trial_ends_at)")
         .eq("uid", baseAuth.uid)
         .maybeSingle();
       if (error || !data) {
@@ -3301,6 +3321,19 @@ ${JSON.stringify(uncachedOriginalCase)}`;
       const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
       const isAdmin = role === "admin";
       const isDev = isDevEmail(email);
+      // Admin per-teacher kill-switch wins over plan/trial/admin so an operator
+      // can revoke AI for one teacher (e.g. mid-trial abuse) without ending
+      // their trial. Dev allowlist emails stay exempt as the escape hatch.
+      if ((data as { ai_disabled?: boolean }).ai_disabled === true && !isDev) {
+        logAuthzFailure(req, req.originalUrl || req.url, "requireProTeacher_ai_disabled", {
+          metadata: { uid: baseAuth.uid, plan, role },
+        });
+        res.status(403).json({
+          error: "ai_disabled",
+          message: "AI has been disabled for this account by an administrator.",
+        });
+        return null;
+      }
       if (!isPaid && !isTrialing && !isAdmin && !isDev) {
         logAuthzFailure(req, req.originalUrl || req.url, "requireProTeacher_plan_too_low", {
           metadata: { uid: baseAuth.uid, plan, role, trialing: isTrialing },
@@ -4011,7 +4044,7 @@ Quality rules:
     }
     const { data: userRow, error: userErr } = await supabaseAdmin
       .from("users")
-      .select("plan, trial_ends_at, role, email, schools(plan, trial_ends_at)")
+      .select("plan, trial_ends_at, role, email, ai_disabled, schools(plan, trial_ends_at)")
       .eq("uid", authData.uid)
       .maybeSingle();
     if (userErr || !userRow) {
@@ -4038,6 +4071,12 @@ Quality rules:
     const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
     const isAdmin = role === "admin";
     const isDev = isDevEmail(email);
+    // Admin per-teacher kill-switch — mirrors requireProTeacher so the AI
+    // buttons hide for a blocked teacher instead of showing then 403-ing.
+    if ((userRow as { ai_disabled?: boolean }).ai_disabled === true && !isDev) {
+      console.log(`[features] aiSentences=false: ${redactEmail(email)} blocked by admin kill-switch (ai_disabled)`);
+      return reply(false, "ai_disabled_by_admin", { plan, trialEndsAt });
+    }
     if (!isPaid && !isTrialing && !isAdmin && !isDev) {
       console.log(`[features] aiSentences=false: ${redactEmail(email)} is on free plan with no trial (plan=${plan ?? "null"}, trial=${trialEndsAt ?? "null"})`);
       return reply(false, "not_pro", { plan, trialEndsAt });
@@ -5781,6 +5820,11 @@ ${sanitizedText}`;
     const userData = await getUserRoleAndClass(auth.uid);
     if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
       return res.status(403).json({ error: "Only teachers can generate mock exams" });
+    }
+
+    // Admin per-teacher kill-switch wins over the allowlist below.
+    if (await isAiDisabledByAdmin(auth.uid)) {
+      return res.status(403).json({ error: "ai_disabled", message: "AI has been disabled for this account by an administrator." });
     }
 
     // Same gate as other premium AI features — must be in ai_allowlist.

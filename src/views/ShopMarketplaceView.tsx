@@ -180,15 +180,13 @@ export default function ShopMarketplaceView({
     // spam in the console every egg open.
     const rpcPromise = (async () => {
       const rewardXp = Math.floor(egg.minXp + Math.random() * (egg.maxXp - egg.minXp + 1));
+      // Book the NET in one call: item_cost = egg.cost - rewardXp, so the RPC
+      // computes coins - (cost - reward) = coins - cost + reward. pData.new_coins
+      // is already the final balance — do NOT add rewardXp again (that double-
+      // grants, and award_coins would clamp big egg payouts at 200).
       const { data: pData, error: pErr } = await supabase.rpc('purchase_item', { item_type: 'egg', item_id: egg.id, item_cost: egg.cost - rewardXp });
       if (pErr || !pData?.success) { showToast(pData?.error || t.couldNotOpenEgg, "error"); return null; }
       setCoins(pData.new_coins);
-      // Award the coin reward back — optimistic update + DB write so the net
-      // balance is (cost - rewardXp) spent as booked above, then rewardXp added.
-      if (rewardXp > 0) {
-        setCoins(pData.new_coins + rewardXp);
-        await supabase.rpc('award_coins', { p_coin_delta: rewardXp });
-      }
       return `+${rewardXp} 🪙`;
     })();
     const rewardLabel = await rpcPromise;
