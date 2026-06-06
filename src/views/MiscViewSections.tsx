@@ -96,7 +96,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
   const {
     view, user, activeVoca, selectedClass, activityNavOrigin,
     setView, setSelectedClass, setIsLiveChallenge, setActiveVoca,
-    xp, setXp, coins: _coins, setCoins: _setCoins, setUser, showToast, boostersActivate,
+    xp, setXp, coins, setCoins, setUser, showToast, boostersActivate,
     visibleClasses, visibleAssignments, speakWord, topicPacks,
     globalLeaderboard,
     pendingStudents, toasts, consentModal, exitConfirmModal,
@@ -117,6 +117,8 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           user={user}
           xp={xp}
           setXp={setXp}
+          coins={coins}
+          setCoins={setCoins}
           setUser={setUser}
           setView={setView}
           showToast={showToast}
