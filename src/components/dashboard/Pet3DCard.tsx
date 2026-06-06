@@ -1,9 +1,6 @@
 import Pet3DModel from "./Pet3DModel";
+import { petModelFor } from "../../constants/petModels";
 import { useLanguage, type Language } from "../../hooks/useLanguage";
-
-// Placeholder model — a colored 3D egg. Swap this file (or point `src` at a
-// per-stage model) to evolve the pet; e.g. an animated phoenix at the top.
-const PET_MODEL_SRC = "/models/pet-placeholder.glb";
 
 const STRINGS: Record<Language, { title: string; hint: string; badge: string }> = {
   en: { title: "Your Pet", hint: "Drag to spin your pet — more forms hatching soon!", badge: "3D" },
@@ -14,13 +11,20 @@ const STRINGS: Record<Language, { title: string; hint: string; badge: string }> 
 
 /**
  * Always-visible dashboard card showing the student's pet as a real,
- * spinnable 3D model (independent of the arcade_hub flag). Starts as a
- * placeholder egg; the model is a drop-in so richer/animated pets can be
- * wired in later without touching this card.
+ * spinnable 3D model. The model is chosen per evolution stage via
+ * petModelFor (stages without their own .glb fall back to the placeholder
+ * egg), so richer/animated pets — e.g. an Ascended phoenix — drop in by
+ * adding a file + one registry line, with no changes here.
  */
-export default function Pet3DCard() {
+interface Pet3DCardProps {
+  /** Current pet stage display name (from PET_MILESTONES) — selects the model. */
+  stage: string;
+}
+
+export default function Pet3DCard({ stage }: Pet3DCardProps) {
   const { language, dir } = useLanguage();
   const t = STRINGS[language] ?? STRINGS.en;
+  const modelSrc = petModelFor(stage);
 
   return (
     <div
@@ -36,7 +40,7 @@ export default function Pet3DCard() {
           {t.badge}
         </span>
       </header>
-      <Pet3DModel src={PET_MODEL_SRC} alt={t.title} height={260} />
+      <Pet3DModel src={modelSrc} alt={`${t.title} — ${stage}`} height={260} />
       <p className="mt-2 text-xs text-stone-500">{t.hint}</p>
     </div>
   );

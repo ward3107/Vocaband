@@ -255,7 +255,7 @@ export default function StudentDashboardView({
         />
         {/* Always-visible 3D pet — a real spinnable model so every student
             sees their pet in 3D, regardless of stage. */}
-        <Pet3DCard />
+        <Pet3DCard stage={retention.currentPetStage.stage} />
         {!studentDataLoading && studentAssignments.length === 0 && (
           <StudentWelcomeCard displayName={user.displayName} />
         )}
