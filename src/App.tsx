@@ -193,6 +193,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     openDropdownClassId, setOpenDropdownClassId,
   } = useTeacherUiModalsState();
   const [xp, setXp] = useState(0);
+  const [coins, setCoins] = useState(0);
   const [streak, setStreak] = useState(0);
   const [badges, setBadges] = useState<string[]>([]);
 
@@ -666,7 +667,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // Student-account login flow (PendingApprovalScreen + OAuth approved branch).
   const { handleLoginAsStudent, renameStudentDisplayName } = useStudentLogin({
     user, setUser, setError, setLoading, setView,
-    setBadges, setXp, setStreak,
+    setBadges, setXp, setCoins, setStreak,
     setStudentAssignments, setStudentProgress,
     showPendingApproval,
     loadAssignmentsForClass,
@@ -867,6 +868,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
         setStudentProgress(boot.progress);
         setBadges(boot.user.badges || []);
         setXp(boot.user.xp ?? 0);
+        setCoins(boot.user.coins ?? 0);
         setStreak(boot.user.streak ?? 0);
         setLoading(false);
         setView('student-dashboard');
@@ -985,7 +987,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
       qpCumulativeScoreRef.current += Math.max(0, finalScore);
       quickPlaySocket.updateScore(qpCumulativeScoreRef.current, extras);
     },
-    xp, setXp, streak, setStreak, badges, studentProgress, setStudentProgress,
+    xp, setXp, coins, setCoins, streak, setStreak, badges, studentProgress, setStudentProgress,
     setIsSaving, setSaveError, setQuickPlayCompletedModes,
     retention, boosters,
     showToast, awardBadge, queueSaveOperation,
@@ -1118,7 +1120,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     // Shared prop bag — the dashboard and its hub sub-pages (Practice /
     // Missions / Boosters / Badges) need the same handlers + state.
     const studentSectionDeps = {
-      user, xp, streak, badges, setXp, setBadges, setUser,
+      user, xp, coins, streak, badges, setXp, setCoins, setBadges, setUser,
       copiedCode, setCopiedCode,
       studentAssignments, studentProgress, studentDataLoading,
       showStudentOnboarding, setShowStudentOnboarding,
@@ -1284,7 +1286,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const miscView = renderMiscViews({
     view, user, activeVoca, selectedClass, activityNavOrigin,
     setView, setSelectedClass, setIsLiveChallenge, setActiveVoca,
-    xp, setXp, setUser, showToast,
+    xp, setXp, coins, setCoins, setUser, showToast,
     boostersActivate: boosters.activate,
     visibleClasses, visibleAssignments, speakWord, topicPacks: TOPIC_PACKS,
     globalLeaderboard,

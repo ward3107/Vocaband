@@ -97,6 +97,8 @@ export interface UseGameFinishParams {
   // ─── Per-student progression ────────────────────────────────────
   xp: number;
   setXp: React.Dispatch<React.SetStateAction<number>>;
+  coins: number;
+  setCoins: React.Dispatch<React.SetStateAction<number>>;
   streak: number;
   setStreak: React.Dispatch<React.SetStateAction<number>>;
   badges: string[];
@@ -148,7 +150,7 @@ export function useGameFinish(params: UseGameFinishParams) {
   const {
     user, score, gameMode, gameWords, mistakes, wordAttemptBatch, activeAssignment,
     quickPlayActiveSession, quickPlaySocketUpdateScore,
-    xp, setXp, streak, setStreak, badges, studentProgress, setStudentProgress,
+    xp, setXp, coins: _coins, setCoins: _setCoins, streak, setStreak, badges, studentProgress, setStudentProgress,
     setIsSaving, setSaveError, setQuickPlayCompletedModes,
     retention, boosters,
     showToast, awardBadge, queueSaveOperation,

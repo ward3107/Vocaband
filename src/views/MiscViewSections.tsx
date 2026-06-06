@@ -60,6 +60,8 @@ export interface RenderMiscViewsDeps {
 
   xp: number;
   setXp: React.Dispatch<React.SetStateAction<number>>;
+  coins: number;
+  setCoins: React.Dispatch<React.SetStateAction<number>>;
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   boostersActivate: (...args: Anyish[]) => Anyish;
@@ -94,7 +96,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
   const {
     view, user, activeVoca, selectedClass, activityNavOrigin,
     setView, setSelectedClass, setIsLiveChallenge, setActiveVoca,
-    xp, setXp, setUser, showToast, boostersActivate,
+    xp, setXp, coins: _coins, setCoins: _setCoins, setUser, showToast, boostersActivate,
     visibleClasses, visibleAssignments, speakWord, topicPacks,
     globalLeaderboard,
     pendingStudents, toasts, consentModal, exitConfirmModal,
