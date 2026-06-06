@@ -170,6 +170,29 @@ Files changed:
 - `public/boot.css` (new) — pre-React loader + noscript styles
 - `scripts/security-pen-test.sh` — checks 16–18 added
 
+### Phase 7 — public-endpoint rate-limit coverage (2026-06-06)
+
+Coverage review of "is everything rate-limited?". Findings: the global
+`200/min/IP` backstop already covers every route, with tighter dedicated
+limiters on every auth, AI, OCR, quick-play, and socket surface, plus
+per-teacher daily AI cost caps via `check_ai_quota` (verified sane — a
+compromised teacher account can't run up a runaway Gemini/Claude bill).
+The only gap was three **unauthenticated** endpoints that still do real
+work but leaned solely on the global net.
+
+| Change | What it closes |
+|---|---|
+| `publicInfoLimiter` (60/min/IP) added to `/api/health/audit-log`, `/api/health/redis`, `/api/features` | These answer to anyone with no auth and each do real work (a DB RPC round-trip, a Redis check, a plan lookup). The global 200/min net covered them, but a tighter per-IP cap stops a bot cheaply churning DB/Redis calls. |
+| `/api/health` deliberately left on the global limiter | Returns a bare timestamp and is polled constantly by Fly + uptime monitors; a tight cap risks false-alarming the monitors for no real gain. |
+
+Not changed: `/api/version` (already auth-gated since Phase 5),
+`/api/admin/*` (already behind `requireAdmin`), and the core limits —
+those are tuned for a whole classroom on one school NAT and tightening
+them would risk locking out real students.
+
+Files changed:
+- `server.ts` — `publicInfoLimiter` defined next to the global limiter, applied to the three endpoints.
+
 ### Already-existing baseline docs
 
 - `docs/SECURITY.md` — RLS policy reference (every table, every policy).
