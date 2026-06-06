@@ -45,6 +45,15 @@ export const WORD_MASTERY_BONUS = 5;
 // One-shot bonus when the student hits today's daily goal.
 export const DAILY_GOAL_BONUS = 30;
 
+// --- COIN ECONOMY (2026 shop remake) ---
+// Coins are the spend currency; XP is rank-only. A game grants a flat base
+// plus a score-scaled bonus, so a good game pays ~2× a bad one but every
+// completed game pays something. Tuned to ~10-20 coins/game → casual
+// ≈150/week, regular ≈300, grinder ≈500 (see spec §1).
+export const COIN_BASE_PER_GAME = 10;
+// Score is 0-100 after normalisation; //10 gives 0-10 bonus coins.
+export const COIN_SCORE_DIVISOR = 10;
+
 // Thresholds used across the shop + pet evolution to gate progression.
 export const MASTERY_THRESHOLD = 5; // correct answers before a word counts as "mastered"
 
