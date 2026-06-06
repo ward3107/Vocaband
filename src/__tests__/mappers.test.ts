@@ -61,6 +61,11 @@ describe('mapUser', () => {
     };
     expect(mapUser(row).badges).toEqual(['badge1', 'badge2']);
   });
+
+  it('maps coins (defaults to 0 when absent)', () => {
+    expect(mapUser({ uid: 'u1', role: 'student', display_name: 'A', coins: 250 }).coins).toBe(250);
+    expect(mapUser({ uid: 'u1', role: 'student', display_name: 'A' }).coins).toBe(0);
+  });
 });
 
 // ─── mapUserToDb ─────────────────────────────────────────────────────────────

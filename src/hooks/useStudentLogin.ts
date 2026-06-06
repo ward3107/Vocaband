@@ -148,6 +148,7 @@ export function useStudentLogin(params: UseStudentLoginParams) {
       role: 'student',
       classCode: profile.class_code,
       avatar: profile.avatar || '🦊',
+      coins: 0,
       badges: profile.badges || [],
       xp: profile.xp || 0,
       isGuest: false,

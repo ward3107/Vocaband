@@ -235,6 +235,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                   role: 'student' as const,
                   classCode: saved.classCode,
                   avatar: saved.avatar || '🦊',
+                  coins: 0,
                   badges: [],
                   xp: 0,
                   streak: 0,
@@ -450,6 +451,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                 displayName: studentProfile.display_name || (supabaseUser.user_metadata?.full_name as string) || "Student",
                 role: "student",
                 classCode: studentProfile.class_code,
+                coins: 0,
                 xp: studentProfile.xp || 0,
                 avatar: studentProfile.avatar,
               };
@@ -626,6 +628,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                 displayName: studentProfile.display_name || (supabaseUser.user_metadata?.full_name as string) || "Student",
                 role: "student",
                 classCode: studentProfile.class_code,
+                coins: 0,
                 xp: studentProfile.xp || 0,
                 avatar: studentProfile.avatar,
               };
@@ -680,6 +683,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               email: supabaseUser.email || "",
               role: "teacher",
               displayName: (supabaseUser.user_metadata?.full_name as string) || (supabaseUser.user_metadata?.name as string) || "Teacher",
+              coins: 0,
               plan: "free",
               trialEndsAt: freshTrialEndsAt(),
             };

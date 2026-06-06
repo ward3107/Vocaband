@@ -34,6 +34,7 @@ const FAKE_USER: AppUser = {
   displayName: "Dana",
   classCode: "ABCD12",
   avatar: "🦊",
+  coins: 0,
   xp: 1450,
   streak: 7,
 };
