@@ -628,7 +628,7 @@ export default function ShopMarketplaceView({
             the most relevant nudge. Null when no priority matches. */}
         <Spotlight
           user={user}
-          xp={xp}
+          coins={coins}
           language={language}
           isRTL={isRTL}
           dailyChestAvailable={retention.dailyChestAvailable}
