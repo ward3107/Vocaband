@@ -26,19 +26,24 @@ export default function ActivityChart({ points, title, sub, height = 160 }: Acti
 
   return (
     <section
-      className="rounded-[24px] border border-indigo-500/[0.10] bg-white px-5 sm:px-6 py-5 sm:py-[22px]"
+      className="rounded-[24px] border px-5 sm:px-6 py-5 sm:py-[22px]"
       style={{
+        backgroundColor: "var(--vb-surface)",
+        borderColor: "var(--vb-border)",
         boxShadow:
           "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
       }}
     >
       <header className="mb-1 flex items-center gap-2.5">
         <span className="text-[18px] text-[#3FA689]">📈</span>
-        <h3 className="m-0 text-[16px] sm:text-[17px] font-bold tracking-[-0.01em] text-[#1F1147]">
+        <h3
+          className="m-0 text-[16px] sm:text-[17px] font-bold tracking-[-0.01em]"
+          style={{ color: "var(--vb-text-primary)" }}
+        >
           {title}
         </h3>
       </header>
-      <p className="mb-[18px] text-[12px] text-[#6B6388]">{sub}</p>
+      <p className="mb-[18px] text-[12px]" style={{ color: "var(--vb-text-secondary)" }}>{sub}</p>
 
       <div className="relative" style={{ height, padding: "14px 0 24px" }}>
         {/* Horizontal grid lines */}
@@ -57,10 +62,10 @@ export default function ActivityChart({ points, title, sub, height = 160 }: Acti
         />
 
         {/* Y-axis labels */}
-        <div aria-hidden className="pointer-events-none absolute -start-0.5 text-[10px] font-semibold text-[#8B85AB]" style={{ top: 4 }}>100%</div>
-        <div aria-hidden className="pointer-events-none absolute -start-0.5 text-[10px] font-semibold text-[#8B85AB]" style={{ top: "33%" }}>75%</div>
-        <div aria-hidden className="pointer-events-none absolute -start-0.5 text-[10px] font-semibold text-[#8B85AB]" style={{ top: "64%" }}>50%</div>
-        <div aria-hidden className="pointer-events-none absolute -start-0.5 text-[10px] font-semibold text-[#8B85AB]" style={{ bottom: 28 }}>25%</div>
+        <div aria-hidden className="pointer-events-none absolute -start-0.5 text-[10px] font-semibold" style={{ top: 4, color: "var(--vb-text-muted)" }}>100%</div>
+        <div aria-hidden className="pointer-events-none absolute -start-0.5 text-[10px] font-semibold" style={{ top: "33%", color: "var(--vb-text-muted)" }}>75%</div>
+        <div aria-hidden className="pointer-events-none absolute -start-0.5 text-[10px] font-semibold" style={{ top: "64%", color: "var(--vb-text-muted)" }}>50%</div>
+        <div aria-hidden className="pointer-events-none absolute -start-0.5 text-[10px] font-semibold" style={{ bottom: 28, color: "var(--vb-text-muted)" }}>25%</div>
 
         {/* Line */}
         <svg
@@ -105,7 +110,7 @@ export default function ActivityChart({ points, title, sub, height = 160 }: Acti
         </svg>
 
         {/* X-axis labels */}
-        <div className="absolute inset-x-0 bottom-0 flex justify-between text-[10px] font-semibold text-[#8B85AB]" aria-hidden>
+        <div className="absolute inset-x-0 bottom-0 flex justify-between text-[10px] font-semibold" style={{ color: "var(--vb-text-muted)" }} aria-hidden>
           {points.map((p, i) => (
             <span key={i}>{p.label}</span>
           ))}

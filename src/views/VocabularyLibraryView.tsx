@@ -284,14 +284,14 @@ export default function VocabularyLibraryView({
     // Guard: route guard at App.tsx should prevent this, but keep a
     // friendly fallback in case the view is reached directly.
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <p className="text-slate-600">{t.toastError}</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+        <p style={{ color: 'var(--vb-text-secondary)' }}>{t.toastError}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50" dir={dir}>
+    <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <TopAppBar
         title={t.pageTitle}
         subtitle={t.pageSubtitle}
@@ -309,7 +309,8 @@ export default function VocabularyLibraryView({
         {isInsideCollection && (
           <nav
             aria-label={t.breadcrumbAria}
-            className={`mb-3 flex items-center gap-1 text-sm text-slate-600 flex-wrap ${isRTL ? "flex-row-reverse" : ""}`}
+            style={{ color: 'var(--vb-text-secondary)' }}
+            className={`mb-3 flex items-center gap-1 text-sm flex-wrap ${isRTL ? "flex-row-reverse" : ""}`}
           >
             <button
               type="button"
@@ -325,9 +326,9 @@ export default function VocabularyLibraryView({
               const Sep = isRTL ? ChevronLeft : ChevronRight;
               return (
                 <span key={crumb.id} className="inline-flex items-center gap-1">
-                  <Sep className="w-4 h-4 text-slate-400" />
+                  <Sep className="w-4 h-4" style={{ color: 'var(--vb-text-muted)' }} />
                   {isLast ? (
-                    <span className="font-bold text-slate-900 truncate max-w-[40vw]">{crumb.name}</span>
+                    <span className="font-bold truncate max-w-[40vw]" style={{ color: 'var(--vb-text-primary)' }}>{crumb.name}</span>
                   ) : (
                     <button
                       type="button"
@@ -414,21 +415,26 @@ export default function VocabularyLibraryView({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                  isActive
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
-                }`}
+                style={{
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent",
+                  backgroundColor: isActive ? 'var(--vb-accent)' : 'var(--vb-surface)',
+                  color: isActive ? 'var(--vb-accent-text)' : 'var(--vb-text-secondary)',
+                  borderColor: isActive ? 'var(--vb-accent)' : 'var(--vb-border)',
+                }}
+                className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors border shadow-sm"
               >
                 {tab.icon}
                 {tab.label}
                 {!loading && tab.count > 0 && (
                   <span
                     aria-hidden
-                    className={`inline-flex items-center justify-center rounded-full text-xs font-bold min-w-[1.25rem] h-5 px-1.5 ${
-                      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                    }`}
+                    style={
+                      isActive
+                        ? { backgroundColor: 'rgba(255,255,255,0.2)', color: 'var(--vb-accent-text)' }
+                        : { backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }
+                    }
+                    className="inline-flex items-center justify-center rounded-full text-xs font-bold min-w-[1.25rem] h-5 px-1.5"
                   >
                     {tab.count}
                   </span>
@@ -443,8 +449,14 @@ export default function VocabularyLibraryView({
               type="button"
               onClick={handleNewCollection}
               disabled={busy}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="shrink-0 ms-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 disabled:opacity-60"
+              style={{
+                touchAction: "manipulation",
+                WebkitTapHighlightColor: "transparent",
+                backgroundColor: 'var(--vb-surface)',
+                color: 'var(--vb-text-secondary)',
+                borderColor: 'var(--vb-border)',
+              }}
+              className="shrink-0 ms-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border hover:opacity-90 disabled:opacity-60"
             >
               <FolderPlus className="w-4 h-4" />
               {t.newCollection}
@@ -571,7 +583,7 @@ function LoadingGrid() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-32 rounded-2xl bg-slate-100 animate-pulse" />
+        <div key={i} className="h-32 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--vb-surface-alt)' }} />
       ))}
     </div>
   );
@@ -579,12 +591,12 @@ function LoadingGrid() {
 
 function EmptyState({ title, blurb, isRTL }: { title: string; blurb: string; isRTL: boolean }) {
   return (
-    <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-white p-8 sm:p-10 text-center">
+    <div className="rounded-3xl border-2 border-dashed p-8 sm:p-10 text-center" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface)' }}>
       <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-indigo-100 to-fuchsia-100 flex items-center justify-center">
         <Sparkles className="w-8 h-8 text-violet-600" />
       </div>
-      <h3 className="mt-4 text-lg sm:text-xl font-bold text-slate-900">{title}</h3>
-      <p className={`mt-2 text-sm sm:text-base text-slate-600 max-w-md mx-auto ${isRTL ? "rtl" : ""}`}>
+      <h3 className="mt-4 text-lg sm:text-xl font-bold" style={{ color: 'var(--vb-text-primary)' }}>{title}</h3>
+      <p className={`mt-2 text-sm sm:text-base max-w-md mx-auto ${isRTL ? "rtl" : ""}`} style={{ color: 'var(--vb-text-secondary)' }}>
         {blurb}
       </p>
     </div>
@@ -615,8 +627,10 @@ function SetCard({
     <motion.div
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
-      className="relative rounded-[22px] bg-white overflow-hidden border border-indigo-500/[0.10]"
+      className="relative rounded-[22px] overflow-hidden border"
       style={{
+        backgroundColor: 'var(--vb-surface)',
+        borderColor: 'var(--vb-border)',
         boxShadow:
           "0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)",
       }}
@@ -645,7 +659,7 @@ function SetCard({
           </span>
         </div>
         <div className="px-4 pb-4 pt-3.5 pe-28">
-          <div className="truncate text-[14px] font-bold text-[#1F1147]">{set.name}</div>
+          <div className="truncate text-[14px] font-bold" style={{ color: 'var(--vb-text-primary)' }}>{set.name}</div>
         </div>
       </button>
       <CardActions t={t} onRename={onRename} onMove={onMove} onDelete={onDelete} />
@@ -675,8 +689,10 @@ function CollectionCard({
     <motion.div
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
-      className="relative rounded-[22px] bg-white overflow-hidden border border-indigo-500/[0.10]"
+      className="relative rounded-[22px] overflow-hidden border"
       style={{
+        backgroundColor: 'var(--vb-surface)',
+        borderColor: 'var(--vb-border)',
         boxShadow:
           "0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)",
       }}
@@ -699,9 +715,9 @@ function CollectionCard({
           </span>
         </div>
         <div className="px-4 pb-4 pt-3.5 pe-28">
-          <div className="truncate text-[14px] font-bold text-[#1F1147]">{collection.name}</div>
+          <div className="truncate text-[14px] font-bold" style={{ color: 'var(--vb-text-primary)' }}>{collection.name}</div>
           {collection.description ? (
-            <p className="mt-1 line-clamp-2 text-[11px] font-semibold text-[#8B85AB]">
+            <p className="mt-1 line-clamp-2 text-[11px] font-semibold" style={{ color: 'var(--vb-text-muted)' }}>
               {collection.description}
             </p>
           ) : null}
@@ -727,8 +743,9 @@ function CardActions({
   onDelete: () => void;
 }) {
   const base =
-    "w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-slate-200 flex items-center justify-center shadow-sm";
+    "w-8 h-8 rounded-full backdrop-blur border flex items-center justify-center shadow-sm hover:opacity-90";
   const tap = { touchAction: "manipulation", WebkitTapHighlightColor: "transparent" } as const;
+  const surfaceStyle = { ...tap, backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-secondary)' };
   return (
     <div className="absolute end-2 bottom-2 flex items-center gap-1.5">
       <button
@@ -736,8 +753,8 @@ function CardActions({
         onClick={(e) => { e.stopPropagation(); onRename(); }}
         aria-label={t.renameAria}
         title={t.renameAria}
-        className={`${base} text-slate-600 hover:bg-slate-100 hover:text-slate-900`}
-        style={tap}
+        className={base}
+        style={surfaceStyle}
       >
         <Pencil className="w-4 h-4" />
       </button>
@@ -746,8 +763,8 @@ function CardActions({
         onClick={(e) => { e.stopPropagation(); onMove(); }}
         aria-label={t.moveAria}
         title={t.moveAria}
-        className={`${base} text-slate-600 hover:bg-slate-100 hover:text-slate-900`}
-        style={tap}
+        className={base}
+        style={surfaceStyle}
       >
         <FolderInput className="w-4 h-4" />
       </button>
@@ -756,8 +773,8 @@ function CardActions({
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
         aria-label={t.deleteAria}
         title={t.deleteAria}
-        className={`${base} text-rose-500 hover:bg-rose-50 hover:text-rose-600`}
-        style={tap}
+        className={base}
+        style={{ ...tap, backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-danger)' }}
       >
         <Trash2 className="w-4 h-4" />
       </button>

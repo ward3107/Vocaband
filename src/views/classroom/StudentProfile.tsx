@@ -200,10 +200,12 @@ export default function StudentProfile({
               <button
                 type="button"
                 onClick={onCertificate}
-                className="px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-1.5 transition-colors hover:opacity-90 bg-orange-100 text-orange-700"
+                className="px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-1.5 transition-colors hover:opacity-90"
                 style={{
                   touchAction: "manipulation",
                   WebkitTapHighlightColor: "transparent" as never,
+                  backgroundColor: 'var(--vb-warning-soft)',
+                  color: 'var(--vb-warning)',
                 }}
                 aria-label={t.certificateAria(student.name)}
               >

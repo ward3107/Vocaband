@@ -508,7 +508,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                         isSelected
                           ? { boxShadow: '0 14px 28px -14px rgba(139,92,246,0.55), 0 1px 0 rgba(255,255,255,0.4) inset' }
                           : {
-                              background: 'rgba(255,255,255,0.96)',
+                              background: 'var(--vb-surface)',
                               boxShadow:
                                 '0 1px 0 rgba(255,255,255,0.7) inset, 0 8px 20px -18px rgba(60,40,120,0.20)',
                             }
@@ -688,12 +688,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           <div className="grid grid-cols-1 gap-[18px]">
             {/* Title */}
             <div>
-              <label htmlFor="assignment-title" className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#6B6388]">
+              <label htmlFor="assignment-title" className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em]" style={{ color: 'var(--vb-text-muted)' }}>
                 {isAssignment ? 'Assignment title ' : 'Session title '}
                 {isAssignment ? (
                   <span className="text-rose-500">*</span>
                 ) : (
-                  <span className="text-[#8B85AB] font-normal normal-case tracking-normal">(optional)</span>
+                  <span className="font-normal normal-case tracking-normal" style={{ color: 'var(--vb-text-muted)' }}>(optional)</span>
                 )}
               </label>
               <input
@@ -709,13 +709,14 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 placeholder={isAssignment
                   ? 'e.g., Fruits Vocabulary - Unit 5'
                   : 'e.g., Period 3 warm-up'}
-                className="block w-full rounded-2xl border-[1.5px] border-indigo-500/[0.10] bg-white px-[18px] py-3 text-[14px] text-[#1F1147] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)]"
+                style={{ backgroundColor: 'var(--vb-surface)', color: 'var(--vb-text-primary)', borderColor: 'var(--vb-border)' }}
+                className="block w-full rounded-2xl border-[1.5px] px-[18px] py-3 text-[14px] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)]"
               />
             </div>
 
             {/* Instructions */}
             <div>
-              <label htmlFor="assignment-instructions" className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#6B6388]">
+              <label htmlFor="assignment-instructions" className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em]" style={{ color: 'var(--vb-text-muted)' }}>
                 {isAssignment ? 'Instructions for students' : 'Notes (optional)'}
               </label>
               <textarea
@@ -730,7 +731,8 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 }}
                 placeholder={isAssignment ? t.instructionsPlaceholderAssignment : t.instructionsPlaceholderQp}
                 rows={2}
-                className="block w-full rounded-2xl border-[1.5px] border-indigo-500/[0.10] bg-white px-[18px] py-3 text-[14px] text-[#1F1147] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] overflow-y-auto"
+                style={{ backgroundColor: 'var(--vb-surface)', color: 'var(--vb-text-primary)', borderColor: 'var(--vb-border)' }}
+                className="block w-full rounded-2xl border-[1.5px] px-[18px] py-3 text-[14px] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] overflow-y-auto"
               />
             </div>
           </div>
@@ -964,7 +966,7 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
                 : ''
             }`}
           >
-            <label className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#6B6388]">Deadline</label>
+            <label className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em]" style={{ color: 'var(--vb-text-muted)' }}>Deadline</label>
             <DateTimePicker
               value={assignmentDeadline || ""}
               onChange={(v) => onDeadlineChange?.(v)}
@@ -982,7 +984,10 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
           sentence panel makes the step tall enough that a non-sticky
           "Next" falls off the bottom of the phone.  Desktop keeps the
           inline layout since the full step fits in one viewport. */}
-      <div className="flex gap-3 pt-4 pb-2 fixed sm:static bottom-0 inset-x-0 sm:inset-auto z-30 px-4 sm:px-0 bg-gradient-to-t sm:bg-none from-white via-white/95 to-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-2">
+      <div
+        className="flex gap-3 pt-4 pb-2 fixed sm:static bottom-0 inset-x-0 sm:inset-auto z-30 px-4 sm:px-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-2"
+        style={{ background: 'linear-gradient(to top, var(--vb-surface), var(--vb-surface) 60%, transparent)' }}
+      >
         <button
           onClick={onBack}
           className="flex-1 py-3 signature-gradient text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"

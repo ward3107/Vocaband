@@ -600,8 +600,13 @@ const WorksheetDetail: React.FC<{
           disabled={mutating}
           whileHover={!mutating ? { scale: 1.02 } : undefined}
           whileTap={!mutating ? { scale: 0.97 } : undefined}
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold hover:bg-rose-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
+            backgroundColor: 'var(--vb-danger-soft)',
+            color: 'var(--vb-danger)',
+          }}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {mutating ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
           Delete forever
@@ -628,7 +633,13 @@ const WorksheetDetail: React.FC<{
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--vb-surface-alt)] transition-colors"
         >
-          <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+          <div
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--vb-success), transparent 78%)',
+              color: 'var(--vb-success)',
+            }}
+            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+          >
             <QrCode size={18} />
           </div>
           <div className="flex-1 text-left min-w-0">
@@ -713,7 +724,10 @@ const WorksheetDetail: React.FC<{
                       {a.duration_ms != null && ` · ${formatDuration(a.duration_ms)}`}
                     </p>
                     {practiceRounds.length > 0 && (
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-fuchsia-600 mt-1">
+                      <p
+                        style={{ color: 'var(--vb-accent)' }}
+                        className="text-[10px] uppercase tracking-widest font-bold mt-1"
+                      >
                         + {practiceRounds.length}{" "}
                         {practiceRounds.length === 1 ? "practice round" : "practice rounds"}
                       </p>
@@ -899,18 +913,34 @@ const PracticeRounds: React.FC<{
   const delta = latest.pct - firstPct;
 
   return (
-    <div className="p-3 sm:p-4 bg-fuchsia-50 border-t border-fuchsia-100">
+    <div
+      style={{
+        backgroundColor: 'var(--vb-accent-soft)',
+        borderColor: 'color-mix(in srgb, var(--vb-accent), transparent 60%)',
+      }}
+      className="p-3 sm:p-4 border-t"
+    >
       <div className="flex items-center gap-2 mb-2">
-        <p className="text-[10px] uppercase tracking-widest font-bold text-fuchsia-700">
+        <p
+          style={{ color: 'var(--vb-accent)' }}
+          className="text-[10px] uppercase tracking-widest font-bold"
+        >
           Practice progression
         </p>
         {delta !== 0 && (
           <span
-            className={`text-[10px] font-black tabular-nums px-1.5 py-0.5 rounded-full ${
+            style={
               delta > 0
-                ? "bg-emerald-100 text-emerald-700"
-                : "bg-rose-100 text-rose-700"
-            }`}
+                ? {
+                    backgroundColor: 'color-mix(in srgb, var(--vb-success), transparent 78%)',
+                    color: 'var(--vb-success)',
+                  }
+                : {
+                    backgroundColor: 'color-mix(in srgb, var(--vb-danger), transparent 78%)',
+                    color: 'var(--vb-danger)',
+                  }
+            }
+            className="text-[10px] font-black tabular-nums px-1.5 py-0.5 rounded-full"
           >
             {delta > 0 ? "+" : ""}
             {delta} pts
@@ -919,16 +949,20 @@ const PracticeRounds: React.FC<{
       </div>
       <div className="flex items-center gap-1.5 overflow-x-auto -mx-3 sm:-mx-4 px-3 sm:px-4 pb-1">
         {timeline.map((step, i) => {
-          const color =
-            step.pct >= 80
-              ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-              : step.pct >= 60
-                ? "border-amber-300 bg-amber-50 text-amber-700"
-                : "border-rose-300 bg-rose-50 text-rose-700";
+          // Score bands reuse the semantic soft tokens: pale on light,
+          // deep desaturated on dark, with the saturated token for text.
+          const semantic =
+            step.pct >= 80 ? "success" : step.pct >= 60 ? "warning" : "danger";
+          const chipStyle = {
+            backgroundColor: `var(--vb-${semantic}-soft)`,
+            borderColor: `color-mix(in srgb, var(--vb-${semantic}), transparent 60%)`,
+            color: `var(--vb-${semantic})`,
+          };
           return (
             <div key={i} className="flex items-center gap-1.5 shrink-0">
               <div
-                className={`min-w-[88px] rounded-lg border px-2.5 py-1.5 text-center ${color}`}
+                style={chipStyle}
+                className="min-w-[88px] rounded-lg border px-2.5 py-1.5 text-center"
               >
                 <p className="text-[9px] uppercase tracking-widest font-bold opacity-80">
                   {step.label}
@@ -941,7 +975,11 @@ const PracticeRounds: React.FC<{
                 </p>
               </div>
               {i < timeline.length - 1 && (
-                <ChevronRight size={14} className="text-fuchsia-400 shrink-0" />
+                <ChevronRight
+                  size={14}
+                  style={{ color: 'var(--vb-accent)' }}
+                  className="shrink-0"
+                />
               )}
             </div>
           );
@@ -1034,11 +1072,11 @@ const AnswerBreakdown: React.FC<{ answers: AnswerRow[] }> = ({ answers }) => {
           return (
             <div
               key={idx}
-              className={`flex items-center gap-3 p-3 rounded-lg text-sm ${
-                a.is_correct
-                  ? "bg-emerald-50 border border-emerald-100"
-                  : "bg-rose-50 border border-rose-100"
-              }`}
+              style={{
+                backgroundColor: a.is_correct ? 'var(--vb-success-soft)' : 'var(--vb-danger-soft)',
+                borderColor: a.is_correct ? 'var(--vb-success)' : 'var(--vb-danger)',
+              }}
+              className="flex items-center gap-3 p-3 rounded-lg text-sm border"
             >
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[var(--vb-text-primary)]" dir="ltr">
@@ -1049,8 +1087,8 @@ const AnswerBreakdown: React.FC<{ answers: AnswerRow[] }> = ({ answers }) => {
                     <>Picked: {a.given}</>
                   ) : (
                     <>
-                      Picked: <span className="text-rose-700 font-bold">{a.given}</span> ·
-                      Correct: <span className="text-emerald-700 font-bold">{a.correct}</span>
+                      Picked: <span className="font-bold" style={{ color: 'var(--vb-danger)' }}>{a.given}</span> ·
+                      Correct: <span className="font-bold" style={{ color: 'var(--vb-success)' }}>{a.correct}</span>
                     </>
                   )}
                 </p>
@@ -1060,16 +1098,17 @@ const AnswerBreakdown: React.FC<{ answers: AnswerRow[] }> = ({ answers }) => {
         }
         if (ans.kind === "matching") {
           const a = ans as MatchingAnswer;
+          const matchBg =
+            a.mistakes_count === 0
+              ? { bg: 'var(--vb-success-soft)', border: 'var(--vb-success)' }
+              : a.mistakes_count <= 2
+                ? { bg: 'var(--vb-warning-soft)', border: 'var(--vb-warning)' }
+                : { bg: 'var(--vb-danger-soft)', border: 'var(--vb-danger)' };
           return (
             <div
               key={idx}
-              className={`flex items-center gap-3 p-3 rounded-lg text-sm ${
-                a.mistakes_count === 0
-                  ? "bg-emerald-50 border border-emerald-100"
-                  : a.mistakes_count <= 2
-                    ? "bg-amber-50 border border-amber-100"
-                    : "bg-rose-50 border border-rose-100"
-              }`}
+              style={{ backgroundColor: matchBg.bg, borderColor: matchBg.border }}
+              className="flex items-center gap-3 p-3 rounded-lg text-sm border"
             >
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[var(--vb-text-primary)]" dir="auto">
@@ -1159,9 +1198,12 @@ const GenericAnswerRow: React.FC<{ answer: GenericAnswer }> = ({ answer }) => {
 };
 
 const ErrorCard: React.FC<{ message: string }> = ({ message }) => (
-  <div className="text-center max-w-md mx-auto p-8 rounded-2xl bg-rose-50 border border-rose-200">
-    <p className="font-bold text-rose-900 mb-1">Couldn't load worksheet results</p>
-    <p className="text-rose-700 text-sm">{message}</p>
+  <div
+    style={{ backgroundColor: 'var(--vb-danger-soft)', borderColor: 'var(--vb-danger)' }}
+    className="text-center max-w-md mx-auto p-8 rounded-2xl border"
+  >
+    <p className="font-bold mb-1" style={{ color: 'var(--vb-danger)' }}>Couldn't load worksheet results</p>
+    <p className="text-sm" style={{ color: 'var(--vb-danger)' }}>{message}</p>
   </div>
 );
 

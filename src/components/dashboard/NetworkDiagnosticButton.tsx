@@ -98,8 +98,8 @@ function StatusRow({ label, status, passLabel, failLabel, runningLabel }: {
   const icon =
     status === 'pass' ? <Check size={18} className="text-emerald-600" /> :
     status === 'fail' ? <XIcon size={18} className="text-rose-600" /> :
-    status === 'running' ? <Loader2 size={18} className="text-slate-500 animate-spin" /> :
-    <span className="w-[18px] h-[18px] inline-block rounded-full bg-slate-200" />;
+    status === 'running' ? <Loader2 size={18} className="animate-spin" style={{ color: 'var(--vb-text-muted)' }} /> :
+    <span className="w-[18px] h-[18px] inline-block rounded-full" style={{ backgroundColor: 'var(--vb-border)' }} />;
 
   const rightText =
     status === 'pass' ? passLabel :
@@ -110,15 +110,21 @@ function StatusRow({ label, status, passLabel, failLabel, runningLabel }: {
   const rightColor =
     status === 'pass' ? 'text-emerald-700' :
     status === 'fail' ? 'text-rose-700' :
-    'text-slate-500';
+    '';
 
   return (
-    <div className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-lg bg-slate-50 border border-slate-100">
+    <div
+      className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-lg border"
+      style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
+    >
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="shrink-0">{icon}</span>
-        <span className="text-sm font-semibold text-slate-800 truncate">{label}</span>
+        <span className="text-sm font-semibold truncate" style={{ color: 'var(--vb-text-primary)' }}>{label}</span>
       </div>
-      <span className={`text-xs font-bold uppercase tracking-wide ${rightColor}`}>
+      <span
+        className={`text-xs font-bold uppercase tracking-wide ${rightColor}`}
+        style={status === 'pass' || status === 'fail' ? undefined : { color: 'var(--vb-text-muted)' }}
+      >
         {rightText}
       </span>
     </div>
@@ -157,12 +163,12 @@ export default function NetworkDiagnosticButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:shadow active:scale-[0.98] transition-all"
+        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-secondary)' }}
+        className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm hover:shadow active:scale-[0.98] transition-all"
         aria-label={t.triggerLabel}
       >
         <span className={`h-2 w-2 rounded-full ${dotColor}`} aria-hidden="true" />
-        <Wifi size={14} className="text-slate-500" />
+        <Wifi size={14} style={{ color: 'var(--vb-text-muted)' }} />
         <span>{t.triggerLabel}</span>
       </button>
 
@@ -176,21 +182,22 @@ export default function NetworkDiagnosticButton() {
           dir={isRTL ? 'rtl' : 'ltr'}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden"
+            className="w-full max-w-md rounded-2xl shadow-2xl border overflow-hidden"
+            style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
               <div className="min-w-0">
-                <h3 className="text-lg font-black text-slate-900">{t.modalTitle}</h3>
-                <p className="text-xs text-slate-500 mt-0.5">{t.modalSubtitle}</p>
+                <h3 className="text-lg font-black" style={{ color: 'var(--vb-text-primary)' }}>{t.modalTitle}</h3>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--vb-text-muted)' }}>{t.modalSubtitle}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label={t.close}
-                className="shrink-0 -mt-1 -me-1 p-1.5 rounded-full hover:bg-slate-100 active:scale-95 transition-all"
+                className="shrink-0 -mt-1 -me-1 p-1.5 rounded-full hover:bg-[var(--vb-surface-alt)] active:scale-95 transition-all"
               >
-                <X size={18} className="text-slate-600" />
+                <X size={18} style={{ color: 'var(--vb-text-secondary)' }} />
               </button>
             </div>
             <div className="px-5 pb-4 space-y-2">
@@ -204,7 +211,8 @@ export default function NetworkDiagnosticButton() {
                 type="button"
                 onClick={() => void run()}
                 disabled={running}
-                className="px-3 py-1.5 rounded-lg text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
+                className="px-3 py-1.5 rounded-lg text-sm font-bold hover:opacity-80 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {running ? t.running : t.runAgain}
               </button>

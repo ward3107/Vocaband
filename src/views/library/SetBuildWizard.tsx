@@ -212,30 +212,31 @@ export default function SetBuildWizard({
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 24, opacity: 0 }}
         transition={{ type: "spring", damping: 24, stiffness: 240 }}
-        className="relative w-full sm:max-w-2xl bg-white rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-screen sm:max-h-[90vh]"
+        style={{ backgroundColor: 'var(--vb-surface)' }}
+        className="relative w-full sm:max-w-2xl rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-screen sm:max-h-[90vh]"
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-slate-200">
+        <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b" style={{ borderColor: 'var(--vb-border)' }}>
           {step !== "pick-source" && (
             <button
               type="button"
               onClick={backToSource}
               aria-label={t.back}
-              className="p-2 -ml-2 rounded-full hover:bg-slate-100"
+              className="p-2 -ml-2 rounded-full hover:opacity-80"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >
-              <ArrowLeft className={`w-5 h-5 text-slate-700 ${isRTL ? "rotate-180" : ""}`} />
+              <ArrowLeft className={`w-5 h-5 ${isRTL ? "rotate-180" : ""}`} style={{ color: 'var(--vb-text-secondary)' }} />
             </button>
           )}
-          <h2 className="flex-1 font-bold text-lg text-slate-900">{t.modalTitle}</h2>
+          <h2 className="flex-1 font-bold text-lg" style={{ color: 'var(--vb-text-primary)' }}>{t.modalTitle}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label={t.modalCloseAria}
-            className="p-2 -mr-2 rounded-full hover:bg-slate-100"
+            className="p-2 -mr-2 rounded-full hover:opacity-80"
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           >
-            <X className="w-5 h-5 text-slate-700" />
+            <X className="w-5 h-5" style={{ color: 'var(--vb-text-secondary)' }} />
           </button>
         </div>
 
@@ -286,12 +287,13 @@ export default function SetBuildWizard({
 
         {/* Footer — save button when on a build step */}
         {step !== "pick-source" && (
-          <div className="border-t border-slate-200 px-5 sm:px-6 py-3 flex items-center justify-between gap-3 bg-slate-50">
+          <div className="border-t px-5 sm:px-6 py-3 flex items-center justify-between gap-3" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface-alt)' }}>
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="text-sm font-semibold text-slate-600 hover:underline disabled:opacity-50"
+              className="text-sm font-semibold hover:underline disabled:opacity-50"
+              style={{ color: 'var(--vb-text-secondary)' }}
             >
               {t.cancel}
             </button>
@@ -333,8 +335,8 @@ function PickSourceStep({ t, onPick }: { t: typeof setBuildWizardT.en; onPick: (
 
   return (
     <div>
-      <h3 className="text-xl font-bold text-slate-900">{t.pickSourceHeading}</h3>
-      <p className="text-sm text-slate-600 mt-1">{t.pickSourceSubtitle}</p>
+      <h3 className="text-xl font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.pickSourceHeading}</h3>
+      <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>{t.pickSourceSubtitle}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
         {tiles.map((tile) => (
           <motion.button
@@ -343,8 +345,8 @@ function PickSourceStep({ t, onPick }: { t: typeof setBuildWizardT.en; onPick: (
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onPick(tile.step)}
-            className="relative text-left rounded-2xl border border-slate-200 overflow-hidden hover:shadow-md cursor-pointer bg-white"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            className="relative text-left rounded-2xl border overflow-hidden hover:shadow-md cursor-pointer"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
           >
             <div className={`h-1.5 bg-gradient-to-r ${tile.accent}`} />
             <div className="p-4 flex gap-3">
@@ -354,8 +356,8 @@ function PickSourceStep({ t, onPick }: { t: typeof setBuildWizardT.en; onPick: (
                 {tile.icon}
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="font-bold text-slate-900 text-sm">{tile.title}</h4>
-                <p className="text-xs text-slate-600 mt-0.5 leading-snug">{tile.blurb}</p>
+                <h4 className="font-bold text-sm" style={{ color: 'var(--vb-text-primary)' }}>{tile.title}</h4>
+                <p className="text-xs mt-0.5 leading-snug" style={{ color: 'var(--vb-text-secondary)' }}>{tile.blurb}</p>
               </div>
             </div>
           </motion.button>
@@ -378,13 +380,14 @@ function SetNameField({
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-600">{t.setNameLabel}</span>
+      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--vb-text-secondary)' }}>{t.setNameLabel}</span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={t.setNamePlaceholder}
-        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+        style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
+        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
         maxLength={120}
       />
     </label>
@@ -419,8 +422,8 @@ function PasteStep({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-bold text-slate-900">{t.pasteHeading}</h3>
-        <p className="text-sm text-slate-600 mt-1">{t.pasteSubtitle}</p>
+        <h3 className="text-lg font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.pasteHeading}</h3>
+        <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>{t.pasteSubtitle}</p>
       </div>
       <SetNameField t={t} value={setName} onChange={setSetName} />
       <textarea
@@ -428,7 +431,8 @@ function PasteStep({
         onChange={(e) => setPasteText(e.target.value)}
         placeholder={t.pastePlaceholder}
         rows={6}
-        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 font-mono"
+        style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
+        className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 font-mono"
         dir="ltr"
       />
       <button
@@ -450,7 +454,7 @@ function PasteStep({
           headingOverride={t.pasteExtractedCount(extractedWords.length)}
         />
       ) : (
-        <p className="text-xs text-slate-500 italic">{t.pasteEmpty}</p>
+        <p className="text-xs italic" style={{ color: 'var(--vb-text-muted)' }}>{t.pasteEmpty}</p>
       )}
     </div>
   );
@@ -484,11 +488,11 @@ function PhotoStep({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-bold text-slate-900">{t.photoHeading}</h3>
-        <p className="text-sm text-slate-600 mt-1">{t.photoSubtitle}</p>
+        <h3 className="text-lg font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.photoHeading}</h3>
+        <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>{t.photoSubtitle}</p>
       </div>
       <SetNameField t={t} value={setName} onChange={setSetName} />
-      <div className="rounded-xl border-2 border-dashed border-slate-300 p-6 text-center bg-slate-50">
+      <div className="rounded-xl border-2 border-dashed p-6 text-center" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface-alt)' }}>
         <input
           ref={fileInputRef}
           type="file"
@@ -514,7 +518,7 @@ function PhotoStep({
           {extracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
           {extracting ? (photoStatus || t.photoProcessing) : t.photoTrigger}
         </button>
-        <p className="mt-3 text-[11px] text-slate-500 italic max-w-sm mx-auto">{t.privacyNotice}</p>
+        <p className="mt-3 text-[11px] italic max-w-sm mx-auto" style={{ color: 'var(--vb-text-muted)' }}>{t.privacyNotice}</p>
       </div>
       {extractedWords.length > 0 && (
         <WordsReviewTable
@@ -546,43 +550,46 @@ function WordsReviewTable({
 }) {
   return (
     <div>
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--vb-text-secondary)' }}>
         {headingOverride ?? t.reviewSubtitle(rows.length)}
       </p>
-      <div className="rounded-xl border border-slate-200 overflow-hidden">
-        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--vb-border)' }}>
+        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 text-[11px] font-bold uppercase tracking-wider" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}>
           <div>{t.manualHeaderEnglish}</div>
           <div>{t.manualHeaderHebrew}</div>
           <div>{t.manualHeaderArabic}</div>
           <div />
         </div>
-        <div className="divide-y divide-slate-200 max-h-[40vh] overflow-y-auto">
+        <div className="divide-y max-h-[40vh] overflow-y-auto" style={{ borderColor: 'var(--vb-border)' }}>
           {rows.map((row, idx) => (
             <div key={idx} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center">
               <input
                 type="text"
                 value={row.english}
                 onChange={(e) => onUpdate(idx, "english", e.target.value)}
-                className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
+                style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
+                className="rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
               />
               <input
                 type="text"
                 value={row.hebrew}
                 onChange={(e) => onUpdate(idx, "hebrew", e.target.value)}
-                className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
+                style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
+                className="rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
               />
               <input
                 type="text"
                 value={row.arabic}
                 onChange={(e) => onUpdate(idx, "arabic", e.target.value)}
-                className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
+                style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
+                className="rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
               />
               <button
                 type="button"
                 onClick={() => onRemove(idx)}
                 aria-label={t.reviewRemoveAria}
-                className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className="p-1.5 rounded-md hover:text-rose-600 hover:bg-rose-50"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: 'var(--vb-text-muted)' }}
               >
                 <Trash2 className="w-4 h-4" />
               </button>

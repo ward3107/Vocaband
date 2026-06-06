@@ -265,7 +265,8 @@ export default function VocabularySetDetailModal({
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 24, opacity: 0 }}
         transition={{ type: "spring", damping: 24, stiffness: 240 }}
-        className="bg-white w-full sm:max-w-3xl rounded-none sm:rounded-3xl shadow-2xl max-h-screen sm:max-h-[92vh] flex flex-col overflow-hidden"
+        style={{ backgroundColor: 'var(--vb-surface)' }}
+        className="w-full sm:max-w-3xl rounded-none sm:rounded-3xl shadow-2xl max-h-screen sm:max-h-[92vh] flex flex-col overflow-hidden"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-5 py-4 flex items-center justify-between gap-3 text-white shrink-0">
@@ -288,7 +289,7 @@ export default function VocabularySetDetailModal({
         </div>
 
         {/* Action bar */}
-        <div className={`px-5 py-3 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center gap-2 shrink-0 ${isRTL ? "justify-end" : ""}`}>
+        <div className={`px-5 py-3 border-b flex flex-wrap items-center gap-2 shrink-0 ${isRTL ? "justify-end" : ""}`} style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface-alt)' }}>
           <button
             type="button"
             onClick={() => setShowSentenceGen(true)}
@@ -301,8 +302,8 @@ export default function VocabularySetDetailModal({
             type="button"
             onClick={() => handleGenerateMcq()}
             disabled={generatingMcq || loading || words.length === 0}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-100 disabled:opacity-50"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-secondary)' }}
           >
             {generatingMcq ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListChecks className="w-4 h-4" />}
             {generatingMcq ? t.generatingMcq : t.actionMcq}
@@ -311,8 +312,8 @@ export default function VocabularySetDetailModal({
             type="button"
             onClick={handlePrint}
             disabled={printing || loading || words.length === 0}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-100 disabled:opacity-50"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-secondary)' }}
           >
             {printing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
             {printing ? t.printingPdf : t.actionPrint}
@@ -321,8 +322,8 @@ export default function VocabularySetDetailModal({
             type="button"
             onClick={() => setShowAssignModal(true)}
             disabled={loading || words.length === 0}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-100 disabled:opacity-50"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-secondary)' }}
           >
             <Send className="w-4 h-4" /> {t.actionAssign}
           </button>
@@ -333,7 +334,7 @@ export default function VocabularySetDetailModal({
           {loading ? (
             <div className="space-y-3">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-20 rounded-xl bg-slate-100 animate-pulse" />
+                <div key={i} className="h-20 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--vb-surface-alt)' }} />
               ))}
             </div>
           ) : words.length === 0 ? (
@@ -391,8 +392,8 @@ export default function VocabularySetDetailModal({
 function EmptyWords({ t }: { t: SetDetailStrings }) {
   return (
     <div className="text-center py-10">
-      <p className="font-bold text-slate-900">{t.emptyWordsTitle}</p>
-      <p className="mt-1 text-sm text-slate-600 max-w-sm mx-auto">{t.emptyWordsBody}</p>
+      <p className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.emptyWordsTitle}</p>
+      <p className="mt-1 text-sm max-w-sm mx-auto" style={{ color: 'var(--vb-text-secondary)' }}>{t.emptyWordsBody}</p>
     </div>
   );
 }
@@ -426,16 +427,16 @@ function WordRow({
   const hasAny = fillBlank || sentence;
   const distractors = getDistractorsFromMetadata(word.metadata);
   return (
-    <li className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-      <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
-        <span className="font-bold text-slate-900">{word.english}</span>
+    <li className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface)' }}>
+      <div className="px-4 py-2.5 border-b flex items-center gap-3" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
+        <span className="font-bold" style={{ color: 'var(--vb-text-primary)' }}>{word.english}</span>
         {(word.hebrew || word.arabic) && (
-          <span className="text-xs text-slate-500" dir="auto">
+          <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }} dir="auto">
             {[word.hebrew, word.arabic].filter(Boolean).join(" · ")}
           </span>
         )}
       </div>
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y" style={{ borderColor: 'var(--vb-border)' }}>
         {fillBlank && (
           <SentenceRow
             t={t}
@@ -465,13 +466,13 @@ function WordRow({
           />
         )}
         {!hasAny && !distractors && (
-          <div className="px-4 py-3 text-sm text-slate-500 italic">
+          <div className="px-4 py-3 text-sm italic" style={{ color: 'var(--vb-text-muted)' }}>
             <span className="font-semibold not-italic">{t.noSentencesYet}.</span> {t.noSentencesYetHint}
           </div>
         )}
         {distractors && distractors.length > 0 && (
           <div className="px-4 py-2.5 flex items-start gap-3">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-1 shrink-0 w-10">
+            <span className="text-[10px] font-bold uppercase tracking-wider mt-1 shrink-0 w-10" style={{ color: 'var(--vb-text-muted)' }}>
               {t.distractorsLabel}
             </span>
             <div className="flex-1 min-w-0 flex flex-wrap gap-1.5">
@@ -482,7 +483,7 @@ function WordRow({
                 {word.english}
               </span>
               {distractors.map((d, i) => (
-                <span key={i} className="inline-flex items-center text-xs rounded-full bg-slate-100 text-slate-700 px-2.5 py-1">
+                <span key={i} className="inline-flex items-center text-xs rounded-full px-2.5 py-1" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}>
                   {d}
                 </span>
               ))}
@@ -493,8 +494,8 @@ function WordRow({
               disabled={regeneratingMcq}
               aria-label={t.regenerateMcqAria}
               title={t.regenerateMcqAria}
-              className="p-1.5 rounded-md text-slate-500 hover:text-violet-600 hover:bg-violet-50 disabled:opacity-40 shrink-0"
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className="p-1.5 rounded-md hover:text-violet-600 hover:bg-violet-50 disabled:opacity-40 shrink-0"
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: 'var(--vb-text-muted)' }}
             >
               {regeneratingMcq ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCcw className="w-3.5 h-3.5" />}
             </button>
@@ -530,7 +531,7 @@ function SentenceRow({
 }) {
   return (
     <div className="px-4 py-2.5 flex items-start gap-3">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5 shrink-0 w-10">{label}</span>
+      <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5 shrink-0 w-10" style={{ color: 'var(--vb-text-muted)' }}>{label}</span>
       <div className="flex-1 min-w-0">
         {isEditing ? (
           <div className="space-y-2">
@@ -539,6 +540,7 @@ function SentenceRow({
               onChange={(e) => onEditingTextChange(e.target.value)}
               rows={2}
               autoFocus
+              style={{ backgroundColor: 'var(--vb-surface)', color: 'var(--vb-text-primary)' }}
               className="w-full rounded-lg border border-violet-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
             <div className="flex items-center gap-2">
@@ -552,14 +554,15 @@ function SentenceRow({
               <button
                 type="button"
                 onClick={onCancelEdit}
-                className="px-3 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200"
+                style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
+                className="px-3 py-1 rounded-md text-xs font-semibold hover:opacity-90"
               >
                 {t.cancelEdit}
               </button>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-slate-900 leading-relaxed break-words">
+          <p className="text-sm leading-relaxed break-words" style={{ color: 'var(--vb-text-primary)' }}>
             {sentence.text}
             {sentence.wasEdited && (
               <span className="ms-2 text-[10px] font-bold uppercase tracking-wider text-violet-600">
@@ -576,8 +579,8 @@ function SentenceRow({
             onClick={onStartEdit}
             aria-label={t.editAria}
             title={t.editAria}
-            className="p-1.5 rounded-md text-slate-500 hover:text-violet-600 hover:bg-violet-50"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            className="p-1.5 rounded-md hover:text-violet-600 hover:bg-violet-50"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: 'var(--vb-text-muted)' }}
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
@@ -586,8 +589,8 @@ function SentenceRow({
             onClick={onDelete}
             aria-label={t.deleteAria}
             title={t.deleteAria}
-            className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            className="p-1.5 rounded-md hover:text-rose-600 hover:bg-rose-50"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: 'var(--vb-text-muted)' }}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
