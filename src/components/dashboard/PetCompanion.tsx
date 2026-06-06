@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, Sparkles, X, Gift } from "lucide-react";
 import { PET_MILESTONES, type PetMilestone } from "../../constants/game";
+import CrackingEgg from "./CrackingEgg";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 
@@ -94,7 +95,9 @@ export default function PetCompanion({
 
             <div className="mb-3 flex items-center gap-3">
               <div className={`flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${glow} text-3xl shadow-sm`}>
-                {currentStage.emoji}
+                {currentStage.stage === 'Egg'
+                  ? <CrackingEgg progress={pct / 100} size={44} alt={currentStage.stage} />
+                  : currentStage.emoji}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">{t.yourCompanion}</p>
