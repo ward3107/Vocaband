@@ -102,11 +102,14 @@ DECLARE
   user_row      RECORD;
 BEGIN
   CASE item_type
-    WHEN 'avatar' THEN column_name := 'unlocked_avatars';
-    WHEN 'theme'  THEN column_name := 'unlocked_themes';
-    WHEN 'frame'  THEN column_name := 'unlocked_frames';
-    WHEN 'title'  THEN column_name := 'unlocked_titles';
+    WHEN 'avatar'   THEN column_name := 'unlocked_avatars';
+    WHEN 'theme'    THEN column_name := 'unlocked_themes';
+    WHEN 'frame'    THEN column_name := 'unlocked_frames';
+    WHEN 'title'    THEN column_name := 'unlocked_titles';
     WHEN 'power_up' THEN column_name := 'power_ups';
+    -- booster/egg: coins-only debit, no unlock array. column_name stays NULL.
+    WHEN 'booster'  THEN column_name := NULL;
+    WHEN 'egg'      THEN column_name := NULL;
     ELSE RETURN json_build_object('success', false, 'error', 'Invalid item type');
   END CASE;
 
@@ -116,17 +119,26 @@ BEGIN
   END IF;
 
   current_coins := COALESCE(user_row.coins, 0);
+  -- For egg, item_cost may be negative (cost - reward); that makes the balance
+  -- check trivially pass and the debit becomes a net credit — this is intended.
   IF current_coins < item_cost THEN
     RETURN json_build_object('success', false, 'error', 'Not enough coins');
   END IF;
 
   IF item_type = 'power_up' THEN
+    -- Increment the power-up counter in the JSONB map.
     current_list := COALESCE(user_row.power_ups, '{}'::jsonb);
     UPDATE public.users
       SET coins = current_coins - item_cost,
           power_ups = jsonb_set(current_list, ARRAY[item_id], to_jsonb(COALESCE((current_list->>item_id)::int, 0) + 1))
       WHERE uid = auth.uid()::text;
+  ELSIF column_name IS NULL THEN
+    -- booster/egg: coins-only debit (or net credit for egg). No array to update.
+    UPDATE public.users
+      SET coins = current_coins - item_cost
+      WHERE uid = auth.uid()::text;
   ELSE
+    -- avatar/theme/frame/title: debit coins and append id to the unlock array.
     EXECUTE format(
       'UPDATE public.users SET coins = $1, %I = array_append(COALESCE(%I, ARRAY[]::text[]), $2) WHERE uid = $3',
       column_name, column_name

@@ -17,6 +17,7 @@ const DEFAULT_HERO_GRADIENT = 'from-indigo-600 via-violet-600 to-fuchsia-600';
 interface StudentGreetingCardProps {
   user: AppUser;
   xp: number;
+  coins: number;
   streak: number;
   badges: string[];
   copiedCode: string | null;
@@ -43,7 +44,7 @@ interface StudentGreetingCardProps {
  * has a streak going.
  */
 export default function StudentGreetingCard({
-  user, xp, streak, copiedCode, setCopiedCode, onShopClick,
+  user, xp, coins, streak, copiedCode, setCopiedCode, onShopClick,
   onRenameDisplayName,
 }: StudentGreetingCardProps) {
   // ─── Inline rename state ───────────────────────────────────────────
@@ -285,6 +286,9 @@ export default function StudentGreetingCard({
                 <Copy size={12} className="opacity-70" />
               )}
             </button>
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-2.5 py-0.5 font-black text-amber-950 shadow-sm">
+              🪙 {coins.toLocaleString()}
+            </span>
           </div>
 
           {/* Level progress bar — quintessential "profile page" element.

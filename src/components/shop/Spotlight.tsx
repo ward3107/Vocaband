@@ -13,7 +13,7 @@
 // fires for any student with at least one unowned avatar).
 
 import { motion } from 'motion/react';
-import { Zap, Gift, Pin, Sparkles, Star } from 'lucide-react';
+import { Gift, Pin, Sparkles, Star } from 'lucide-react';
 import type { AppUser } from '../../core/supabase';
 import type { Language } from '../../hooks/useLanguage';
 import {
@@ -24,7 +24,7 @@ import type { PinnedItem, PinnedKind } from '../../hooks/usePinnedShopItem';
 
 interface SpotlightProps {
   user: AppUser;
-  xp: number;
+  coins: number;
   language: Language;
   isRTL: boolean;
   dailyChestAvailable: boolean;
@@ -45,18 +45,18 @@ interface ItemRef {
 type Card =
   | { kind: 'almost-unlocked'; item: ItemRef; gap: number }
   | { kind: 'daily-chest' }
-  | { kind: 'pinned'; item: ItemRef; xpHave: number }
+  | { kind: 'pinned'; item: ItemRef; coinsHave: number }
   | { kind: 'fallback'; item: ItemRef };
 
 const CHROME: Record<Language, Record<string, string>> = {
   en: {
     almostHeader: 'Almost yours!',
-    almostGap: '{gap} XP to unlock',
+    almostGap: '{gap} 🪙 to unlock',
     chestHeader: "Today's chest is waiting",
-    chestSub: 'Open it for free XP',
+    chestSub: 'Open it for free coins',
     chestCta: 'Open chest',
     pinnedHeader: 'Saving for',
-    pinnedProgress: '{have} / {total} XP',
+    pinnedProgress: '{have} / {total} 🪙',
     pinnedUnpin: 'Unpin',
     fallbackHeader: 'Try this',
     playCta: 'Play to earn',
@@ -64,12 +64,12 @@ const CHROME: Record<Language, Record<string, string>> = {
   },
   he: {
     almostHeader: 'כמעט שלך!',
-    almostGap: '{gap} XP לפתיחה',
+    almostGap: '{gap} 🪙 לפתיחה',
     chestHeader: 'התיבה היומית מחכה',
-    chestSub: 'פתח אותה ל-XP חינם',
+    chestSub: 'פתח אותה למטבעות חינם',
     chestCta: 'פתח תיבה',
     pinnedHeader: 'חוסך בשביל',
-    pinnedProgress: '{have} / {total} XP',
+    pinnedProgress: '{have} / {total} 🪙',
     pinnedUnpin: 'בטל סימון',
     fallbackHeader: 'נסה את זה',
     playCta: 'שחק להשיג',
@@ -77,12 +77,12 @@ const CHROME: Record<Language, Record<string, string>> = {
   },
   ar: {
     almostHeader: 'تقريباً لك!',
-    almostGap: '{gap} XP لفتحه',
+    almostGap: '{gap} 🪙 لفتحه',
     chestHeader: 'صندوق اليوم بانتظارك',
-    chestSub: 'افتحه للحصول على XP مجاناً',
+    chestSub: 'افتحه للحصول على عملات مجاناً',
     chestCta: 'افتح الصندوق',
     pinnedHeader: 'تدّخر لـ',
-    pinnedProgress: '{have} / {total} XP',
+    pinnedProgress: '{have} / {total} 🪙',
     pinnedUnpin: 'إلغاء التثبيت',
     fallbackHeader: 'جرّب هذا',
     playCta: 'العب لتربح',
@@ -90,12 +90,12 @@ const CHROME: Record<Language, Record<string, string>> = {
   },
   ru: {
     almostHeader: 'Almost yours!',
-    almostGap: '{gap} XP to unlock',
+    almostGap: '{gap} 🪙 to unlock',
     chestHeader: "Today's chest is waiting",
-    chestSub: 'Open it for free XP',
+    chestSub: 'Open it for free coins',
     chestCta: 'Open chest',
     pinnedHeader: 'Saving for',
-    pinnedProgress: '{have} / {total} XP',
+    pinnedProgress: '{have} / {total} 🪙',
     pinnedUnpin: 'Unpin',
     fallbackHeader: 'Try this',
     playCta: 'Play to earn',
@@ -158,18 +158,18 @@ function displayName(item: ItemRef, language: Language): string {
 // Priority engine. Pure function — no hooks, easy to test.
 function buildCard(
   user: AppUser,
-  xp: number,
+  coins: number,
   dailyChestAvailable: boolean,
   pinned: PinnedItem | null,
 ): Card | null {
-  // Priority 1: Featured Mode 2x XP — intentional null until the
+  // Priority 1: Featured Mode 2x Coins — intentional null until the
   // server-side multiplier lands. Engine architecturally supports it.
 
-  // Priority 2: Almost Unlocked — cheapest unowned item within 100 XP.
+  // Priority 2: Almost Unlocked — cheapest unowned item within 100 coins.
   const candidates: Array<ItemRef & { gap: number }> = [];
   const consider = (item: ItemRef) => {
     if (isOwned(user, item.kind, item.id, item.emoji)) return;
-    const gap = item.cost - xp;
+    const gap = item.cost - coins;
     if (gap <= 0 || gap > 100) return;
     candidates.push({ ...item, gap });
   };
@@ -200,7 +200,7 @@ function buildCard(
   if (pinned) {
     const item = lookup(pinned.kind, pinned.id);
     if (item && !isOwned(user, item.kind, item.id, item.emoji)) {
-      return { kind: 'pinned', item, xpHave: xp };
+      return { kind: 'pinned', item, coinsHave: coins };
     }
   }
 
@@ -225,11 +225,11 @@ function interp(template: string, vars: Record<string, string | number>): string
 
 export default function Spotlight(props: SpotlightProps) {
   const {
-    user, xp, language, isRTL,
+    user, coins, language, isRTL,
     dailyChestAvailable, onClaimChest,
     pinned, onUnpin, onShop,
   } = props;
-  const card = buildCard(user, xp, dailyChestAvailable, pinned);
+  const card = buildCard(user, coins, dailyChestAvailable, pinned);
   const chrome = CHROME[language] ?? CHROME.en;
 
   if (!card) return null;
@@ -268,14 +268,14 @@ export default function Spotlight(props: SpotlightProps) {
     icon = <Pin size={18} className="text-white" />;
     gradient = 'from-emerald-500 via-teal-500 to-cyan-600';
     header = chrome.pinnedHeader;
-    const pct = Math.min(100, Math.round((card.xpHave / card.item.cost) * 100));
+    const pct = Math.min(100, Math.round((card.coinsHave / card.item.cost) * 100));
     body = (
       <>
         <div className="text-base sm:text-lg font-black text-white">
           {card.item.emoji} {displayName(card.item, language)}
         </div>
         <div className="text-xs sm:text-sm text-white/90 mt-0.5">
-          {interp(chrome.pinnedProgress, { have: card.xpHave, total: card.item.cost })}
+          {interp(chrome.pinnedProgress, { have: card.coinsHave, total: card.item.cost })}
         </div>
         <div className="mt-2 h-1.5 rounded-full bg-white/20 overflow-hidden">
           <div
@@ -285,7 +285,7 @@ export default function Spotlight(props: SpotlightProps) {
         </div>
       </>
     );
-    cta = card.xpHave >= card.item.cost
+    cta = card.coinsHave >= card.item.cost
       ? { label: chrome.buyCta, onClick: () => onShop(card.item.kind, card.item.id) }
       : { label: chrome.playCta, onClick: () => onShop(card.item.kind, card.item.id) };
   } else {
@@ -298,11 +298,11 @@ export default function Spotlight(props: SpotlightProps) {
           {card.item.emoji} {displayName(card.item, language)}
         </div>
         <div className="text-xs sm:text-sm text-white/90 mt-0.5">
-          <Zap size={11} className="inline -mt-0.5 mr-0.5" /> {card.item.cost} XP
+          🪙 {card.item.cost}
         </div>
       </>
     );
-    cta = xp >= card.item.cost
+    cta = coins >= card.item.cost
       ? { label: chrome.buyCta, onClick: () => onShop(card.item.kind, card.item.id) }
       : { label: chrome.playCta, onClick: () => onShop(card.item.kind, card.item.id) };
   }

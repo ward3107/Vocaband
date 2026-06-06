@@ -321,7 +321,7 @@ export default function ShopMarketplaceView({
   // "play to earn" nudge that routes back to the hub, so an unaffordable
   // item becomes a reason to play instead of a dead end.
   const LockedFooter = ({ cost }: { cost: number }) => {
-    const pct = Math.min(100, Math.round((xp / Math.max(1, cost)) * 100));
+    const pct = Math.min(100, Math.round((coins / Math.max(1, cost)) * 100));
     return (
       <div className="space-y-1.5">
         <div className="h-1.5 overflow-hidden rounded-full bg-white/15 ring-1 ring-white/10">
@@ -333,7 +333,7 @@ export default function ShopMarketplaceView({
           style={{ touchAction: 'manipulation' }}
           className="inline-flex w-full items-center justify-center gap-1 rounded-full bg-white/15 py-1.5 text-[10px] font-black text-white ring-1 ring-white/20 hover:bg-white/25"
         >
-          <Lock size={10} /> {t.needed(`${cost - xp} XP`)} · {t.playToEarn}
+          <Lock size={10} /> {t.needed(`${Math.max(0, cost - coins)} 🪙`)} · {t.playToEarn}
         </button>
       </div>
     );
@@ -343,7 +343,7 @@ export default function ShopMarketplaceView({
 
   const renderEgg = (egg: typeof MYSTERY_EGGS[0]) => {
     const rarity: Rarity = (egg.rarity as Rarity) in RARITY_DARK ? (egg.rarity as Rarity) : 'common';
-    const canAfford = xp >= egg.cost;
+    const canAfford = coins >= egg.cost;
     return (
       <ItemShell rarity={rarity} width="w-44 sm:w-48">
         <div className="flex justify-end">
@@ -372,7 +372,7 @@ export default function ShopMarketplaceView({
   const renderAvatar = (a: typeof PREMIUM_AVATARS[0]) => {
     const owned = ownsAvatar(a.emoji);
     const equipped = user.avatar === a.emoji;
-    const canAfford = xp >= a.cost;
+    const canAfford = coins >= a.cost;
     const rarity = rarityForCost(a.cost);
     return (
       <ItemShell rarity={rarity} active={equipped} width="w-32 sm:w-36">
@@ -417,7 +417,7 @@ export default function ShopMarketplaceView({
   const renderTheme = (th: typeof THEMES[0]) => {
     const owned = ownsTheme(th.id);
     const active = user.activeTheme === th.id || (!user.activeTheme && th.id === 'default');
-    const canAfford = xp >= th.cost;
+    const canAfford = coins >= th.cost;
     return (
       <div className={`relative w-40 sm:w-44 rounded-2xl ${th.colors.bg} ${th.colors.card === 'bg-white' ? '' : th.colors.card} p-3 ring-2 ${active ? 'ring-violet-500' : 'ring-stone-200'} shadow-sm`}>
         {!owned && <PinButton kind="theme" id={th.id} />}
@@ -452,7 +452,7 @@ export default function ShopMarketplaceView({
             </motion.button>
           ) : (
             <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-stone-500">
-              <Lock size={10} /> {th.cost} XP
+              <Lock size={10} /> {th.cost} 🪙
             </div>
           )}
         </div>
@@ -463,7 +463,7 @@ export default function ShopMarketplaceView({
   const renderFrame = (f: typeof NAME_FRAMES[0]) => {
     const owned = ownsFrame(f.id);
     const active = user.activeFrame === f.id;
-    const canAfford = xp >= f.cost;
+    const canAfford = coins >= f.cost;
     const rarity = rarityForCost(f.cost);
     return (
       <ItemShell rarity={rarity} active={active} width="w-36 sm:w-40">
@@ -494,7 +494,7 @@ export default function ShopMarketplaceView({
   const renderTitle = (ti: typeof NAME_TITLES[0]) => {
     const owned = ownsTitle(ti.id);
     const active = user.activeTitle === ti.id;
-    const canAfford = xp >= ti.cost;
+    const canAfford = coins >= ti.cost;
     const style = TITLE_STYLES[ti.id] ?? 'text-white font-black';
     const rarity = rarityForCost(ti.cost);
     return (
@@ -522,7 +522,7 @@ export default function ShopMarketplaceView({
 
   const renderPowerUp = (p: typeof POWER_UP_DEFS[0]) => {
     const owned = (user.powerUps ?? {})[p.id] ?? 0;
-    const canAfford = xp >= p.cost;
+    const canAfford = coins >= p.cost;
     const grad = POWERUP_STYLES[p.id] ?? 'from-stone-500 to-stone-700';
     return (
       <div className={`relative w-44 sm:w-48 rounded-2xl bg-gradient-to-br ${grad} p-4 shadow-md`}>
@@ -548,7 +548,7 @@ export default function ShopMarketplaceView({
   };
 
   const renderBooster = (b: typeof BOOSTERS_DEFS[0]) => {
-    const canAfford = xp >= b.cost;
+    const canAfford = coins >= b.cost;
     const grad = BOOSTER_STYLES[b.id] ?? 'from-stone-500 to-stone-700';
     return (
       <div className={`relative w-44 sm:w-48 rounded-2xl bg-gradient-to-br ${grad} p-4 shadow-md`}>
@@ -628,7 +628,7 @@ export default function ShopMarketplaceView({
             the most relevant nudge. Null when no priority matches. */}
         <Spotlight
           user={user}
-          xp={xp}
+          coins={coins}
           language={language}
           isRTL={isRTL}
           dailyChestAvailable={retention.dailyChestAvailable}

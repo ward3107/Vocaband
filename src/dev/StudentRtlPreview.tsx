@@ -130,6 +130,7 @@ export default function StudentRtlPreview() {
           <StudentGreetingCard
             user={FAKE_USER}
             xp={FAKE_USER.xp ?? 0}
+            coins={FAKE_USER.coins ?? 0}
             streak={FAKE_USER.streak ?? 0}
             badges={[]}
             copiedCode={copiedCode}

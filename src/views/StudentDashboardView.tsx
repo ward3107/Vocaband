@@ -102,7 +102,7 @@ interface StudentDashboardViewProps {
 }
 
 export default function StudentDashboardView({
-  user, xp, coins: _coins, setCoins: _setCoins, streak, badges,
+  user, xp, coins, setCoins: _setCoins, streak, badges,
   copiedCode, setCopiedCode,
   studentAssignments, studentProgress, studentDataLoading,
   showStudentOnboarding, setShowStudentOnboarding,
@@ -219,6 +219,7 @@ export default function StudentDashboardView({
           <StudentGreetingCard
             user={user}
             xp={xp}
+            coins={coins}
             streak={streak}
             badges={badges}
             copiedCode={copiedCode}
