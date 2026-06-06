@@ -12,6 +12,7 @@ import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
 import EvolutionRing from "../components/arcade/EvolutionRing";
 import OrbitalHub, { type OrbitItem } from "../components/arcade/OrbitalHub";
 import { getXpTitle, type PetRewardKind, type PetMilestone } from "../constants/game";
+import { claimPetMilestoneReward } from "../handlers/retentionGrants";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
@@ -167,12 +168,7 @@ export default function StudentDashboardView({
   // Grants the reward, then records the claim so it won't re-surface.
   const handleClaimMilestone = (milestone: PetMilestone | null) => {
     if (!milestone) return;
-    if (milestone.reward.kind === "xp" && typeof milestone.reward.value === "number") {
-      onGrantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
-    } else {
-      onGrantReward(milestone.reward.kind, milestone.reward.value);
-    }
-    retention.claimPetMilestone(milestone);
+    claimPetMilestoneReward(milestone, onGrantXp, onGrantReward, retention.claimPetMilestone);
   };
 
   // Orbit circles either launch Play, navigate to a dedicated view, or

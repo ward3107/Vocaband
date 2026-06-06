@@ -10,6 +10,7 @@ import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
 import { computeRoundsCompleted, sumPlayCountFromProgress } from "../hooks/useAssignmentPlays";
 import { useLanguage } from "../hooks/useLanguage";
 import type { Language } from "../hooks/useLanguage";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 import { gameModesT, type GameModeId } from "../locales/student/game-modes";
 import { ARCADE_BG, ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
 import IslandMap, { type MapIsland } from "../components/arcade/IslandMap";
@@ -57,6 +58,7 @@ export default function GameModeSelectionView({
   petDisplayName, petXp, petCurrentStage, petNextStage, petClaimableMilestone, onClaimPetMilestone,
 }: GameModeSelectionViewProps) {
   const { language, dir, isRTL } = useLanguage();
+  const reduced = useReducedMotion();
   const t = gameModesT[language] ?? gameModesT.en;
   const qs = QUEST_STRINGS[language] ?? QUEST_STRINGS.en;
 
@@ -210,7 +212,7 @@ export default function GameModeSelectionView({
         onPlay={() => {
           if (sheetIndex != null && stops[sheetIndex]) launch(stops[sheetIndex].id);
         }}
-        reduced={false}
+        reduced={reduced}
       />
 
       <PetCompanion
