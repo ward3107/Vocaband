@@ -417,6 +417,7 @@ export default function TeacherDashboardView({
               onDeleteAssignment={onDeleteAssignment}
               onProjectAssignmentToClass={onProjectAssignmentToClass}
               onPrintAssignmentWorksheet={onPrintAssignmentWorksheet}
+              isDark={dashboardTheme.dark}
             />
           ) : (
             <>

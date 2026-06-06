@@ -7,7 +7,7 @@ import type { Language } from "../../hooks/useLanguage";
 import LiveGameHero from "./LiveGameHero";
 import MgmtCard from "./MgmtCard";
 import FrostedEmoji from "./FrostedEmoji";
-import { accentForClass, BRAND_GRADIENT, HERO_AURORA } from "./dashboardAccents";
+import { accentForClass, HERO_AURORA } from "./dashboardAccents";
 
 // Shared "Live games" hero styling — both cards use the identical
 // LiveGameHero layout and differ only in colour + copy.
@@ -47,6 +47,11 @@ function buildWhatsAppShareText(code: string): string {
 interface EnglishDashboardLayoutProps {
   language: Language;
   isRTL: boolean;
+  /** True when a dark teacher theme (Midnight / Graphite) is active.
+   *  The pastel class cards are a light-mode flourish — on dark themes
+   *  we render the theme-token-driven `classic` ClassCard instead so
+   *  the cards stay readable and cohesive with the dark surface. */
+  isDark?: boolean;
 
   classes: ClassData[];
   teacherAssignments: AssignmentData[];
@@ -95,6 +100,7 @@ interface EnglishDashboardLayoutProps {
 export default function EnglishDashboardLayout({
   language,
   isRTL,
+  isDark = false,
   classes,
   teacherAssignments,
   competitionsByAssignment,
@@ -236,10 +242,11 @@ export default function EnglishDashboardLayout({
               style={{
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
-                background: BRAND_GRADIENT,
-                boxShadow: "0 12px 26px -10px rgba(139,92,246,0.55)",
+                background: "linear-gradient(135deg, var(--vb-accent) 0%, color-mix(in srgb, var(--vb-accent), #000 28%) 100%)",
+                color: "var(--vb-accent-text)",
+                boxShadow: "0 12px 26px -10px color-mix(in srgb, var(--vb-accent), transparent 45%)",
               }}
-              className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white active:scale-95 transition-transform"
+              className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold active:scale-95 transition-transform"
               aria-label={t.newClassAria}
             >
               <Plus size={16} />
@@ -281,7 +288,7 @@ export default function EnglishDashboardLayout({
               return (
                 <ClassCard
                   key={c.id}
-                  variant="pastel"
+                  variant={isDark ? "classic" : "pastel"}
                   accent={accentForClass(c.id)}
                   isRecent={c.id === recentClassId}
                   subject={c.subject ?? "english"}
@@ -329,10 +336,13 @@ export default function EnglishDashboardLayout({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-3.5 flex items-center gap-2.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+    <div
+      className="mb-3.5 flex items-center gap-2.5 text-[11px] font-extrabold uppercase tracking-[0.14em]"
+      style={{ color: "var(--vb-accent)" }}
+    >
       <span
         className="inline-block h-1.5 w-1.5 rounded-full"
-        style={{ background: "linear-gradient(135deg,#8B5CF6,#D946EF)" }}
+        style={{ background: "var(--vb-accent)" }}
       />
       {children}
     </div>
@@ -351,15 +361,15 @@ function EmptyState({ title, sub, cta, onCreate }: EmptyStateProps) {
     <div
       className="flex flex-col items-center gap-[14px] rounded-[28px] px-7 py-9 text-center"
       style={{
-        background: "linear-gradient(135deg, #F3EBFF 0%, #FDE8FF 100%)",
-        border: "1.5px dashed rgba(139,92,246,0.35)",
+        background: "var(--vb-accent-soft)",
+        border: "1.5px dashed color-mix(in srgb, var(--vb-accent), transparent 60%)",
       }}
     >
       <FrostedEmoji emoji="✨" size={72} tone="gradient" />
-      <div className="text-[22px] font-extrabold tracking-[-0.01em] text-[#2A1B5C]">
+      <div className="text-[22px] font-extrabold tracking-[-0.01em]" style={{ color: "var(--vb-text-primary)" }}>
         {title}
       </div>
-      <div className="max-w-[360px] text-sm leading-[1.4] text-[#6B6388]">
+      <div className="max-w-[360px] text-sm leading-[1.4]" style={{ color: "var(--vb-text-secondary)" }}>
         {sub}
       </div>
       <button
@@ -368,10 +378,11 @@ function EmptyState({ title, sub, cta, onCreate }: EmptyStateProps) {
         style={{
           touchAction: "manipulation",
           WebkitTapHighlightColor: "transparent",
-          background: BRAND_GRADIENT,
-          boxShadow: "0 14px 30px -12px rgba(139,92,246,0.55)",
+          background: "linear-gradient(135deg, var(--vb-accent) 0%, color-mix(in srgb, var(--vb-accent), #000 28%) 100%)",
+          color: "var(--vb-accent-text)",
+          boxShadow: "0 14px 30px -12px color-mix(in srgb, var(--vb-accent), transparent 45%)",
         }}
-        className="mt-1.5 inline-flex items-center gap-2 rounded-full px-[22px] py-[14px] text-[15px] font-bold text-white active:scale-95 transition-transform"
+        className="mt-1.5 inline-flex items-center gap-2 rounded-full px-[22px] py-[14px] text-[15px] font-bold active:scale-95 transition-transform"
       >
         <Sparkles size={16} />
         {cta}
