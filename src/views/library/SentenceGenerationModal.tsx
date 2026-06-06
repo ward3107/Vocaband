@@ -285,7 +285,8 @@ export default function SentenceGenerationModal({
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 24, opacity: 0 }}
         transition={{ type: "spring", damping: 24, stiffness: 240 }}
-        className="bg-white w-full sm:max-w-3xl rounded-none sm:rounded-3xl shadow-2xl max-h-screen sm:max-h-[92vh] flex flex-col overflow-hidden"
+        style={{ backgroundColor: 'var(--vb-surface)' }}
+        className="w-full sm:max-w-3xl rounded-none sm:rounded-3xl shadow-2xl max-h-screen sm:max-h-[92vh] flex flex-col overflow-hidden"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-5 py-4 flex items-center justify-between gap-3 text-white shrink-0">
@@ -357,8 +358,8 @@ export default function SentenceGenerationModal({
 
         {/* Footer — only on review step */}
         {step === "review" && (
-          <div className="border-t border-slate-200 bg-slate-50 px-5 sm:px-6 py-3 flex items-center justify-between gap-3 shrink-0">
-            <span className="text-xs text-slate-600">
+          <div className="border-t px-5 sm:px-6 py-3 flex items-center justify-between gap-3 shrink-0" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface-alt)' }}>
+            <span className="text-xs" style={{ color: 'var(--vb-text-secondary)' }}>
               {selectedCount} / {results.length}
             </span>
             <div className="flex items-center gap-2">
@@ -366,7 +367,8 @@ export default function SentenceGenerationModal({
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="text-sm font-semibold text-slate-600 hover:underline disabled:opacity-50"
+                className="text-sm font-semibold hover:underline disabled:opacity-50"
+                style={{ color: 'var(--vb-text-secondary)' }}
               >
                 {t.cancel}
               </button>
@@ -414,8 +416,8 @@ function PickStep({
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="text-lg font-bold text-slate-900">{t.pickLevelHeading}</h3>
-        <p className="text-sm text-slate-600 mt-1">{t.pickLevelSubtitle}</p>
+        <h3 className="text-lg font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.pickLevelHeading}</h3>
+        <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>{t.pickLevelSubtitle}</p>
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {LEVEL_OPTIONS.map(({ key, emoji }) => {
             const isActive = level === key;
@@ -424,23 +426,27 @@ function PickStep({
                 key={key}
                 type="button"
                 onClick={() => setLevel(key)}
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                style={{
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent",
+                  ...(isActive
+                    ? { borderColor: 'var(--vb-accent)', backgroundColor: 'var(--vb-accent-soft)' }
+                    : { borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface)' }),
+                }}
                 className={`text-left rounded-2xl p-4 border transition-all ${
-                  isActive
-                    ? "border-violet-500 bg-violet-50 shadow-sm"
-                    : "border-slate-200 bg-white hover:border-slate-300"
+                  isActive ? "shadow-sm" : ""
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <span className="text-2xl" aria-hidden>{emoji}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900">{labels[key].title}</span>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{key}</span>
+                      <span className="font-bold text-sm" style={{ color: 'var(--vb-text-primary)' }}>{labels[key].title}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--vb-text-muted)' }}>{key}</span>
                     </div>
-                    <p className="text-xs text-slate-600 mt-1 leading-snug">{labels[key].sub}</p>
+                    <p className="text-xs mt-1 leading-snug" style={{ color: 'var(--vb-text-secondary)' }}>{labels[key].sub}</p>
                   </div>
-                  {isActive && <Check className="w-4 h-4 text-violet-600 shrink-0" />}
+                  {isActive && <Check className="w-4 h-4 shrink-0" style={{ color: 'var(--vb-accent)' }} />}
                 </div>
               </button>
             );
@@ -449,21 +455,21 @@ function PickStep({
       </section>
 
       <section>
-        <h3 className="text-lg font-bold text-slate-900">{t.outputTypeHeading}</h3>
-        <p className="text-sm text-slate-600 mt-1">{t.outputTypeSubtitle}</p>
+        <h3 className="text-lg font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.outputTypeHeading}</h3>
+        <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>{t.outputTypeSubtitle}</p>
         <div className="mt-3 space-y-2">
-          <div className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 p-3">
-            <Check className="w-4 h-4 text-violet-600 shrink-0" />
-            <span className="text-sm font-semibold text-slate-900">{t.outputFillBlank}</span>
+          <div className="flex items-center gap-3 rounded-xl border p-3" style={{ borderColor: 'var(--vb-accent)', backgroundColor: 'var(--vb-accent-soft)' }}>
+            <Check className="w-4 h-4 shrink-0" style={{ color: 'var(--vb-accent)' }} />
+            <span className="text-sm font-semibold" style={{ color: 'var(--vb-text-primary)' }}>{t.outputFillBlank}</span>
           </div>
-          <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 cursor-pointer">
+          <label className="flex items-center gap-3 rounded-xl border p-3 cursor-pointer" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface)' }}>
             <input
               type="checkbox"
               checked={keepFullSentence}
               onChange={(e) => setKeepFullSentence(e.target.checked)}
               className="w-4 h-4 text-violet-600 rounded"
             />
-            <span className="text-sm font-medium text-slate-900">{t.outputSentence}</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--vb-text-primary)' }}>{t.outputSentence}</span>
           </label>
         </div>
       </section>
@@ -489,7 +495,7 @@ function GeneratingStep({ t }: { t: SentenceGenerationStrings }) {
       <div className="inline-flex w-16 h-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-100 to-fuchsia-100">
         <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
       </div>
-      <p className="mt-4 font-bold text-slate-900">{t.generating}</p>
+      <p className="mt-4 font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.generating}</p>
     </div>
   );
 }
@@ -524,8 +530,8 @@ function ReviewStep({
   return (
     <div className="space-y-3">
       <div className="mb-2">
-        <h3 className="text-lg font-bold text-slate-900">{t.reviewHeading}</h3>
-        <p className="text-sm text-slate-600 mt-1">{t.reviewSubtitle(results.length, level)}</p>
+        <h3 className="text-lg font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.reviewHeading}</h3>
+        <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>{t.reviewSubtitle(results.length, level)}</p>
       </div>
       {results.map((r) => (
         <WordCard
@@ -574,13 +580,13 @@ function WordCard({
 }) {
   const regenCapped = word.regenCount >= MAX_REGEN_PER_WORD;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+    <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface)' }}>
       {/* Word header */}
-      <div className="px-4 py-2.5 bg-slate-50 flex items-center justify-between gap-2 border-b border-slate-200">
+      <div className="px-4 py-2.5 flex items-center justify-between gap-2 border-b" style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}>
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-bold text-slate-900 truncate">{word.english}</span>
+          <span className="font-bold truncate" style={{ color: 'var(--vb-text-primary)' }}>{word.english}</span>
           {word.candidates.length > 0 && (
-            <span className="text-xs text-slate-500">· {t.candidatesLabel(word.candidates.length)}</span>
+            <span className="text-xs" style={{ color: 'var(--vb-text-muted)' }}>· {t.candidatesLabel(word.candidates.length)}</span>
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -590,8 +596,8 @@ function WordCard({
             disabled={word.regenerating || regenCapped}
             title={regenCapped ? t.regenerateCapReached : t.regenerateThisWord}
             aria-label={t.regenerateThisWord}
-            className="p-1.5 rounded-md text-slate-500 hover:text-violet-600 hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            className="p-1.5 rounded-md hover:text-violet-600 hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: 'var(--vb-text-muted)' }}
           >
             {word.regenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
           </button>
@@ -600,10 +606,10 @@ function WordCard({
             onClick={onSkip}
             aria-label={t.removeAria}
             title={t.removeAria}
-            className={`p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 ${
+            className={`p-1.5 rounded-md hover:text-rose-600 hover:bg-rose-50 ${
               word.selectedIdx === null ? "bg-rose-50 text-rose-600" : ""
             }`}
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", ...(word.selectedIdx === null ? {} : { color: 'var(--vb-text-muted)' }) }}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -612,26 +618,25 @@ function WordCard({
 
       {/* Candidates */}
       {word.candidates.length === 0 ? (
-        <div className="px-4 py-3 text-sm text-slate-500 italic">{t.noCandidates}</div>
+        <div className="px-4 py-3 text-sm italic" style={{ color: 'var(--vb-text-muted)' }}>{t.noCandidates}</div>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y" style={{ borderColor: 'var(--vb-border)' }}>
           {word.candidates.map((cand, idx) => {
             const isPicked = word.selectedIdx === idx;
             return (
               <li
                 key={idx}
                 className={`px-4 py-2.5 flex items-start gap-3 transition-colors ${
-                  isPicked ? "bg-violet-50" : "hover:bg-slate-50"
+                  isPicked ? "" : "hover:opacity-90"
                 }`}
+                style={isPicked ? { backgroundColor: 'var(--vb-accent-soft)' } : undefined}
               >
                 <button
                   type="button"
                   onClick={() => onPickCandidate(idx)}
-                  className={`mt-0.5 w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-                    isPicked ? "border-violet-600 bg-violet-600" : "border-slate-300"
-                  }`}
+                  className="mt-0.5 w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors"
                   aria-label="Pick candidate"
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", ...(isPicked ? { borderColor: 'var(--vb-accent)', backgroundColor: 'var(--vb-accent)' } : { borderColor: 'var(--vb-border)' }) }}
                 >
                   {isPicked && <Check className="w-3 h-3 text-white" />}
                 </button>
@@ -645,7 +650,7 @@ function WordCard({
                       onCancel={onCancelEdit}
                     />
                   ) : (
-                    <p className="text-sm text-slate-900 leading-relaxed">
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--vb-text-primary)' }}>
                       {cand.fillBlank}
                       {cand.wasEdited && (
                         <span className="ms-2 text-[10px] font-bold uppercase tracking-wider text-violet-600">edited</span>
@@ -659,8 +664,8 @@ function WordCard({
                     onClick={onStartEdit}
                     aria-label={t.editAria}
                     title={t.editAria}
-                    className="p-1.5 rounded-md text-slate-500 hover:text-violet-600 hover:bg-violet-50 shrink-0"
-                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                    className="p-1.5 rounded-md hover:text-violet-600 hover:bg-violet-50 shrink-0"
+                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: 'var(--vb-text-muted)' }}
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
@@ -695,6 +700,7 @@ function InlineEditor({
         rows={2}
         autoFocus
         placeholder={t.editPlaceholder}
+        style={{ backgroundColor: 'var(--vb-surface)', color: 'var(--vb-text-primary)' }}
         className="w-full rounded-lg border border-violet-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
       />
       <div className="flex items-center gap-2">
@@ -708,7 +714,8 @@ function InlineEditor({
         <button
           type="button"
           onClick={onCancel}
-          className="px-3 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200"
+          style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}
+          className="px-3 py-1 rounded-md text-xs font-semibold hover:opacity-90"
         >
           {t.editCancel}
         </button>

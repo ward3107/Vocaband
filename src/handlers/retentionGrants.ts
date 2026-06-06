@@ -12,7 +12,7 @@
  */
 import type React from 'react';
 import { supabase, type AppUser } from '../core/supabase';
-import type { PetRewardKind } from '../constants/game';
+import type { PetMilestone, PetRewardKind } from '../constants/game';
 
 export interface GrantRetentionXpDeps {
   user: AppUser | null;
@@ -138,4 +138,24 @@ export function grantNonXpReward(
       ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), tagged as string] }
       : prev,
   );
+}
+
+/**
+ * Single source of truth for claiming a pet evolution milestone: grant the
+ * reward (XP or item), then record the claim so it won't re-surface. Used
+ * by both the home dashboard and the island mode-picker so the reward
+ * routing + toast wording can never drift between the two screens.
+ */
+export function claimPetMilestoneReward(
+  milestone: PetMilestone,
+  grantXp: (value: number, reason: string) => void,
+  grantReward: (kind: PetRewardKind, value: number | string) => void,
+  recordClaim: (m: PetMilestone) => void,
+): void {
+  if (milestone.reward.kind === 'xp' && typeof milestone.reward.value === 'number') {
+    grantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
+  } else {
+    grantReward(milestone.reward.kind, milestone.reward.value);
+  }
+  recordClaim(milestone);
 }

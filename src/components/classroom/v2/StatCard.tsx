@@ -13,19 +13,30 @@ interface StatCardProps {
 export default function StatCard({ label, value, trailing }: StatCardProps) {
   return (
     <div
-      className="rounded-[22px] border border-indigo-500/[0.10] bg-white px-[18px] sm:px-[22px] py-[16px] sm:py-[18px]"
+      className="rounded-[22px] border px-[18px] sm:px-[22px] py-[16px] sm:py-[18px]"
       style={{
+        backgroundColor: "var(--vb-surface)",
+        borderColor: "var(--vb-border)",
         boxShadow:
           "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
       }}
     >
-      <div className="mb-2 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#8B85AB]">
+      <div
+        className="mb-2 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.1em]"
+        style={{ color: "var(--vb-text-muted)" }}
+      >
         {label}
       </div>
-      <div className="text-[22px] sm:text-[28px] font-extrabold leading-none text-[#1F1147]">
+      <div
+        className="text-[22px] sm:text-[28px] font-extrabold leading-none"
+        style={{ color: "var(--vb-text-primary)" }}
+      >
         {value}
         {trailing && (
-          <small className="ms-1 text-[12px] sm:text-[13px] font-medium text-[#6B6388]">
+          <small
+            className="ms-1 text-[12px] sm:text-[13px] font-medium"
+            style={{ color: "var(--vb-text-secondary)" }}
+          >
             {trailing}
           </small>
         )}

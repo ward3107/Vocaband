@@ -127,11 +127,15 @@ export default function AttendanceTable({
                       )}
                     </td>
                   ))}
-                  <td className={`px-3 py-2 text-right font-bold tabular-nums ${
-                    row.presentDays >= 10 ? "text-emerald-700" :
-                    row.presentDays >= 5 ? "text-amber-700" :
-                    "text-rose-700"
-                  }`}>
+                  <td
+                    className="px-3 py-2 text-right font-bold tabular-nums"
+                    style={{
+                      color:
+                        row.presentDays >= 10 ? 'var(--vb-success)' :
+                        row.presentDays >= 5 ? 'var(--vb-warning)' :
+                        'var(--vb-danger)',
+                    }}
+                  >
                     {row.presentDays}/14
                   </td>
                 </tr>

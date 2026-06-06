@@ -94,6 +94,17 @@ export function useBoosters(uid: string | null | undefined) {
     return mult;
   }, [isXpBoosterActive, isWeekendWarriorActive]);
 
+  /** Combined Coins multiplier from all active boosters.
+   * Reads the same xp_booster + weekend_warrior flags as xpMultiplier —
+   * the "2× XP" booster is being repurposed as "2× Coins" so both
+   * currencies honour the same active-booster state. */
+  const coinMultiplier = useCallback(() => {
+    let mult = 1;
+    if (isXpBoosterActive)        mult *= 2;
+    if (isWeekendWarriorActive)   mult *= 2;
+    return mult;
+  }, [isXpBoosterActive, isWeekendWarriorActive]);
+
   /** Activate a booster.  Called from shop's purchaseBooster handler.
    *  Date.now() is computed inside the body (not via the closure-
    *  captured `now` constant) so the callback identity is stable
@@ -143,8 +154,9 @@ export function useBoosters(uid: string | null | undefined) {
     streakFreezes,
     luckyCharms,
     xpMultiplier,
+    coinMultiplier,
     activate,
     consumeLuckyCharm,
     tryConsumeStreakFreeze,
-  }), [isXpBoosterActive, isFocusModeActive, isWeekendWarriorActive, streakFreezes, luckyCharms, xpMultiplier, activate, consumeLuckyCharm, tryConsumeStreakFreeze]);
+  }), [isXpBoosterActive, isFocusModeActive, isWeekendWarriorActive, streakFreezes, luckyCharms, xpMultiplier, coinMultiplier, activate, consumeLuckyCharm, tryConsumeStreakFreeze]);
 }

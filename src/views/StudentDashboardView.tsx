@@ -5,13 +5,14 @@ import PetCompanion from "../components/dashboard/PetCompanion";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import StudentWelcomeCard from "../components/dashboard/StudentWelcomeCard";
+import StudentGreetingCard from "../components/dashboard/StudentGreetingCard";
 import { useCompetitionsForClass } from "../hooks/useCompetitions";
 import { useDueReviews } from "../hooks/useDueReviews";
 import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
-import ArcadeStatsBar from "../components/arcade/ArcadeStatsBar";
 import EvolutionRing from "../components/arcade/EvolutionRing";
 import OrbitalHub, { type OrbitItem } from "../components/arcade/OrbitalHub";
 import { getXpTitle, type PetRewardKind, type PetMilestone } from "../constants/game";
+import { claimPetMilestoneReward } from "../handlers/retentionGrants";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
@@ -23,6 +24,8 @@ import React from "react";
 interface StudentDashboardViewProps {
   user: AppUser;
   xp: number;
+  coins: number;
+  setCoins: React.Dispatch<React.SetStateAction<number>>;
   streak: number;
   badges: string[];
   copiedCode: string | null;
@@ -99,7 +102,8 @@ interface StudentDashboardViewProps {
 }
 
 export default function StudentDashboardView({
-  user, xp, streak,
+  user, xp, coins: _coins, setCoins: _setCoins, streak, badges,
+  copiedCode, setCopiedCode,
   studentAssignments, studentProgress, studentDataLoading,
   showStudentOnboarding, setShowStudentOnboarding,
   consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
@@ -110,6 +114,7 @@ export default function StudentDashboardView({
   onStartReview,
   onStartClassMinute,
   onStartIdioms,
+  onRenameDisplayName,
   onRequestLogout,
 }: StudentDashboardViewProps) {
   // Classroom competitions wrapping any of this student's assignments.
@@ -163,12 +168,7 @@ export default function StudentDashboardView({
   // Grants the reward, then records the claim so it won't re-surface.
   const handleClaimMilestone = (milestone: PetMilestone | null) => {
     if (!milestone) return;
-    if (milestone.reward.kind === "xp" && typeof milestone.reward.value === "number") {
-      onGrantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
-    } else {
-      onGrantReward(milestone.reward.kind, milestone.reward.value);
-    }
-    retention.claimPetMilestone(milestone);
+    claimPetMilestoneReward(milestone, onGrantXp, onGrantReward, retention.claimPetMilestone);
   };
 
   // Orbit circles either launch Play, navigate to a dedicated view, or
@@ -215,7 +215,17 @@ export default function StudentDashboardView({
       )}
       <ArcadeHubLayout
         topBar={<StudentTopBar onRequestLogout={onRequestLogout} />}
-        statsBar={<ArcadeStatsBar xp={xp} streak={streak} />}
+        statsBar={
+          <StudentGreetingCard
+            user={user}
+            xp={xp}
+            streak={streak}
+            badges={badges}
+            copiedCode={copiedCode}
+            setCopiedCode={setCopiedCode}
+            onRenameDisplayName={onRenameDisplayName}
+          />
+        }
         character={
           <OrbitalHub
             items={orbitItems}

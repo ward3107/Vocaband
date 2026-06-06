@@ -136,7 +136,7 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
         <>
           {/* XP amount picker */}
           <div className="mb-5">
-            <p className="text-[13px] font-semibold text-[#4A3B7A] mb-3 flex items-center gap-2">
+            <p className="text-[13px] font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--vb-text-secondary)' }}>
               <Sparkles size={16} className="text-amber-500" />
               {t.selectXpAmount}
             </p>
@@ -149,11 +149,14 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
                   style={{
                     touchAction: "manipulation",
                     WebkitTapHighlightColor: "transparent" as never,
+                    ...(selectedXp === xp
+                      ? {}
+                      : { backgroundColor: "var(--vb-surface)", color: "var(--vb-text-secondary)", borderColor: "var(--vb-border)" }),
                   }}
                   className={`py-4 px-2 rounded-2xl font-black text-lg transition-all border ${
                     selectedXp === xp
                       ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/30"
-                      : "bg-white text-[#4A3B7A] border-indigo-500/[0.10] hover:border-amber-300"
+                      : "hover:border-amber-300"
                   }`}
                 >
                   +{xp}
@@ -168,7 +171,8 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
           <div>
             <label
               htmlFor="reward-reason"
-              className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#6B6388]"
+              className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.1em]"
+              style={{ color: 'var(--vb-text-muted)' }}
             >
               Short message to the student (optional)
             </label>
@@ -180,9 +184,10 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
               onChange={(e) => setReason(e.target.value)}
               placeholder={t.shortMsgPlaceholder}
               maxLength={120}
-              className="block w-full rounded-2xl border-[1.5px] border-indigo-500/[0.10] bg-white px-[18px] py-3 text-[14px] text-[#1F1147] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)]"
+              style={{ backgroundColor: 'var(--vb-surface)', color: 'var(--vb-text-primary)', borderColor: 'var(--vb-border)' }}
+              className="block w-full rounded-2xl border-[1.5px] px-[18px] py-3 text-[14px] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)]"
             />
-            <p className="mt-1 text-[11px] text-[#8B85AB]">
+            <p className="mt-1 text-[11px]" style={{ color: 'var(--vb-text-muted)' }}>
               Shows up in the student's dashboard next to the XP boost.
             </p>
           </div>

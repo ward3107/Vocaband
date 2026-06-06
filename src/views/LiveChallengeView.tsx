@@ -481,19 +481,20 @@ export default function LiveChallengeView({
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 240, damping: 22 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white text-stone-900 rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-2xl"
+              className="rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-2xl"
+              style={{ backgroundColor: 'var(--vb-surface)', color: 'var(--vb-text-primary)' }}
               dir={dir}
             >
               <h3 className="text-xl sm:text-2xl font-black mb-2">{t.endConfirmTitle}</h3>
-              <p className="text-sm text-stone-600 mb-6 leading-relaxed">
+              <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--vb-text-secondary)' }}>
                 {t.endConfirmBody(sortedLeaderboard.length)}
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowEndConfirm(false)}
                   type="button"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  className="flex-1 py-3 rounded-xl font-bold text-stone-600 hover:bg-stone-50 border-2 border-stone-200 transition-colors"
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', color: 'var(--vb-text-secondary)', borderColor: 'var(--vb-border)' }}
+                  className="flex-1 py-3 rounded-xl font-bold hover:opacity-90 border-2 transition-colors"
                 >
                   {t.endConfirmCancel}
                 </button>

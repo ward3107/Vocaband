@@ -155,7 +155,7 @@ export async function handleDbError(
 // constant lists exactly the columns the matching mapper below reads.
 // ---------------------------------------------------------------------------
 export const USER_COLUMNS =
-  'uid,email,role,display_name,class_code,avatar,badges,xp,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at,subject,guides_seen,school_id';
+  'uid,email,role,display_name,class_code,avatar,badges,xp,coins,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at,subject,guides_seen,school_id';
 export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar,subject,school_name,school_logo_url,background_color';
 export const ASSIGNMENT_COLUMNS =
   'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at,subject';
@@ -184,6 +184,8 @@ export interface AppUser {
   displayName: string;
   classCode?: string;
   avatar?: string;
+  /** Spend currency for the shop. XP is rank-only; coins are spent. */
+  coins: number;
   badges?: string[];
   xp?: number;
   streak?: number;
@@ -473,6 +475,7 @@ export function mapUser(row: any): AppUser {
     classCode: row.class_code,
     avatar: row.avatar,
     badges: row.badges ?? [],
+    coins: row.coins ?? 0,
     xp: row.xp ?? 0,
     streak: row.streak ?? 0,
     unlockedAvatars: row.unlocked_avatars ?? [],
@@ -559,6 +562,7 @@ export function mapUserToDb(u: Partial<AppUser> & { uid: string }) {
     ...(u.displayName !== undefined && { display_name: u.displayName }),
     ...(u.classCode !== undefined && { class_code: u.classCode }),
     ...(u.avatar !== undefined && { avatar: u.avatar }),
+    ...(u.coins !== undefined && { coins: u.coins }),
     ...(u.badges !== undefined && { badges: u.badges }),
     ...(u.xp !== undefined && { xp: u.xp }),
     ...(u.streak !== undefined && { streak: u.streak }),

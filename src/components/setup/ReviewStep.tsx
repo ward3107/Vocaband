@@ -454,7 +454,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         </button>
       )}
 
-      <div className="flex gap-3 fixed sm:static bottom-0 inset-x-0 sm:inset-auto z-30 px-4 sm:px-0 bg-gradient-to-t sm:bg-none from-white via-white/95 to-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 sm:pt-0 sm:pb-0">
+      <div
+        className="flex gap-3 fixed sm:static bottom-0 inset-x-0 sm:inset-auto z-30 px-4 sm:px-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 sm:pt-0 sm:pb-0"
+        style={{ background: 'linear-gradient(to top, var(--vb-surface), var(--vb-surface) 60%, transparent)' }}
+      >
         <button
           onClick={onBack}
           className="flex-1 py-4 bg-[var(--vb-surface-alt)] text-[var(--vb-text-primary)] rounded-xl font-bold hover:opacity-80 border-2 border-[var(--vb-border)] transition-all"

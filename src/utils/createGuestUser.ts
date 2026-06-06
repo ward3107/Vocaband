@@ -62,6 +62,7 @@ export function createGuestUser(
     role: 'guest',
     isGuest: true,
     avatar,
+    coins: 0,
     xp: 0,
     classCode: undefined,
     createdAt: new Date().toISOString(),

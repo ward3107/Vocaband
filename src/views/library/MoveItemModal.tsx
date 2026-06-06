@@ -143,7 +143,7 @@ export default function MoveItemModal({
         </>
       }
     >
-      <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#6B6388]">
+      <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.1em]" style={{ color: 'var(--vb-text-muted)' }}>
         {t.movePickFolder}
       </p>
 
@@ -152,22 +152,25 @@ export default function MoveItemModal({
         <button
           type="button"
           onClick={() => setDestinationId(null)}
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent" as never,
+            ...(destinationId === null
+              ? { borderColor: 'var(--vb-accent)', backgroundColor: 'var(--vb-accent-soft)' }
+              : { borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface)' }),
+          }}
           className={`w-full ${isRTL ? "text-right" : "text-left"} rounded-2xl border p-3 flex items-center gap-3 transition-all ${
-            destinationId === null
-              ? "border-[#8B5CF6] bg-[rgba(139,92,246,0.06)] shadow-sm"
-              : "border-indigo-500/[0.10] bg-white hover:border-[#8B5CF6]/40"
+            destinationId === null ? "shadow-sm" : ""
           }`}
         >
           <span
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-              destinationId === null ? "border-[#8B5CF6] bg-[#8B5CF6]" : "border-[#C7C2DD]"
-            }`}
+            className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+            style={destinationId === null ? { borderColor: 'var(--vb-accent)', backgroundColor: 'var(--vb-accent)' } : { borderColor: 'var(--vb-border)' }}
           >
             {destinationId === null && <Check className="w-3 h-3 text-white" />}
           </span>
-          <Home className="w-5 h-5 text-[#8B85AB] shrink-0" />
-          <span className="font-semibold text-sm text-[#1F1147]">{t.moveToRoot}</span>
+          <Home className="w-5 h-5 shrink-0" style={{ color: 'var(--vb-text-muted)' }} />
+          <span className="font-semibold text-sm" style={{ color: 'var(--vb-text-primary)' }}>{t.moveToRoot}</span>
         </button>
 
         {/* Every other collection */}
@@ -178,22 +181,25 @@ export default function MoveItemModal({
               key={c.id}
               type="button"
               onClick={() => setDestinationId(c.id)}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
+              style={{
+                touchAction: "manipulation",
+                WebkitTapHighlightColor: "transparent" as never,
+                ...(active
+                  ? { borderColor: 'var(--vb-accent)', backgroundColor: 'var(--vb-accent-soft)' }
+                  : { borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface)' }),
+              }}
               className={`w-full ${isRTL ? "text-right" : "text-left"} rounded-2xl border p-3 flex items-center gap-3 transition-all ${
-                active
-                  ? "border-[#8B5CF6] bg-[rgba(139,92,246,0.06)] shadow-sm"
-                  : "border-indigo-500/[0.10] bg-white hover:border-[#8B5CF6]/40"
+                active ? "shadow-sm" : ""
               }`}
             >
               <span
-                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                  active ? "border-[#8B5CF6] bg-[#8B5CF6]" : "border-[#C7C2DD]"
-                }`}
+                className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                style={active ? { borderColor: 'var(--vb-accent)', backgroundColor: 'var(--vb-accent)' } : { borderColor: 'var(--vb-border)' }}
               >
                 {active && <Check className="w-3 h-3 text-white" />}
               </span>
               <span className="text-xl shrink-0" aria-hidden>{c.emoji ?? "📁"}</span>
-              <span className="font-semibold text-sm text-[#1F1147] truncate min-w-0">{c.name}</span>
+              <span className="font-semibold text-sm truncate min-w-0" style={{ color: 'var(--vb-text-primary)' }}>{c.name}</span>
             </button>
           );
         })}

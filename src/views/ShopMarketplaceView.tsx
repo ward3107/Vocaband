@@ -26,6 +26,8 @@ interface Props {
   user: AppUser;
   xp: number;
   setXp: (xp: number) => void;
+  coins: number;
+  setCoins: (coins: number) => void;
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   setView: React.Dispatch<React.SetStateAction<View>>;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -63,7 +65,7 @@ const rarityForCost = (cost: number): Rarity =>
   cost >= 1500 ? 'mythic' : cost >= 800 ? 'legendary' : cost >= 400 ? 'epic' : cost >= 150 ? 'rare' : 'common';
 
 export default function ShopMarketplaceView({
-  user, xp, setXp, setUser, setView, showToast, activateBooster,
+  user, xp, setXp, coins, setCoins, setUser, setView, showToast, activateBooster,
 }: Props) {
   const { language, dir, isRTL } = useLanguage();
   const t = shopT[language];
@@ -78,10 +80,10 @@ export default function ShopMarketplaceView({
   // --- Purchase / equip RPCs (same shapes as the original ShopView) ---
 
   const purchaseAvatar = async (a: typeof PREMIUM_AVATARS[0]) => {
-    if (xp < a.cost) { showToast(t.notEnoughXp, "error"); return; }
+    if (coins < a.cost) { showToast(t.notEnoughCoins, "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: a.emoji, item_cost: a.cost });
     if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
-    setXp(data.new_xp);
+    setCoins(data.new_coins);
     setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), a.emoji] } : prev);
     showToast(`✨ ${catalogName('avatars', a.id, language, a.name)}`, "success");
   };
@@ -93,10 +95,10 @@ export default function ShopMarketplaceView({
   };
 
   const purchaseTheme = async (theme: typeof THEMES[0]) => {
-    if (xp < theme.cost) { showToast(t.notEnoughXp, "error"); return; }
+    if (coins < theme.cost) { showToast(t.notEnoughCoins, "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'theme', item_id: theme.id, item_cost: theme.cost });
     if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
-    setXp(data.new_xp);
+    setCoins(data.new_coins);
     setUser(prev => prev ? { ...prev, unlockedThemes: [...(prev.unlockedThemes ?? []), theme.id] } : prev);
     showToast(`✨ ${catalogName('themes', theme.id, language, theme.name)}`, "success");
   };
@@ -108,28 +110,28 @@ export default function ShopMarketplaceView({
   };
 
   const purchasePowerUp = async (p: typeof POWER_UP_DEFS[0]) => {
-    if (xp < p.cost) { showToast(t.notEnoughXp, "error"); return; }
+    if (coins < p.cost) { showToast(t.notEnoughCoins, "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'power_up', item_id: p.id, item_cost: p.cost });
     if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
-    setXp(data.new_xp);
+    setCoins(data.new_coins);
     setUser(prev => prev ? { ...prev, powerUps: { ...(prev.powerUps ?? {}), [p.id]: ((prev.powerUps ?? {})[p.id] ?? 0) + 1 } } : prev);
     showToast(`✨ ${catalogName('powerUps', p.id, language, p.name)}`, "success");
   };
 
   const purchaseBooster = async (b: typeof BOOSTERS_DEFS[0]) => {
-    if (xp < b.cost) { showToast(t.notEnoughXp, "error"); return; }
+    if (coins < b.cost) { showToast(t.notEnoughCoins, "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'booster', item_id: b.id, item_cost: b.cost });
     if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
-    setXp(data.new_xp);
+    setCoins(data.new_coins);
     activateBooster(b.id as Parameters<typeof activateBooster>[0]);
     showToast(`✨ ${catalogName('boosters', b.id, language, b.name)}`, "success");
   };
 
   const purchaseTitle = async (title: typeof NAME_TITLES[0]) => {
-    if (xp < title.cost) { showToast(t.notEnoughXp, "error"); return; }
+    if (coins < title.cost) { showToast(t.notEnoughCoins, "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `title_${title.id}`, item_cost: title.cost });
     if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
-    setXp(data.new_xp);
+    setCoins(data.new_coins);
     setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `title_${title.id}`] } : prev);
     showToast(`✨ ${catalogName('titles', title.id, language, title.name)}`, "success");
   };
@@ -147,10 +149,10 @@ export default function ShopMarketplaceView({
   };
 
   const purchaseFrame = async (frame: typeof NAME_FRAMES[0]) => {
-    if (xp < frame.cost) { showToast(t.notEnoughXp, "error"); return; }
+    if (coins < frame.cost) { showToast(t.notEnoughCoins, "error"); return; }
     const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `frame_${frame.id}`, item_cost: frame.cost });
     if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
-    setXp(data.new_xp);
+    setCoins(data.new_coins);
     setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `frame_${frame.id}`] } : prev);
     showToast(`✨ ${catalogName('frames', frame.id, language, frame.name)}`, "success");
   };
@@ -168,20 +170,24 @@ export default function ShopMarketplaceView({
   };
 
   const purchaseEgg = async (egg: typeof MYSTERY_EGGS[0]) => {
-    if (xp < egg.cost) { showToast(t.notEnoughXp, "error"); return; }
+    if (coins < egg.cost) { showToast(t.notEnoughCoins, "error"); return; }
     setOpeningEgg({ egg, phase: 'zoom' });
     setTimeout(() => setOpeningEgg(prev => prev ? { ...prev, phase: 'shake' } : prev), 300);
     // `open_mystery_egg` is planned for a follow-up Supabase migration
     // (server-side reward roll + cosmetic drops). Until that ships, roll
-    // the XP reward on the client and book the net cost via the generic
+    // the coin reward on the client and book the net cost via the generic
     // `purchase_item` RPC. Avoids the 404 the missing RPC would otherwise
     // spam in the console every egg open.
     const rpcPromise = (async () => {
       const rewardXp = Math.floor(egg.minXp + Math.random() * (egg.maxXp - egg.minXp + 1));
+      // Book the NET in one call: item_cost = egg.cost - rewardXp, so the RPC
+      // computes coins - (cost - reward) = coins - cost + reward. pData.new_coins
+      // is already the final balance — do NOT add rewardXp again (that double-
+      // grants, and award_coins would clamp big egg payouts at 200).
       const { data: pData, error: pErr } = await supabase.rpc('purchase_item', { item_type: 'egg', item_id: egg.id, item_cost: egg.cost - rewardXp });
       if (pErr || !pData?.success) { showToast(pData?.error || t.couldNotOpenEgg, "error"); return null; }
-      setXp(pData.new_xp);
-      return `+${rewardXp} XP`;
+      setCoins(pData.new_coins);
+      return `+${rewardXp} 🪙`;
     })();
     const rewardLabel = await rpcPromise;
     if (rewardLabel === null) { setOpeningEgg(null); return; }
@@ -589,11 +595,10 @@ export default function ShopMarketplaceView({
             Dashboard
           </button>
           <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full ps-2 pe-3 py-1.5 ring-1 ring-white/20 shadow-lg shadow-violet-900/30">
-            <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-              <Zap size={14} className="text-white fill-white" />
+            <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-base leading-none">
+              🪙
             </span>
-            <span className="font-black text-white tabular-nums">{xp}</span>
-            <span className="text-xs font-bold text-cyan-200 uppercase tracking-wider">XP</span>
+            <span className="font-black text-white tabular-nums">{coins.toLocaleString()}</span>
           </div>
         </div>
 

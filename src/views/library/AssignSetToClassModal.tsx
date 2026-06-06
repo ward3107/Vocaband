@@ -187,7 +187,8 @@ export default function AssignSetToClassModal({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 24, opacity: 0 }}
           transition={{ type: "spring", damping: 24, stiffness: 240 }}
-          className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden"
+          style={{ backgroundColor: 'var(--vb-surface)' }}
+          className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-5 py-4 flex items-center justify-between gap-3 text-white shrink-0">
@@ -210,13 +211,13 @@ export default function AssignSetToClassModal({
           <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-5">
             {/* Class picker */}
             <section>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">
+              <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--vb-text-secondary)' }}>
                 {t.pickClassHeading}
               </h3>
               {classes.length === 0 ? (
-                <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
-                  <Users className="w-6 h-6 mx-auto text-slate-400" />
-                  <p className="mt-2 text-sm text-slate-600 max-w-sm mx-auto">{t.pickClassEmpty}</p>
+                <div className="mt-3 rounded-xl border border-dashed p-4 text-center" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface-alt)' }}>
+                  <Users className="w-6 h-6 mx-auto" style={{ color: 'var(--vb-text-muted)' }} />
+                  <p className="mt-2 text-sm max-w-sm mx-auto" style={{ color: 'var(--vb-text-secondary)' }}>{t.pickClassEmpty}</p>
                 </div>
               ) : (
                 <ul className="mt-3 space-y-2">
@@ -227,17 +228,20 @@ export default function AssignSetToClassModal({
                         <button
                           type="button"
                           onClick={() => setSelectedClassId(c.id)}
-                          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                          style={{
+                            touchAction: "manipulation",
+                            WebkitTapHighlightColor: "transparent",
+                            ...(isActive
+                              ? { borderColor: 'var(--vb-accent)', backgroundColor: 'var(--vb-accent-soft)' }
+                              : { borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface)' }),
+                          }}
                           className={`w-full ${isRTL ? "text-right" : "text-left"} rounded-xl border p-3 flex items-center gap-3 transition-all ${
-                            isActive
-                              ? "border-violet-500 bg-violet-50 shadow-sm"
-                              : "border-slate-200 bg-white hover:border-slate-300"
+                            isActive ? "shadow-sm" : ""
                           }`}
                         >
                           <span
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                              isActive ? "border-violet-600 bg-violet-600" : "border-slate-300"
-                            }`}
+                            className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                            style={isActive ? { borderColor: 'var(--vb-accent)', backgroundColor: 'var(--vb-accent)' } : { borderColor: 'var(--vb-border)' }}
                           >
                             {isActive && <Check className="w-3 h-3 text-white" />}
                           </span>
@@ -245,8 +249,8 @@ export default function AssignSetToClassModal({
                             {c.avatar ?? "🎓"}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="font-bold text-sm text-slate-900 truncate">{c.name}</p>
-                            <p className="text-xs text-slate-500 font-mono">{t.classMetaRow(c.code)}</p>
+                            <p className="font-bold text-sm truncate" style={{ color: 'var(--vb-text-primary)' }}>{c.name}</p>
+                            <p className="text-xs font-mono" style={{ color: 'var(--vb-text-muted)' }}>{t.classMetaRow(c.code)}</p>
                           </div>
                         </button>
                       </li>
@@ -259,7 +263,7 @@ export default function AssignSetToClassModal({
             {/* Title */}
             <section>
               <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--vb-text-secondary)' }}>
                   {t.titleLabel}
                 </span>
                 <input
@@ -267,7 +271,8 @@ export default function AssignSetToClassModal({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder={t.titlePlaceholder}
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                  style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
+                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                   maxLength={100}
                 />
               </label>
@@ -276,12 +281,12 @@ export default function AssignSetToClassModal({
             {/* Translation language */}
             <section>
               <div className="flex items-center gap-2">
-                <Languages className="w-4 h-4 text-slate-500" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                <Languages className="w-4 h-4" style={{ color: 'var(--vb-text-muted)' }} />
+                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--vb-text-secondary)' }}>
                   {t.translationsHeading}
                 </h3>
               </div>
-              <p className="mt-1 text-xs text-slate-500">{t.translationsHint}</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--vb-text-muted)' }}>{t.translationsHint}</p>
               <div
                 role="radiogroup"
                 aria-label={t.translationsHeading}
@@ -302,11 +307,15 @@ export default function AssignSetToClassModal({
                       role="radio"
                       aria-checked={active}
                       onClick={() => setTranslations(opt.id)}
-                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      style={{
+                        touchAction: "manipulation",
+                        WebkitTapHighlightColor: "transparent",
+                        ...(active
+                          ? { borderColor: 'var(--vb-accent)', backgroundColor: 'var(--vb-accent-soft)', color: 'var(--vb-accent)' }
+                          : { borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface)', color: 'var(--vb-text-secondary)' }),
+                      }}
                       className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${
-                        active
-                          ? "border-violet-500 bg-violet-50 text-violet-700 shadow-sm"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        active ? "shadow-sm" : ""
                       }`}
                     >
                       {opt.label}
@@ -319,28 +328,30 @@ export default function AssignSetToClassModal({
             {/* Deadline */}
             <section>
               <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--vb-text-secondary)' }}>
                   {t.deadlineLabel}
                 </span>
                 <input
                   type="date"
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                  style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
+                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                   min={new Date().toISOString().split("T")[0]}
                 />
               </label>
-              <p className="mt-1 text-xs text-slate-500">{t.deadlineHint}</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--vb-text-muted)' }}>{t.deadlineHint}</p>
             </section>
           </div>
 
           {/* Footer */}
-          <div className="border-t border-slate-200 bg-slate-50 px-5 sm:px-6 py-3 flex items-center justify-end gap-2 shrink-0">
+          <div className="border-t px-5 sm:px-6 py-3 flex items-center justify-end gap-2 shrink-0" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface-alt)' }}>
             <button
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="text-sm font-semibold text-slate-600 hover:underline disabled:opacity-50"
+              className="text-sm font-semibold hover:underline disabled:opacity-50"
+              style={{ color: 'var(--vb-text-secondary)' }}
             >
               {t.cancel}
             </button>

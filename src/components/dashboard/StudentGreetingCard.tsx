@@ -22,9 +22,9 @@ interface StudentGreetingCardProps {
   copiedCode: string | null;
   setCopiedCode: React.Dispatch<React.SetStateAction<string | null>>;
   /** Tap handler for the shop button inlined in the greeting card.
-   * (Previously lived in StudentTopBar; moved here so the student's
-   * name + avatar + XP + Shop all live in one coloured rectangle.) */
-  onShopClick: () => void;
+   * Optional — when omitted (e.g. the arcade hub already has a Shop
+   * orbit circle), the shop button is hidden so it isn't duplicated. */
+  onShopClick?: () => void;
   /** Optional rename handler. When provided, a pencil icon appears
    *  next to the student's name and lets them change it in-place.
    *  Resolves with the server's authoritative name (client already
@@ -320,37 +320,41 @@ export default function StudentGreetingCard({
             level-bar caption below the name ("1,450 / 1,500 XP · 50
             to Master").  Stripping it leaves the greeting clearly
             about identity, with one cosmetic-economy CTA on the side. */}
-        <div className="hidden sm:flex shrink-0 self-center">
-          <button
-            onClick={onShopClick}
-            type="button"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            className="relative inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-xl shadow-lg shadow-pink-500/40 hover:shadow-xl hover:shadow-pink-500/50 active:scale-95 transition-all text-sm border-2 border-white/60"
-          >
-            <ShoppingBag size={16} />
-            Shop
-            <span className="ms-0.5 inline-flex items-center gap-0.5 bg-yellow-300 text-rose-700 text-[9px] font-black px-1.5 py-0.5 rounded-full border border-white/50">
-              NEW
-            </span>
-          </button>
-        </div>
+        {onShopClick && (
+          <div className="hidden sm:flex shrink-0 self-center">
+            <button
+              onClick={onShopClick}
+              type="button"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              className="relative inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-xl shadow-lg shadow-pink-500/40 hover:shadow-xl hover:shadow-pink-500/50 active:scale-95 transition-all text-sm border-2 border-white/60"
+            >
+              <ShoppingBag size={16} />
+              Shop
+              <span className="ms-0.5 inline-flex items-center gap-0.5 bg-yellow-300 text-rose-700 text-[9px] font-black px-1.5 py-0.5 rounded-full border border-white/50">
+                NEW
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Mobile row — just the Shop button now, full-width so the
           touch target is generous.  Total-XP pill removed for the
           same reason it's gone on desktop (duplicate of the level
           bar caption). */}
-      <div className="sm:hidden mt-4">
-        <button
-          onClick={onShopClick}
-          type="button"
-          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-xl shadow-lg shadow-pink-500/40 active:scale-95 transition-all text-sm border-2 border-white/60"
-        >
-          <ShoppingBag size={14} />
-          Shop
-        </button>
-      </div>
+      {onShopClick && (
+        <div className="sm:hidden mt-4">
+          <button
+            onClick={onShopClick}
+            type="button"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+            className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white font-black rounded-xl shadow-lg shadow-pink-500/40 active:scale-95 transition-all text-sm border-2 border-white/60"
+          >
+            <ShoppingBag size={14} />
+            Shop
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }

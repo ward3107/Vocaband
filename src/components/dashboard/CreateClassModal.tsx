@@ -64,7 +64,8 @@ export default function CreateClassModal({
           onChange={(e) => setNewClassName(e.target.value)}
           placeholder={t.classNamePlaceholder}
           maxLength={50}
-          className="block w-full rounded-2xl border-[1.5px] border-indigo-500/[0.10] bg-white px-[18px] py-3 text-[15px] font-bold text-[#1F1147] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)]"
+          style={{ backgroundColor: 'var(--vb-surface)', color: 'var(--vb-text-primary)', borderColor: 'var(--vb-border)' }}
+          className="block w-full rounded-2xl border-[1.5px] px-[18px] py-3 text-[15px] font-bold outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)]"
         />
       </form>
     </ModalShell>

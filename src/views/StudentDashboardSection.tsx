@@ -44,9 +44,11 @@ type Anyish = any;
 export interface StudentDashboardSectionDeps {
   user: AppUser;
   xp: number;
+  coins: number;
   streak: number;
   badges: string[];
   setXp: React.Dispatch<React.SetStateAction<number>>;
+  setCoins: React.Dispatch<React.SetStateAction<number>>;
   setBadges: React.Dispatch<React.SetStateAction<string[]>>;
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
 
@@ -91,7 +93,7 @@ export interface StudentDashboardSectionDeps {
 
 export function StudentDashboardSection(deps: StudentDashboardSectionDeps): ReactNode {
   const {
-    user, xp, streak, badges, setXp, setBadges, setUser,
+    user, xp, coins, streak, badges, setXp, setCoins, setBadges, setUser,
     copiedCode, setCopiedCode,
     studentAssignments, studentProgress, studentDataLoading,
     showStudentOnboarding, setShowStudentOnboarding,
@@ -109,6 +111,8 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
       <StudentDashboardView
         user={user}
         xp={xp}
+        coins={coins}
+        setCoins={setCoins}
         streak={streak}
         badges={badges}
         copiedCode={copiedCode}
