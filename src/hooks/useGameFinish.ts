@@ -43,6 +43,7 @@ import {
   resolveAssignmentPlays,
 } from "./useAssignmentPlays";
 import { celebrate } from "../utils/celebrate";
+import { coinsForGame } from "../utils/coins";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 
@@ -52,6 +53,7 @@ import type { View } from "../core/views";
 export interface BoosterApi {
   consumeLuckyCharm: () => boolean;
   xpMultiplier: () => number;
+  coinMultiplier: () => number;
   tryConsumeStreakFreeze: () => boolean;
 }
 
@@ -150,7 +152,7 @@ export function useGameFinish(params: UseGameFinishParams) {
   const {
     user, score, gameMode, gameWords, mistakes, wordAttemptBatch, activeAssignment,
     quickPlayActiveSession, quickPlaySocketUpdateScore,
-    xp, setXp, coins: _coins, setCoins: _setCoins, streak, setStreak, badges, studentProgress, setStudentProgress,
+    xp, setXp, coins, setCoins, streak, setStreak, badges, studentProgress, setStudentProgress,
     setIsSaving, setSaveError, setQuickPlayCompletedModes,
     retention, boosters,
     showToast, awardBadge, queueSaveOperation,
@@ -310,6 +312,15 @@ export function useGameFinish(params: UseGameFinishParams) {
     setXp(newXp);
     setStreak(newStreak);
 
+    // Coins earned this game (rank-independent spend currency).
+    const coinsEarned = coinsForGame({
+      score: Math.round((cappedScore / Math.max(1, maxPossible)) * 100),
+      locked: replayLocked,
+      coinMultiplier: boosters.coinMultiplier(),
+    });
+    const newCoins = coins + coinsEarned;
+    setCoins(newCoins);
+
     // Advance the retention weekly-challenge counter — any completed
     // game counts toward the student's weekly-play target.
     retention.recordPlay();
@@ -441,6 +452,12 @@ export function useGameFinish(params: UseGameFinishParams) {
           p_new_streak: newStreak,
         });
         if (error) console.warn('award_progress_xp failed (will retry):', error.message);
+      });
+
+      queueSaveOperation(async () => {
+        if (coinsEarned <= 0) return;
+        const { error } = await supabase.rpc('award_coins', { p_coin_delta: coinsEarned });
+        if (error) console.warn('award_coins failed (will retry):', error.message);
       });
 
       // Clear any legacy retry key for this assignment+mode — the new
