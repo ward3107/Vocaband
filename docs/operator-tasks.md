@@ -11,6 +11,42 @@ These are actions the human needs to take — no code change will cover them.
 
 ---
 
+## 🟡 OPEN — Enable branch protection + Code Owners review on `main`
+
+**Why:** `.github/CODEOWNERS` now lists the critical flows (auth, AI,
+backend, database, shared `src/core/`, build config). By itself that file
+only *auto-requests* the owner's review — it does **not** block a merge.
+The block only happens once branch protection on `main` has "Require
+review from Code Owners" turned on. This is a one-time click-through;
+no code change can do it.
+
+**Steps (≈3 min, GitHub web UI):**
+
+1. Confirm the owner handle: open `.github/CODEOWNERS` and check every
+   line uses your real GitHub username (currently `@ward3107`). An invalid
+   handle silently disables enforcement.
+2. GitHub → repo **Settings → Branches → Add branch ruleset** (or "Add
+   classic branch protection rule") targeting `main`.
+3. Enable:
+   - ✅ **Require a pull request before merging** → Require approvals: **1**
+   - ✅ **Require review from Code Owners**  ← this is the switch that makes
+     CODEOWNERS actually block merges to the protected paths
+   - ✅ **Require status checks to pass** → select the **"Typecheck + tests
+     + build"** check (the `ci.yml` job) so a broken build can't merge
+   - ✅ **Block force pushes** and **Do not allow bypassing the above**
+     (or restrict bypass to yourself only)
+4. Save. Test it: open a throwaway PR that tweaks one line in `server.ts`
+   — the PR should now show "Review required from code owners" and the
+   merge button should stay disabled until you approve.
+
+**Result:** after this, no change to auth / AI / backend / DB / core can
+reach production without your explicit approval — even if it was authored
+by an AI agent or pushed straight to a branch. This is the hard,
+server-enforced half of the protection (the `CLAUDE.md` "PROTECTED ZONES"
+section is the soft half that warns AI sessions up front).
+
+---
+
 ## ✅ DONE — Eliminated Cloudflare Insights rotation churn
 
 **RESOLVED 2026-05-23:** Operator disabled Cloudflare Browser
