@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { School, Plus, UserCog } from "lucide-react";
+import { School, Plus, UserCog, Trash2, X } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevSchool } from "./devShared";
 
 interface Props {
@@ -39,6 +39,18 @@ export default function DevSchoolsSection({ showToast }: Props) {
     [reload, showToast],
   );
 
+  const deleteSchool = (s: DevSchool) => {
+    // Safe delete: the RPC refuses if the school still has members/classes, so
+    // a confirm here is enough — no destructive cascade to warn about.
+    if (!window.confirm(`Delete school "${s.name}"? This only works if it has no staff, students or classes.`)) return;
+    void run("admin_delete_school", { p_school_id: s.id }, "School deleted");
+  };
+
+  const removeManager = (email: string) => {
+    if (!window.confirm(`Remove ${email} as a manager? They go back to a regular teacher account.`)) return;
+    void run("admin_remove_manager", { p_email: email }, "Manager removed");
+  };
+
   return (
     <div className="space-y-5">
       <form
@@ -73,9 +85,37 @@ export default function DevSchoolsSection({ showToast }: Props) {
               <div className="text-white font-bold text-base truncate">{s.name}</div>
               <div className="text-white/40 text-xs">
                 {s.teachers} staff · {s.students} students
-                {s.managers.length > 0 && ` · manager: ${s.managers.join(", ")}`}
               </div>
+              {/* Managers each get a remove (×) chip so a mis-assignment can be undone. */}
+              {s.managers.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {s.managers.map((m) => (
+                    <span key={m} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-white/10 text-white/70 text-xs">
+                      {m}
+                      <button
+                        type="button"
+                        onClick={() => removeManager(m)}
+                        disabled={busy}
+                        aria-label={`Remove manager ${m}`}
+                        className="p-0.5 rounded-full hover:bg-rose-500/30 hover:text-rose-200 disabled:opacity-50"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
+            <button
+              type="button"
+              onClick={() => deleteSchool(s)}
+              disabled={busy}
+              aria-label={`Delete school ${s.name}`}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className="p-2 rounded-lg text-white/40 hover:text-rose-300 hover:bg-rose-500/10 disabled:opacity-50 shrink-0"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
         ))}
       </div>
