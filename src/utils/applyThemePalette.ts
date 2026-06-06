@@ -22,7 +22,12 @@ import type { TeacherDashboardPalette } from '../constants/teacherDashboardTheme
 const TOKEN_KEYS: Array<{ key: keyof TeacherDashboardPalette; cssVars: string[] }> = [
   {
     key: 'surface',
-    cssVars: ['--vb-surface', '--color-surface', '--color-surface-container-low', '--color-background'],
+    // `--color-surface-container-lowest` MUST be driven here too: it defaults
+    // to #ffffff in the @theme block and the global a11y-dark override skips
+    // teacher themes (`:not([data-theme-dark])`), so without this it stays
+    // white on Midnight/Graphite — popovers like the language dropdown
+    // (bg-surface-container-lowest) rendered white with light text on top.
+    cssVars: ['--vb-surface', '--color-surface', '--color-surface-container-low', '--color-surface-container-lowest', '--color-background'],
   },
   {
     key: 'surfaceAlt',
