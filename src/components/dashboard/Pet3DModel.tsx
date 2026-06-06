@@ -57,6 +57,8 @@ export default function Pet3DModel({ src, alt = "Your 3D pet", height = 260 }: P
     return <div style={{ height }} className="animate-pulse rounded-xl bg-white/50" aria-hidden />;
   }
 
+  // backgroundColor transparent so the card's gradient shows through —
+  // model-viewer otherwise clears its canvas to opaque white.
   return (
     <ModelViewer
       src={src}
@@ -70,7 +72,7 @@ export default function Pet3DModel({ src, alt = "Your 3D pet", height = 260 }: P
       touch-action="pan-y"
       ar=""
       ar-modes="webxr scene-viewer quick-look"
-      style={{ width: "100%", height }}
+      style={{ width: "100%", height, backgroundColor: "transparent" }}
     />
   );
 }
