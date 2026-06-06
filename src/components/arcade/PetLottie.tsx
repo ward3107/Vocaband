@@ -16,12 +16,23 @@
 import { useEffect, useState } from "react";
 import Lottie from "lottie-react";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
+import PetModel from "./PetModel";
 
 // Build-time map of any pet Lottie files present. Empty (→ all emoji)
 // until files are added. import.meta.glob is build-stable even when the
 // directory holds no JSON, and keeps each stage in its own lazy chunk —
 // nothing is fetched until a stage's loader is actually called.
 const PET_LOTTIE = import.meta.glob<{ default: object }>("../../assets/pet/*.json");
+
+// Build-time map of any 3D models present. A stage with a `{stageKey}.glb`
+// renders as an interactive 3D pet (PetModel); stages with only a `.json`
+// stay Lottie; stages with neither keep their emoji. Each loader resolves to
+// the bundled asset URL and is its own lazy chunk, so nothing is fetched
+// until that stage is reached.
+const PET_GLB = import.meta.glob<string>("../../assets/pet/*.glb", {
+  query: "?url",
+  import: "default",
+});
 
 interface PetLottieProps {
   /** Lowercase stage key — matches the filename, e.g. 'egg'. */
@@ -50,6 +61,22 @@ export default function PetLottie({ stage, fallbackEmoji, className }: PetLottie
       .catch(() => { if (!cancelled) setEntry(null); }); // missing / bad JSON → emoji
     return () => { cancelled = true; };
   }, [stage]);
+
+  // Prefer a 3D model when this stage ships one. Every hook above runs
+  // unconditionally, so this early return keeps hook order stable even as
+  // the stage (and thus this branch) changes across an evolution.
+  const glbLoader = PET_GLB[`../../assets/pet/${stage}.glb`];
+  if (glbLoader) {
+    return (
+      <PetModel
+        stage={stage}
+        loader={glbLoader}
+        fallbackEmoji={fallbackEmoji}
+        className={className}
+        reduced={reduced}
+      />
+    );
+  }
 
   // Only show art that belongs to the CURRENT stage; otherwise fall back to
   // the emoji (loading, missing file, failed parse, or mid stage-change).

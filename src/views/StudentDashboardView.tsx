@@ -9,7 +9,6 @@ import { useCompetitionsForClass } from "../hooks/useCompetitions";
 import { useDueReviews } from "../hooks/useDueReviews";
 import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
 import ArcadeStatsBar from "../components/arcade/ArcadeStatsBar";
-import TrophyRoadStrip from "../components/arcade/TrophyRoadStrip";
 import EvolutionRing from "../components/arcade/EvolutionRing";
 import OrbitalHub, { type OrbitItem } from "../components/arcade/OrbitalHub";
 import { getXpTitle, type PetRewardKind, type PetMilestone } from "../constants/game";
@@ -217,7 +216,6 @@ export default function StudentDashboardView({
       <ArcadeHubLayout
         topBar={<StudentTopBar onRequestLogout={onRequestLogout} />}
         statsBar={<ArcadeStatsBar xp={xp} streak={streak} />}
-        trophyRoad={<TrophyRoadStrip xp={xp} />}
         character={
           <OrbitalHub
             items={orbitItems}
