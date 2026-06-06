@@ -8,8 +8,20 @@ import { motion } from "motion/react";
 import { Check, Lock, Star } from "lucide-react";
 import type { IslandPos } from "./islandLayout";
 import { ARCADE_BUTTON_TOUCH } from "./theme";
+import { useLanguage } from "../../hooks/useLanguage";
+import type { Language } from "../../hooks/useLanguage";
 
 export type IslandState = "done" | "next" | "todo" | "locked";
+
+// Localized accessibility strings for each supported language.
+// The hook uses a global singleton and returns 'en' outside a provider,
+// so this map must always include 'en' as the safe default.
+const A11Y: Record<Language, { done: string; next: string; todo: string; locked: string; stars: (n: number) => string }> = {
+  en: { done: "completed", next: "recommended next", todo: "to play", locked: "locked", stars: (n) => `${n} of 3 stars` },
+  he: { done: "הושלם", next: "הבא המומלץ", todo: "לשחק", locked: "נעול", stars: (n) => `${n} מתוך 3 כוכבים` },
+  ar: { done: "مكتمل", next: "التالي المقترح", todo: "للعب", locked: "مقفل", stars: (n) => `${n} من 3 نجوم` },
+  ru: { done: "пройдено", next: "рекомендуется далее", todo: "играть", locked: "заблокировано", stars: (n) => `${n} из 3 звёзд` },
+};
 
 interface ModeIslandProps {
   name: string;
@@ -29,10 +41,15 @@ export default function ModeIsland({
   const done = state === "done";
   const next = state === "next";
 
+  // useLanguage uses a global singleton — safe outside a LanguageProvider
+  // (returns 'en' as the default when no provider wraps the component).
+  const { language } = useLanguage();
+  const L = A11Y[language] ?? A11Y.en;
+
   const stateWord =
-    state === "done" ? "completed" :
-    state === "next" ? "recommended next" :
-    state === "locked" ? "locked" : "to play";
+    state === "done" ? L.done :
+    state === "next" ? L.next :
+    state === "locked" ? L.locked : L.todo;
 
   return (
     <div
@@ -43,7 +60,7 @@ export default function ModeIsland({
         type="button"
         disabled={locked}
         onClick={() => { if (!locked) onTap(); }}
-        aria-label={`${name} — ${stateWord}${done ? `, ${mastery} of 3 stars` : ""}`}
+        aria-label={`${name} — ${stateWord}${done ? `, ${L.stars(mastery)}` : ""}`}
         whileTap={reduced || locked ? undefined : { scale: 0.92 }}
         whileHover={reduced || locked ? undefined : { scale: 1.06 }}
         className={`${ARCADE_BUTTON_TOUCH} relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-2xl shadow-lg sm:h-16 sm:w-16 ${
@@ -58,7 +75,9 @@ export default function ModeIsland({
           <span aria-hidden className="absolute inset-0 -z-10 animate-ping rounded-full bg-cyan-400/30" />
         )}
 
-        {done && (
+        {/* Show earned stars whenever mastery > 0, including replay-round
+            islands where state="next" but the mode was already completed. */}
+        {mastery > 0 && (
           <span aria-hidden className="absolute -top-3 left-1/2 flex -translate-x-1/2 gap-0.5">
             {[0, 1, 2].map((i) => (
               <Star key={i} size={9} strokeWidth={2}
