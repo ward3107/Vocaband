@@ -20,6 +20,7 @@ import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { playAchievement, playLevelUp } from "../../hooks/useAudio";
 import { petLines } from "../../locales/student/student-dashboard";
 import PetLottie from "./PetLottie";
+import CrackingEgg from "../dashboard/CrackingEgg";
 import { ARCADE_BUTTON_TOUCH } from "./theme";
 
 interface CharacterStageProps {
@@ -384,11 +385,22 @@ export default function CharacterStage({
               stage's Lottie when its JSON exists, else the legacy emoji
               (PetLottie owns that fallback, so the pet never vanishes). */}
           <motion.div initial={{ scale: 1, opacity: 1 }} animate={emojiControls} className="leading-none">
-            <PetLottie
-              stage={stageKey}
-              fallbackEmoji={currentStage.emoji}
-              className="h-24 w-24 sm:h-28 sm:w-28"
-            />
+            {stageKey === "egg" ? (
+              // Egg stage: a progress-driven cracking shell — it cracks more
+              // as XP climbs toward Hatchling — instead of a static emoji.
+              <CrackingEgg
+                progress={progress}
+                size={112}
+                alt={currentStage.stage}
+                className="h-24 w-24 sm:h-28 sm:w-28"
+              />
+            ) : (
+              <PetLottie
+                stage={stageKey}
+                fallbackEmoji={currentStage.emoji}
+                className="h-24 w-24 sm:h-28 sm:w-28"
+              />
+            )}
           </motion.div>
           {hasClaimable && (
             <span
