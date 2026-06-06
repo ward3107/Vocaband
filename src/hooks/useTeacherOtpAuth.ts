@@ -99,7 +99,12 @@ export interface UseTeacherOtpAuth {
   reset: () => void;
 }
 
-const RESEND_COOLDOWN_SECONDS = 30;
+// Match GoTrue's per-email send interval (Supabase default 60s; our
+// Resend "minimum interval between emails" is also 60s — see
+// docs/RESEND-SMTP-SETUP.md).  A shorter client cooldown re-enables the
+// "Resend code" button while the server would still reject the request
+// with a 429, surfacing a spurious "couldn't send the code" error.
+const RESEND_COOLDOWN_SECONDS = 60;
 
 export function useTeacherOtpAuth(): UseTeacherOtpAuth {
   const [stage, setStage] = useState<OtpAuthStage>("idle");

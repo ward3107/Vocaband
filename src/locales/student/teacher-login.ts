@@ -26,9 +26,12 @@ export interface TeacherLoginT {
   enterCodeLabel: string;
   verifyButton: string;
   verifying: string;
-  /** "Didn't get it? Resend in {seconds}s" */
+  /** Countdown until a new code can be requested, e.g. "New code in 58s". */
   resendIn: (seconds: number) => string;
   resendButton: string;
+  /** Reassurance shown on the code screen while the resend timer runs,
+   *  so teachers check spam instead of mashing a throttled button. */
+  resendHint: string;
   useDifferentEmail: string;
   /** Surfaced when verifyOtp fails (bad/expired code). */
   errorInvalidCode: string;
@@ -73,8 +76,9 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     enterCodeLabel: "Enter the code",
     verifyButton: "Verify and sign in",
     verifying: "Verifying…",
-    resendIn: (s) => `Resend in ${s}s`,
+    resendIn: (s) => `New code in ${s}s`,
     resendButton: "Resend code",
+    resendHint: "Didn't get it? Check your spam folder. You can request a new code when the timer ends.",
     useDifferentEmail: "← Use a different email",
     errorInvalidCode: "That code didn't work. Try again or request a new one.",
     errorSendFailed: "We couldn't send the code. Check the email and try again.",
@@ -106,8 +110,9 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     enterCodeLabel: "הזן את הקוד",
     verifyButton: "אמת והתחבר",
     verifying: "מאמת…",
-    resendIn: (s) => `שלח שוב בעוד ${s} שניות`,
+    resendIn: (s) => `קוד חדש בעוד ${s} שניות`,
     resendButton: "שלח שוב",
+    resendHint: "לא קיבלת? בדוק את תיקיית הספאם. תוכל לבקש קוד חדש כשהטיימר יסתיים.",
     useDifferentEmail: "← השתמש באימייל אחר",
     errorInvalidCode: "הקוד אינו תקף. נסה שוב או בקש קוד חדש.",
     errorSendFailed: "לא הצלחנו לשלוח את הקוד. בדוק את האימייל ונסה שוב.",
@@ -139,8 +144,9 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     enterCodeLabel: "أدخل الرمز",
     verifyButton: "تحقق وسجل الدخول",
     verifying: "جارٍ التحقق…",
-    resendIn: (s) => `إعادة الإرسال خلال ${s} ث`,
+    resendIn: (s) => `رمز جديد خلال ${s} ث`,
     resendButton: "إعادة إرسال الرمز",
+    resendHint: "لم يصلك الرمز؟ تحقق من مجلد البريد العشوائي. يمكنك طلب رمز جديد عند انتهاء المؤقت.",
     useDifferentEmail: "← استخدم بريدًا إلكترونيًا مختلفًا",
     errorInvalidCode: "الرمز غير صحيح. حاول مرة أخرى أو اطلب رمزًا جديدًا.",
     errorSendFailed: "لم نتمكن من إرسال الرمز. تحقق من البريد الإلكتروني وحاول مرة أخرى.",
@@ -172,8 +178,9 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     enterCodeLabel: "Enter the code",
     verifyButton: "Verify and sign in",
     verifying: "Verifying…",
-    resendIn: (s) => `Resend in ${s}s`,
+    resendIn: (s) => `New code in ${s}s`,
     resendButton: "Resend code",
+    resendHint: "Didn't get it? Check your spam folder. You can request a new code when the timer ends.",
     useDifferentEmail: "← Use a different email",
     errorInvalidCode: "That code didn't work. Try again or request a new one.",
     errorSendFailed: "We couldn't send the code. Check the email and try again.",
