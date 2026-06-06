@@ -463,6 +463,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               const { data: coinRow } = await supabase
                 .from('users').select('coins').eq('uid', supabaseUser.id).maybeSingle();
               setUser({ ...studentUser, coins: coinRow?.coins ?? 0 });
+              setCoins(coinRow?.coins ?? 0);
               if (studentProfile.class_code) {
                 const { data: classRows } = await supabase
                   .from('classes').select(CLASS_COLUMNS).eq('code', studentProfile.class_code);
@@ -646,6 +647,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               const { data: coinRow } = await supabase
                 .from('users').select('coins').eq('uid', supabaseUser.id).maybeSingle();
               setUser({ ...studentUser, coins: coinRow?.coins ?? 0 });
+              setCoins(coinRow?.coins ?? 0);
               if (studentProfile.class_code) {
                 const { data: classRows } = await supabase
                   .from('classes').select(CLASS_COLUMNS).eq('code', studentProfile.class_code);
