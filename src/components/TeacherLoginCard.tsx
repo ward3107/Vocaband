@@ -331,7 +331,15 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                 {otp.stage === "error-send" && otp.error && (
                   <div className="mt-3 flex items-start gap-2 text-rose-700 text-sm bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
                     <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                    <span>{otp.error.includes("not allow") ? tt.errorNotAllowlisted : tt.errorSendFailed}</span>
+                    <span>
+                      {otp.errorKind === "not-allowed"
+                        ? tt.errorNotAllowlisted
+                        : otp.errorKind === "rate-limited"
+                          ? tt.errorRateLimited
+                          : otp.errorKind === "invalid-email"
+                            ? tt.errorInvalidEmail
+                            : tt.errorSendFailed}
+                    </span>
                   </div>
                 )}
 
@@ -438,8 +446,16 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                   )}
                 </button>
 
+                {/* Spam-folder reassurance while the resend timer runs —
+                    steers teachers away from mashing the throttled button. */}
+                {otp.resendInSeconds > 0 && (
+                  <p className="mt-4 text-[11px] text-stone-400 text-center leading-relaxed">
+                    {tt.resendHint}
+                  </p>
+                )}
+
                 {/* Resend / different-email row */}
-                <div className="flex items-center justify-between mt-4 text-xs">
+                <div className="flex items-center justify-between mt-3 text-xs">
                   <button
                     type="button"
                     onClick={() => {
