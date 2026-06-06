@@ -20,7 +20,7 @@ UPDATE public.users
 --    extra check appended; everything else is copied verbatim from
 --    20260604_f2_lock_game_state_columns.sql).
 CREATE OR REPLACE FUNCTION public.enforce_users_locked_columns()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY INVOKER
 SET search_path = public, auth AS $$
 BEGIN
   IF current_user IN ('postgres', 'service_role', 'supabase_admin')
@@ -58,12 +58,19 @@ BEGIN
 END;
 $$;
 
+COMMENT ON FUNCTION public.enforce_users_locked_columns IS
+  'F2 lock (SECURITY INVOKER — DEFINER was a bug, see 20260605).  Rejects '
+  'direct UPDATE of game-state columns (now incl. coins) when current_user '
+  'is authenticated; bypassed for postgres/service_role/admin so RPCs work.';
+
 -- 4. award_coins — grants clamped coins to the caller. Mirrors
 --    award_progress_xp's shape. Clamp guards against a spoofed client.
 CREATE OR REPLACE FUNCTION public.award_coins(p_coin_delta INTEGER)
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, auth AS $$
 DECLARE
+  -- Clamp 0..200: floor blocks negative "grants", ceiling caps the max a
+  -- single game can pay (see coins-foundation plan §1 earn table).
   v_delta INTEGER := GREATEST(0, LEAST(COALESCE(p_coin_delta, 0), 200));
   v_new   INTEGER;
 BEGIN
@@ -129,5 +136,8 @@ BEGIN
   RETURN json_build_object('success', true, 'new_coins', current_coins - item_cost);
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.purchase_item(TEXT, TEXT, INTEGER) FROM anon;
+GRANT EXECUTE ON FUNCTION public.purchase_item(TEXT, TEXT, INTEGER) TO authenticated;
 
 COMMIT;
