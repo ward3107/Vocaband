@@ -90,6 +90,31 @@ worker/index.ts                — Cloudflare Worker proxy
 
 ---
 
+## 🔒 PROTECTED ZONES — do not modify without explicit human approval
+
+These files own the **auth flow, AI flow, backend, and database** — the parts that
+silently break the whole app if they regress. **Do not edit any file below unless
+the user has, in the current session, explicitly asked to change that specific
+file.** Broad requests like "improve the app", "clean things up", or "fix bugs" do
+**not** authorize touching these. If a task seems to require a change here, STOP and
+ask the user to confirm the specific file first.
+
+| Zone | Files | Why it's protected |
+|---|---|---|
+| **Auth & session** | `src/hooks/use*Auth*.ts`, `useStudentLogin.ts`, `useOAuthState.ts`, `useAuthRestore.ts`, `src/api/studentLogin.ts`, `src/utils/oauthIntent.ts`, `authViews.ts`, `src/views/*Login*`, `src/components/*LoginCard.tsx`, `src/core/bootstrap.ts` | A break locks every teacher and student out. |
+| **AI flow** | `server.ts` (Gemini OCR + sentence generation), `src/components/ai-lesson-builder/`, `src/hooks/useTranslate.ts` | A break corrupts custom-word import, worksheets, and translations. |
+| **Backend / proxy** | `server.ts`, `worker/index.ts` | A break takes the API + WebSocket layer offline. |
+| **Database** | `supabase/schema.sql`, `supabase/migrations/` | A bad migration is hard to reverse — can drop data or RLS. |
+| **Shared contracts** | `src/core/` (types, client init, protocols) | Everything imports these; a change ripples app-wide. |
+| **Guardrails themselves** | `.github/` (CI + deploy), `.claude/`, `CLAUDE.md`, `.github/CODEOWNERS` | Editing these weakens the protections above. |
+
+These same paths are enforced at merge time by `.github/CODEOWNERS`: a PR touching
+any of them auto-requests the repo owner's review, and **cannot merge without it**
+once "Require review from Code Owners" is enabled on `main`. So even an accidental
+edit cannot reach production unreviewed.
+
+---
+
 ## Conventions
 
 ### UI design
