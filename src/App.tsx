@@ -776,6 +776,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   useViewGuards({
     view, setView, user, loading,
     activeAssignment, quickPlayActiveSession,
+    selectedClass,
   });
 
   // Warn before leaving while a score save is in flight.
@@ -1335,6 +1336,23 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     && !isFinished
     && !showModeSelection
     && !showModeIntro;
+
+  // ── Legacy default-screen safety net ────────────────────────────────
+  // The original app rendered the word game as its root screen, and this
+  // tail still falls back to it.  But the view branches above can be
+  // skipped when a preserved view loses its transient context on a
+  // refresh (e.g. a teacher on `create-assignment` once `selectedClass`
+  // resets to null).  Rendering the game there stranded teachers on the
+  // student SET-2 word list — the "1 / 809 CLASSIC" screen.  Only the
+  // game view should reach the game flow; anything else that falls
+  // through shows the spinner for the frame it takes useViewGuards to
+  // route the user back to a real home.
+  if (view !== "game") {
+    return <div className="min-h-screen flex items-center justify-center bg-stone-100">
+      <SvgSpinner className="animate-spin text-blue-700" size={48} />
+    </div>;
+  }
+
   return (
     <>
       <AnnouncementBanner user={user} />

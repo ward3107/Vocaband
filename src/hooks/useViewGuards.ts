@@ -29,7 +29,7 @@
  *   `quick_play_sessions` SELECT had a chance to land state.
  */
 import { useEffect } from 'react';
-import { hasTeacherAccess, hasManagerAccess, type AppUser, type AssignmentData } from '../core/supabase';
+import { hasTeacherAccess, hasManagerAccess, type AppUser, type AssignmentData, type ClassData } from '../core/supabase';
 import type { View } from '../core/views';
 
 export interface UseViewGuardsParams {
@@ -39,6 +39,7 @@ export interface UseViewGuardsParams {
   loading: boolean;
   activeAssignment: AssignmentData | null;
   quickPlayActiveSession: { id: string; sessionCode: string } | null;
+  selectedClass: ClassData | null;
 }
 
 export function useViewGuards(params: UseViewGuardsParams): void {
@@ -46,6 +47,7 @@ export function useViewGuards(params: UseViewGuardsParams): void {
     view, setView,
     user, loading,
     activeAssignment, quickPlayActiveSession,
+    selectedClass,
   } = params;
 
   // ─── Guard 1: orphaned "landing" view ──────────────────────────────
@@ -91,4 +93,17 @@ export function useViewGuards(params: UseViewGuardsParams): void {
     // or a state clear. Send the user somewhere they can act.
     setView('public-landing');
   }, [view, quickPlayActiveSession, loading, setView]);
+
+  // ─── Guard 4: `create-assignment` needs a selectedClass ───────────
+  // create-assignment is preserved across a refresh by shouldPreserveView,
+  // but selectedClass resets to null on a fresh mount.  The render branch
+  // (`view === 'create-assignment' && selectedClass`) then fails to match,
+  // execution falls through every branch to the legacy default game
+  // screen, and the teacher lands on the student SET-2 word list (the
+  // "1 / 809 CLASSIC" screen).  Bounce them back to the dashboard, where
+  // they can re-open the class and resume creating the assignment.
+  useEffect(() => {
+    if (view !== 'create-assignment' || selectedClass || loading) return;
+    setView('teacher-dashboard');
+  }, [view, selectedClass, loading, setView]);
 }
