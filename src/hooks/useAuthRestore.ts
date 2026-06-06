@@ -88,6 +88,7 @@ export interface UseAuthRestoreDeps {
   setUser: Dispatch<AppUser | null>;
   setBadges: Dispatch<string[]>;
   setXp: Dispatch<number>;
+  setCoins: Dispatch<number>;
   setStreak: Dispatch<number>;
   setClasses: Dispatch<ClassData[]>;
   setStudentAssignments: Dispatch<AssignmentData[]>;
@@ -148,7 +149,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
     checkConsent, fetchTeacherData, fetchTeacherAssignments, stopAllAudio,
     shouldPreserveView,
     setLoading, setError, setLandingTab, setView, setUser,
-    setBadges, setXp, setStreak,
+    setBadges, setXp, setCoins, setStreak,
     setClasses, setStudentAssignments, setStudentProgress,
     setActiveAssignment, setAssignmentWords,
     setQuickPlayActiveSession, setQuickPlaySessionCode,
@@ -400,6 +401,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
             }
             setBadges(userData.badges || []);
             setXp(userData.xp ?? 0);
+            setCoins(userData.coins ?? 0);
             setStreak(userData.streak ?? 0);
             if (!shouldPreserveView("student", currentViewRef.current)) {
               setView("student-dashboard");
@@ -525,6 +527,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                     }
                     setBadges(boot.user.badges || []);
                     setXp(boot.user.xp ?? 0);
+                    setCoins(boot.user.coins ?? 0);
                     setStreak(boot.user.streak ?? 0);
                     setView(hasTeacherAccess(boot.user) ? "teacher-dashboard" : "student-dashboard");
                     localStorage.setItem('vocaband_student_login', JSON.stringify({
@@ -554,6 +557,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                     }
                     setBadges(restored.badges || []);
                     setXp(restored.xp ?? 0);
+                    setCoins(restored.coins ?? 0);
                     setStreak(restored.streak ?? 0);
                     setView(hasTeacherAccess(restored) ? "teacher-dashboard" : "student-dashboard");
                     localStorage.setItem('vocaband_student_login', JSON.stringify({

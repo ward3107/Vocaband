@@ -724,7 +724,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     checkConsent, fetchTeacherData, fetchTeacherAssignments, stopAllAudio,
     shouldPreserveView,
     setLoading, setError, setLandingTab, setView, setUser,
-    setBadges, setXp, setStreak,
+    setBadges, setXp, setCoins, setStreak,
     setClasses, setStudentAssignments, setStudentProgress,
     setActiveAssignment, setAssignmentWords,
     setQuickPlayActiveSession, setQuickPlaySessionCode,
