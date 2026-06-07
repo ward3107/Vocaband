@@ -33,6 +33,9 @@ interface PublicNavProps {
   /** Open the no-signup demo.  Optional — only hosts that surface a demo
    *  (the landing page) pass it; the nav Demo button hides otherwise. */
   onTryDemo?: () => void;
+  /** Open the school-inquiry form.  Optional — only the landing passes it;
+   *  the nav "For Schools" link hides otherwise. */
+  onOpenSchoolInquiry?: () => void;
 }
 
 const PublicNav: React.FC<PublicNavProps> = ({
@@ -40,6 +43,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
   onNavigate,
   onTeacherLogin,
   onTryDemo,
+  onOpenSchoolInquiry,
 }) => {
   const { language, isRTL } = useLanguage();
   const t = landingPageT[language];
@@ -162,6 +166,16 @@ const PublicNav: React.FC<PublicNavProps> = ({
                 </button>
               );
             })}
+            {/* For Schools — opens the school-inquiry form. */}
+            {onOpenSchoolInquiry && (
+              <button
+                onClick={onOpenSchoolInquiry}
+                className="px-3 py-2 text-sm font-bold text-stone-700 hover:text-primary transition-colors rounded-lg hover:bg-primary/5"
+                type="button"
+              >
+                {t.navForSchools}
+              </button>
+            )}
           </div>
 
           {/* Right side — desktop CTAs + lang.  On mobile, lang only;
@@ -281,6 +295,19 @@ const PublicNav: React.FC<PublicNavProps> = ({
                   </button>
                 );
               })}
+              {/* For Schools — opens the school-inquiry form. */}
+              {onOpenSchoolInquiry && (
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    onOpenSchoolInquiry();
+                  }}
+                  className="w-full text-start px-3 py-3 text-base font-bold text-stone-800 hover:bg-primary/5 rounded-lg transition-colors"
+                  type="button"
+                >
+                  {t.navForSchools}
+                </button>
+              )}
             </nav>
 
             <div className="border-t border-stone-200 p-4">
