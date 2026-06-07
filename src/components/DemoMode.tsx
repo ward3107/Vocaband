@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { celebrate } from "../utils/celebrate";
 import {
   X,
@@ -701,6 +701,13 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const t = demoTranslations[language];
   const modes = GAME_MODES[language];
 
+  // Respect the OS "reduce motion" setting. The welcome screen's looping
+  // ambient blobs and floating emoji are purely decorative (aria-hidden),
+  // so we hold them still — or skip them — for users who asked for less
+  // motion. A code comment below even notes a "strobing/lightning feel"
+  // from these loops, which is exactly what reduced-motion users avoid.
+  const prefersReducedMotion = useReducedMotion();
+
   const [view, setView] = useState<DemoView>("welcome");
   const [shopTab, setShopTab] = useState<ShopTab>("avatars");
   const [avatar, setAvatar] = useState("🦊");
@@ -1288,14 +1295,14 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
       {/* Ambient gradient mesh blobs — soft brand-color depth behind
           the demo content (matches landing's dreamy vibe). */}
       <motion.div
-        animate={{ scale: [1, 1.15, 1], rotate: [0, 60, 0], x: [0, 60, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+        animate={prefersReducedMotion ? undefined : { scale: [1, 1.15, 1], rotate: [0, 60, 0], x: [0, 60, 0] }}
+        transition={prefersReducedMotion ? undefined : { duration: 22, repeat: Infinity, ease: "easeInOut" }}
         className="pointer-events-none fixed top-1/4 -right-32 w-96 h-96 rounded-full bg-fuchsia-500/20 blur-3xl"
         aria-hidden="true"
       />
       <motion.div
-        animate={{ scale: [1, 1.2, 1], rotate: [0, -45, 0], y: [0, 50, 0] }}
-        transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
+        animate={prefersReducedMotion ? undefined : { scale: [1, 1.2, 1], rotate: [0, -45, 0], y: [0, 50, 0] }}
+        transition={prefersReducedMotion ? undefined : { duration: 26, repeat: Infinity, ease: "easeInOut" }}
         className="pointer-events-none fixed bottom-1/4 -left-32 w-80 h-80 rounded-full bg-violet-500/20 blur-3xl"
         aria-hidden="true"
       />
@@ -1342,7 +1349,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   these sit in absolute positions far below the welcome
                   card and create a strobing/lightning feel together with
                   the other looping animations.  Hidden on small screens
-                  so the welcome stays calm on phones. */}
+                  so the welcome stays calm on phones — and skipped
+                  entirely when the user prefers reduced motion. */}
+              {!prefersReducedMotion && (<>
               <motion.div
                 animate={{ y: [0, -20, 0], rotate: [0, 10, -10, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
@@ -1383,6 +1392,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2.5 }}
                 className="hidden sm:block absolute top-[48rem] right-[35%] text-3xl opacity-45 z-20"
               >🎁</motion.div>
+              </>)}
 
               {/* Main content */}
               <div className="relative z-10">
