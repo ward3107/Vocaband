@@ -41,10 +41,9 @@ export default function WorksheetRowV2({ record, studentsCount, mobile = false, 
       style={{
         touchAction: "manipulation",
         WebkitTapHighlightColor: "transparent" as never,
-        boxShadow:
-          "0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)",
+        boxShadow: "0 10px 24px -22px rgba(60,40,120,0.18)",
       }}
-      className={`group flex w-full items-center gap-3 sm:gap-[18px] rounded-[22px] border border-indigo-500/[0.10] bg-white text-start transition-transform hover:translate-x-0.5 ${
+      className={`group flex w-full items-center gap-3 sm:gap-[18px] rounded-[22px] border border-[var(--vb-border)] bg-[var(--vb-surface)] text-start transition-transform hover:translate-x-0.5 ${
         mobile ? "mb-2 px-4 py-3.5" : "mb-2.5 px-[18px] sm:px-[22px] py-4"
       }`}
     >
@@ -64,20 +63,20 @@ export default function WorksheetRowV2({ record, studentsCount, mobile = false, 
       <div className="min-w-0 flex-1">
         <div className={`flex items-center gap-2 min-w-0`}>
           <div
-            className={`truncate font-bold text-[#1F1147] ${
+            className={`truncate font-bold text-[var(--vb-text-primary)] ${
               mobile ? "text-[14px]" : "text-[15px]"
             }`}
           >
             {record.title}
           </div>
           {record.archived && (
-            <span className="shrink-0 rounded-full bg-slate-100 text-slate-600 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5">
+            <span className="shrink-0 rounded-full bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5">
               {record.archivedLabel ?? "Archived"}
             </span>
           )}
         </div>
         <div
-          className={`mt-1 flex items-center gap-x-3 gap-y-1 flex-wrap font-medium text-[#6B6388] ${
+          className={`mt-1 flex items-center gap-x-3 gap-y-1 flex-wrap font-medium text-[var(--vb-text-secondary)] ${
             mobile ? "text-[11px]" : "text-[12px]"
           }`}
         >
@@ -130,8 +129,12 @@ export function CompletionRing({ percent, size = 60 }: RingProps) {
       role="img"
       aria-label={`${Math.round(percent)}%`}
     >
-      <span className="absolute rounded-full bg-white" style={{ inset: 6 }} aria-hidden />
-      <span className="relative font-extrabold text-[#1F1147]" style={{ fontSize }}>
+      <span
+        className="absolute rounded-full"
+        style={{ inset: 6, backgroundColor: "var(--vb-surface)" }}
+        aria-hidden
+      />
+      <span className="relative font-extrabold text-[var(--vb-text-primary)]" style={{ fontSize }}>
         {Math.round(percent)}%
       </span>
     </div>
