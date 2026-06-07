@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, ShieldCheck, UserCog, KeyRound, Trash2, Sparkles, AlertCircle } from "lucide-react";
+import { RefreshCw, ShieldCheck, UserCog, UserPlus, KeyRound, Trash2, Sparkles, AlertCircle } from "lucide-react";
 import { callAdminRpcCached, invalidateAdminRpcCache, type DevAuditEntry } from "./devShared";
 
 interface Props {
@@ -15,6 +15,7 @@ const SINCE_OPTIONS: { label: string; hours: number | null }[] = [
 
 const ACTION_ICONS: Record<string, { icon: typeof ShieldCheck; cls: string }> = {
   role_change:        { icon: UserCog,    cls: "text-rose-300" },
+  account_create:     { icon: UserPlus,   cls: "text-emerald-300" },
   plan_change:        { icon: KeyRound,   cls: "text-amber-300" },
   allowlist_add:      { icon: Sparkles,   cls: "text-emerald-300" },
   allowlist_remove:   { icon: Trash2,     cls: "text-rose-300" },
@@ -92,6 +93,7 @@ export default function DevAuditLogPanel({ showToast }: Props) {
         >
           <option value="" className="bg-slate-800">All actions</option>
           <option value="role_change" className="bg-slate-800">Role change</option>
+          <option value="account_create" className="bg-slate-800">Teacher signup</option>
           <option value="plan_change" className="bg-slate-800">Plan change</option>
           <option value="allowlist_add" className="bg-slate-800">Allowlist add</option>
           <option value="allowlist_remove" className="bg-slate-800">Allowlist remove</option>
