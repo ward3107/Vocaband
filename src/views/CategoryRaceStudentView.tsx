@@ -19,16 +19,16 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Hourglass, Trophy, Check, X, RotateCw, Crown, ArrowRight } from "lucide-react";
+import { Hourglass, Trophy, Check, X, RotateCw, Crown, ArrowRight, Loader2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import CategoryRaceFocusCard from "../components/game/CategoryRaceFocusCard";
 import QPAvatarPicker from "../components/QPAvatarPicker";
 import QPAvatar from "../components/QPAvatar";
-import QuickPlayGetReady from "../components/QuickPlayGetReady";
 import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
 import QuickPlayErrorScreen from "../components/QuickPlayErrorScreen";
 import { celebrate } from "../utils/celebrate";
+import { primeAudio } from "../utils/primeAudio";
 import { playLetterReveal, playGood, playGentle, playFanfare } from "../utils/raceSfx";
 import { CATEGORIES, categoryLabel, type CategoryMeta } from "../data/category-race-bank";
 import { containsProfanity } from "../utils/nicknameProfanity";
@@ -40,7 +40,7 @@ interface CategoryRaceStudentViewProps {
   setView: (v: View) => void;
 }
 
-type Phase = "join" | "getready" | "lobby" | "answering" | "result" | "ended" | "kicked";
+type Phase = "join" | "lobby" | "answering" | "result" | "ended" | "kicked";
 
 const DEFAULT_AVATAR = "🦊";
 
@@ -154,55 +154,35 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   );
 
   // ─── Phone back-button trap ─────────────────────────────────────────
-  // Mirrors the Quick Play join trap (QuickPlayStudentView): walk the
-  // join step backwards (get-ready → join) instead of letting the global
-  // trap drop the student to the landing page mid-race. Every other phase
-  // (join itself, plus the active lobby/answering/result/ended/kicked
-  // screens) re-pushes to block an accidental exit — the visible
-  // Leave / Back-home buttons are the only way out. Capture-phase +
-  // stopImmediatePropagation keeps the global trap from also firing.
-  const racePopInProgressRef = useRef(false);
+  // The race is a single-screen join → game flow, so the hardware back
+  // button should never drop the student to the landing page mid-race.
+  // Re-push to block exit; the visible Leave / Back-home buttons are the
+  // only way out. Capture-phase + stopImmediatePropagation keeps the
+  // global trap from also firing.
   useEffect(() => {
-    if (racePopInProgressRef.current) {
-      racePopInProgressRef.current = false;
-      return;
-    }
-    window.history.pushState({ view: "category-race-student", racePhase: phase }, "");
-  }, [phase]);
-
-  useEffect(() => {
+    window.history.pushState({ view: "category-race-student" }, "");
     const handler = (e: PopStateEvent) => {
       e.stopImmediatePropagation();
-      racePopInProgressRef.current = true;
-      if (phase === "getready") {
-        setPhase("join");
-      } else {
-        window.history.pushState({ view: "category-race-student", racePhase: phase }, "");
-        racePopInProgressRef.current = false;
-      }
+      window.history.pushState({ view: "category-race-student" }, "");
     };
     window.addEventListener("popstate", handler, { capture: true });
     return () => window.removeEventListener("popstate", handler, { capture: true });
-  }, [phase]);
+  }, []);
 
   // ─── Join ────────────────────────────────────────────────────────────
-  // Step 1: validate the name and move to the get-ready screen. We DON'T
-  // emit the join here — the get-ready tap is what primes iOS audio, so
-  // the actual join fires from there (same pattern as Quick Play).
+  // Single-screen join: validate, prime iOS audio inside this tap's
+  // gesture context (so the round's first spoken letter isn't swallowed
+  // by Safari autoplay), then emit the join. The view advances to the
+  // lobby only once the server confirms (joinedSessionCode effect below).
   const handleContinue = () => {
+    if (joining) return;
     const trimmed = name.trim();
     if (!trimmed) return;
     if (containsProfanity(trimmed)) { setJoinError(t.badName); return; }
     setJoinError(null);
-    setPhase("getready");
-  };
-
-  // Step 2: get-ready tap — audio is primed inside QuickPlayGetReady, then
-  // this fires the real join emit.
-  const handleStart = () => {
-    if (joining) return;
+    primeAudio();
     setJoining(true);
-    joinAsStudent(name.trim(), avatar);
+    joinAsStudent(trimmed, avatar);
   };
 
   // Advance to the lobby once the server confirms the join.
@@ -217,7 +197,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   // Surface a join rejection (name taken / bad payload) — bounce back to
   // the join form with the reason so the student can fix it.
   useEffect(() => {
-    if (!lastError || (phase !== "join" && phase !== "getready")) return;
+    if (!lastError || phase !== "join") return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reacts to a socket error payload; matches existing convention
     setJoining(false);
     setPhase("join");
@@ -240,7 +220,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   // A new round started — reset, play the letter-reveal blip, and drop
   // into the focus card.
   useEffect(() => {
-    if (phase === "join" || phase === "getready") return;
+    if (phase === "join") return;
     if (currentRace && currentRace.roundId !== activeRoundId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- a server-pushed new round resets local play state; matches existing convention
       setActiveRoundId(currentRace.roundId);
@@ -381,28 +361,17 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
           <button
             type="button"
             onClick={handleContinue}
-            disabled={!canContinue}
+            disabled={!canContinue || joining}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className={`mt-6 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-lg text-white shadow-lg transition ${canContinue ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
+            className={`mt-6 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-lg text-white shadow-lg transition ${canContinue && !joining ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
           >
-            {t.continueBtn} <ArrowRight size={20} className={dir === "rtl" ? "rotate-180" : ""} />
+            {joining ? (
+              <><Loader2 size={20} className="animate-spin" /> {t.joining}</>
+            ) : (
+              <>{t.joinBtn} <ArrowRight size={20} className={dir === "rtl" ? "rotate-180" : ""} /></>
+            )}
           </button>
         </motion.div>
-      </Shell>
-    );
-  }
-
-  // ─── Get ready (primes iOS audio, then joins) ────────────────────────
-  if (phase === "getready") {
-    return (
-      <Shell dir={dir}>
-        <QuickPlayGetReady
-          name={name.trim()}
-          avatar={avatar}
-          joining={joining}
-          onStart={handleStart}
-          joinedCount={leaderboard.length}
-        />
       </Shell>
     );
   }

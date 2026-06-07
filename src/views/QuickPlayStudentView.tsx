@@ -2,17 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, QrCode, Globe } from "lucide-react";
 import AvatarPicker from "../components/QPAvatarPicker";
 import QuickPlayErrorScreen, { type QuickPlayErrorKind } from "../components/QuickPlayErrorScreen";
-import QuickPlayGetReady from "../components/QuickPlayGetReady";
 import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
 import { shuffle } from "../utils";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { ALL_GAME_MODES } from "../constants/game";
-import { supabase, type AppUser, type AssignmentData } from "../core/supabase";
+import type { AppUser, AssignmentData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
 import { useLanguage, languageNames } from "../hooks/useLanguage";
+import { primeAudio } from "../utils/primeAudio";
 import { quickPlayT } from "../locales/student/quick-play";
 
 // Quick Play join flow: students connect to the `/quick-play`
@@ -98,21 +98,20 @@ export default function QuickPlayStudentView({
     enabled: true,
   });
 
-  // Three-step join flow:
-  //   "form"      — student enters name + picks avatar
-  //   "language"  — student picks the in-game UI language so mode
-  //                 labels + buttons render in EN/HE/AR.  This step
-  //                 runs after name validation passes but before
-  //                 we hit the server JOIN, so the language picked
-  //                 here is the one the student sees the moment the
-  //                 game loads.
-  //   "get-ready" — friendly handshake that doubles as the iOS
-  //                 audio-unlock gesture. The "Start playing" tap
-  //                 calls primeAudio() inside the gesture context
-  //                 BEFORE the actual STUDENT_JOIN emit, so the
-  //                 first word the game speaks isn't swallowed by
-  //                 iOS Safari's autoplay block.
-  const [joinStep, setJoinStep] = useState<"form" | "language" | "get-ready">("form");
+  // Single-screen join: the student picks an avatar, types a name, and
+  // picks the in-game language (inline toggle) all on one form. The
+  // "Start" tap validates, sets the language, primes iOS audio (the tap
+  // is the user-gesture iOS Safari needs to unlock speechSynthesis +
+  // Web Audio), and fires the server JOIN — no separate language /
+  // get-ready screens.
+  const { language: qpLanguage, setLanguage: setAppLanguage, isRTL: qpIsRTL } = useLanguage();
+  // In-game UI language. Hebrew/Arabic only — students learn English
+  // toward their native language, so an English UI would show no
+  // translations. Defaults to the current app language when it's already
+  // HE/AR, otherwise Hebrew.
+  const [selectedLang, setSelectedLang] = useState<"he" | "ar">(
+    qpLanguage === "ar" ? "ar" : "he",
+  );
   // Fatal-error gate. When set, the join body is replaced by a
   // friendly full-page error screen instead of a stale form + toast.
   const [fatalError, setFatalError] = useState<QuickPlayErrorKind | null>(null);
@@ -135,13 +134,6 @@ export default function QuickPlayStudentView({
   // the Start button locked + spinning so impatient kids don't tap
   // five times and queue five join emits.
   const [joining, setJoining] = useState<boolean>(false);
-  // Validated name captured at form-submit time so the language
-  // picker can fire the join with it.  Defaults to empty string
-  // and is overwritten when the student clicks Continue on the form.
-  // Stored as state (not a ref) because QuickPlayGetReady renders
-  // the name in its greeting — refs aren't safe to read during render.
-  const [stagedName, setStagedName] = useState<string>("");
-  const { language: qpLanguage, setLanguage: setAppLanguage, isRTL: qpIsRTL } = useLanguage();
   const qpT = quickPlayT[qpLanguage] ?? quickPlayT.en;
 
   // Pending-join intent: when the student clicks Join in V2, we emit
@@ -206,7 +198,6 @@ export default function QuickPlayStudentView({
       pendingJoinRef.current = null;
       const wasResuming = resumingRef.current;
       setResuming(false);
-      setJoinStep("form");
       // When the failed attempt came from the resume card (kid tapped
       // "Continue Playing"), pivot the resume card into a "Couldn't
       // reconnect — scan a new QR" state instead of leaving the
@@ -234,50 +225,19 @@ export default function QuickPlayStudentView({
   //
   // Without this, the hardware back button on the join screen popped
   // straight out to public-landing (useBackButtonTrap's CASE C only
-  // walks the global view stack; it doesn't know about the local
-  // form → language → get-ready join steps).  Each step was reached by
-  // a tap inside this view, so the only previous global entry was
-  // public-landing — back kicked the student out mid-join.
-  //
-  // Approach mirrors DemoMode's internal popstate trap: push a marker
-  // entry on mount and on every joinStep change, then intercept
-  // popstate in the capture phase (stopImmediatePropagation keeps the
-  // global trap from re-pushing) and walk the joinStep backwards.
-  // Once we're at the form step (or on the resume card mid-game), we
-  // re-push instead of exiting — the student must use the in-view
-  // Back button in the header (which calls cleanupSessionData) to
-  // actually leave Quick Play.
-  const qpPopStateInProgressRef = useRef(false);
+  // walks the global view stack; it doesn't know this is an active QP
+  // session). The join is now a single screen, so back simply re-pushes
+  // to block exit — the student leaves only via the visible header Back
+  // / floating Leave buttons (which call cleanupSessionData).
   useEffect(() => {
-    if (qpPopStateInProgressRef.current) {
-      qpPopStateInProgressRef.current = false;
-      return;
-    }
-    window.history.pushState({ view: 'quick-play-student', qpStep: joinStep }, '');
-  }, [joinStep]);
-
-  useEffect(() => {
+    window.history.pushState({ view: 'quick-play-student' }, '');
     const handler = (e: PopStateEvent) => {
-      // Walk the join flow backwards instead of exiting.  Even when
-      // the popped state is null / external, stay on the join screen —
-      // the student is in an active QP session and the only correct
-      // exit is via the visible Back / Switch class buttons.
       e.stopImmediatePropagation();
-      qpPopStateInProgressRef.current = true;
-      if (joinStep === 'get-ready') {
-        setJoinStep('language');
-      } else if (joinStep === 'language') {
-        setJoinStep('form');
-      } else {
-        // joinStep === 'form' (first screen) or resume card — block
-        // exit by re-pushing the current marker.
-        window.history.pushState({ view: 'quick-play-student', qpStep: joinStep }, '');
-        qpPopStateInProgressRef.current = false;
-      }
+      window.history.pushState({ view: 'quick-play-student' }, '');
     };
     window.addEventListener('popstate', handler, { capture: true });
     return () => window.removeEventListener('popstate', handler, { capture: true });
-  }, [joinStep]);
+  }, []);
 
   // Surface server-side join errors. Recoverable errors (taken name,
   // rate-limited) show as toasts so the student can fix and retry on
@@ -296,8 +256,8 @@ export default function QuickPlayStudentView({
       // name" button.  A toast would just shout the same thing.
     } else if (code === "nickname_taken") {
       showToast(qpT.toastNameTaken, "error");
-      // Bounce back to the name form so they can fix and retry.
-      setJoinStep("form");
+      // Join failed → setJoining(false) below re-enables the form so they
+      // can fix the name and retry on the same screen.
     } else if (code === "session_inactive") {
       setFatalError("session-ended");
     } else if (code === "session_not_found") {
@@ -640,79 +600,6 @@ export default function QuickPlayStudentView({
                 {qpT.leaveQuickPlay}
               </button>
             </div>
-          ) : !quickPlayStudentName && joinStep === "language" ? (
-            // ─── Language picker step ─────────────────────────────────
-            // Runs after name+avatar are validated, before the actual
-            // server JOIN.  Picks the in-game UI language so mode
-            // labels + buttons render in EN / HE / AR for the rest
-            // of the session.
-            <div className="w-full max-w-md">
-              <div className="text-center mb-6 sm:mb-8">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                  <span className="text-white text-3xl sm:text-4xl font-black">Aa</span>
-                </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">{qpT.pickLanguage}</h1>
-                <p className="text-sm sm:text-base text-on-surface-variant font-bold">
-                  {qpT.pickLanguageSubtitle}
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                {/* Hebrew/Arabic only — students learn English toward their
-                    native language; an English-UI option would show no
-                    translations. Single point where the language is chosen. */}
-                {(['he', 'ar'] as const).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => {
-                      setAppLanguage(lang);
-                      if (!stagedName) {
-                        setJoinStep("form");
-                        return;
-                      }
-                      // Move to the Get Ready screen instead of firing
-                      // the join immediately. The next tap (Start
-                      // playing) primes iOS audio inside the gesture
-                      // context and THEN calls runJoin.
-                      setJoinStep("get-ready");
-                    }}
-                    className="w-full py-4 sm:py-5 bg-surface-container hover:bg-surface-container-high active:scale-[0.98] rounded-xl font-black text-lg sm:text-xl transition-all shadow-md flex items-center justify-center gap-3 border-2 border-surface-container-highest"
-                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
-                  >
-                    <Globe className="w-8 h-8 sm:w-10 sm:h-10 text-on-surface-variant" strokeWidth={2} aria-hidden />
-                    <span className="text-on-surface">{languageNames[lang]}</span>
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setJoinStep("form")}
-                className="mt-5 w-full py-2 text-sm text-on-surface-variant hover:text-on-surface font-bold"
-              >
-                {qpIsRTL ? '→' : '←'} {qpT.back}
-              </button>
-            </div>
-          ) : !quickPlayStudentName && joinStep === "get-ready" ? (
-            // ─── Get Ready handshake ──────────────────────────────────
-            // The "Start playing" tap inside QuickPlayGetReady primes
-            // iOS audio (speechSynthesis + Web Audio) inside the user
-            // gesture context, THEN we fire the staged join. Without
-            // the prime, the first word the game speaks on iOS Safari
-            // is silently swallowed by the autoplay block.
-            <QuickPlayGetReady
-              name={stagedName}
-              avatar={quickPlayAvatar}
-              joining={joining}
-              joinedCount={quickPlaySocket.leaderboard.length}
-              onStart={() => {
-                if (!stagedName) {
-                  setJoinStep("form");
-                  return;
-                }
-                setJoining(true);
-                runJoin(stagedName);
-              }}
-            />
           ) : !quickPlayStudentName ? (
             <div className="w-full max-w-md">
               <div className="text-center mb-6 sm:mb-8">
@@ -759,6 +646,30 @@ export default function QuickPlayStudentView({
                   onSelect={setQuickPlayAvatar}
                 />
 
+                {/* In-game language — inline toggle (HE / AR only; students
+                    learn English toward their native language, so an
+                    English UI would show no translations). Tapping it sets
+                    the app language live so the form previews the choice. */}
+                <div className="flex items-center justify-center gap-2">
+                  {(['he', 'ar'] as const).map((lang) => {
+                    const active = selectedLang === lang;
+                    return (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => { setSelectedLang(lang); setAppLanguage(lang); }}
+                        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-black transition-colors ${
+                          active
+                            ? "bg-primary text-on-primary shadow-md"
+                            : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                        }`}
+                      >
+                        <Globe size={15} aria-hidden /> {languageNames[lang]}
+                      </button>
+                    );
+                  })}
+                </div>
 
                 <div className="relative">
                   <label className="absolute -top-2.5 start-4 px-2 bg-surface text-primary font-black text-xs z-10">
@@ -827,6 +738,7 @@ export default function QuickPlayStudentView({
 
                 <button
                   data-quick-play-join
+                  disabled={joining}
                   onClick={() => {
                     const input = document.getElementById('quick-play-name-input') as HTMLInputElement;
                     const trimmedName = input?.value.trim() || "";
@@ -862,17 +774,28 @@ export default function QuickPlayStudentView({
                       showToast(qpT.toastNoWordsInSession, "error");
                       return;
                     }
-                    // All synchronous validation passed — stage the
-                    // name and switch to the language picker step.
-                    // The actual server JOIN + UI advance fires only
-                    // when the language picker button is tapped, so
-                    // the language is set BEFORE the game loads.
-                    setStagedName(trimmedName);
-                    setJoinStep("language");
+                    // One-screen join: lock in the language, prime iOS
+                    // audio inside this tap's gesture context (so the
+                    // game's first spoken word isn't swallowed by Safari
+                    // autoplay), then fire the server JOIN. The UI advance
+                    // is still deferred until the server confirms (runJoin).
+                    setAppLanguage(selectedLang);
+                    primeAudio();
+                    setJoining(true);
+                    runJoin(trimmedName);
                   }}
-                  className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
+                  className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-indigo-500 via-purple-600 to-fuchsia-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {qpLanguage === "he" ? "המשך" : qpLanguage === "ar" ? "متابعة" : "Continue"} {qpIsRTL ? '←' : '→'}
+                  {joining ? (
+                    <>
+                      <Loader2 className="animate-spin w-5 h-5" />
+                      {qpLanguage === "he" ? "מצטרפים…" : qpLanguage === "ar" ? "ينضم…" : "Joining…"}
+                    </>
+                  ) : (
+                    <>
+                      🎮 {qpLanguage === "he" ? "בואו נתחיל" : qpLanguage === "ar" ? "لنبدأ" : "Start playing"} {qpIsRTL ? '←' : '→'}
+                    </>
+                  )}
                 </button>
               </div>
 
