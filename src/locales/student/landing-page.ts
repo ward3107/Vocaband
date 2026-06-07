@@ -20,6 +20,7 @@ export interface LandingPageT {
   // ─── Public nav chrome ──────────────────────────────────────────
   navTryDemo: string;
   navTryDemoShort: string;
+  navDemo: string;
   navCefrBadge: string;
   // Public-nav anchor labels — one per major landing-page section,
   // in the order they appear on the page.  Adding a new section means
@@ -66,6 +67,24 @@ export interface LandingPageT {
     demoCta: string;
     demoNote: string;
     or: string;
+  };
+
+  // "For school leaders" section — surfaces the principal dashboard.
+  schools: {
+    eyebrow: string;
+    heading: string;
+    subtitle: string;
+    point1: string;
+    point2: string;
+    point3: string;
+    cta: string;
+    previewTitle: string;
+    previewBadge: string;
+    previewChart: string;
+    kpiTeachers: string;
+    kpiClasses: string;
+    kpiStudents: string;
+    kpiActive: string;
   };
 
   // ─── Floating hero cards ────────────────────────────────────────
@@ -294,6 +313,23 @@ export interface LandingPageT {
 
 export const landingPageT: Record<Language, LandingPageT> = {
   en: {
+    navDemo: "Demo",
+    schools: {
+      eyebrow: "For school leaders",
+      heading: "Run a whole school? See all of it.",
+      subtitle: "One principal dashboard to oversee every teacher, class, and student — with school-wide analytics that show what's working and what needs attention.",
+      point1: "Every teacher & class in one place",
+      point2: "School-wide engagement, XP & scores",
+      point3: "Spot the classes that need attention",
+      cta: "Talk to us about your school",
+      previewTitle: "Principal console",
+      previewBadge: "Live preview",
+      previewChart: "Active students · last 14 days",
+      kpiTeachers: "Teachers",
+      kpiClasses: "Classes",
+      kpiStudents: "Students",
+      kpiActive: "Active 7d",
+    },
     heroV2: {
       eyebrow: "The vocabulary game students actually want to play",
       staffTitle: "Teachers & Principals",
@@ -534,6 +570,23 @@ export const landingPageT: Record<Language, LandingPageT> = {
   },
 
   he: {
+    navDemo: "הדגמה",
+    schools: {
+      eyebrow: "למנהלי בתי ספר",
+      heading: "מנהלים בית ספר שלם? ראו את הכול.",
+      subtitle: "לוח ניהול אחד למנהל/ת — מעקב אחר כל מורה, כיתה ותלמיד, עם נתונים ברמת בית הספר שמראים מה עובד ומה דורש תשומת לב.",
+      point1: "כל המורים והכיתות במקום אחד",
+      point2: "מעורבות, XP וציונים ברמת בית הספר",
+      point3: "זיהוי כיתות שדורשות תשומת לב",
+      cta: "דברו איתנו על בית הספר שלכם",
+      previewTitle: "לוח המנהל/ת",
+      previewBadge: "תצוגה מקדימה",
+      previewChart: "תלמידים פעילים · 14 ימים אחרונים",
+      kpiTeachers: "מורים",
+      kpiClasses: "כיתות",
+      kpiStudents: "תלמידים",
+      kpiActive: "פעילים (7 ימים)",
+    },
     heroV2: {
       eyebrow: "משחק אוצר המילים שתלמידים באמת אוהבים לשחק",
       staffTitle: "מורים ומנהלים",
@@ -774,6 +827,23 @@ export const landingPageT: Record<Language, LandingPageT> = {
   },
 
   ar: {
+    navDemo: "تجربة",
+    schools: {
+      eyebrow: "لقادة المدارس",
+      heading: "تدير مدرسة كاملة؟ شاهد كل شيء.",
+      subtitle: "لوحة تحكم واحدة للمدير — لمتابعة كل معلم وصف وطالب، مع تحليلات على مستوى المدرسة تُظهر ما ينجح وما يحتاج إلى انتباه.",
+      point1: "كل المعلمين والصفوف في مكان واحد",
+      point2: "التفاعل وXP والدرجات على مستوى المدرسة",
+      point3: "رصد الصفوف التي تحتاج إلى انتباه",
+      cta: "تحدّث إلينا عن مدرستك",
+      previewTitle: "لوحة المدير",
+      previewBadge: "معاينة مباشرة",
+      previewChart: "الطلاب النشِطون · آخر 14 يومًا",
+      kpiTeachers: "المعلمون",
+      kpiClasses: "الصفوف",
+      kpiStudents: "الطلاب",
+      kpiActive: "نشِطون (7 أيام)",
+    },
     heroV2: {
       eyebrow: "لعبة المفردات التي يحب الطلاب لعبها فعلاً",
       staffTitle: "المعلمون والمديرون",
@@ -1014,6 +1084,23 @@ export const landingPageT: Record<Language, LandingPageT> = {
   },
 
   ru: {
+    navDemo: "Demo",
+    schools: {
+      eyebrow: "For school leaders",
+      heading: "Run a whole school? See all of it.",
+      subtitle: "One principal dashboard to oversee every teacher, class, and student — with school-wide analytics that show what's working and what needs attention.",
+      point1: "Every teacher & class in one place",
+      point2: "School-wide engagement, XP & scores",
+      point3: "Spot the classes that need attention",
+      cta: "Talk to us about your school",
+      previewTitle: "Principal console",
+      previewBadge: "Live preview",
+      previewChart: "Active students · last 14 days",
+      kpiTeachers: "Teachers",
+      kpiClasses: "Classes",
+      kpiStudents: "Students",
+      kpiActive: "Active 7d",
+    },
     heroV2: {
       eyebrow: "The vocabulary game students actually want to play",
       staffTitle: "Teachers & Principals",

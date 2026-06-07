@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Menu, X, LogIn, GraduationCap } from "lucide-react";
+import { Menu, X, LogIn, GraduationCap, PlayCircle } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
 import NavLanguageToggle from "./NavLanguageToggle";
@@ -30,12 +30,20 @@ interface PublicNavProps {
    *  surface a teacher login (e.g. mid-game) can omit it and the
    *  "Sign in" button is hidden. */
   onTeacherLogin?: () => void;
+  /** Open the no-signup demo.  Optional — only hosts that surface a demo
+   *  (the landing page) pass it; the nav Demo button hides otherwise. */
+  onTryDemo?: () => void;
+  /** Open the school-inquiry form.  Optional — only the landing passes it;
+   *  the nav "For Schools" link hides otherwise. */
+  onOpenSchoolInquiry?: () => void;
 }
 
 const PublicNav: React.FC<PublicNavProps> = ({
   currentPage,
   onNavigate,
   onTeacherLogin,
+  onTryDemo,
+  onOpenSchoolInquiry,
 }) => {
   const { language, isRTL } = useLanguage();
   const t = landingPageT[language];
@@ -158,6 +166,16 @@ const PublicNav: React.FC<PublicNavProps> = ({
                 </button>
               );
             })}
+            {/* For Schools — opens the school-inquiry form. */}
+            {onOpenSchoolInquiry && (
+              <button
+                onClick={onOpenSchoolInquiry}
+                className="px-3 py-2 text-sm font-bold text-stone-700 hover:text-primary transition-colors rounded-lg hover:bg-primary/5"
+                type="button"
+              >
+                {t.navForSchools}
+              </button>
+            )}
           </div>
 
           {/* Right side — desktop CTAs + lang.  On mobile, lang only;
@@ -169,6 +187,17 @@ const PublicNav: React.FC<PublicNavProps> = ({
               meant the hamburger). */}
           <div className="flex items-center gap-3 md:gap-2 flex-shrink-0 mr-12 md:mr-0">
             <NavLanguageToggle />
+            {/* Demo — quiet, always-visible "try it without signing up". */}
+            {onTryDemo && (
+              <button
+                onClick={onTryDemo}
+                type="button"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2.5 text-sm font-bold text-stone-700 hover:text-primary rounded-lg hover:bg-primary/5 transition-colors"
+                style={{ touchAction: 'manipulation' }}
+              >
+                <PlayCircle size={16} strokeWidth={2.5} /> {t.navDemo}
+              </button>
+            )}
             {/* Desktop header CTA — dominant Teacher Sign In.  Same
                 Google OAuth flow as the hero; the nav pill carries the
                 affordance on sub-pages and when the hero scrolls
@@ -179,13 +208,13 @@ const PublicNav: React.FC<PublicNavProps> = ({
                 className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 text-sm font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 hover:from-indigo-600 hover:via-violet-700 hover:to-fuchsia-700 rounded-lg shadow-lg shadow-violet-500/40 hover:shadow-xl hover:shadow-violet-500/55 ring-2 ring-violet-300/50 hover:ring-violet-300/70 hover:scale-[1.04] transition-all"
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
+                aria-label={`${t.navSignIn} — ${t.heroV2.staffTitle}`}
               >
                 <GraduationCap size={18} strokeWidth={2.5} />
                 <div className="flex flex-col items-start leading-tight">
                   <span>{t.navSignIn}</span>
                   <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-violet-100/90">
-                    {t.heroSignInForTeachers}
+                    {t.heroV2.staffTitle}
                   </span>
                 </div>
                 <LogIn size={14} strokeWidth={2.5} className="opacity-90" />
@@ -266,6 +295,19 @@ const PublicNav: React.FC<PublicNavProps> = ({
                   </button>
                 );
               })}
+              {/* For Schools — opens the school-inquiry form. */}
+              {onOpenSchoolInquiry && (
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    onOpenSchoolInquiry();
+                  }}
+                  className="w-full text-start px-3 py-3 text-base font-bold text-stone-800 hover:bg-primary/5 rounded-lg transition-colors"
+                  type="button"
+                >
+                  {t.navForSchools}
+                </button>
+              )}
             </nav>
 
             <div className="border-t border-stone-200 p-4">
@@ -281,16 +323,30 @@ const PublicNav: React.FC<PublicNavProps> = ({
                   className="w-full inline-flex items-center justify-center gap-3 px-4 py-4 text-lg font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 rounded-xl shadow-lg shadow-violet-500/40 ring-2 ring-violet-300/50"
                   type="button"
                   style={{ touchAction: 'manipulation' }}
-                  aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
+                  aria-label={`${t.navSignIn} — ${t.heroV2.staffTitle}`}
                 >
                   <GraduationCap size={22} strokeWidth={2.5} />
                   <div className="flex flex-col items-start leading-tight">
                     <span>{t.navSignIn}</span>
                     <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-100/90">
-                      {t.heroSignInForTeachers}
+                      {t.heroV2.staffTitle}
                     </span>
                   </div>
                   <LogIn size={18} strokeWidth={2.5} className="opacity-90" />
+                </button>
+              )}
+              {/* Mobile demo — secondary outline button under sign-in. */}
+              {onTryDemo && (
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    onTryDemo();
+                  }}
+                  type="button"
+                  className="w-full mt-3 inline-flex items-center justify-center gap-2 px-4 py-3 text-base font-bold text-stone-700 border border-stone-300 rounded-xl hover:bg-stone-50"
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <PlayCircle size={18} strokeWidth={2.5} /> {t.navDemo}
                 </button>
               )}
             </div>
