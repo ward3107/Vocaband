@@ -70,21 +70,28 @@ const POWER_UPS = [
   { id: 'reveal_letter', name: 'Hint', emoji: '💡', desc: 'Reveal first letter', cost: 0, freeInDemo: 3 },
 ];
 
-// Demo words — 50 carefully-curated Set 1 words presented in a gentle
+// Demo words — a short taster of Set 1 words presented in a gentle
 // ramp from easiest to hardest so a brand-new visitor succeeds on the
 // first handful and only slowly meets trickier words.  Difficulty is
 // approximated by English word length (shortest first) — not perfect
 // but a good proxy for "cat/dog/run" vs "butterfly/understand".
 //
+// DEMO_WORD_COUNT is kept short (10) on purpose: the demo's whole
+// promise is a ~2-minute taster, and a prospective teacher won't sit
+// through 50 multiple-choice questions per mode. Ten words is enough to
+// show off a mode end-to-end without overstaying its welcome — and it
+// matches the "10 sample words" the onboarding copy advertises.
+//
 // IMPORTANT: the vocabulary data uses level: "Set 1" (see
 // src/data/vocabulary.ts).  An earlier version of this filter said
 // 'Band 1' (legacy terminology) which matched NO words and left the
 // demo with an empty pool — rendering every game mode screen blank.
+const DEMO_WORD_COUNT = 10;
 const DEMO_WORDS: Word[] = ALL_WORDS
   .filter(w => w.level === 'Set 1')
   .slice()
   .sort((a, b) => a.english.length - b.english.length || a.english.localeCompare(b.english))
-  .slice(0, 50);
+  .slice(0, DEMO_WORD_COUNT);
 
 // Translations
 const demoTranslations: Record<Language, Record<string, string>> = {
@@ -101,7 +108,7 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     forStudentsDesc: "1000+ curated words from Sets 1–3. 15 game modes. XP, streaks, avatars, and a shop full of cosmetics and power-ups.",
     tryDemoIntro: "In the next 2 minutes you'll play a real game mode with 10 sample words and see the XP, avatar and shop systems live.",
     experienceTitle: "What you'll try in this demo:",
-    sampleWords: "100 sample words from Set 1 (real vocabulary)",
+    sampleWords: "10 sample words from Set 1 (real vocabulary)",
     gameModes: "A real game mode, end-to-end",
     xpStreak: "XP, streak, and title progression",
     achievements: "Achievements & reward pop-ups",
@@ -189,7 +196,7 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     forStudentsDesc: "1000+ מילים ערוכות מ-Set 1 עד 3. 15 מצבי משחק. XP, רצפים, אווטרים וחנות מלאה בפריטים קוסמטיים וחיזוקים.",
     tryDemoIntro: "בשתי הדקות הבאות תשחקו במצב משחק אמיתי עם 10 מילים לדוגמה ותראו איך מערכת ה-XP, האווטרים והחנות עובדת.",
     experienceTitle: "מה תנסו בהדגמה:",
-    sampleWords: "100 מילים לדוגמה מ-Set 1 (אוצר מילים אמיתי)",
+    sampleWords: "10 מילים לדוגמה מ-Set 1 (אוצר מילים אמיתי)",
     gameModes: "מצב משחק אמיתי, מתחילתו עד סופו",
     xpStreak: "התקדמות XP, רצפים ותארים",
     achievements: "הישגים וחלונות פרסים",
@@ -277,7 +284,7 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     forStudentsDesc: "1000+ كلمة منسقة من Sets 1–3. 15 أوضاع لعب. XP، سلاسل، صور رمزية، ومتجر مليء بالتحسينات والتعزيزات.",
     tryDemoIntro: "في الدقيقتين التاليتين ستلعب وضع لعبة حقيقياً مع 10 كلمات نموذجية وترى نظام XP والصور الرمزية والمتجر يعمل مباشرة.",
     experienceTitle: "ما ستجربه في هذا العرض:",
-    sampleWords: "100 كلمات نموذجية من Set 1 (مفردات حقيقية)",
+    sampleWords: "10 كلمات نموذجية من Set 1 (مفردات حقيقية)",
     gameModes: "وضع لعبة حقيقي، من البداية إلى النهاية",
     xpStreak: "تقدم XP والسلاسل والألقاب",
     achievements: "الإنجازات وإشعارات المكافآت",
@@ -365,7 +372,7 @@ const demoTranslations: Record<Language, Record<string, string>> = {
     forStudentsDesc: "1000+ curated words from Sets 1–3. 15 game modes. XP, streaks, avatars, and a shop full of cosmetics and power-ups.",
     tryDemoIntro: "In the next 2 minutes you'll play a real game mode with 10 sample words and see the XP, avatar and shop systems live.",
     experienceTitle: "What you'll try in this demo:",
-    sampleWords: "100 sample words from Set 1 (real vocabulary)",
+    sampleWords: "10 sample words from Set 1 (real vocabulary)",
     gameModes: "A real game mode, end-to-end",
     xpStreak: "XP, streak, and title progression",
     achievements: "Achievements & reward pop-ups",
