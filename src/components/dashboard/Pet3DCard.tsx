@@ -1,5 +1,6 @@
 import Pet3DModel from "./Pet3DModel";
 import { petModelFor } from "../../constants/petModels";
+import { useFeatureFlag } from "../../hooks/useFeatureFlag";
 import { useLanguage, type Language } from "../../hooks/useLanguage";
 
 const STRINGS: Record<Language, { title: string; hint: string; badge: string }> = {
@@ -10,11 +11,13 @@ const STRINGS: Record<Language, { title: string; hint: string; badge: string }> 
 };
 
 /**
- * Always-visible dashboard card showing the student's pet as a real,
- * spinnable 3D model. The model is chosen per evolution stage via
- * petModelFor (stages without their own .glb fall back to the placeholder
- * egg), so richer/animated pets — e.g. an Ascended phoenix — drop in by
- * adding a file + one registry line, with no changes here.
+ * Dashboard card showing the student's pet as a real, spinnable 3D model.
+ * The model is chosen per evolution stage via petModelFor (stages without
+ * their own .glb fall back to the placeholder egg), so richer/animated pets
+ * — e.g. an Ascended phoenix — drop in by adding a file + one registry line.
+ *
+ * Gated behind the `pet_3d` feature flag (OFF by default). Turn the flag on
+ * (or change the default below) to show it again.
  */
 interface Pet3DCardProps {
   /** Current pet stage display name (from PET_MILESTONES) — selects the model. */
@@ -22,9 +25,13 @@ interface Pet3DCardProps {
 }
 
 export default function Pet3DCard({ stage }: Pet3DCardProps) {
+  const enabled = useFeatureFlag("pet_3d", false);
   const { language, dir } = useLanguage();
   const t = STRINGS[language] ?? STRINGS.en;
   const modelSrc = petModelFor(stage);
+
+  // Hidden for now — see the `pet_3d` flag note above.
+  if (!enabled) return null;
 
   return (
     <div
