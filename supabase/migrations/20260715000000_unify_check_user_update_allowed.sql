@@ -1,5 +1,5 @@
 -- =============================================================================
--- 20260714000000_unify_check_user_update_allowed.sql
+-- 20260715000000_unify_check_user_update_allowed.sql
 --
 -- Reconcile two conflicting redefinitions of the users-row self-edit guard.
 --

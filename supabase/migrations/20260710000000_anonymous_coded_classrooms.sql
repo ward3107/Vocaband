@@ -478,11 +478,13 @@ GRANT EXECUTE ON FUNCTION public.claim_pending_classes()                        
 -- admin seed section render only when this is enabled. Ships disabled so the
 -- feature is invisible until the operator flips it on (self first, then all)
 -- from the Feature Flags panel. Idempotent — never clobbers an existing row.
+-- The live feature_flags table keys on `name` (20260514); the abandoned
+-- `key`-based design (20260627) never reached prod.
 -- ---------------------------------------------------------------------------
-INSERT INTO public.feature_flags (key, enabled, description)
+INSERT INTO public.feature_flags (name, enabled, description)
 VALUES ('anon_coded_classrooms', false,
         'Anonymous coded classrooms: teacher bulk "add a whole class" + admin school seeding (no student names).')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT (name) DO NOTHING;
 
 COMMIT;
 
