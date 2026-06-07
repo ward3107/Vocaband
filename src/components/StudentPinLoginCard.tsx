@@ -40,7 +40,6 @@ const PIN_REGEX = /^[A-HJ-KM-NP-Z2-9]{6}$/;
 const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSuccess, onTier2Login }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = studentPinLoginT[language];
-  const [step, setStep] = useState<"pick" | "pin">("pick");
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [rosterLoading, setRosterLoading] = useState(true);
   const [rosterError, setRosterError] = useState<string | null>(null);
@@ -89,12 +88,10 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     loadRoster();
   }, [loadRoster]);
 
-  // Teacher-invite-link prefill: once the roster has loaded, if the
-  // URL carried a ?s=<student_profile_id> and it matches a row, jump
-  // straight to the PIN step.  Only fires once per page-load by
-  // tracking whether we've already consumed the prefilled id.  If the
-  // student taps "Not me" we don't re-arm — they're already in the
-  // picker by then and re-prefilling would feel haunted.
+  // Teacher-invite-link prefill: once the roster has loaded, if the URL
+  // carried a ?s=<student_profile_id> and it matches a row, pre-select
+  // that student so the inline PIN field opens straightaway. Only fires
+  // once per page-load.
   const consumedPrefillRef = useRef(false);
   useEffect(() => {
     if (consumedPrefillRef.current) return;
@@ -102,8 +99,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     if (rosterLoading || roster.length === 0) return;
     const match = roster.find(r => r.id.toLowerCase() === prefilledStudentId.toLowerCase());
     if (!match) {
-      // Stale or wrong id — silently fall through to the normal
-      // picker instead of confusing the student with an error.
+      // Stale or wrong id — silently fall through to the normal picker.
       consumedPrefillRef.current = true;
       return;
     }
@@ -111,17 +107,20 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     setSelected(match);
     setPin("");
     setPinError(null);
-    setStep("pin");
   }, [prefilledStudentId, roster, rosterLoading]);
 
-  // Auto-focus the PIN input when the student moves to the PIN step.
-  // On mobile this cues the soft keyboard, on desktop their first
-  // keystroke lands in the right place.
+  // When a name is picked, focus the inline PIN field and scroll its
+  // panel into view — on mobile this cues the keyboard and makes sure the
+  // freshly-revealed field isn't below the fold.
+  const pinPanelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (step !== "pin") return;
-    const id = window.setTimeout(() => pinInputRef.current?.focus(), 60);
+    if (!selected) return;
+    const id = window.setTimeout(() => {
+      pinInputRef.current?.focus();
+      pinPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 80);
     return () => window.clearTimeout(id);
-  }, [step]);
+  }, [selected]);
 
   const handlePick = (s: RosterEntry) => {
     setSelected(s);
@@ -129,55 +128,14 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     setPinError(null);
     // Different student selected → start the wrong-PIN counter fresh.
     setWrongPinCount(0);
-    setStep("pin");
   };
 
-  // Phone back-button trap for the pick → pin sub-steps.
-  //
-  // These steps are component state, not router views, so without this the
-  // hardware/edge back button on the PIN screen bubbles to the global
-  // back-trap and jumps the student all the way out to the landing page
-  // instead of back to the name list. Push a marker history entry when
-  // entering the PIN step and intercept popstate in the capture phase to
-  // walk back to "pick". The "pick" step is left alone, so back there
-  // still falls through to the global trap (→ landing) as before.
-  const pinMarkerRef = useRef(false);
-  const suppressPinPopRef = useRef(false);
-  useEffect(() => {
-    if (step !== "pin") return;
-    window.history.pushState({ studentLoginStep: "pin" }, "");
-    pinMarkerRef.current = true;
-  }, [step]);
-  useEffect(() => {
-    const handler = (e: PopStateEvent) => {
-      // Swallow the synthetic pop fired by handleBack()'s history.back().
-      if (suppressPinPopRef.current) {
-        suppressPinPopRef.current = false;
-        e.stopImmediatePropagation();
-        return;
-      }
-      if (step !== "pin") return; // let the global trap handle "pick"
-      e.stopImmediatePropagation();
-      pinMarkerRef.current = false; // the back press consumed the marker
-      setStep("pick");
-      setPin("");
-      setPinError(null);
-    };
-    window.addEventListener("popstate", handler, { capture: true });
-    return () => window.removeEventListener("popstate", handler, { capture: true });
-  }, [step]);
-
-  const handleBack = () => {
-    setStep("pick");
+  // "Not me" / change — clear the selection to collapse the PIN panel
+  // and return focus to the name list.
+  const clearSelection = () => {
+    setSelected(null);
     setPin("");
     setPinError(null);
-    // Consume the marker we pushed on entering the PIN step so a later
-    // hardware-back isn't wasted re-popping a stale entry.
-    if (pinMarkerRef.current) {
-      pinMarkerRef.current = false;
-      suppressPinPopRef.current = true;
-      window.history.back();
-    }
   };
 
   const handleSubmit = async () => {
@@ -243,93 +201,9 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
   const isCoded = roster.length > 0 && roster.every(r => /^\d/.test(r.displayName));
   const showFilter = roster.length > 8 || isCoded;
 
-  // -------- Render: PIN step --------
-  if (step === "pin" && selected) {
-    return (
-      <motion.div
-        key="pin-step"
-        initial={{ opacity: 0, x: 12 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -12 }}
-        className="space-y-4"
-        dir={dir}
-      >
-        <button
-          type="button"
-          onClick={handleBack}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-500 hover:text-stone-900 px-2 py-1 rounded-md hover:bg-stone-100 transition-colors"
-          style={{ touchAction: "manipulation" }}
-        >
-          <ArrowLeft size={12} className={isRTL ? "rotate-180" : ""} /> {t.notMe}
-        </button>
-
-        <div className="flex items-center gap-3 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-xl p-4">
-          <span className="text-3xl">{selected.avatar}</span>
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">{t.signingInAs}</p>
-            <p className="text-lg font-black text-stone-900 truncate">{selected.displayName}</p>
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor="student-pin-input" className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2 text-center">
-            {t.typeYourPin}
-          </label>
-          <input
-            ref={pinInputRef}
-            id="student-pin-input"
-            name="pin"
-            type="text"
-            inputMode="text"
-            autoComplete="one-time-code"
-            autoCapitalize="characters"
-            spellCheck={false}
-            maxLength={PIN_LENGTH}
-            value={pin}
-            onChange={e => {
-              const next = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, PIN_LENGTH);
-              setPin(next);
-              if (pinError) setPinError(null);
-            }}
-            onKeyDown={e => {
-              if (e.key === "Enter" && pin.length === PIN_LENGTH) handleSubmit();
-            }}
-            placeholder="• • • • • •"
-            className="w-full text-center text-3xl font-black tracking-[0.4em] font-mono py-4 rounded-xl border-2 border-stone-200 focus:border-indigo-500 outline-none text-stone-900 placeholder:text-stone-300"
-            aria-describedby={pinError ? "pin-error" : undefined}
-          />
-        </div>
-
-        {pinError && (
-          <motion.div
-            id="pin-error"
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2"
-            role="alert"
-          >
-            <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-            <span>{pinError}</span>
-          </motion.div>
-        )}
-
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={pin.length !== PIN_LENGTH || signingIn}
-          className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-600 text-white font-black text-base shadow-lg shadow-violet-500/30 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50 disabled:shadow-none"
-          style={{ touchAction: "manipulation" }}
-        >
-          {signingIn ? t.signingIn : (<><Sparkles size={18} /> {t.letsGo}</>)}
-        </button>
-      </motion.div>
-    );
-  }
-
-  // -------- Render: roster picker --------
+  // -------- Render: one screen — pick a name, PIN expands inline --------
   return (
     <motion.div
-      key="pick-step"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="space-y-4"
@@ -369,26 +243,34 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
               />
             </div>
           )}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-72 overflow-y-auto pe-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pe-1">
             <AnimatePresence initial={false}>
-              {filtered.map(s => (
-                <motion.button
-                  layout
-                  key={s.id}
-                  type="button"
-                  onClick={() => handlePick(s)}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex items-center gap-2 p-2.5 rounded-lg border border-stone-200 hover:border-indigo-400 hover:bg-indigo-50 transition-colors text-start"
-                  style={{ touchAction: "manipulation" }}
-                >
-                  <span className="text-2xl shrink-0">{s.avatar}</span>
-                  <span className="font-bold text-sm text-stone-900 truncate flex-1">{s.displayName}</span>
-                </motion.button>
-              ))}
+              {filtered.map(s => {
+                const isSel = selected?.id === s.id;
+                return (
+                  <motion.button
+                    layout
+                    key={s.id}
+                    type="button"
+                    onClick={() => handlePick(s)}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    aria-pressed={isSel}
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border transition-colors text-start ${
+                      isSel
+                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-400"
+                        : "border-stone-200 hover:border-indigo-400 hover:bg-indigo-50"
+                    }`}
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    <span className="text-2xl shrink-0">{s.avatar}</span>
+                    <span className="font-bold text-sm text-stone-900 truncate flex-1">{s.displayName}</span>
+                  </motion.button>
+                );
+              })}
             </AnimatePresence>
             {filtered.length === 0 && (
               <p className="col-span-full text-center text-xs text-stone-500 py-4">
@@ -399,6 +281,92 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
         </>
       )}
 
+      {/* Inline PIN — expands on this same screen the moment a name is
+          picked, so there's no separate PIN page. Tap another name to
+          switch, or "Not me" to collapse it. */}
+      <AnimatePresence>
+        {selected && (
+          <motion.div
+            key="pin-panel"
+            ref={pinPanelRef}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center gap-3 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-xl p-3">
+                <span className="text-2xl shrink-0">{selected.avatar}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">{t.signingInAs}</p>
+                  <p className="text-base font-black text-stone-900 truncate">{selected.displayName}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-stone-500 hover:text-stone-900 px-2 py-1 rounded-md hover:bg-stone-100 transition-colors shrink-0"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <ArrowLeft size={12} className={isRTL ? "rotate-180" : ""} /> {t.notMe}
+                </button>
+              </div>
+
+              <div>
+                <label htmlFor="student-pin-input" className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2 text-center">
+                  {t.typeYourPin}
+                </label>
+                <input
+                  ref={pinInputRef}
+                  id="student-pin-input"
+                  name="pin"
+                  type="text"
+                  inputMode="text"
+                  autoComplete="one-time-code"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  maxLength={PIN_LENGTH}
+                  value={pin}
+                  onChange={e => {
+                    const next = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, PIN_LENGTH);
+                    setPin(next);
+                    if (pinError) setPinError(null);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && pin.length === PIN_LENGTH) handleSubmit();
+                  }}
+                  placeholder="• • • • • •"
+                  className="w-full text-center text-3xl font-black tracking-[0.4em] font-mono py-4 rounded-xl border-2 border-stone-200 focus:border-indigo-500 outline-none text-stone-900 placeholder:text-stone-300"
+                  aria-describedby={pinError ? "pin-error" : undefined}
+                />
+              </div>
+
+              {pinError && (
+                <motion.div
+                  id="pin-error"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2"
+                  role="alert"
+                >
+                  <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
+                  <span>{pinError}</span>
+                </motion.div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={pin.length !== PIN_LENGTH || signingIn}
+                className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-600 text-white font-black text-base shadow-lg shadow-violet-500/30 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50 disabled:shadow-none"
+                style={{ touchAction: "manipulation" }}
+              >
+                {signingIn ? t.signingIn : (<><Sparkles size={18} /> {t.letsGo}</>)}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
