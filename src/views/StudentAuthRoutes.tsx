@@ -1,13 +1,12 @@
 /**
- * Student auth / Quick Play join routes — pending-approval, account
- * login, quick-play-student join, plus privacy-settings.  All four
- * are bundled here so App.tsx doesn't carry their prop-forwarding.
+ * Student auth / Quick Play join routes — account login, Category Race
+ * join, and quick-play-student join. Bundled here so App.tsx doesn't
+ * carry their prop-forwarding.
  */
 import { type ReactNode } from 'react';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
-import PendingApprovalScreen from '../components/PendingApprovalScreen';
 import { createGuestUser } from '../utils/createGuestUser';
 import type { AppUser, AssignmentData } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
@@ -20,9 +19,6 @@ import {
 
 const StudentAccountLoginView = lazyWithRetry(() => import('./StudentAccountLoginView'));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Anyish = any;
-
 export interface StudentAuthRoutesDeps {
   view: View;
   user: AppUser | null;
@@ -30,13 +26,6 @@ export interface StudentAuthRoutesDeps {
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   cookieBannerOverlay: ReactNode;
-
-  // Pending approval
-  pendingApprovalInfo: { name: string; classCode: string; profileId?: string } | null;
-  setPendingApprovalInfo: React.Dispatch<
-    React.SetStateAction<{ name: string; classCode: string; profileId?: string } | null>
-  >;
-  handleLoginAsStudent: Anyish;
 
   // Student account login.  OAuth / Microsoft / OTP state props were
   // removed in the 2026-05-18 privacy review — students authenticate
@@ -94,7 +83,6 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
   const {
     view, user, setView, setUser, showToast,
     cookieBannerOverlay,
-    pendingApprovalInfo, setPendingApprovalInfo, handleLoginAsStudent,
     error,
     studentLoginClassCode, setStudentLoginClassCode,
     onTier2Login,
@@ -106,18 +94,6 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     cleanupSessionData,
     setQuickPlayKicked,
   } = deps;
-
-  if (view === 'student-pending-approval' && pendingApprovalInfo) {
-    return (
-      <PendingApprovalScreen
-        pendingApprovalInfo={pendingApprovalInfo}
-        setPendingApprovalInfo={setPendingApprovalInfo}
-        handleLoginAsStudent={handleLoginAsStudent}
-        setView={setView}
-        showToast={showToast}
-      />
-    );
-  }
 
   if (view === 'student-account-login') {
     return (

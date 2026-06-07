@@ -16,7 +16,6 @@ export type View =
   | "accessibility-statement"
   | "teacher-login"
   | "student-account-login"
-  | "student-pending-approval"
   | "landing"
   // School-manager (principal) read-only oversight dashboard.
   // See src/views/ManagerConsoleView.tsx + migrations

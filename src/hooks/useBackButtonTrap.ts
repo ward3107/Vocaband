@@ -37,7 +37,7 @@ import type { View } from '../core/views';
 // If popstate would navigate to one of these, we block it.
 const AUTH_VIEWS = new Set<string>([
   'landing', 'public-landing', 'student-account-login',
-  'student-pending-approval', 'oauth-class-code', 'oauth-callback',
+  'oauth-class-code', 'oauth-callback',
 ]);
 
 // Views safe to land on when there is NO authenticated user. Used to
@@ -57,7 +57,7 @@ const PUBLIC_VIEWS = new Set<string>([
   'landing', 'public-landing', 'public-terms', 'public-privacy',
   'public-security', 'public-free-resources', 'public-interactive-worksheet',
   'public-status', 'accessibility-statement', 'teacher-login',
-  'student-account-login', 'student-pending-approval',
+  'student-account-login',
   'oauth-class-code', 'oauth-callback',
 ]);
 
