@@ -80,7 +80,7 @@ export default function OrbitalHub({ center, items }: OrbitalHubProps) {
   return (
     <div
       dir={dir}
-      className="relative mx-auto aspect-square w-[min(92vw,30rem)] select-none"
+      className="relative mx-auto aspect-square w-[min(94vw,34rem)] select-none"
     >
       {/* Decorative orbit path — a dashed ring that slowly rotates. Its
           edge sits at exactly R, so every circle CENTER lands on the
