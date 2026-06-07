@@ -31,7 +31,7 @@ import { useLanguage, Language, ALL_LANGUAGES } from "../hooks/useLanguage";
 import { AvatarPicker } from "./AvatarPicker";
 import { getSentencesForWord } from "../data/sentence-bank";
 import { isAnswerCorrect, cleanWordForDisplay } from "../utils/answerMatch";
-import { MYSTERY_EGGS, THEMES, NAME_FRAMES } from "../constants/game";
+import { MYSTERY_EGGS, THEMES, NAME_FRAMES, XP_TITLES, getXpTitle } from "../constants/game";
 import { DIFFICULTY_META, getModeDifficulty } from "./setup/types";
 
 interface DemoModeProps {
@@ -54,14 +54,23 @@ const PREMIUM_AVATARS = [
   { emoji: '🎖️', name: 'General', cost: 100 },
 ];
 
-// XP Titles matching full app
-const XP_TITLES = [
-  { min: 0, title: "Newbie", color: "#9CA3AF" },
-  { min: 50, title: "Rising Star", color: "#60B5FF" },
-  { min: 150, title: "Word Wizard", color: "#FCD34D" },
-  { min: 300, title: "Vocab Master", color: "#F97316" },
-  { min: 500, title: "Legend", color: "#EF4444" },
-];
+// XP tier colours. The shared XP_TITLES (imported from constants/game)
+// owns the real names / thresholds / emoji, so the demo shows the exact
+// same ladder students climb after signing up — previously the demo had
+// its own divergent copy (Newbie/Rising Star/… at 50/150/300) that no
+// longer existed in the real app. XP_TITLES carries no colour, so we map
+// each tier name to one here for the demo's crowns and title chips.
+const TITLE_COLORS: Record<string, string> = {
+  Beginner: "#84CC16",
+  Learner: "#60B5FF",
+  Scholar: "#FCD34D",
+  Expert: "#F97316",
+  Master: "#EF4444",
+  Legend: "#8B5CF6",
+  Mythic: "#D946EF",
+  Ascended: "#06B6D4",
+};
+const titleColor = (title: string): string => TITLE_COLORS[title] ?? "#9CA3AF";
 
 // Power-ups matching full app
 const POWER_UPS = [
@@ -687,10 +696,6 @@ const getMeaning = (word: Word, targetLang: TargetLang): string => {
   return targetLang === 'arabic' ? word.arabic : word.hebrew;
 };
 
-const getXPTitle = (xpAmount: number) => {
-  return XP_TITLES.filter(t => xpAmount >= t.min).pop() ?? XP_TITLES[0];
-};
-
 const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const { language, setLanguage, dir, isRTL, textAlign } = useLanguage();
   const t = demoTranslations[language];
@@ -1298,7 +1303,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     speak(wordId);
   };
 
-  const xpTitle = getXPTitle(xp);
+  const xpTitle = getXpTitle(xp);
 
   return (
     <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 overflow-auto" dir={dir}>
@@ -1567,8 +1572,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {xp > 0 && (
                 <div className="bg-gradient-to-r from-primary/10 to-tertiary/10 rounded-xl p-4 mb-6 border border-primary/20">
                   <div className="flex items-center justify-center gap-2">
-                    <Crown size={20} style={{ color: xpTitle.color }} />
-                    <span className="font-black" style={{ color: xpTitle.color }}>{xpTitle.title}</span>
+                    <Crown size={20} style={{ color: titleColor(xpTitle.title) }} />
+                    <span className="font-black" style={{ color: titleColor(xpTitle.title) }}>{xpTitle.title}</span>
                   </div>
                   <p className="text-xs text-center text-white/65 mt-1">{xp} XP</p>
                 </div>
@@ -2795,8 +2800,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {/* XP Title callout */}
               <div className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200">
                 <div className="flex items-center justify-center gap-2">
-                  <Crown size={20} style={{ color: xpTitle.color }} />
-                  <span className="font-black text-lg" style={{ color: xpTitle.color }}>{xpTitle.title}</span>
+                  <Crown size={20} style={{ color: titleColor(xpTitle.title) }} />
+                  <span className="font-black text-lg" style={{ color: titleColor(xpTitle.title) }}>{xpTitle.title}</span>
                 </div>
               </div>
 
@@ -3138,9 +3143,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {/* XP Titles Tab - UNLOCKED FEATURES */}
               {shopTab === "titles" && (
                 <div className="space-y-3">
-                  {XP_TITLES.map((title, i) => {
+                  {XP_TITLES.map((title) => {
                     const isUnlocked = xp >= title.min;
-                    const currentTitle = getXPTitle(xp);
+                    const currentTitle = getXpTitle(xp);
 
                     return (
                       <div
@@ -3150,12 +3155,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         <div className="flex items-center gap-4">
                           <div
                             className="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg"
-                            style={{ backgroundColor: isUnlocked ? title.color : '#9CA3AF' }}
+                            style={{ backgroundColor: isUnlocked ? titleColor(title.title) : '#9CA3AF' }}
                           >
-                            {i === 0 ? '🌱' : i + 1}
+                            {title.emoji}
                           </div>
                           <div className={`flex-1 ${textAlign}`}>
-                            <p className="font-bold text-lg" style={{ color: isUnlocked ? title.color : '#9CA3AF' }}>{title.title}</p>
+                            <p className="font-bold text-lg" style={{ color: isUnlocked ? titleColor(title.title) : '#9CA3AF' }}>{title.title}</p>
                             <p className="text-xs text-stone-500">{title.min} XP required</p>
                           </div>
                           {currentTitle.title === title.title && (
