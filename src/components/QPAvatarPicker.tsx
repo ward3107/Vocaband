@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Pencil } from "lucide-react";
 import { motion } from "motion/react";
 import { QUICK_PLAY_AVATAR_GROUPS } from "../constants/avatars";
 import QPAvatar from "./QPAvatar";
@@ -16,6 +16,24 @@ const LABEL: Record<string, string> = {
   he: "בחרו אווטאר",
   ar: "اختر صورتك الرمزية",
   ru: "Выбери аватар",
+};
+
+// Collapsed-state CTA: tap to open the full grid. Keeping the grid hidden
+// until asked is what makes the join screen calm — a kid arrives, sees
+// their (randomly assigned) avatar + the name field, and isn't buried
+// under 30 emoji × 7 tabs before they've even read the headline.
+const CHANGE_LABEL: Record<string, string> = {
+  en: "Change avatar",
+  he: "החליפו אווטאר",
+  ar: "غيّر الصورة",
+  ru: "Сменить аватар",
+};
+
+const DONE_LABEL: Record<string, string> = {
+  en: "Done",
+  he: "סיום",
+  ar: "تم",
+  ru: "Готово",
 };
 
 const SCROLL_HINT: Record<string, string> = {
@@ -64,6 +82,11 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
   const [activeGroup, setActiveGroup] = useState<string>(initialGroup);
   const avatars = QUICK_PLAY_AVATAR_GROUPS[activeGroup] || [];
 
+  // Collapsed by default — the grid only mounts when the student taps
+  // "Change avatar". Picking one collapses straight back so the screen
+  // returns to its calm two-field state (avatar + name).
+  const [expanded, setExpanded] = useState(false);
+
   // Track whether the grid is scrolled to the bottom so we can fade
   // the "more below" hint out once the kid has seen everything.
   const gridRef = useRef<HTMLDivElement>(null);
@@ -82,13 +105,56 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
 
   const label = LABEL[language] ?? LABEL.en;
   const scrollHint = SCROLL_HINT[language] ?? SCROLL_HINT.en;
+  const changeLabel = CHANGE_LABEL[language] ?? CHANGE_LABEL.en;
+  const doneLabel = DONE_LABEL[language] ?? DONE_LABEL.en;
   const tAria = gameAriasT[language];
 
+  // ─── Collapsed view: big selected avatar + one "Change avatar" CTA ───
+  if (!expanded) {
+    return (
+      <div className="flex flex-col items-center gap-2.5">
+        <motion.button
+          type="button"
+          onClick={() => setExpanded(true)}
+          whileTap={{ scale: 0.94 }}
+          aria-label={changeLabel}
+          className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-full bg-emerald-100 ring-4 ring-emerald-500 shadow-md shadow-emerald-500/30"
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+        >
+          <QPAvatar value={selected} iconSize={48} className="text-5xl sm:text-6xl" />
+          {/* Pencil badge tells the kid the avatar is tappable, not just decorative. */}
+          <span className="absolute -bottom-1 -end-1 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-on-primary shadow-md">
+            <Pencil size={13} strokeWidth={2.5} />
+          </span>
+        </motion.button>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="px-4 py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-sm font-black text-on-surface-variant transition-colors"
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+        >
+          {changeLabel}
+        </button>
+      </div>
+    );
+  }
+
+  // ─── Expanded view: tabs + grid, with a Done affordance to collapse ──
   return (
     <div>
-      <label className="block text-sm font-bold text-on-surface-variant mb-2 text-center">
-        {label}
-      </label>
+      <div className="flex items-center justify-between mb-2">
+        <label className="block text-sm font-bold text-on-surface-variant">
+          {label}
+        </label>
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="px-3 py-1 rounded-full bg-surface-container hover:bg-surface-container-high text-xs font-black text-primary transition-colors"
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+        >
+          {doneLabel}
+        </button>
+      </div>
 
       {/* Group tabs — horizontally scrollable on narrow phones. */}
       <div className="-mx-2 px-2 mb-3 overflow-x-auto">
@@ -125,7 +191,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
               <motion.button
                 key={av}
                 type="button"
-                onClick={() => onSelect(av)}
+                onClick={() => { onSelect(av); setExpanded(false); }}
                 animate={isSelected ? { scale: 1.15 } : { scale: 1 }}
                 whileTap={{ scale: 0.92 }}
                 transition={{ type: "spring", stiffness: 380, damping: 18 }}
