@@ -739,7 +739,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const [targetLanguage, setTargetLanguage] = useState<TargetLang>(language === 'ar' ? 'arabic' : 'hebrew');
 
   // Letter sounds state
-  const [letterOptions, setLetterOptions] = useState<string[]>([]);
   const [revealedLetters, setRevealedLetters] = useState(0);
   const LETTER_COLORS = ["#EF4444","#F97316","#EAB308","#22C55E","#3B82F6","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#6366F1"];
 
@@ -983,19 +982,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     });
   };
 
-  const generateLetterOptions = () => {
-    if (!currentWord) return;
-    const word = currentWord.english;
-    const firstLetter = word[0].toUpperCase();
-    const letters = [firstLetter];
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    while (letters.length < 4) {
-      const randomLetter = alphabet[Math.floor(Math.random() * 26)];
-      if (!letters.includes(randomLetter)) letters.push(randomLetter);
-    }
-    setLetterOptions(letters.sort(() => Math.random() - 0.5));
-  };
-
   // Award badges based on achievements
   const checkAndAwardBadges = (correct: boolean, newXP: number) => {
     const newBadges = [...badges];
@@ -1117,14 +1103,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     if (selectedAnswer !== null) return;
     const correct = answer === tfStatement?.isCorrect;
     setSelectedAnswer(answer ? "true" : "false");
-    setIsCorrect(correct);
-    handleFeedback(correct);
-  };
-
-  const handleLetterAnswer = (letter: string) => {
-    if (selectedAnswer) return;
-    const correct = letter === currentWord.english[0].toUpperCase();
-    setSelectedAnswer(letter);
     setIsCorrect(correct);
     handleFeedback(correct);
   };
