@@ -19,6 +19,8 @@ import {
   Globe,
   MapPin,
   LogIn,
+  PlayCircle,
+  Sparkles,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
@@ -147,12 +149,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
     };
   }, []);
 
-  // Floating 3D cards data for hero — labels translated via locale.
-  const floatingCards = [
-    { icon: <Gamepad2 size={42} />, name: t.floatingCardModes, color: "from-violet-500/50 to-purple-600/50", delay: 0 },
-    { icon: <Trophy size={42} />, name: t.floatingCardXp, color: "from-blue-500/50 to-cyan-500/50", delay: 0.2 },
-    { icon: <Flame size={42} />, name: t.floatingCardStreaks, color: "from-amber-500/50 to-orange-500/50", delay: 0.4 },
-    { icon: <Gift size={42} />, name: t.floatingCardEggs, color: "from-emerald-500/50 to-teal-500/50", delay: 0.6 },
+  // Feature highlights — a compact strip below the sign-in lanes so they
+  // no longer compete with the two primary CTAs. Labels via locale.
+  const featureItems = [
+    { Icon: Gamepad2, name: t.floatingCardModes, color: "from-violet-500/40 to-purple-600/40" },
+    { Icon: Trophy, name: t.floatingCardXp, color: "from-blue-500/40 to-cyan-500/40" },
+    { Icon: Flame, name: t.floatingCardStreaks, color: "from-amber-500/40 to-orange-500/40" },
+    { Icon: Gift, name: t.floatingCardEggs, color: "from-emerald-500/40 to-teal-500/40" },
   ];
 
   return (
@@ -228,13 +231,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           </p>
         </div>
 
-        {/* Hero Section - Floating 3D Cards + Gradient Mesh.
-            Vertical centering is height-gated (not width-gated) — a
-            1366×768 laptop is `lg` by width but only ~648 px tall after
-            Chrome's UI, so centering would push the CTAs off-screen.
-            Anchor to the top until the viewport has the room to center
-            comfortably (~780 px+). */}
-        <section className="min-h-screen pt-20 pb-8 px-4 md:px-6 relative isolate flex items-start [@media(min-height:780px)]:items-center justify-center overflow-hidden">
+        {/* Hero — "pick your lane and sign in." Two equal sign-in lanes:
+            staff (teachers + principals; role-routed to the right console
+            on login) and students (class code). The live demo is a clear
+            secondary action; feature highlights sit below so they don't
+            compete with the primary CTAs. Content flows from the top (no
+            vertical centering) so the demo + trust strip stay above the
+            fold on short laptops without clipping. */}
+        <section className="min-h-screen pt-8 pb-12 px-4 md:px-6 relative isolate overflow-hidden">
           {/* Brand-tint backdrop — fully GPU-rendered gradient, no video
               fetch.  The animated mesh below paints the motion that used
               to come from a 2 MB MP4. */}
@@ -253,194 +257,124 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full blur-3xl" />
           </div>
 
-          <div className="max-w-7xl mx-auto w-full relative z-10">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              {/* Left Content */}
-              <div className="text-center lg:text-left">
-                {/* Main Headline - 3D Text Effect.
-                    Sized to keep both CTA buttons above the fold on a
-                    typical 1366×768 laptop, AND to keep the Hebrew /
-                    Arabic line 2 from wrapping into two visual lines —
-                    that's what was eating the vertical budget in the
-                    RTL builds. xl:text-7xl is the chunkiest variant
-                    (was 8xl) so even very wide screens get a headline
-                    that fits a 3-word Hebrew phrase on one line. */}
-                <h1 className="relative z-20 text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black font-headline italic leading-[1.05] text-balance break-words mb-3 md:mb-4">
-                  <span className="inline-block pr-4 bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
-                    {t.heroTitleLine1}
-                  </span>
-                  <br />
-                  <span className="inline-block pr-4 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
-                    {t.heroTitleLine2}
-                  </span>
-                </h1>
+          <div className="max-w-6xl mx-auto w-full relative z-10 text-center" dir={dir}>
+            {/* Eyebrow */}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs font-bold text-white/80 mb-4">
+              <Sparkles size={13} aria-hidden="true" />
+              {t.heroV2.eyebrow}
+            </span>
 
-                {/* Subtitle */}
-                <p
-                  className="text-lg md:text-xl text-white/80 mb-6 max-w-xl"
-                  dir={dir}
-                >
-                  {t.heroSubtitle}
-                </p>
+            {/* Headline */}
+            <h1 className="relative z-20 text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-black font-headline italic leading-[1.05] text-balance break-words mb-3">
+              <span className="inline-block bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
+                {t.heroTitleLine1}
+              </span>
+              <br />
+              <span className="inline-block bg-gradient-to-r from-violet-300 via-fuchsia-300 to-amber-300 bg-clip-text text-transparent">
+                {t.heroTitleLine2}
+              </span>
+            </h1>
 
-                {/* Hero CTAs — two equally prominent buttons so a
-                    student who lands here can spot their login as
-                    easily as a teacher can.  Teacher Sign In on top
-                    (violet), Student class-code entry directly below
-                    (amber) at matching size.  Both OAuth/route paths
-                    unchanged. */}
-                <div className="flex flex-col items-center lg:items-start gap-4">
-                  <button
-                    onClick={onTeacherLogin}
-                    style={{ touchAction: 'manipulation' }}
-                    type="button"
-                    aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
-                    className="group relative w-full sm:w-auto px-10 md:px-14 py-5 md:py-6 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_14px_0_0_#581c87,0_28px_60px_rgba(168,85,247,0.55)] hover:shadow-[0_18px_0_0_#4c1d95,0_32px_70px_rgba(168,85,247,0.7)] active:shadow-[0_4px_0_0_#581c87,0_12px_28px_rgba(168,85,247,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60"
-                  >
-                    <GraduationCap size={32} strokeWidth={2.5} className="relative z-10" />
-                    <div className={`relative z-10 flex flex-col ${isRTL ? "items-end" : "items-start"} leading-tight`}>
-                      <span>{t.navSignIn}</span>
-                      <span className="text-[11px] md:text-xs font-bold uppercase tracking-[0.18em] text-violet-100/90 mt-0.5">
-                        {t.heroSignInForTeachers}
-                      </span>
-                    </div>
-                    <LogIn size={26} strokeWidth={2.5} className="relative z-10 opacity-90 group-hover:translate-x-1 transition-transform" />
-                  </button>
+            <p className="text-base md:text-lg text-white/75 max-w-2xl mx-auto mb-6">
+              {t.heroSubtitle}
+            </p>
 
-                  {/* Student entry — routes to /student (class-code +
-                      name picker).  Sized to match the teacher CTA so
-                      kids can find their login without scrolling or
-                      hunting for a tiny pill.  Amber palette keeps it
-                      visually distinct from the violet teacher path. */}
-                  <button
-                    onClick={onGetStarted}
-                    style={{ touchAction: 'manipulation' }}
-                    type="button"
-                    aria-label={t.heroCtaStudent}
-                    className="group relative w-full sm:w-auto px-10 md:px-14 py-5 md:py-6 rounded-2xl text-2xl md:text-3xl font-black text-white shadow-[0_14px_0_0_#9a3412,0_28px_60px_rgba(251,146,60,0.55)] hover:shadow-[0_18px_0_0_#7c2d12,0_32px_70px_rgba(251,146,60,0.7)] active:shadow-[0_4px_0_0_#9a3412,0_12px_28px_rgba(251,146,60,0.45)] active:translate-y-1 transition-all duration-150 flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/50 hover:ring-amber-300/70"
-                  >
-                    <BookOpen size={32} strokeWidth={2.5} className="relative z-10" />
-                    <span className="relative z-10">{t.heroCtaStudent}</span>
-                    <LogIn size={26} strokeWidth={2.5} className="relative z-10 opacity-90 group-hover:translate-x-1 transition-transform" />
-                  </button>
+            {/* Two sign-in lanes — staff (teachers + principals, role-routed
+                on login) and students (class code). Both routes unchanged. */}
+            <div className={`grid sm:grid-cols-2 gap-6 max-w-5xl mx-auto ${isRTL ? "text-right" : "text-left"}`}>
+              {/* Staff lane */}
+              <div className="rounded-[1.75rem] p-8 md:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-violet-300/40 transition-colors flex flex-col">
+                <div className="w-[4.5rem] h-[4.5rem] rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/40 mb-5">
+                  <GraduationCap size={40} strokeWidth={2.5} className="text-white" aria-hidden="true" />
                 </div>
+                <h2 className="text-2xl md:text-3xl font-black text-white mb-2">{t.heroV2.staffTitle}</h2>
+                <p className="text-sm md:text-base text-white/70 mb-6 flex-1">{t.heroV2.staffDesc}</p>
+                <button
+                  type="button"
+                  onClick={onTeacherLogin}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  aria-label={`${t.navSignIn} — ${t.heroV2.staffTitle}`}
+                  className="w-full px-6 py-5 rounded-2xl text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/30 hover:ring-violet-300/50 shadow-[0_10px_0_0_#581c87,0_22px_44px_rgba(168,85,247,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#581c87] transition-all"
+                >
+                  <LogIn size={24} strokeWidth={2.5} />
+                  {t.navSignIn}
+                </button>
+                <p className="text-center text-sm text-white/55 mt-3">{t.heroV2.staffNote}</p>
+              </div>
 
-                {/* Hero trust strip — factual claims only.
-                    Curriculum alignment, language coverage, EU
-                    hosting, and country of origin are all things we
-                    can defend in writing.  Engagement / endorsement
-                    stats live elsewhere (or wait for real data).
-                    See docs/PRICING-MODEL.md for positioning. */}
+              {/* Student lane */}
+              <div className="rounded-[1.75rem] p-8 md:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-amber-300/40 transition-colors flex flex-col">
+                <div className="w-[4.5rem] h-[4.5rem] rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-orange-500/40 mb-5">
+                  <BookOpen size={40} strokeWidth={2.5} className="text-white" aria-hidden="true" />
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black text-white mb-2">{t.navStudents}</h2>
+                <p className="text-sm md:text-base text-white/70 mb-6 flex-1">{t.heroV2.studentDesc}</p>
+                <button
+                  type="button"
+                  onClick={onGetStarted}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  aria-label={t.heroV2.studentCta}
+                  className="w-full px-6 py-5 rounded-2xl text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/40 hover:ring-amber-300/60 shadow-[0_10px_0_0_#9a3412,0_22px_44px_rgba(251,146,60,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#9a3412] transition-all"
+                >
+                  <LogIn size={24} strokeWidth={2.5} />
+                  {t.heroV2.studentCta}
+                </button>
+                <p className="text-center text-sm text-white/55 mt-3">{t.heroV2.studentNote}</p>
+              </div>
+            </div>
+
+            {/* Live demo — clear secondary action (only when available). */}
+            {onTryDemo && (
+              <>
+                <div className="mt-5 flex items-center justify-center gap-3" aria-hidden="true">
+                  <span className="h-px w-12 bg-white/20" />
+                  <span className="text-xs uppercase tracking-widest text-white/40 font-bold">{t.heroV2.or}</span>
+                  <span className="h-px w-12 bg-white/20" />
+                </div>
+                <button
+                  type="button"
+                  onClick={onTryDemo}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  className="mt-3 inline-flex items-center gap-2.5 px-7 py-3.5 rounded-2xl text-base font-bold text-white bg-white/10 border-2 border-white/30 hover:bg-white/15 hover:border-white/50 transition-colors backdrop-blur-sm"
+                >
+                  <PlayCircle size={22} strokeWidth={2.5} />
+                  {t.heroV2.demoCta}
+                  <span className="text-xs font-semibold text-white/60">{t.heroV2.demoNote}</span>
+                </button>
+              </>
+            )}
+
+            {/* Hero trust strip — factual claims only. */}
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-2" dir={dir}>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-100 border border-amber-400/30 font-bold text-xs backdrop-blur-sm">
+                <BookOpen size={12} aria-hidden="true" />
+                {t.heroTrustCurriculum}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-fuchsia-500/15 text-fuchsia-100 border border-fuchsia-400/30 font-bold text-xs backdrop-blur-sm">
+                <Globe size={12} aria-hidden="true" />
+                {t.heroTrustTrilingual}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-100 border border-emerald-400/30 font-bold text-xs backdrop-blur-sm">
+                <ShieldCheck size={12} aria-hidden="true" />
+                {t.heroTrustEu}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-500/15 text-sky-100 border border-sky-400/30 font-bold text-xs backdrop-blur-sm">
+                <MapPin size={12} aria-hidden="true" />
+                {t.heroTrustOrigin}
+              </span>
+            </div>
+
+            {/* Feature highlights — secondary, below the sign-in lanes. */}
+            <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl mx-auto">
+              {featureItems.map((f, i) => (
                 <div
-                  className={`mt-6 flex flex-wrap items-center gap-2 ${isRTL ? "justify-center lg:justify-end" : "justify-center lg:justify-start"}`}
-                  dir={dir}
+                  key={i}
+                  className={`rounded-2xl p-4 bg-gradient-to-br ${f.color} border border-white/15 backdrop-blur-sm flex flex-col items-center gap-2`}
                 >
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-100 border border-amber-400/30 font-bold text-xs backdrop-blur-sm">
-                    <BookOpen size={12} aria-hidden="true" />
-                    {t.heroTrustCurriculum}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-fuchsia-500/15 text-fuchsia-100 border border-fuchsia-400/30 font-bold text-xs backdrop-blur-sm">
-                    <Globe size={12} aria-hidden="true" />
-                    {t.heroTrustTrilingual}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-100 border border-emerald-400/30 font-bold text-xs backdrop-blur-sm">
-                    <ShieldCheck size={12} aria-hidden="true" />
-                    {t.heroTrustEu}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-500/15 text-sky-100 border border-sky-400/30 font-bold text-xs backdrop-blur-sm">
-                    <MapPin size={12} aria-hidden="true" />
-                    {t.heroTrustOrigin}
-                  </span>
+                  <f.Icon size={26} strokeWidth={2.5} className="text-white" aria-hidden="true" />
+                  <span className="text-sm font-bold text-white text-center">{f.name}</span>
                 </div>
-              </div>
-
-              {/* Right - Hero Lottie + Floating 3D Cards Grid */}
-              <div className="hidden lg:flex flex-col gap-6 relative items-center">
-                {/* Try Demo Icon — "Play it · 3D gamepad · Learn it"
-                    Was previously per-letter wave animation + bobbing
-                    icon (motion.span × ~12 + motion.div × 4). Now a
-                    static row with the same gradient/glow styling.
-                    Rendered as <button> (not <div>) so keyboard users
-                    can activate it with Enter/Space — the previous
-                    onClick-on-div made it click-only, failing
-                    WCAG 2.1.1. <button> already exposes role + focus +
-                    keyboard activation for free. */}
-                {onTryDemo && (
-                  <button
-                    type="button"
-                    onClick={onTryDemo}
-                    aria-label={`${t.heroPlayItWord} ${t.heroLearnItWord}`}
-                    className="flex items-center gap-8 cursor-pointer bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-fuchsia-300/70 rounded-2xl"
-                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    dir={dir}
-                  >
-                    <span
-                      className="text-2xl font-black text-white"
-                      style={{
-                        textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
-                      }}
-                    >
-                      {t.heroPlayItWord}
-                    </span>
-
-                    <span
-                      className="relative w-24 h-24 flex-shrink-0 transition-transform hover:scale-110 active:scale-95 inline-block"
-                    >
-                      {/* 3D shadow layer */}
-                      <span className="absolute inset-2 bg-gradient-to-br from-primary/50 to-fuchsia-600/50 rounded-2xl blur-xl" aria-hidden="true" />
-                      {/* Main icon container */}
-                      <span className="relative w-full h-full bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600 rounded-2xl shadow-2xl shadow-primary/40 flex items-center justify-center overflow-hidden">
-                        <Gamepad2 size={42} strokeWidth={2.5} className="relative z-10 text-white" aria-hidden="true" />
-                        <span className="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg">
-                          <BookOpen size={14} strokeWidth={2.5} className="text-primary" aria-hidden="true" />
-                        </span>
-                      </span>
-                    </span>
-
-                    <span
-                      className="text-2xl font-black text-white"
-                      style={{
-                        textShadow: '0 0 20px rgba(139, 92, 246, 0.6), 0 0 40px rgba(244, 114, 182, 0.4)'
-                      }}
-                    >
-                      {t.heroLearnItWord}
-                    </span>
-                  </button>
-                )}
-
-                {/* Cards Grid - Large Rectangular Cards.
-                    Mobile: single column, taller aspect, larger icon
-                    + text so the hero remains a full visual on phones
-                    instead of small thumbnail-sized cards.
-                    Desktop: two columns at 4:3. */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 max-w-4xl mx-auto relative">
-                {floatingCards.map((card, i) => (
-                  <div
-                    key={i}
-                    className="relative transition-transform hover:scale-105"
-                  >
-                    {/* Large Rectangular Card.
-                        Mobile: 5:4 aspect with bigger padding and icon
-                        so the card feels substantial on a phone screen
-                        (was 4:3 with tighter sizing — read as small).
-                        Tablet+: original 4:3 / p-8 / smaller icon. */}
-                    <div className={`p-10 sm:p-6 md:p-8 rounded-2xl bg-gradient-to-br ${card.color} shadow-2xl backdrop-blur-sm border border-white/20 aspect-[5/4] sm:aspect-[4/3]`}>
-                      <div className="h-full flex flex-col items-center justify-center gap-5 sm:gap-4">
-                        <div className="w-28 h-28 sm:w-24 sm:h-24 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
-                          {card.icon}
-                        </div>
-                        <p className="text-white font-black text-3xl sm:text-2xl text-center leading-tight drop-shadow-lg">{card.name}</p>
-                      </div>
-                    </div>
-                    {/* Floating shadow */}
-                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-black/20 rounded-full blur-xl" />
-                  </div>
-                ))}
-
-                {/* Center Glow */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-gradient-to-br from-violet-500/40 to-fuchsia-500/40 rounded-full blur-3xl -z-10" />
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>

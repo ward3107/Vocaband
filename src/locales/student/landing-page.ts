@@ -54,6 +54,20 @@ export interface LandingPageT {
   heroTrustEu: string;
   heroTrustOrigin: string;
 
+  // Redesigned hero — two sign-in lanes (staff + students) + live demo.
+  heroV2: {
+    eyebrow: string;
+    staffTitle: string;
+    staffDesc: string;
+    staffNote: string;
+    studentDesc: string;
+    studentCta: string;
+    studentNote: string;
+    demoCta: string;
+    demoNote: string;
+    or: string;
+  };
+
   // ─── Floating hero cards ────────────────────────────────────────
   floatingCardModes: string;
   floatingCardXp: string;
@@ -280,6 +294,18 @@ export interface LandingPageT {
 
 export const landingPageT: Record<Language, LandingPageT> = {
   en: {
+    heroV2: {
+      eyebrow: "The vocabulary game students actually want to play",
+      staffTitle: "Teachers & Principals",
+      staffDesc: "Build classes, track every student, and oversee your whole school from one place.",
+      staffNote: "Google or email · free to start",
+      studentDesc: "Got a class code from your teacher? Jump in and start playing right away.",
+      studentCta: "Enter class code",
+      studentNote: "No account needed",
+      demoCta: "Try the live demo",
+      demoNote: "no sign-up",
+      or: "or",
+    },
     navTryDemo: "PLAY NOW",
     navTryDemoShort: "PLAY",
     navCefrBadge: "CEFR A1–B2",
@@ -508,6 +534,18 @@ export const landingPageT: Record<Language, LandingPageT> = {
   },
 
   he: {
+    heroV2: {
+      eyebrow: "משחק אוצר המילים שתלמידים באמת אוהבים לשחק",
+      staffTitle: "מורים ומנהלים",
+      staffDesc: "בנו כיתות, עקבו אחרי כל תלמיד, ונהלו את כל בית הספר ממקום אחד.",
+      staffNote: "Google או אימייל · התחלה חינם",
+      studentDesc: "קיבלתם קוד כיתה מהמורה? הצטרפו והתחילו לשחק מיד.",
+      studentCta: "הזינו קוד כיתה",
+      studentNote: "לא נדרש חשבון",
+      demoCta: "נסו את ההדגמה",
+      demoNote: "ללא הרשמה",
+      or: "או",
+    },
     navTryDemo: "שחקו עכשיו",
     navTryDemoShort: "שחקו",
     navCefrBadge: "CEFR A1–B2",
@@ -736,6 +774,18 @@ export const landingPageT: Record<Language, LandingPageT> = {
   },
 
   ar: {
+    heroV2: {
+      eyebrow: "لعبة المفردات التي يحب الطلاب لعبها فعلاً",
+      staffTitle: "المعلمون والمديرون",
+      staffDesc: "أنشئ الصفوف، وتابع كل طالب، وأشرف على مدرستك بالكامل من مكان واحد.",
+      staffNote: "Google أو البريد الإلكتروني · ابدأ مجانًا",
+      studentDesc: "هل لديك رمز صف من معلمك؟ انضم وابدأ اللعب على الفور.",
+      studentCta: "أدخل رمز الصف",
+      studentNote: "لا حاجة إلى حساب",
+      demoCta: "جرّب العرض التجريبي",
+      demoNote: "بدون تسجيل",
+      or: "أو",
+    },
     navTryDemo: "العب الآن",
     navTryDemoShort: "العب",
     navCefrBadge: "CEFR A1–B2",
@@ -964,6 +1014,18 @@ export const landingPageT: Record<Language, LandingPageT> = {
   },
 
   ru: {
+    heroV2: {
+      eyebrow: "The vocabulary game students actually want to play",
+      staffTitle: "Teachers & Principals",
+      staffDesc: "Build classes, track every student, and oversee your whole school from one place.",
+      staffNote: "Google or email · free to start",
+      studentDesc: "Got a class code from your teacher? Jump in and start playing right away.",
+      studentCta: "Enter class code",
+      studentNote: "No account needed",
+      demoCta: "Try the live demo",
+      demoNote: "no sign-up",
+      or: "or",
+    },
     navTryDemo: "PLAY NOW",
     navTryDemoShort: "PLAY",
     navCefrBadge: "CEFR A1–B2",
