@@ -564,16 +564,19 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
             // student bootstrap on the teacher allowlist so non-teacher
             // OAuth sessions get signed out and routed to PIN login
             // instead of silently entering the student dashboard.
-            const teacherIntentEarly = readIntendedRole();
-            const wantsTeacherEarly = teacherIntentEarly?.role === 'teacher' && teacherIntentEarly.fresh;
+            // Invite-only teacher access: only emails on teacher_allowlist may
+            // sign in via OAuth. Everyone else is signed out — students now use a
+            // class code + PIN, and would-be teachers must be added by an admin
+            // first. (A fresh "teacher intent" from clicking the teacher button
+            // used to bypass this allowlist check; that bypass is removed.)
             const { data: isAllowedEarly } = await supabase.rpc('is_teacher_allowed', {
               check_email: supabaseUser.email ?? "",
             });
-            if (!isAllowedEarly && !wantsTeacherEarly) {
+            if (!isAllowedEarly) {
               try { await supabase.auth.signOut(); } catch { /* best-effort */ }
               setUser(null);
               setError(
-                'Students now sign in with a class code and PIN, not Google. Ask your teacher for your PIN.',
+                "This email isn't approved for teacher access. Teachers must be added by an administrator first. Students sign in with a class code and PIN.",
               );
               if (!shouldPreserveView("student", currentViewRef.current)) {
                 setView('student-account-login');
@@ -645,9 +648,10 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
             if (allowErr) {
               throw new Error(`Teacher allowlist check failed: ${allowErr.message}`);
             }
-            const teacherIntent = readIntendedRole();
-            const wantsTeacher = teacherIntent?.role === 'teacher' && teacherIntent.fresh;
-            if (!isAllowed && !wantsTeacher) {
+            // Invite-only: only allowlisted emails become teachers. Non-allowlisted
+            // OAuth users are already signed out by the early gate above; this is the
+            // belt-and-suspenders client check, mirrored by the users_insert RLS policy.
+            if (!isAllowed) {
               setOauthEmail(supabaseUser.email || "");
               setOauthAuthUid(supabaseUser.id);
               setShowOAuthClassCode(true);
@@ -655,7 +659,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               setLoading(false);
               return;
             }
-            if (teacherIntent) clearIntendedRole();
+            clearIntendedRole();
             const newUser: AppUser = {
               uid: supabaseUser.id,
               email: supabaseUser.email || "",
