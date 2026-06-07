@@ -16,9 +16,10 @@ const LANES = [24, 70, 44, 78, 32, 60];
 // Deterministic vertical nudge per index (range ±12, well under GAP so the
 // strict top-to-bottom ordering is preserved).
 const JITTER = [0, -12, 8, -8, 12, -4];
-const TOP = 100; // px below the fixed header before the first island
-const GAP = 118; // vertical spacing between consecutive islands
-const BOTTOM_PAD = 150; // space below the last island (pet + label clearance)
+const TOP = 110; // px below the fixed header before the first island
+const GAP = 156; // vertical spacing between consecutive islands (clears the
+                 // larger medallions + their labels without overlap)
+const BOTTOM_PAD = 160; // space below the last island (pet + label clearance)
 
 export function computeIslandPositions(count: number): IslandPos[] {
   const out: IslandPos[] = [];
