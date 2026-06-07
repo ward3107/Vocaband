@@ -153,6 +153,38 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     [currentRace],
   );
 
+  // ─── Phone back-button trap ─────────────────────────────────────────
+  // Mirrors the Quick Play join trap (QuickPlayStudentView): walk the
+  // join step backwards (get-ready → join) instead of letting the global
+  // trap drop the student to the landing page mid-race. Every other phase
+  // (join itself, plus the active lobby/answering/result/ended/kicked
+  // screens) re-pushes to block an accidental exit — the visible
+  // Leave / Back-home buttons are the only way out. Capture-phase +
+  // stopImmediatePropagation keeps the global trap from also firing.
+  const racePopInProgressRef = useRef(false);
+  useEffect(() => {
+    if (racePopInProgressRef.current) {
+      racePopInProgressRef.current = false;
+      return;
+    }
+    window.history.pushState({ view: "category-race-student", racePhase: phase }, "");
+  }, [phase]);
+
+  useEffect(() => {
+    const handler = (e: PopStateEvent) => {
+      e.stopImmediatePropagation();
+      racePopInProgressRef.current = true;
+      if (phase === "getready") {
+        setPhase("join");
+      } else {
+        window.history.pushState({ view: "category-race-student", racePhase: phase }, "");
+        racePopInProgressRef.current = false;
+      }
+    };
+    window.addEventListener("popstate", handler, { capture: true });
+    return () => window.removeEventListener("popstate", handler, { capture: true });
+  }, [phase]);
+
   // ─── Join ────────────────────────────────────────────────────────────
   // Step 1: validate the name and move to the get-ready screen. We DON'T
   // emit the join here — the get-ready tap is what primes iOS audio, so

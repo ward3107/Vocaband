@@ -146,7 +146,17 @@ export function useBackButtonTrap(
 
   // ─── First mount: seed the history stack with the real view ───────
   useEffect(() => {
-    window.history.replaceState({ view }, '');
+    // Dedicated login URLs (/student, /teacher) and QR / poster deep links
+    // (?class=, ?session=) open straight onto a login screen with nothing
+    // in the in-app history beneath them, so the hardware back button would
+    // exit the app entirely. Seed a public-landing entry underneath the
+    // login so back lands on the marketing page instead of leaving.
+    if (view === 'student-account-login' || view === 'teacher-login') {
+      window.history.replaceState({ view: 'public-landing' }, '');
+      window.history.pushState({ view }, '');
+    } else {
+      window.history.replaceState({ view }, '');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
