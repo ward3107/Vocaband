@@ -20,6 +20,7 @@ export interface LandingPageT {
   // ─── Public nav chrome ──────────────────────────────────────────
   navTryDemo: string;
   navTryDemoShort: string;
+  navDemo: string;
   navCefrBadge: string;
   // Public-nav anchor labels — one per major landing-page section,
   // in the order they appear on the page.  Adding a new section means
@@ -294,6 +295,7 @@ export interface LandingPageT {
 
 export const landingPageT: Record<Language, LandingPageT> = {
   en: {
+    navDemo: "Demo",
     heroV2: {
       eyebrow: "The vocabulary game students actually want to play",
       staffTitle: "Teachers & Principals",
@@ -534,6 +536,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
   },
 
   he: {
+    navDemo: "הדגמה",
     heroV2: {
       eyebrow: "משחק אוצר המילים שתלמידים באמת אוהבים לשחק",
       staffTitle: "מורים ומנהלים",
@@ -774,6 +777,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
   },
 
   ar: {
+    navDemo: "تجربة",
     heroV2: {
       eyebrow: "لعبة المفردات التي يحب الطلاب لعبها فعلاً",
       staffTitle: "المعلمون والمديرون",
@@ -1014,6 +1018,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
   },
 
   ru: {
+    navDemo: "Demo",
     heroV2: {
       eyebrow: "The vocabulary game students actually want to play",
       staffTitle: "Teachers & Principals",

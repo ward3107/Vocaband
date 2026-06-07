@@ -165,6 +165,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         onNavigate={onNavigate}
         onGetStarted={onGetStarted}
         onTeacherLogin={onTeacherLogin}
+        onTryDemo={onTryDemo}
       />
 
       <main id="main-content">
