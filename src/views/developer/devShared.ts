@@ -49,6 +49,9 @@ export interface DevSchool {
   created_at: string;
   teachers: number;
   students: number;
+  /** Classes naming this school (classes.school_name) — these, along with
+   *  members, are what admin_delete_school refuses to orphan (409). */
+  classes: number;
   managers: string[];
 }
 
