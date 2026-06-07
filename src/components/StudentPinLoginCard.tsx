@@ -132,10 +132,52 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     setStep("pin");
   };
 
+  // Phone back-button trap for the pick → pin sub-steps.
+  //
+  // These steps are component state, not router views, so without this the
+  // hardware/edge back button on the PIN screen bubbles to the global
+  // back-trap and jumps the student all the way out to the landing page
+  // instead of back to the name list. Push a marker history entry when
+  // entering the PIN step and intercept popstate in the capture phase to
+  // walk back to "pick". The "pick" step is left alone, so back there
+  // still falls through to the global trap (→ landing) as before.
+  const pinMarkerRef = useRef(false);
+  const suppressPinPopRef = useRef(false);
+  useEffect(() => {
+    if (step !== "pin") return;
+    window.history.pushState({ studentLoginStep: "pin" }, "");
+    pinMarkerRef.current = true;
+  }, [step]);
+  useEffect(() => {
+    const handler = (e: PopStateEvent) => {
+      // Swallow the synthetic pop fired by handleBack()'s history.back().
+      if (suppressPinPopRef.current) {
+        suppressPinPopRef.current = false;
+        e.stopImmediatePropagation();
+        return;
+      }
+      if (step !== "pin") return; // let the global trap handle "pick"
+      e.stopImmediatePropagation();
+      pinMarkerRef.current = false; // the back press consumed the marker
+      setStep("pick");
+      setPin("");
+      setPinError(null);
+    };
+    window.addEventListener("popstate", handler, { capture: true });
+    return () => window.removeEventListener("popstate", handler, { capture: true });
+  }, [step]);
+
   const handleBack = () => {
     setStep("pick");
     setPin("");
     setPinError(null);
+    // Consume the marker we pushed on entering the PIN step so a later
+    // hardware-back isn't wasted re-popping a stale entry.
+    if (pinMarkerRef.current) {
+      pinMarkerRef.current = false;
+      suppressPinPopRef.current = true;
+      window.history.back();
+    }
   };
 
   const handleSubmit = async () => {
