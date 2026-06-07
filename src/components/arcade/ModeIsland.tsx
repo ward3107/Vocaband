@@ -63,7 +63,7 @@ export default function ModeIsland({
         aria-label={`${name} — ${stateWord}${done ? `, ${L.stars(mastery)}` : ""}`}
         whileTap={reduced || locked ? undefined : { scale: 0.92 }}
         whileHover={reduced || locked ? undefined : { scale: 1.06 }}
-        className={`${ARCADE_BUTTON_TOUCH} relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-2xl shadow-lg sm:h-16 sm:w-16 ${
+        className={`${ARCADE_BUTTON_TOUCH} relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-3xl shadow-lg sm:h-24 sm:w-24 sm:text-4xl ${
           done ? "ring-[3px] ring-amber-300" :
           next ? "ring-4 ring-amber-300/50 shadow-cyan-500/40" :
           "ring-2 ring-white/25"
@@ -78,20 +78,20 @@ export default function ModeIsland({
         {/* Show earned stars whenever mastery > 0, including replay-round
             islands where state="next" but the mode was already completed. */}
         {mastery > 0 && (
-          <span aria-hidden className="absolute -top-3 left-1/2 flex -translate-x-1/2 gap-0.5">
+          <span aria-hidden className="absolute -top-3.5 left-1/2 flex -translate-x-1/2 gap-0.5">
             {[0, 1, 2].map((i) => (
-              <Star key={i} size={9} strokeWidth={2}
+              <Star key={i} size={12} strokeWidth={2}
                 className={i < mastery ? "text-amber-300" : "text-white/25"}
                 fill={i < mastery ? "currentColor" : "none"} />
             ))}
           </span>
         )}
 
-        {done && <Check aria-hidden size={14} strokeWidth={3} className="absolute -bottom-1 -end-1 rounded-full bg-emerald-500 p-0.5 text-white" />}
-        {locked && <Lock aria-hidden size={13} className="absolute -bottom-1 -end-1 text-white/70" />}
+        {done && <Check aria-hidden size={18} strokeWidth={3} className="absolute -bottom-1 -end-1 rounded-full bg-emerald-500 p-0.5 text-white" />}
+        {locked && <Lock aria-hidden size={16} className="absolute -bottom-1 -end-1 text-white/70" />}
       </motion.button>
 
-      <span className="pointer-events-none absolute left-1/2 top-full mt-1.5 w-20 -translate-x-1/2 text-center text-[10px] font-bold leading-tight text-white/90 drop-shadow">
+      <span className="pointer-events-none absolute left-1/2 top-full mt-2 w-24 -translate-x-1/2 text-center text-xs font-bold leading-tight text-white/90 drop-shadow">
         {name}
       </span>
     </div>

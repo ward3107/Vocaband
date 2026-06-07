@@ -593,6 +593,28 @@ export const CATEGORY_ANSWERS: Record<CategoryId, Record<string, Entry[]>> = {
   },
 };
 
+/** Categories whose membership can't be enumerated by a finite bank, so
+ *  any plausible English answer starting with the rolled letter counts.
+ *  "Name" is the clear case — there are thousands of valid given names
+ *  (Amy, Aaron, Aisha…), so the seeded trio per letter is only used for
+ *  hints + L1 reporting, never as a whitelist. Rejecting "Amy" because
+ *  it isn't one of {Alex, Anna, Adam} made the round feel broken. */
+const OPEN_CATEGORIES: ReadonlySet<CategoryId> = new Set<CategoryId>(["name"]);
+
+/** Title-case a free-typed open-category answer so it reads as a proper
+ *  noun in the round results ("amy" → "Amy"). */
+function titleCase(s: string): string {
+  return s.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
+/** Does a free-typed answer look like a valid open-category entry for the
+ *  rolled letter? Must start with that letter and be a single Latin-script
+ *  word (allowing internal hyphen/apostrophe — "Mary-Jane", "O'Brien"). */
+function looksLikeOpenAnswer(letter: string, normalizedInput: string): boolean {
+  if (!normalizedInput.startsWith(letter.toLowerCase())) return false;
+  return /^[a-z][a-z'-]*$/.test(normalizedInput) && normalizedInput.length >= 2;
+}
+
 export type AnswerLanguage = "en" | "he" | "ar";
 
 export interface ValidationResult {
@@ -653,13 +675,11 @@ export function validateAnswer(
   const trimmed = input.trim();
   if (!trimmed) return { valid: false, matchedEn: null, matchedLanguage: null };
 
-  const bank = CATEGORY_ANSWERS[category]?.[letter.toUpperCase()];
-  if (!bank || bank.length === 0) {
-    return { valid: false, matchedEn: null, matchedLanguage: null };
-  }
-
+  const bank = CATEGORY_ANSWERS[category]?.[letter.toUpperCase()] ?? [];
   const normalizedInput = normalize(trimmed);
 
+  // Exact / translation match against the seeded bank. Also drives the
+  // L1-fallback report when the student typed Hebrew/Arabic.
   for (const entry of bank) {
     if (normalize(entry.en) === normalizedInput) {
       return { valid: true, matchedEn: entry.en, matchedLanguage: "en" };
@@ -670,6 +690,18 @@ export function validateAnswer(
     if (entry.ar && entry.ar.trim() === trimmed) {
       return { valid: true, matchedEn: entry.en, matchedLanguage: "ar" };
     }
+  }
+
+  // Open categories (names): no finite bank can list every member, so
+  // accept any proper-noun-shaped English answer that starts with the
+  // rolled letter. Echo the student's own spelling as the canonical
+  // answer since it isn't one we seeded.
+  if (OPEN_CATEGORIES.has(category) && looksLikeOpenAnswer(letter, normalizedInput)) {
+    return { valid: true, matchedEn: titleCase(normalizedInput), matchedLanguage: "en" };
+  }
+
+  if (bank.length === 0) {
+    return { valid: false, matchedEn: null, matchedLanguage: null };
   }
 
   // Spelling grace: no exact hit, so accept a near-miss English answer —
