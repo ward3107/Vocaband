@@ -67,7 +67,6 @@ export interface UseAuthRestoreDeps {
 
   // Sibling-hook helpers
   cleanupSessionData: () => void;
-  showPendingApproval: (info: { name: string; classCode: string; profileId?: string }) => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   appToasts: {
     couldNotRestoreSession: string;
@@ -114,7 +113,6 @@ export interface UseAuthRestoreDeps {
     toClassName: string | null;
     supabaseUser: { id: string; email?: string | null };
   } | null>;
-  setPendingApprovalInfo: Dispatch<{ name: string; classCode: string; profileId?: string } | null>;
   setOauthAuthUid: Dispatch<string | null>;
   setOauthEmail: Dispatch<string | null>;
   setShowOAuthClassCode: Dispatch<boolean>;
@@ -145,7 +143,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
     restoreInProgress, restoreRetried, manualLoginInProgress,
     fromShareLinkRef, currentViewRef, lastUserRoleRef, qpCumulativeScoreRef,
     quickPlaySessionParam,
-    cleanupSessionData, showPendingApproval, showToast, appToasts,
+    cleanupSessionData, showToast, appToasts,
     checkConsent, fetchTeacherData, fetchTeacherAssignments, stopAllAudio,
     shouldPreserveView,
     setLoading, setError, setLandingTab, setView, setUser,
@@ -154,7 +152,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
     setActiveAssignment, setAssignmentWords,
     setQuickPlayActiveSession, setQuickPlaySessionCode,
     setQuickPlayKicked, setQuickPlaySessionEnded,
-    setClassNotFoundIntent, setPendingClassSwitch, setPendingApprovalInfo,
+    setClassNotFoundIntent, setPendingClassSwitch,
     setOauthAuthUid, setOauthEmail, setShowOAuthClassCode,
     setCurrentIndex, setScore, setMistakes, setIsFinished, setFeedback,
     setSpellingInput, setMatchedIds, setSelectedMatch, setIsFlipped,
@@ -425,14 +423,6 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               }
               return;
             }
-            if (boot?.status === 'pending-approval' && boot.pendingProfile) {
-              showPendingApproval({
-                name:      boot.pendingProfile.displayName,
-                classCode: boot.pendingProfile.classCode,
-                profileId: boot.pendingProfile.id,
-              });
-              return;
-            }
             if (boot?.status === 'needs-class-code') {
               setOauthEmail(supabaseUser.email || "");
               setOauthAuthUid(supabaseUser.id);
@@ -480,14 +470,6 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               if (!shouldPreserveView("student", currentViewRef.current)) {
                 setView("student-dashboard");
               }
-              return;
-            }
-            if (studentProfile && studentProfile.status === 'pending_approval') {
-              showPendingApproval({
-                name: studentProfile.display_name || '',
-                classCode: studentProfile.class_code || '',
-                profileId: studentProfile.id,
-              });
               return;
             }
 
@@ -615,16 +597,6 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               }
               return;
             }
-            if (boot?.status === 'pending-approval' && boot.pendingProfile) {
-              showPendingApproval({
-                name:      boot.pendingProfile.displayName,
-                classCode: boot.pendingProfile.classCode,
-                profileId: boot.pendingProfile.id,
-              });
-              setLoading(false);
-              return;
-            }
-
             const { data: studentProfile } = await supabase
               .from('student_profiles')
               .select('id, email, status, display_name, class_code, xp, avatar')
@@ -664,14 +636,6 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
               if (!shouldPreserveView("student", currentViewRef.current)) {
                 setView("student-dashboard");
               }
-              return;
-            } else if (studentProfile && studentProfile.status === 'pending_approval') {
-              showPendingApproval({
-                name: studentProfile.display_name || '',
-                classCode: studentProfile.class_code || '',
-                profileId: studentProfile.id,
-              });
-              setLoading(false);
               return;
             }
 
@@ -758,8 +722,7 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
             sessionStorage.getItem('oauth_session_ready') ||
             sessionStorage.getItem('oauth_exchange_failed');
           const savedStudent = localStorage.getItem('vocaband_student_login');
-          const savedPending = sessionStorage.getItem('vocaband_pending_approval');
-          if (!isOAuthCallback && !hasOAuthFlag && !savedStudent && !savedPending) {
+          if (!isOAuthCallback && !hasOAuthFlag && !savedStudent) {
             setLoading(false);
           }
         }
@@ -881,19 +844,6 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
           setLandingTab("teacher");
           setLoading(false);
         } else if (!isOAuthCallback) {
-          try {
-            const savedPending = sessionStorage.getItem('vocaband_pending_approval');
-            if (savedPending) {
-              const info = JSON.parse(savedPending);
-              if (info.name && info.classCode) {
-                setPendingApprovalInfo(info);
-                setView("student-pending-approval");
-                setLoading(false);
-                return;
-              }
-            }
-          } catch {}
-
           const savedRaw = localStorage.getItem('vocaband_student_login');
           if (savedRaw) {
             supabase.auth.signInAnonymously().catch(() => {

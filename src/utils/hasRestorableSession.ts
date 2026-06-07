@@ -7,8 +7,8 @@
  *
  * Mirrors the runtime branches in useAuthRestore: a Supabase auth token
  * in localStorage, an in-flight OAuth callback / exchange, or a persisted
- * student / pending-approval login.  If none are present there is nothing
- * to restore, so `loading` can start `false`.
+ * student login.  If none are present there is nothing to restore, so
+ * `loading` can start `false`.
  *
  * Conservative by design: any uncertainty (storage throws, unexpected
  * state) returns `true` so we fall back to the existing spinner-then-
@@ -29,11 +29,8 @@ export function hasRestorableSession(): boolean {
       sessionStorage.getItem('oauth_exchange_failed')
     ) return true;
 
-    // Persisted student login / pending-approval handoff.
-    if (
-      localStorage.getItem('vocaband_student_login') ||
-      sessionStorage.getItem('vocaband_pending_approval')
-    ) return true;
+    // Persisted student login handoff.
+    if (localStorage.getItem('vocaband_student_login')) return true;
 
     // Supabase persists its session under a key shaped like
     // `sb-<project-ref>-auth-token`.  Its mere presence means there may be

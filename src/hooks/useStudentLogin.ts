@@ -4,10 +4,7 @@
  * Two handlers:
  *   - `handleLoginAsStudent(studentId)` — loads a student's full profile
  *     via SECURITY DEFINER RPC (or direct-query fallback) and hands it
- *     to processStudentProfile. Called from two places today:
- *       1. PendingApprovalScreen, once the teacher has approved and the
- *          student's session is still the original signup session.
- *       2. The OAuth approved-student path (handleOAuthStudentDetected).
+ *     to processStudentProfile. Kept for legacy profile-id sign-in paths.
  *   - `processStudentProfile(profile)` — shared finishing path that
  *     enforces the SECURITY check (live session.uid must match the
  *     profile's auth_uid — see commit history for the impersonation
@@ -43,7 +40,6 @@ export interface UseStudentLoginParams {
   user?: AppUser | null;
   setUser: (u: AppUser | null) => void;
   setError: (msg: string | null) => void;
-  setLoading: (v: boolean) => void;
   setView: (v: View) => void;
   setBadges: React.Dispatch<React.SetStateAction<string[]>>;
   setXp: React.Dispatch<React.SetStateAction<number>>;
@@ -53,8 +49,6 @@ export interface UseStudentLoginParams {
   setStudentProgress: React.Dispatch<React.SetStateAction<ProgressData[]>>;
 
   // ─── Cross-hook collaborators ──────────────────────────────────────
-  /** App.tsx helper: route to pending-approval screen + persist info. */
-  showPendingApproval: (info: { name: string; classCode: string; profileId?: string }) => void;
   /** From useTeacherData: hydrate the student's class assignments. */
   loadAssignmentsForClass: (
     classData: { id: string },
@@ -77,26 +71,18 @@ interface StudentProfileShape {
 
 export function useStudentLogin(params: UseStudentLoginParams) {
   const {
-    user, setUser, setError, setLoading, setView,
+    user, setUser, setError, setView,
     setBadges, setXp, setCoins, setStreak,
     setStudentAssignments, setStudentProgress,
-    showPendingApproval,
     loadAssignmentsForClass,
   } = params;
 
   // ─── Shared finishing path ──────────────────────────────────────────
   const processStudentProfile = useCallback(async (profile: StudentProfileShape) => {
-    // Check approval status — show the waiting screen instead of a generic error
-    if (profile.status === 'pending_approval') {
-      showPendingApproval({
-        name: profile.display_name || '',
-        classCode: profile.class_code || '',
-        profileId: profile.id,
-      });
-      setLoading(false);
-      return;
-    }
-    if (profile.status === 'rejected') {
+    // Students are provisioned + approved by their teacher on the roster,
+    // so a non-approved profile here is an edge case (e.g. a legacy
+    // self-signup row). Treat anything not approved as "ask your teacher".
+    if (profile.status === 'pending_approval' || profile.status === 'rejected') {
       setError("Your account was not approved. Please contact your teacher.");
       return;
     }
@@ -239,12 +225,11 @@ export function useStudentLogin(params: UseStudentLoginParams) {
     setStreak(0); // Will fetch from DB later
     setView("student-dashboard");
   }, [
-    showPendingApproval, setLoading, setError, setUser, setBadges, setXp, setCoins, setStreak,
+    setError, setUser, setBadges, setXp, setCoins, setStreak,
     setView, setStudentAssignments, setStudentProgress, loadAssignmentsForClass,
   ]);
 
-  // ─── Login by profile id (used by PendingApprovalScreen post-approval
-  //     and by handleOAuthStudentDetected). ─────────────────────────
+  // ─── Login by profile id (kept for legacy profile-id sign-in). ──────
   const handleLoginAsStudent = useCallback(async (studentId: string) => {
     // Look up the student's full profile including auth_uid
     try {

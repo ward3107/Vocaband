@@ -177,7 +177,6 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const [, setLandingTab] = useState<"student" | "teacher">("student");
   const [studentLoginClassCode, setStudentLoginClassCode] = useState("");
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string, displayName: string, classCode: string, className: string, joinedAt: string }>>([]);
-  const [pendingApprovalInfo, setPendingApprovalInfo] = useState<{ name: string; classCode: string; profileId?: string } | null>(null);
   // Teacher dashboard modal/UI state. See useTeacherUiModalsState.
   const {
     showCreateClassModal, setShowCreateClassModal,
@@ -658,18 +657,11 @@ export default function App({ initialView }: { initialView?: View } = {}) {
 
 
 
-  // Helper: set pending approval info and persist to sessionStorage
-  const showPendingApproval = (info: { name: string; classCode: string; profileId?: string }) => {
-    setPendingApprovalInfo(info);
-    setView("student-pending-approval");
-    try { sessionStorage.setItem('vocaband_pending_approval', JSON.stringify(info)); } catch {}
-  };
-  // Student-account login flow (PendingApprovalScreen + OAuth approved branch).
-  const { handleLoginAsStudent, renameStudentDisplayName } = useStudentLogin({
-    user, setUser, setError, setLoading, setView,
+  // Student-account login flow (roster PIN sign-in + rename helper).
+  const { renameStudentDisplayName } = useStudentLogin({
+    user, setUser, setError, setView,
     setBadges, setXp, setCoins, setStreak,
     setStudentAssignments, setStudentProgress,
-    showPendingApproval,
     loadAssignmentsForClass,
   });
 
@@ -720,7 +712,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     restoreInProgress, restoreRetried, manualLoginInProgress,
     fromShareLinkRef, currentViewRef, lastUserRoleRef, qpCumulativeScoreRef,
     quickPlaySessionParam,
-    cleanupSessionData, showPendingApproval, showToast, appToasts,
+    cleanupSessionData, showToast, appToasts,
     checkConsent, fetchTeacherData, fetchTeacherAssignments, stopAllAudio,
     shouldPreserveView,
     setLoading, setError, setLandingTab, setView, setUser,
@@ -729,7 +721,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     setActiveAssignment, setAssignmentWords,
     setQuickPlayActiveSession, setQuickPlaySessionCode,
     setQuickPlayKicked, setQuickPlaySessionEnded,
-    setClassNotFoundIntent, setPendingClassSwitch, setPendingApprovalInfo,
+    setClassNotFoundIntent, setPendingClassSwitch,
     setOauthAuthUid, setOauthEmail, setShowOAuthClassCode,
     setCurrentIndex, setScore, setMistakes, setIsFinished, setFeedback,
     setSpellingInput, setMatchedIds, setSelectedMatch, setIsFlipped,
@@ -1099,11 +1091,10 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   });
   if (qpExit) return qpExit;
 
-  // Student auth / Quick Play join screens (pending-approval, account
-  // login, quick-play-student) bundled into renderStudentAuthRoute.
+  // Student auth / Quick Play join screens (account login, Category Race,
+  // quick-play-student) bundled into renderStudentAuthRoute.
   const studentAuthRoute = renderStudentAuthRoute({
     view, user, setView, setUser, showToast, cookieBannerOverlay,
-    pendingApprovalInfo, setPendingApprovalInfo, handleLoginAsStudent,
     error, setError,
     studentLoginClassCode, setStudentLoginClassCode,
     quickPlayActiveSession, setQuickPlayActiveSession,
