@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { School, Plus, UserCog, Trash2, X } from "lucide-react";
+import { School, Plus, UserCog, Trash2, X, ChevronRight } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevSchool } from "./devShared";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
+  /** Open the per-school drill-down (principal, teachers, generated students). */
+  onOpen: (school: DevSchool) => void;
 }
 
-export default function DevSchoolsSection({ showToast }: Props) {
+export default function DevSchoolsSection({ showToast, onOpen }: Props) {
   const [schools, setSchools] = useState<DevSchool[]>([]);
   const [newName, setNewName] = useState("");
   const [mgrEmail, setMgrEmail] = useState("");
@@ -78,17 +80,51 @@ export default function DevSchoolsSection({ showToast }: Props) {
 
       <div className="rounded-2xl bg-white/5 border border-white/10 divide-y divide-white/5">
         {schools.length === 0 && <p className="px-5 py-4 text-white/40 text-base">No schools yet.</p>}
-        {schools.map((s) => (
-          <div key={s.id} className="px-5 py-3 flex items-center gap-3">
-            <School className="w-5 h-5 text-indigo-300 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-white font-bold text-base truncate">{s.name}</div>
-              <div className="text-white/40 text-xs">
-                {s.teachers} staff · {s.students} students
+        {schools.map((s) => {
+          // admin_delete_school refuses (409) while a school still has members
+          // or classes. Disable the button up front and name what's blocking it,
+          // rather than letting the operator discover it through a failed call.
+          const blockers: string[] = [];
+          if (s.teachers > 0) blockers.push(`${s.teachers} staff`);
+          if (s.students > 0) blockers.push(`${s.students} students`);
+          if (s.classes > 0) blockers.push(`${s.classes} classes`);
+          const deletable = blockers.length === 0;
+          return (
+            <div key={s.id} className="px-5 py-3">
+              <div className="flex items-center gap-3">
+                <School className="w-5 h-5 text-indigo-300 shrink-0" />
+                {/* Tap the name/counts to drill into the school's roster. The
+                    manager (×) chips and the delete button live OUTSIDE this
+                    button — nesting buttons would be invalid markup. */}
+                <button
+                  type="button"
+                  onClick={() => onOpen(s)}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className="flex-1 min-w-0 flex items-center gap-2 text-left group"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-bold text-base truncate group-hover:text-indigo-200">{s.name}</div>
+                    <div className="text-white/40 text-xs">
+                      {s.teachers} staff · {s.students} students · {s.classes} classes
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-white/30 group-hover:text-white/60 shrink-0" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteSchool(s)}
+                  disabled={busy || !deletable}
+                  aria-label={deletable ? `Delete school ${s.name}` : `Cannot delete ${s.name} — clear ${blockers.join(", ")} first`}
+                  title={deletable ? undefined : `Clear ${blockers.join(", ")} first`}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className="p-2 rounded-lg text-white/40 hover:text-rose-300 hover:bg-rose-500/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-white/40 disabled:hover:bg-transparent shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
               {/* Managers each get a remove (×) chip so a mis-assignment can be undone. */}
               {s.managers.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1.5">
+                <div className="mt-2 ml-8 flex flex-wrap gap-1.5">
                   {s.managers.map((m) => (
                     <span key={m} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-white/10 text-white/70 text-xs">
                       {m}
@@ -106,18 +142,8 @@ export default function DevSchoolsSection({ showToast }: Props) {
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => deleteSchool(s)}
-              disabled={busy}
-              aria-label={`Delete school ${s.name}`}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="p-2 rounded-lg text-white/40 hover:text-rose-300 hover:bg-rose-500/10 disabled:opacity-50 shrink-0"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <form

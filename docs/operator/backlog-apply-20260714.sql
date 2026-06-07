@@ -1,21 +1,22 @@
 -- =============================================================================
 -- Vocaband — consolidated backlog migration script
--- Generated 2026-06-06T20:44:44Z
+-- Generated 2026-06-07T10:43:33Z
 --
--- WHAT THIS IS:
---   Every migration above the production bookkeeping frontier (20260621000000)
---   that the broken auto-apply workflow never shipped, concatenated in version
---   order. Paste the WHOLE thing into the Supabase SQL editor and Run once.
+-- Paste the WHOLE thing into the Supabase SQL editor and Run once. When the
+-- editor warns about destructive ops / UPDATE-without-WHERE / RLS, choose
+-- "Run without RLS" — every block manages its own RLS correctly; the warnings
+-- are benign (DROP POLICY guards, an intentional full-table HTML-entity
+-- cleanup, and a CREATE TABLE whose ENABLE RLS is a few lines below it).
 --
 -- SAFETY:
 --   * Every block is idempotent (CREATE TABLE IF NOT EXISTS / CREATE OR REPLACE
---     FUNCTION / DROP POLICY IF EXISTS) and safe to re-run.
---   * The superseded 20260627000000_feature_flags.sql is INTENTIONALLY OMITTED —
---     it collides with the live name-based table. 20260713000000 below wires the
---     dashboard RPCs to the live table instead.
---   * Because every block is idempotent, if the run stops on an error you can
---     fix that one statement and simply re-run the WHOLE script — blocks that
---     already applied no-op the second time. Run it in one paste; don't split.
+--     FUNCTION / DROP POLICY IF EXISTS). If it stops on an error, fix that line
+--     and re-run the WHOLE script — already-applied blocks no-op.
+--   * 20260627000000_feature_flags.sql is OMITTED (superseded; collides with the
+--     live name-based table). 20260713000000 wires the RPCs to the live table.
+--   * The two conflicting check_user_update_allowed redefinitions (20260624 pins
+--     school_id, 20260711 pins ai_disabled) are reconciled by the final block
+--     20260715000000, which pins BOTH and drops the stray overloads.
 -- =============================================================================
 
 -- ====================================================================
@@ -1606,7 +1607,7 @@ AS $$
   );
 $$;
 
-COMMENT ON FUNCTION public.check_user_update_allowed IS
+COMMENT ON FUNCTION public.check_user_update_allowed(text, text, text, text, timestamptz, uuid) IS
   'TRUE only if role, class_code, plan, trial_ends_at AND school_id on the proposed row match the existing values for this uid -- i.e. the caller is not self-promoting or self-assigning to a (paid) school. Used by the users_update RLS WITH CHECK. service_role bypasses RLS, so operator/admin writes are unaffected.';
 
 CREATE POLICY users_update ON public.users
@@ -3990,11 +3991,13 @@ GRANT EXECUTE ON FUNCTION public.claim_pending_classes()                        
 -- admin seed section render only when this is enabled. Ships disabled so the
 -- feature is invisible until the operator flips it on (self first, then all)
 -- from the Feature Flags panel. Idempotent — never clobbers an existing row.
+-- The live feature_flags table keys on `name` (20260514); the abandoned
+-- `key`-based design (20260627) never reached prod.
 -- ---------------------------------------------------------------------------
-INSERT INTO public.feature_flags (key, enabled, description)
+INSERT INTO public.feature_flags (name, enabled, description)
 VALUES ('anon_coded_classrooms', false,
         'Anonymous coded classrooms: teacher bulk "add a whole class" + admin school seeding (no student names).')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT (name) DO NOTHING;
 
 COMMIT;
 
@@ -4492,4 +4495,177 @@ GRANT EXECUTE ON FUNCTION public.admin_delete_flag(TEXT)               TO authen
 COMMIT;
 
 -- END 20260713000000_feature_flags_rpcs_on_legacy_table.sql
+
+-- ====================================================================
+-- BEGIN 20260714000000_admin_list_schools_class_count.sql
+-- ====================================================================
+-- =============================================================================
+-- admin_list_schools: add a class count to the Schools panel payload
+-- =============================================================================
+-- admin_delete_school (20260712000000) refuses to drop a school that still has
+-- members (users.school_id) OR classes (classes.school_name = name), raising a
+-- 23503 which PostgREST returns as HTTP 409. The Developer Dashboard Schools
+-- panel only showed staff + students, so a school with leftover classes looked
+-- empty yet 409'd on delete — a confusing, bug-looking refusal.
+--
+-- This re-defines admin_list_schools to also return the same class count the
+-- delete guard uses, so the UI can show "N classes" and block the delete button
+-- up front instead of letting the operator discover it through a failed call.
+--
+-- CREATE OR REPLACE — additive; the only change vs 20260710000000 is the new
+-- 'classes' key. Grants re-asserted so a fresh create (function absent) never
+-- defaults to PUBLIC EXECUTE.
+-- =============================================================================
+
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.admin_list_schools()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $$
+DECLARE
+  result JSONB;
+BEGIN
+  PERFORM public.assert_admin();
+
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'id', s.id,
+      'name', s.name,
+      'school_code', s.school_code,
+      'created_at', s.created_at,
+      'teachers', (SELECT count(*) FROM public.users u
+                   WHERE u.school_id = s.id AND u.role IN ('teacher', 'manager')),
+      'students', (SELECT count(*) FROM public.users u
+                   WHERE u.school_id = s.id AND u.role = 'student'),
+      -- Mirrors admin_delete_school's guard (classes.school_name = name) so the
+      -- "N classes" the UI shows is exactly what blocks a delete.
+      'classes', (SELECT count(*) FROM public.classes c
+                  WHERE c.school_name = s.name),
+      'managers', (SELECT COALESCE(jsonb_agg(u.email), '[]'::jsonb) FROM public.users u
+                   WHERE u.school_id = s.id AND u.role = 'manager')
+    ) ORDER BY s.name
+  ), '[]'::jsonb)
+  INTO result
+  FROM public.schools s;
+
+  RETURN result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_list_schools() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_list_schools() TO authenticated;
+
+COMMIT;
+
+-- END 20260714000000_admin_list_schools_class_count.sql
+
+-- ====================================================================
+-- BEGIN 20260715000000_unify_check_user_update_allowed.sql
+-- ====================================================================
+-- =============================================================================
+-- 20260715000000_unify_check_user_update_allowed.sql
+--
+-- Reconcile two conflicting redefinitions of the users-row self-edit guard.
+--
+-- THE CONFLICT:
+--   * 20260624000000_school_license_propagates_pro.sql redefined
+--     check_user_update_allowed to a 6-arg form that pins SCHOOL_ID
+--     (text,text,text,text,timestamptz,uuid) so a teacher can't self-assign
+--     to a paid school.
+--   * 20260711000000_admin_ai_kill_switch.sql redefined it to a DIFFERENT
+--     6-arg form that pins AI_DISABLED
+--     (text,text,text,text,timestamptz,boolean) and pointed users_update at
+--     that form — silently DROPPING the school_id pin and leaving a stray,
+--     unused uuid overload behind.
+--
+--   Net effect of applying both as-written: school_id is no longer enforced
+--   (privilege escalation — `UPDATE users SET school_id=<paid school>` passes
+--   the RLS WITH CHECK), and the bare `COMMENT ON FUNCTION
+--   check_user_update_allowed` in 20260624 is ambiguous (ERROR 42725).
+--
+-- THE FIX (this migration):
+--   Collapse to ONE 7-arg form that pins EVERY locked column at once — role,
+--   class_code, plan, trial_ends_at, school_id AND ai_disabled — drop every
+--   older overload, and point users_update at it. Wrapped in a transaction so
+--   public.users is never left without an UPDATE policy. Idempotent.
+-- =============================================================================
+
+BEGIN;
+
+-- Drop the dependent policy first so the function overloads can be removed.
+DROP POLICY IF EXISTS users_update ON public.users;
+
+-- Remove every prior overload so exactly one remains afterwards (each IF EXISTS
+-- → absent overloads are a no-op). Covers 3-arg (20260406), 5-arg (plan/trial
+-- lock), and the two conflicting 6-arg forms (school_id / ai_disabled).
+DROP FUNCTION IF EXISTS public.check_user_update_allowed(text, text, text);
+DROP FUNCTION IF EXISTS public.check_user_update_allowed(text, text, text, text, timestamptz);
+DROP FUNCTION IF EXISTS public.check_user_update_allowed(text, text, text, text, timestamptz, uuid);
+DROP FUNCTION IF EXISTS public.check_user_update_allowed(text, text, text, text, timestamptz, boolean);
+
+CREATE OR REPLACE FUNCTION public.check_user_update_allowed(
+  p_uid               text,
+  p_new_role          text,
+  p_new_class_code    text,
+  p_new_plan          text,
+  p_new_trial_ends_at timestamptz,
+  p_new_school_id     uuid,
+  p_new_ai_disabled   boolean
+) RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  -- TRUE iff every locked column on the proposed row matches the existing row
+  -- for this uid. A FALSE return makes the RLS WITH CHECK reject the update,
+  -- which is what we want for any self-promotion / self-unblock attempt.
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE uid = p_uid
+      AND role = p_new_role
+      AND (class_code IS NULL OR class_code = p_new_class_code)
+      AND COALESCE(plan, 'free') = COALESCE(p_new_plan, 'free')
+      AND COALESCE(trial_ends_at, '1970-01-01'::timestamptz)
+        = COALESCE(p_new_trial_ends_at, '1970-01-01'::timestamptz)
+      AND COALESCE(school_id, '00000000-0000-0000-0000-000000000000'::uuid)
+        = COALESCE(p_new_school_id, '00000000-0000-0000-0000-000000000000'::uuid)
+      AND COALESCE(ai_disabled, false) = COALESCE(p_new_ai_disabled, false)
+  );
+$$;
+
+COMMENT ON FUNCTION public.check_user_update_allowed(text, text, text, text, timestamptz, uuid, boolean) IS
+  'TRUE only if role, class_code, plan, trial_ends_at, school_id AND ai_disabled '
+  'on the proposed row match the existing values for this uid -- i.e. the caller '
+  'is not self-promoting, self-assigning to a paid school, or self-unblocking AI. '
+  'Used by the users_update RLS WITH CHECK. service_role / admin writes bypass '
+  'RLS, so operator changes (Stripe webhook, admin RPCs) are unaffected.';
+
+CREATE POLICY users_update ON public.users
+  AS PERMISSIVE FOR UPDATE TO public
+  USING ((((SELECT auth.uid()))::text = uid) OR is_admin())
+  WITH CHECK (
+    is_admin()
+    OR check_user_update_allowed(
+      ((SELECT auth.uid()))::text,
+      role,
+      class_code,
+      plan,
+      trial_ends_at,
+      school_id,
+      ai_disabled
+    )
+  );
+
+COMMENT ON POLICY users_update ON public.users IS
+  'Owner may edit own row; admins may edit any. Caller cannot self-change role, '
+  'class_code, plan, trial_ends_at, school_id, or ai_disabled -- all pinned by '
+  'check_user_update_allowed. Legitimate paywall / school-assignment / '
+  'kill-switch changes go through service_role, which bypasses RLS.';
+
+COMMIT;
+
+-- END 20260715000000_unify_check_user_update_allowed.sql
 

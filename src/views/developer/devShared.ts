@@ -49,7 +49,69 @@ export interface DevSchool {
   created_at: string;
   teachers: number;
   students: number;
+  /** Classes naming this school (classes.school_name) — these, along with
+   *  members, are what admin_delete_school refuses to orphan (409). */
+  classes: number;
   managers: string[];
+}
+
+/** One generated/enrolled student in a class, as returned by admin_school_detail. */
+export interface DevSchoolStudent {
+  /** The visible label — a name, or a structured code like "07-5-2-14". */
+  display_name: string;
+  /** Login PIN for coded/roster students; null for name-based joiners. */
+  roster_pin: string | null;
+  roster_created: boolean;
+  grade: number | null;
+  branch: number | null;
+  anon_seq: number | null;
+  status: string;
+  avatar: string | null;
+}
+
+/** One class of a school, with its full roster, from admin_school_detail. */
+export interface DevSchoolClass {
+  id: string;
+  name: string;
+  code: string;
+  /** Null until a seeded class is claimed on the teacher's first login. */
+  teacher_uid: string | null;
+  teacher_name: string | null;
+  teacher_email: string | null;
+  /** Set on a seeded-but-unclaimed class — who it will belong to once they log in. */
+  pending_teacher_email: string | null;
+  student_count: number;
+  students: DevSchoolStudent[];
+}
+
+export interface DevSchoolTeacher {
+  uid: string;
+  display_name: string;
+  email: string | null;
+  subject: string | null;
+  class_count: number;
+  student_count: number;
+}
+
+export interface DevSchoolManager {
+  uid: string;
+  email: string | null;
+  display_name: string;
+}
+
+/** Full per-school drill-down payload (admin_school_detail). */
+export interface DevSchoolDetail {
+  school: {
+    id: string;
+    name: string;
+    school_code: string | null;
+    plan: string | null;
+    trial_ends_at: string | null;
+    created_at: string;
+  };
+  managers: DevSchoolManager[];
+  teachers: DevSchoolTeacher[];
+  classes: DevSchoolClass[];
 }
 
 /** One class returned by admin_bulk_seed_school for the printable handoff. */

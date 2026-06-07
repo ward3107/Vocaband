@@ -9,6 +9,7 @@ import type { View } from "../core/views";
 import { callAdminRpcCached, fmtUsd, fmtNum, type DevOverview } from "./developer/devShared";
 import DevAiCostPanel from "./developer/DevAiCostPanel";
 import DevDatabasePanel from "./developer/DevDatabasePanel";
+import DevSchoolsPanel from "./developer/DevSchoolsPanel";
 import DevSystemPanel from "./developer/DevSystemPanel";
 import DevInfraPanel from "./developer/DevInfraPanel";
 import DevUserLookupPanel from "./developer/DevUserLookupPanel";
@@ -27,12 +28,13 @@ interface Props {
 }
 
 type Tab =
-  | "ai" | "db" | "users" | "trials" | "insights" | "audit" | "privacy"
+  | "ai" | "db" | "schools" | "users" | "trials" | "insights" | "audit" | "privacy"
   | "security" | "flags" | "broadcast" | "system" | "infra";
 
 const TABS: { id: Tab; label: string; icon: typeof Bot }[] = [
   { id: "ai",        label: "AI & Cost",         icon: Bot },
   { id: "db",        label: "Database",          icon: Database },
+  { id: "schools",   label: "Schools",           icon: School },
   { id: "users",     label: "User lookup",       icon: Search },
   { id: "trials",    label: "Trial funnel",      icon: TrendingUp },
   { id: "insights",  label: "Insights",          icon: BarChart3 },
@@ -153,6 +155,7 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
 
           {tab === "ai"        && <DevAiCostPanel showToast={showToast} />}
           {tab === "db"        && <DevDatabasePanel showToast={showToast} />}
+          {tab === "schools"   && <DevSchoolsPanel showToast={showToast} />}
           {tab === "users"     && <DevUserLookupPanel showToast={showToast} />}
           {tab === "trials"    && <DevTrialFunnelPanel showToast={showToast} />}
           {tab === "insights"  && <DevInsightsPanel showToast={showToast} />}
