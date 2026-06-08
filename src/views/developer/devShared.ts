@@ -199,6 +199,36 @@ export interface DevClass {
   school_name: string | null;
   student_count: number;
   assignment_count: number;
+  /** Set when an admin archives the class (reversible). null = active. */
+  archived_at: string | null;
+}
+
+/** One student in a class roster (admin_class_roster). */
+export interface DevRosterStudent {
+  display_name: string;
+  pin: string | null;
+  grade: number | null;
+  branch: number | null;
+  status: string;
+  avatar: string | null;
+}
+
+/** Full per-class roster payload (admin_class_roster). */
+export interface DevClassRoster {
+  class: {
+    id: string;
+    name: string;
+    code: string;
+    teacher_uid: string | null;
+    teacher_name: string | null;
+    teacher_email: string | null;
+    pending_teacher_email: string | null;
+    school_name: string | null;
+    archived_at: string | null;
+  };
+  students: DevRosterStudent[];
+  /** Name/OAuth joiners (users.class_code) not in the coded roster. */
+  named_count: number;
 }
 
 /** A teacher-authored vocabulary set, from admin_list_vocab_sets (moderation). */
