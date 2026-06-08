@@ -36,6 +36,10 @@ import { DIFFICULTY_META, getModeDifficulty } from "./setup/types";
 
 interface DemoModeProps {
   onClose: () => void;
+  /** Optional conversion hook fired by the results-screen "Get started"
+   *  CTA. The public landing wires it to close the demo and open teacher
+   *  login; it falls back to onClose so the demo still works without it. */
+  onGetStarted?: () => void;
 }
 
 type DemoView = "welcome" | "avatar" | "game-select" | "mode-intro" | "game" | "results" | "shop" | "teacher";
@@ -191,6 +195,7 @@ const baseTranslations: Record<Exclude<Language, 'ru'>, Record<string, string>> 
     teacherWordMastery: "Word mastery",
     teacherGradebook: "Auto gradebook",
     teacherPeekFootnote: "A static preview — the real dashboard updates as students play.",
+    getStartedCta: "Get started — it's free",
     signFree: "",
     check: "Check",
     typeWord: "Type the word in English",
@@ -287,6 +292,7 @@ const baseTranslations: Record<Exclude<Language, 'ru'>, Record<string, string>> 
     teacherWordMastery: "שליטה במילים",
     teacherGradebook: "ספר ציונים אוטומטי",
     teacherPeekFootnote: "תצוגה מקדימה סטטית — הלוח האמיתי מתעדכן תוך כדי משחק.",
+    getStartedCta: "התחילו — זה חינם",
     signFree: "",
     check: "בדוק",
     typeWord: "הקלד את המילה באנגלית",
@@ -383,6 +389,7 @@ const baseTranslations: Record<Exclude<Language, 'ru'>, Record<string, string>> 
     teacherWordMastery: "إتقان الكلمات",
     teacherGradebook: "دفتر درجات تلقائي",
     teacherPeekFootnote: "معاينة ثابتة — تتحدّث اللوحة الحقيقية أثناء لعب الطلاب.",
+    getStartedCta: "ابدأ — إنه مجاني",
     signFree: "",
     check: "تحقق",
     typeWord: "اكتب الكلمة بالإنجليزية",
@@ -671,7 +678,7 @@ const getMeaning = (word: Word, targetLang: TargetLang): string => {
   return targetLang === 'arabic' ? word.arabic : word.hebrew;
 };
 
-const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
+const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
   const { language, setLanguage, dir, isRTL, textAlign } = useLanguage();
   const t = demoTranslations[language];
   const modes = GAME_MODES[language];
@@ -2814,13 +2821,26 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </p>
 
                 <div className="flex flex-col gap-2.5">
+                  {/* Primary conversion CTA — the results screen is the
+                      natural moment to convert. Route through onGetStarted
+                      (wired to teacher login on the landing) and fall back
+                      to onClose if the prop wasn't supplied. */}
+                  <button
+                    onClick={onGetStarted ?? onClose}
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className="w-full inline-flex items-center justify-center gap-2 signature-gradient text-white px-6 py-4 rounded-xl font-black text-base sm:text-lg shadow-lg shadow-violet-500/30 hover:shadow-xl active:scale-[0.98] transition-all"
+                  >
+                    <Sparkles size={20} />
+                    {t.getStartedCta}
+                  </button>
                   <button
                     onClick={resetDemo}
                     type="button"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-4 rounded-xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all"
+                    className="w-full inline-flex items-center justify-center gap-2 bg-white border-2 border-stone-200 text-stone-800 px-6 py-3 rounded-xl font-black text-sm sm:text-base hover:border-stone-300 active:scale-[0.98] transition-all"
                   >
-                    <RefreshCw size={20} />
+                    <RefreshCw size={18} />
                     {t.playAgain}
                   </button>
                   <button

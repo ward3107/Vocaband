@@ -281,6 +281,7 @@ function LandingPageWithScrollRestore({
       {showDemo && (
         <DemoModeWrapper
           onClose={() => setShowDemo(false)}
+          onGetStarted={() => { setShowDemo(false); onTeacherOAuth(); }}
         />
       )}
       {cookieBannerOverlay}
