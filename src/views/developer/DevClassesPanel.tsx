@@ -35,6 +35,17 @@ export default function DevClassesPanel({ showToast }: Props) {
   const [resetTarget, setResetTarget] = useState<DevClass | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DevClass | null>(null);
 
+  // Bulk selection.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const toggleSelect = (id: string) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
   useEffect(() => {
     const t = window.setTimeout(() => setDebounced(query), 300);
     return () => window.clearTimeout(t);
@@ -129,6 +140,28 @@ export default function DevClassesPanel({ showToast }: Props) {
     }
   }, [showToast]);
 
+  // Bulk delete — one audited admin_delete_class per selected class.
+  const bulkDelete = useCallback(async (reason: string) => {
+    const ids = [...selected];
+    setBulkBusy(true);
+    let ok = 0, fail = 0;
+    for (const id of ids) {
+      const res = await callAdminRpc<{ success?: boolean }>(
+        "admin_delete_class", { p_class_id: id, p_reason: reason || null }, showToast,
+      );
+      if (res?.success) ok += 1; else fail += 1;
+    }
+    setBulkBusy(false);
+    setBulkOpen(false);
+    setSelected(new Set());
+    showToast(fail ? `Deleted ${ok}, ${fail} failed` : `Deleted ${ok} class${ok === 1 ? "" : "es"}`, fail ? "error" : "success");
+    invalidateAdminRpcCache("admin_list_classes");
+    invalidateAdminRpcCache("admin_dashboard_overview");
+    await search(debounced, true);
+  }, [selected, debounced, search, showToast]);
+
+  const selectedCount = selected.size;
+
   return (
     <div className="space-y-5">
       <div className="rounded-2xl bg-white/5 border border-white/10 p-2 flex items-center gap-2">
@@ -146,18 +179,43 @@ export default function DevClassesPanel({ showToast }: Props) {
         <p className="text-white/40 text-sm">{query.trim() ? "No matching classes." : "No classes yet."}</p>
       )}
 
+      {selectedCount > 0 && (
+        <div className="sticky top-2 z-10 flex items-center gap-3 rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-500/30 px-4 py-2.5">
+          <span className="text-white font-black text-base">{selectedCount} selected</span>
+          <button type="button" onClick={() => setSelected(new Set())} className="text-white/80 hover:text-white text-sm font-bold">Clear</button>
+          <button
+            type="button"
+            onClick={() => setBulkOpen(true)}
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2 text-white font-black text-base"
+          >
+            <Trash2 className="w-4 h-4" /> Delete {selectedCount}
+          </button>
+        </div>
+      )}
+
       <div className="space-y-3">
         {classes.map((c) => {
           const isOpen = expanded === c.id;
           const busy = busyId === c.id;
           const owner = c.teacher_name || c.teacher_email || (c.pending_teacher_email ? null : "unclaimed");
           return (
-            <div key={c.id} className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
+            <div key={c.id} className={`rounded-2xl bg-white/5 border overflow-hidden ${selected.has(c.id) ? "border-indigo-400/60" : "border-white/10"}`}>
+              <div className="flex items-center">
+              <label className="pl-4 pr-1 self-stretch flex items-center cursor-pointer" style={{ touchAction: "manipulation" }}>
+                <input
+                  type="checkbox"
+                  checked={selected.has(c.id)}
+                  onChange={() => toggleSelect(c.id)}
+                  className="w-4 h-4 rounded border-white/20 bg-white/10 accent-indigo-500"
+                  aria-label={`Select ${c.name}`}
+                />
+              </label>
               <button
                 type="button"
                 onClick={() => { setExpanded(isOpen ? null : c.id); setEditName(null); setTransferEmail(""); }}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className="w-full px-5 py-3 flex items-center gap-3 hover:bg-white/5 text-left"
+                className="flex-1 min-w-0 pl-1 pr-5 py-3 flex items-center gap-3 hover:bg-white/5 text-left"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -177,6 +235,7 @@ export default function DevClassesPanel({ showToast }: Props) {
                 </div>
                 <ChevronRight className={`w-5 h-5 text-white/30 transition-transform ${isOpen ? "rotate-90" : ""}`} />
               </button>
+              </div>
 
               {isOpen && (
                 <div className="border-t border-white/5 px-5 py-4 space-y-4">
@@ -281,6 +340,27 @@ export default function DevClassesPanel({ showToast }: Props) {
         busy={!!deleteTarget && busyId === deleteTarget.id}
         onConfirm={(reason) => deleteTarget && void del(deleteTarget, reason)}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Bulk delete — typed DELETE guard since it spans many classes. */}
+      <ConfirmDialog
+        open={bulkOpen}
+        tone="danger"
+        title={`Delete ${selectedCount} classes?`}
+        body={(() => {
+          const sel = classes.filter((c) => selected.has(c.id));
+          const students = sel.reduce((s, c) => s + c.student_count, 0);
+          const assignments = sel.reduce((s, c) => s + c.assignment_count, 0);
+          return <>Permanently deletes <strong className="text-white">{selectedCount}</strong> classes,
+          their <strong className="text-white">{assignments}</strong> assignment(s) + gradebook progress, and detaches{" "}
+          <strong className="text-white">{students}</strong> student(s). This cannot be undone.</>;
+        })()}
+        confirmPhrase="DELETE"
+        reason={{ placeholder: "Reason (cleanup, test classes…) — audit-logged on each", required: false }}
+        confirmLabel={`Delete ${selectedCount}`}
+        busy={bulkBusy}
+        onConfirm={(reason) => void bulkDelete(reason)}
+        onCancel={() => setBulkOpen(false)}
       />
     </div>
   );

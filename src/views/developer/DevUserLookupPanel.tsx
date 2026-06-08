@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Search, ChevronRight, GraduationCap, Sparkles, Calendar, Building2, UserCog, ArrowDown } from "lucide-react";
+import { Search, ChevronRight, GraduationCap, Sparkles, Calendar, Building2, UserCog, ArrowDown, ExternalLink } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevUserSearchResult } from "./devShared";
 import ConfirmDialog from "./ConfirmDialog";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
+  /** Open the Person 360 drawer for a result (wired by the dashboard shell). */
+  onOpenPerson?: (u: DevUserSearchResult) => void;
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -33,7 +35,7 @@ function trialBadge(plan: string | null, trialEndsAt: string | null): { text: st
   return { text: `${days}d trial`, cls: "bg-amber-500/20 text-amber-200" };
 }
 
-export default function DevUserLookupPanel({ showToast }: Props) {
+export default function DevUserLookupPanel({ showToast, onOpenPerson }: Props) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [results, setResults] = useState<DevUserSearchResult[]>([]);
@@ -147,6 +149,16 @@ export default function DevUserLookupPanel({ showToast }: Props) {
 
               {isOpen && (
                 <div className="border-t border-white/5 px-5 py-4 space-y-4">
+                  {onOpenPerson && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenPerson(r)}
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base"
+                    >
+                      <ExternalLink className="w-4 h-4" /> Open full profile (360)
+                    </button>
+                  )}
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <span className="text-white/40 flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5" /> First seen

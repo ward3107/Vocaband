@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Bot, RefreshCw, CloudOff } from "lucide-react";
 import { callAdminRpcCached, adminApiGet, fmtUsd, fmtNum, type DevAiUsage, type ProviderBilling, type ProviderCost } from "./devShared";
+import { Sparkline } from "./charts";
 
 /** One provider's real billed spend, or its setup hint when no admin key is set. */
 function BillingRow({ label, cost, setupHint }: { label: string; cost?: ProviderCost; setupHint: ReactNode }) {
@@ -100,6 +101,22 @@ export default function DevAiCostPanel({ showToast }: Props) {
           Per-call estimate from ai_usage_counters. Not the provider bill — see below.
         </p>
       </div>
+
+      {(data?.by_day ?? []).length > 1 && (
+        <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-black text-white/80 text-base">Daily spend</div>
+            <div className="text-white/40 text-sm">{data!.by_day.length} days</div>
+          </div>
+          <div className="text-amber-300">
+            <Sparkline data={data!.by_day.map((d) => (d.cost_micro ?? 0) / 1_000_000)} height={64} />
+          </div>
+          <div className="flex justify-between text-white/30 text-xs mt-1">
+            <span>{data!.by_day[0]?.day}</span>
+            <span>{data!.by_day[data!.by_day.length - 1]?.day}</span>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
         <div className="px-5 py-3 font-black text-white/80 text-base">By action</div>
