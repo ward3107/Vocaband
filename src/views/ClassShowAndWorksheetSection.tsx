@@ -16,6 +16,7 @@ import type { AppUser, ClassData } from '../core/supabase';
 import type { VocaId } from '../core/subject';
 import type { View } from '../core/views';
 import type { TranslationEntry } from '../hooks/useTranslate';
+import ActivityTabsSlot from '../components/setup/ActivityTabsSlot';
 
 const ClassShowView = lazyWithRetry(() => import('./ClassShowView'));
 const WorksheetView = lazyWithRetry(() => import('./WorksheetView'));
@@ -113,6 +114,16 @@ export function renderClassShowOrWorksheet(deps: ClassShowAndWorksheetSectionDep
           user={user}
           initialSources={buildSourcesFromAssignment(classShowAssignment, allWords)}
           initialSourceIndex={0}
+          activityTabs={
+            <ActivityTabsSlot
+              active="class-show"
+              setView={setView}
+              hasSelectedClass={!!selectedClass}
+              // Always English here — the Hebrew branch returned
+              // HebrewClassShowView above, so this path is non-Hebrew.
+              isHebrew={false}
+            />
+          }
           pickerWiring={{
             allWords,
             onTranslateWord: translateWord,

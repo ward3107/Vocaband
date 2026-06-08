@@ -566,84 +566,98 @@ html.a11y-dark:not([data-theme-dark]) {
        text becomes -300, light borders become -800 — so a rose card reads
        rosy-dark, not grey.
    Saturated 400-600 button backgrounds and text-white are left untouched.
-   :is() grouping keeps each rule one notch more specific than Tailwind's
-   own utility, so no !important is needed. */
 
-html.a11y-dark:not([data-theme-dark]) :is(.bg-stone-50,.bg-stone-100,.bg-stone-200,.bg-gray-50,.bg-gray-100,.bg-gray-200,.bg-slate-50,.bg-slate-100,.bg-slate-200,.bg-neutral-50,.bg-neutral-100,.bg-neutral-200,.bg-zinc-50,.bg-zinc-100,.bg-zinc-200) { background-color: var(--vb-surface-alt); }
-html.a11y-dark:not([data-theme-dark]) :is(.text-black,.text-stone-700,.text-stone-800,.text-stone-900,.text-gray-700,.text-gray-800,.text-gray-900,.text-slate-700,.text-slate-800,.text-slate-900,.text-neutral-700,.text-neutral-800,.text-neutral-900,.text-zinc-700,.text-zinc-800,.text-zinc-900) { color: var(--vb-text-primary); }
-html.a11y-dark:not([data-theme-dark]) :is(.text-stone-500,.text-stone-600,.text-gray-500,.text-gray-600,.text-slate-500,.text-slate-600,.text-neutral-500,.text-neutral-600,.text-zinc-500,.text-zinc-600) { color: var(--vb-text-secondary); }
-html.a11y-dark:not([data-theme-dark]) :is(.border-stone-100,.border-stone-200,.border-stone-300,.border-gray-100,.border-gray-200,.border-gray-300,.border-slate-100,.border-slate-200,.border-slate-300,.border-neutral-100,.border-neutral-200,.border-neutral-300,.border-zinc-100,.border-zinc-200,.border-zinc-300) { border-color: var(--vb-border); }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-red-50,.bg-red-100,.bg-red-200) { background-color: #450a0a; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-red-600,.text-red-700,.text-red-800,.text-red-900) { color: #fca5a5; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-red-100,.border-red-200,.border-red-300) { border-color: #991b1b; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-orange-50,.bg-orange-100,.bg-orange-200) { background-color: #431407; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-orange-600,.text-orange-700,.text-orange-800,.text-orange-900) { color: #fdba74; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-orange-100,.border-orange-200,.border-orange-300) { border-color: #9a3412; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-amber-50,.bg-amber-100,.bg-amber-200) { background-color: #451a03; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-amber-600,.text-amber-700,.text-amber-800,.text-amber-900) { color: #fcd34d; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-amber-100,.border-amber-200,.border-amber-300) { border-color: #92400e; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-yellow-50,.bg-yellow-100,.bg-yellow-200) { background-color: #422006; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-yellow-600,.text-yellow-700,.text-yellow-800,.text-yellow-900) { color: #fde047; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-yellow-100,.border-yellow-200,.border-yellow-300) { border-color: #854d0e; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-lime-50,.bg-lime-100,.bg-lime-200) { background-color: #1a2e05; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-lime-600,.text-lime-700,.text-lime-800,.text-lime-900) { color: #bef264; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-lime-100,.border-lime-200,.border-lime-300) { border-color: #3f6212; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-green-50,.bg-green-100,.bg-green-200) { background-color: #052e16; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-green-600,.text-green-700,.text-green-800,.text-green-900) { color: #86efac; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-green-100,.border-green-200,.border-green-300) { border-color: #166534; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-emerald-50,.bg-emerald-100,.bg-emerald-200) { background-color: #022c22; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-emerald-600,.text-emerald-700,.text-emerald-800,.text-emerald-900) { color: #6ee7b7; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-emerald-100,.border-emerald-200,.border-emerald-300) { border-color: #065f46; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-teal-50,.bg-teal-100,.bg-teal-200) { background-color: #042f2e; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-teal-600,.text-teal-700,.text-teal-800,.text-teal-900) { color: #5eead4; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-teal-100,.border-teal-200,.border-teal-300) { border-color: #115e59; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-cyan-50,.bg-cyan-100,.bg-cyan-200) { background-color: #083344; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-cyan-600,.text-cyan-700,.text-cyan-800,.text-cyan-900) { color: #67e8f9; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-cyan-100,.border-cyan-200,.border-cyan-300) { border-color: #155e75; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-sky-50,.bg-sky-100,.bg-sky-200) { background-color: #082f49; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-sky-600,.text-sky-700,.text-sky-800,.text-sky-900) { color: #7dd3fc; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-sky-100,.border-sky-200,.border-sky-300) { border-color: #075985; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-blue-50,.bg-blue-100,.bg-blue-200) { background-color: #172554; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-blue-600,.text-blue-700,.text-blue-800,.text-blue-900) { color: #93c5fd; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-blue-100,.border-blue-200,.border-blue-300) { border-color: #1e40af; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-indigo-50,.bg-indigo-100,.bg-indigo-200) { background-color: #1e1b4b; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-indigo-600,.text-indigo-700,.text-indigo-800,.text-indigo-900) { color: #a5b4fc; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-indigo-100,.border-indigo-200,.border-indigo-300) { border-color: #3730a3; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-violet-50,.bg-violet-100,.bg-violet-200) { background-color: #2e1065; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-violet-600,.text-violet-700,.text-violet-800,.text-violet-900) { color: #c4b5fd; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-violet-100,.border-violet-200,.border-violet-300) { border-color: #5b21b6; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-purple-50,.bg-purple-100,.bg-purple-200) { background-color: #3b0764; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-purple-600,.text-purple-700,.text-purple-800,.text-purple-900) { color: #d8b4fe; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-purple-100,.border-purple-200,.border-purple-300) { border-color: #6b21a8; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-fuchsia-50,.bg-fuchsia-100,.bg-fuchsia-200) { background-color: #4a044e; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-fuchsia-600,.text-fuchsia-700,.text-fuchsia-800,.text-fuchsia-900) { color: #f0abfc; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-fuchsia-100,.border-fuchsia-200,.border-fuchsia-300) { border-color: #86198f; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-pink-50,.bg-pink-100,.bg-pink-200) { background-color: #500724; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-pink-600,.text-pink-700,.text-pink-800,.text-pink-900) { color: #f9a8d4; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-pink-100,.border-pink-200,.border-pink-300) { border-color: #9d174d; }
-html.a11y-dark:not([data-theme-dark]) :is(.bg-rose-50,.bg-rose-100,.bg-rose-200) { background-color: #4c0519; }
-html.a11y-dark:not([data-theme-dark]) :is(.text-rose-600,.text-rose-700,.text-rose-800,.text-rose-900) { color: #fda4af; }
-html.a11y-dark:not([data-theme-dark]) :is(.border-rose-100,.border-rose-200,.border-rose-300) { border-color: #9f1239; }
+   Scope: applies under BOTH dark systems —
+     • `html.a11y-dark:not([data-theme-dark])` — the global accessibility
+       toggle (students / guests / public pages), and
+     • `html[data-theme-dark="true"]` — a teacher's dark dashboard palette
+       (Midnight / Graphite).
+   The teacher-theme branch matters because `applyThemePalette` only flips
+   the --vb-* and --color-* TOKENS; raw Tailwind colour utilities (bg-indigo-50,
+   text-slate-900, border-violet-100, …) bypass those tokens and would
+   otherwise stay light on a dark teacher palette — washed-out cards,
+   invisible dark-on-dark text.  Routing the same remap through both
+   ancestors fixes every such surface app-wide in one place instead of
+   patching components one utility at a time.  Token *definitions* stay
+   a11y-only (above) — teacher themes own their own --vb-* values.
+   The leading :is() grouping keeps each rule one notch more specific than
+   Tailwind's own utility, so no !important is needed. */
+
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-stone-50,.bg-stone-100,.bg-stone-200,.bg-gray-50,.bg-gray-100,.bg-gray-200,.bg-slate-50,.bg-slate-100,.bg-slate-200,.bg-neutral-50,.bg-neutral-100,.bg-neutral-200,.bg-zinc-50,.bg-zinc-100,.bg-zinc-200) { background-color: var(--vb-surface-alt); }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-black,.text-stone-700,.text-stone-800,.text-stone-900,.text-gray-700,.text-gray-800,.text-gray-900,.text-slate-700,.text-slate-800,.text-slate-900,.text-neutral-700,.text-neutral-800,.text-neutral-900,.text-zinc-700,.text-zinc-800,.text-zinc-900) { color: var(--vb-text-primary); }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-stone-500,.text-stone-600,.text-gray-500,.text-gray-600,.text-slate-500,.text-slate-600,.text-neutral-500,.text-neutral-600,.text-zinc-500,.text-zinc-600) { color: var(--vb-text-secondary); }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-stone-100,.border-stone-200,.border-stone-300,.border-gray-100,.border-gray-200,.border-gray-300,.border-slate-100,.border-slate-200,.border-slate-300,.border-neutral-100,.border-neutral-200,.border-neutral-300,.border-zinc-100,.border-zinc-200,.border-zinc-300) { border-color: var(--vb-border); }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-red-50,.bg-red-100,.bg-red-200) { background-color: #450a0a; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-red-600,.text-red-700,.text-red-800,.text-red-900) { color: #fca5a5; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-red-100,.border-red-200,.border-red-300) { border-color: #991b1b; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-orange-50,.bg-orange-100,.bg-orange-200) { background-color: #431407; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-orange-600,.text-orange-700,.text-orange-800,.text-orange-900) { color: #fdba74; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-orange-100,.border-orange-200,.border-orange-300) { border-color: #9a3412; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-amber-50,.bg-amber-100,.bg-amber-200) { background-color: #451a03; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-amber-600,.text-amber-700,.text-amber-800,.text-amber-900) { color: #fcd34d; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-amber-100,.border-amber-200,.border-amber-300) { border-color: #92400e; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-yellow-50,.bg-yellow-100,.bg-yellow-200) { background-color: #422006; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-yellow-600,.text-yellow-700,.text-yellow-800,.text-yellow-900) { color: #fde047; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-yellow-100,.border-yellow-200,.border-yellow-300) { border-color: #854d0e; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-lime-50,.bg-lime-100,.bg-lime-200) { background-color: #1a2e05; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-lime-600,.text-lime-700,.text-lime-800,.text-lime-900) { color: #bef264; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-lime-100,.border-lime-200,.border-lime-300) { border-color: #3f6212; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-green-50,.bg-green-100,.bg-green-200) { background-color: #052e16; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-green-600,.text-green-700,.text-green-800,.text-green-900) { color: #86efac; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-green-100,.border-green-200,.border-green-300) { border-color: #166534; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-emerald-50,.bg-emerald-100,.bg-emerald-200) { background-color: #022c22; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-emerald-600,.text-emerald-700,.text-emerald-800,.text-emerald-900) { color: #6ee7b7; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-emerald-100,.border-emerald-200,.border-emerald-300) { border-color: #065f46; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-teal-50,.bg-teal-100,.bg-teal-200) { background-color: #042f2e; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-teal-600,.text-teal-700,.text-teal-800,.text-teal-900) { color: #5eead4; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-teal-100,.border-teal-200,.border-teal-300) { border-color: #115e59; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-cyan-50,.bg-cyan-100,.bg-cyan-200) { background-color: #083344; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-cyan-600,.text-cyan-700,.text-cyan-800,.text-cyan-900) { color: #67e8f9; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-cyan-100,.border-cyan-200,.border-cyan-300) { border-color: #155e75; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-sky-50,.bg-sky-100,.bg-sky-200) { background-color: #082f49; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-sky-600,.text-sky-700,.text-sky-800,.text-sky-900) { color: #7dd3fc; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-sky-100,.border-sky-200,.border-sky-300) { border-color: #075985; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-blue-50,.bg-blue-100,.bg-blue-200) { background-color: #172554; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-blue-600,.text-blue-700,.text-blue-800,.text-blue-900) { color: #93c5fd; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-blue-100,.border-blue-200,.border-blue-300) { border-color: #1e40af; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-indigo-50,.bg-indigo-100,.bg-indigo-200) { background-color: #1e1b4b; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-indigo-600,.text-indigo-700,.text-indigo-800,.text-indigo-900) { color: #a5b4fc; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-indigo-100,.border-indigo-200,.border-indigo-300) { border-color: #3730a3; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-violet-50,.bg-violet-100,.bg-violet-200) { background-color: #2e1065; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-violet-600,.text-violet-700,.text-violet-800,.text-violet-900) { color: #c4b5fd; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-violet-100,.border-violet-200,.border-violet-300) { border-color: #5b21b6; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-purple-50,.bg-purple-100,.bg-purple-200) { background-color: #3b0764; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-purple-600,.text-purple-700,.text-purple-800,.text-purple-900) { color: #d8b4fe; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-purple-100,.border-purple-200,.border-purple-300) { border-color: #6b21a8; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-fuchsia-50,.bg-fuchsia-100,.bg-fuchsia-200) { background-color: #4a044e; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-fuchsia-600,.text-fuchsia-700,.text-fuchsia-800,.text-fuchsia-900) { color: #f0abfc; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-fuchsia-100,.border-fuchsia-200,.border-fuchsia-300) { border-color: #86198f; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-pink-50,.bg-pink-100,.bg-pink-200) { background-color: #500724; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-pink-600,.text-pink-700,.text-pink-800,.text-pink-900) { color: #f9a8d4; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-pink-100,.border-pink-200,.border-pink-300) { border-color: #9d174d; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.bg-rose-50,.bg-rose-100,.bg-rose-200) { background-color: #4c0519; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.text-rose-600,.text-rose-700,.text-rose-800,.text-rose-900) { color: #fda4af; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.border-rose-100,.border-rose-200,.border-rose-300) { border-color: #9f1239; }
 
 /* hover: variants — same families, one step lighter for hover feedback. */
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-white,.hover\:bg-stone-50,.hover\:bg-stone-100,.hover\:bg-stone-200,.hover\:bg-white,.hover\:bg-gray-50,.hover\:bg-gray-100,.hover\:bg-gray-200,.hover\:bg-white,.hover\:bg-slate-50,.hover\:bg-slate-100,.hover\:bg-slate-200,.hover\:bg-white,.hover\:bg-neutral-50,.hover\:bg-neutral-100,.hover\:bg-neutral-200,.hover\:bg-white,.hover\:bg-zinc-50,.hover\:bg-zinc-100,.hover\:bg-zinc-200):hover { background-color: var(--vb-border); }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-red-50,.hover\:bg-red-100,.hover\:bg-red-200):hover { background-color: #7f1d1d; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-orange-50,.hover\:bg-orange-100,.hover\:bg-orange-200):hover { background-color: #7c2d12; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-amber-50,.hover\:bg-amber-100,.hover\:bg-amber-200):hover { background-color: #78350f; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-yellow-50,.hover\:bg-yellow-100,.hover\:bg-yellow-200):hover { background-color: #713f12; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-lime-50,.hover\:bg-lime-100,.hover\:bg-lime-200):hover { background-color: #365314; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-green-50,.hover\:bg-green-100,.hover\:bg-green-200):hover { background-color: #14532d; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-emerald-50,.hover\:bg-emerald-100,.hover\:bg-emerald-200):hover { background-color: #064e3b; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-teal-50,.hover\:bg-teal-100,.hover\:bg-teal-200):hover { background-color: #134e4a; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-cyan-50,.hover\:bg-cyan-100,.hover\:bg-cyan-200):hover { background-color: #164e63; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-sky-50,.hover\:bg-sky-100,.hover\:bg-sky-200):hover { background-color: #0c4a6e; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-blue-50,.hover\:bg-blue-100,.hover\:bg-blue-200):hover { background-color: #1e3a8a; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-indigo-50,.hover\:bg-indigo-100,.hover\:bg-indigo-200):hover { background-color: #312e81; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-violet-50,.hover\:bg-violet-100,.hover\:bg-violet-200):hover { background-color: #4c1d95; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-purple-50,.hover\:bg-purple-100,.hover\:bg-purple-200):hover { background-color: #581c87; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-fuchsia-50,.hover\:bg-fuchsia-100,.hover\:bg-fuchsia-200):hover { background-color: #701a75; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-pink-50,.hover\:bg-pink-100,.hover\:bg-pink-200):hover { background-color: #831843; }
-html.a11y-dark:not([data-theme-dark]) :is(.hover\:bg-rose-50,.hover\:bg-rose-100,.hover\:bg-rose-200):hover { background-color: #881337; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-white,.hover\:bg-stone-50,.hover\:bg-stone-100,.hover\:bg-stone-200,.hover\:bg-white,.hover\:bg-gray-50,.hover\:bg-gray-100,.hover\:bg-gray-200,.hover\:bg-white,.hover\:bg-slate-50,.hover\:bg-slate-100,.hover\:bg-slate-200,.hover\:bg-white,.hover\:bg-neutral-50,.hover\:bg-neutral-100,.hover\:bg-neutral-200,.hover\:bg-white,.hover\:bg-zinc-50,.hover\:bg-zinc-100,.hover\:bg-zinc-200):hover { background-color: var(--vb-border); }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-red-50,.hover\:bg-red-100,.hover\:bg-red-200):hover { background-color: #7f1d1d; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-orange-50,.hover\:bg-orange-100,.hover\:bg-orange-200):hover { background-color: #7c2d12; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-amber-50,.hover\:bg-amber-100,.hover\:bg-amber-200):hover { background-color: #78350f; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-yellow-50,.hover\:bg-yellow-100,.hover\:bg-yellow-200):hover { background-color: #713f12; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-lime-50,.hover\:bg-lime-100,.hover\:bg-lime-200):hover { background-color: #365314; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-green-50,.hover\:bg-green-100,.hover\:bg-green-200):hover { background-color: #14532d; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-emerald-50,.hover\:bg-emerald-100,.hover\:bg-emerald-200):hover { background-color: #064e3b; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-teal-50,.hover\:bg-teal-100,.hover\:bg-teal-200):hover { background-color: #134e4a; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-cyan-50,.hover\:bg-cyan-100,.hover\:bg-cyan-200):hover { background-color: #164e63; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-sky-50,.hover\:bg-sky-100,.hover\:bg-sky-200):hover { background-color: #0c4a6e; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-blue-50,.hover\:bg-blue-100,.hover\:bg-blue-200):hover { background-color: #1e3a8a; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-indigo-50,.hover\:bg-indigo-100,.hover\:bg-indigo-200):hover { background-color: #312e81; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-violet-50,.hover\:bg-violet-100,.hover\:bg-violet-200):hover { background-color: #4c1d95; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-purple-50,.hover\:bg-purple-100,.hover\:bg-purple-200):hover { background-color: #581c87; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-fuchsia-50,.hover\:bg-fuchsia-100,.hover\:bg-fuchsia-200):hover { background-color: #701a75; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-pink-50,.hover\:bg-pink-100,.hover\:bg-pink-200):hover { background-color: #831843; }
+:is(html.a11y-dark:not([data-theme-dark]),html[data-theme-dark="true"]) :is(.hover\:bg-rose-50,.hover\:bg-rose-100,.hover\:bg-rose-200):hover { background-color: #881337; }
 
 /* Native scrollbars for global dark mode (mirrors the teacher-dark rules). */
 html.a11y-dark:not([data-theme-dark]) {

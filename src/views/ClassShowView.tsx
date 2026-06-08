@@ -13,7 +13,7 @@
  *   playing → answer-tap-reveals / skip / next / choose-different-mode loop
  *   finished → "Show complete!" (only when teacher plays through all words)
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import ClassShowSetup, { type ClassShowMode, type ClassShowWordSource, type ClassShowWordPickerWiring } from '../components/classshow/ClassShowSetup';
 import ClassShowQuestion from '../components/classshow/ClassShowQuestion';
@@ -45,6 +45,10 @@ interface ClassShowViewProps {
    *  — the same UX the assignment wizard uses.  Optional: when
    *  omitted, only the pre-built sources are available. */
   pickerWiring?: ClassShowWordPickerWiring;
+  /** Activity-type tab strip rendered under the hero on the setup
+   *  screen, so teachers can jump to the other creation tools.  Built
+   *  by the section renderer; only shown during the setup phase. */
+  activityTabs?: ReactNode;
 }
 
 type Phase =
@@ -69,7 +73,7 @@ function shuffleIndices(n: number): number[] {
   return arr;
 }
 
-export default function ClassShowView({ user, initialSources, initialSourceIndex = 0, onExit, pickerWiring }: ClassShowViewProps) {
+export default function ClassShowView({ user, initialSources, initialSourceIndex = 0, onExit, pickerWiring, activityTabs }: ClassShowViewProps) {
   // Apply the teacher's chosen dashboard palette so the projector
   // surface keeps the same look + feel as the rest of their UI.
   useTeacherTheme(user?.teacherDashboardTheme);
@@ -172,6 +176,7 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
         availableSources={initialSources}
         initialSourceIndex={initialSourceIndex}
         pickerWiring={pickerWiring}
+        activityTabs={activityTabs}
         onCancel={onExit}
         customWords={customWords}
         onCustomWordsChange={setCustomWords}

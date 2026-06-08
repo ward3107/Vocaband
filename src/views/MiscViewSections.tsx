@@ -26,6 +26,7 @@ import SvgSpinner from '../components/svg/SvgSpinner';
 import { hasTeacherAccess, type AppUser, type ClassData, type AssignmentData } from '../core/supabase';
 import type { VocaId } from '../core/subject';
 import type { View } from '../core/views';
+import ActivityTabsSlot from '../components/setup/ActivityTabsSlot';
 
 const ShopView = lazyWithRetry(() => import('./ShopMarketplaceView'));
 const VocaPickerView = lazyWithRetry(() => import('./VocaPickerView'));
@@ -155,6 +156,14 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           speak={speakWord}
           assignments={hotSeatAssignments}
           topicPacks={topicPacks}
+          activityTabs={
+            <ActivityTabsSlot
+              active="hot-seat"
+              setView={setView}
+              hasSelectedClass={!!selectedClass}
+              isHebrew={activeVoca === 'hebrew'}
+            />
+          }
         />
       </LazyWrapper>
     );
@@ -182,6 +191,14 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           assignments={wheelAssignments}
           topicPacks={topicPacks}
           initialPlayerNames={initialPlayerNames}
+          activityTabs={
+            <ActivityTabsSlot
+              active="wheel"
+              setView={setView}
+              hasSelectedClass={!!selectedClass}
+              isHebrew={activeVoca === 'hebrew'}
+            />
+          }
         />
       </LazyWrapper>
     );
@@ -208,6 +225,16 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           user={user}
           classes={visibleClasses}
           teacherAssignments={visibleAssignments}
+          activityTabs={
+            <ActivityTabsSlot
+              active="vocabagrut"
+              setView={setView}
+              hasSelectedClass={!!selectedClass}
+              // Always English here — the Hebrew branch returned the
+              // coming-soon screen above, so activeVoca is non-Hebrew.
+              isHebrew={false}
+            />
+          }
           onExit={() => {
             if (user.role === 'student') {
               setView('student-dashboard');

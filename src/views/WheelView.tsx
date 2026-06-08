@@ -23,7 +23,7 @@
  *   4. question — single question of the picked challenge type
  *   5. done     — podium with medals + Play Again / Exit
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Trophy, ArrowRight, Volume2, X, Play, BookOpen,
@@ -68,6 +68,10 @@ interface WheelViewProps {
   /** When launched from a class, pre-fill the roster textarea with
    *  that class's student names so the teacher doesn't retype them. */
   initialPlayerNames?: string[];
+  /** Activity-type tab strip rendered under the hero on the setup
+   *  screen, so teachers can jump to the other creation tools.  Built
+   *  by the section renderer (it owns navigation); omit to hide. */
+  activityTabs?: ReactNode;
 }
 
 type Phase = 'setup' | 'spinning' | 'landed' | 'question' | 'winner' | 'done';
@@ -635,7 +639,7 @@ const STRINGS: Record<Language, {
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-export default function WheelView({ onExit, speak, assignments, topicPacks, initialPlayerNames }: WheelViewProps) {
+export default function WheelView({ onExit, speak, assignments, topicPacks, initialPlayerNames, activityTabs }: WheelViewProps) {
   const { language, dir, isRTL } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
@@ -1162,7 +1166,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
   // ════════════════════════════════════════════════════════════
   if (phase === 'setup') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-violet-50 to-fuchsia-50" dir={dir}>
+      <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
         <PageHero
           icon={<Disc3 size={32} className="text-white" />}
           title={t.title}
@@ -1171,6 +1175,8 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
           backLabel={t.exitBtn}
           gradient="from-indigo-500 via-violet-500 to-fuchsia-500"
         />
+
+        {activityTabs}
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
           <div className="rounded-2xl bg-white shadow-lg border border-violet-100 overflow-hidden">

@@ -16,7 +16,7 @@
  * added there — translation, OCR, AI batch, saved groups — is
  * automatically available in Class Show too.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import {
   Layers, Headphones, ArrowLeftRight, FileText, CheckCircle, Sparkles, Play,
@@ -92,6 +92,10 @@ interface ClassShowSetupProps {
    *  setup phase re-mounts at the end of a round. */
   translationLang: TranslationLang;
   onTranslationLangChange: (lang: TranslationLang) => void;
+  /** Activity-type tab strip rendered under the hero, so teachers can
+   *  jump to the other creation tools.  Built by the section renderer
+   *  (it owns navigation); omit to hide. */
+  activityTabs?: ReactNode;
 }
 
 // Idioms are intentionally excluded from Class Show — it doesn't
@@ -125,6 +129,7 @@ export default function ClassShowSetup({
   onCustomWordsCustomTierChange,
   translationLang,
   onTranslationLangChange,
+  activityTabs,
 }: ClassShowSetupProps) {
   const { language } = useLanguage();
   const t = classShowStrings[language];
@@ -182,6 +187,8 @@ export default function ClassShowSetup({
         gradient="from-fuchsia-500 via-pink-500 to-rose-500"
         trailing={<GuideTriggerButton onClick={guide.open} />}
       />
+
+      {activityTabs}
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
         <motion.div

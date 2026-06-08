@@ -37,7 +37,7 @@
  *     breaking other modes for a v1.  Worth factoring out in a v2 if
  *     a third pass-around mode shows up.
  */
-import { useCallback, useMemo, useState, useRef, type ChangeEvent } from "react";
+import { useCallback, useMemo, useState, useRef, type ChangeEvent, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play, BookOpen,
@@ -76,6 +76,10 @@ interface HotSeatViewProps {
    *  Same shape as `TOPIC_PACKS` in vocabulary.ts — passing the whole
    *  array is fine, the picker UI scopes display itself. */
   topicPacks?: HotSeatTopicPack[];
+  /** Activity-type tab strip rendered under the hero on the setup
+   *  screen, so teachers can jump to the other creation tools.  Built
+   *  by the section renderer (it owns navigation); omit to hide. */
+  activityTabs?: ReactNode;
 }
 
 type Phase = 'setup' | 'interstitial' | 'question' | 'done';
@@ -433,7 +437,7 @@ const STRINGS: Record<Language, {
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-export default function HotSeatView({ onExit, speak, assignments, topicPacks }: HotSeatViewProps) {
+export default function HotSeatView({ onExit, speak, assignments, topicPacks, activityTabs }: HotSeatViewProps) {
   const { language, dir, isRTL } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
@@ -757,7 +761,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
   if (phase === 'setup') {
     const canStart = parsedNameCount >= 2 && wordPool.length >= 4;
     return (
-      <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-violet-50 to-fuchsia-50" dir={dir}>
+      <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
         <PageHero
           icon={<Users size={32} className="text-white" />}
           title={t.title}
@@ -766,6 +770,8 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks }: 
           backLabel={t.exitBtn}
           gradient="from-indigo-500 via-violet-500 to-fuchsia-500"
         />
+
+        {activityTabs}
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
           <div className="rounded-2xl bg-white shadow-lg border border-orange-100 overflow-hidden">

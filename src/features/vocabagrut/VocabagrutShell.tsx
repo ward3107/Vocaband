@@ -2,7 +2,7 @@
 // single instance of this; the shell decides what to render based on
 // user.role and its own internal sub-view state.
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { AppUser, ClassData, AssignmentData } from '../../core/supabase';
 import type { BagrutTest } from './types';
 import BagrutLandingView from './views/BagrutLandingView';
@@ -17,9 +17,14 @@ interface Props {
   teacherAssignments: AssignmentData[];
   onExit: () => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
+  /** Activity-type tab strip rendered under the hero on the landing
+   *  screen, so teachers can jump to the other creation tools.  Built
+   *  by the section renderer; only shown on the landing (not the
+   *  editor or student views). */
+  activityTabs?: ReactNode;
 }
 
-export default function VocabagrutShell({ user, classes, teacherAssignments, onExit, showToast }: Props) {
+export default function VocabagrutShell({ user, classes, teacherAssignments, onExit, showToast, activityTabs }: Props) {
   // All hooks first, above every early return — the teacher sub-view state.
   // The student early return below used to sit ABOVE these useState calls,
   // so a student render ran 0 hooks while a teacher render ran 4; any render
@@ -42,6 +47,7 @@ export default function VocabagrutShell({ user, classes, teacherAssignments, onE
         user={user}
         classes={classes}
         teacherAssignments={teacherAssignments}
+        activityTabs={activityTabs}
         onBack={onExit}
         onGenerated={(t, words) => {
           setTest(t);
