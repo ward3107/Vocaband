@@ -61,5 +61,28 @@ await step("person drawer", async () => {
 await page.screenshot({ path: `${OUT}/04-person-360.png` });
 console.log("✓ 04-person-360");
 
+// 5 — Entitlements tab: bulk multi-select bar
+await step("entitlements bulk", async () => {
+  await page.keyboard.press("Escape"); // close the drawer if open
+  await page.getByRole("button", { name: "Entitlements", exact: true }).click();
+  await page.getByText("ariella.katz@telaviv-bilingual.edu").first().waitFor({ timeout: 5000 });
+  await sleep(300);
+  const boxes = page.getByRole("checkbox");
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
+  await sleep(400);
+});
+await page.screenshot({ path: `${OUT}/05-entitlements-bulk.png` });
+console.log("✓ 05-entitlements-bulk");
+
+// 6 — Security ops tab: folded authorization-failure log
+await step("security authz", async () => {
+  await page.getByRole("button", { name: "Security ops", exact: true }).click();
+  await page.getByText("Authorization failures").first().waitFor({ timeout: 5000 });
+  await sleep(500);
+});
+await page.screenshot({ path: `${OUT}/06-security-authz.png` });
+console.log("✓ 06-security-authz");
+
 await browser.close();
 console.log("done");

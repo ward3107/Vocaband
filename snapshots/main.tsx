@@ -50,7 +50,27 @@ const RPC: Record<string, (a: Record<string, unknown>) => unknown> = {
   admin_list_classes: (a) => { const q = String(a.p_query ?? ""); return q ? CLASSES.filter((c) => has(c.name, q) || has(c.code, q) || has(c.teacher_email, q) || has(c.teacher_name, q)) : CLASSES; },
   admin_list_schools: () => SCHOOLS,
   admin_list_entitlements: () => ENTITLEMENTS,
+  admin_list_security_checks: () => [
+    { key: "rls_pentest", title: "RLS penetration test", description: "Run scripts/security-pen-test.sh against prod RLS.", cadence_days: 30, cadence_label: "Monthly", last_performed_at: "2026-05-19", last_performed_by_email: "wasya92@gmail.com", last_notes: "4/4 checks passed", days_since_last: 20, overdue_days: null },
+    { key: "dep_audit", title: "Dependency audit", description: "npm audit — patch HIGH/CRITICAL CVEs.", cadence_days: 7, cadence_label: "Weekly", last_performed_at: "2026-05-30", last_performed_by_email: "wasya92@gmail.com", last_notes: null, days_since_last: 9, overdue_days: 2 },
+  ],
+  admin_recent_exports: () => ({ hours: 24, total: 0, by_actor: [] }),
 };
+
+// authz_failures is read via supabase.from(...), not an RPC — stub the query
+// builder so the Security ops tab renders sample rows.
+const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+const AUTHZ = [
+  { id: "a1", occurred_at: ago(2), actor_uid: "u_x9f2a7c1", actor_role: "teacher", ip_address: "203.0.113.5", endpoint: "/api/admin/integrations", table_name: null, operation: null, reason: "requireAdmin_not_admin", metadata: null },
+  { id: "a2", occurred_at: ago(5), actor_uid: null, actor_role: null, ip_address: "198.51.100.22", endpoint: "rls:classes", table_name: "classes", operation: "UPDATE", reason: "rls_denied", metadata: null },
+  { id: "a3", occurred_at: ago(20), actor_uid: "u_a1b2c3d4", actor_role: "student", ip_address: "192.0.2.7", endpoint: "rls:progress", table_name: "progress", operation: "DELETE", reason: "rls_denied", metadata: null },
+];
+const authzBuilder: Record<string, unknown> = {
+  select: () => authzBuilder, order: () => authzBuilder, limit: () => authzBuilder,
+  gte: () => authzBuilder, eq: () => authzBuilder,
+  then: (resolve: (v: unknown) => void) => resolve({ data: AUTHZ, error: null }),
+};
+(supabase as unknown as { from: (t: string) => unknown }).from = () => authzBuilder;
 
 // Stub the singleton client's rpc; components never hit the network.
 (supabase as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<unknown> }).rpc =
