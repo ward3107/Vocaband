@@ -1,19 +1,24 @@
 /**
- * ActivityTypeTabs — Horizontal tab strip at the top of the New
- * Activity wizard.  Lets the teacher pick what kind of thing they
- * want to create for the current class without leaving the wizard.
+ * ActivityTypeTabs — Horizontal tab strip shown at the top of every
+ * teacher creation surface (the Assignment wizard AND the Class Show /
+ * Hot Seat / Vocab Wheel / Vocabagrut setup screens).  Lets the teacher
+ * jump between the creation tools in one tap instead of backing out to
+ * the dashboard each time.
  *
- *   [📚 Assignment] [📺 Class Show] [👥 Hot Seat] [✨ Vocabagrut]
+ *   [📚 Assignment] [📺 Class Show] [👥 Hot Seat] [🎡 Vocab Wheel] [✨ Vocabagrut]
  *
- * Tapping a non-Assignment tab calls onSwitch with the activity id;
- * the parent closes the wizard and opens the matching view with the
- * current class preselected.  The Assignment tab is purely visual —
- * it's already the active flow, so no callback fires.
+ * Tapping the ACTIVE tab is a no-op.  Tapping any other non-Assignment
+ * tab calls `onSwitch` with the activity id; the parent opens the
+ * matching view with the current class preselected.  The Assignment tab
+ * routes through the separate `onSwitchToAssignment` callback (the
+ * wizard needs a selected class, so the parent decides where it lands) —
+ * when the wizard itself is the active surface no callback is wired, so
+ * the already-active Assignment tab stays purely visual.
  *
- * Hidden when the wizard is in Quick Play mode (those tabs make no
- * sense without a class), and Hot Seat / Vocabagrut hide on Hebrew
- * classes (those tools are English-only — same gate the old dashboard
- * tiles used).
+ * Hidden when the surface is in Quick Play mode (those tabs make no
+ * sense without a class), and Hot Seat / Wheel / Vocabagrut hide on
+ * Hebrew classes (those tools are English-only — same gate the old
+ * dashboard tiles used).
  */
 import React from 'react';
 import { BookOpen, Tv2, Users, Sparkles, Disc3 } from 'lucide-react';
@@ -29,13 +34,20 @@ export interface ActivityTypeTabsProps {
    *  visually highlight which tab is open if it ever inlines the
    *  other flows. */
   active: ActivityType;
-  /** Fired when the teacher picks a non-active tab.  Parent closes
-   *  the wizard and opens the chosen tool with the class preselected.
-   *  Narrowed to exclude 'assignment' because the Assignment tab is
-   *  always the active wizard view — re-clicking it is a no-op. */
+  /** Fired when the teacher picks a non-active, non-Assignment tab.
+   *  Parent opens the chosen tool with the class preselected.  Narrowed
+   *  to exclude 'assignment' so callers that only host the tool tabs
+   *  (the wizard) don't have to handle it. */
   onSwitch: (type: Exclude<ActivityType, 'assignment'>) => void;
-  /** Hide Hot Seat + Vocabagrut tabs.  Set when the parent class is
-   *  Hebrew, matching the dashboard tile gating that lived in the
+  /** Fired when the teacher taps the Assignment tab while it is NOT the
+   *  active surface (i.e. the strip is mounted on a tool page).  Routed
+   *  separately because opening the Assignment wizard needs a selected
+   *  class, so the parent decides where it lands.  Omit it on the
+   *  wizard itself — there the Assignment tab is already active and
+   *  stays a visual no-op. */
+  onSwitchToAssignment?: () => void;
+  /** Hide Hot Seat + Wheel + Vocabagrut tabs.  Set when the parent class
+   *  is Hebrew, matching the dashboard tile gating that lived in the
    *  previous TeacherQuickActions. */
   hideEnglishOnlyTabs?: boolean;
 }
@@ -52,6 +64,7 @@ interface TabDef {
 const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
   active,
   onSwitch,
+  onSwitchToAssignment,
   hideEnglishOnlyTabs = false,
 }) => {
   const { language, isRTL } = useLanguage();
@@ -95,7 +108,11 @@ const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => {
-                  if (isActive || tab.id === 'assignment') return;
+                  if (isActive) return;
+                  if (tab.id === 'assignment') {
+                    onSwitchToAssignment?.();
+                    return;
+                  }
                   onSwitch(tab.id);
                 }}
                 aria-pressed={isActive}

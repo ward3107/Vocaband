@@ -7,7 +7,7 @@
 // assignment).  The teacher sees and approves the merged list before
 // generation runs — they can remove individual chips or clear all.
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, Camera, ClipboardPaste, FolderOpen, Sparkles, Loader2, X, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AppUser, ClassData, AssignmentData } from '../../../core/supabase';
@@ -28,6 +28,10 @@ interface Props {
   onBack: () => void;
   onGenerated: (test: BagrutTest, sourceWords: string[]) => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
+  /** Activity-type tab strip rendered under the hero, so teachers can
+   *  jump to the other creation tools.  Built by the section renderer
+   *  (it owns navigation); omit to hide. */
+  activityTabs?: ReactNode;
 }
 
 const MODULE_GRADIENTS: Record<BagrutModule, string> = {
@@ -59,7 +63,7 @@ function parsePasteText(text: string): string[] {
   return out;
 }
 
-export default function BagrutLandingView({ user, classes, teacherAssignments, onBack, onGenerated, showToast }: Props) {
+export default function BagrutLandingView({ user, classes, teacherAssignments, onBack, onGenerated, showToast, activityTabs }: Props) {
   const { language, dir } = useLanguage();
   const t = vocabagrutT[language];
   const [module, setModule] = useState<BagrutModule>('B');
@@ -240,6 +244,8 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
           </div>
         </div>
       </div>
+
+      {activityTabs}
 
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8 space-y-8">
         {/* ── Module picker ── */}
