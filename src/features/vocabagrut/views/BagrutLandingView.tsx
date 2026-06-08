@@ -8,11 +8,12 @@
 // generation runs — they can remove individual chips or clear all.
 
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, Camera, ClipboardPaste, FolderOpen, Sparkles, Loader2, X, Plus } from 'lucide-react';
+import { Camera, ClipboardPaste, FolderOpen, Sparkles, Loader2, X, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AppUser, ClassData, AssignmentData } from '../../../core/supabase';
 import { supabase } from '../../../core/supabase';
 import InPageCamera from '../../../components/InPageCamera';
+import CreationPageShell from '../../../components/setup/CreationPageShell';
 import { AVAILABLE_MODULES, COMING_SOON_MODULES, MODULE_SPECS } from '../lib/moduleMap';
 import { useBagrutGenerator } from '../hooks/useBagrutGenerator';
 import type { BagrutModule, BagrutTest } from '../types';
@@ -64,7 +65,7 @@ function parsePasteText(text: string): string[] {
 }
 
 export default function BagrutLandingView({ user, classes, teacherAssignments, onBack, onGenerated, showToast, activityTabs }: Props) {
-  const { language, dir } = useLanguage();
+  const { language } = useLanguage();
   const t = vocabagrutT[language];
   const [module, setModule] = useState<BagrutModule>('B');
   const [source, setSource] = useState<WordSource>('paste');
@@ -224,30 +225,16 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
   }
 
   return (
-    <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-bg)' }}>
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 opacity-90" />
-        <div className="relative px-4 sm:px-8 py-6 sm:py-10">
-          <button onClick={onBack} type="button" className="text-white/90 hover:text-white inline-flex items-center gap-1.5 text-sm font-medium mb-4">
-            <ArrowLeft size={18} /> {t.back}
-          </button>
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
-              <Sparkles size={32} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-black text-white">{t.productName}</h1>
-              <p className="text-white/90 text-sm sm:text-base mt-1 max-w-xl">
-                {t.heroBlurb}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {activityTabs}
-
-      <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8 space-y-8">
+    <CreationPageShell
+      icon={<Sparkles size={32} className="text-white" />}
+      title={t.productName}
+      subtitle={t.heroBlurb}
+      onBack={onBack}
+      backLabel={t.back}
+      activityTabs={activityTabs}
+    >
+      <div className="rounded-2xl bg-white shadow-lg border border-violet-100 overflow-hidden">
+        <div className="px-6 py-6 space-y-8">
         {/* ── Module picker ── */}
         <section>
           <h2 className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
@@ -512,6 +499,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
             {t.generateFootnote}
           </p>
         </section>
+        </div>
       </div>
 
       {showCamera && (
@@ -521,7 +509,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
           onUseGallery={() => { setShowCamera(false); fileInputRef.current?.click(); }}
         />
       )}
-    </div>
+    </CreationPageShell>
   );
 }
 

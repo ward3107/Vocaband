@@ -14,6 +14,11 @@
  * 'vocabagrut'), and the Assignment tab needs a selected class (the
  * wizard is class-scoped), so it falls back to the dashboard when none
  * is set rather than dead-ending on a view that won't render.
+ *
+ * This is pure wiring — it returns the bare ActivityTypeTabs.  The
+ * width + padding wrapper that keeps the strip aligned to the content
+ * lives in CreationPageShell, which every host page renders through, so
+ * the tabs and the card below them always share an edge.
  */
 import ActivityTypeTabs, { type ActivityType } from './ActivityTypeTabs';
 import type { View } from '../../core/views';
@@ -39,17 +44,15 @@ export default function ActivityTabsSlot({
   isHebrew = false,
 }: ActivityTabsSlotProps) {
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-6">
-      <ActivityTypeTabs
-        active={active}
-        // Non-Assignment activity ids ARE View values, so navigation is
-        // a direct setView.
-        onSwitch={(type) => setView(type)}
-        onSwitchToAssignment={() =>
-          setView(hasSelectedClass ? 'create-assignment' : 'teacher-dashboard')
-        }
-        hideEnglishOnlyTabs={isHebrew}
-      />
-    </div>
+    <ActivityTypeTabs
+      active={active}
+      // Non-Assignment activity ids ARE View values, so navigation is
+      // a direct setView.
+      onSwitch={(type) => setView(type)}
+      onSwitchToAssignment={() =>
+        setView(hasSelectedClass ? 'create-assignment' : 'teacher-dashboard')
+      }
+      hideEnglishOnlyTabs={isHebrew}
+    />
   );
 }
