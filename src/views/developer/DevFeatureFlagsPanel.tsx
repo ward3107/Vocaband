@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, ToggleLeft, ToggleRight, Flag } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevFeatureFlag } from "./devShared";
 import { refreshFeatureFlags } from "../../hooks/useFeatureFlag";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -17,6 +18,7 @@ export default function DevFeatureFlagsPanel({ showToast }: Props) {
   const [newKey, setNewKey] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [busy, setBusy] = useState(false);
+  const [flagToDelete, setFlagToDelete] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     const res = await callAdminRpcCached<DevFeatureFlag[]>("admin_list_flags", {}, showToast);
@@ -51,7 +53,6 @@ export default function DevFeatureFlagsPanel({ showToast }: Props) {
 
   const remove = useCallback(
     async (key: string) => {
-      if (!window.confirm(`Delete flag "${key}"? Callers will fall back to default (usually off).`)) return;
       setBusy(true);
       const res = await callAdminRpc<{ success?: boolean }>("admin_delete_flag", { p_key: key }, showToast);
       setBusy(false);
@@ -155,7 +156,7 @@ export default function DevFeatureFlagsPanel({ showToast }: Props) {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void remove(f.key)}
+              onClick={() => setFlagToDelete(f.key)}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className="p-2 rounded-xl bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
               aria-label="Delete flag"
@@ -165,6 +166,24 @@ export default function DevFeatureFlagsPanel({ showToast }: Props) {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!flagToDelete}
+        tone="danger"
+        title="Delete this flag?"
+        body={flagToDelete && (
+          <>Deletes <strong className="text-white font-mono">{flagToDelete}</strong>. Callers fall back to the default
+          (usually off).</>
+        )}
+        confirmLabel="Delete flag"
+        busy={busy}
+        onConfirm={async () => {
+          if (!flagToDelete) return;
+          await remove(flagToDelete);
+          setFlagToDelete(null);
+        }}
+        onCancel={() => setFlagToDelete(null)}
+      />
     </div>
   );
 }

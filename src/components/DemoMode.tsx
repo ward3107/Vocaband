@@ -31,14 +31,19 @@ import { useLanguage, Language, ALL_LANGUAGES } from "../hooks/useLanguage";
 import { AvatarPicker } from "./AvatarPicker";
 import { getSentencesForWord } from "../data/sentence-bank";
 import { isAnswerCorrect, cleanWordForDisplay } from "../utils/answerMatch";
-import { MYSTERY_EGGS, THEMES, NAME_FRAMES } from "../constants/game";
+import { MYSTERY_EGGS, THEMES, NAME_FRAMES, XP_TITLES, getXpTitle } from "../constants/game";
 import { DIFFICULTY_META, getModeDifficulty } from "./setup/types";
+import { demoTranslations } from "../locales/demo-mode";
 
 interface DemoModeProps {
   onClose: () => void;
+  /** Optional conversion hook fired by the results-screen "Get started"
+   *  CTA. The public landing wires it to close the demo and open teacher
+   *  login; it falls back to onClose so the demo still works without it. */
+  onGetStarted?: () => void;
 }
 
-type DemoView = "welcome" | "avatar" | "game-select" | "mode-intro" | "game" | "results" | "shop";
+type DemoView = "welcome" | "avatar" | "game-select" | "mode-intro" | "game" | "results" | "shop" | "teacher";
 type ShopTab = "eggs" | "avatars" | "themes" | "frames" | "titles" | "powerups" | "premium";
 
 // Avatar categories pulled from the real app constants so the demo shop
@@ -54,14 +59,23 @@ const PREMIUM_AVATARS = [
   { emoji: '🎖️', name: 'General', cost: 100 },
 ];
 
-// XP Titles matching full app
-const XP_TITLES = [
-  { min: 0, title: "Newbie", color: "#9CA3AF" },
-  { min: 50, title: "Rising Star", color: "#60B5FF" },
-  { min: 150, title: "Word Wizard", color: "#FCD34D" },
-  { min: 300, title: "Vocab Master", color: "#F97316" },
-  { min: 500, title: "Legend", color: "#EF4444" },
-];
+// XP tier colours. The shared XP_TITLES (imported from constants/game)
+// owns the real names / thresholds / emoji, so the demo shows the exact
+// same ladder students climb after signing up — previously the demo had
+// its own divergent copy (Newbie/Rising Star/… at 50/150/300) that no
+// longer existed in the real app. XP_TITLES carries no colour, so we map
+// each tier name to one here for the demo's crowns and title chips.
+const TITLE_COLORS: Record<string, string> = {
+  Beginner: "#84CC16",
+  Learner: "#60B5FF",
+  Scholar: "#FCD34D",
+  Expert: "#F97316",
+  Master: "#EF4444",
+  Legend: "#8B5CF6",
+  Mythic: "#D946EF",
+  Ascended: "#06B6D4",
+};
+const titleColor = (title: string): string => TITLE_COLORS[title] ?? "#9CA3AF";
 
 // Power-ups matching full app
 const POWER_UPS = [
@@ -70,376 +84,56 @@ const POWER_UPS = [
   { id: 'reveal_letter', name: 'Hint', emoji: '💡', desc: 'Reveal first letter', cost: 0, freeInDemo: 3 },
 ];
 
-// Demo words — 50 carefully-curated Set 1 words presented in a gentle
+// Demo words — a short taster of Set 1 words presented in a gentle
 // ramp from easiest to hardest so a brand-new visitor succeeds on the
 // first handful and only slowly meets trickier words.  Difficulty is
 // approximated by English word length (shortest first) — not perfect
 // but a good proxy for "cat/dog/run" vs "butterfly/understand".
 //
+// DEMO_WORD_COUNT is kept short (10) on purpose: the demo's whole
+// promise is a ~2-minute taster, and a prospective teacher won't sit
+// through 50 multiple-choice questions per mode. Ten words is enough to
+// show off a mode end-to-end without overstaying its welcome — and it
+// matches the "10 sample words" the onboarding copy advertises.
+//
 // IMPORTANT: the vocabulary data uses level: "Set 1" (see
 // src/data/vocabulary.ts).  An earlier version of this filter said
 // 'Band 1' (legacy terminology) which matched NO words and left the
 // demo with an empty pool — rendering every game mode screen blank.
+const DEMO_WORD_COUNT = 10;
 const DEMO_WORDS: Word[] = ALL_WORDS
   .filter(w => w.level === 'Set 1')
   .slice()
   .sort((a, b) => a.english.length - b.english.length || a.english.localeCompare(b.english))
-  .slice(0, 50);
+  .slice(0, DEMO_WORD_COUNT);
 
-// Translations
-const demoTranslations: Record<Language, Record<string, string>> = {
-  en: {
-    demoMode: "Demo Mode — a hands-on preview of Vocaband",
-    signUpFree: "",
-    welcomeTitle: "Welcome to Vocaband",
-    welcomeDesc: "An English vocabulary app students actually want to play — built for ESL classrooms.",
-    introHook: "Why Vocaband?",
-    introHookBody: "Most vocabulary practice feels like homework. Vocaband turns it into a game: XP, streaks, avatars, mystery eggs, and 15 game modes keep students coming back. Teachers get clear analytics on every word each student is learning.",
-    forTeachersTitle: "For English Teachers",
-    forTeachersDesc: "Create assignments in minutes, track per-student + per-word mastery, run live challenges, and grade automatically.",
-    forStudentsTitle: "For Students",
-    forStudentsDesc: "1000+ curated words from Sets 1–3. 15 game modes. XP, streaks, avatars, and a shop full of cosmetics and power-ups.",
-    tryDemoIntro: "In the next 2 minutes you'll play a real game mode with 10 sample words and see the XP, avatar and shop systems live.",
-    experienceTitle: "What you'll try in this demo:",
-    sampleWords: "100 sample words from Set 1 (real vocabulary)",
-    gameModes: "A real game mode, end-to-end",
-    xpStreak: "XP, streak, and title progression",
-    achievements: "Achievements & reward pop-ups",
-    shopPreview: "A tour of the avatar + shop system",
-    fullVersionTitle: "The full version adds:",
-    fullVersionBullets: "• 1000+ words across Sets 1–3\n• 15+ game modes (Classic, Spelling, Matching, Listening, Flashcards, Sentence Builder…)\n• Teacher dashboard, class codes, live challenges, gradebook\n• Mystery eggs, premium avatars, themes, titles, frames, boosters\n• Per-student word-mastery analytics",
-    demoRuntime: "~2 minutes, no account needed",
-    letsGo: "Start the demo →",
-    chooseAvatar: "Choose Your Avatar",
-    pickEmoji: "Pick an emoji to represent you",
-    yourName: "Your Name",
-    enterNickname: "Enter a nickname...",
-    continue: "Continue",
-    back: "Back",
-    chooseGame: "Choose a Game Mode",
-    tryPopular: "Try one of our popular modes!",
-    exit: "Exit",
-    orTryShop: "or Visit Shop",
-    wordOf: "Word {current} of {total}",
-    tapToHear: "Tap to hear",
-    whatDoesMean: "What does this word mean?",
-    correct: "Correct!",
-    notQuite: "Not quite!",
-    theAnswerIs: "The answer is:",
-    matched: "Matched:",
-    tapCards: "Tap matching pairs",
-    tapTwoCards: "Tap two cards to match words with meanings",
-    greatJob: "Great Job!",
-    completedDemo: "You've completed the demo!",
-    correctAns: "Correct",
-    xpEarned: "XP Earned",
-    yourAvatar: "Your Avatar",
-    wantMore: "What you just saw",
-    unlockFeatures: "This was a taste of what students experience every day in Vocaband. The full version expands into 1000+ words, 15+ game modes, live class challenges, and a full teacher dashboard.",
-    playAgain: "Play Again",
-    closeDemo: "Close Demo",
-    signFree: "",
-    check: "Check",
-    typeWord: "Type the word in English",
-    translation: "Translation:",
-    unscramble: "Unscramble the letters",
-    listenType: "Listen and type what you hear",
-    trueFalse: "Is this translation correct?",
-    trueBtn: "True",
-    falseBtn: "False",
-    flashcardTap: "Tap to flip",
-    flashcardMeaning: "Meaning",
-    flashcardWord: "Word",
-    reverseTitle: "Translate to English",
-    next: "Next",
-    skip: "Skip",
-    hint: "Hint",
-    shop: "🛍️ Shop",
-    shopFull: "Shop available in full version!",
-    avatars: "Avatars",
-    themes: "Themes",
-    powerups: "Power-ups",
-    freeInDemo: "FREE in demo!",
-    premium: "Premium",
-    selectAvatar: "Select Avatar",
-    xpTitle: "XP Title",
-    currentTitle: "Current Title",
-    unlockedInFull: "Unlock in full version",
-    youEarned: "You earned",
-    totalXP: "Total XP",
-    wordsLearned: "words mastered",
-    badgesEarned: "Badges",
-    playPronunciation: "Play pronunciation",
-    typeInEnglish: "Type in English...",
-    typeTheWord: "Type the word...",
-    clearBtn: "Clear",
-    streak: "Streak",
-    frame: "Frame",
-  },
-  he: {
-    demoMode: "מצב הדגמה — הצצה מעשית ל-Vocaband",
-    signUpFree: "",
-    welcomeTitle: "ברוכים הבאים ל-Vocaband",
-    welcomeDesc: "אפליקציית אוצר מילים באנגלית שתלמידים באמת רוצים לשחק — תפורה לכיתה הישראלית.",
-    introHook: "למה Vocaband?",
-    introHookBody: "רוב התרגולים של אוצר מילים מרגישים כמו שיעורי בית. Vocaband הופכת את זה למשחק: XP, רצפים, אווטרים, ביצי פתעה ו-15 מצבי משחק שמחזירים את התלמידים שוב ושוב. למורים יש אנליטיקה ברורה על כל מילה שכל תלמיד לומד.",
-    forTeachersTitle: "למורים לאנגלית",
-    forTeachersDesc: "צרו מטלות תוך דקות, עקבו אחר שליטה במילים לכל תלמיד, נהלו אתגרים בכיתה וקבלו הערכה אוטומטית.",
-    forStudentsTitle: "לתלמידים",
-    forStudentsDesc: "1000+ מילים ערוכות מ-Set 1 עד 3. 15 מצבי משחק. XP, רצפים, אווטרים וחנות מלאה בפריטים קוסמטיים וחיזוקים.",
-    tryDemoIntro: "בשתי הדקות הבאות תשחקו במצב משחק אמיתי עם 10 מילים לדוגמה ותראו איך מערכת ה-XP, האווטרים והחנות עובדת.",
-    experienceTitle: "מה תנסו בהדגמה:",
-    sampleWords: "100 מילים לדוגמה מ-Set 1 (אוצר מילים אמיתי)",
-    gameModes: "מצב משחק אמיתי, מתחילתו עד סופו",
-    xpStreak: "התקדמות XP, רצפים ותארים",
-    achievements: "הישגים וחלונות פרסים",
-    shopPreview: "סיור במערכת האווטרים והחנות",
-    fullVersionTitle: "הגרסה המלאה מוסיפה:",
-    fullVersionBullets: "• 1000+ מילים ב-Sets 1–3\n• 15+ מצבי משחק (קלאסי, איות, התאמה, הקשבה, כרטיסיות, בונה משפטים…)\n• לוח מורה, קודי כיתה, אתגרי חי, ספר ציונים\n• ביצי פתעה, אווטרים פרימיום, ערכות נושא, תארים, מסגרות וחיזוקים\n• אנליטיקה של שליטה במילים לכל תלמיד",
-    demoRuntime: "~2 דקות, בלי הרשמה",
-    letsGo: "התחילו את ההדגמה ←",
-    chooseAvatar: "בחרו את האווטר שלכם",
-    pickEmoji: "בחרו אימוג'י שייצג אתכם",
-    yourName: "השם שלכם",
-    enterNickname: "הזינו כינוי...",
-    continue: "המשך",
-    back: "חזור",
-    chooseGame: "בחרו מצב משחק",
-    tryPopular: "נסו אחד ממצבי המשחק הפופולריים!",
-    exit: "יציאה",
-    orTryShop: "או בקרו בחנות",
-    wordOf: "מילה {current} מתוך {total}",
-    tapToHear: "הקישו לשמיעה",
-    whatDoesMean: "מה פירוש המילה הזו?",
-    correct: "נכון!",
-    notQuite: "לא ממש!",
-    theAnswerIs: "התשובה היא:",
-    matched: "התאמות:",
-    tapCards: "התאימו זוגות",
-    tapTwoCards: "הקישו על שני כרטיסים להתאמת מילים לפירושים",
-    greatJob: "עבודה טובה!",
-    completedDemo: "סיימתם את ההדגמה!",
-    correctAns: "נכונות",
-    xpEarned: "XP שנצבר",
-    yourAvatar: "האווטר שלכם",
-    wantMore: "מה ראיתם עכשיו",
-    unlockFeatures: "זו הייתה טעימה ממה שתלמידים חווים כל יום ב-Vocaband. הגרסה המלאה מתרחבת ל-1000+ מילים, 15+ מצבי משחק, אתגרים חיים בכיתה, ולוח מורה מלא.",
-    playAgain: "שחקו שוב",
-    closeDemo: "סגור הדגמה",
-    signFree: "",
-    check: "בדוק",
-    typeWord: "הקלד את המילה באנגלית",
-    translation: "תרגום:",
-    unscramble: "סדר את האותיות",
-    listenType: "הקשב והקלד מה שאתה שומע",
-    trueFalse: "האם התרגום נכון?",
-    trueBtn: "נכון",
-    falseBtn: "לא נכון",
-    flashcardTap: "הקש להפיכה",
-    flashcardMeaning: "פירוש",
-    flashcardWord: "מילה",
-    reverseTitle: "תרגם לאנגלית",
-    next: "הבא",
-    skip: "דלג",
-    hint: "רמז",
-    shop: "🛍️ חנות",
-    shopFull: "החנות זמינה בגרסה המלאה!",
-    avatars: "אווטרים",
-    themes: "ערכות נושא",
-    powerups: "חיזוקים",
-    freeInDemo: "חינם בהדגמה!",
-    premium: "פרימיום",
-    selectAvatar: "בחר אווטר",
-    xpTitle: "תואר XP",
-    currentTitle: "תואר נוכחי",
-    unlockedInFull: "פתיח בגרסה המלאה",
-    youEarned: "הרווחת",
-    totalXP: "סה\"כ XP",
-    wordsLearned: "מילים שנלמדו",
-    badgesEarned: "הישגים",
-    playPronunciation: "השמע הגייה",
-    typeInEnglish: "הקלידו באנגלית...",
-    typeTheWord: "הקלידו את המילה...",
-    clearBtn: "נקה",
-    streak: "רצף",
-    frame: "מסגרת",
-  },
-  ar: {
-    demoMode: "وضع تجريبي — معاينة عملية لـ Vocaband",
-    signUpFree: "",
-    welcomeTitle: "مرحباً بك في Vocaband",
-    welcomeDesc: "تطبيق مفردات إنجليزية يرغب الطلاب فعلاً في اللعب به — مصمم للصفوف الإسرائيلية.",
-    introHook: "لماذا Vocaband؟",
-    introHookBody: "معظم تمارين المفردات تشبه الواجبات. Vocaband يحولها إلى لعبة: XP، سلاسل، صور رمزية، بيض مفاجآت، و15 أوضاع لعب تُبقي الطلاب يعودون. يحصل المعلمون على تحليلات واضحة لكل كلمة يتعلمها كل طالب.",
-    forTeachersTitle: "لمعلمي الإنجليزية",
-    forTeachersDesc: "أنشئ واجبات خلال دقائق، تابع إتقان الكلمات لكل طالب، أدر تحديات مباشرة في الصف، واحصل على تقييم تلقائي.",
-    forStudentsTitle: "للطلاب",
-    forStudentsDesc: "1000+ كلمة منسقة من Sets 1–3. 15 أوضاع لعب. XP، سلاسل، صور رمزية، ومتجر مليء بالتحسينات والتعزيزات.",
-    tryDemoIntro: "في الدقيقتين التاليتين ستلعب وضع لعبة حقيقياً مع 10 كلمات نموذجية وترى نظام XP والصور الرمزية والمتجر يعمل مباشرة.",
-    experienceTitle: "ما ستجربه في هذا العرض:",
-    sampleWords: "100 كلمات نموذجية من Set 1 (مفردات حقيقية)",
-    gameModes: "وضع لعبة حقيقي، من البداية إلى النهاية",
-    xpStreak: "تقدم XP والسلاسل والألقاب",
-    achievements: "الإنجازات وإشعارات المكافآت",
-    shopPreview: "جولة في نظام الصور الرمزية والمتجر",
-    fullVersionTitle: "النسخة الكاملة تضيف:",
-    fullVersionBullets: "• 1000+ كلمة في Sets 1–3\n• 15+ أوضاع لعب (كلاسيكي، تهجئة، مطابقة، استماع، بطاقات، بناء جمل…)\n• لوحة المعلم، رموز الصف، تحديات مباشرة، دفتر درجات\n• بيض مفاجآت، صور رمزية مميزة، مظاهر، ألقاب، إطارات، معززات\n• تحليلات إتقان الكلمات لكل طالب",
-    demoRuntime: "~2 دقائق، دون حساب",
-    letsGo: "ابدأ العرض التجريبي ←",
-    chooseAvatar: "اختر صورتك الرمزية",
-    pickEmoji: "اختر إيموجي يمثلك",
-    yourName: "اسمك",
-    enterNickname: "أدخل اسمًا مستعارًا...",
-    continue: "متابعة",
-    back: "رجوع",
-    chooseGame: "اختر وضع اللعب",
-    tryPopular: "جرب أحد أوضاع اللعب الشائعة!",
-    exit: "خروج",
-    orTryShop: "أو جرب المتجر",
-    wordOf: "الكلمة {current} من {total}",
-    tapToHear: "اضغط للاستماع",
-    whatDoesMean: "ما معنى هذه الكلمة؟",
-    correct: "صحيح!",
-    notQuite: "ليس تماماً!",
-    theAnswerIs: "الإجابة هي:",
-    matched: "مطابق:",
-    tapCards: "طابق الأزواج",
-    tapTwoCards: "اضغط على بطاقتين لمطابقة الكلمات مع المعاني",
-    greatJob: "عمل رائع!",
-    completedDemo: "لقد أكملت العرض التجريبي!",
-    correctAns: "صحيح",
-    xpEarned: "XP المكتسب",
-    yourAvatar: "صورتك الرمزية",
-    wantMore: "ما شاهدته للتو",
-    unlockFeatures: "كانت تلك نكهة مما يختبره الطلاب كل يوم في Vocaband. النسخة الكاملة تتوسع إلى 1000+ كلمة، 15+ أوضاع لعب، تحديات صف مباشرة، ولوحة معلم كاملة.",
-    playAgain: "العب مرة أخرى",
-    closeDemo: "إغلاق العرض",
-    signFree: "",
-    check: "تحقق",
-    typeWord: "اكتب الكلمة بالإنجليزية",
-    translation: "الترجمة:",
-    unscramble: "رتب الحروف",
-    listenType: "استمع واكتب ما تسمعه",
-    trueFalse: "هل هذه الترجمة صحيحة؟",
-    trueBtn: "صحيح",
-    falseBtn: "خطأ",
-    flashcardTap: "اضغط للقلب",
-    flashcardMeaning: "المعنى",
-    flashcardWord: "الكلمة",
-    reverseTitle: "ترجم إلى الإنجليزية",
-    next: "التالي",
-    skip: "تخطي",
-    hint: "تلميح",
-    shop: "🛍️ المتجر",
-    shopFull: "المتجر متاح في النسخة الكاملة!",
-    avatars: "الصور الرمزية",
-    themes: "المظاهر",
-    powerups: "القوى",
-    freeInDemo: "مجاني في العرض التجريبي!",
-    premium: "مميز",
-    selectAvatar: "اختر الصورة",
-    xpTitle: "لقب XP",
-    currentTitle: "اللقب الحالي",
-    unlockedInFull: "فتح في النسخة الكاملة",
-    youEarned: "كسبت",
-    totalXP: "مجموع XP",
-    wordsLearned: "كلمات تم إتقانها",
-    badgesEarned: "الشارات",
-    playPronunciation: "تشغيل النطق",
-    typeInEnglish: "اكتب بالإنجليزية...",
-    typeTheWord: "اكتب الكلمة...",
-    clearBtn: "مسح",
-    streak: "السلسلة",
-    frame: "إطار",
-  },
-  ru: {
-    demoMode: "Demo Mode — a hands-on preview of Vocaband",
-    signUpFree: "",
-    welcomeTitle: "Welcome to Vocaband",
-    welcomeDesc: "An English vocabulary app students actually want to play — built for ESL classrooms.",
-    introHook: "Why Vocaband?",
-    introHookBody: "Most vocabulary practice feels like homework. Vocaband turns it into a game: XP, streaks, avatars, mystery eggs, and 15 game modes keep students coming back. Teachers get clear analytics on every word each student is learning.",
-    forTeachersTitle: "For English Teachers",
-    forTeachersDesc: "Create assignments in minutes, track per-student + per-word mastery, run live challenges, and grade automatically.",
-    forStudentsTitle: "For Students",
-    forStudentsDesc: "1000+ curated words from Sets 1–3. 15 game modes. XP, streaks, avatars, and a shop full of cosmetics and power-ups.",
-    tryDemoIntro: "In the next 2 minutes you'll play a real game mode with 10 sample words and see the XP, avatar and shop systems live.",
-    experienceTitle: "What you'll try in this demo:",
-    sampleWords: "100 sample words from Set 1 (real vocabulary)",
-    gameModes: "A real game mode, end-to-end",
-    xpStreak: "XP, streak, and title progression",
-    achievements: "Achievements & reward pop-ups",
-    shopPreview: "A tour of the avatar + shop system",
-    fullVersionTitle: "The full version adds:",
-    fullVersionBullets: "• 1000+ words across Sets 1–3\n• 15+ game modes (Classic, Spelling, Matching, Listening, Flashcards, Sentence Builder…)\n• Teacher dashboard, class codes, live challenges, gradebook\n• Mystery eggs, premium avatars, themes, titles, frames, boosters\n• Per-student word-mastery analytics",
-    demoRuntime: "~2 minutes, no account needed",
-    letsGo: "Start the demo →",
-    chooseAvatar: "Choose Your Avatar",
-    pickEmoji: "Pick an emoji to represent you",
-    yourName: "Your Name",
-    enterNickname: "Enter a nickname...",
-    continue: "Continue",
-    back: "Back",
-    chooseGame: "Choose a Game Mode",
-    tryPopular: "Try one of our popular modes!",
-    exit: "Exit",
-    orTryShop: "or Visit Shop",
-    wordOf: "Word {current} of {total}",
-    tapToHear: "Tap to hear",
-    whatDoesMean: "What does this word mean?",
-    correct: "Correct!",
-    notQuite: "Not quite!",
-    theAnswerIs: "The answer is:",
-    matched: "Matched:",
-    tapCards: "Tap matching pairs",
-    tapTwoCards: "Tap two cards to match words with meanings",
-    greatJob: "Great Job!",
-    completedDemo: "You've completed the demo!",
-    correctAns: "Correct",
-    xpEarned: "XP Earned",
-    yourAvatar: "Your Avatar",
-    wantMore: "What you just saw",
-    unlockFeatures: "This was a taste of what students experience every day in Vocaband. The full version expands into 1000+ words, 15+ game modes, live class challenges, and a full teacher dashboard.",
-    playAgain: "Play Again",
-    closeDemo: "Close Demo",
-    signFree: "",
-    check: "Check",
-    typeWord: "Type the word in English",
-    translation: "Translation:",
-    unscramble: "Unscramble the letters",
-    listenType: "Listen and type what you hear",
-    trueFalse: "Is this translation correct?",
-    trueBtn: "True",
-    falseBtn: "False",
-    flashcardTap: "Tap to flip",
-    flashcardMeaning: "Meaning",
-    flashcardWord: "Word",
-    reverseTitle: "Translate to English",
-    next: "Next",
-    skip: "Skip",
-    hint: "Hint",
-    shop: "🛍️ Shop",
-    shopFull: "Shop available in full version!",
-    avatars: "Avatars",
-    themes: "Themes",
-    powerups: "Power-ups",
-    freeInDemo: "FREE in demo!",
-    premium: "Premium",
-    selectAvatar: "Select Avatar",
-    xpTitle: "XP Title",
-    currentTitle: "Current Title",
-    unlockedInFull: "Unlock in full version",
-    youEarned: "You earned",
-    totalXP: "Total XP",
-    wordsLearned: "words mastered",
-    badgesEarned: "Badges",
-    playPronunciation: "Play pronunciation",
-    typeInEnglish: "Type in English...",
-    typeTheWord: "Type the word...",
-    clearBtn: "Clear",
-    streak: "Streak",
-    frame: "Frame",
-  },
+// Static mock data for the teacher-peek screen. The demo is otherwise the
+// student experience end-to-end, but the demo's real audience is teachers
+// (see the public landing page) — so this gives them a glimpse of the
+// dashboard they'd actually buy: a live leaderboard, per-word mastery, and
+// an auto gradebook. Everything here is illustrative and wired to nothing.
+const DEMO_TEACHER = {
+  className: "Grade 6B",
+  classCode: "SUNFOX",
+  leaderboard: [
+    { name: "Maya", avatar: "🦊", xp: 320 },
+    { name: "Noam", avatar: "🐼", xp: 290 },
+    { name: "Lior", avatar: "🦁", xp: 255 },
+    { name: "Tamar", avatar: "🐱", xp: 210 },
+    { name: "Omer", avatar: "🐧", xp: 180 },
+  ],
+  mastery: [
+    { word: "apple", pct: 92 },
+    { word: "run", pct: 78 },
+    { word: "water", pct: 64 },
+    { word: "beautiful", pct: 41 },
+  ],
+  gradebook: [
+    { name: "Maya", a1: 95, a2: 88 },
+    { name: "Noam", a1: 90, a2: 82 },
+    { name: "Lior", a1: 76, a2: 91 },
+    { name: "Tamar", a1: 84, a2: 70 },
+  ],
 };
 
 // Visual mapping for mode cards — mirrors the real app's
@@ -680,11 +374,7 @@ const getMeaning = (word: Word, targetLang: TargetLang): string => {
   return targetLang === 'arabic' ? word.arabic : word.hebrew;
 };
 
-const getXPTitle = (xpAmount: number) => {
-  return XP_TITLES.filter(t => xpAmount >= t.min).pop() ?? XP_TITLES[0];
-};
-
-const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
+const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
   const { language, setLanguage, dir, isRTL, textAlign } = useLanguage();
   const t = demoTranslations[language];
   const modes = GAME_MODES[language];
@@ -727,7 +417,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
   const [targetLanguage, setTargetLanguage] = useState<TargetLang>(language === 'ar' ? 'arabic' : 'hebrew');
 
   // Letter sounds state
-  const [letterOptions, setLetterOptions] = useState<string[]>([]);
   const [revealedLetters, setRevealedLetters] = useState(0);
   const LETTER_COLORS = ["#EF4444","#F97316","#EAB308","#22C55E","#3B82F6","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#6366F1"];
 
@@ -971,19 +660,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     });
   };
 
-  const generateLetterOptions = () => {
-    if (!currentWord) return;
-    const word = currentWord.english;
-    const firstLetter = word[0].toUpperCase();
-    const letters = [firstLetter];
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    while (letters.length < 4) {
-      const randomLetter = alphabet[Math.floor(Math.random() * 26)];
-      if (!letters.includes(randomLetter)) letters.push(randomLetter);
-    }
-    setLetterOptions(letters.sort(() => Math.random() - 0.5));
-  };
-
   // Award badges based on achievements
   const checkAndAwardBadges = (correct: boolean, newXP: number) => {
     const newBadges = [...badges];
@@ -1105,14 +781,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     if (selectedAnswer !== null) return;
     const correct = answer === tfStatement?.isCorrect;
     setSelectedAnswer(answer ? "true" : "false");
-    setIsCorrect(correct);
-    handleFeedback(correct);
-  };
-
-  const handleLetterAnswer = (letter: string) => {
-    if (selectedAnswer) return;
-    const correct = letter === currentWord.english[0].toUpperCase();
-    setSelectedAnswer(letter);
     setIsCorrect(correct);
     handleFeedback(correct);
   };
@@ -1291,21 +959,20 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
     speak(wordId);
   };
 
-  const xpTitle = getXPTitle(xp);
+  const xpTitle = getXpTitle(xp);
 
   return (
     <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 overflow-auto" dir={dir}>
       {/* Ambient gradient mesh blobs — soft brand-color depth behind
-          the demo content (matches landing's dreamy vibe). */}
-      <motion.div
-        animate={{ scale: [1, 1.15, 1], rotate: [0, 60, 0], x: [0, 60, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+          the demo content. Kept STATIC: the looping scale/rotate/drift
+          read as a constant pulse behind every screen which, stacked
+          with the other animations, made the demo feel like it was
+          flashing. The gradients alone still give the dreamy depth. */}
+      <div
         className="pointer-events-none fixed top-1/4 -right-32 w-96 h-96 rounded-full bg-fuchsia-500/20 blur-3xl"
         aria-hidden="true"
       />
-      <motion.div
-        animate={{ scale: [1, 1.2, 1], rotate: [0, -45, 0], y: [0, 50, 0] }}
-        transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
+      <div
         className="pointer-events-none fixed bottom-1/4 -left-32 w-80 h-80 rounded-full bg-violet-500/20 blur-3xl"
         aria-hidden="true"
       />
@@ -1335,7 +1002,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           narrow strip with huge empty sides. Widen non-game views to
           max-w-2xl (672px) so they read as a proper centred card on
           laptops without hurting the mobile layout. */}
-      <div className={`${['game-select', 'game', 'results', 'shop'].includes(view) ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-4 py-6 pt-16`}>
+      <div className={`${['game-select', 'game', 'results', 'shop', 'teacher'].includes(view) ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-4 py-6 pt-16`}>
         <AnimatePresence mode="wait">
           {/* Welcome screen — short, no marketing.  The demo's job is to let
               students taste the product immediately, not pitch them; the
@@ -1348,51 +1015,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               exit={{ opacity: 0, y: -20 }}
               className="relative"
             >
-              {/* Floating game icons — desktop/tablet only.  On mobile
-                  these sit in absolute positions far below the welcome
-                  card and create a strobing/lightning feel together with
-                  the other looping animations.  Hidden on small screens
-                  so the welcome stays calm on phones. */}
-              <motion.div
-                animate={{ y: [0, -20, 0], rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="hidden sm:block absolute top-[30rem] left-[5%] text-5xl opacity-60 z-20"
-              >⭐</motion.div>
-              <motion.div
-                animate={{ y: [0, 15, 0], rotate: [0, -15, 15, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                className="hidden sm:block absolute top-[36rem] right-[8%] text-4xl opacity-50 z-20"
-              >🏆</motion.div>
-              <motion.div
-                animate={{ y: [0, -25, 0], x: [0, 10, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="hidden sm:block absolute bottom-8 left-[15%] text-4xl opacity-40 z-20"
-              >🎯</motion.div>
-              <motion.div
-                animate={{ y: [0, 20, 0], rotate: [0, 360] }}
-                transition={{ duration: 8, repeat: Infinity, ease: "linear", delay: 1.5 }}
-                className="hidden sm:block absolute top-[40rem] right-[20%] text-5xl opacity-30 z-20"
-              >💎</motion.div>
-              <motion.div
-                animate={{ y: [0, -18, 0], scale: [1, 1.1, 1] }}
-                transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-                className="hidden sm:block absolute bottom-16 right-[12%] text-4xl opacity-50 z-20"
-              >🎮</motion.div>
-              <motion.div
-                animate={{ y: [0, 22, 0], rotate: [0, -20, 20, 0] }}
-                transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-                className="hidden sm:block absolute top-[44rem] left-[25%] text-3xl opacity-40 z-20"
-              >🚀</motion.div>
-              <motion.div
-                animate={{ x: [0, 15, 0], y: [0, -10, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
-                className="hidden sm:block absolute bottom-24 left-[40%] text-4xl opacity-35 z-20"
-              >⚡</motion.div>
-              <motion.div
-                animate={{ y: [0, -15, 0], rotate: [0, 180] }}
-                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2.5 }}
-                className="hidden sm:block absolute top-[48rem] right-[35%] text-3xl opacity-45 z-20"
-              >🎁</motion.div>
+              {/* Floating game icons removed — eight emojis drifting +
+                  spinning on infinite loops around the welcome card were
+                  the main "strobing/lightning" offenders. The welcome
+                  card itself carries enough visual interest without
+                  them, and the screen now reads calm on every device. */}
 
               {/* Main content */}
               <div className="relative z-10">
@@ -1400,12 +1027,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
                   <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-pink-400/30 rounded-full blur-3xl" />
 
-                {/* 3D Demo Mode Badge — floating in top-right corner */}
-                <motion.div
-                  initial={{ rotate: -15, y: -10 }}
-                  animate={{ rotate: [-15, -10, -15], y: [-10, -5, -10] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute -top-4 -right-4 z-10"
+                {/* 3D Demo Mode Badge — tilted in the top-right corner.
+                    Static tilt (no infinite bob) to keep the welcome calm. */}
+                <div
+                  className="absolute -top-4 -right-4 z-10 -rotate-12"
                 >
                   <div className="relative">
                     {/* 3D shadow layers */}
@@ -1414,14 +1039,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     {/* Main badge */}
                     <div className="relative bg-white rounded-lg px-4 py-2 shadow-lg border-2 border-white/50 transform rotate-3">
                       <div className="flex items-center gap-2">
-                        <motion.span
-                          animate={{ rotateY: [0, 360] }}
-                          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                          className="text-2xl"
-                          style={{ transformStyle: 'preserve-3d' }}
-                        >
+                        <span className="text-2xl">
                           🎮
-                        </motion.span>
+                        </span>
                         <div className="text-left" dir={dir}>
                           <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                             {language === 'en' ? 'Try' : language === 'he' ? 'נסו' : 'جرب'}
@@ -1433,7 +1053,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
 
                 <div className="relative">
                   <div className="text-5xl sm:text-6xl mb-3">🎮</div>
@@ -1481,6 +1101,19 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               >
                 {t.letsGo}
               </motion.button>
+
+              {/* Secondary CTA — the demo's audience is teachers, so offer a
+                  direct path to the teacher-facing preview from the very
+                  first screen (not just buried at the end). */}
+              <button
+                onClick={() => setView("teacher")}
+                type="button"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                className="w-full mt-3 inline-flex items-center justify-center gap-2 text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/15 py-3 rounded-xl font-bold text-sm transition-all"
+              >
+                <GraduationCap size={16} />
+                {t.teacherPeekCta}
+              </button>
               </div>
             </motion.div>
           )}
@@ -1560,8 +1193,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {xp > 0 && (
                 <div className="bg-gradient-to-r from-primary/10 to-tertiary/10 rounded-xl p-4 mb-6 border border-primary/20">
                   <div className="flex items-center justify-center gap-2">
-                    <Crown size={20} style={{ color: xpTitle.color }} />
-                    <span className="font-black" style={{ color: xpTitle.color }}>{xpTitle.title}</span>
+                    <Crown size={20} style={{ color: titleColor(xpTitle.title) }} />
+                    <span className="font-black" style={{ color: titleColor(xpTitle.title) }}>{xpTitle.title}</span>
                   </div>
                   <p className="text-xs text-center text-white/65 mt-1">{xp} XP</p>
                 </div>
@@ -2788,8 +2421,8 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {/* XP Title callout */}
               <div className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200">
                 <div className="flex items-center justify-center gap-2">
-                  <Crown size={20} style={{ color: xpTitle.color }} />
-                  <span className="font-black text-lg" style={{ color: xpTitle.color }}>{xpTitle.title}</span>
+                  <Crown size={20} style={{ color: titleColor(xpTitle.title) }} />
+                  <span className="font-black text-lg" style={{ color: titleColor(xpTitle.title) }}>{xpTitle.title}</span>
                 </div>
               </div>
 
@@ -2826,13 +2459,26 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                 </p>
 
                 <div className="flex flex-col gap-2.5">
+                  {/* Primary conversion CTA — the results screen is the
+                      natural moment to convert. Route through onGetStarted
+                      (wired to teacher login on the landing) and fall back
+                      to onClose if the prop wasn't supplied. */}
+                  <button
+                    onClick={onGetStarted ?? onClose}
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className="w-full inline-flex items-center justify-center gap-2 signature-gradient text-white px-6 py-4 rounded-xl font-black text-base sm:text-lg shadow-lg shadow-violet-500/30 hover:shadow-xl active:scale-[0.98] transition-all"
+                  >
+                    <Sparkles size={20} />
+                    {t.getStartedCta}
+                  </button>
                   <button
                     onClick={resetDemo}
                     type="button"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-4 rounded-xl font-black text-base sm:text-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all"
+                    className="w-full inline-flex items-center justify-center gap-2 bg-white border-2 border-stone-200 text-stone-800 px-6 py-3 rounded-xl font-black text-sm sm:text-base hover:border-stone-300 active:scale-[0.98] transition-all"
                   >
-                    <RefreshCw size={20} />
+                    <RefreshCw size={18} />
                     {t.playAgain}
                   </button>
                   <button
@@ -2842,6 +2488,15 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     className="w-full inline-flex items-center justify-center gap-2 bg-white border-2 border-stone-200 text-stone-800 px-6 py-3 rounded-xl font-black text-sm sm:text-base hover:border-stone-300 active:scale-[0.98] transition-all"
                   >
                     Try Another Mode
+                  </button>
+                  <button
+                    onClick={() => setView("teacher")}
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-50 to-violet-50 border-2 border-violet-200 text-violet-800 px-6 py-3 rounded-xl font-black text-sm sm:text-base hover:border-violet-300 active:scale-[0.98] transition-all"
+                  >
+                    <GraduationCap size={18} />
+                    {t.teacherPeekCta}
                   </button>
                   <button
                     onClick={onClose}
@@ -3131,9 +2786,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               {/* XP Titles Tab - UNLOCKED FEATURES */}
               {shopTab === "titles" && (
                 <div className="space-y-3">
-                  {XP_TITLES.map((title, i) => {
+                  {XP_TITLES.map((title) => {
                     const isUnlocked = xp >= title.min;
-                    const currentTitle = getXPTitle(xp);
+                    const currentTitle = getXpTitle(xp);
 
                     return (
                       <div
@@ -3143,12 +2798,12 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                         <div className="flex items-center gap-4">
                           <div
                             className="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg"
-                            style={{ backgroundColor: isUnlocked ? title.color : '#9CA3AF' }}
+                            style={{ backgroundColor: isUnlocked ? titleColor(title.title) : '#9CA3AF' }}
                           >
-                            {i === 0 ? '🌱' : i + 1}
+                            {title.emoji}
                           </div>
                           <div className={`flex-1 ${textAlign}`}>
-                            <p className="font-bold text-lg" style={{ color: isUnlocked ? title.color : '#9CA3AF' }}>{title.title}</p>
+                            <p className="font-bold text-lg" style={{ color: isUnlocked ? titleColor(title.title) : '#9CA3AF' }}>{title.title}</p>
                             <p className="text-xs text-stone-500">{title.min} XP required</p>
                           </div>
                           {currentTitle.title === title.title && (
@@ -3215,6 +2870,130 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   </div>
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {/* Teacher Peek — a static glimpse of the teacher-facing product.
+              The rest of the demo is the student experience; prospective
+              teachers (the demo's actual audience) never otherwise see the
+              dashboard, live leaderboard, per-word analytics, or gradebook
+              they'd be buying. Everything here is DEMO_TEACHER mock data,
+              wired to nothing — a sales preview, not a live screen. */}
+          {view === "teacher" && (
+            <motion.div
+              key="teacher"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              dir={dir}
+            >
+              <div className={`flex items-center justify-between mb-5 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <button
+                  onClick={() => setView("welcome")}
+                  type="button"
+                  style={{ touchAction: 'manipulation' }}
+                  className={`inline-flex items-center gap-1.5 text-sm font-bold text-white/70 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-full px-3 py-2 transition-all ${isRTL ? 'flex-row-reverse' : ''}`}
+                >
+                  {isRTL ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
+                  {t.back}
+                </button>
+                <span className={`inline-flex items-center gap-1.5 text-xs font-black text-white/80 bg-white/10 border border-white/20 rounded-full px-3 py-1.5 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <GraduationCap size={14} /> {DEMO_TEACHER.className}
+                </span>
+              </div>
+
+              {/* Hero */}
+              <div className="relative overflow-hidden rounded-2xl mb-5 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-5 sm:p-7 shadow-xl shadow-violet-500/20">
+                <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
+                <div className="relative">
+                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{t.teacherPeekTitle}</h1>
+                  <p className="text-sm text-white/90 mt-2 max-w-md">{t.teacherPeekSubtitle}</p>
+                  <div className={`mt-4 inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-xl px-4 py-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80">{t.teacherClassCode}</span>
+                    <span className="font-black text-white text-lg tracking-[0.3em]" dir="ltr">{DEMO_TEACHER.classCode}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Live leaderboard */}
+                <div className="bg-white rounded-2xl shadow-lg border border-stone-100 p-5">
+                  <div className={`flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <Trophy size={18} className="text-amber-500" />
+                    <h2 className="font-black text-stone-900">{t.teacherLiveBoard}</h2>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 ${isRTL ? 'mr-auto flex-row-reverse' : 'ml-auto'}`}>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> live
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {DEMO_TEACHER.leaderboard.map((s, i) => (
+                      <div key={s.name} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${isRTL ? 'flex-row-reverse' : ''} ${i === 0 ? 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200' : 'bg-stone-50 border border-stone-100'}`}>
+                        <span className={`w-6 text-center font-black ${i === 0 ? 'text-amber-500' : 'text-stone-400'}`}>{i + 1}</span>
+                        <span className="text-2xl">{s.avatar}</span>
+                        <span className={`font-bold text-stone-800 flex-1 truncate ${textAlign}`}>{s.name}</span>
+                        <span className="inline-flex items-center gap-1 font-black text-stone-900 tabular-nums"><Zap size={14} className="text-amber-400" />{s.xp}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Word mastery */}
+                <div className="bg-white rounded-2xl shadow-lg border border-stone-100 p-5">
+                  <div className={`flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <Target size={18} className="text-violet-500" />
+                    <h2 className="font-black text-stone-900">{t.teacherWordMastery}</h2>
+                  </div>
+                  <div className="space-y-3">
+                    {DEMO_TEACHER.mastery.map(m => (
+                      <div key={m.word}>
+                        <div className="flex justify-between text-sm mb-1" dir="ltr">
+                          <span className="font-bold text-stone-700">{m.word}</span>
+                          <span className="font-black text-stone-500 tabular-nums">{m.pct}%</span>
+                        </div>
+                        <div className="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${m.pct >= 80 ? 'bg-emerald-500' : m.pct >= 60 ? 'bg-amber-400' : 'bg-rose-400'}`} style={{ width: `${m.pct}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Gradebook */}
+                <div className="bg-white rounded-2xl shadow-lg border border-stone-100 p-5 lg:col-span-2">
+                  <div className={`flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <CheckCircle2 size={18} className="text-emerald-500" />
+                    <h2 className="font-black text-stone-900">{t.teacherGradebook}</h2>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm" dir="ltr">
+                      <thead>
+                        <tr className="text-stone-400 text-[10px] uppercase tracking-widest">
+                          <th className="text-left font-black pb-2">Student</th>
+                          <th className="text-center font-black pb-2">Set 1</th>
+                          <th className="text-center font-black pb-2">Set 2</th>
+                          <th className="text-center font-black pb-2">Avg</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {DEMO_TEACHER.gradebook.map(g => {
+                          const avg = Math.round((g.a1 + g.a2) / 2);
+                          const cell = (v: number) => v >= 85 ? 'text-emerald-600' : v >= 70 ? 'text-amber-600' : 'text-rose-600';
+                          return (
+                            <tr key={g.name} className="border-t border-stone-100">
+                              <td className="py-2 font-bold text-stone-800">{g.name}</td>
+                              <td className={`py-2 text-center font-black tabular-nums ${cell(g.a1)}`}>{g.a1}</td>
+                              <td className={`py-2 text-center font-black tabular-nums ${cell(g.a2)}`}>{g.a2}</td>
+                              <td className={`py-2 text-center font-black tabular-nums ${cell(avg)}`}>{avg}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-center text-xs text-white/50 mt-5">{t.teacherPeekFootnote}</p>
             </motion.div>
           )}
         </AnimatePresence>

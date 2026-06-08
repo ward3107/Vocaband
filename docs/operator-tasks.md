@@ -47,6 +47,27 @@ section is the soft half that warns AI sessions up front).
 
 ---
 
+## 🟡 OPEN — Apply migration `20260717000000_admin_class_management.sql`
+
+**Why:** the Developer Dashboard's new **Classes** tab (list / rename /
+reset-code / transfer / delete a class) calls five `admin_*` RPCs that ship
+in this migration. Until it's applied, those buttons will toast an error
+("function … does not exist"); everything else in the dashboard is
+unaffected.
+
+**Steps (Supabase MCP or SQL editor, ≈1 min):**
+
+1. Review `supabase/migrations/20260717000000_admin_class_management.sql`
+   (additive — `CREATE OR REPLACE` only; touches no existing object).
+2. Run it against prod (it's wrapped in `BEGIN; … COMMIT;`).
+3. Smoke test as an admin: `SELECT public.admin_list_classes(NULL, 5);`
+   should return a JSON array.
+
+**Result:** the Classes tab is live. All five RPCs are `SECURITY DEFINER`
++ `assert_admin()` and audit-logged, matching every other `admin_*` RPC.
+
+---
+
 ## ✅ RESOLVED 2026-06-08 — Teacher email login 500 (Resend DKIM record deleted)
 
 Teacher email/OTP login broke with `POST /auth/v1/otp → 500` /

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Search, ChevronRight, GraduationCap, Sparkles, Calendar, Building2, UserCog, ArrowDown } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevUserSearchResult } from "./devShared";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -39,6 +40,7 @@ export default function DevUserLookupPanel({ showToast }: Props) {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busyUid, setBusyUid] = useState<string | null>(null);
+  const [demoteTarget, setDemoteTarget] = useState<DevUserSearchResult | null>(null);
 
   // 300ms debounce so the admin doesn't fire an RPC on every keystroke.
   useEffect(() => {
@@ -66,15 +68,7 @@ export default function DevUserLookupPanel({ showToast }: Props) {
     void search(debounced);
   }, [debounced, search]);
 
-  const changeRole = useCallback(async (r: DevUserSearchResult, newRole: "teacher" | "student") => {
-    if (newRole === "student") {
-      // Demotion is rarer + risky (teacher loses access to their classes).
-      // Cheap confirm prompt — same pattern used elsewhere in the dashboard.
-      const ok = window.confirm(
-        `Demote ${r.email ?? r.uid} from teacher to student? They lose access to their ${r.classes.length} class(es). Class data is kept.`,
-      );
-      if (!ok) return;
-    }
+  const applyRole = useCallback(async (r: DevUserSearchResult, newRole: "teacher" | "student") => {
     setBusyUid(r.uid);
     const res = await callAdminRpc<{ success?: boolean; new_role?: string }>(
       "admin_set_role",
@@ -211,7 +205,7 @@ export default function DevUserLookupPanel({ showToast }: Props) {
                         <button
                           type="button"
                           disabled={busyUid === r.uid}
-                          onClick={() => void changeRole(r, "teacher")}
+                          onClick={() => void applyRole(r, "teacher")}
                           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                           className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
                         >
@@ -222,7 +216,7 @@ export default function DevUserLookupPanel({ showToast }: Props) {
                         <button
                           type="button"
                           disabled={busyUid === r.uid}
-                          onClick={() => void changeRole(r, "student")}
+                          onClick={() => setDemoteTarget(r)}
                           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                           className="px-5 py-3 rounded-xl bg-white/5 hover:bg-rose-500/15 disabled:opacity-50 text-white/70 hover:text-rose-200 font-bold text-base flex items-center gap-2"
                         >
@@ -242,6 +236,24 @@ export default function DevUserLookupPanel({ showToast }: Props) {
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={!!demoteTarget}
+        tone="warning"
+        title="Demote to student?"
+        body={demoteTarget && (
+          <>Demotes <strong className="text-white">{demoteTarget.email ?? demoteTarget.uid}</strong> from teacher to
+          student. They lose access to their {demoteTarget.classes.length} class(es) — class data is kept.</>
+        )}
+        confirmLabel="Demote to student"
+        busy={!!demoteTarget && busyUid === demoteTarget.uid}
+        onConfirm={async () => {
+          if (!demoteTarget) return;
+          await applyRole(demoteTarget, "student");
+          setDemoteTarget(null);
+        }}
+        onCancel={() => setDemoteTarget(null)}
+      />
     </div>
   );
 }

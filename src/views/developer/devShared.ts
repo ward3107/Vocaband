@@ -177,6 +177,21 @@ export interface DevUserSearchResult {
   last_activity_at: string | null;
 }
 
+/** One class row from admin_list_classes (Classes management panel). */
+export interface DevClass {
+  id: string;
+  name: string;
+  code: string;
+  teacher_uid: string | null;
+  teacher_name: string | null;
+  teacher_email: string | null;
+  /** Set on a seeded-but-unclaimed class — who it will belong to on first login. */
+  pending_teacher_email: string | null;
+  school_name: string | null;
+  student_count: number;
+  assignment_count: number;
+}
+
 export interface DevAuditEntry {
   id: string;
   actor_uid: string;
