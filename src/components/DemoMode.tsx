@@ -38,7 +38,7 @@ interface DemoModeProps {
   onClose: () => void;
 }
 
-type DemoView = "welcome" | "avatar" | "game-select" | "mode-intro" | "game" | "results" | "shop";
+type DemoView = "welcome" | "avatar" | "game-select" | "mode-intro" | "game" | "results" | "shop" | "teacher";
 type ShopTab = "eggs" | "avatars" | "themes" | "frames" | "titles" | "powerups" | "premium";
 
 // Avatar categories pulled from the real app constants so the demo shop
@@ -102,6 +102,35 @@ const DEMO_WORDS: Word[] = ALL_WORDS
   .sort((a, b) => a.english.length - b.english.length || a.english.localeCompare(b.english))
   .slice(0, DEMO_WORD_COUNT);
 
+// Static mock data for the teacher-peek screen. The demo is otherwise the
+// student experience end-to-end, but the demo's real audience is teachers
+// (see the public landing page) — so this gives them a glimpse of the
+// dashboard they'd actually buy: a live leaderboard, per-word mastery, and
+// an auto gradebook. Everything here is illustrative and wired to nothing.
+const DEMO_TEACHER = {
+  className: "Grade 6B",
+  classCode: "SUNFOX",
+  leaderboard: [
+    { name: "Maya", avatar: "🦊", xp: 320 },
+    { name: "Noam", avatar: "🐼", xp: 290 },
+    { name: "Lior", avatar: "🦁", xp: 255 },
+    { name: "Tamar", avatar: "🐱", xp: 210 },
+    { name: "Omer", avatar: "🐧", xp: 180 },
+  ],
+  mastery: [
+    { word: "apple", pct: 92 },
+    { word: "run", pct: 78 },
+    { word: "water", pct: 64 },
+    { word: "beautiful", pct: 41 },
+  ],
+  gradebook: [
+    { name: "Maya", a1: 95, a2: 88 },
+    { name: "Noam", a1: 90, a2: 82 },
+    { name: "Lior", a1: 76, a2: 91 },
+    { name: "Tamar", a1: 84, a2: 70 },
+  ],
+};
+
 // Translations
 const baseTranslations: Record<Exclude<Language, 'ru'>, Record<string, string>> = {
   en: {
@@ -154,6 +183,14 @@ const baseTranslations: Record<Exclude<Language, 'ru'>, Record<string, string>> 
     unlockFeatures: "This was a taste of what students experience every day in Vocaband. The full version expands into 1000+ words, 15+ game modes, live class challenges, and a full teacher dashboard.",
     playAgain: "Play Again",
     closeDemo: "Close Demo",
+    teacherPeekCta: "Peek at the teacher view",
+    teacherPeekTitle: "The teacher's side",
+    teacherPeekSubtitle: "What you'd see while your class plays — live, no spreadsheets.",
+    teacherClassCode: "Class code",
+    teacherLiveBoard: "Live challenge",
+    teacherWordMastery: "Word mastery",
+    teacherGradebook: "Auto gradebook",
+    teacherPeekFootnote: "A static preview — the real dashboard updates as students play.",
     signFree: "",
     check: "Check",
     typeWord: "Type the word in English",
@@ -242,6 +279,14 @@ const baseTranslations: Record<Exclude<Language, 'ru'>, Record<string, string>> 
     unlockFeatures: "זו הייתה טעימה ממה שתלמידים חווים כל יום ב-Vocaband. הגרסה המלאה מתרחבת ל-1000+ מילים, 15+ מצבי משחק, אתגרים חיים בכיתה, ולוח מורה מלא.",
     playAgain: "שחקו שוב",
     closeDemo: "סגור הדגמה",
+    teacherPeekCta: "הצצה לתצוגת המורה",
+    teacherPeekTitle: "הצד של המורה",
+    teacherPeekSubtitle: "מה שתראו בזמן שהכיתה משחקת — בזמן אמת, בלי גיליונות.",
+    teacherClassCode: "קוד כיתה",
+    teacherLiveBoard: "אתגר חי",
+    teacherWordMastery: "שליטה במילים",
+    teacherGradebook: "ספר ציונים אוטומטי",
+    teacherPeekFootnote: "תצוגה מקדימה סטטית — הלוח האמיתי מתעדכן תוך כדי משחק.",
     signFree: "",
     check: "בדוק",
     typeWord: "הקלד את המילה באנגלית",
@@ -330,6 +375,14 @@ const baseTranslations: Record<Exclude<Language, 'ru'>, Record<string, string>> 
     unlockFeatures: "كانت تلك نكهة مما يختبره الطلاب كل يوم في Vocaband. النسخة الكاملة تتوسع إلى 1000+ كلمة، 15+ أوضاع لعب، تحديات صف مباشرة، ولوحة معلم كاملة.",
     playAgain: "العب مرة أخرى",
     closeDemo: "إغلاق العرض",
+    teacherPeekCta: "إلقاء نظرة على عرض المعلم",
+    teacherPeekTitle: "جانب المعلم",
+    teacherPeekSubtitle: "ما ستراه بينما يلعب صفك — مباشرةً، دون جداول بيانات.",
+    teacherClassCode: "رمز الصف",
+    teacherLiveBoard: "تحدٍّ مباشر",
+    teacherWordMastery: "إتقان الكلمات",
+    teacherGradebook: "دفتر درجات تلقائي",
+    teacherPeekFootnote: "معاينة ثابتة — تتحدّث اللوحة الحقيقية أثناء لعب الطلاب.",
     signFree: "",
     check: "تحقق",
     typeWord: "اكتب الكلمة بالإنجليزية",
@@ -1254,7 +1307,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
           narrow strip with huge empty sides. Widen non-game views to
           max-w-2xl (672px) so they read as a proper centred card on
           laptops without hurting the mobile layout. */}
-      <div className={`${['game-select', 'game', 'results', 'shop'].includes(view) ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-4 py-6 pt-16`}>
+      <div className={`${['game-select', 'game', 'results', 'shop', 'teacher'].includes(view) ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-4 py-6 pt-16`}>
         <AnimatePresence mode="wait">
           {/* Welcome screen — short, no marketing.  The demo's job is to let
               students taste the product immediately, not pitch them; the
@@ -1403,6 +1456,19 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
               >
                 {t.letsGo}
               </motion.button>
+
+              {/* Secondary CTA — the demo's audience is teachers, so offer a
+                  direct path to the teacher-facing preview from the very
+                  first screen (not just buried at the end). */}
+              <button
+                onClick={() => setView("teacher")}
+                type="button"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                className="w-full mt-3 inline-flex items-center justify-center gap-2 text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/15 py-3 rounded-xl font-bold text-sm transition-all"
+              >
+                <GraduationCap size={16} />
+                {t.teacherPeekCta}
+              </button>
               </div>
             </motion.div>
           )}
@@ -2766,6 +2832,15 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                     Try Another Mode
                   </button>
                   <button
+                    onClick={() => setView("teacher")}
+                    type="button"
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-50 to-violet-50 border-2 border-violet-200 text-violet-800 px-6 py-3 rounded-xl font-black text-sm sm:text-base hover:border-violet-300 active:scale-[0.98] transition-all"
+                  >
+                    <GraduationCap size={18} />
+                    {t.teacherPeekCta}
+                  </button>
+                  <button
                     onClick={onClose}
                     type="button"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
@@ -3137,6 +3212,130 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose }) => {
                   </div>
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {/* Teacher Peek — a static glimpse of the teacher-facing product.
+              The rest of the demo is the student experience; prospective
+              teachers (the demo's actual audience) never otherwise see the
+              dashboard, live leaderboard, per-word analytics, or gradebook
+              they'd be buying. Everything here is DEMO_TEACHER mock data,
+              wired to nothing — a sales preview, not a live screen. */}
+          {view === "teacher" && (
+            <motion.div
+              key="teacher"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              dir={dir}
+            >
+              <div className={`flex items-center justify-between mb-5 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <button
+                  onClick={() => setView("welcome")}
+                  type="button"
+                  style={{ touchAction: 'manipulation' }}
+                  className={`inline-flex items-center gap-1.5 text-sm font-bold text-white/70 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-full px-3 py-2 transition-all ${isRTL ? 'flex-row-reverse' : ''}`}
+                >
+                  {isRTL ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
+                  {t.back}
+                </button>
+                <span className={`inline-flex items-center gap-1.5 text-xs font-black text-white/80 bg-white/10 border border-white/20 rounded-full px-3 py-1.5 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <GraduationCap size={14} /> {DEMO_TEACHER.className}
+                </span>
+              </div>
+
+              {/* Hero */}
+              <div className="relative overflow-hidden rounded-2xl mb-5 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-5 sm:p-7 shadow-xl shadow-violet-500/20">
+                <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
+                <div className="relative">
+                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{t.teacherPeekTitle}</h1>
+                  <p className="text-sm text-white/90 mt-2 max-w-md">{t.teacherPeekSubtitle}</p>
+                  <div className={`mt-4 inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-xl px-4 py-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80">{t.teacherClassCode}</span>
+                    <span className="font-black text-white text-lg tracking-[0.3em]" dir="ltr">{DEMO_TEACHER.classCode}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Live leaderboard */}
+                <div className="bg-white rounded-2xl shadow-lg border border-stone-100 p-5">
+                  <div className={`flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <Trophy size={18} className="text-amber-500" />
+                    <h2 className="font-black text-stone-900">{t.teacherLiveBoard}</h2>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 ${isRTL ? 'mr-auto flex-row-reverse' : 'ml-auto'}`}>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> live
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {DEMO_TEACHER.leaderboard.map((s, i) => (
+                      <div key={s.name} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${isRTL ? 'flex-row-reverse' : ''} ${i === 0 ? 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200' : 'bg-stone-50 border border-stone-100'}`}>
+                        <span className={`w-6 text-center font-black ${i === 0 ? 'text-amber-500' : 'text-stone-400'}`}>{i + 1}</span>
+                        <span className="text-2xl">{s.avatar}</span>
+                        <span className={`font-bold text-stone-800 flex-1 truncate ${textAlign}`}>{s.name}</span>
+                        <span className="inline-flex items-center gap-1 font-black text-stone-900 tabular-nums"><Zap size={14} className="text-amber-400" />{s.xp}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Word mastery */}
+                <div className="bg-white rounded-2xl shadow-lg border border-stone-100 p-5">
+                  <div className={`flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <Target size={18} className="text-violet-500" />
+                    <h2 className="font-black text-stone-900">{t.teacherWordMastery}</h2>
+                  </div>
+                  <div className="space-y-3">
+                    {DEMO_TEACHER.mastery.map(m => (
+                      <div key={m.word}>
+                        <div className="flex justify-between text-sm mb-1" dir="ltr">
+                          <span className="font-bold text-stone-700">{m.word}</span>
+                          <span className="font-black text-stone-500 tabular-nums">{m.pct}%</span>
+                        </div>
+                        <div className="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${m.pct >= 80 ? 'bg-emerald-500' : m.pct >= 60 ? 'bg-amber-400' : 'bg-rose-400'}`} style={{ width: `${m.pct}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Gradebook */}
+                <div className="bg-white rounded-2xl shadow-lg border border-stone-100 p-5 lg:col-span-2">
+                  <div className={`flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <CheckCircle2 size={18} className="text-emerald-500" />
+                    <h2 className="font-black text-stone-900">{t.teacherGradebook}</h2>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm" dir="ltr">
+                      <thead>
+                        <tr className="text-stone-400 text-[10px] uppercase tracking-widest">
+                          <th className="text-left font-black pb-2">Student</th>
+                          <th className="text-center font-black pb-2">Set 1</th>
+                          <th className="text-center font-black pb-2">Set 2</th>
+                          <th className="text-center font-black pb-2">Avg</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {DEMO_TEACHER.gradebook.map(g => {
+                          const avg = Math.round((g.a1 + g.a2) / 2);
+                          const cell = (v: number) => v >= 85 ? 'text-emerald-600' : v >= 70 ? 'text-amber-600' : 'text-rose-600';
+                          return (
+                            <tr key={g.name} className="border-t border-stone-100">
+                              <td className="py-2 font-bold text-stone-800">{g.name}</td>
+                              <td className={`py-2 text-center font-black tabular-nums ${cell(g.a1)}`}>{g.a1}</td>
+                              <td className={`py-2 text-center font-black tabular-nums ${cell(g.a2)}`}>{g.a2}</td>
+                              <td className={`py-2 text-center font-black tabular-nums ${cell(avg)}`}>{avg}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-center text-xs text-white/50 mt-5">{t.teacherPeekFootnote}</p>
             </motion.div>
           )}
         </AnimatePresence>
