@@ -47,29 +47,38 @@ section is the soft half that warns AI sessions up front).
 
 ---
 
-## 🟡 OPEN — Apply the admin-dashboard migrations (`20260717…` + `20260718…`)
+## ✅ DONE 2026-06-08 — Applied the admin-dashboard migration backlog (+ parent-digest drop)
 
-**Why:** the Developer Dashboard's new features call `admin_*` RPCs that ship
-in these migrations. Until applied, those specific buttons toast a "function …
-does not exist" error; the rest of the dashboard is unaffected.
+Reconciled the full local↔prod migration set first: of 202 local files, all were
+already applied **except four** — verified by probing live DB objects (functions,
+tables, columns, constraints, grants), not filenames, because there is heavy
+version-name drift between local files and the ledger. Applied the four to
+production (`vocaband-eu`) via MCP `apply_migration`, recorded in the ledger:
 
-- `20260717000000_admin_class_management.sql` — the **Classes** tab (list /
-  rename / reset-code / transfer / delete).
-- `20260718000000_admin_stats_daily.sql` — the **count-KPI trend sparklines**
-  (Teachers/Students/Classes/Schools). Adds a daily snapshot table + a nightly
-  pg_cron capture; sparklines fill in once ≥2 days have accrued.
+```
+20260608191223  admin_class_management     (20260717000000_admin_class_management.sql)
+20260608194818  admin_stats_daily          (20260718000000_admin_stats_daily.sql)
+20260608194856  admin_content_moderation   (20260719000000_admin_content_moderation.sql)
+20260608201615  drop_parent_digest_stub    (20260618000000_drop_parent_digest_stub.sql)
+```
 
-**Steps (Supabase MCP or SQL editor, ≈1 min):**
+- **admin_class_management** — Classes tab RPCs (list / rename / transfer /
+  reset-code / delete). `SECURITY DEFINER` + `assert_admin()`, anon revoked, audited.
+- **admin_stats_daily** — KPI sparkline snapshot table + `admin_capture_stats_daily`
+  / `admin_stats_series` + nightly pg_cron job (`10 0 * * *`). Seeded today's row
+  (6 teachers / 74 students / 18 classes / 1 school); sparklines fill once ≥2 days accrue.
+- **admin_content_moderation** — vocab-library review/remove RPCs
+  (`admin_list_vocab_sets` / `admin_vocab_set_detail` / `admin_delete_vocab_set`
+  / `admin_delete_vocab_word`). Audited deletes, FK-cascade cleanup.
+- **drop_parent_digest_stub** — dropped the dormant parent-digest schema
+  (`users.parent_email` + `_locale` + `_opt_in_at`, `digest_send_log` table) after
+  confirming 0 rows used any of it. Aligns schema with the privacy policy.
 
-1. Review both files (additive — `CREATE OR REPLACE` / `CREATE TABLE IF NOT
-   EXISTS`; they touch no existing object).
-2. Run each against prod (each is wrapped in `BEGIN; … COMMIT;`).
-3. Smoke test as an admin: `SELECT public.admin_list_classes(NULL, 5);` and
-   `SELECT public.admin_stats_series(30);` should each return a JSON array.
-
-**Result:** the Classes tab and the count-KPI trends are live. All RPCs are
-`SECURITY DEFINER` + `assert_admin()` and audit-logged, matching every other
-`admin_*` RPC.
+Smoke-tested: all 11 new functions present, stats row seeded, cron scheduled,
+`anon` can't execute any new RPC. No new advisor classes — the SECURITY DEFINER /
+`rls_enabled_no_policy` advisories they trigger match the existing `admin_*`
+pattern; the lone `function_search_path_mutable` finding is the pre-existing
+`touch_updated_at`, not one of these.
 
 ---
 
