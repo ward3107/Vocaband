@@ -44,6 +44,13 @@ type Phase = "join" | "lobby" | "answering" | "result" | "ended" | "kicked";
 
 const DEFAULT_AVATAR = "🦊";
 
+// Per-tab marker that THIS tab already joined a given race. Paired with the
+// socket clientId (also sessionStorage), it lets a page refresh re-adopt the
+// same leaderboard slot — score intact — instead of dropping the student on
+// the name form or the public landing. sessionStorage (not localStorage) so a
+// second student on the same device/tab can't inherit the first one's slot.
+const RACE_GUEST_KEY = "vocaband_race_guest";
+
 const STRINGS = {
   en: {
     joinTitle: "Category Race", joinSub: "Type your name and jump in!",
@@ -121,6 +128,17 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     onRaceResult, onRaceEnded, onSessionEnded, onKicked,
   } = qp;
 
+  // Forget this race for THIS tab once it's over for the student (they left,
+  // were kicked, or the teacher ended it): drop the rejoin marker AND strip
+  // ?session from the URL. Together they make a later reload land on the public
+  // landing instead of auto-rejoining — or re-bootstrapping — a slot the
+  // student has already exited. A mid-race refresh (no forgetRace call) still
+  // keeps both and auto-rejoins.
+  const forgetRace = useCallback(() => {
+    try { sessionStorage.removeItem(RACE_GUEST_KEY); } catch { /* storage unavailable */ }
+    try { window.history.replaceState({}, "", window.location.pathname); } catch { /* history unavailable */ }
+  }, []);
+
   const [phase, setPhase] = useState<Phase>("join");
   // Join form
   const [name, setName] = useState("");
@@ -191,8 +209,42 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
       // eslint-disable-next-line react-hooks/set-state-in-effect -- socket join confirmation; matches existing convention
       setJoining(false);
       setPhase("lobby");
+      // Remember this confirmed join so a refresh in this tab auto-rejoins the
+      // same slot instead of bouncing to the name form / public landing.
+      try {
+        sessionStorage.setItem(
+          RACE_GUEST_KEY,
+          JSON.stringify({ sessionCode, name: name.trim(), avatar }),
+        );
+      } catch { /* storage unavailable — a refresh just shows the join form */ }
     }
-  }, [joining, joinedSessionCode, sessionCode]);
+  }, [joining, joinedSessionCode, sessionCode, name, avatar]);
+
+  // ─── Auto-rejoin after a refresh ───────────────────────────────────────
+  // If this tab already joined THIS race, replay the join immediately on mount
+  // so a reload lands the student back in the lobby/round, not the name form.
+  // joinAsStudent caches the intent and the socket hook replays it on connect;
+  // the clientId persists in sessionStorage, so the server re-adopts the
+  // student's existing slot with their score intact. The lobby advance still
+  // waits for the server's JOINED confirm (the effect above) — no optimistic
+  // jump. A ref guards against React StrictMode's double-invoke.
+  const autoRejoinedRef = useRef(false);
+  useEffect(() => {
+    if (autoRejoinedRef.current) return;
+    autoRejoinedRef.current = true;
+    try {
+      const saved = sessionStorage.getItem(RACE_GUEST_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as { sessionCode?: string; name?: string; avatar?: string };
+      if (parsed.sessionCode !== sessionCode || !parsed.name) return;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot replay of a saved join on refresh; matches the confirmed-join effect convention above
+      setName(parsed.name);
+      setAvatar(parsed.avatar || DEFAULT_AVATAR);
+      setJoining(true);
+      joinAsStudent(parsed.name, parsed.avatar || DEFAULT_AVATAR);
+    } catch { /* storage unavailable / bad JSON — fall back to the join form */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per mount; joinAsStudent is stable for this session
+  }, [sessionCode]);
 
   // Surface a join rejection (name taken / bad payload) — bounce back to
   // the join form with the reason so the student can fix it.
@@ -298,9 +350,10 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
 
   useEffect(() => onSessionEnded(() => {
     setPhase("ended");
+    forgetRace();
     playFanfare();
-  }), [onSessionEnded]);
-  useEffect(() => onKicked(() => setPhase("kicked")), [onKicked]);
+  }), [onSessionEnded, forgetRace]);
+  useEffect(() => onKicked(() => { setPhase("kicked"); forgetRace(); }), [onKicked, forgetRace]);
 
   // Derived: this student's live rank + score from the leaderboard.
   const sorted = useMemo(() => [...leaderboard].sort((a, b) => b.score - a.score), [leaderboard]);
@@ -320,7 +373,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   const helpButton = (
     <QuickPlayHelpButton
       onAlertTeacher={() => sendReaction("🙋")}
-      onLeave={() => setView("public-landing")}
+      onLeave={() => { forgetRace(); setView("public-landing"); }}
     />
   );
 
