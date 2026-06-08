@@ -55,6 +55,12 @@ export const LevelBadge = ({ level }: { level: UnitLevel }) => {
   );
 };
 
+export const BandBadge = ({ band }: { band: 'I' | 'II' | 'III' }) => (
+  <span className="inline-flex items-center rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">
+    Band {band}
+  </span>
+);
+
 export const FreqBadge = ({ freq }: { freq: 'high' | 'medium' | 'low' }) => {
   const { language } = useLanguage();
   const styles = {

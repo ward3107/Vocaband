@@ -1,6 +1,7 @@
 import { useLanguage } from '../hooks/useLanguage';
 import { t } from '../i18n/strings';
 import { GradientCard } from '../components/ui';
+import { CEFR_BY_LEVEL } from '../data/curriculum';
 import type { Pillar, UnitLevel, View } from '../core/types';
 
 const LEVELS: UnitLevel[] = [3, 4, 5];
@@ -30,6 +31,7 @@ export default function HomeView({
         <h1 className="mt-2 text-3xl font-black text-slate-900">{t(language, 'appName')}</h1>
         <p className="mt-1 text-lg font-semibold text-indigo-600">{t(language, 'tagline')}</p>
         <p className="mt-1 text-sm text-slate-500">{t(language, 'subtitle')}</p>
+        <p className="mt-2 text-xs font-medium text-emerald-600">✓ {t(language, 'moeNote')}</p>
       </header>
 
       <div className="mb-6">
@@ -40,13 +42,14 @@ export default function HomeView({
               key={l}
               type="button"
               onClick={() => setLevel(l)}
-              className={`rounded-2xl px-6 py-3 font-bold transition ${
+              className={`flex flex-col items-center rounded-2xl px-6 py-3 font-bold transition ${
                 level === l
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30'
                   : 'bg-white text-slate-600 ring-1 ring-black/5 hover:bg-slate-50'
               }`}
             >
-              {l} {t(language, 'units')}
+              <span>{l} {t(language, 'units')}</span>
+              <span className={`text-xs font-medium ${level === l ? 'text-white/80' : 'text-slate-400'}`}>{CEFR_BY_LEVEL[l].cefr}</span>
             </button>
           ))}
         </div>

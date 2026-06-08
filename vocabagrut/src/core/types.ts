@@ -25,6 +25,8 @@ export interface VocabWord {
   ar: string;                  // Arabic translation
   example: string;             // example sentence
   level: UnitLevel;            // lowest level this word is expected at
+  /** MoE vocabulary band (Curriculum 2020): I, II, or III (Core 1). */
+  band: 'I' | 'II' | 'III';
   /** Rough frequency on past exams — drives study prioritisation. */
   frequency: 'high' | 'medium' | 'low';
 }
@@ -42,6 +44,8 @@ export interface ReadingQuestion {
   answerIndex?: number;
   /** Model answer used for self-check / AI grading (open + HOTS). */
   sampleAnswer?: string;
+  /** Named MoE thinking skill this HOTS question targets (see curriculum.HOTS). */
+  hots?: string;
   points: number;
 }
 

@@ -1,9 +1,11 @@
 import type { VocabWord } from '../core/types';
 
-// Seed set of high-value Bagrut vocabulary. In production this becomes a
-// few thousand curated words (Vocaband-style lazy-loaded module), ideally
-// derived from frequency analysis of past papers. These samples show the
-// shape and the trilingual + level + frequency fields the UI relies on.
+// Seed set of Bagrut vocabulary, tagged by the MoE Curriculum 2020 bands
+// (I / II / III). In production this becomes the official Inspectorate band
+// lists for the current exam period (updated per moed). Module E tests
+// Bands I, II & III (Core 1); 3-point work stays within Bands I–II.
+// `frequency` reflects how often a word recurs across past papers and
+// drives study prioritisation.
 export const VOCAB: VocabWord[] = [
   {
     id: 'v-acquire',
@@ -14,6 +16,7 @@ export const VOCAB: VocabWord[] = [
     ar: 'يكتسب، يحصل على',
     example: 'Students acquire new vocabulary by reading widely.',
     level: 4,
+    band: 'III',
     frequency: 'high',
   },
   {
@@ -25,6 +28,7 @@ export const VOCAB: VocabWord[] = [
     ar: 'مهم، ذو دلالة',
     example: 'The study found a significant rise in screen time among teenagers.',
     level: 4,
+    band: 'III',
     frequency: 'high',
   },
   {
@@ -36,6 +40,7 @@ export const VOCAB: VocabWord[] = [
     ar: 'علاوة على ذلك',
     example: 'The plan is expensive. Furthermore, it may not even work.',
     level: 5,
+    band: 'III',
     frequency: 'high',
   },
   {
@@ -47,6 +52,7 @@ export const VOCAB: VocabWord[] = [
     ar: 'بيئة',
     example: 'Plastic waste is a serious threat to the environment.',
     level: 3,
+    band: 'I',
     frequency: 'high',
   },
   {
@@ -58,6 +64,7 @@ export const VOCAB: VocabWord[] = [
     ar: 'يتغلّب على',
     example: 'She overcame her fear of public speaking.',
     level: 4,
+    band: 'II',
     frequency: 'medium',
   },
   {
@@ -69,6 +76,7 @@ export const VOCAB: VocabWord[] = [
     ar: 'مع ذلك',
     example: 'The task was hard; nevertheless, they finished on time.',
     level: 5,
+    band: 'III',
     frequency: 'medium',
   },
   {
@@ -80,6 +88,7 @@ export const VOCAB: VocabWord[] = [
     ar: 'فائدة، منفعة',
     example: 'Regular exercise has many health benefits.',
     level: 3,
+    band: 'II',
     frequency: 'high',
   },
   {
@@ -91,6 +100,7 @@ export const VOCAB: VocabWord[] = [
     ar: 'متردد، غير راغب',
     example: 'He was reluctant to admit that he was wrong.',
     level: 5,
+    band: 'III',
     frequency: 'medium',
   },
 ];

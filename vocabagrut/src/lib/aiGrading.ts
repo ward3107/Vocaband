@@ -32,12 +32,18 @@ export async function gradeWriting(
   const inRange = words >= prompt.minWords && words <= prompt.maxWords;
   const avgSentenceLen = sentences ? words / sentences : words;
 
+  // Map to the official MoE rubric criteria: Content & Organization,
+  // Vocabulary, Language. Each maps the 4-band descriptors (fully /
+  // partially / minimally / not) onto a rough ratio.
   const scores = prompt.rubric.map((c) => {
     let ratio = 0.6; // neutral baseline
-    if (c.name.startsWith('Content')) ratio = inRange ? 0.85 : words >= prompt.minWords * 0.6 ? 0.65 : 0.4;
-    if (c.name.startsWith('Organisation')) ratio = hasLinkers && sentences >= 4 ? 0.85 : 0.6;
+    if (c.name.startsWith('Content')) {
+      const onTopic = inRange ? 0.85 : words >= prompt.minWords * 0.6 ? 0.65 : 0.4;
+      const organized = hasLinkers && sentences >= 4 ? 1 : 0.85;
+      ratio = onTopic * organized;
+    }
     if (c.name.startsWith('Vocabulary')) ratio = new Set(text.toLowerCase().match(/[a-z']+/g) ?? []).size > words * 0.55 ? 0.8 : 0.6;
-    if (c.name.startsWith('Grammar')) ratio = avgSentenceLen > 6 && avgSentenceLen < 28 ? 0.8 : 0.6;
+    if (c.name.startsWith('Language')) ratio = avgSentenceLen > 6 && avgSentenceLen < 28 && hasLinkers ? 0.8 : 0.6;
     return { criterion: c.name, awarded: Math.round(c.maxPoints * ratio), max: c.maxPoints };
   });
 

@@ -59,6 +59,13 @@ const en: Dict = {
   buildAgain: 'Build again',
   section: 'Section',
   finish: 'Finish',
+  // Curriculum / exam bank
+  curriculum2020: 'Curriculum 2020',
+  examBankIntro: 'The official MoE module structure for this level. Download real past papers from the Inspectorate archive.',
+  examNo: 'Exam no.',
+  internal: 'School-assessed',
+  officialArchive: 'Official MoE past-exam archive',
+  moeNote: 'Aligned to the Israeli MoE English Curriculum 2020 (CEFR)',
 };
 
 const he: Dict = {
@@ -114,6 +121,13 @@ const he: Dict = {
   buildAgain: 'לבנות שוב',
   section: 'חלק',
   finish: 'סיום',
+  // Curriculum / exam bank
+  curriculum2020: 'תכנית 2020',
+  examBankIntro: 'מבנה המודולים הרשמי של משרד החינוך לרמה זו. הורידו בחינות עבר אמיתיות מאתר הפיקוח.',
+  examNo: 'שאלון מס׳',
+  internal: 'הערכה בית-ספרית',
+  officialArchive: 'מאגר בחינות העבר הרשמי של משרד החינוך',
+  moeNote: 'מותאם לתכנית הלימודים באנגלית של משרד החינוך 2020 (CEFR)',
 };
 
 const ar: Dict = {
@@ -169,6 +183,13 @@ const ar: Dict = {
   buildAgain: 'ابنِ مرة أخرى',
   section: 'قسم',
   finish: 'إنهاء',
+  // Curriculum / exam bank
+  curriculum2020: 'منهاج 2020',
+  examBankIntro: 'بنية الوحدات الرسمية لوزارة التربية لهذا المستوى. حمّل امتحانات سابقة حقيقية من أرشيف التفتيش.',
+  examNo: 'رقم النموذج',
+  internal: 'تقييم مدرسي',
+  officialArchive: 'الأرشيف الرسمي لامتحانات البجروت السابقة',
+  moeNote: 'متوافق مع منهاج اللغة الإنجليزية لوزارة التربية الإسرائيلية 2020 (CEFR)',
 };
 
 const DICTS: Record<Language, Dict> = { en, he, ar };

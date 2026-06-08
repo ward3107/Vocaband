@@ -1,67 +1,86 @@
 import { useLanguage } from '../hooks/useLanguage';
 import { t } from '../i18n/strings';
-import { examsForLevel } from '../data/exams';
-import { BackBar, Panel, LevelBadge } from '../components/ui';
+import { LEVEL_PLANS, CEFR_BY_LEVEL } from '../data/curriculum';
+import { BackBar, Panel } from '../components/ui';
 import type { UnitLevel } from '../core/types';
+
+const ARCHIVE_URL =
+  'https://pop.education.gov.il/tchumey_daat/english/chativa-elyona/bagrut-exam/bagrut-archives/';
 
 export default function ExamBankView({ level, onBack }: { level: UnitLevel; onBack: () => void }) {
   const { language } = useLanguage();
-  const exams = examsForLevel(level);
+  const plan = LEVEL_PLANS[level];
+  const cefr = CEFR_BY_LEVEL[level];
 
   return (
     <div>
       <BackBar onBack={onBack} title={t(language, 'pillar_exams')} />
-      <div className="space-y-5">
-        {exams.map((exam) => (
-          <Panel key={exam.id}>
+
+      {/* Level overview — CEFR exit level per Curriculum 2020 */}
+      <Panel className="mb-5 bg-gradient-to-br from-indigo-600 to-violet-600 text-white ring-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-2xl font-extrabold">{level} {t(language, 'units')}</div>
+            <div className="text-sm text-white/90">{cefr.cefr} · {cefr.name}</div>
+          </div>
+          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">{t(language, 'curriculum2020')}</span>
+        </div>
+        <p className="mt-2 text-sm text-white/80">{t(language, 'examBankIntro')}</p>
+      </Panel>
+
+      <div className="space-y-4">
+        {plan.written.map(({ module, percentOfGrade }) => (
+          <Panel key={module.code}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <LevelBadge level={exam.level} />
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    {exam.season} {exam.year}
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-slate-800">{exam.title}</h3>
-                <p className="text-sm text-slate-500">{exam.moduleCode}</p>
+                <h3 className="text-lg font-bold text-slate-800">{module.name}</h3>
+                <p className="text-sm text-slate-500">
+                  {t(language, 'examNo')} {module.code}
+                  {module.internal && <span className="ms-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{t(language, 'internal')}</span>}
+                </p>
               </div>
               <div className="shrink-0 text-right text-sm text-slate-500">
-                <div className="font-bold text-slate-700">{exam.totalPoints} {t(language, 'points')}</div>
-                <div>{exam.durationMinutes} {t(language, 'minutes')}</div>
+                <div className="font-bold text-indigo-600">{percentOfGrade}%</div>
+                {module.timeMinutes && <div>{module.timeMinutes} {t(language, 'minutes')}</div>}
               </div>
             </div>
 
-            <div className="mt-4 space-y-2">
-              {exam.sections.map((s) => (
+            <div className="mt-3 space-y-2">
+              {module.sections.map((s) => (
                 <div key={s.name} className="rounded-xl bg-slate-50 p-3">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-slate-700">{s.name}</span>
-                    <span className="text-sm text-slate-500">{s.points} {t(language, 'points')}</span>
+                    <span className="text-sm text-slate-500">{s.percentOfModule}%</span>
                   </div>
-                  <p className="mt-0.5 text-sm text-slate-500">{s.description}</p>
+                  <p className="mt-0.5 text-sm text-slate-500" dir="ltr">{s.detail}</p>
                 </div>
               ))}
             </div>
-
-            <div className="mt-4">
-              {exam.officialUrl ? (
-                <a
-                  href={exam.officialUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-110"
-                >
-                  {t(language, 'startExam')} ↗
-                </a>
-              ) : (
-                <span className="inline-flex items-center rounded-2xl bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-400">
-                  PDF — link coming soon
-                </span>
-              )}
-            </div>
+            {module.notes && <p className="mt-2 text-xs italic text-slate-400" dir="ltr">{module.notes}</p>}
           </Panel>
         ))}
+
+        {/* Oral exam */}
+        <Panel>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-slate-800">🎙️ {plan.oral.name}</h3>
+              <p className="text-sm text-slate-500">{t(language, 'examNo')} {plan.oral.code}</p>
+            </div>
+            <div className="font-bold text-indigo-600">{plan.oral.percentOfGrade}%</div>
+          </div>
+        </Panel>
       </div>
+
+      {/* Real past papers live on the official MoE archive */}
+      <a
+        href={ARCHIVE_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-5 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 font-bold text-white shadow-md transition hover:brightness-110"
+      >
+        {t(language, 'officialArchive')} ↗
+      </a>
     </div>
   );
 }

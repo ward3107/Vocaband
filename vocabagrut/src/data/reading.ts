@@ -8,7 +8,7 @@ export const PASSAGES: ReadingPassage[] = [
     id: 'r-screen-time',
     title: 'Teenagers and Screen Time',
     level: 4,
-    hotsFocus: 'Inferring · Distinguishing fact from opinion',
+    hotsFocus: 'Inferring · Distinguishing different perspectives',
     wordCount: 168,
     source: 'Adapted exam-style text',
     text:
@@ -71,6 +71,7 @@ export const PASSAGES: ReadingPassage[] = [
         sampleAnswer:
           'To show the study was balanced and fair — they considered evidence ' +
           'against their conclusion before deciding the overall pattern was clear.',
+        hots: 'Inferring',
         points: 35,
       },
     ],
@@ -122,12 +123,13 @@ export const PASSAGES: ReadingPassage[] = [
         id: 'r-vol-q3',
         type: 'hots',
         prompt:
-          'HOTS — Cause & effect: Explain how the text answers the critics in the ' +
-          'final paragraph.',
+          'HOTS — Explaining cause and effect: Explain how the text answers the ' +
+          'critics in the final paragraph.',
         sampleAnswer:
           'Supporters say the community benefits regardless of motive, and that ' +
           'students who start for selfish reasons often keep volunteering even ' +
           'when there is no longer any benefit to themselves.',
+        hots: 'Explaining cause and effect',
         points: 40,
       },
     ],

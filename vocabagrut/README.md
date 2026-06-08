@@ -45,6 +45,38 @@ samples each** — they show the shape; real content drops straight in.
 
 ---
 
+## MoE curriculum alignment
+
+Everything is grounded in the **Israeli Ministry of Education English
+Curriculum 2020** (CEFR-aligned "Revised Curriculum"). The single source of
+truth is [`src/data/curriculum.ts`](src/data/curriculum.ts):
+
+- **Levels → CEFR:** 3 units → **A2** (Basic User II), 4 units → **B1**
+  (Independent User I), 5 units → **B2** (Independent User II).
+- **Real module structure & exam codes** (modular accumulation):
+  - 3-point: Module A `016381` + Module B `016383` (lit) + Module C `016382` + Oral BOOST `016387`
+  - 4-point: Module C `016382` + Module D `016483` (lit) + Module E `016471` + Oral `016486`
+  - 5-point: Module E `016471` + Module F `016583` (lit) + Module G `016582` + COBE `016586`
+  - Each module carries its official **table of specifications** — section
+    weights, text/word counts, question counts, and time allotted.
+- **Reading** task types match the spec (multiple-choice, open-ended, sentence
+  completion, true/false with justification) and HOTS questions are tagged with
+  the **official 14 Higher Order Thinking Skills**.
+- **Writing** uses the real composition types and word counts (Module C 70–90
+  words; Module G 120–140 words) and the official **Content & Organization /
+  Vocabulary / Language** rubric.
+- **Vocabulary** is tagged by MoE **Bands I / II / III (Core 1)**.
+- The **exam bank** shows each level's official module breakdown and links to
+  the live **Inspectorate past-exam archive** for the real PDFs.
+
+**Sources** (State of Israel, Ministry of Education, English Language Education):
+3-/4-/5-Point Bagrut Handbooks (2025), the Literature Pedagogy Handbook, and the
+[English Bagrut archive](https://pop.education.gov.il/tchumey_daat/english/chativa-elyona/bagrut-exam/).
+
+> The sample words/passages/prompts illustrate the *shape* at each level;
+> production swaps in the official Inspectorate band lists and a passage bank
+> tagged to real past papers.
+
 ## AI grading
 
 `src/lib/aiGrading.ts` currently returns a **deterministic heuristic** score so

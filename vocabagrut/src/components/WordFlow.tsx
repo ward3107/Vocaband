@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLanguage } from '../hooks/useLanguage';
 import { t } from '../i18n/strings';
-import { LevelBadge, FreqBadge, Primary } from './ui';
+import { LevelBadge, BandBadge, FreqBadge, Primary } from './ui';
 import type { VocabWord } from '../core/types';
 
 // The "flow of words" — a continuous flip-and-self-mark flashcard stream.
@@ -85,8 +85,9 @@ export default function WordFlow({
         )}
       </button>
 
-      <div className="mt-4 flex items-center justify-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
         <LevelBadge level={word.level} />
+        <BandBadge band={word.band} />
         <FreqBadge freq={word.frequency} />
       </div>
 

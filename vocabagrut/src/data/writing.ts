@@ -1,54 +1,81 @@
-import type { WritingPrompt } from '../core/types';
+import type { WritingPrompt, RubricCriterion } from '../core/types';
 
-// Bagrut-style writing tasks. The rubric mirrors the official scoring
-// dimensions used by the MoE (content/relevance, organisation, vocabulary,
-// grammar/mechanics) — adjust the weights to the exact level guidelines.
-const STANDARD_RUBRIC = [
-  { name: 'Content & relevance', maxPoints: 40, description: 'Answers the task fully and stays on topic' },
-  { name: 'Organisation', maxPoints: 20, description: 'Clear paragraphs, logical flow, linking words' },
-  { name: 'Vocabulary', maxPoints: 20, description: 'Range and accuracy of word choice' },
-  { name: 'Grammar & mechanics', maxPoints: 20, description: 'Sentence structure, tenses, spelling, punctuation' },
+// Writing tasks aligned to the MoE module specs:
+//   • 3-point & 4-point → Module C: 1 composition, 70–90 words
+//     (description, informal letter, story, email)
+//   • 5-point → Module G: 1 composition, 120–140 words
+//     (opinion, for-and-against, description, email, story, formal letter)
+//
+// Rubrics reproduce the official criteria — Content & Organization,
+// Vocabulary, Language — from the Module C / Module G writing rubrics in the
+// Bagrut handbooks (descriptors: fully / partially / minimally / not).
+
+const MODULE_C_RUBRIC: RubricCriterion[] = [
+  { name: 'Content & Organization', maxPoints: 40, description: 'On topic, task elements addressed, organized and coherent' },
+  { name: 'Vocabulary', maxPoints: 30, description: 'Correct, appropriate use of words' },
+  { name: 'Language', maxPoints: 30, description: 'Basic grammar, word order, spelling' },
+];
+
+const MODULE_G_RUBRIC: RubricCriterion[] = [
+  { name: 'Content & Organization', maxPoints: 40, description: 'Fully on topic, fully developed (main idea + supporting details), all task elements addressed, well-organized and coherent' },
+  { name: 'Vocabulary', maxPoints: 30, description: 'Varied, rich vocabulary; appropriate language chunks and phrases' },
+  { name: 'Language', maxPoints: 30, description: 'Correct connecting words/phrases; grammar, tenses, spelling' },
 ];
 
 export const PROMPTS: WritingPrompt[] = [
+  // ── Module C (3-point) ──
+  {
+    id: 'w-school-trip',
+    level: 3,
+    type: 'letter',
+    title: 'Module C · Informal letter — a school trip',
+    prompt:
+      'Your class is planning a one-day trip. Write a letter to your teacher ' +
+      'suggesting a place to visit. Say where you want to go and give two ' +
+      'reasons why it would be a good choice.',
+    minWords: 70,
+    maxWords: 90,
+    rubric: MODULE_C_RUBRIC,
+  },
+  // ── Module C (4-point) ──
+  {
+    id: 'w-free-time',
+    level: 4,
+    type: 'article',
+    title: 'Module C · Description — how you spend your free time',
+    prompt:
+      'Write a short text describing how you spend your free time. Include ' +
+      'what you do, who you do it with, and why you enjoy it.',
+    minWords: 70,
+    maxWords: 90,
+    rubric: MODULE_C_RUBRIC,
+  },
+  // ── Module G (5-point) ──
   {
     id: 'w-social-media',
-    level: 4,
+    level: 5,
     type: 'opinion',
-    title: 'Social media: help or harm?',
+    title: 'Module G · Opinion — social media: help or harm?',
     prompt:
       'Some people believe social media brings young people closer together, ' +
       'while others think it makes them more isolated. Write an opinion essay ' +
       'in which you state your view and support it with reasons and examples.',
     minWords: 120,
-    maxWords: 160,
-    rubric: STANDARD_RUBRIC,
-  },
-  {
-    id: 'w-school-trip',
-    level: 3,
-    type: 'letter',
-    title: 'A letter about a school trip',
-    prompt:
-      'Your class is planning a one-day trip. Write a letter to your teacher ' +
-      'suggesting a place to visit. Explain where you want to go and give two ' +
-      'reasons why it would be a good choice.',
-    minWords: 80,
-    maxWords: 120,
-    rubric: STANDARD_RUBRIC,
+    maxWords: 140,
+    rubric: MODULE_G_RUBRIC,
   },
   {
     id: 'w-future-work',
     level: 5,
-    type: 'essay',
-    title: 'How technology is changing the world of work',
+    type: 'opinion',
+    title: 'Module G · For and against — technology and the world of work',
     prompt:
-      'Write an essay discussing how new technology is changing the kinds of ' +
-      'jobs people do. Consider both the opportunities and the challenges, and ' +
-      'reach a clear conclusion.',
-    minWords: 150,
-    maxWords: 200,
-    rubric: STANDARD_RUBRIC,
+      'New technology is changing the kinds of jobs people do. Write a ' +
+      'for-and-against composition presenting both the opportunities and the ' +
+      'challenges, and end with your own conclusion.',
+    minWords: 120,
+    maxWords: 140,
+    rubric: MODULE_G_RUBRIC,
   },
 ];
 
