@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
 import { AnimatePresence } from 'motion/react';
 import TopAppBar from '../TopAppBar';
-import PageHero from '../PageHero';
+import CreationPageShell from './CreationPageShell';
 import { Sparkles, BookOpen, Zap } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
 import { SentenceDifficulty } from '../../constants/game';
@@ -278,7 +278,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   onSwitchActivity,
   hideEnglishOnlyActivityTabs = false,
 }) => {
-  const { language, dir } = useLanguage();
+  const { language } = useLanguage();
   const t = teacherWizardsT[language];
   // First-time guide — only relevant for the Assignment flow.  Quick
   // Play has its own micro-flow on the dashboard tile, so we don't
@@ -456,41 +456,35 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   const stepEyebrow = `${currentStep} / 3 · ${stepLabels[currentStep]}`;
 
   return (
-    <div dir={dir} className="min-h-screen pt-20 sm:pt-24 pb-20 sm:pb-12" style={{ backgroundColor: 'var(--vb-bg)' }}>
-      <TopAppBar
-        title={isQuickPlay ? t.qpSetupTitle : editingAssignment ? t.editAssignmentTitle : t.createAssignmentTitle}
-        subtitle={isQuickPlay ? t.qpSetupSubtitle : t.assignmentSubtitle}
-        showBack
-        onBack={handleBack}
-        userName={user?.displayName}
-        userAvatar={user?.avatar}
-        onLogout={onLogout}
-      />
-
-      {/* Hero — repainted with the indigo→violet→fuchsia brand
-          gradient so the wizard reads as the same family as the
-          redesigned dashboard / classroom / roster surfaces (the
-          previous default indigo→violet→fuchsia stop was fine; the
-          named `gradient` prop just makes that explicit and future-
-          proofs against PageHero default drift). */}
-      <PageHero
-        icon={<HeroIcon size={32} className="text-white" />}
-        eyebrow={stepEyebrow}
-        title={heroTitle}
-        subtitle={heroSubtitle}
-        gradient="from-indigo-500 via-violet-500 to-fuchsia-500"
-      />
-
-      <div className="mx-auto px-3 sm:px-4 md:px-6 pt-6 sm:pt-8 max-w-5xl">
-        {/* Activity type tabs — only on the Assignment flow.  Quick Play
-            is its own un-classed flow and shouldn't surface these. */}
-        {isAssignment && onSwitchActivity && (
+    <CreationPageShell
+      topBar={
+        <TopAppBar
+          title={isQuickPlay ? t.qpSetupTitle : editingAssignment ? t.editAssignmentTitle : t.createAssignmentTitle}
+          subtitle={isQuickPlay ? t.qpSetupSubtitle : t.assignmentSubtitle}
+          showBack
+          onBack={handleBack}
+          userName={user?.displayName}
+          userAvatar={user?.avatar}
+          onLogout={onLogout}
+        />
+      }
+      icon={<HeroIcon size={32} className="text-white" />}
+      eyebrow={stepEyebrow}
+      title={heroTitle}
+      subtitle={heroSubtitle}
+      activityTabs={
+        // Tabs only on the Assignment flow — Quick Play is its own
+        // un-classed flow and shouldn't surface these.
+        isAssignment && onSwitchActivity ? (
           <ActivityTypeTabs
             active="assignment"
             onSwitch={onSwitchActivity}
             hideEnglishOnlyTabs={hideEnglishOnlyActivityTabs}
           />
-        )}
+        ) : undefined
+      }
+      contentClassName="pt-6 sm:pt-8 pb-20 sm:pb-12"
+    >
         <Stepper currentStep={currentStep} mode={mode} />
 
         <AnimatePresence mode="wait">
@@ -644,7 +638,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
             <GuideTriggerButton onClick={guide.open} />
           )}
         </div>
-      </div>
 
       {isAssignmentMode && (
         <FirstTimeGuide
@@ -655,7 +648,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
           steps={guideStrings.steps}
         />
       )}
-    </div>
+    </CreationPageShell>
   );
 };
 

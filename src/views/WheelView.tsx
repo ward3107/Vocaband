@@ -42,7 +42,7 @@ import {
   type TrueFalseQuestion,
   type TranslationLang,
 } from '../utils/buildQuestion';
-import PageHero from '../components/PageHero';
+import CreationPageShell from '../components/setup/CreationPageShell';
 import InPageCamera from '../components/InPageCamera';
 import { postOcrImage, isPostOcrImageError } from '../utils/postOcrImage';
 import { celebrate } from '../utils/celebrate';
@@ -1166,20 +1166,15 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
   // ════════════════════════════════════════════════════════════
   if (phase === 'setup') {
     return (
-      <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
-        <PageHero
-          icon={<Disc3 size={32} className="text-white" />}
-          title={t.title}
-          subtitle={t.subtitle}
-          onBack={onExit}
-          backLabel={t.exitBtn}
-          gradient="from-indigo-500 via-violet-500 to-fuchsia-500"
-        />
-
-        {activityTabs}
-
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
-          <div className="rounded-2xl bg-white shadow-lg border border-violet-100 overflow-hidden">
+      <CreationPageShell
+        icon={<Disc3 size={32} className="text-white" />}
+        title={t.title}
+        subtitle={t.subtitle}
+        onBack={onExit}
+        backLabel={t.exitBtn}
+        activityTabs={activityTabs}
+      >
+        <div className="rounded-2xl bg-white shadow-lg border border-violet-100 overflow-hidden">
             <div className="px-6 py-6 space-y-5">
               {/* Players */}
               <div>
@@ -1448,7 +1443,6 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
               )}
             </div>
           </div>
-        </div>
 
         {/* In-page camera modal — only mounted when explicitly opened so the
             getUserMedia request doesn't fire until the teacher taps. */}
@@ -1465,7 +1459,7 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
             }}
           />
         )}
-      </div>
+      </CreationPageShell>
     );
   }
 

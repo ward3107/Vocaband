@@ -50,7 +50,7 @@ import type { Word } from "../data/vocabulary";
 import InPageCamera from "../components/InPageCamera";
 import { postOcrImage, isPostOcrImageError } from "../utils/postOcrImage";
 import type { Language } from "../hooks/useLanguage";
-import PageHero from "../components/PageHero";
+import CreationPageShell from "../components/setup/CreationPageShell";
 
 export interface HotSeatAssignment {
   id: string;
@@ -761,20 +761,15 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, ac
   if (phase === 'setup') {
     const canStart = parsedNameCount >= 2 && wordPool.length >= 4;
     return (
-      <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
-        <PageHero
-          icon={<Users size={32} className="text-white" />}
-          title={t.title}
-          subtitle={t.subtitle}
-          onBack={onExit}
-          backLabel={t.exitBtn}
-          gradient="from-indigo-500 via-violet-500 to-fuchsia-500"
-        />
-
-        {activityTabs}
-
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
-          <div className="rounded-2xl bg-white shadow-lg border border-orange-100 overflow-hidden">
+      <CreationPageShell
+        icon={<Users size={32} className="text-white" />}
+        title={t.title}
+        subtitle={t.subtitle}
+        onBack={onExit}
+        backLabel={t.exitBtn}
+        activityTabs={activityTabs}
+      >
+        <div className="rounded-2xl bg-white shadow-lg border border-orange-100 overflow-hidden">
             <div className="px-6 py-6 space-y-5">
               <div>
                 <label className="block text-sm font-bold text-stone-700 mb-2">
@@ -992,7 +987,6 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, ac
               )}
             </div>
           </div>
-        </div>
 
         {/* In-page camera modal — only mounted when explicitly opened so the
             getUserMedia request doesn't fire until the teacher taps. */}
@@ -1187,7 +1181,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, ac
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </CreationPageShell>
     );
   }
 

@@ -23,7 +23,7 @@ import {
   Keyboard, Shuffle, AudioLines, Link2, Grid3x3, Puzzle, Wand2,
   Zap, Tv2,
 } from 'lucide-react';
-import PageHero from '../PageHero';
+import CreationPageShell from '../setup/CreationPageShell';
 import { useLanguage } from '../../hooks/useLanguage';
 import { classShowStrings, type ClassShowStrings } from '../../locales/student/class-show';
 import type { Word } from '../../data/vocabulary';
@@ -178,19 +178,15 @@ export default function ClassShowSetup({
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
-      <PageHero
-        icon={<Tv2 size={32} className="text-white" />}
-        title={t.classShow}
-        subtitle={t.projectToClass}
-        onBack={onCancel}
-        gradient="from-fuchsia-500 via-pink-500 to-rose-500"
-        trailing={<GuideTriggerButton onClick={guide.open} />}
-      />
-
-      {activityTabs}
-
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8">
+    <CreationPageShell
+      icon={<Tv2 size={32} className="text-white" />}
+      title={t.classShow}
+      subtitle={t.projectToClass}
+      onBack={onCancel}
+      gradient="from-fuchsia-500 via-pink-500 to-rose-500"
+      trailing={<GuideTriggerButton onClick={guide.open} />}
+      activityTabs={activityTabs}
+    >
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -296,7 +292,6 @@ export default function ClassShowSetup({
             </button>
           </div>
         </motion.div>
-      </div>
 
       <FirstTimeGuide
         isOpen={guide.isOpen}
@@ -305,6 +300,6 @@ export default function ClassShowSetup({
         subheading={guideStrings.subheading}
         steps={guideStrings.steps}
       />
-    </div>
+    </CreationPageShell>
   );
 }
