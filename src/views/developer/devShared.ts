@@ -201,6 +201,37 @@ export interface DevClass {
   assignment_count: number;
 }
 
+/** A teacher-authored vocabulary set, from admin_list_vocab_sets (moderation). */
+export interface DevVocabSet {
+  id: string;
+  name: string;
+  description: string | null;
+  source_type: string;
+  teacher_uid: string;
+  teacher_name: string | null;
+  teacher_email: string | null;
+  word_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** One word inside a set, with its primary example sentence (moderation drill-in). */
+export interface DevVocabWord {
+  id: string;
+  english: string;
+  hebrew: string | null;
+  arabic: string | null;
+  part_of_speech: string | null;
+  sentence: string | null;
+  sentence_generated_by: string | null;
+}
+
+/** Full per-set review payload (admin_vocab_set_detail). */
+export interface DevVocabSetDetail {
+  set: DevVocabSet;
+  words: DevVocabWord[];
+}
+
 export interface DevAuditEntry {
   id: string;
   actor_uid: string;

@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import {
   ArrowLeft, Bot, Database, Activity, Server, ShieldAlert, Users, School,
   Search, ScrollText, TrendingUp, ShieldCheck, Flag, Megaphone, Lock, BarChart3,
-  CreditCard, GraduationCap, RefreshCw,
+  CreditCard, GraduationCap, RefreshCw, FileText,
 } from "lucide-react";
 import { hasAdminAccess, type AppUser } from "../core/supabase";
 import type { View } from "../core/views";
@@ -28,6 +28,7 @@ import DevFeatureFlagsPanel from "./developer/DevFeatureFlagsPanel";
 import DevAnnouncementsPanel from "./developer/DevAnnouncementsPanel";
 import DevSecurityChecklistPanel from "./developer/DevSecurityChecklistPanel";
 import DevAuthzFailuresPanel from "./developer/DevAuthzFailuresPanel";
+import DevModerationPanel from "./developer/DevModerationPanel";
 import DevInsightsPanel from "./developer/DevInsightsPanel";
 
 interface Props {
@@ -39,7 +40,7 @@ interface Props {
 type Tab =
   | "users" | "entitlements" | "classes" | "schools"
   | "ai" | "trials" | "insights" | "broadcast"
-  | "privacy" | "audit" | "security"
+  | "privacy" | "audit" | "security" | "moderation"
   | "system" | "flags" | "infra";
 
 type Group = "People & access" | "Growth" | "Safety & privacy" | "System";
@@ -55,9 +56,10 @@ const TABS: { id: Tab; label: string; icon: typeof Bot; group: Group }[] = [
   { id: "insights",  label: "Insights",      icon: BarChart3,  group: "Growth" },
   { id: "broadcast", label: "Broadcast",     icon: Megaphone,  group: "Growth" },
 
-  { id: "privacy",  label: "Privacy requests", icon: ShieldCheck, group: "Safety & privacy" },
-  { id: "audit",    label: "Audit log",        icon: ScrollText,  group: "Safety & privacy" },
-  { id: "security", label: "Security ops",     icon: Lock,        group: "Safety & privacy" },
+  { id: "privacy",    label: "Privacy requests", icon: ShieldCheck, group: "Safety & privacy" },
+  { id: "moderation", label: "Content review",   icon: FileText,    group: "Safety & privacy" },
+  { id: "audit",      label: "Audit log",        icon: ScrollText,  group: "Safety & privacy" },
+  { id: "security",   label: "Security ops",     icon: Lock,        group: "Safety & privacy" },
 
   { id: "system", label: "DB health",     icon: Database, group: "System" },
   { id: "flags",  label: "Feature flags", icon: Flag,     group: "System" },
@@ -219,6 +221,7 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
           {tab === "insights"     && <DevInsightsPanel showToast={showToast} />}
           {tab === "broadcast"    && <DevAnnouncementsPanel showToast={showToast} />}
           {tab === "privacy"      && <DevDataRequestsPanel showToast={showToast} />}
+          {tab === "moderation"   && <DevModerationPanel showToast={showToast} />}
           {tab === "audit"        && <DevAuditLogPanel showToast={showToast} />}
           {tab === "security"     && (
             <div className="space-y-8">
