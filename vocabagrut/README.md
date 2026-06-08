@@ -30,9 +30,10 @@ feedback is stubbed locally (see [AI grading](#ai-grading)).
 
 ## What's here (v0.1 — foundation)
 
-| Pillar | File(s) | Status |
+| Feature | File(s) | Status |
 |---|---|---|
-| **Vocabulary** | `src/views/VocabularyView.tsx`, `src/data/vocabulary.ts` | Flashcard study mode (flip → self-mark), trilingual + level + exam-frequency tags. Seed word set. |
+| **🏗️ Build your Bagrut** | `src/views/BuildBagrutView.tsx` | **Headline flow.** Click `+`/`−` to assemble a full mock exam from word-flow + reading + writing blocks, see a live preview + total points, then take the whole thing end-to-end with a progress bar and final score. |
+| **Vocabulary (word flow)** | `src/components/WordFlow.tsx`, `src/views/VocabularyView.tsx`, `src/data/vocabulary.ts` | Continuous flip → self-mark flashcard flow, trilingual + level + exam-frequency tags. Shared by the Vocabulary pillar **and** the builder. |
 | **Reading** | `src/views/ReadingView.tsx`, `src/data/reading.ts` | Exam-style passages with auto-checked multiple-choice + open/HOTS questions with model answers. |
 | **Writing** | `src/views/WritingView.tsx`, `src/data/writing.ts`, `src/lib/aiGrading.ts` | Prompt editor with live word count + **rubric-based feedback** (heuristic stub; swap for a real model). |
 | **Past exams** | `src/views/ExamBankView.tsx`, `src/data/exams.ts` | Browsable bank of recent papers by year/level, section breakdown, official-PDF links. |
@@ -63,15 +64,20 @@ already uses).
 
 ## Moving this into its own repo
 
-Because GitHub access in the generating session was scoped to the Vocaband repo,
-this was scaffolded as a subfolder. To promote it to a standalone repository:
+GitHub access in the generating session was scoped to the Vocaband repo and the
+integration is **not allowed to create new repos** (the API returns 403), so this
+was scaffolded as a subfolder. Promoting it to its own repository is **one manual
+step on your side**, then it's fully independent:
 
-```bash
-# from the repo root, with a clean working tree
-git subtree split --prefix=vocabagrut -b vocabagrut-only
-# create an empty repo on GitHub (e.g. ward3107/vocabagrut), then:
-git push git@github.com:ward3107/vocabagrut.git vocabagrut-only:main
-```
+1. On GitHub, create a new **empty** repo (no README/license): e.g. `ward3107/vocabagrut`.
+2. From the Vocaband repo root, with a clean working tree, run the helper:
+
+   ```bash
+   bash vocabagrut/scripts/extract-to-own-repo.sh git@github.com:ward3107/vocabagrut.git
+   ```
+
+   It splits `vocabagrut/` into its own history and pushes it to `main` of the new
+   repo. After that, `git clone` the new repo and develop there directly.
 
 Or simply copy the `vocabagrut/` folder into a fresh `git init` project — it has
 no parent-repo dependencies.

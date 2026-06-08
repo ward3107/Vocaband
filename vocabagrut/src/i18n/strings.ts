@@ -43,6 +43,22 @@ const en: Dict = {
   freq_high: 'High',
   freq_medium: 'Medium',
   freq_low: 'Low',
+  // Build-Your-Bagrut
+  build_title: 'Build your Bagrut',
+  build_cta: 'Build the whole Bagrut',
+  build_cta_desc: 'Click to assemble a full mock exam, then take it in one flow',
+  build_intro: 'Click + to add sections, then build a full mock exam and take it end to end.',
+  wordFlow: 'word flow',
+  available: 'available',
+  yourBagrut: 'Your Bagrut',
+  addBlocks: 'Add at least one section to begin.',
+  total: 'Total',
+  buildStart: 'Build my Bagrut',
+  build_done: 'You built and finished a full Bagrut!',
+  sectionsCompleted: 'sections completed',
+  buildAgain: 'Build again',
+  section: 'Section',
+  finish: 'Finish',
 };
 
 const he: Dict = {
@@ -82,6 +98,22 @@ const he: Dict = {
   freq_high: 'גבוהה',
   freq_medium: 'בינונית',
   freq_low: 'נמוכה',
+  // Build-Your-Bagrut
+  build_title: 'בנו את הבגרות שלכם',
+  build_cta: 'בנו את כל הבגרות',
+  build_cta_desc: 'לחצו כדי להרכיב מבחן מלא, ואז לפתור אותו ברצף אחד',
+  build_intro: 'לחצו + כדי להוסיף חלקים, בנו מבחן מדומה מלא ופתרו אותו מתחילתו ועד סופו.',
+  wordFlow: 'זרימת מילים',
+  available: 'זמינים',
+  yourBagrut: 'הבגרות שלכם',
+  addBlocks: 'הוסיפו לפחות חלק אחד כדי להתחיל.',
+  total: 'סך הכול',
+  buildStart: 'בנו את הבגרות',
+  build_done: 'בניתם וסיימתם בגרות מלאה!',
+  sectionsCompleted: 'חלקים הושלמו',
+  buildAgain: 'לבנות שוב',
+  section: 'חלק',
+  finish: 'סיום',
 };
 
 const ar: Dict = {
@@ -121,6 +153,22 @@ const ar: Dict = {
   freq_high: 'عالٍ',
   freq_medium: 'متوسط',
   freq_low: 'منخفض',
+  // Build-Your-Bagrut
+  build_title: 'ابنِ امتحان البجروت',
+  build_cta: 'ابنِ امتحان البجروت كاملاً',
+  build_cta_desc: 'انقر لتجميع امتحان تجريبي كامل، ثم قدّمه في تدفّق واحد',
+  build_intro: 'انقر + لإضافة أقسام، ثم ابنِ امتحاناً تجريبياً كاملاً وقدّمه من البداية للنهاية.',
+  wordFlow: 'تدفّق الكلمات',
+  available: 'متاح',
+  yourBagrut: 'امتحانك',
+  addBlocks: 'أضف قسماً واحداً على الأقل للبدء.',
+  total: 'المجموع',
+  buildStart: 'ابنِ امتحاني',
+  build_done: 'لقد بنيتَ وأكملتَ امتحان بجروت كاملاً!',
+  sectionsCompleted: 'أقسام مكتملة',
+  buildAgain: 'ابنِ مرة أخرى',
+  section: 'قسم',
+  finish: 'إنهاء',
 };
 
 const DICTS: Record<Language, Dict> = { en, he, ar };

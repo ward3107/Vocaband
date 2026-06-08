@@ -1,7 +1,7 @@
 import { useLanguage } from '../hooks/useLanguage';
 import { t } from '../i18n/strings';
 import { GradientCard } from '../components/ui';
-import type { Pillar, UnitLevel } from '../core/types';
+import type { Pillar, UnitLevel, View } from '../core/types';
 
 const LEVELS: UnitLevel[] = [3, 4, 5];
 
@@ -15,11 +15,11 @@ const PILLARS: { id: Pillar; emoji: string; gradient: string }[] = [
 export default function HomeView({
   level,
   setLevel,
-  onPick,
+  onNavigate,
 }: {
   level: UnitLevel;
   setLevel: (l: UnitLevel) => void;
-  onPick: (p: Pillar) => void;
+  onNavigate: (v: View) => void;
 }) {
   const { language } = useLanguage();
 
@@ -52,6 +52,17 @@ export default function HomeView({
         </div>
       </div>
 
+      {/* Headline feature: click to build the whole Bagrut */}
+      <div className="mb-4">
+        <GradientCard
+          gradient="from-emerald-500 via-teal-500 to-cyan-500"
+          emoji="🏗️"
+          title={t(language, 'build_cta')}
+          subtitle={t(language, 'build_cta_desc')}
+          onClick={() => onNavigate('build')}
+        />
+      </div>
+
       <div className="grid gap-4">
         {PILLARS.map((p) => (
           <GradientCard
@@ -60,7 +71,7 @@ export default function HomeView({
             emoji={p.emoji}
             title={t(language, `pillar_${p.id}`)}
             subtitle={t(language, `pillar_${p.id}_desc`)}
-            onClick={() => onPick(p.id)}
+            onClick={() => onNavigate(p.id)}
           />
         ))}
       </div>
