@@ -98,6 +98,12 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
     const gameDebug = getGameDebugger();
     const params = new URLSearchParams(window.location.search);
     const rawSessionParam = params.get('session');
+    // The race host appends &mode=race to its QR URL (CategoryRaceHostView).
+    // Reading it here lets us skip the ~139 kB English-vocabulary prefetch
+    // below — a Category Race carries no words, so on a fresh classroom-Wi-Fi
+    // scan that download is pure waste competing for bandwidth with the join.
+    // Absent (older QR) → we just fall back to prefetching, same as before.
+    const isRaceHint = params.get('mode') === 'race';
     // Sanitise the code. Session codes are exactly 6 chars from the
     // ambiguity-free alphabet generate_session_code() uses (A-H, J-N,
     // P-Z, 2-9). A scanned/typed/pasted link sometimes arrives with the
@@ -139,8 +145,10 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
         // resolves instantly. Fire-and-forget; the load below has its
         // own error handling. (Hebrew sessions use a separate tiny lemma
         // chunk — the rare wasted English prefetch costs far less than
-        // the common-case latency it removes.)
-        void import("../data/vocabulary").catch(() => {});
+        // the common-case latency it removes.)  Skipped for Category Race
+        // (&mode=race), which carries no words at all — prefetching the
+        // word data there only slows the join it can't help.
+        if (!isRaceHint) void import("../data/vocabulary").catch(() => {});
 
         // ─── Anon-auth bootstrap ───────────────────────────────────────
         // Ensure we have a VALID anonymous auth session — RLS requires it.
@@ -315,8 +323,13 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
             allowedModes: data.allowed_modes,
             subject: 'english',
           });
+          // Deliberately KEEP ?session in the URL here (unlike the strip the
+          // error/resume branches do). Stripping it is exactly what dumped a
+          // refreshed race student on the public landing: on reload there was
+          // no param left to re-bootstrap from. Leaving it means a refresh
+          // re-runs this branch, re-routes to the race view, and the view
+          // auto-rejoins the student's slot (see CategoryRaceStudentView).
           setView("category-race-student");
-          window.history.replaceState({}, '', window.location.pathname);
           return;
         }
 

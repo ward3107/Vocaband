@@ -181,7 +181,10 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
     prevActiveRef.current = roundActive;
   }, [roundActive]);
 
-  const joinUrl = useMemo(() => `${window.location.origin}/?session=${liveCode}`, [liveCode]);
+  // &mode=race lets the student-side bootstrap skip the unused English-vocab
+  // prefetch (a race carries no words), so the join screen paints faster on a
+  // fresh QR scan over classroom Wi-Fi.
+  const joinUrl = useMemo(() => `${window.location.origin}/?session=${liveCode}&mode=race`, [liveCode]);
 
   const sorted = useMemo(() => [...leaderboard].sort((a, b) => b.score - a.score), [leaderboard]);
   const secondsLeft = currentRace ? Math.max(0, Math.round((currentRace.deadlineTs - now) / 1000)) : 0;
