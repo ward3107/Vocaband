@@ -177,6 +177,15 @@ export interface DevUserSearchResult {
   last_activity_at: string | null;
 }
 
+/** One day's point-in-time counts from admin_stats_series (KPI sparklines). */
+export interface DevStatsPoint {
+  day: string;
+  teachers: number;
+  students: number;
+  classes: number;
+  schools: number;
+}
+
 /** One class row from admin_list_classes (Classes management panel). */
 export interface DevClass {
   id: string;
