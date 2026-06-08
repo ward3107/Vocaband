@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { School, Plus, UserCog, Trash2, X, ChevronRight } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevSchool } from "./devShared";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -14,6 +15,8 @@ export default function DevSchoolsSection({ showToast, onOpen }: Props) {
   const [mgrEmail, setMgrEmail] = useState("");
   const [mgrSchool, setMgrSchool] = useState("");
   const [busy, setBusy] = useState(false);
+  const [schoolToDelete, setSchoolToDelete] = useState<DevSchool | null>(null);
+  const [managerToRemove, setManagerToRemove] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     const res = await callAdminRpcCached<DevSchool[]>("admin_list_schools", {}, showToast);
@@ -41,17 +44,11 @@ export default function DevSchoolsSection({ showToast, onOpen }: Props) {
     [reload, showToast],
   );
 
-  const deleteSchool = (s: DevSchool) => {
-    // Safe delete: the RPC refuses if the school still has members/classes, so
-    // a confirm here is enough — no destructive cascade to warn about.
-    if (!window.confirm(`Delete school "${s.name}"? This only works if it has no staff, students or classes.`)) return;
-    void run("admin_delete_school", { p_school_id: s.id }, "School deleted");
-  };
-
-  const removeManager = (email: string) => {
-    if (!window.confirm(`Remove ${email} as a manager? They go back to a regular teacher account.`)) return;
-    void run("admin_remove_manager", { p_email: email }, "Manager removed");
-  };
+  // Safe delete: the RPC refuses if the school still has members/classes, so a
+  // simple confirm is enough — no destructive cascade to warn about. The list
+  // button is also disabled until the school is empty (see `deletable` below).
+  const deleteSchool = (s: DevSchool) => setSchoolToDelete(s);
+  const removeManager = (email: string) => setManagerToRemove(email);
 
   return (
     <div className="space-y-5">
@@ -188,6 +185,42 @@ export default function DevSchoolsSection({ showToast, onOpen }: Props) {
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={!!schoolToDelete}
+        tone="danger"
+        title="Delete this school?"
+        body={schoolToDelete && (
+          <>Deletes <strong className="text-white">{schoolToDelete.name}</strong>. Only works while it has no staff,
+          students or classes — those must be cleared first.</>
+        )}
+        confirmLabel="Delete school"
+        busy={busy}
+        onConfirm={async () => {
+          if (!schoolToDelete) return;
+          await run("admin_delete_school", { p_school_id: schoolToDelete.id }, "School deleted");
+          setSchoolToDelete(null);
+        }}
+        onCancel={() => setSchoolToDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={!!managerToRemove}
+        tone="warning"
+        title="Remove this manager?"
+        body={managerToRemove && (
+          <><strong className="text-white">{managerToRemove}</strong> goes back to a regular teacher account and is
+          detached from the school.</>
+        )}
+        confirmLabel="Remove manager"
+        busy={busy}
+        onConfirm={async () => {
+          if (!managerToRemove) return;
+          await run("admin_remove_manager", { p_email: managerToRemove }, "Manager removed");
+          setManagerToRemove(null);
+        }}
+        onCancel={() => setManagerToRemove(null)}
+      />
     </div>
   );
 }

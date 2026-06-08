@@ -1,14 +1,16 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { motion } from "motion/react";
 import {
   ArrowLeft, Bot, Database, Activity, Server, ShieldAlert, Users, School,
   Search, ScrollText, TrendingUp, ShieldCheck, Flag, Megaphone, Lock, BarChart3,
+  CreditCard, GraduationCap, RefreshCw,
 } from "lucide-react";
 import { hasAdminAccess, type AppUser } from "../core/supabase";
 import type { View } from "../core/views";
-import { callAdminRpcCached, fmtUsd, fmtNum, type DevOverview } from "./developer/devShared";
+import { callAdminRpcCached, invalidateAdminRpcCache, fmtUsd, fmtNum, type DevOverview } from "./developer/devShared";
 import DevAiCostPanel from "./developer/DevAiCostPanel";
 import DevDatabasePanel from "./developer/DevDatabasePanel";
+import DevClassesPanel from "./developer/DevClassesPanel";
 import DevSchoolsPanel from "./developer/DevSchoolsPanel";
 import DevSystemPanel from "./developer/DevSystemPanel";
 import DevInfraPanel from "./developer/DevInfraPanel";
@@ -28,38 +30,67 @@ interface Props {
 }
 
 type Tab =
-  | "ai" | "db" | "schools" | "users" | "trials" | "insights" | "audit" | "privacy"
-  | "security" | "flags" | "broadcast" | "system" | "infra";
+  | "users" | "entitlements" | "classes" | "schools"
+  | "ai" | "trials" | "insights" | "broadcast"
+  | "privacy" | "audit" | "security"
+  | "system" | "flags" | "infra";
 
-const TABS: { id: Tab; label: string; icon: typeof Bot }[] = [
-  { id: "ai",        label: "AI & Cost",         icon: Bot },
-  { id: "db",        label: "Database",          icon: Database },
-  { id: "schools",   label: "Schools",           icon: School },
-  { id: "users",     label: "User lookup",       icon: Search },
-  { id: "trials",    label: "Trial funnel",      icon: TrendingUp },
-  { id: "insights",  label: "Insights",          icon: BarChart3 },
-  { id: "audit",     label: "Audit log",         icon: ScrollText },
-  { id: "privacy",   label: "Privacy requests",  icon: ShieldCheck },
-  { id: "security",  label: "Security ops",      icon: Lock },
-  { id: "flags",     label: "Feature flags",     icon: Flag },
-  { id: "broadcast", label: "Broadcast",         icon: Megaphone },
-  { id: "system",    label: "System",            icon: Activity },
-  { id: "infra",     label: "Infra",             icon: Server },
+type Group = "People & access" | "Growth" | "Safety & privacy" | "System";
+
+// Tabs carry their section so the rail can group them. Renamed from the old
+// flat list: the previous "Database" tab actually held teacher entitlements —
+// it's now "Entitlements", and the Database icon belongs to real DB health.
+const TABS: { id: Tab; label: string; icon: typeof Bot; group: Group }[] = [
+  { id: "users",        label: "User lookup",   icon: Search,        group: "People & access" },
+  { id: "entitlements", label: "Entitlements",  icon: CreditCard,    group: "People & access" },
+  { id: "classes",      label: "Classes",       icon: GraduationCap, group: "People & access" },
+  { id: "schools",      label: "Schools",       icon: School,        group: "People & access" },
+
+  { id: "ai",        label: "AI & cost",     icon: Bot,        group: "Growth" },
+  { id: "trials",    label: "Trial funnel",  icon: TrendingUp, group: "Growth" },
+  { id: "insights",  label: "Insights",      icon: BarChart3,  group: "Growth" },
+  { id: "broadcast", label: "Broadcast",     icon: Megaphone,  group: "Growth" },
+
+  { id: "privacy",  label: "Privacy requests", icon: ShieldCheck, group: "Safety & privacy" },
+  { id: "audit",    label: "Audit log",        icon: ScrollText,  group: "Safety & privacy" },
+  { id: "security", label: "Security ops",     icon: Lock,        group: "Safety & privacy" },
+
+  { id: "system", label: "DB health",     icon: Database, group: "System" },
+  { id: "flags",  label: "Feature flags", icon: Flag,     group: "System" },
+  { id: "infra",  label: "Infra",         icon: Server,   group: "System" },
 ];
 
+const GROUPS: Group[] = ["People & access", "Growth", "Safety & privacy", "System"];
+
 export default function DeveloperDashboardView({ user, setView, showToast }: Props) {
-  const [tab, setTab] = useState<Tab>("ai");
+  const [tab, setTab] = useState<Tab>("users");
   const [ov, setOv] = useState<DevOverview | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const isAdmin = hasAdminAccess(user);
+
+  const loadOverview = useCallback(async (force = false) => {
+    const fresh = await callAdminRpcCached<DevOverview>("admin_dashboard_overview", {}, showToast, { force });
+    setOv(fresh);
+  }, [showToast]);
 
   useEffect(() => {
     if (!isAdmin) return;
     // Cached read: a remount within the 60s TTL paints KPIs from cache instantly,
     // so jumping out of /developer-dashboard and back doesn't re-trigger the
     // overview RPC. See devShared.ts cache comment.
-    void callAdminRpcCached<DevOverview>("admin_dashboard_overview", {}, showToast).then(setOv);
-  }, [isAdmin, showToast]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data-fetch effect; matches existing convention (AdminSecurityView etc.)
+    void loadOverview();
+  }, [isAdmin, loadOverview]);
+
+  // Global refresh: drop every panel's cached read and re-pull the KPIs, so the
+  // next time a panel is opened it fetches fresh state.
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    invalidateAdminRpcCache();
+    await loadOverview(true);
+    setRefreshing(false);
+  }, [loadOverview]);
 
   if (!isAdmin) {
     return (
@@ -81,7 +112,7 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
   const kpis = [
     { label: "Teachers", value: fmtNum(ov?.teachers), icon: Users },
     { label: "Students", value: fmtNum(ov?.students), icon: Users },
-    { label: "Classes", value: fmtNum(ov?.classes), icon: Database },
+    { label: "Classes", value: fmtNum(ov?.classes), icon: GraduationCap },
     { label: "Schools", value: fmtNum(ov?.schools), icon: School },
     { label: "AI 30d", value: fmtUsd(ov?.ai_cost_micro_30d), icon: Bot },
     { label: "AI calls 30d", value: fmtNum(ov?.ai_calls_30d), icon: Activity },
@@ -109,26 +140,36 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
           </div>
         </div>
 
+        {/* Section headers are full-width and only shown on the desktop column;
+            on the mobile strip they're hidden so the buttons scroll cleanly. */}
         <nav className="p-3 flex lg:flex-col gap-1 flex-1 overflow-x-auto lg:overflow-y-auto">
-          {TABS.map((t) => {
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`shrink-0 whitespace-nowrap lg:w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
-                  active
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                    : "text-white/60 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                <t.icon className="w-4 h-4 shrink-0" />
-                <span className="flex-1 text-left">{t.label}</span>
-              </button>
-            );
-          })}
+          {GROUPS.flatMap((g) => [
+            <div
+              key={`h-${g}`}
+              className="hidden lg:block px-3 pt-3 pb-1 text-[10px] font-black uppercase tracking-widest text-white/30"
+            >
+              {g}
+            </div>,
+            ...TABS.filter((t) => t.group === g).map((t) => {
+              const active = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id)}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className={`shrink-0 whitespace-nowrap lg:w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
+                    active
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                      : "text-white/60 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <t.icon className="w-4 h-4 shrink-0" />
+                  <span className="flex-1 text-left">{t.label}</span>
+                </button>
+              );
+            }),
+          ])}
         </nav>
       </aside>
 
@@ -138,6 +179,19 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
           need width scroll inside their own overflow-x-auto wrapper. */}
       <main className="flex-1 min-w-0 overflow-x-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h2 className="text-white/40 text-xs font-black uppercase tracking-widest">Overview</h2>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              disabled={refreshing}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-white/5 hover:bg-white/10 px-3 py-1.5 text-sm font-bold text-white/70 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             {kpis.map((k) => (
               <motion.div
@@ -153,19 +207,20 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
             ))}
           </div>
 
-          {tab === "ai"        && <DevAiCostPanel showToast={showToast} />}
-          {tab === "db"        && <DevDatabasePanel showToast={showToast} />}
-          {tab === "schools"   && <DevSchoolsPanel showToast={showToast} />}
-          {tab === "users"     && <DevUserLookupPanel showToast={showToast} />}
-          {tab === "trials"    && <DevTrialFunnelPanel showToast={showToast} />}
-          {tab === "insights"  && <DevInsightsPanel showToast={showToast} />}
-          {tab === "audit"     && <DevAuditLogPanel showToast={showToast} />}
-          {tab === "privacy"   && <DevDataRequestsPanel showToast={showToast} />}
-          {tab === "security"  && <DevSecurityChecklistPanel showToast={showToast} />}
-          {tab === "flags"     && <DevFeatureFlagsPanel showToast={showToast} />}
-          {tab === "broadcast" && <DevAnnouncementsPanel showToast={showToast} />}
-          {tab === "system"    && <DevSystemPanel showToast={showToast} />}
-          {tab === "infra"     && <DevInfraPanel />}
+          {tab === "users"        && <DevUserLookupPanel showToast={showToast} />}
+          {tab === "entitlements" && <DevDatabasePanel showToast={showToast} />}
+          {tab === "classes"      && <DevClassesPanel showToast={showToast} />}
+          {tab === "schools"      && <DevSchoolsPanel showToast={showToast} />}
+          {tab === "ai"           && <DevAiCostPanel showToast={showToast} />}
+          {tab === "trials"       && <DevTrialFunnelPanel showToast={showToast} />}
+          {tab === "insights"     && <DevInsightsPanel showToast={showToast} />}
+          {tab === "broadcast"    && <DevAnnouncementsPanel showToast={showToast} />}
+          {tab === "privacy"      && <DevDataRequestsPanel showToast={showToast} />}
+          {tab === "audit"        && <DevAuditLogPanel showToast={showToast} />}
+          {tab === "security"     && <DevSecurityChecklistPanel showToast={showToast} />}
+          {tab === "system"       && <DevSystemPanel showToast={showToast} />}
+          {tab === "flags"        && <DevFeatureFlagsPanel showToast={showToast} />}
+          {tab === "infra"        && <DevInfraPanel />}
         </div>
       </main>
     </div>

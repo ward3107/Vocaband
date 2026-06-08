@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { UserPlus, Trash2, Sparkles, UserCog, Ban } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevEntitlement } from "./devShared";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -39,6 +40,7 @@ export default function DevEntitlementsSection({ showToast }: Props) {
   const [items, setItems] = useState<DevEntitlement[]>([]);
   const [newEmail, setNewEmail] = useState("");
   const [busy, setBusy] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<DevEntitlement | null>(null);
 
   const reload = useCallback(async () => {
     const res = await callAdminRpcCached<DevEntitlement[]>("admin_list_entitlements", {}, showToast);
@@ -208,10 +210,7 @@ export default function DevEntitlementsSection({ showToast }: Props) {
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => {
-                  if (!window.confirm(`Remove ${it.email} as a teacher? They lose teacher access and drop off the roster — their classes/data are kept.`)) return;
-                  void run("admin_remove_teacher", { p_email: it.email }, "Teacher removed");
-                }}
+                onClick={() => setRemoveTarget(it)}
                 title="Remove teacher (revoke access)"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 className="p-2 rounded-xl bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
@@ -222,6 +221,24 @@ export default function DevEntitlementsSection({ showToast }: Props) {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!removeTarget}
+        tone="danger"
+        title="Remove this teacher?"
+        body={removeTarget && (
+          <><strong className="text-white">{removeTarget.email}</strong> loses teacher access and drops off the roster.
+          Their classes and student data are kept.</>
+        )}
+        confirmLabel="Remove teacher"
+        busy={busy}
+        onConfirm={async () => {
+          if (!removeTarget) return;
+          await run("admin_remove_teacher", { p_email: removeTarget.email }, "Teacher removed");
+          setRemoveTarget(null);
+        }}
+        onCancel={() => setRemoveTarget(null)}
+      />
     </div>
   );
 }
