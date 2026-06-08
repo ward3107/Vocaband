@@ -206,6 +206,53 @@ Resend.
 
 ---
 
+## Capacity planning — how many emails do we actually send?
+
+**The #1 mistake is counting one email per class (or per day).** Auth
+email is sent per **login**, not per class. A teacher signs in **once on
+a device** and the session just persists:
+
+- **Session time-box:** never expires (`operator-tasks.md` → "auth
+  rate-limits verified")
+- **Inactivity timeout:** never
+- **Access token (1 h JWT):** refreshes itself silently in the
+  background — no new email
+
+So one OTP email covers all 7 classes × 5 days × the rest of the term on
+that device. A teacher only triggers a new email when they log in on a
+**new device**, **explicitly log out**, or **clear browser data** (shared
+classroom PCs are the main repeat-login case). And **Google sign-in sends
+zero emails** — every teacher you nudge onto it removes a row from this
+math entirely.
+
+**Per-school volume (4 teachers), worst-to-realistic:**
+
+| Scenario | Emails/day | Emails/month | Free tier (100/day, 3 000/mo)? |
+|---|---|---|---|
+| Realistic — stay logged in, occasional re-login | ~1–2 | ~15–30 | ✅ trivially |
+| Pessimistic — everyone re-logs-in daily | ~4 | ~80 | ✅ easily |
+| Absurd — re-login *every class* | ~28 | ~560 | ✅ still fits |
+
+Even the absurd case for one school fits the **free** tier. At realistic
+usage the free tier covers **dozens of schools**; the $20 tier (50 K/mo)
+covers **hundreds**.
+
+**The real bottleneck is NOT Resend's monthly cap — it's Supabase's
+per-project auth-email rate limit (currently 30/hour, shared across all
+schools).** That only bites during a **morning login rush** once ~7–8
+schools are all doing fresh logins in the same hour. It's a one-click
+bump in Supabase → Authentication → Rate Limits when you get there (raise
+it together with signup+signin per `docs/auth-rate-limits.md`).
+
+**Upgrade triggers:**
+- A few schools → **free tier is fine, no action.**
+- Many schools / morning-rush 429s on `/otp` → **raise the Supabase email
+  rate limit first** (Resend almost certainly still has headroom).
+- Monthly sends consistently into the thousands → **move to Resend's $20
+  tier**; past ~50 K/mo, migrate to SES (Step 8).
+
+---
+
 ## Common gotchas
 
 | Symptom | Cause | Fix |
