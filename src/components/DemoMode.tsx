@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { celebrate } from "../utils/celebrate";
 import {
   X,
@@ -378,13 +378,6 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
   const { language, setLanguage, dir, isRTL, textAlign } = useLanguage();
   const t = demoTranslations[language];
   const modes = GAME_MODES[language];
-
-  // Respect the OS "reduce motion" setting. The welcome screen's looping
-  // ambient blobs and floating emoji are purely decorative (aria-hidden),
-  // so we hold them still — or skip them — for users who asked for less
-  // motion. A code comment below even notes a "strobing/lightning feel"
-  // from these loops, which is exactly what reduced-motion users avoid.
-  const prefersReducedMotion = useReducedMotion();
 
   const [view, setView] = useState<DemoView>("welcome");
   const [shopTab, setShopTab] = useState<ShopTab>("avatars");
@@ -971,16 +964,15 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
   return (
     <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 overflow-auto" dir={dir}>
       {/* Ambient gradient mesh blobs — soft brand-color depth behind
-          the demo content (matches landing's dreamy vibe). */}
-      <motion.div
-        animate={prefersReducedMotion ? undefined : { scale: [1, 1.15, 1], rotate: [0, 60, 0], x: [0, 60, 0] }}
-        transition={prefersReducedMotion ? undefined : { duration: 22, repeat: Infinity, ease: "easeInOut" }}
+          the demo content. Kept STATIC: the looping scale/rotate/drift
+          read as a constant pulse behind every screen which, stacked
+          with the other animations, made the demo feel like it was
+          flashing. The gradients alone still give the dreamy depth. */}
+      <div
         className="pointer-events-none fixed top-1/4 -right-32 w-96 h-96 rounded-full bg-fuchsia-500/20 blur-3xl"
         aria-hidden="true"
       />
-      <motion.div
-        animate={prefersReducedMotion ? undefined : { scale: [1, 1.2, 1], rotate: [0, -45, 0], y: [0, 50, 0] }}
-        transition={prefersReducedMotion ? undefined : { duration: 26, repeat: Infinity, ease: "easeInOut" }}
+      <div
         className="pointer-events-none fixed bottom-1/4 -left-32 w-80 h-80 rounded-full bg-violet-500/20 blur-3xl"
         aria-hidden="true"
       />
@@ -1023,54 +1015,11 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
               exit={{ opacity: 0, y: -20 }}
               className="relative"
             >
-              {/* Floating game icons — desktop/tablet only.  On mobile
-                  these sit in absolute positions far below the welcome
-                  card and create a strobing/lightning feel together with
-                  the other looping animations.  Hidden on small screens
-                  so the welcome stays calm on phones — and skipped
-                  entirely when the user prefers reduced motion. */}
-              {!prefersReducedMotion && (<>
-              <motion.div
-                animate={{ y: [0, -20, 0], rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="hidden sm:block absolute top-[30rem] left-[5%] text-5xl opacity-60 z-20"
-              >⭐</motion.div>
-              <motion.div
-                animate={{ y: [0, 15, 0], rotate: [0, -15, 15, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                className="hidden sm:block absolute top-[36rem] right-[8%] text-4xl opacity-50 z-20"
-              >🏆</motion.div>
-              <motion.div
-                animate={{ y: [0, -25, 0], x: [0, 10, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="hidden sm:block absolute bottom-8 left-[15%] text-4xl opacity-40 z-20"
-              >🎯</motion.div>
-              <motion.div
-                animate={{ y: [0, 20, 0], rotate: [0, 360] }}
-                transition={{ duration: 8, repeat: Infinity, ease: "linear", delay: 1.5 }}
-                className="hidden sm:block absolute top-[40rem] right-[20%] text-5xl opacity-30 z-20"
-              >💎</motion.div>
-              <motion.div
-                animate={{ y: [0, -18, 0], scale: [1, 1.1, 1] }}
-                transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-                className="hidden sm:block absolute bottom-16 right-[12%] text-4xl opacity-50 z-20"
-              >🎮</motion.div>
-              <motion.div
-                animate={{ y: [0, 22, 0], rotate: [0, -20, 20, 0] }}
-                transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-                className="hidden sm:block absolute top-[44rem] left-[25%] text-3xl opacity-40 z-20"
-              >🚀</motion.div>
-              <motion.div
-                animate={{ x: [0, 15, 0], y: [0, -10, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
-                className="hidden sm:block absolute bottom-24 left-[40%] text-4xl opacity-35 z-20"
-              >⚡</motion.div>
-              <motion.div
-                animate={{ y: [0, -15, 0], rotate: [0, 180] }}
-                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2.5 }}
-                className="hidden sm:block absolute top-[48rem] right-[35%] text-3xl opacity-45 z-20"
-              >🎁</motion.div>
-              </>)}
+              {/* Floating game icons removed — eight emojis drifting +
+                  spinning on infinite loops around the welcome card were
+                  the main "strobing/lightning" offenders. The welcome
+                  card itself carries enough visual interest without
+                  them, and the screen now reads calm on every device. */}
 
               {/* Main content */}
               <div className="relative z-10">
@@ -1078,12 +1027,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
                   <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-yellow-300/30 rounded-full blur-3xl" />
                   <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-16 w-56 h-56 bg-pink-400/30 rounded-full blur-3xl" />
 
-                {/* 3D Demo Mode Badge — floating in top-right corner */}
-                <motion.div
-                  initial={{ rotate: -15, y: -10 }}
-                  animate={{ rotate: [-15, -10, -15], y: [-10, -5, -10] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute -top-4 -right-4 z-10"
+                {/* 3D Demo Mode Badge — tilted in the top-right corner.
+                    Static tilt (no infinite bob) to keep the welcome calm. */}
+                <div
+                  className="absolute -top-4 -right-4 z-10 -rotate-12"
                 >
                   <div className="relative">
                     {/* 3D shadow layers */}
@@ -1092,14 +1039,9 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
                     {/* Main badge */}
                     <div className="relative bg-white rounded-lg px-4 py-2 shadow-lg border-2 border-white/50 transform rotate-3">
                       <div className="flex items-center gap-2">
-                        <motion.span
-                          animate={{ rotateY: [0, 360] }}
-                          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                          className="text-2xl"
-                          style={{ transformStyle: 'preserve-3d' }}
-                        >
+                        <span className="text-2xl">
                           🎮
-                        </motion.span>
+                        </span>
                         <div className="text-left" dir={dir}>
                           <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                             {language === 'en' ? 'Try' : language === 'he' ? 'נסו' : 'جرب'}
@@ -1111,7 +1053,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
 
                 <div className="relative">
                   <div className="text-5xl sm:text-6xl mb-3">🎮</div>
