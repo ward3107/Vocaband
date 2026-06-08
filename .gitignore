@@ -18,6 +18,11 @@ firestore.rules
 .playwright-mcp/
 .superpowers/
 .wrangler/
+
+# Admin dashboard screenshot harness — build + image artifacts (regenerable
+# via `vite build --config snapshots/vite.config.ts` + `node snapshots/shoot.mjs`)
+/snapshots-dist/
+/snapshots-out/
 test-results/
 
 # Backup files
