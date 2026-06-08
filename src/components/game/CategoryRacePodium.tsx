@@ -32,8 +32,6 @@ interface CategoryRacePodiumProps {
    *  class reading the board from the back of the room can make out
    *  who's who. Defaults off for any compact/preview use. */
   large?: boolean;
-  /** Dark theme — flips name/track colours for the dark projector. */
-  dark?: boolean;
 }
 
 // easeOutCubic count-up so a +10 visibly ticks up instead of snapping.
@@ -58,7 +56,7 @@ function AnimatedScore({ value }: { value: number }) {
   return <>{display}</>;
 }
 
-export default function CategoryRacePodium({ entries, emptyText, large = false, dark = false }: CategoryRacePodiumProps) {
+export default function CategoryRacePodium({ entries, emptyText, large = false }: CategoryRacePodiumProps) {
   // Detect score increases between renders to fire a "+N" burst.
   const prev = useRef<Map<string, number>>(new Map());
   const gainId = useRef(0);
@@ -96,7 +94,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
 
   if (entries.length === 0) {
     return (
-      <p className={`font-semibold text-center ${dark ? "text-stone-500" : "text-stone-400"} ${large ? "text-2xl py-20" : "text-sm py-10"}`}>
+      <p className={`font-semibold text-center text-on-surface-variant ${large ? "text-2xl py-20" : "text-sm py-10"}`}>
         {emptyText}
       </p>
     );
@@ -135,7 +133,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                   </span>
                 ) : (
                   <span
-                    className={`inline-flex items-center justify-center rounded-full font-black ${dark ? "bg-stone-700 text-stone-200" : "bg-stone-200 text-stone-600"} ${
+                    className={`inline-flex items-center justify-center rounded-full font-black bg-surface-container text-on-surface-variant ${
                       large ? "w-9 h-9 text-lg" : "w-6 h-6 text-xs"
                     }`}
                   >
@@ -146,7 +144,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                   <QPAvatar value={e.avatar || "🦊"} iconSize={large ? 30 : 18} />
                 </span>
                 <span
-                  className={`font-black truncate min-w-0 flex-1 ${dark ? "text-stone-100" : "text-stone-800"} ${
+                  className={`font-black truncate min-w-0 flex-1 text-on-surface ${
                     large ? "text-2xl sm:text-3xl" : "text-sm"
                   }`}
                   dir="auto"
@@ -159,7 +157,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                   end of the leader's fill so it travels with whoever
                   is in front. */}
               <div
-                className={`relative rounded-full overflow-hidden ${dark ? "bg-stone-800" : "bg-stone-100"} ${large ? "h-12" : "h-8"}`}
+                className={`relative rounded-full overflow-hidden bg-surface-container ${large ? "h-12" : "h-8"}`}
                 style={gain ? { boxShadow: "0 0 0 2px rgba(16,185,129,0.55)" } : undefined}
               >
                 <motion.div

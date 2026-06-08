@@ -10,8 +10,11 @@
  *     the class can read names + scores from the back of the room
  *   - end the session (back to dashboard) OR end + start a fresh race
  *     in place (new code, same screen)
- *   - dark theme toggle for a dimmed classroom, enlarge / hide QR, and
- *     copy-link-to-clipboard
+ *   - enlarge / hide QR + copy-link-to-clipboard
+ *
+ * Theme: the host follows the teacher's dashboard palette (the shared
+ * --vb-* tokens) for light/dark — there's no separate in-page dark
+ * toggle, so the dashboard theme picker is the single source of truth.
  *
  * Round config is sent live with each round — nothing race-specific is
  * persisted in the DB.
@@ -19,7 +22,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Play, Clock, Users, LogOut, Check, Copy, Maximize2, Moon, Sun, Plus, X, Monitor, Minimize2, Square, Infinity as InfinityIcon } from "lucide-react";
+import { Play, Clock, Users, LogOut, Check, Copy, Maximize2, Plus, X, Monitor, Minimize2, Square, Infinity as InfinityIcon } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
@@ -141,9 +144,6 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   // Presentation mode hides ALL teacher chrome (sidebar + header actions)
   // for a clean projector — just the leaderboard + live round.
   const [presenting, setPresenting] = useState(false);
-  const [dark, setDark] = useState<boolean>(() => {
-    try { return localStorage.getItem("vb-race-dark") === "1"; } catch { return false; }
-  });
   const tokenRef = useRef<string | null>(null);
 
   // Fetch the teacher token + observe whenever the socket (re)connects OR
@@ -241,23 +241,20 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
     } catch { /* clipboard blocked — ignore */ }
   };
 
-  const toggleDark = () => {
-    setDark(d => {
-      const next = !d;
-      try { localStorage.setItem("vb-race-dark", next ? "1" : "0"); } catch { /* ignore */ }
-      return next;
-    });
-  };
-
-  // Theme class helpers.
-  const pageCls = dark ? "bg-stone-950" : "bg-gradient-to-br from-fuchsia-50 via-white to-pink-50";
-  const cardCls = dark ? "bg-stone-900 border-stone-800 shadow-black/40" : "bg-white border-fuchsia-100 shadow-fuchsia-500/10";
-  const headingCls = dark ? "text-stone-100" : "text-stone-900";
-  const pillIdle = dark ? "bg-stone-800 border-stone-700 text-stone-300 hover:border-stone-600" : "bg-white border-stone-200 hover:border-stone-300 text-stone-700";
-  const iconBtn = dark ? "bg-stone-800 text-stone-200 hover:bg-stone-700" : "bg-white text-fuchsia-600 hover:bg-fuchsia-50 border border-stone-200";
+  // Theme class helpers.  Painted with the shared --vb-* design tokens
+  // (via the @theme `surface` / `on-surface` / `outline-variant`
+  // utilities) so the race host follows the teacher's dashboard palette
+  // — light or dark — exactly like every other teacher surface.  The
+  // old in-page Moon/Sun toggle is gone: the dashboard theme is now the
+  // single source of truth, and brand-coloured accents (fuchsia/indigo/
+  // rose buttons) auto-adapt to dark via the global utility remap.
+  const cardCls = "bg-surface border-outline-variant shadow-lg";
+  const headingCls = "text-on-surface";
+  const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
+  const iconBtn = "bg-surface text-fuchsia-600 hover:bg-surface-container border border-outline-variant";
 
   return (
-    <div className={`min-h-[100dvh] transition-colors ${pageCls}`} dir={dir}>
+    <div className="min-h-[100dvh] transition-colors" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
         <header className="flex items-center justify-between gap-2 mb-5">
           <h1 className={`min-w-0 text-xl sm:text-3xl font-black flex items-center gap-2 ${headingCls}`}>
@@ -268,7 +265,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             // Presentation mode: keep only the join code visible (so late
             // students can still join) + a button back to the controls.
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              <span className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] ${dark ? "bg-stone-800 text-stone-100" : "bg-fuchsia-50 text-fuchsia-700"}`}>
+              <span className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] bg-fuchsia-50 text-fuchsia-700">
                 {t.code}: {liveCode}
               </span>
               <button
@@ -291,16 +288,6 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-indigo-100 text-indigo-700 hover:bg-indigo-200 active:scale-95 transition"
               >
                 <Monitor size={16} /> <span className="hidden sm:inline">{t.present}</span>
-              </button>
-              <button
-                type="button"
-                onClick={toggleDark}
-                style={{ touchAction: "manipulation" }}
-                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl font-black text-sm transition active:scale-95 ${iconBtn}`}
-                aria-label={dark ? t.darkOff : t.darkOn}
-              >
-                {dark ? <Sun size={16} /> : <Moon size={16} />}
-                <span className="hidden sm:inline">{dark ? t.darkOff : t.darkOn}</span>
               </button>
               <button
                 type="button"
@@ -370,7 +357,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 <Users size={18} /> {t.leaderboard}
                 <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
               </h2>
-              <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large dark={dark} />
+              <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large />
             </section>
           </div>
 
