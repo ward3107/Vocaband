@@ -47,24 +47,29 @@ section is the soft half that warns AI sessions up front).
 
 ---
 
-## 🟡 OPEN — Apply migration `20260717000000_admin_class_management.sql`
+## 🟡 OPEN — Apply the admin-dashboard migrations (`20260717…` + `20260718…`)
 
-**Why:** the Developer Dashboard's new **Classes** tab (list / rename /
-reset-code / transfer / delete a class) calls five `admin_*` RPCs that ship
-in this migration. Until it's applied, those buttons will toast an error
-("function … does not exist"); everything else in the dashboard is
-unaffected.
+**Why:** the Developer Dashboard's new features call `admin_*` RPCs that ship
+in these migrations. Until applied, those specific buttons toast a "function …
+does not exist" error; the rest of the dashboard is unaffected.
+
+- `20260717000000_admin_class_management.sql` — the **Classes** tab (list /
+  rename / reset-code / transfer / delete).
+- `20260718000000_admin_stats_daily.sql` — the **count-KPI trend sparklines**
+  (Teachers/Students/Classes/Schools). Adds a daily snapshot table + a nightly
+  pg_cron capture; sparklines fill in once ≥2 days have accrued.
 
 **Steps (Supabase MCP or SQL editor, ≈1 min):**
 
-1. Review `supabase/migrations/20260717000000_admin_class_management.sql`
-   (additive — `CREATE OR REPLACE` only; touches no existing object).
-2. Run it against prod (it's wrapped in `BEGIN; … COMMIT;`).
-3. Smoke test as an admin: `SELECT public.admin_list_classes(NULL, 5);`
-   should return a JSON array.
+1. Review both files (additive — `CREATE OR REPLACE` / `CREATE TABLE IF NOT
+   EXISTS`; they touch no existing object).
+2. Run each against prod (each is wrapped in `BEGIN; … COMMIT;`).
+3. Smoke test as an admin: `SELECT public.admin_list_classes(NULL, 5);` and
+   `SELECT public.admin_stats_series(30);` should each return a JSON array.
 
-**Result:** the Classes tab is live. All five RPCs are `SECURITY DEFINER`
-+ `assert_admin()` and audit-logged, matching every other `admin_*` RPC.
+**Result:** the Classes tab and the count-KPI trends are live. All RPCs are
+`SECURITY DEFINER` + `assert_admin()` and audit-logged, matching every other
+`admin_*` RPC.
 
 ---
 

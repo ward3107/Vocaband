@@ -9,7 +9,7 @@ import { hasAdminAccess, type AppUser } from "../core/supabase";
 import type { View } from "../core/views";
 import {
   callAdminRpcCached, invalidateAdminRpcCache, fmtUsd, fmtNum,
-  type DevOverview, type DevAiUsage, type DevUserSearchResult,
+  type DevOverview, type DevAiUsage, type DevUserSearchResult, type DevStatsPoint,
 } from "./developer/devShared";
 import { Sparkline } from "./developer/charts";
 import CommandPalette from "./developer/CommandPalette";
@@ -70,6 +70,7 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
   const [tab, setTab] = useState<Tab>("users");
   const [ov, setOv] = useState<DevOverview | null>(null);
   const [ai, setAi] = useState<DevAiUsage | null>(null);
+  const [stats, setStats] = useState<DevStatsPoint[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [person, setPerson] = useState<DevUserSearchResult | null>(null);
@@ -77,12 +78,14 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
   const isAdmin = hasAdminAccess(user);
 
   const load = useCallback(async (force = false) => {
-    const [o, u] = await Promise.all([
+    const [o, u, s] = await Promise.all([
       callAdminRpcCached<DevOverview>("admin_dashboard_overview", {}, showToast, { force }),
       callAdminRpcCached<DevAiUsage>("admin_ai_usage", { p_days: 30 }, showToast, { force }),
+      callAdminRpcCached<DevStatsPoint[]>("admin_stats_series", { p_days: 30 }, showToast, { force }),
     ]);
     setOv(o);
     setAi(u);
+    setStats(s);
   }, [showToast]);
 
   useEffect(() => {
@@ -126,14 +129,16 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
 
   const costSeries = (ai?.by_day ?? []).map((d) => (d.cost_micro ?? 0) / 1_000_000);
   const callSeries = (ai?.by_day ?? []).map((d) => d.calls ?? 0);
+  const statSeries = (k: keyof DevStatsPoint) => (stats ?? []).map((s) => Number(s[k]));
 
-  // Stat cells; the two AI cells carry a 30-day sparkline (real series), the
-  // counts are point-in-time (no historical series to chart honestly).
+  // Every cell carries a real series — counts from the daily snapshot
+  // (admin_stats_series), AI from ai_usage_counters. Sparklines only render
+  // once ≥2 days have accrued (see Sparkline); until then it's just the number.
   const kpis: { label: string; value: string; icon: typeof Users; series?: number[]; tone?: string }[] = [
-    { label: "Teachers", value: fmtNum(ov?.teachers), icon: Users },
-    { label: "Students", value: fmtNum(ov?.students), icon: Users },
-    { label: "Classes", value: fmtNum(ov?.classes), icon: GraduationCap },
-    { label: "Schools", value: fmtNum(ov?.schools), icon: School },
+    { label: "Teachers", value: fmtNum(ov?.teachers), icon: Users, series: statSeries("teachers"), tone: "text-violet-300" },
+    { label: "Students", value: fmtNum(ov?.students), icon: Users, series: statSeries("students"), tone: "text-emerald-300" },
+    { label: "Classes", value: fmtNum(ov?.classes), icon: GraduationCap, series: statSeries("classes"), tone: "text-sky-300" },
+    { label: "Schools", value: fmtNum(ov?.schools), icon: School, series: statSeries("schools"), tone: "text-fuchsia-300" },
     { label: "AI 30d", value: fmtUsd(ov?.ai_cost_micro_30d), icon: Bot, series: costSeries, tone: "text-amber-300" },
     { label: "AI calls 30d", value: fmtNum(ov?.ai_calls_30d), icon: Activity, series: callSeries, tone: "text-emerald-300" },
   ];

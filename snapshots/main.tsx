@@ -50,6 +50,10 @@ const RPC: Record<string, (a: Record<string, unknown>) => unknown> = {
   admin_list_classes: (a) => { const q = String(a.p_query ?? ""); return q ? CLASSES.filter((c) => has(c.name, q) || has(c.code, q) || has(c.teacher_email, q) || has(c.teacher_name, q)) : CLASSES; },
   admin_list_schools: () => SCHOOLS,
   admin_list_entitlements: () => ENTITLEMENTS,
+  admin_stats_series: () => Array.from({ length: 30 }, (_, i) => ({
+    day: new Date(2026, 4, 9 + i).toISOString().slice(0, 10),
+    teachers: 110 + i, students: 3180 + i * 8, classes: 188 + i, schools: 12 + Math.floor(i / 14),
+  })),
   admin_list_security_checks: () => [
     { key: "rls_pentest", title: "RLS penetration test", description: "Run scripts/security-pen-test.sh against prod RLS.", cadence_days: 30, cadence_label: "Monthly", last_performed_at: "2026-05-19", last_performed_by_email: "wasya92@gmail.com", last_notes: "4/4 checks passed", days_since_last: 20, overdue_days: null },
     { key: "dep_audit", title: "Dependency audit", description: "npm audit — patch HIGH/CRITICAL CVEs.", cadence_days: 7, cadence_label: "Weekly", last_performed_at: "2026-05-30", last_performed_by_email: "wasya92@gmail.com", last_notes: null, days_since_last: 9, overdue_days: 2 },
