@@ -68,6 +68,29 @@ unaffected.
 
 ---
 
+## ✅ RESOLVED 2026-06-08 — Teacher email login 500 (Resend DKIM record deleted)
+
+Teacher email/OTP login broke with `POST /auth/v1/otp → 500` /
+"Error sending magic link email". Supabase **auth logs** showed the real
+cause: `550 The vocaband.com domain is not verified` from Resend. The
+`resend._domainkey` (DKIM) TXT record had been **deleted** from the
+Cloudflare DNS zone; SPF + bounce records were intact, so Resend
+un-verified the whole domain on its next re-check and refused all sends.
+
+Fixed by re-adding the DKIM TXT record (Resend → Domains → copy the DKIM
+`p=...` value → Cloudflare DNS → Add TXT `resend._domainkey`). All three
+Resend rows returned to Verified; login recovered.
+
+**If it recurs:** the records are public, so diagnose with no dashboard —
+`dig +short TXT resend._domainkey.vocaband.com` (empty = the bug). Full
+runbook + the other two records to check live in
+`docs/RESEND-SMTP-SETUP.md` → "Resolved incident — 2026-06-08". Watch
+for the decoy `cf2024-1._domainkey` record (that's Cloudflare Email
+Routing's DKIM, not Resend's). Affects ALL auth email; Google OAuth +
+student PIN login unaffected.
+
+---
+
 ## ✅ DONE — Eliminated Cloudflare Insights rotation churn
 
 **RESOLVED 2026-05-23:** Operator disabled Cloudflare Browser

@@ -206,6 +206,53 @@ Resend.
 
 ---
 
+## Capacity planning — how many emails do we actually send?
+
+**The #1 mistake is counting one email per class (or per day).** Auth
+email is sent per **login**, not per class. A teacher signs in **once on
+a device** and the session just persists:
+
+- **Session time-box:** never expires (`operator-tasks.md` → "auth
+  rate-limits verified")
+- **Inactivity timeout:** never
+- **Access token (1 h JWT):** refreshes itself silently in the
+  background — no new email
+
+So one OTP email covers all 7 classes × 5 days × the rest of the term on
+that device. A teacher only triggers a new email when they log in on a
+**new device**, **explicitly log out**, or **clear browser data** (shared
+classroom PCs are the main repeat-login case). And **Google sign-in sends
+zero emails** — every teacher you nudge onto it removes a row from this
+math entirely.
+
+**Per-school volume (4 teachers), worst-to-realistic:**
+
+| Scenario | Emails/day | Emails/month | Free tier (100/day, 3 000/mo)? |
+|---|---|---|---|
+| Realistic — stay logged in, occasional re-login | ~1–2 | ~15–30 | ✅ trivially |
+| Pessimistic — everyone re-logs-in daily | ~4 | ~80 | ✅ easily |
+| Absurd — re-login *every class* | ~28 | ~560 | ✅ still fits |
+
+Even the absurd case for one school fits the **free** tier. At realistic
+usage the free tier covers **dozens of schools**; the $20 tier (50 K/mo)
+covers **hundreds**.
+
+**The real bottleneck is NOT Resend's monthly cap — it's Supabase's
+per-project auth-email rate limit (currently 30/hour, shared across all
+schools).** That only bites during a **morning login rush** once ~7–8
+schools are all doing fresh logins in the same hour. It's a one-click
+bump in Supabase → Authentication → Rate Limits when you get there (raise
+it together with signup+signin per `docs/auth-rate-limits.md`).
+
+**Upgrade triggers:**
+- A few schools → **free tier is fine, no action.**
+- Many schools / morning-rush 429s on `/otp` → **raise the Supabase email
+  rate limit first** (Resend almost certainly still has headroom).
+- Monthly sends consistently into the thousands → **move to Resend's $20
+  tier**; past ~50 K/mo, migrate to SES (Step 8).
+
+---
+
 ## Common gotchas
 
 | Symptom | Cause | Fix |
@@ -216,6 +263,58 @@ Resend.
 | 1st email works, 2nd says "rate limited" | Supabase's "minimum interval" is too long | Drop from default 300s to 60s in Step 4 |
 | Email in Resend logs but never arrives | Spam folder | Add `noreply@vocaband.com` to recipient's contacts; spam-trust grows over weeks |
 | Resend logs show "domain not verified" | DKIM record not propagated yet | Wait 5 more min, click Verify again |
+| "domain not verified" but DNS worked fine before | a required record (almost always `resend._domainkey` DKIM) was **deleted** from the Cloudflare zone | `dig +short TXT resend._domainkey.vocaband.com` — if it returns nothing, re-add it from Resend's DKIM value. Full write-up: "Resolved incident — 2026-06-08" below. |
+
+---
+
+## Resolved incident — 2026-06-08: teacher login 500, DKIM record missing
+
+**Symptom:** Teacher email login failed. Browser console showed
+`POST auth.vocaband.com/auth/v1/otp → 500` and
+`[teacher-otp] sendOtp failed: AuthApiError: Error sending magic link email`.
+
+**Root cause:** The Supabase **auth logs** carried the real error (the
+client only ever sees the generic 500):
+
+```
+gomail: could not send email: 550 The vocaband.com domain is not verified.
+Please, add and verify your domain on https://resend.com/domains
+```
+
+The `resend._domainkey` (DKIM) TXT record had been **deleted** from the
+Cloudflare DNS zone. The SPF (`send` TXT) and bounce (`send` MX) records
+were still present, so on Resend's next periodic re-check it flipped the
+whole `vocaband.com` domain to *unverified* and refused **every** send.
+
+⚠️ The zone also contains a `cf2024-1._domainkey` TXT record — that is
+**Cloudflare Email Routing's** DKIM, NOT Resend's. Don't mistake one for
+the other; Resend needs its own `resend._domainkey`.
+
+**Diagnose without any dashboard access** — these are public DNS records,
+so you don't need Supabase/Resend/Cloudflare logins to see what's missing:
+
+```bash
+dig +short TXT resend._domainkey.vocaband.com   # must return p=MIGf...  ← usual casualty
+dig +short TXT send.vocaband.com                # v=spf1 include:amazonses.com ~all
+dig +short MX  send.vocaband.com                # 10 feedback-smtp.eu-west-1.amazonses.com
+```
+
+An empty result for the first line *is* the bug.
+
+**Fix (≈5 min + propagation):**
+1. Resend → Domains → `vocaband.com` → on the DKIM row, use the **copy
+   button** to grab the full `p=...` value (the UI truncates the displayed
+   text — hand-selecting gives a broken value).
+2. Cloudflare → `vocaband.com` → DNS → **Add record**: Type `TXT`, Name
+   `resend._domainkey`, Content = the value, TTL Auto, **DNS-only** (gray
+   cloud).
+3. Back in Resend, click **Verify** until all three rows show green.
+   Teacher email login recovers immediately.
+
+**Impact while broken:** all transactional auth email — teacher
+magic-link/OTP login, password recovery, signup confirmation. Google
+OAuth logins and student class-code/PIN logins were unaffected (no email
+in those paths).
 
 ---
 
