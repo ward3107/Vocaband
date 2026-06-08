@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Megaphone, Plus, Trash2, AlertTriangle, Info, AlertCircle } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevAnnouncement } from "./devShared";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -33,6 +34,7 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
   const [endsAt, setEndsAt] = useState(""); // local datetime string, optional
   const [dismissible, setDismissible] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DevAnnouncement | null>(null);
 
   const reload = useCallback(async () => {
     const res = await callAdminRpcCached<DevAnnouncement[]>("admin_list_announcements", {}, showToast);
@@ -76,8 +78,7 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
   );
 
   const remove = useCallback(
-    async (id: string, t: string) => {
-      if (!window.confirm(`Delete announcement "${t}"? Already-displayed dismissals are also removed.`)) return;
+    async (id: string) => {
       setBusy(true);
       const res = await callAdminRpc<{ success?: boolean }>("admin_delete_announcement", { p_id: id }, showToast);
       setBusy(false);
@@ -212,7 +213,7 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void remove(a.id, a.title)}
+                onClick={() => setDeleteTarget(a)}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 className="p-2 rounded-xl bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
                 aria-label="Delete"
@@ -223,6 +224,24 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        tone="danger"
+        title="Delete this announcement?"
+        body={deleteTarget && (
+          <>Removes <strong className="text-white">{deleteTarget.title}</strong> and its dismissal records. Users
+          currently seeing the banner will stop seeing it.</>
+        )}
+        confirmLabel="Delete announcement"
+        busy={busy}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          await remove(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
