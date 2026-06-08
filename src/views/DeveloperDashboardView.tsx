@@ -27,6 +27,7 @@ import DevDataRequestsPanel from "./developer/DevDataRequestsPanel";
 import DevFeatureFlagsPanel from "./developer/DevFeatureFlagsPanel";
 import DevAnnouncementsPanel from "./developer/DevAnnouncementsPanel";
 import DevSecurityChecklistPanel from "./developer/DevSecurityChecklistPanel";
+import DevAuthzFailuresPanel from "./developer/DevAuthzFailuresPanel";
 import DevInsightsPanel from "./developer/DevInsightsPanel";
 
 interface Props {
@@ -214,7 +215,12 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
           {tab === "broadcast"    && <DevAnnouncementsPanel showToast={showToast} />}
           {tab === "privacy"      && <DevDataRequestsPanel showToast={showToast} />}
           {tab === "audit"        && <DevAuditLogPanel showToast={showToast} />}
-          {tab === "security"     && <DevSecurityChecklistPanel showToast={showToast} />}
+          {tab === "security"     && (
+            <div className="space-y-8">
+              <DevSecurityChecklistPanel showToast={showToast} />
+              <DevAuthzFailuresPanel showToast={showToast} />
+            </div>
+          )}
           {tab === "system"       && <DevSystemPanel showToast={showToast} />}
           {tab === "flags"        && <DevFeatureFlagsPanel showToast={showToast} />}
           {tab === "infra"        && <DevInfraPanel />}

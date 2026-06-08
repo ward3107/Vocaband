@@ -14,10 +14,15 @@ function BillingRow({ label, cost, setupHint }: { label: string; cost?: Provider
       ) : cost.configured && cost.ok ? (
         <span className="text-emerald-300 font-black">${(cost.costUsd ?? 0).toFixed(2)}</span>
       ) : cost.configured ? (
-        // Provider errors echo a raw JSON body with an unbreakable request_id —
-        // break-all keeps that long token from blowing out the page width on mobile.
-        <span className="text-rose-300 text-xs font-bold text-right max-w-[60%] min-w-0 break-all">
-          Error {cost.status ?? ""}: {cost.message ?? "request failed"}
+        // Show a human message; keep the provider's raw text in the tooltip so a
+        // 401/etc. reads clearly instead of dumping JSON + request_id inline.
+        <span
+          title={cost.message ?? ""}
+          className="text-rose-300 text-xs font-bold text-right max-w-[60%] min-w-0 break-words"
+        >
+          {cost.status === 401 || cost.status === 403
+            ? "Key rejected — needs a valid admin billing key"
+            : `Billing unavailable${cost.status ? ` (${cost.status})` : ""}`}
         </span>
       ) : (
         <span className="text-white/40 text-xs text-right max-w-[60%] min-w-0 break-words">{setupHint}</span>

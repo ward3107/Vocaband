@@ -41,6 +41,15 @@ export default function DevEntitlementsSection({ showToast }: Props) {
   const [newEmail, setNewEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<DevEntitlement | null>(null);
+  // Bulk selection (keyed by email). Only non-admin/manager rows are selectable.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkRemoveOpen, setBulkRemoveOpen] = useState(false);
+
+  const toggleSelect = (email: string) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(email)) next.delete(email); else next.add(email);
+    return next;
+  });
 
   const reload = useCallback(async () => {
     const res = await callAdminRpcCached<DevEntitlement[]>("admin_list_entitlements", {}, showToast);
@@ -70,6 +79,39 @@ export default function DevEntitlementsSection({ showToast }: Props) {
     },
     [reload, showToast],
   );
+
+  // Apply one admin RPC across every selected row, then refresh once.
+  const runBulk = useCallback(
+    async (label: string, fn: (it: DevEntitlement) => Promise<boolean>) => {
+      const targets = items.filter((it) => selected.has(it.email));
+      if (targets.length === 0) return;
+      setBusy(true);
+      let ok = 0, fail = 0;
+      for (const it of targets) { if (await fn(it)) ok += 1; else fail += 1; }
+      setBusy(false);
+      setBulkRemoveOpen(false);
+      setSelected(new Set());
+      invalidateAdminRpcCache("admin_list_entitlements");
+      invalidateAdminRpcCache("admin_dashboard_overview");
+      invalidateAdminRpcCache("admin_search_users");
+      await reload();
+      showToast(fail ? `${label}: ${ok} done, ${fail} skipped/failed` : `${label}: ${ok} done`, fail ? "error" : "success");
+    },
+    [items, selected, reload, showToast],
+  );
+
+  const bulkSetPlan = (plan: string) =>
+    runBulk(`Plan → ${plan}`, async (it) => {
+      if (!it.uid) return false; // not signed up → no uid to set a plan on
+      const r = await callAdminRpc<{ success?: boolean }>("admin_set_plan", { p_uid: it.uid, p_plan: plan, p_trial_ends_at: null }, showToast);
+      return !!r;
+    });
+
+  const bulkRemove = () =>
+    runBulk("Removed", async (it) => {
+      const r = await callAdminRpc<{ success?: boolean }>("admin_remove_teacher", { p_email: it.email }, showToast);
+      return !!r;
+    });
 
   return (
     <div className="space-y-5">
@@ -123,10 +165,46 @@ export default function DevEntitlementsSection({ showToast }: Props) {
         </button>
       </form>
 
+      {selected.size > 0 && (
+        <div className="sticky top-2 z-10 flex items-center gap-2 flex-wrap rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-500/30 px-4 py-2.5">
+          <span className="text-white font-black text-base">{selected.size} selected</span>
+          <button type="button" onClick={() => setSelected(new Set())} className="text-white/80 hover:text-white text-sm font-bold">Clear</button>
+          <div className="ml-auto flex items-center gap-2">
+            <select
+              value=""
+              disabled={busy}
+              onChange={(e) => { if (e.target.value) void bulkSetPlan(e.target.value); }}
+              className="px-3 py-2 rounded-xl bg-white/15 text-white text-sm font-bold disabled:opacity-50"
+            >
+              <option value="" className="bg-slate-800">Set plan…</option>
+              {PLANS.map((p) => <option key={p} value={p} className="bg-slate-800">{p}</option>)}
+            </select>
+            <button
+              type="button"
+              onClick={() => setBulkRemoveOpen(true)}
+              disabled={busy}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className="rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2 text-white font-black text-sm flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" /> Remove
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-2xl bg-white/5 border border-white/10 divide-y divide-white/5">
         {items.length === 0 && <p className="px-5 py-4 text-white/40 text-base">No teachers yet.</p>}
         {items.map((it) => (
           <div key={it.email} className="px-5 py-3 flex items-center gap-3 flex-wrap">
+            {it.role !== "admin" && it.role !== "manager" && (
+              <input
+                type="checkbox"
+                checked={selected.has(it.email)}
+                onChange={() => toggleSelect(it.email)}
+                aria-label={`Select ${it.email}`}
+                className="w-4 h-4 rounded border-white/20 bg-white/10 accent-indigo-500 shrink-0"
+              />
+            )}
             <div className="flex-1 min-w-[160px]">
               <div className="text-white font-bold text-base truncate">{it.email}</div>
               <div className="flex items-center gap-2 mt-1">
@@ -238,6 +316,17 @@ export default function DevEntitlementsSection({ showToast }: Props) {
           setRemoveTarget(null);
         }}
         onCancel={() => setRemoveTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={bulkRemoveOpen}
+        tone="danger"
+        title={`Remove ${selected.size} teachers?`}
+        body={<>Each loses teacher access and drops off the roster — their classes and student data are kept. Admin/manager accounts can't be selected.</>}
+        confirmLabel={`Remove ${selected.size}`}
+        busy={busy}
+        onConfirm={() => void bulkRemove()}
+        onCancel={() => setBulkRemoveOpen(false)}
       />
     </div>
   );
