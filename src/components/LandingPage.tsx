@@ -241,7 +241,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             compete with the primary CTAs. Content flows from the top (no
             vertical centering) so the demo + trust strip stay above the
             fold on short laptops without clipping. */}
-        <section className="min-h-screen pt-8 pb-12 px-4 md:px-6 relative isolate overflow-hidden">
+        {/* pt clears the fixed PublicNav (~48px tall). pt-8 left the
+            eyebrow badge tucked behind the nav on phones; pt-24/28
+            matches the offset the sub-pages (Terms, Status) already use. */}
+        <section className="min-h-screen pt-24 md:pt-28 pb-12 px-4 md:px-6 relative isolate overflow-hidden">
           {/* Brand-tint backdrop — fully GPU-rendered gradient, no video
               fetch.  The animated mesh below paints the motion that used
               to come from a 2 MB MP4. */}
@@ -286,7 +289,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 on login) and students (class code). Both routes unchanged. */}
             <div className={`grid sm:grid-cols-2 gap-6 max-w-5xl mx-auto ${isRTL ? "text-right" : "text-left"}`}>
               {/* Staff lane */}
-              <div className="rounded-[1.75rem] p-8 md:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-violet-300/40 transition-colors flex flex-col">
+              <div className="rounded-[1.75rem] p-6 sm:p-8 md:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-violet-300/40 transition-colors flex flex-col">
                 <div className="w-[4.5rem] h-[4.5rem] rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/40 mb-5">
                   <GraduationCap size={40} strokeWidth={2.5} className="text-white" aria-hidden="true" />
                 </div>
@@ -306,7 +309,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               </div>
 
               {/* Student lane */}
-              <div className="rounded-[1.75rem] p-8 md:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-amber-300/40 transition-colors flex flex-col">
+              <div className="rounded-[1.75rem] p-6 sm:p-8 md:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-amber-300/40 transition-colors flex flex-col">
                 <div className="w-[4.5rem] h-[4.5rem] rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-orange-500/40 mb-5">
                   <BookOpen size={40} strokeWidth={2.5} className="text-white" aria-hidden="true" />
                 </div>
