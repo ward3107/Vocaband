@@ -7,7 +7,13 @@ import {
 } from "lucide-react";
 import { hasAdminAccess, type AppUser } from "../core/supabase";
 import type { View } from "../core/views";
-import { callAdminRpcCached, invalidateAdminRpcCache, fmtUsd, fmtNum, type DevOverview } from "./developer/devShared";
+import {
+  callAdminRpcCached, invalidateAdminRpcCache, fmtUsd, fmtNum,
+  type DevOverview, type DevAiUsage, type DevUserSearchResult,
+} from "./developer/devShared";
+import { Sparkline } from "./developer/charts";
+import CommandPalette from "./developer/CommandPalette";
+import PersonDrawer from "./developer/PersonDrawer";
 import DevAiCostPanel from "./developer/DevAiCostPanel";
 import DevDatabasePanel from "./developer/DevDatabasePanel";
 import DevClassesPanel from "./developer/DevClassesPanel";
@@ -37,9 +43,6 @@ type Tab =
 
 type Group = "People & access" | "Growth" | "Safety & privacy" | "System";
 
-// Tabs carry their section so the rail can group them. Renamed from the old
-// flat list: the previous "Database" tab actually held teacher entitlements —
-// it's now "Entitlements", and the Database icon belongs to real DB health.
 const TABS: { id: Tab; label: string; icon: typeof Bot; group: Group }[] = [
   { id: "users",        label: "User lookup",   icon: Search,        group: "People & access" },
   { id: "entitlements", label: "Entitlements",  icon: CreditCard,    group: "People & access" },
@@ -65,32 +68,47 @@ const GROUPS: Group[] = ["People & access", "Growth", "Safety & privacy", "Syste
 export default function DeveloperDashboardView({ user, setView, showToast }: Props) {
   const [tab, setTab] = useState<Tab>("users");
   const [ov, setOv] = useState<DevOverview | null>(null);
+  const [ai, setAi] = useState<DevAiUsage | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [person, setPerson] = useState<DevUserSearchResult | null>(null);
 
   const isAdmin = hasAdminAccess(user);
 
-  const loadOverview = useCallback(async (force = false) => {
-    const fresh = await callAdminRpcCached<DevOverview>("admin_dashboard_overview", {}, showToast, { force });
-    setOv(fresh);
+  const load = useCallback(async (force = false) => {
+    const [o, u] = await Promise.all([
+      callAdminRpcCached<DevOverview>("admin_dashboard_overview", {}, showToast, { force }),
+      callAdminRpcCached<DevAiUsage>("admin_ai_usage", { p_days: 30 }, showToast, { force }),
+    ]);
+    setOv(o);
+    setAi(u);
   }, [showToast]);
 
   useEffect(() => {
     if (!isAdmin) return;
-    // Cached read: a remount within the 60s TTL paints KPIs from cache instantly,
-    // so jumping out of /developer-dashboard and back doesn't re-trigger the
-    // overview RPC. See devShared.ts cache comment.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- async data-fetch effect; matches existing convention (AdminSecurityView etc.)
-    void loadOverview();
-  }, [isAdmin, loadOverview]);
+    void load();
+  }, [isAdmin, load]);
 
-  // Global refresh: drop every panel's cached read and re-pull the KPIs, so the
-  // next time a panel is opened it fetches fresh state.
+  // Global ⌘K / Ctrl-K opens the command palette from anywhere in the dashboard.
+  useEffect(() => {
+    if (!isAdmin) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isAdmin]);
+
   const refresh = useCallback(async () => {
     setRefreshing(true);
     invalidateAdminRpcCache();
-    await loadOverview(true);
+    await load(true);
     setRefreshing(false);
-  }, [loadOverview]);
+  }, [load]);
 
   if (!isAdmin) {
     return (
@@ -98,72 +116,50 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
         <ShieldAlert className="w-12 h-12 text-rose-400 mb-4" />
         <h1 className="text-white font-black text-xl mb-2">Admins only</h1>
         <p className="text-white/50 text-base mb-6">This dashboard requires an admin account.</p>
-        <button
-          type="button"
-          onClick={() => setView("teacher-dashboard")}
-          className="px-5 py-3 rounded-xl bg-white/10 text-white font-bold text-base"
-        >
+        <button type="button" onClick={() => setView("teacher-dashboard")} className="px-5 py-3 rounded-xl bg-white/10 text-white font-bold text-base">
           Back
         </button>
       </div>
     );
   }
 
-  const kpis = [
+  const costSeries = (ai?.by_day ?? []).map((d) => (d.cost_micro ?? 0) / 1_000_000);
+  const callSeries = (ai?.by_day ?? []).map((d) => d.calls ?? 0);
+
+  // Stat cells; the two AI cells carry a 30-day sparkline (real series), the
+  // counts are point-in-time (no historical series to chart honestly).
+  const kpis: { label: string; value: string; icon: typeof Users; series?: number[]; tone?: string }[] = [
     { label: "Teachers", value: fmtNum(ov?.teachers), icon: Users },
     { label: "Students", value: fmtNum(ov?.students), icon: Users },
     { label: "Classes", value: fmtNum(ov?.classes), icon: GraduationCap },
     { label: "Schools", value: fmtNum(ov?.schools), icon: School },
-    { label: "AI 30d", value: fmtUsd(ov?.ai_cost_micro_30d), icon: Bot },
-    { label: "AI calls 30d", value: fmtNum(ov?.ai_calls_30d), icon: Activity },
+    { label: "AI 30d", value: fmtUsd(ov?.ai_cost_micro_30d), icon: Bot, series: costSeries, tone: "text-amber-300" },
+    { label: "AI calls 30d", value: fmtNum(ov?.ai_calls_30d), icon: Activity, series: callSeries, tone: "text-emerald-300" },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white flex flex-col lg:flex-row">
-      {/* Sidebar — vertical rail on desktop, stacks above the content as a
-          horizontally-scrolling tab strip on mobile so the main panel keeps
-          the full viewport width instead of being squished into a column. */}
       <aside className="lg:w-60 lg:shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-slate-950/60 backdrop-blur-sm flex flex-col lg:sticky lg:top-0 lg:h-screen">
         <div className="p-4 flex items-center gap-3 border-b border-white/10">
-          <button
-            type="button"
-            onClick={() => setView("voca-picker")}
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 shrink-0"
-            aria-label="Back"
-          >
+          <button type="button" onClick={() => setView("voca-picker")} style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 shrink-0" aria-label="Back">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="min-w-0">
-            <h1 className="text-lg font-black font-headline truncate">Developer</h1>
+            <h1 className="text-lg font-black font-headline truncate">Command center</h1>
             <p className="text-white/40 text-xs font-bold truncate">Admin control</p>
           </div>
         </div>
 
-        {/* Section headers are full-width and only shown on the desktop column;
-            on the mobile strip they're hidden so the buttons scroll cleanly. */}
         <nav className="p-3 flex lg:flex-col gap-1 flex-1 overflow-x-auto lg:overflow-y-auto">
           {GROUPS.flatMap((g) => [
-            <div
-              key={`h-${g}`}
-              className="hidden lg:block px-3 pt-3 pb-1 text-[10px] font-black uppercase tracking-widest text-white/30"
-            >
+            <div key={`h-${g}`} className="hidden lg:block px-3 pt-3 pb-1 text-[10px] font-black uppercase tracking-widest text-white/30">
               {g}
             </div>,
             ...TABS.filter((t) => t.group === g).map((t) => {
               const active = tab === t.id;
               return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTab(t.id)}
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`shrink-0 whitespace-nowrap lg:w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${
-                    active
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                      : "text-white/60 hover:bg-white/5 hover:text-white"
-                  }`}
-                >
+                <button key={t.id} type="button" onClick={() => setTab(t.id)} style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className={`shrink-0 whitespace-nowrap lg:w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${active ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-white/60 hover:bg-white/5 hover:text-white"}`}>
                   <t.icon className="w-4 h-4 shrink-0" />
                   <span className="flex-1 text-left">{t.label}</span>
                 </button>
@@ -173,41 +169,42 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
         </nav>
       </aside>
 
-      {/* Main — overflow-x-hidden is a backstop so a stray wide child (long
-          error string, table) can't drag the whole page into a horizontal
-          scroll and expose a blank gutter on mobile. Panels that genuinely
-          need width scroll inside their own overflow-x-auto wrapper. */}
       <main className="flex-1 min-w-0 overflow-x-hidden">
+        {/* Sticky command bar — ⌘K search + the KPI strip stay pinned while panels scroll. */}
+        <div className="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-md border-b border-white/10">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 space-y-3">
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => setPaletteOpen(true)} style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className="flex-1 flex items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-white/40 text-base">
+                <Search className="w-4 h-4" />
+                <span className="flex-1 text-left truncate">Search users, classes, schools…</span>
+                <kbd className="text-white/30 text-xs font-mono border border-white/15 rounded px-1.5 py-0.5 hidden sm:inline">⌘K</kbd>
+              </button>
+              <button type="button" onClick={() => void refresh()} disabled={refreshing} style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-white/5 hover:bg-white/10 px-3 py-2 text-sm font-bold text-white/70 disabled:opacity-50 shrink-0">
+                <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} /> <span className="hidden sm:inline">Refresh</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+              {kpis.map((k) => (
+                <motion.div key={k.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 min-w-0">
+                  <div className="flex items-center gap-1.5 text-white/40 text-[10px] font-black uppercase tracking-wider">
+                    <k.icon className="w-3 h-3" /> <span className="truncate">{k.label}</span>
+                  </div>
+                  <div className="text-xl font-black leading-tight mt-0.5">{k.value}</div>
+                  {k.series && k.series.length > 1 && (
+                    <div className={`mt-1 ${k.tone ?? "text-indigo-300"}`}><Sparkline data={k.series} height={18} /></div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <h2 className="text-white/40 text-xs font-black uppercase tracking-widest">Overview</h2>
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              disabled={refreshing}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white/5 hover:bg-white/10 px-3 py-1.5 text-sm font-bold text-white/70 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            {kpis.map((k) => (
-              <motion.div
-                key={k.label}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl bg-white/5 border border-white/10 p-4"
-              >
-                <k.icon className="w-4 h-4 text-indigo-300 mb-2" />
-                <div className="text-2xl font-black leading-none">{k.value}</div>
-                <div className="text-white/40 text-xs font-bold mt-1">{k.label}</div>
-              </motion.div>
-            ))}
-          </div>
-
-          {tab === "users"        && <DevUserLookupPanel showToast={showToast} />}
+          {tab === "users"        && <DevUserLookupPanel showToast={showToast} onOpenPerson={setPerson} />}
           {tab === "entitlements" && <DevDatabasePanel showToast={showToast} />}
           {tab === "classes"      && <DevClassesPanel showToast={showToast} />}
           {tab === "schools"      && <DevSchoolsPanel showToast={showToast} />}
@@ -223,6 +220,16 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
           {tab === "infra"        && <DevInfraPanel />}
         </div>
       </main>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        navItems={TABS.map((t) => ({ id: t.id, label: t.label }))}
+        onGotoTab={(id) => setTab(id as Tab)}
+        onOpenPerson={setPerson}
+        showToast={showToast}
+      />
+      <PersonDrawer person={person} onClose={() => setPerson(null)} onChanged={() => void load(true)} showToast={showToast} />
     </div>
   );
 }
