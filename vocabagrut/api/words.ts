@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // POST /api/words — VocaBagrut AI helper.
@@ -9,12 +10,19 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 //                                                 (reading passage + questions
 //                                                 + writing task) from words.
 //
-// The Gemini key is read from the server env (GEMINI_API_KEY) and never
-// reaches the browser. With no key set we answer 503 so the client can fall
-// back to paste-only / official-bank mode.
+// Every AI call requires a logged-in teacher: the client sends their Supabase
+// access token as a Bearer header, we verify it server-side, and record the
+// call in ai_usage_counters (so usage/cost can be measured per teacher). The
+// Gemini + service-role keys live only in the server env and never reach the
+// browser. With either key unset we answer 503 (client falls back to paste /
+// official-bank); with no/invalid token we answer 401.
 // ─────────────────────────────────────────────────────────────────────────
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ilbeskwldyrleltnxyrp.supabase.co';
+
+// Rough Gemini-flash cost per call, in micro-USD, for usage estimation.
+const COST_MICRO_USD: Record<string, number> = { enhance: 400, ocr: 1200, exam: 3000 };
 
 // ── Schemas ───────────────────────────────────────────────────────────────
 const WORD_SCHEMA = {
@@ -129,10 +137,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const key = process.env.GEMINI_API_KEY;
-  if (!key) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key || !serviceKey) {
     res.status(503).json({ error: 'ai_not_configured' });
     return;
   }
+
+  // Authenticate the teacher from their Supabase access token.
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  const admin = createClient(SUPABASE_URL, serviceKey, { auth: { persistSession: false } });
+  const { data: userData, error: authErr } = await admin.auth.getUser(token);
+  if (authErr || !userData.user) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  const uid = userData.user.id;
 
   const body: Body = typeof req.body === 'string' ? safeParse(req.body) : (req.body ?? {});
   const level = Number(body.level) || 4;
@@ -177,8 +200,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     schema = WORD_SCHEMA;
   }
 
+  const action = body.mode === 'ocr' ? 'ocr' : body.mode === 'exam' ? 'exam' : 'enhance';
+
   try {
     const result = await callGemini(key, parts, schema);
+    // Best-effort metering — never fails the user's request.
+    meterUsage(admin, uid, action).catch(() => {});
     if (body.mode === 'exam') {
       res.status(200).json({ exam: result && typeof result === 'object' ? result : null });
     } else {
@@ -205,6 +232,46 @@ async function callGemini(key: string, parts: unknown[], schema: unknown): Promi
   if (!r.ok) throw new Error(`upstream:${(await r.text()).slice(0, 200)}`);
   const json = (await r.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
   return safeParse(json.candidates?.[0]?.content?.parts?.[0]?.text ?? 'null');
+}
+
+// Record one AI call against the teacher's daily counter. VocaBagrut actions
+// are prefixed `vb_` so they're filterable from the main app's AI usage. The
+// row is keyed by (teacher_uid, day_bucket, action); we read-modify-write to
+// avoid depending on a specific unique constraint.
+async function meterUsage(admin: SupabaseClient, uid: string, action: string): Promise<void> {
+  const vbAction = `vb_${action}`;
+  const cost = COST_MICRO_USD[action] ?? 0;
+  const day = new Date().toISOString().slice(0, 10);
+
+  const { data: plan } = await admin.from('users').select('plan').eq('uid', uid).maybeSingle();
+
+  const { data: existing } = await admin
+    .from('ai_usage_counters')
+    .select('id, count, cost_micro_usd')
+    .eq('teacher_uid', uid)
+    .eq('day_bucket', day)
+    .eq('action', vbAction)
+    .maybeSingle();
+
+  if (existing) {
+    await admin
+      .from('ai_usage_counters')
+      .update({
+        count: (existing.count ?? 0) + 1,
+        cost_micro_usd: Number(existing.cost_micro_usd ?? 0) + cost,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+  } else {
+    await admin.from('ai_usage_counters').insert({
+      teacher_uid: uid,
+      day_bucket: day,
+      action: vbAction,
+      count: 1,
+      cost_micro_usd: cost,
+      plan_at_action: plan?.plan ?? null,
+    });
+  }
 }
 
 function safeParse(s: string): any {

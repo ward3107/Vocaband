@@ -1,4 +1,5 @@
 import type { UnitLevel, VocabWord } from '../core/types';
+import { authHeader } from './supabase';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Custom-word import — three ways to add your own vocabulary:
@@ -84,7 +85,7 @@ async function callWordsApi(
 ): Promise<VocabWord[]> {
   const res = await fetch('/api/words', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify(body),
   });
   if (res.status === 503) throw new AiNotConfiguredError();
