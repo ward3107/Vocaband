@@ -56,13 +56,20 @@ export default function HomeView({
       </div>
 
       {/* Headline feature: click to build the whole Bagrut */}
-      <div className="mb-4">
+      <div className="mb-4 space-y-4">
         <GradientCard
           gradient="from-emerald-500 via-teal-500 to-cyan-500"
           emoji="🏗️"
           title={t(language, 'build_cta')}
           subtitle={t(language, 'build_cta_desc')}
           onClick={() => onNavigate('build')}
+        />
+        <GradientCard
+          gradient="from-violet-500 via-purple-500 to-indigo-500"
+          emoji="➕"
+          title={t(language, 'cw_title')}
+          subtitle={t(language, 'cw_cardDesc')}
+          onClick={() => onNavigate('custom')}
         />
       </div>
 
