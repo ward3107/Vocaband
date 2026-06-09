@@ -18,11 +18,17 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 // official-bank); with no/invalid token we answer 401.
 // ─────────────────────────────────────────────────────────────────────────
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+// Per-mode models (overridable via env). Exam generation gets the stronger
+// 2.5 Flash for quality; the simpler enrich/OCR extraction uses the much
+// cheaper 2.5 Flash-Lite. (gemini-2.0-flash was shut down 2026-06-01.)
+const EXAM_MODEL = process.env.GEMINI_EXAM_MODEL || 'gemini-2.5-flash';
+const LITE_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ilbeskwldyrleltnxyrp.supabase.co';
 
-// Rough Gemini-flash cost per call, in micro-USD, for usage estimation.
-const COST_MICRO_USD: Record<string, number> = { enhance: 400, ocr: 1200, exam: 3000 };
+// Estimated cost per call in micro-USD (1e-6 USD), for usage/pricing analysis.
+// Flash-Lite $0.10/1M in, $0.40/1M out; 2.5 Flash $0.30/1M in, $2.50/1M out.
+// Token estimates: enhance ~500 in/1k out, ocr ~1.3k in/1k out, exam ~800 in/4k out.
+const COST_MICRO_USD: Record<string, number> = { enhance: 450, ocr: 550, exam: 10000 };
 
 // ── Schemas ───────────────────────────────────────────────────────────────
 const WORD_SCHEMA = {
@@ -202,8 +208,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const action = body.mode === 'ocr' ? 'ocr' : body.mode === 'exam' ? 'exam' : 'enhance';
 
+  const model = action === 'exam' ? EXAM_MODEL : LITE_MODEL;
+
   try {
-    const result = await callGemini(key, parts, schema);
+    const result = await callGemini(model, key, parts, schema);
     // Best-effort metering — never fails the user's request.
     meterUsage(admin, uid, action).catch(() => {});
     if (body.mode === 'exam') {
@@ -219,8 +227,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 // Single place that talks to Gemini with structured output.
-async function callGemini(key: string, parts: unknown[], schema: unknown): Promise<unknown> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+async function callGemini(model: string, key: string, parts: unknown[], schema: unknown): Promise<unknown> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
   const r = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
