@@ -3,6 +3,7 @@ import { useLanguage, ALL_LANGUAGES, languageShortLabels } from './hooks/useLang
 import type { View, UnitLevel } from './core/types';
 import HomeView from './views/HomeView';
 import BuildBagrutView from './views/BuildBagrutView';
+import CustomWordsView from './views/CustomWordsView';
 import VocabularyView from './views/VocabularyView';
 import ReadingView from './views/ReadingView';
 import WritingView from './views/WritingView';
@@ -36,7 +37,8 @@ export default function App() {
 
       <main className="mx-auto max-w-2xl px-4 py-8">
         {view === 'home' && <HomeView level={level} setLevel={setLevel} onNavigate={setView} />}
-        {view === 'build' && <BuildBagrutView level={level} onBack={home} />}
+        {view === 'build' && <BuildBagrutView level={level} onBack={home} onManageWords={() => setView('custom')} />}
+        {view === 'custom' && <CustomWordsView level={level} onBack={home} />}
         {view === 'vocabulary' && <VocabularyView level={level} onBack={home} />}
         {view === 'reading' && <ReadingView level={level} onBack={home} />}
         {view === 'writing' && <WritingView level={level} onBack={home} />}

@@ -13,7 +13,7 @@ export type UnitLevel = 3 | 4 | 5;
 /** The four learning pillars (the home navigation). */
 export type Pillar = 'vocabulary' | 'reading' | 'writing' | 'exams';
 
-export type View = 'home' | 'build' | Pillar;
+export type View = 'home' | 'build' | 'custom' | Pillar;
 
 // ── Vocabulary ──────────────────────────────────────────────────────────
 export interface VocabWord {

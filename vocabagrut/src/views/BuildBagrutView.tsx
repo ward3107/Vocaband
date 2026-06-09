@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLanguage } from '../hooks/useLanguage';
 import { t } from '../i18n/strings';
 import { wordsForLevel } from '../data/vocabulary';
+import { useCustomWords } from '../hooks/useCustomWords';
 import { passagesForLevel } from '../data/reading';
 import { promptsForLevel } from '../data/writing';
 import { BackBar, Panel, Primary } from '../components/ui';
@@ -69,10 +70,20 @@ function BlockButton({
   );
 }
 
-export default function BuildBagrutView({ level, onBack }: { level: UnitLevel; onBack: () => void }) {
+export default function BuildBagrutView({
+  level,
+  onBack,
+  onManageWords,
+}: {
+  level: UnitLevel;
+  onBack: () => void;
+  onManageWords: () => void;
+}) {
   const { language } = useLanguage();
+  const { words: customWords } = useCustomWords();
 
-  const words = useMemo(() => wordsForLevel(level), [level]);
+  // Curriculum words for the level + the student's own custom words.
+  const words = useMemo(() => [...wordsForLevel(level), ...customWords], [level, customWords]);
   const passages = useMemo(() => passagesForLevel(level), [level]);
   const prompts = useMemo(() => promptsForLevel(level), [level]);
 
@@ -119,7 +130,11 @@ export default function BuildBagrutView({ level, onBack }: { level: UnitLevel; o
 
         <div className="space-y-3">
           <BlockButton
-            emoji="📚" title={t(language, 'pillar_vocabulary')} subtitle={`${words.length} ${t(language, 'words')} · ${t(language, 'wordFlow')}`}
+            emoji="📚" title={t(language, 'pillar_vocabulary')}
+            subtitle={
+              `${words.length} ${t(language, 'words')}` +
+              (customWords.length ? ` · +${customWords.length} ${t(language, 'cw_yourWordsShort')}` : ` · ${t(language, 'wordFlow')}`)
+            }
             gradient="from-indigo-500 via-violet-500 to-fuchsia-500"
             count={vocab} max={1} onAdd={() => setVocab(1)} onRemove={() => setVocab(0)}
           />
@@ -134,6 +149,15 @@ export default function BuildBagrutView({ level, onBack }: { level: UnitLevel; o
             count={writingN} max={prompts.length} onAdd={() => setWritingN((n) => n + 1)} onRemove={() => setWritingN((n) => Math.max(0, n - 1))}
           />
         </div>
+
+        {/* Bring your own words into the vocabulary block */}
+        <button
+          type="button"
+          onClick={onManageWords}
+          className="mt-3 w-full rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 px-4 py-3 text-sm font-bold text-indigo-600 transition hover:bg-indigo-50"
+        >
+          ➕ {t(language, 'cw_addYourOwn')}
+        </button>
 
         {/* Live preview of the assembled Bagrut */}
         <Panel className="mt-6">
