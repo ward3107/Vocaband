@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { validateAnswer } from "../data/category-race-bank";
 
-describe("validateAnswer — open 'name' category", () => {
+describe("validateAnswer — open answers (every category)", () => {
   it("accepts a valid name that isn't in the seeded bank", () => {
     // "Amy" is a real name starting with A but not one of the seeded
     // {Alex, Anna, Adam} — it must still count, since names can't be
@@ -35,21 +35,39 @@ describe("validateAnswer — open 'name' category", () => {
     expect(r.valid).toBe(true);
     expect(r.matchedEn).toBe("Alex");
   });
+
+  it("accepts a multi-word answer for the rolled letter", () => {
+    const r = validateAnswer("food", "I", "ice cream");
+    expect(r.valid).toBe(true);
+    expect(r.matchedEn).toBe("Ice Cream");
+  });
+
+  it("works for letters that have no seeded bank entries", () => {
+    // The full alphabet is in the roll pool now; letters with no seeded
+    // entries must still be fully winnable via the open path.
+    expect(validateAnswer("animal", "D", "dog").valid).toBe(true);
+    expect(validateAnswer("food", "Z", "zucchini").valid).toBe(true);
+    expect(validateAnswer("color", "G", "green").valid).toBe(true);
+  });
 });
 
-describe("validateAnswer — closed categories are unchanged", () => {
-  it("accepts a seeded food answer", () => {
-    expect(validateAnswer("food", "A", "apple").valid).toBe(true);
+describe("validateAnswer — every category is open, not a whitelist", () => {
+  it("accepts a seeded food answer with its canonical spelling", () => {
+    const r = validateAnswer("food", "A", "apple");
+    expect(r.valid).toBe(true);
+    expect(r.matchedEn).toBe("Apple");
   });
 
-  it("rejects a plausible but unseeded food answer", () => {
-    // "Apricot" isn't seeded under food/A — closed categories stay a
-    // whitelist, so this should not get the open-category free pass.
-    expect(validateAnswer("food", "A", "apricot").valid).toBe(false);
+  it("accepts a valid unseeded food answer (no whitelist gating)", () => {
+    // "Apricot" isn't in the seeded bank, but it's a real food starting
+    // with A — under the open model it must count.
+    const r = validateAnswer("food", "A", "apricot");
+    expect(r.valid).toBe(true);
+    expect(r.matchedEn).toBe("Apricot");
   });
 
-  it("still grants spelling grace on a near-miss", () => {
-    expect(validateAnswer("food", "A", "aple").valid).toBe(true); // Apple
+  it("still rejects an answer that starts with the wrong letter", () => {
+    expect(validateAnswer("food", "B", "apricot").valid).toBe(false);
   });
 
   it("accepts the Hebrew translation of a seeded answer", () => {
