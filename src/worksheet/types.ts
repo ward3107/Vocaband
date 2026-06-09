@@ -129,12 +129,22 @@ export const computeWorksheetScore = (
   exercises: Exercise[],
   results: ExerciseResult[],
 ): WorksheetScore => {
-  const perExercise = results.map((r, i) => ({
-    type: exercises[i].type,
-    score: r.score,
-    total: r.total,
-    percent: r.total > 0 ? Math.round((r.score / r.total) * 100) : 0,
-  }));
+  // Map only results that line up with a known exercise. Normally
+  // results.length <= exercises.length, but a resumed run whose saved
+  // results desynced from a since-filtered exercises array could leave an
+  // orphan result — indexing exercises[i] blindly would throw on the
+  // results screen and white-screen the student. Skip orphans instead;
+  // the aggregate totals below still count every result's score.
+  const perExercise = results.flatMap((r, i) => {
+    const ex = exercises[i];
+    if (!ex) return [];
+    return [{
+      type: ex.type,
+      score: r.score,
+      total: r.total,
+      percent: r.total > 0 ? Math.round((r.score / r.total) * 100) : 0,
+    }];
+  });
   const totalCorrect = results.reduce((sum, r) => sum + r.score, 0);
   const totalQuestions = results.reduce((sum, r) => sum + r.total, 0);
   return {

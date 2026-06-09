@@ -25,10 +25,34 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
+  // Device matrix: the same specs run on desktop + the phones students
+  // actually bring to class. Emulation (viewport, touch, UA, device
+  // scale) catches the bulk of mobile layout/touch breakage on your
+  // laptop. For the real Safari/Android ENGINE quirks emulation can't
+  // reproduce, run the same suite on a real-device cloud
+  // (BrowserStack/LambdaTest) — see docs/testing-at-scale.md.
+  //
+  // NOTE: Mobile Safari uses the WebKit browser; run `npx playwright
+  // install` once so all engines are present before using this matrix.
+  // Filter to one device with `--project="Mobile Safari"`.
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 7'] },
+    },
+    {
+      name: 'Mobile Safari',
+      use: { ...devices['iPhone 13'] },
+    },
+    {
+      // A small, low-end Android viewport — the cheap phones that show
+      // layout overflow first.
+      name: 'Small Android',
+      use: { ...devices['Galaxy S9+'] },
     },
   ],
 
