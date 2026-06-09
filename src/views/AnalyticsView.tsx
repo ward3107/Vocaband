@@ -54,6 +54,13 @@ interface AnalyticsViewProps {
   embedded?: boolean;
 }
 
+// Stable per-student identity. Prefer the auth/student UID; fall back to the
+// display name only for legacy guest rows that predate student_uid. Keying
+// aggregation by UID (not name) stops two students who share a display name —
+// common in Israeli classes — from being merged into one row, which blended
+// their scores and silently hid one of them from "who needs help".
+const identityOf = (s: ProgressData): string => s.studentUid || s.studentName;
+
 export default function AnalyticsView({
   user,
   classes,
@@ -109,7 +116,9 @@ export default function AnalyticsView({
       bestMode: string;
       modeCounts: Record<string, number>;
       strugglingStudents: Array<{
+        id: string;
         name: string;
+        uid: string | null;
         avg: number;
         avatar: string;
         attempts: number;
@@ -125,7 +134,7 @@ export default function AnalyticsView({
 
     byClass.forEach((scores, classCode) => {
       // Unique students
-      const uniqueStudents = new Set(scores.map(s => s.studentName));
+      const uniqueStudents = new Set(scores.map(identityOf));
       const studentCount = uniqueStudents.size;
 
       // Average score
@@ -134,22 +143,24 @@ export default function AnalyticsView({
       // Total attempts
       const totalAttempts = scores.length;
 
-      // Find struggling students (avg < 70%)
-      const studentStats: Map<string, { total: number; count: number; avatar: string }> = new Map();
+      // Find struggling students (avg < 70%). Keyed by identity (UID) so
+      // same-name students stay distinct; the display name + uid ride along.
+      const studentStats: Map<string, { total: number; count: number; avatar: string; name: string; uid: string | null }> = new Map();
       scores.forEach(s => {
-        if (!studentStats.has(s.studentName)) {
-          studentStats.set(s.studentName, { total: 0, count: 0, avatar: s.avatar || '🦊' });
+        const id = identityOf(s);
+        if (!studentStats.has(id)) {
+          studentStats.set(id, { total: 0, count: 0, avatar: s.avatar || '🦊', name: s.studentName, uid: s.studentUid || null });
         }
-        const stat = studentStats.get(s.studentName)!;
+        const stat = studentStats.get(id)!;
         stat.total += s.score;
         stat.count++;
       });
 
-      const strugglingStudents: Array<{ name: string; avg: number; avatar: string; attempts: number }> = [];
-      studentStats.forEach((stat, name) => {
+      const strugglingStudents: Array<{ id: string; name: string; uid: string | null; avg: number; avatar: string; attempts: number }> = [];
+      studentStats.forEach((stat, id) => {
         const avg = Math.round(stat.total / stat.count);
         if (avg < 70) {
-          strugglingStudents.push({ name, avg, avatar: stat.avatar, attempts: stat.count });
+          strugglingStudents.push({ id, name: stat.name, uid: stat.uid, avg, avatar: stat.avatar, attempts: stat.count });
         }
       });
       strugglingStudents.sort((a, b) => a.avg - b.avg);
@@ -227,7 +238,7 @@ export default function AnalyticsView({
           totalStudents += data.studentCount;
           totalScore += data.avgScore * data.totalAttempts;
           totalCount += data.totalAttempts;
-          data.strugglingStudents.forEach(s => allStruggling.add(s.name));
+          data.strugglingStudents.forEach(s => allStruggling.add(s.id));
           data.topMistakes.forEach(m => {
             allMistakes[m.wordId] = (allMistakes[m.wordId] || 0) + m.count;
           });
@@ -236,22 +247,24 @@ export default function AnalyticsView({
           });
         });
 
-        // Build struggling students list from all scores
-        const studentStats: Map<string, { total: number; count: number; avatar: string }> = new Map();
+        // Build struggling students list from all scores — keyed by identity
+        // (UID) so same-name students across classes don't collapse together.
+        const studentStats: Map<string, { total: number; count: number; avatar: string; name: string; uid: string | null }> = new Map();
         allScores.forEach(s => {
-          if (!studentStats.has(s.studentName)) {
-            studentStats.set(s.studentName, { total: 0, count: 0, avatar: s.avatar || '🦊' });
+          const id = identityOf(s);
+          if (!studentStats.has(id)) {
+            studentStats.set(id, { total: 0, count: 0, avatar: s.avatar || '🦊', name: s.studentName, uid: s.studentUid || null });
           }
-          const stat = studentStats.get(s.studentName)!;
+          const stat = studentStats.get(id)!;
           stat.total += s.score;
           stat.count++;
         });
 
-        const strugglingStudents: Array<{ name: string; avg: number; avatar: string; attempts: number }> = [];
-        studentStats.forEach((stat, name) => {
+        const strugglingStudents: Array<{ id: string; name: string; uid: string | null; avg: number; avatar: string; attempts: number }> = [];
+        studentStats.forEach((stat, id) => {
           const avg = Math.round(stat.total / stat.count);
           if (avg < 70) {
-            strugglingStudents.push({ name, avg, avatar: stat.avatar, attempts: stat.count });
+            strugglingStudents.push({ id, name: stat.name, uid: stat.uid, avg, avatar: stat.avatar, attempts: stat.count });
           }
         });
         strugglingStudents.sort((a, b) => a.avg - b.avg);
@@ -290,14 +303,17 @@ export default function AnalyticsView({
 
   const selectedClassData = classes.find(c => c.code === selectedClass);
 
-  // Matrix data for student detail modal
+  // Matrix data for student detail modal. Keyed by identity (UID) to match
+  // the struggling-list rows, so opening a student shows ONLY that student's
+  // attempts even when another classmate shares their display name.
   const matrixData = useMemo(() => {
     const studentMap = new Map<string, ProgressData[]>();
     allScores.forEach(s => {
-      if (!studentMap.has(s.studentName)) {
-        studentMap.set(s.studentName, []);
+      const id = identityOf(s);
+      if (!studentMap.has(id)) {
+        studentMap.set(id, []);
       }
-      studentMap.get(s.studentName)!.push(s);
+      studentMap.get(id)!.push(s);
     });
 
     const assignmentTitleMap = new Map<string, string>();
@@ -374,18 +390,17 @@ export default function AnalyticsView({
 
         if (error) throw error;
 
-        // Map keyed by lowercased + trimmed display_name so later lookups
-        // tolerate case/whitespace differences between analytics aggregates
-        // (which come from progress.student_name) and the students table
-        // (which stores display_name). Include students WITHOUT auth_uid
-        // too — we show a toast when the teacher tries to reward them
-        // instead of silently doing nothing.
+        // Keyed by auth_uid (not display_name) so the reward lookup matches a
+        // struggling row by its stable identity — two students sharing a name
+        // no longer collide. The struggling rows carry progress.student_uid,
+        // which equals students.auth_uid for any account-holder. Students
+        // without an auth_uid can't receive a reward, so they're simply absent
+        // here (the row's reward button then shows the "can't find" toast).
         const map = new Map<string, { uid: string | null; xp: number }>();
         if (data) {
           data.forEach((student: { id: string; auth_uid: string | null; display_name: string; xp: number }) => {
-            const key = (student.display_name || '').trim().toLowerCase();
-            if (key) {
-              map.set(key, { uid: student.auth_uid, xp: student.xp });
+            if (student.auth_uid) {
+              map.set(student.auth_uid, { uid: student.auth_uid, xp: student.xp });
             }
           });
         }
@@ -555,15 +570,15 @@ export default function AnalyticsView({
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {currentAnalytics.strugglingStudents.slice(0, 6).map(s => {
-                          const studentInfo = studentUidMap.get((s.name || '').trim().toLowerCase());
+                          const studentInfo = s.uid ? studentUidMap.get(s.uid) : undefined;
                           return (
                             <div
-                              key={s.name}
+                              key={s.id}
                               className="bg-[var(--vb-surface)] p-4 rounded-xl shadow-sm hover:shadow-md transition-all border-2"
                               style={{ borderColor: 'color-mix(in srgb, var(--vb-warning), transparent 60%)' }}
                             >
                               <button
-                                onClick={() => setSelectedStudent(s.name)}
+                                onClick={() => setSelectedStudent(s.id)}
                                 className="flex items-center gap-3 w-full text-left"
                               >
                                 <span className="text-2xl">{s.avatar}</span>
@@ -862,6 +877,8 @@ export default function AnalyticsView({
           .filter((m): m is { wordId: number; count: number; word: DisplayWord } => m !== null);
 
         const avatar = studentScores[0]?.avatar || '🦊';
+        // selectedStudent is now the identity (UID); show the display name.
+        const studentName = studentScores[0]?.studentName ?? selectedStudent;
 
         return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedStudent(null)}>
@@ -870,7 +887,7 @@ export default function AnalyticsView({
                 <div className="flex items-center gap-3">
                   <span className="text-4xl">{avatar}</span>
                   <div>
-                    <h2 className="text-2xl font-black text-[var(--vb-text-primary)]">{selectedStudent}</h2>
+                    <h2 className="text-2xl font-black text-[var(--vb-text-primary)]">{studentName}</h2>
                     <p className="text-[var(--vb-text-muted)]">{t.attemptsLabel(studentScores.length)}</p>
                   </div>
                 </div>
