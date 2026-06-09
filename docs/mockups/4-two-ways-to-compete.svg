@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="860" viewBox="0 0 1280 860" font-family="'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#3b0764"/></linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6366f1"/><stop offset="50%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#d946ef"/></linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f43f5e"/></linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#14b8a6"/></linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="9" flood-color="#000" flood-opacity="0.4"/></filter>
+  </defs>
+  <rect width="1280" height="860" fill="url(#bg)"/>
+
+  <text x="640" y="56" fill="#fff" font-size="32" font-weight="800" text-anchor="middle">Two ways the room competes</text>
+  <text x="640" y="88" fill="#c4b5fd" font-size="17" text-anchor="middle">Words = content · Mode = question format · Competition type = how the room plays</text>
+
+  <!-- top: word set -->
+  <g filter="url(#sh)"><rect x="465" y="116" width="350" height="78" rx="18" fill="url(#hero)"/></g>
+  <text x="640" y="150" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">📚 Teacher picks a WORD SET</text>
+  <text x="640" y="176" fill="#ede9fe" font-size="15" text-anchor="middle">e.g. Set 2 · 12 words</text>
+
+  <!-- fork -->
+  <line x1="640" y1="194" x2="640" y2="218" stroke="#a78bfa" stroke-width="3"/>
+  <line x1="320" y1="218" x2="960" y2="218" stroke="#a78bfa" stroke-width="3"/>
+  <line x1="320" y1="218" x2="320" y2="244" stroke="#a78bfa" stroke-width="3"/>
+  <line x1="960" y1="218" x2="960" y2="244" stroke="#a78bfa" stroke-width="3"/>
+  <text x="640" y="236" fill="#fde047" font-size="16" font-weight="700" text-anchor="middle">…then picks HOW to compete ↓</text>
+
+  <!-- LEFT: Speed Round -->
+  <g filter="url(#sh)"><rect x="60" y="248" width="520" height="540" rx="24" fill="#ffffff" fill-opacity="0.06" stroke="#fbbf24" stroke-opacity="0.5" stroke-width="2"/></g>
+  <g filter="url(#sh)"><rect x="84" y="272" width="472" height="64" rx="16" fill="url(#amber)"/></g>
+  <text x="320" y="312" fill="#fff" font-size="22" font-weight="800" text-anchor="middle">⚡ SPEED ROUND  (lockstep)</text>
+
+  <text x="104" y="372" fill="#fff" font-size="16">• Teacher drives it · picks <tspan font-weight="700">ONE fast mode</tspan></text>
+  <text x="104" y="402" fill="#fff" font-size="16">• Same word → <tspan font-weight="700">everyone at the same second</tspan></text>
+  <text x="104" y="432" fill="#fff" font-size="16">• Fastest correct answer wins the round ⚡</text>
+  <text x="104" y="462" fill="#fff" font-size="16">• True head-to-head racing (Kahoot-style)</text>
+
+  <text x="104" y="512" fill="#fde047" font-size="15" font-weight="700">Modes that fit (quick taps):</text>
+  <g font-size="14" font-weight="600">
+    <g transform="translate(104,528)"><rect width="150" height="34" rx="17" fill="#fbbf24" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">true-false</text></g>
+    <g transform="translate(264,528)"><rect width="150" height="34" rx="17" fill="#fbbf24" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">classic (meaning)</text></g>
+    <g transform="translate(104,570)"><rect width="150" height="34" rx="17" fill="#fbbf24" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">reverse</text></g>
+    <g transform="translate(264,570)"><rect width="150" height="34" rx="17" fill="#fbbf24" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">listening</text></g>
+    <g transform="translate(104,612)"><rect width="150" height="34" rx="17" fill="#fbbf24" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">idiom</text></g>
+    <g transform="translate(264,612)"><rect width="150" height="34" rx="17" fill="#fbbf24" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">letter-sounds</text></g>
+  </g>
+  <text x="104" y="688" fill="#c4b5fd" font-size="14">Run several rounds back-to-back, each a</text>
+  <text x="104" y="710" fill="#c4b5fd" font-size="14">different fast mode → variety + racing.</text>
+  <text x="104" y="752" fill="#5eead4" font-size="14" font-weight="700">Built on your existing Category Race engine ✅</text>
+
+  <!-- RIGHT: Open Race -->
+  <g filter="url(#sh)"><rect x="700" y="248" width="520" height="540" rx="24" fill="#ffffff" fill-opacity="0.06" stroke="#14b8a6" stroke-opacity="0.5" stroke-width="2"/></g>
+  <g filter="url(#sh)"><rect x="724" y="272" width="472" height="64" rx="16" fill="url(#teal)"/></g>
+  <text x="960" y="312" fill="#fff" font-size="22" font-weight="800" text-anchor="middle">🏃 OPEN RACE  (shared scoreboard)</text>
+
+  <text x="744" y="372" fill="#fff" font-size="16">• Teacher allows <tspan font-weight="700">several modes</tspan></text>
+  <text x="744" y="402" fill="#fff" font-size="16">• Each kid plays <tspan font-weight="700">at their own pace</tspan></text>
+  <text x="744" y="432" fill="#fff" font-size="16">• Not the same word at the same second</text>
+  <text x="744" y="462" fill="#fff" font-size="16">• Compete by total points on one board</text>
+
+  <text x="744" y="512" fill="#5eead4" font-size="15" font-weight="700">Modes that fit (slower / building):</text>
+  <g font-size="14" font-weight="600">
+    <g transform="translate(744,528)"><rect width="150" height="34" rx="17" fill="#14b8a6" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">spelling</text></g>
+    <g transform="translate(904,528)"><rect width="150" height="34" rx="17" fill="#14b8a6" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">matching</text></g>
+    <g transform="translate(744,570)"><rect width="150" height="34" rx="17" fill="#14b8a6" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">memory-flip</text></g>
+    <g transform="translate(904,570)"><rect width="150" height="34" rx="17" fill="#14b8a6" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">scramble</text></g>
+    <g transform="translate(744,612)"><rect width="150" height="34" rx="17" fill="#14b8a6" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">sentence-builder</text></g>
+    <g transform="translate(904,612)"><rect width="150" height="34" rx="17" fill="#14b8a6" fill-opacity="0.22"/><text x="75" y="22" fill="#fff" text-anchor="middle">fill-blank</text></g>
+  </g>
+  <text x="744" y="688" fill="#c4b5fd" font-size="14">Good for typing / board-style games that</text>
+  <text x="744" y="710" fill="#c4b5fd" font-size="14">can't fit a 5-second buzzer.</text>
+  <text x="744" y="752" fill="#5eead4" font-size="14" font-weight="700">Built on your existing Quick Play leaderboard ✅</text>
+
+  <text x="640" y="830" fill="#94a3b8" font-size="15" text-anchor="middle">The competition TYPE (not the mode) decides whether it's a live race or a shared scoreboard.</text>
+</svg>
