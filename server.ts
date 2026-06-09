@@ -1304,6 +1304,17 @@ async function startServer() {
   // baseScore: total from all past assignments (fetched from Supabase)
   // currentGameScore: points in the current active game
   const liveSessions: Record<string, Record<string, LeaderboardEntry>> = {};
+  // Per-VM id stamped on every LEADERBOARD_UPDATE_V2 broadcast. `liveSessions`
+  // is in-memory PER process, and fly.toml runs min_machines_running >= 2, so
+  // when a class's students land on different VMs each VM only knows its own
+  // subset. The Redis adapter relays the room broadcasts across VMs, but
+  // without a source tag the teacher's client can't tell them apart and just
+  // renders whichever VM's snapshot arrived last — showing half the class with
+  // diverging scores. Tagging each broadcast with this id lets the client union
+  // per-VM snapshots (max score per uid). Mirrors the Quick Play QP_SERVER_ID
+  // fix. A single broadcast is also still sent on the legacy LEADERBOARD_UPDATE
+  // event so already-loaded (pre-upgrade) clients keep working unchanged.
+  const LIVE_SERVER_ID = randomUUID();
   // Track which session each socket belongs to for cleanup
   const socketSessions: Record<string, { classCode: string, uid: string }> = {};
   // Reference count: how many sockets each uid has in each class (handles multi-tab)
@@ -1323,6 +1334,7 @@ async function startServer() {
         for (const code of pendingBroadcasts) {
           if (liveSessions[code]) {
             io.to(code).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[code]);
+            io.to(code).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE_V2, { serverId: LIVE_SERVER_ID, entries: liveSessions[code] });
           }
         }
         pendingBroadcasts.clear();
@@ -1559,6 +1571,7 @@ async function startServer() {
       const safeAvatar = typeof avatar === "string" && avatar.length > 0 && avatar.length <= 24 ? avatar : undefined;
       liveSessions[classCode][uid] = { name, baseScore: totalScore, currentGameScore: 0, avatar: safeAvatar };
       io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
+      io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE_V2, { serverId: LIVE_SERVER_ID, entries: liveSessions[classCode] });
     });
 
     // Observe-only mode for teachers - joins room without being on leaderboard
@@ -1588,9 +1601,12 @@ async function startServer() {
       }
 
       socket.join(classCode);
-      // Send current leaderboard state to the authorized observer
+      // Send current leaderboard state to the authorized observer. This is the
+      // LOCAL VM's subset only; remote VMs fill in on their next broadcast
+      // (relayed via the Redis adapter), which the upgraded client unions in.
       if (liveSessions[classCode]) {
         socket.emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
+        socket.emit(SOCKET_EVENTS.LEADERBOARD_UPDATE_V2, { serverId: LIVE_SERVER_ID, entries: liveSessions[classCode] });
       }
     });
 
@@ -1629,9 +1645,15 @@ async function startServer() {
           if (liveSessions[classCode]) {
             delete liveSessions[classCode][uid];
             if (Object.keys(liveSessions[classCode]).length === 0) {
+              // Class emptied on THIS VM. Legacy clients never got an empty
+              // broadcast here (behaviour unchanged), but tell upgraded clients
+              // so they drop this VM's now-empty source from the union instead
+              // of leaving the departed students on the podium.
+              io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE_V2, { serverId: LIVE_SERVER_ID, entries: {} });
               delete liveSessions[classCode];
             } else {
               io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
+              io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE_V2, { serverId: LIVE_SERVER_ID, entries: liveSessions[classCode] });
             }
           }
         } else {
