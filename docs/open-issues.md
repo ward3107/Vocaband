@@ -4,22 +4,33 @@ Tracking known issues with their diagnosis status.
 
 ---
 
-## Perf — Supabase + lucide hoisted onto the every-page entry chunk (2026-06-03)
+## Perf — Supabase + lucide hoisted onto the every-page entry chunk (2026-06-03) — ✅ FIXED 2026-06-09
 
-**Status:** Diagnosed, not yet fixed. Full write-up in
-`docs/perf-audit-2026-06-03.md`.
+**Status:** Fixed. Entry static closure cut **132 kB gz → 66 kB gz (−50 %)**.
+Full diagnosis in `docs/perf-audit-2026-06-03.md`.
 
-The built entry chunk (`assets/index-*.js`, loaded on every page incl. the
-cold landing) statically imports the Supabase client (~51 kB gz) and the
-shared lucide icon chunk (~19 kB gz) even though **no entry-level source
-module imports either** — a rolldown `manualChunks` hoisting artifact. The
-2026-05-28 `modulePreload.resolveDependencies` filter only dropped the
-*preload hint*, not the static import, so supabase still loads. Removing both
-would cut the every-page entry closure ~131 kB gz → ~64 kB gz. Fix is
-build-tooling surgery on the auth-critical supabase boundary — needs a
-focused pass with browser-Network verification (see the audit's "Recommended
-fix direction"). A quick `manualChunks` experiment regressed (lucide split
-into ~291 per-icon chunks), so don't change it blindly.
+**Root cause (confirmed against real build output):** not the `manualChunks`
+*names* but rolldown's own placement pass overriding them for shared modules:
+- React's CJS core (`react/cjs/react.production.js`) was tied to its first
+  ESM importer — the `lucide` chunk — so the entry imported React **from
+  lucide** and dragged all the icons (~19 kB gz) onto the cold landing.
+- Vite's `__vitePreload` helper got parked inside the `supabase` chunk, so
+  the entry (which does dynamic imports) imported the helper **from supabase**
+  and dragged all 200 kB / ~51 kB gz of supabase-js static.
+The `manualChunks` function form is only a naming hint and can't override this.
+
+**Fix:** migrated `rollupOptions.output` from the `manualChunks` function to
+rolldown's `codeSplitting.groups` (real placement authority). React core now
+lands in `react-vendor`, the preload helper gets its own `vite-preload` chunk,
+and supabase/lucide stay dynamic-only. All prior splits preserved (vocabulary
+/ vocabulary-hebrew / sentry / supabase stable names; lucide stays a single
+chunk — no ~291-icon explosion; motion still auto-splits off the landing).
+
+**Guardrail:** `npm run check:entry-closure` (`scripts/check-entry-closure.mjs`)
+asserts no forbidden vendor re-hoists and the closure stays under an 80 kB gz
+budget. Verified it fails on the pre-fix build and passes on the fix. Not yet
+wired into CI — that touches `.github/` (protected); wire the step into the
+build workflow when an owner can approve.
 
 ---
 
