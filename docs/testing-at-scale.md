@@ -89,15 +89,17 @@ Same e2e specs, run on the phones students bring + a throttled connection.
 - Slow-network spec: `e2e/tests/slow-network.spec.ts`.
 
 ### Manual setup (one-time)
-- `npx playwright install` — pulls the WebKit/Chromium engines the matrix
-  needs (Mobile Safari = WebKit).
+- `npx playwright install` — pulls the WebKit engine (needed for Mobile
+  Safari). The three default projects use Chromium, which CI already has.
 
 ### Run
 ```bash
-npm run test:e2e                              # all devices
-npx playwright test --project="Mobile Safari" # one device
-npx playwright test slow-network              # the throttled-network test
+npm run test:e2e                               # desktop + Mobile Chrome + Small Android (Chromium)
+PLAYWRIGHT_WEBKIT=1 npx playwright test --project="Mobile Safari"  # iOS/WebKit (opt-in)
+npx playwright test slow-network               # the throttled-network test
 ```
+> Mobile Safari (WebKit) is opt-in via `PLAYWRIGHT_WEBKIT=1` so CI — which
+> installs Chromium only — stays green. Run it locally before a release.
 
 ### Real devices (emulation's blind spot)
 Emulation reproduces viewport/touch/UA but **not** the real Safari/Android

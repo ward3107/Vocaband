@@ -32,9 +32,15 @@ export default defineConfig({
   // reproduce, run the same suite on a real-device cloud
   // (BrowserStack/LambdaTest) — see docs/testing-at-scale.md.
   //
-  // NOTE: Mobile Safari uses the WebKit browser; run `npx playwright
-  // install` once so all engines are present before using this matrix.
-  // Filter to one device with `--project="Mobile Safari"`.
+  // The three default projects all use the CHROMIUM engine (Desktop +
+  // two mobile viewports), so they run anywhere the CI already installs
+  // chromium — no extra browser download needed.
+  //
+  // Mobile Safari uses the separate WebKit engine, which CI doesn't
+  // install, so it's OPT-IN: run `npx playwright install` once, then set
+  // PLAYWRIGHT_WEBKIT=1 (or just `--project="Mobile Safari"`). This keeps
+  // CI green while still giving real iOS coverage locally / before a
+  // release. See docs/testing-at-scale.md.
   projects: [
     {
       name: 'chromium',
@@ -45,15 +51,16 @@ export default defineConfig({
       use: { ...devices['Pixel 7'] },
     },
     {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 13'] },
-    },
-    {
       // A small, low-end Android viewport — the cheap phones that show
-      // layout overflow first.
+      // layout overflow first. Chromium engine.
       name: 'Small Android',
       use: { ...devices['Galaxy S9+'] },
     },
+    // WebKit/iOS — only when explicitly opted in (needs `npx playwright
+    // install`). Excluded by default so CI (chromium-only) stays green.
+    ...(process.env.PLAYWRIGHT_WEBKIT
+      ? [{ name: 'Mobile Safari', use: { ...devices['iPhone 13'] } }]
+      : []),
   ],
 
   webServer: {
