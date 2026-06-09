@@ -128,6 +128,18 @@ export interface VocabagrutStrings {
   aiAddHint: string;
   answerNoteLabel: string;
   answerNotePlaceholder: string;
+
+  // Saved tests (reopen a test kept via "Save draft")
+  savedTests: string;
+  openSavedTest: string;
+  savedTestsLoading: string;
+  savedTestsEmpty: string;
+  openTest: string;
+  deleteTest: string;
+  deleteTestConfirm: string;
+  testDeleted: string;
+  publishedBadge: string;
+  draftBadge: string;
 }
 
 export const vocabagrutT: Record<Language, VocabagrutStrings> = {
@@ -223,6 +235,16 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     aiAddHint: "Pick a type — the AI writes the question and its answer from this section. Edit anything afterward.",
     answerNoteLabel: "Answer key note",
     answerNotePlaceholder: "Correct-answer explanation or sample answer — shown on the teacher's answer key.",
+    savedTests: "Saved tests",
+    openSavedTest: "Open a saved test",
+    savedTestsLoading: "Loading your saved tests…",
+    savedTestsEmpty: "No saved tests yet. Generate one, then tap 'Save draft' to keep it here for later.",
+    openTest: "Open",
+    deleteTest: "Delete test",
+    deleteTestConfirm: "Delete this saved test? This can't be undone.",
+    testDeleted: "Saved test deleted",
+    publishedBadge: "Published",
+    draftBadge: "Draft",
   },
   he: {
     back: "חזרה",
@@ -316,6 +338,16 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     aiAddHint: "בחרו סוג — ה‑AI יכתוב את השאלה ואת התשובה לפי החלק הזה. אפשר לערוך הכול אחר כך.",
     answerNoteLabel: "הערה למפתח התשובות",
     answerNotePlaceholder: "הסבר התשובה הנכונה או תשובה לדוגמה — מופיע במפתח התשובות של המורה.",
+    savedTests: "מבחנים שמורים",
+    openSavedTest: "פתחו מבחן שמור",
+    savedTestsLoading: "טוען את המבחנים השמורים…",
+    savedTestsEmpty: "אין עדיין מבחנים שמורים. צרו מבחן ולחצו על 'שמירת טיוטה' כדי לשמור אותו כאן.",
+    openTest: "פתחו",
+    deleteTest: "מחיקת מבחן",
+    deleteTestConfirm: "למחוק את המבחן השמור? לא ניתן לבטל.",
+    testDeleted: "המבחן השמור נמחק",
+    publishedBadge: "פורסם",
+    draftBadge: "טיוטה",
   },
   ar: {
     back: "رجوع",
@@ -409,6 +441,16 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     aiAddHint: "اختر نوعاً — يكتب الذكاء الاصطناعي السؤال وإجابته من هذا القسم. يمكنك تعديل كل شيء لاحقاً.",
     answerNoteLabel: "ملاحظة لمفتاح الإجابة",
     answerNotePlaceholder: "شرح الإجابة الصحيحة أو إجابة نموذجية — تظهر في مفتاح إجابات المعلم.",
+    savedTests: "الاختبارات المحفوظة",
+    openSavedTest: "افتح اختباراً محفوظاً",
+    savedTestsLoading: "جارٍ تحميل اختباراتك المحفوظة…",
+    savedTestsEmpty: "لا توجد اختبارات محفوظة بعد. أنشئ اختباراً ثم اضغط 'حفظ المسودة' للاحتفاظ به هنا.",
+    openTest: "افتح",
+    deleteTest: "حذف الاختبار",
+    deleteTestConfirm: "حذف هذا الاختبار المحفوظ؟ لا يمكن التراجع.",
+    testDeleted: "تم حذف الاختبار المحفوظ",
+    publishedBadge: "منشور",
+    draftBadge: "مسودة",
   },
   ru: {
     back: "Back",
@@ -502,5 +544,15 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     aiAddHint: "Pick a type — the AI writes the question and its answer from this section. Edit anything afterward.",
     answerNoteLabel: "Answer key note",
     answerNotePlaceholder: "Correct-answer explanation or sample answer — shown on the teacher's answer key.",
+    savedTests: "Saved tests",
+    openSavedTest: "Open a saved test",
+    savedTestsLoading: "Loading your saved tests…",
+    savedTestsEmpty: "No saved tests yet. Generate one, then tap 'Save draft' to keep it here for later.",
+    openTest: "Open",
+    deleteTest: "Delete test",
+    deleteTestConfirm: "Delete this saved test? This can't be undone.",
+    testDeleted: "Saved test deleted",
+    publishedBadge: "Published",
+    draftBadge: "Draft",
   },
 };

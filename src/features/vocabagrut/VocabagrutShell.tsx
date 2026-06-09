@@ -4,12 +4,13 @@
 
 import { useState, type ReactNode } from 'react';
 import type { AppUser, ClassData, AssignmentData } from '../../core/supabase';
-import type { BagrutTest } from './types';
+import type { BagrutTest, BagrutTestRow } from './types';
 import BagrutLandingView from './views/BagrutLandingView';
 import BagrutEditorView from './views/BagrutEditorView';
+import BagrutSavedTestsView from './views/BagrutSavedTestsView';
 import BagrutStudentView from './views/BagrutStudentView';
 
-type SubView = 'landing' | 'editor';
+type SubView = 'landing' | 'editor' | 'saved';
 
 interface Props {
   user: AppUser;
@@ -41,6 +42,24 @@ export default function VocabagrutShell({ user, classes, teacherAssignments, onE
     return <BagrutStudentView user={user} onBack={onExit} showToast={showToast} />;
   }
 
+  // Saved-tests browser — reopen a previously saved test back into the editor.
+  // Checked before the landing branch because `!test` is true here too.
+  if (sub === 'saved') {
+    return (
+      <BagrutSavedTestsView
+        user={user}
+        onBack={() => setSub('landing')}
+        onOpen={(row: BagrutTestRow) => {
+          setTest(row.content);
+          setSourceWords(row.source_words);
+          setExistingId(row.id);
+          setSub('editor');
+        }}
+        showToast={showToast}
+      />
+    );
+  }
+
   if (sub === 'landing' || !test) {
     return (
       <BagrutLandingView
@@ -49,6 +68,7 @@ export default function VocabagrutShell({ user, classes, teacherAssignments, onE
         teacherAssignments={teacherAssignments}
         activityTabs={activityTabs}
         onBack={onExit}
+        onViewSaved={() => setSub('saved')}
         onGenerated={(t, words) => {
           setTest(t);
           setSourceWords(words);

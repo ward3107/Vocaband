@@ -8,7 +8,7 @@
 // generation runs — they can remove individual chips or clear all.
 
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { Camera, ClipboardPaste, FolderOpen, Library, Sparkles, Loader2, X, Plus } from 'lucide-react';
+import { Camera, ClipboardPaste, FileText, FolderOpen, Library, Sparkles, Loader2, X, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AppUser, ClassData, AssignmentData } from '../../../core/supabase';
 import { supabase } from '../../../core/supabase';
@@ -28,6 +28,8 @@ interface Props {
   classes: ClassData[];
   teacherAssignments: AssignmentData[];
   onBack: () => void;
+  /** Open the saved-tests browser (reuse a test saved earlier). */
+  onViewSaved: () => void;
   onGenerated: (test: BagrutTest, sourceWords: string[]) => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
   /** Activity-type tab strip rendered under the hero, so teachers can
@@ -65,7 +67,7 @@ function parsePasteText(text: string): string[] {
   return out;
 }
 
-export default function BagrutLandingView({ user, classes, teacherAssignments, onBack, onGenerated, showToast, activityTabs }: Props) {
+export default function BagrutLandingView({ user, classes, teacherAssignments, onBack, onViewSaved, onGenerated, showToast, activityTabs }: Props) {
   const { language } = useLanguage();
   const t = vocabagrutT[language];
   const [module, setModule] = useState<BagrutModule>('B');
@@ -283,6 +285,17 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
       backLabel={t.back}
       activityTabs={activityTabs}
     >
+      {/* Reuse a test saved earlier via the editor's "Save draft". */}
+      <div className="flex justify-end mb-3">
+        <button
+          type="button"
+          onClick={onViewSaved}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-white/80 border border-violet-200 text-violet-700 shadow-sm hover:bg-white"
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        >
+          <FileText size={16} /> {t.openSavedTest}
+        </button>
+      </div>
       <div className="rounded-2xl bg-white shadow-lg border border-violet-100 overflow-hidden">
         <div className="px-6 py-6 space-y-8">
         {/* ── Module picker ── */}
