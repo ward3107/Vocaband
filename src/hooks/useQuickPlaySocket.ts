@@ -40,6 +40,10 @@ import {
   type QpRaceRoundPayload,
   type QpRaceResultPayload,
   type QpRaceEndedPayload,
+  type QpSpeedRoundPayload,
+  type QpSpeedResultPayload,
+  type QpSpeedEndedPayload,
+  type QpSpeedStartPayload,
 } from "../core/quickPlayProtocol";
 
 const CLIENT_ID_STORAGE_KEY = "vocaband_qp_client_id";
@@ -237,6 +241,24 @@ export interface QuickPlaySocketApi {
   onRaceResult: (cb: (p: QpRaceResultPayload) => void) => () => void;
   /** Fires when the active round closes (deadline reached). */
   onRaceEnded: (cb: (p: QpRaceEndedPayload) => void) => () => void;
+
+  // ─── Speed Round ─────────────────────────────────────────────────────
+  /** The active Speed Round word (latest SPEED_ROUND broadcast), or null
+   *  between words / after a word closes. Carries the options but NOT the
+   *  correct index — the server reveals that only in the result / ended. */
+  currentSpeed: QpSpeedRoundPayload | null;
+  /** Teacher: start a synchronized word. The question is built client-side
+   *  (the server has no vocabulary); the server stores correctIndex
+   *  privately and broadcasts only the options. */
+  startSpeedRound: (payload: Omit<QpSpeedStartPayload, "sessionCode" | "token">, token: string) => void;
+  /** Teacher: end the active word early (before its deadline). */
+  endSpeedRound: (roundId: string, token: string) => void;
+  /** Student: tap an option (an INDEX, never text) for the active word. */
+  submitSpeedAnswer: (roundId: string, choiceIndex: number) => void;
+  /** Student: fires with this client's per-word scoring after a tap. */
+  onSpeedResult: (cb: (p: QpSpeedResultPayload) => void) => () => void;
+  /** Fires when the active word closes — reveals the answer + winner. */
+  onSpeedEnded: (cb: (p: QpSpeedEndedPayload) => void) => () => void;
 }
 
 /**
@@ -320,6 +342,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const [lastError, setLastError] = useState<QuickPlaySocketApi["lastError"]>(null);
   const [joinedSessionCode, setJoinedSessionCode] = useState<string | null>(null);
   const [currentRace, setCurrentRace] = useState<QpRaceRoundPayload | null>(null);
+  const [currentSpeed, setCurrentSpeed] = useState<QpSpeedRoundPayload | null>(null);
 
   // Latest leaderboard snapshot per VM (keyed by the broadcast's serverId).
   // `leaderboard` is always the merged union of these — see
@@ -355,6 +378,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const sessionEndedRef = useRef<((p: QpSessionEndedPayload) => void) | null>(null);
   const raceResultRef = useRef<((p: QpRaceResultPayload) => void) | null>(null);
   const raceEndedRef = useRef<((p: QpRaceEndedPayload) => void) | null>(null);
+  const speedResultRef = useRef<((p: QpSpeedResultPayload) => void) | null>(null);
+  const speedEndedRef = useRef<((p: QpSpeedEndedPayload) => void) | null>(null);
 
   // Last known student-side join payload — replayed on reconnect so a
   // dropped connection doesn't kick the kid off the board.
@@ -448,6 +473,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       const onSessionEnded = (p: QpSessionEndedPayload) => {
         setJoinedSessionCode(null);
         setCurrentRace(null);
+        setCurrentSpeed(null);
         sessionEndedRef.current?.(p);
       };
       const onErr = (p: QpErrorPayload) => {
@@ -478,6 +504,18 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         raceEndedRef.current?.(p);
       };
 
+      const onSpeedRound = (p: QpSpeedRoundPayload) => {
+        if (p?.sessionCode === sessionCode) setCurrentSpeed(p);
+      };
+      const onSpeedResult = (p: QpSpeedResultPayload) => {
+        if (p?.sessionCode === sessionCode) speedResultRef.current?.(p);
+      };
+      const onSpeedEnded = (p: QpSpeedEndedPayload) => {
+        if (p?.sessionCode !== sessionCode) return;
+        setCurrentSpeed(prev => (prev && prev.roundId === p.roundId ? null : prev));
+        speedEndedRef.current?.(p);
+      };
+
       socket.on("connect", onConnect);
       socket.on("disconnect", onDisconnect);
       socket.on("connect_error", onConnectError);
@@ -490,6 +528,9 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
       socket.on(QP_SERVER_EVENTS.RACE_RESULT,   onRaceResult);
       socket.on(QP_SERVER_EVENTS.RACE_ENDED,    onRaceEnded);
+      socket.on(QP_SERVER_EVENTS.SPEED_ROUND,   onSpeedRound);
+      socket.on(QP_SERVER_EVENTS.SPEED_RESULT,  onSpeedResult);
+      socket.on(QP_SERVER_EVENTS.SPEED_ENDED,   onSpeedEnded);
 
       if (socket.connected) onConnect();
 
@@ -506,6 +547,9 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
         socket.off(QP_SERVER_EVENTS.RACE_RESULT,   onRaceResult);
         socket.off(QP_SERVER_EVENTS.RACE_ENDED,    onRaceEnded);
+        socket.off(QP_SERVER_EVENTS.SPEED_ROUND,   onSpeedRound);
+        socket.off(QP_SERVER_EVENTS.SPEED_RESULT,  onSpeedResult);
+        socket.off(QP_SERVER_EVENTS.SPEED_ENDED,   onSpeedEnded);
       };
     });
 
@@ -704,6 +748,41 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     return () => { raceEndedRef.current = null; };
   }, []);
 
+  // ─── Speed Round ─────────────────────────────────────────────────────
+
+  const startSpeedRound = useCallback((
+    payload: Omit<QpSpeedStartPayload, "sessionCode" | "token">,
+    token: string,
+  ) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.SPEED_START, { ...payload, sessionCode, token });
+  }, [sessionCode]);
+
+  const endSpeedRound = useCallback((roundId: string, token: string) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.SPEED_END_ROUND, { sessionCode, token, roundId });
+  }, [sessionCode]);
+
+  const submitSpeedAnswer = useCallback((roundId: string, choiceIndex: number) => {
+    if (!sessionCode || !socketRef.current) return;
+    // Same sessionStorage-sourced clientId rationale as submitRaceAnswers —
+    // both hook instances must agree on the id the server owns.
+    const id = readStoredClientId() ?? clientIdRef.current;
+    socketRef.current.emit(QP_EVENTS.SPEED_SUBMIT, {
+      sessionCode, clientId: id, roundId, choiceIndex,
+    });
+  }, [sessionCode]);
+
+  const onSpeedResult = useCallback((cb: (p: QpSpeedResultPayload) => void) => {
+    speedResultRef.current = cb;
+    return () => { speedResultRef.current = null; };
+  }, []);
+
+  const onSpeedEnded = useCallback((cb: (p: QpSpeedEndedPayload) => void) => {
+    speedEndedRef.current = cb;
+    return () => { speedEndedRef.current = null; };
+  }, []);
+
   return {
     status,
     clientId,
@@ -727,5 +806,11 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     submitRaceAnswers,
     onRaceResult,
     onRaceEnded,
+    currentSpeed,
+    startSpeedRound,
+    endSpeedRound,
+    submitSpeedAnswer,
+    onSpeedResult,
+    onSpeedEnded,
   };
 }

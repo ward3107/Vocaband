@@ -23,14 +23,20 @@ const RACE_HERO = {
   accent: "#9D174D",
   ctaShadow: "0 10px 24px -8px rgba(157,23,77,0.45)",
 } as const;
+const SPEED_HERO = {
+  background: "radial-gradient(120% 140% at 0% 0%, #F59E0B 0%, #F97316 45%, #EF4444 80%, #F43F5E 100%)",
+  boxShadow: "0 20px 50px -22px rgba(249,115,22,0.5), 0 8px 22px -10px rgba(239,68,68,0.35)",
+  accent: "#9A3412",
+  ctaShadow: "0 10px 24px -8px rgba(154,52,18,0.45)",
+} as const;
 
 // Strings for the "Live games" pairing (Quick Play hero + Category
 // Race card). Kept inline so this layout doesn't have to thread new
 // keys through the shared teacher-dashboard locale.
 const LIVE_GAMES_STRINGS = {
-  en: { liveGames: "Live games", live: "Live", raceTitle: "Category Race", raceDescription: "Pick a letter, race the class to fill the categories.", raceStart: "Start" },
-  he: { liveGames: "משחקים חיים", live: "חי", raceTitle: "מרוץ קטגוריות", raceDescription: "אות אחת — כל הכיתה מתחרה למלא את הקטגוריות.", raceStart: "התחל" },
-  ar: { liveGames: "ألعاب مباشرة", live: "مباشر", raceTitle: "سباق الفئات", raceDescription: "حرف واحد — يتسابق الصف لملء الفئات.", raceStart: "ابدأ" },
+  en: { liveGames: "Live games", live: "Live", raceTitle: "Category Race", raceDescription: "Pick a letter, race the class to fill the categories.", raceStart: "Start", speedTitle: "Speed Round", speedDescription: "Drop one word on the class — fastest correct answer wins." },
+  he: { liveGames: "משחקים חיים", live: "חי", raceTitle: "מרוץ קטגוריות", raceDescription: "אות אחת — כל הכיתה מתחרה למלא את הקטגוריות.", raceStart: "התחל", speedTitle: "סבב מהיר", speedDescription: "מילה אחת לכל הכיתה — התשובה הנכונה המהירה מנצחת." },
+  ar: { liveGames: "ألعاب مباشرة", live: "مباشر", raceTitle: "سباق الفئات", raceDescription: "حرف واحد — يتسابق الصف لملء الفئات.", raceStart: "ابدأ", speedTitle: "جولة سريعة", speedDescription: "كلمة واحدة للصف — الإجابة الصحيحة الأسرع تفوز." },
 } as const;
 
 // Mirrors the WhatsApp share text the legacy section produced — the
@@ -67,6 +73,7 @@ interface EnglishDashboardLayoutProps {
   // Top-level dashboard actions
   onQuickPlayClick: () => void;
   onCategoryRaceClick: () => void;
+  onSpeedRoundClick: () => void;
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
   onWorksheetResultsClick?: () => void;
@@ -111,6 +118,7 @@ export default function EnglishDashboardLayout({
   setOpenDropdownClassId,
   onQuickPlayClick,
   onCategoryRaceClick,
+  onSpeedRoundClick,
   onClassroomClick,
   onApprovalsClick,
   onWorksheetResultsClick,
@@ -143,7 +151,7 @@ export default function EnglishDashboardLayout({
           the Management utilities below). */}
       <section>
         <SectionLabel>{rt.liveGames}</SectionLabel>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
           <LiveGameHero
             emoji="⚡"
             title={t.qpTitle}
@@ -165,6 +173,17 @@ export default function EnglishDashboardLayout({
             isRTL={isRTL}
             dataTour="category-race"
             {...RACE_HERO}
+          />
+          <LiveGameHero
+            emoji="⚡"
+            title={rt.speedTitle}
+            badge={rt.live}
+            description={rt.speedDescription}
+            ctaLabel={rt.raceStart}
+            onStart={onSpeedRoundClick}
+            isRTL={isRTL}
+            dataTour="speed-round"
+            {...SPEED_HERO}
           />
         </div>
       </section>

@@ -35,8 +35,8 @@ import { getCachedVocabulary } from "./useVocabularyLazy";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { getGameDebugger } from "../utils/gameDebug";
 import { ALL_GAME_MODES } from "../constants/game";
-import { QP_CATEGORY_RACE_MODE } from "../core/quickPlayProtocol";
-import { preloadCategoryRaceView, preloadQuickPlayView } from "../views/studentJoinChunks";
+import { QP_CATEGORY_RACE_MODE, QP_SPEED_MODE } from "../core/quickPlayProtocol";
+import { preloadCategoryRaceView, preloadQuickPlayView, preloadSpeedRoundView } from "../views/studentJoinChunks";
 import type { View } from "../core/views";
 
 /** Shape of a quick_play_sessions row as consumed by the join flow —
@@ -103,7 +103,11 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
     // below — a Category Race carries no words, so on a fresh classroom-Wi-Fi
     // scan that download is pure waste competing for bandwidth with the join.
     // Absent (older QR) → we just fall back to prefetching, same as before.
-    const isRaceHint = params.get('mode') === 'race';
+    // Both wordless live modes (Category Race, Speed Round) append &mode=…
+    // to their QR URL so we can skip the ~139 kB English-vocab prefetch a
+    // word session needs but these don't.
+    const modeHint = params.get('mode');
+    const isRaceHint = modeHint === 'race' || modeHint === 'speed';
     // Sanitise the code. Session codes are exactly 6 chars from the
     // ambiguity-free alphabet generate_session_code() uses (A-H, J-N,
     // P-Z, 2-9). A scanned/typed/pasted link sometimes arrives with the
@@ -133,6 +137,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
         // eventual lazy render reuses this fetch.
         preloadCategoryRaceView();
         preloadQuickPlayView();
+        preloadSpeedRoundView();
         // ─── PERF: prewarm the vocabulary chunk in parallel ────────────
         // The English word data isn't consumed until ~150 lines below
         // (after the anon-auth handshake AND the session SELECT). Left
@@ -330,6 +335,29 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           // re-runs this branch, re-routes to the race view, and the view
           // auto-rejoins the student's slot (see CategoryRaceStudentView).
           setView("category-race-student");
+          return;
+        }
+
+        // Speed Round sessions also carry NO words (the question is built on
+        // the teacher's screen). Same wordless branch as Category Race — the
+        // student joins via the normal join screen, then the view routes them
+        // into the buzzer once the server confirms the join.
+        const isSpeedRound = Array.isArray(data.allowed_modes)
+          && data.allowed_modes.length === 1
+          && data.allowed_modes[0] === QP_SPEED_MODE;
+        if (isSpeedRound) {
+          setQuickPlayActiveSession({
+            id: data.id,
+            sessionCode: data.session_code,
+            wordIds: [],
+            words: [],
+            allowedModes: data.allowed_modes,
+            subject: 'english',
+          });
+          // Keep ?session in the URL (same rationale as Category Race) so a
+          // refresh re-bootstraps + auto-rejoins instead of dropping the
+          // student on the public landing.
+          setView("speed-round-student");
           return;
         }
 

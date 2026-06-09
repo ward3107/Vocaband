@@ -118,6 +118,10 @@ import {
   isValidClientId,
   isValidNickname,
   isValidRaceRoundSeconds,
+  isValidSpeedMode,
+  isValidSpeedRoundSeconds,
+  QP_SPEED_BASE_POINTS,
+  QP_SPEED_BONUS_MAX,
   type QpStudentJoinPayload,
   type QpScoreUpdatePayload,
   type QpReactionSendPayload,
@@ -133,6 +137,12 @@ import {
   type QpRaceEndRoundPayload,
   type QpRaceCellResult,
   type QpRaceResultPayload,
+  type QpSpeedStartPayload,
+  type QpSpeedSubmitPayload,
+  type QpSpeedEndRoundPayload,
+  type QpSpeedResultPayload,
+  type QpSpeedMode,
+  type QpSpeedPromptKind,
 } from "./src/core/quickPlayProtocol";
 import { containsProfanity } from "./src/utils/nicknameProfanity";
 import {
@@ -1713,6 +1723,28 @@ async function startServer() {
       /** Round start epoch ms — basis for the speed bonus. */
       startTs: number;
     } | null;
+    // Active Speed Round word, if any. Only set for Speed Round sessions
+    // (allowed_modes === ['speed-round']). Mirrors currentRace but stores
+    // the teacher-authored correctIndex PRIVATELY — it is never broadcast,
+    // so a tampered client can't read the answer off the wire. Tracks who
+    // already tapped (one submit per word) + the FIRST correct answerer
+    // (the per-word winner) + the close timer.
+    currentSpeed: {
+      roundId: string;
+      mode: QpSpeedMode;
+      /** Server-private — the index that scores. Never broadcast. */
+      correctIndex: number;
+      /** How many options the word had — bounds-checks the submitted index. */
+      optionCount: number;
+      roundSeconds: number;
+      deadlineTs: number;
+      /** Word start epoch ms — basis for the speed bonus. */
+      startTs: number;
+      submitted: Set<string>;
+      /** clientId of the first student to answer correctly, or null. */
+      firstCorrectClientId: string | null;
+      timer: ReturnType<typeof setTimeout> | null;
+    } | null;
   }
 
   const qpSessions = new Map<string, QpSessionState>();
@@ -1735,6 +1767,13 @@ async function startServer() {
   // to the student's socket. Plain string — serverSideEmit forbids reserved
   // names. (2026-06: fixes "submit dropped, no podium points, stuck on lobby".)
   const QP_RACE_SUBMIT_FANOUT = "qp:internal:race-submit";
+
+  // Cross-VM (server-to-server) event for a Speed Round submit that landed
+  // on a VM which doesn't own the active word. Same multi-VM rationale as
+  // QP_RACE_SUBMIT_FANOUT above — the word + its scoring live only on the VM
+  // where the teacher pressed Start. The owner scores by index and replies
+  // straight to the student's socket.
+  const QP_SPEED_SUBMIT_FANOUT = "qp:internal:speed-submit";
 
   // Rate limiters — sized for a real classroom on a school's NAT'd
   // Wi-Fi where ALL students hit the server from one external IP.
@@ -1925,6 +1964,120 @@ async function startServer() {
     }
   });
 
+  // ─── Speed Round scoring (shared by the local + cross-VM submit paths) ──
+  // Students send an INDEX, never a score — the server compares it to the
+  // teacher-authored correctIndex it holds privately, so a tampered client
+  // can't claim points it didn't earn. Mirrors qpApplyRaceSubmission:
+  // guards duplicate + late submits, mints a leaderboard row if this VM
+  // never saw the student's JOIN (the word owner is authoritative), and
+  // returns the SPEED_RESULT payload — or null when the submit is ignored.
+  function qpApplySpeedSubmission(
+    state: QpSessionState,
+    speed: NonNullable<QpSessionState["currentSpeed"]>,
+    args: { clientId: string; choiceIndex: number; nickname: string; avatar: string },
+  ): QpSpeedResultPayload | null {
+    if (speed.submitted.has(args.clientId)) return null;                       // one submit per word
+    if (Date.now() > speed.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) return null;  // too late
+
+    const correct =
+      Number.isInteger(args.choiceIndex) &&
+      args.choiceIndex >= 0 &&
+      args.choiceIndex < speed.optionCount &&
+      args.choiceIndex === speed.correctIndex;
+    const roundPoints = correct ? QP_SPEED_BASE_POINTS : 0;
+
+    // Speed bonus — reward decisive answers. Scales from QP_SPEED_BONUS_MAX
+    // (instant) to 0 (clock expired); only awarded when they answered
+    // correctly. Same shape as the Category Race bonus (server.ts ~1846).
+    let speedBonus = 0;
+    if (correct) {
+      const totalMs = Math.max(1, speed.deadlineTs - speed.startTs);
+      const remainingMs = Math.max(0, speed.deadlineTs - Date.now());
+      speedBonus = Math.round(QP_SPEED_BONUS_MAX * Math.max(0, Math.min(1, remainingMs / totalMs)));
+    }
+
+    // First-correct wins the word. Recorded before the score write so the
+    // SPEED_ENDED reveal can highlight the winner on the podium.
+    let firstCorrect = false;
+    if (correct && speed.firstCorrectClientId === null) {
+      speed.firstCorrectClientId = args.clientId;
+      firstCorrect = true;
+    }
+
+    let entry = state.students.get(args.clientId);
+    if (!entry) {
+      entry = { clientId: args.clientId, nickname: args.nickname, avatar: args.avatar || "🦊", score: 0, lastSeen: Date.now() };
+      state.students.set(args.clientId, entry);
+    }
+    speed.submitted.add(args.clientId);
+    entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints + speedBonus);
+    entry.lastSeen = Date.now();
+
+    return {
+      sessionCode: state.sessionCode,
+      roundId: speed.roundId,
+      correct, correctIndex: speed.correctIndex,
+      roundPoints, speedBonus, firstCorrect,
+      totalScore: entry.score,
+    };
+  }
+
+  // Auto-end the word once EVERY connected student has tapped, so a quick
+  // class doesn't wait out the clock. Same adapter-aware fetchSockets logic
+  // as qpMaybeAutoEndRace. On close, reveals the answer + winner.
+  async function qpMaybeAutoEndSpeed(
+    sessionCode: string,
+    speed: NonNullable<QpSessionState["currentSpeed"]>,
+  ): Promise<void> {
+    let connectedStudentIds: Set<string>;
+    try {
+      const sockets = await qpIo.in(sessionCode).fetchSockets();
+      connectedStudentIds = new Set(
+        sockets
+          .filter((s) => s.data?.qpRole === "student" && typeof s.data?.qpClientId === "string")
+          .map((s) => s.data.qpClientId as string),
+      );
+    } catch {
+      const local = qpSessions.get(sessionCode);
+      connectedStudentIds = new Set(local ? local.socketToClient.values() : []);
+    }
+    if (connectedStudentIds.size === 0) return;
+    if (![...connectedStudentIds].every((id) => speed.submitted.has(id))) return;
+    const state = qpSessions.get(sessionCode);
+    if (!state?.currentSpeed || state.currentSpeed.roundId !== speed.roundId) return;
+    if (state.currentSpeed.timer) { clearTimeout(state.currentSpeed.timer); state.currentSpeed.timer = null; }
+    qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SPEED_ENDED, {
+      sessionCode, roundId: speed.roundId,
+      correctIndex: speed.correctIndex,
+      winnerClientId: speed.firstCorrectClientId,
+    });
+  }
+
+  // Cross-VM Speed Round submit (see QP_SPEED_SUBMIT_FANOUT). Fires on every
+  // VM; only the one that owns the word acts. Mirrors the race fanout above.
+  qpIo.on(QP_SPEED_SUBMIT_FANOUT, (data: {
+    sessionCode: string; roundId: string; clientId: string;
+    nickname: string; avatar: string; socketId: string; choiceIndex: number;
+  }) => {
+    try {
+      if (!data || typeof data !== "object") return;
+      const state = qpSessions.get(data.sessionCode);
+      if (!state?.currentSpeed || state.currentSpeed.roundId !== data.roundId) return; // not the owner
+      const speed = state.currentSpeed;
+      const result = qpApplySpeedSubmission(state, speed, {
+        clientId: data.clientId, choiceIndex: data.choiceIndex,
+        nickname: data.nickname, avatar: data.avatar,
+      });
+      if (!result) return; // too late / duplicate
+      qpIo.to(data.socketId).emit(QP_SERVER_EVENTS.SPEED_RESULT, result);
+      qpScheduleBroadcast(data.sessionCode);
+      console.log(`[QP SPEED submit xvm] session=${data.sessionCode} client=${data.clientId.slice(0, 8)} round=${data.roundId.slice(0, 8)} → ${result.totalScore}`);
+      void qpMaybeAutoEndSpeed(data.sessionCode, speed);
+    } catch (err) {
+      console.warn("[QP SPEED submit xvm] handler threw", err);
+    }
+  });
+
   function qpEmitError(
     socket: import("socket.io").Socket,
     event: string,
@@ -1974,6 +2127,7 @@ async function startServer() {
         lastTeacherSeenAt: Date.now(),
         kickedClientIds: new Set(),
         currentRace: null,
+        currentSpeed: null,
       };
       qpSessions.set(sessionCode, s);
     }
@@ -2508,6 +2662,7 @@ async function startServer() {
       // update is their own responsibility (client already does this
       // via end_quick_play_session RPC).
       if (endingSessionState?.currentRace?.timer) clearTimeout(endingSessionState.currentRace.timer);
+      if (endingSessionState?.currentSpeed?.timer) clearTimeout(endingSessionState.currentSpeed.timer);
       qpSessions.delete(sessionCode);
     });
 
@@ -2690,6 +2845,177 @@ async function startServer() {
       console.log(`[QP RACE end-round] session=${sessionCode} round=${roundId.slice(0, 8)} (teacher)`);
     });
 
+    // ─── Speed Round: teacher starts a synchronized word ───────────────
+    // The QUESTION is authored on the teacher's screen (the server has no
+    // vocabulary) — it carries {prompt, options, correctIndex}. The server
+    // stores correctIndex PRIVATELY and broadcasts only the options, so a
+    // student can't read the answer off the wire. See design §3.
+    socket.on(QP_EVENTS.SPEED_START, async (payload: QpSpeedStartPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, token, mode, prompt, options, correctIndex, roundSeconds } = payload;
+      if (!isValidSessionCode(sessionCode)) {
+        return qpEmitError(socket, QP_EVENTS.SPEED_START, "invalid_payload", "bad session code");
+      }
+      if (!isValidSpeedMode(mode)) {
+        return qpEmitError(socket, QP_EVENTS.SPEED_START, "invalid_payload", "bad mode");
+      }
+      if (!isValidSpeedRoundSeconds(roundSeconds)) {
+        return qpEmitError(socket, QP_EVENTS.SPEED_START, "invalid_payload", "bad round length");
+      }
+      // Options: 2–4 strings; clamp each so a long sentence prompt can't
+      // bloat the broadcast (design §8.5 — mirror the race payload discipline).
+      const rawOptions = Array.isArray(options) ? options : [];
+      const cleanOptions = rawOptions
+        .filter((o): o is string => typeof o === "string")
+        .map((o) => o.slice(0, 120));
+      if (cleanOptions.length < 2 || cleanOptions.length > 4 || cleanOptions.length !== rawOptions.length) {
+        return qpEmitError(socket, QP_EVENTS.SPEED_START, "invalid_payload", "need 2–4 options");
+      }
+      if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= cleanOptions.length) {
+        return qpEmitError(socket, QP_EVENTS.SPEED_START, "invalid_payload", "bad correctIndex");
+      }
+      const cleanPrompt = typeof prompt === "string" ? prompt.slice(0, 200) : "";
+      if (!cleanPrompt) {
+        return qpEmitError(socket, QP_EVENTS.SPEED_START, "invalid_payload", "empty prompt");
+      }
+      const promptKind: QpSpeedPromptKind = payload.promptKind === "audio" ? "audio" : "text";
+      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+        return qpEmitError(socket, QP_EVENTS.SPEED_START, "rate_limited", "too many teacher actions");
+      }
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.SPEED_START, verify.reason, "access denied");
+
+      const state = qpGetOrCreateSession(sessionCode);
+      // Clear any previous word's close timer so a stale one can't fire
+      // SPEED_ENDED for the word we're about to start.
+      if (state.currentSpeed?.timer) clearTimeout(state.currentSpeed.timer);
+
+      const roundId = randomUUID();
+      const now = Date.now();
+      const deadlineTs = now + roundSeconds * 1000;
+      state.currentSpeed = {
+        roundId, mode,
+        correctIndex,
+        optionCount: cleanOptions.length,
+        roundSeconds, deadlineTs, startTs: now,
+        submitted: new Set(),
+        firstCorrectClientId: null,
+        timer: null,
+      };
+      // Close the word server-side at the deadline (+grace) so late or silent
+      // students get locked out and "word over" is unambiguous even if nobody
+      // taps. The reveal carries the answer + winner.
+      state.currentSpeed.timer = setTimeout(() => {
+        const s = qpSessions.get(sessionCode);
+        if (s?.currentSpeed && s.currentSpeed.roundId === roundId) {
+          qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SPEED_ENDED, {
+            sessionCode, roundId,
+            correctIndex: s.currentSpeed.correctIndex,
+            winnerClientId: s.currentSpeed.firstCorrectClientId,
+          });
+          s.currentSpeed.timer = null;
+        }
+      }, roundSeconds * 1000 + QP_RACE_SUBMIT_GRACE_MS);
+
+      // Broadcast WITHOUT correctIndex — students get only the options.
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SPEED_ROUND, {
+        sessionCode, roundId, mode,
+        prompt: cleanPrompt, promptKind,
+        options: cleanOptions,
+        roundSeconds, deadlineTs, serverTs: now,
+      });
+      console.log(`[QP SPEED start] session=${sessionCode} round=${roundId.slice(0, 8)} mode=${mode} opts=${cleanOptions.length} secs=${roundSeconds}`);
+    });
+
+    // ─── Speed Round: student taps an option ───────────────────────────
+    // Students send an INDEX, not a score — the server compares it to the
+    // privately-held correctIndex, so a tampered client can't claim points.
+    socket.on(QP_EVENTS.SPEED_SUBMIT, (payload: QpSpeedSubmitPayload) => {
+      const dropLog = (reason: string, extra?: Record<string, unknown>) => {
+        try {
+          const p = payload as { sessionCode?: unknown; clientId?: unknown; roundId?: unknown };
+          const s = typeof p?.sessionCode === "string" ? p.sessionCode : "?";
+          const c = typeof p?.clientId === "string" ? p.clientId.slice(0, 8) : "?";
+          const r = typeof p?.roundId === "string" ? p.roundId.slice(0, 8) : "?";
+          console.warn(`[QP SPEED submit DROP] reason=${reason} session=${s} client=${c} round=${r}`, extra ?? "");
+        } catch { /* logging must never throw */ }
+      };
+      if (!payload || typeof payload !== "object") { dropLog("bad_payload"); return; }
+      const { sessionCode, clientId, roundId, choiceIndex } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) { dropLog("bad_session_or_client"); return; }
+      if (typeof roundId !== "string" || !roundId) { dropLog("bad_roundId"); return; }
+      if (!Number.isInteger(choiceIndex)) { dropLog("bad_choiceIndex"); return; }
+      if (!qpScoreLimiter.checkLimit(socket.id)) { dropLog("rate_limited"); return; }
+
+      const state = qpSessions.get(sessionCode);
+
+      // Does THIS VM own the active word? Same multi-VM logic as RACE_SUBMIT.
+      if (state?.currentSpeed && state.currentSpeed.roundId === roundId) {
+        const speed = state.currentSpeed;
+        if (Date.now() > speed.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late"); return; }
+        if (speed.submitted.has(clientId)) { dropLog("already_submitted"); return; }
+
+        // Self-heal the socket→client mapping in case a reconnect raced the tap.
+        const owned = state.socketToClient.get(socket.id);
+        if (owned !== clientId) {
+          if (state.students.has(clientId)) {
+            state.socketToClient.set(socket.id, clientId);
+            socket.data.qpClientId = clientId;
+            socket.join(sessionCode);
+          } else {
+            dropLog("not_in_students", { owned: owned ?? null, knownClients: state.students.size });
+            return;
+          }
+        }
+        const entry = state.students.get(clientId);
+        if (!entry) { dropLog("no_entry"); return; }
+
+        const result = qpApplySpeedSubmission(state, speed, {
+          clientId, choiceIndex, nickname: entry.nickname, avatar: entry.avatar,
+        });
+        if (!result) return; // too late / duplicate (already screened above)
+        socket.emit(QP_SERVER_EVENTS.SPEED_RESULT, result);
+        qpScheduleBroadcast(sessionCode);
+        console.log(`[QP SPEED submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} ${result.correct ? `+${result.roundPoints}${result.speedBonus ? `+${result.speedBonus}⚡` : ""}${result.firstCorrect ? " 🥇" : ""}` : "✗"} → ${result.totalScore}`);
+        void qpMaybeAutoEndSpeed(sessionCode, speed);
+        return;
+      }
+
+      // No local word for this roundId — it may live on another VM. Fan the
+      // submit out so the owner can score by index (same as RACE_SUBMIT).
+      if (redisAdapterStatus !== "attached") {
+        dropLog(state ? "stale_round" : "no_session_or_speed", { hasState: !!state });
+        return;
+      }
+      const local = state?.students.get(clientId);
+      qpIo.serverSideEmit(QP_SPEED_SUBMIT_FANOUT, {
+        sessionCode, roundId, clientId,
+        nickname: local?.nickname ?? "Player",
+        avatar: local?.avatar ?? "🦊",
+        socketId: socket.id,
+        choiceIndex,
+      });
+    });
+
+    // ─── Speed Round: teacher ends the active word early ───────────────
+    socket.on(QP_EVENTS.SPEED_END_ROUND, async (payload: QpSpeedEndRoundPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, token, roundId } = payload;
+      if (!isValidSessionCode(sessionCode) || typeof roundId !== "string" || !roundId) return;
+      if (!qpTeacherLimiter.checkLimit(socket.id)) return;
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.SPEED_END_ROUND, verify.reason, "access denied");
+      const state = qpSessions.get(sessionCode);
+      if (!state?.currentSpeed || state.currentSpeed.roundId !== roundId) return;
+      if (state.currentSpeed.timer) { clearTimeout(state.currentSpeed.timer); state.currentSpeed.timer = null; }
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SPEED_ENDED, {
+        sessionCode, roundId,
+        correctIndex: state.currentSpeed.correctIndex,
+        winnerClientId: state.currentSpeed.firstCorrectClientId,
+      });
+      console.log(`[QP SPEED end-round] session=${sessionCode} round=${roundId.slice(0, 8)} (teacher)`);
+    });
+
     socket.on("disconnect", () => {
       // Find which session this socket belonged to.  Don't drop the
       // student's leaderboard entry on disconnect — a Wi-Fi blink, a
@@ -2734,6 +3060,7 @@ async function startServer() {
       if (noTeacher && teacherGone) {
         if (isDev) console.log(`[QuickPlay] sweeping idle session ${code} (students=${state.students.size})`);
         if (state.currentRace?.timer) clearTimeout(state.currentRace.timer);
+        if (state.currentSpeed?.timer) clearTimeout(state.currentSpeed.timer);
         qpIo.to(code).emit(QP_SERVER_EVENTS.SESSION_ENDED, { sessionCode: code });
         qpSessions.delete(code);
       }

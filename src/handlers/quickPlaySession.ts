@@ -16,7 +16,7 @@
  */
 import { supabase } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
-import { QP_CATEGORY_RACE_MODE } from '../core/quickPlayProtocol';
+import { QP_CATEGORY_RACE_MODE, QP_SPEED_MODE } from '../core/quickPlayProtocol';
 
 type ToastFn = (
   message: string,
@@ -248,6 +248,39 @@ export async function createCategoryRaceSession(
     wordIds: [],
     words: [],
     allowedModes: [QP_CATEGORY_RACE_MODE],
+  });
+  return session.session_code;
+}
+
+/**
+ * Create a Speed Round session — a Quick Play row with NO words and
+ * allowed_modes set to the single speed sentinel. Like Category Race, the
+ * round content isn't persisted: the teacher's host screen authors each
+ * word's question client-side and sends it live. The sentinel is the
+ * discriminator the student bootstrap branches on to show the buzzer lobby.
+ */
+export async function createSpeedRoundSession(
+  deps: Pick<QuickPlaySessionDeps, 'showToast' | 'failedCreateSessionMsg' | 'setSessionCode' | 'setActiveSession'>,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('create_quick_play_session', {
+    p_word_ids: null,
+    p_custom_words: null,
+    p_allowed_modes: [QP_SPEED_MODE],
+  });
+
+  if (error) {
+    deps.showToast(deps.failedCreateSessionMsg(error.message), 'error');
+    throw error;
+  }
+
+  const session = data as { id: string; session_code: string };
+  deps.setSessionCode(session.session_code);
+  deps.setActiveSession({
+    id: session.id,
+    sessionCode: session.session_code,
+    wordIds: [],
+    words: [],
+    allowedModes: [QP_SPEED_MODE],
   });
   return session.session_code;
 }

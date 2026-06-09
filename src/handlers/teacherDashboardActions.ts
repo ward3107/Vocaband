@@ -10,7 +10,7 @@ import type { ClassData, AssignmentData } from '../core/supabase';
 import { ALL_GAME_MODES } from '../constants/game';
 import type { SavedTask } from '../hooks/useSavedTasks';
 import type { View } from '../core/views';
-import { createCategoryRaceSession } from './quickPlaySession';
+import { createCategoryRaceSession, createSpeedRoundSession } from './quickPlaySession';
 
 export interface QuickPlayClickDeps {
   cleanupSessionData: () => void;
@@ -81,6 +81,37 @@ export async function startCategoryRaceFromDashboard(deps: CategoryRaceClickDeps
     deps.setView('category-race-host');
   } catch {
     /* createCategoryRaceSession already surfaced a toast */
+  }
+}
+
+/**
+ * Dashboard "Speed Round" tap. Like Category Race there's no word picker —
+ * it creates a wordless speed session immediately and drops the teacher into
+ * the live host control room (where they pick the set + mode + timer per
+ * word). Clears any stale QP state first.
+ */
+export async function startSpeedRoundFromDashboard(deps: CategoryRaceClickDeps): Promise<void> {
+  try { sessionStorage.setItem('vocaband_skip_restore', 'true'); } catch { /* ignore */ }
+  try { localStorage.removeItem('vocaband_quick_play_session'); } catch { /* ignore */ }
+  deps.cleanupSessionData();
+  deps.setQuickPlayActiveSession(null);
+  deps.setQuickPlaySessionCode(null);
+  try {
+    await createSpeedRoundSession({
+      showToast: deps.showToast,
+      failedCreateSessionMsg: (err) => `Couldn't start Speed Round: ${err}`,
+      setSessionCode: (code) => deps.setQuickPlaySessionCode(code),
+      setActiveSession: (s) => deps.setQuickPlayActiveSession({
+        id: s.id,
+        sessionCode: s.sessionCode,
+        wordIds: s.wordIds,
+        words: s.words,
+        allowedModes: s.allowedModes,
+      }),
+    });
+    deps.setView('speed-round-host');
+  } catch {
+    /* createSpeedRoundSession already surfaced a toast */
   }
 }
 

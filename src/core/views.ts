@@ -59,6 +59,12 @@ export type View =
   // student joins via code/QR and answers in a full-screen focus card.
   | "category-race-host"
   | "category-race-student"
+  // Speed Round (Kahoot-style synchronized buzzer). Sibling of Category
+  // Race — a quick_play_sessions row whose allowed_modes is [QP_SPEED_MODE].
+  // The teacher drops one word on the whole class at once; students race to
+  // tap the correct option. See docs/speed-round-design.md.
+  | "speed-round-host"
+  | "speed-round-student"
   | "hot-seat"
   | "wheel"
   | "class-show"

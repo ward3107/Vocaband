@@ -16,7 +16,7 @@ const TEACHER_VIEWS = new Set<View>([
   "analytics", "gradebook", "students", "worksheet-attempts",
   "live-challenge", "live-challenge-class-select",
   "vocabulary-library", "vocabulary-collection", "vocabulary-set-detail", "vocabulary-set-builder",
-  "vocabagrut", "category-race-host",
+  "vocabagrut", "category-race-host", "speed-round-host",
   "developer-dashboard", "admin-security", "manager-dashboard",
   "voca-picker", "vocahebrew-dashboard",
   "vocahebrew-niqqud", "vocahebrew-shoresh", "vocahebrew-listening",
@@ -25,7 +25,7 @@ const TEACHER_VIEWS = new Set<View>([
 const STUDENT_VIEWS = new Set<View>([
   "student-dashboard", "game", "live-challenge",
   "shop", "global-leaderboard", "privacy-settings",
-  "category-race-student",
+  "category-race-student", "speed-round-student",
 ]);
 
 export const isPublicView = (view: View): boolean => PUBLIC_VIEWS.has(view);

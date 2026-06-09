@@ -67,6 +67,20 @@ export const QP_EVENTS = {
   // A teacher ending the active round early (before the deadline / for
   // untimed rounds). Server closes the round and broadcasts RACE_ENDED.
   RACE_END_ROUND:  "qp:teacher:race:end-round",
+
+  // ─── Speed Round (Kahoot-style synchronized buzzer) ───────────────
+  // A teacher starting a Speed Round word: the question is BUILT on the
+  // teacher's screen (prompt + options + correctIndex) because the
+  // server has no vocabulary; the server stores correctIndex PRIVATELY
+  // and broadcasts only the options. See docs/speed-round-design.md §3.
+  SPEED_START:     "qp:teacher:speed:start",
+  // A student tapping an option for the active word. They send the
+  // INDEX they tapped (never text), so a tampered client can't claim
+  // arbitrary points — it would have to guess the correct index.
+  SPEED_SUBMIT:    "qp:student:speed:submit",
+  // A teacher ending the active word early. Server closes the word and
+  // broadcasts SPEED_ENDED (revealing the correct option + winner).
+  SPEED_END_ROUND: "qp:teacher:speed:end-round",
 } as const;
 
 /** Server → client events. */
@@ -96,6 +110,20 @@ export const QP_SERVER_EVENTS = {
   // The active round closed (deadline reached or teacher moved on) —
   // clients lock input and drop back to the lobby.
   RACE_ENDED:      "qp:race:ended",
+
+  // ─── Speed Round (Kahoot-style synchronized buzzer) ───────────────
+  // A new word started — broadcast to the whole room with the prompt +
+  // answer options + shared deadline. NEVER carries correctIndex; the
+  // server holds it privately so a tampered client can't read the
+  // answer off the wire. See docs/speed-round-design.md §3.
+  SPEED_ROUND:     "qp:speed:round",
+  // The submitting student's per-word scoring (sent only to that socket):
+  // correct/incorrect, points + speed bonus, "First!" flag, and the now-
+  // safe-to-reveal correctIndex.
+  SPEED_RESULT:    "qp:speed:result",
+  // The active word closed (deadline reached or teacher moved on) — the
+  // server reveals the correct option + the per-word winner.
+  SPEED_ENDED:     "qp:speed:ended",
 } as const;
 
 // ─── Client → server payloads ───────────────────────────────────────────
@@ -375,6 +403,106 @@ export interface QpRaceEndedPayload {
   roundId: string;
 }
 
+// ─── Speed Round payloads ───────────────────────────────────────────────
+//
+// A Speed Round session is a quick_play_sessions row whose allowed_modes is
+// exactly [QP_SPEED_MODE] and whose word list is empty — the discriminator
+// the student client branches on. Unlike Category Race, the question is
+// authored CLIENT-SIDE on the teacher's screen (the server has no
+// vocabulary): the teacher builds {prompt, options, correctIndex} and the
+// server scores by INDEX only, never seeing the words. See §3 of the design.
+
+/** How the prompt should be presented on the student's device. `text` is
+ *  the default (show the word); `audio` tells the listening-mode student to
+ *  speak the prompt via TTS instead of showing it. */
+export type QpSpeedPromptKind = "text" | "audio";
+
+/** Client → server: teacher starts a Speed Round word. The correctIndex is
+ *  stored PRIVATELY server-side and stripped from the room broadcast. */
+export interface QpSpeedStartPayload {
+  sessionCode: string;
+  /** Supabase access token — verified against the session's teacher_uid. */
+  token: string;
+  /** Which fast mode this word runs (true-false, classic, …). Validated
+   *  against QP_SPEED_MODES. */
+  mode: QpSpeedMode;
+  /** The question prompt (a translation, the English word, "True/False?"…).
+   *  Length-clamped server-side. */
+  prompt: string;
+  /** How the student should render the prompt. Defaults to "text". */
+  promptKind?: QpSpeedPromptKind;
+  /** 2–4 answer options the student taps. Length-clamped server-side. */
+  options: string[];
+  /** Index into `options` of the correct answer. Stored privately. */
+  correctIndex: number;
+  /** Seconds students get to tap. Clamped to QP_SPEED_ROUND_SECONDS. */
+  roundSeconds: number;
+}
+
+/** Server → room: a new word began. Note: NO correctIndex — students get
+ *  only the options and must tap (then the server scores by index). */
+export interface QpSpeedRoundPayload {
+  sessionCode: string;
+  roundId: string;
+  mode: QpSpeedMode;
+  prompt: string;
+  promptKind: QpSpeedPromptKind;
+  options: string[];
+  roundSeconds: number;
+  /** Epoch ms the word closes — clients count down to this so every device
+   *  shares one clock regardless of when the packet lands. */
+  deadlineTs: number;
+  /** Server's clock at broadcast — lets clients correct for offset. */
+  serverTs: number;
+}
+
+/** Client → server: student taps an option for the active word. They send
+ *  the INDEX they tapped, never text — a tampered client would have to guess
+ *  the correct index, i.e. just guess the answer. */
+export interface QpSpeedSubmitPayload {
+  sessionCode: string;
+  clientId: string;
+  /** Must match the server's active word; stale taps are dropped. */
+  roundId: string;
+  choiceIndex: number;
+}
+
+/** Server → submitting socket: that student's per-word scoring. */
+export interface QpSpeedResultPayload {
+  sessionCode: string;
+  roundId: string;
+  correct: boolean;
+  /** Now safe to reveal to the student who answered. */
+  correctIndex: number;
+  /** Base points for a correct answer (0 if wrong). */
+  roundPoints: number;
+  /** Extra points for answering fast — 0 when wrong or expired. Already
+   *  folded into totalScore; surfaced so the client can celebrate "⚡ +N". */
+  speedBonus: number;
+  /** True when this student was the FIRST to answer correctly this word. */
+  firstCorrect: boolean;
+  /** The student's running session total after this word. */
+  totalScore: number;
+}
+
+/** Server → room: the active word closed — reveals the answer + winner. */
+export interface QpSpeedEndedPayload {
+  sessionCode: string;
+  roundId: string;
+  /** The correct option index, now safe to reveal to the whole room. */
+  correctIndex: number;
+  /** clientId of the first student to answer correctly, or null if nobody
+   *  did. The host highlights this on the podium. */
+  winnerClientId: string | null;
+}
+
+/** Client → server: teacher ends the active word early. */
+export interface QpSpeedEndRoundPayload {
+  sessionCode: string;
+  token: string;
+  roundId: string;
+}
+
 /** Error codes the server emits. Client maps to friendly copy. */
 export type QpErrorCode =
   | "invalid_payload"
@@ -559,4 +687,43 @@ export const QP_RACE_SUBMIT_GRACE_MS = 3_000;
 
 export function isValidRaceRoundSeconds(v: unknown): v is number {
   return typeof v === "number" && (QP_RACE_ROUND_SECONDS as readonly number[]).includes(v);
+}
+
+// ─── Speed Round constants ──────────────────────────────────────────────
+
+/** The fast question modes a Speed Round word can run. Each builds a
+ *  prompt + 2–4 tap options client-side from the session's words. */
+export const QP_SPEED_MODES = [
+  "true-false",
+  "classic",
+  "reverse",
+  "listening",
+  "idiom",
+  "letter-sounds",
+] as const;
+export type QpSpeedMode = typeof QP_SPEED_MODES[number];
+
+/** allowed_modes sentinel that marks a quick_play_sessions row as a Speed
+ *  Round session (vs. a regular vocab / Category Race session). The student
+ *  bootstrap branches on this to show the Speed Round lobby. */
+export const QP_SPEED_MODE = "speed-round";
+
+/** Round-timer choices the teacher can pick (seconds). Tighter than Category
+ *  Race — Speed Round is about quick taps, not building answers. */
+export const QP_SPEED_ROUND_SECONDS = [5, 10, 15, 20, 30] as const;
+
+/** Base points for a correct answer, before the speed bonus. */
+export const QP_SPEED_BASE_POINTS = 10;
+
+/** Max bonus points for an instant correct answer; scales linearly to 0 as
+ *  the word clock runs out. Bigger than Category Race's bonus because speed
+ *  is the whole point of this mode. */
+export const QP_SPEED_BONUS_MAX = 50;
+
+export function isValidSpeedMode(v: unknown): v is QpSpeedMode {
+  return typeof v === "string" && (QP_SPEED_MODES as readonly string[]).includes(v);
+}
+
+export function isValidSpeedRoundSeconds(v: unknown): v is number {
+  return typeof v === "number" && (QP_SPEED_ROUND_SECONDS as readonly number[]).includes(v);
 }

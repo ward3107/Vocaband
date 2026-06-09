@@ -15,6 +15,7 @@ import type { View } from '../core/views';
 import {
   CategoryRaceStudentViewLazy as CategoryRaceStudentView,
   QuickPlayStudentViewLazy as QuickPlayStudentView,
+  SpeedRoundStudentViewLazy as SpeedRoundStudentView,
 } from './studentJoinChunks';
 
 const StudentAccountLoginView = lazyWithRetry(() => import('./StudentAccountLoginView'));
@@ -118,6 +119,21 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     return (
       <LazyWrapper loadingMessage="Loading race...">
         <CategoryRaceStudentView
+          sessionCode={quickPlayActiveSession.sessionCode}
+          setView={setView}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'speed-round-student') {
+    if (!quickPlayActiveSession) {
+      setView('public-landing');
+      return null;
+    }
+    return (
+      <LazyWrapper loadingMessage="Loading Speed Round...">
+        <SpeedRoundStudentView
           sessionCode={quickPlayActiveSession.sessionCode}
           setView={setView}
         />

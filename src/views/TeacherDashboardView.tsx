@@ -90,6 +90,9 @@ interface TeacherDashboardViewProps {
   /** Live, teacher-driven Category Race (Eretz-Ir). Paired with Quick
    *  Play under "Live games" on the English dashboard. */
   onCategoryRaceClick: () => void;
+  /** Live, teacher-driven Speed Round (Kahoot-style buzzer). Third "Live
+   *  games" tile on the English dashboard. */
+  onSpeedRoundClick: () => void;
   /** Single entry point that opens the merged Classroom view. */
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
@@ -167,7 +170,7 @@ export default function TeacherDashboardView({
   deleteConfirmModal, setDeleteConfirmModal, onConfirmDeleteAssignment,
   rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
   toasts, confirmDialog, setConfirmDialog,
-  onQuickPlayClick, onCategoryRaceClick, onClassroomClick, onApprovalsClick,
+  onQuickPlayClick, onCategoryRaceClick, onSpeedRoundClick, onClassroomClick, onApprovalsClick,
   onWorksheetResultsClick,
   onLibraryClick,
   onProjectAssignmentToClass,
@@ -401,6 +404,7 @@ export default function TeacherDashboardView({
               setOpenDropdownClassId={setOpenDropdownClassId}
               onQuickPlayClick={onQuickPlayClick}
               onCategoryRaceClick={onCategoryRaceClick}
+              onSpeedRoundClick={onSpeedRoundClick}
               onClassroomClick={onClassroomClick}
               onApprovalsClick={onApprovalsClick}
               onWorksheetResultsClick={onWorksheetResultsClick}
