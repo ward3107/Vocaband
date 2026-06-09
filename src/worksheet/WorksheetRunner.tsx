@@ -9,7 +9,7 @@
  * caller.  Nothing about score persistence, name entry, or the
  * student/teacher UX lives here — that's the caller's job.
  */
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { SkipForward } from "lucide-react";
 import { ALL_WORDS, type Word } from "../data/vocabulary";
@@ -139,13 +139,24 @@ export const WorksheetRunner: React.FC<Props> = ({
     advance();
   };
 
+  // Defensive: a row can carry an exercise type the registry doesn't know
+  // — a legacy `format` alias that escaped canonicalization, or a type
+  // retired after the worksheet was saved. Rendering `undefined` as a
+  // component throws "Element type is invalid" and white-screens the whole
+  // runner, so auto-skip it like an empty exercise instead.
+  const isUnknownType = !!current && !EXERCISE_REGISTRY[current.type];
+  useEffect(() => {
+    if (isUnknownType) handleComplete({ score: 0, total: 0, answers: [] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot per idx; handleComplete is idx-guarded
+  }, [idx, isUnknownType]);
+
   if (!current) {
     // No exercises (shouldn't happen — RPC validates non-empty) or
     // we've walked off the end before onFinish committed.
     return null;
   }
 
-  const Component = EXERCISE_REGISTRY[current.type];
+  const Component = EXERCISE_REGISTRY[current.type] ?? null;
 
   return (
     <SentencesProvider value={sentences}>
@@ -168,8 +179,8 @@ export const WorksheetRunner: React.FC<Props> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
         >
-          {skipping ? (
-            <SkipNotice type={skipping} />
+          {skipping || !Component ? (
+            <SkipNotice type={skipping ?? current.type} />
           ) : (
             <Component
               config={current}

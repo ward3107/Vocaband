@@ -25,11 +25,42 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
+  // Device matrix: the same specs run on desktop + the phones students
+  // actually bring to class. Emulation (viewport, touch, UA, device
+  // scale) catches the bulk of mobile layout/touch breakage on your
+  // laptop. For the real Safari/Android ENGINE quirks emulation can't
+  // reproduce, run the same suite on a real-device cloud
+  // (BrowserStack/LambdaTest) — see docs/testing-at-scale.md.
+  //
+  // The three default projects all use the CHROMIUM engine (Desktop +
+  // two mobile viewports), so they run anywhere the CI already installs
+  // chromium — no extra browser download needed.
+  //
+  // Mobile Safari uses the separate WebKit engine, which CI doesn't
+  // install, so it's OPT-IN: run `npx playwright install` once, then set
+  // PLAYWRIGHT_WEBKIT=1 (or just `--project="Mobile Safari"`). This keeps
+  // CI green while still giving real iOS coverage locally / before a
+  // release. See docs/testing-at-scale.md.
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 7'] },
+    },
+    {
+      // A small, low-end Android viewport — the cheap phones that show
+      // layout overflow first. Chromium engine.
+      name: 'Small Android',
+      use: { ...devices['Galaxy S9+'] },
+    },
+    // WebKit/iOS — only when explicitly opted in (needs `npx playwright
+    // install`). Excluded by default so CI (chromium-only) stays green.
+    ...(process.env.PLAYWRIGHT_WEBKIT
+      ? [{ name: 'Mobile Safari', use: { ...devices['iPhone 13'] } }]
+      : []),
   ],
 
   webServer: {
