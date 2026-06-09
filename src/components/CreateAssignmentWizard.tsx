@@ -208,9 +208,14 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
 
   // ── Convert number[] to Word[] for SetupWizard ───────────────────────────────
   const selectedWords = useMemo(() => {
-    const words = allWords.filter(w => selectedWordsIds.includes(w.id));
+    // O(1) membership via a Set, rebuilt once per selection change. The old
+    // `selectedWordsIds.includes(...)` inside `.filter` was O(words × selected)
+    // — a ~6.5k-word scan with a nested array search on every word toggle,
+    // the wizard's hottest interaction.
+    const selectedSet = new Set(selectedWordsIds);
+    const words = allWords.filter(w => selectedSet.has(w.id));
     // Include custom words
-    const customSelected = customWords.filter(w => selectedWordsIds.includes(w.id));
+    const customSelected = customWords.filter(w => selectedSet.has(w.id));
     return [...words, ...customSelected];
   }, [allWords, customWords, selectedWordsIds]);
 
