@@ -882,12 +882,36 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     const chunks = chunkArray(codes, 30);
     const allRows: ProgressData[] = [];
 
+    // Bound the analytics dataset to a recent window instead of "the last
+    // 1000 rows of all time". Two problems with the old unbounded query:
+    //   1. Correctness — `.limit(1000)` silently truncated, so an active
+    //      class accumulating a full year of plays had its analytics quietly
+    //      under-count (oldest-within-the-cap rows dropped, totals wrong).
+    //   2. Cost — every open re-scanned more of an ever-growing table.
+    // A 90-day window (≈ a term) keeps the view accurate and bounded: within
+    // it the row cap is comfortably sufficient for a normal class, and the
+    // `progress(completed_at)` index makes the range scan cheap. The cap is
+    // also raised (1000 → 2000) as headroom and now logs in dev if it's still
+    // hit, so truncation can't silently return as volumes grow. The full
+    // server-side aggregate RPC (no row cap at all) remains the eventual fix
+    // for very high-volume teachers.
+    const ANALYTICS_WINDOW_DAYS = 90;
+    const ANALYTICS_ROW_CAP = 2000;
+    const sinceIso = new Date(Date.now() - ANALYTICS_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
     for (const chunk of chunks) {
       const { data } = await supabase
         .from('progress').select('id, student_name, student_uid, assignment_id, class_code, score, mode, completed_at, mistakes, avatar')
         .in('class_code', chunk)
+        .gte('completed_at', sinceIso)
         .order('completed_at', { ascending: false })
-        .limit(1000);
+        .limit(ANALYTICS_ROW_CAP);
+      if (import.meta.env.DEV && data && data.length === ANALYTICS_ROW_CAP) {
+        console.warn(
+          `[fetchScores] hit the ${ANALYTICS_ROW_CAP}-row cap within ${ANALYTICS_WINDOW_DAYS}d ` +
+          `for a class chunk — analytics may under-count; consider the aggregate RPC.`,
+        );
+      }
       if (data) allRows.push(...data.map(mapProgress));
     }
 
