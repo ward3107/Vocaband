@@ -17,3 +17,29 @@ body {
 
 /* RTL-friendly: flip directional flex rows automatically where used. */
 [dir="rtl"] .rtl-flip { flex-direction: row-reverse; }
+
+/* ── Print / "Save as PDF" — the assembled Bagrut paper ──────────────────
+   On print we hide the whole app and show only .print-area, laid out as a
+   clean A4 document. The paper is always LTR (it is an English exam). */
+.answer-line {
+  border-bottom: 1px solid #94a3b8;
+  height: 1.7rem;
+}
+
+@media print {
+  body { background: #fff; }
+  /* Hide everything, then reveal just the paper. */
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area {
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    width: 100%;
+    color: #000;
+  }
+  .no-print { display: none !important; }
+  .page-break { break-before: page; }
+  .avoid-break { break-inside: avoid; }
+  @page { size: A4; margin: 18mm 16mm; }
+}
