@@ -113,6 +113,13 @@ export interface VocabagrutStrings {
   qTypeWriting: string;
   suggestedTag: string;
   removeQuestionAria: string;
+
+  // AI-written questions ("Add question" → the model writes it)
+  aiWriting: string;
+  aiWritingPlaceholder: string;
+  aiAddHint: string;
+  answerNoteLabel: string;
+  answerNotePlaceholder: string;
 }
 
 export const vocabagrutT: Record<Language, VocabagrutStrings> = {
@@ -197,6 +204,11 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     qTypeWriting: "Writing task",
     suggestedTag: "Suggested",
     removeQuestionAria: "Remove question",
+    aiWriting: "AI is writing this question…",
+    aiWritingPlaceholder: "Writing…",
+    aiAddHint: "Pick a type — the AI writes the question and its answer from this section. Edit anything afterward.",
+    answerNoteLabel: "Answer key note",
+    answerNotePlaceholder: "Correct-answer explanation or sample answer — shown on the teacher's answer key.",
   },
   he: {
     back: "חזרה",
@@ -279,6 +291,11 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     qTypeWriting: "משימת כתיבה",
     suggestedTag: "מומלץ",
     removeQuestionAria: "הסרת שאלה",
+    aiWriting: "ה‑AI כותב את השאלה…",
+    aiWritingPlaceholder: "כותב…",
+    aiAddHint: "בחרו סוג — ה‑AI יכתוב את השאלה ואת התשובה לפי החלק הזה. אפשר לערוך הכול אחר כך.",
+    answerNoteLabel: "הערה למפתח התשובות",
+    answerNotePlaceholder: "הסבר התשובה הנכונה או תשובה לדוגמה — מופיע במפתח התשובות של המורה.",
   },
   ar: {
     back: "رجوع",
@@ -361,6 +378,11 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     qTypeWriting: "مهمة كتابة",
     suggestedTag: "مقترح",
     removeQuestionAria: "إزالة السؤال",
+    aiWriting: "الذكاء الاصطناعي يكتب هذا السؤال…",
+    aiWritingPlaceholder: "يكتب…",
+    aiAddHint: "اختر نوعاً — يكتب الذكاء الاصطناعي السؤال وإجابته من هذا القسم. يمكنك تعديل كل شيء لاحقاً.",
+    answerNoteLabel: "ملاحظة لمفتاح الإجابة",
+    answerNotePlaceholder: "شرح الإجابة الصحيحة أو إجابة نموذجية — تظهر في مفتاح إجابات المعلم.",
   },
   ru: {
     back: "Back",
@@ -443,5 +465,10 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     qTypeWriting: "Writing task",
     suggestedTag: "Suggested",
     removeQuestionAria: "Remove question",
+    aiWriting: "AI is writing this question…",
+    aiWritingPlaceholder: "Writing…",
+    aiAddHint: "Pick a type — the AI writes the question and its answer from this section. Edit anything afterward.",
+    answerNoteLabel: "Answer key note",
+    answerNotePlaceholder: "Correct-answer explanation or sample answer — shown on the teacher's answer key.",
   },
 };

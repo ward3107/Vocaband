@@ -126,6 +126,13 @@ function validateSection(s: unknown, path: string): Result<BagrutSection> {
   return { ok: true, value: result };
 }
 
+// Validate a single question (the "Add question" AI path returns one of
+// these, not a whole test).  Reuses the same per-question rules as the
+// full-test validator so the two never drift.
+export function validateBagrutQuestion(raw: unknown): Result<BagrutQuestion> {
+  return validateQuestion(raw, 'question');
+}
+
 export function validateBagrutTest(raw: unknown): Result<BagrutTest> {
   if (!isObj(raw)) return { ok: false, error: 'root: expected object' };
   if (!isStr(raw.module) || !MODULES.has(raw.module as BagrutModule)) {
