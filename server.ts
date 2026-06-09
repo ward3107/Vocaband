@@ -3748,12 +3748,13 @@ ${JSON.stringify(uncachedOriginalCase)}`;
     try {
       // Trim whitespace — common paste error in env var consoles
       const genAI = new GoogleGenerativeAI(apiKey.trim());
-      // gemini-2.5-flash: current stable production model with generous free tier.
-      // Supports up to 1M tokens context and multimodal (image) input.
-      // Schema-mode constrains the response to a JSON array of strings,
-      // so the regex-fallback parser below is for SDK-bypass paranoia only.
+      // gemini-2.5-flash-lite: cheapest 2.5 tier (~half the per-token price of
+      // gemini-2.5-flash) and supports multimodal (image) input. Crucially it
+      // also has "thinking" OFF by default, so we don't pay for reasoning
+      // tokens on what is a pure transcription task. Schema-mode constrains
+      // the response to a JSON array of strings.
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         generationConfig: {
           // temperature 0: OCR must transcribe, not improvise. Higher
           // temperatures are the main driver of invented/hallucinated words.
@@ -3900,7 +3901,7 @@ Quality rules:
             p_teacher_uid: auth.uid,
             p_action: "ocr_image",
             p_count: 1,
-            p_cost_micro_usd: 500, // Gemini 2.5 Flash multimodal ~$0.0005/img
+            p_cost_micro_usd: 300, // Gemini 2.5 Flash-Lite multimodal ~$0.0003/img
             p_plan_at_action: "free",
           });
         } catch (bumpErr) {
@@ -5386,7 +5387,10 @@ Output ONLY the JSON, no markdown, no explanations.
       // markdown-fence cleanup + object-regex salvage parser that
       // followed the old call has been removed.
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        // Flash-Lite: ~half the per-token price of Flash and thinking is off by
+        // default (no reasoning-token cost) — fine for schema-constrained vocab
+        // extraction + comprehension questions.
+        model: "gemini-2.5-flash-lite",
         generationConfig: {
           // Low temperature: vocab extraction + comprehension questions are
           // analysis tasks that want accuracy, not creativity.
@@ -5649,7 +5653,10 @@ Important notes:
       // markdown-fence cleanup + object-regex salvage parser that
       // followed the old call has been removed.
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        // Flash-Lite: ~half the per-token price of Flash, thinking off by
+        // default. Re-baseline reading-passage quality if it regresses — this
+        // is the most generative of the Gemini calls.
+        model: "gemini-2.5-flash-lite",
         generationConfig: {
           // Moderate temperature: the reading text should read naturally and
           // varied, but not so loose that it drifts off the requested level.
@@ -5736,7 +5743,7 @@ Important notes:
         console.warn(`[AI Lesson] uid=${auth.uid}: ${missingWords.length}/${words.length} words missing, attempting repair: ${missingWords.slice(0, 10).join(", ")}`);
         try {
           const repairModel = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.5-flash-lite",
             generationConfig: {
               temperature: 0.5,
               responseMimeType: "application/json",
@@ -5790,13 +5797,15 @@ ${sanitizedText}`;
 
   // ─── Vocabagrut — Bagrut-style mock exam generator ─────────────────────
   // Source-of-truth for module metadata is src/features/vocabagrut/lib/moduleMap.ts.
-  // Per-module model selection: A and B (easier modules, A2/B1) → Haiku.
-  // C, D, E (B1+) → Sonnet, where inference question quality matters.
-
+  // Per-module model selection. The live modules (A, B, C) all run on Haiku
+  // 4.5: a full exam is output-dominated, and Haiku's output price is ~1/3 of
+  // Sonnet's ($5 vs $15 / 1M) while still producing solid inference questions.
+  // D and E (not yet available) stay on Sonnet as a placeholder — revisit that
+  // quality/cost call when they launch.
   const MODEL_BY_MODULE: Record<BagrutModule, string> = {
     A: "claude-haiku-4-5-20251001",
     B: "claude-haiku-4-5-20251001",
-    C: "claude-sonnet-4-6",
+    C: "claude-haiku-4-5-20251001",
     D: "claude-sonnet-4-6",
     E: "claude-sonnet-4-6",
   };
@@ -5942,9 +5951,10 @@ ${sanitizedText}`;
     while (attempt < 2 && !validated) {
       attempt++;
       try {
-        // Anthropic prompt caching: mark the system prompt block cacheable.
-        // The 5-minute cache yields a ~90% input-token discount on subsequent
-        // calls within the window — significant when teachers batch.
+        // Anthropic prompt caching: cache the system prompt block with a
+        // 1-hour TTL. Yields a ~90% input-token discount on repeat generations
+        // across a teacher's whole sitting (the 5-min default expired between
+        // spaced-out generations); the 2x write premium pays off after ~3 calls.
         const response = await anthropic.messages.create({
           model,
           // 8192 (was 4096): a full 100-point exam — reading passage + 2-3
@@ -5957,14 +5967,14 @@ ${sanitizedText}`;
             {
               type: "text",
               text: systemPrompt,
-              cache_control: { type: "ephemeral" },
+              cache_control: { type: "ephemeral", ttl: "1h" },
             },
           ],
           // Cache the (large, static) tool schema alongside the system
           // prompt so repeat generations in the 5-minute window skip
           // re-processing both blocks — trims input latency + ~90% of the
           // input-token cost when a teacher batches tests.
-          tools: [{ ...(BAGRUT_TOOL as any), cache_control: { type: "ephemeral" } }],
+          tools: [{ ...(BAGRUT_TOOL as any), cache_control: { type: "ephemeral", ttl: "1h" } }],
           tool_choice: { type: "tool", name: "bagrut_test" },
           messages: [
             {
@@ -6011,21 +6021,25 @@ ${sanitizedText}`;
               module: moduleTyped,
               model,
               content: validated,
+              // Keep cached exams for 90 days so a teacher re-generating the
+              // same word list reuses the result for free across a whole term
+              // (set explicitly rather than relying on the column default).
+              expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
             }, { onConflict: "cache_key" });
           if (upsertErr) throw upsertErr;
         },
         { label: 'bagrut_cache:upsert' }
       );
 
-      // Bump per-teacher quota counter. Bagrut tests are the single most
-      // expensive Anthropic call we make (≈ $0.05/test), so the counter
-      // is the early-warning system for runaway spend.
+      // Bump per-teacher quota counter. The full-test generation is still the
+      // most expensive Anthropic call we make, so the counter is the
+      // early-warning system for runaway spend.
       try {
         await supabaseAdmin.rpc("bump_ai_usage", {
           p_teacher_uid: auth.uid,
           p_action: "ai_generate_questions",
           p_count: 1,
-          p_cost_micro_usd: 50000, // Sonnet 4.7 mock-test gen ~$0.05 per call (incl. prompt cache discount)
+          p_cost_micro_usd: 20000, // Haiku 4.5 mock-test gen ~$0.02 per call (output-dominated; incl. prompt-cache discount)
           p_plan_at_action: "free",
         });
       } catch (bumpErr) {
@@ -6119,7 +6133,10 @@ ${sanitizedText}`;
       }
     }
 
-    const model = MODEL_BY_MODULE[moduleTyped];
+    // A single question is a small, well-scoped generation — Haiku 4.5 handles
+    // it well at a fraction of Sonnet's cost, so pin Haiku for every module
+    // here regardless of the full-test model map.
+    const model = "claude-haiku-4-5-20251001";
     const anthropic = new Anthropic({ apiKey });
     const promptInput = {
       module: moduleTyped,
@@ -6185,15 +6202,15 @@ ${sanitizedText}`;
       return res.status(502).json({ error: "Generation failed validation", detail: lastError });
     }
 
-    // Bump the per-teacher quota counter — a single question is ~1/10th the
-    // cost of a full exam.
+    // Bump the per-teacher quota counter — a single Haiku question is a small
+    // fraction of a full exam.
     if (supabaseAdmin) {
       try {
         await supabaseAdmin.rpc("bump_ai_usage", {
           p_teacher_uid: auth.uid,
           p_action: "ai_generate_questions",
           p_count: 1,
-          p_cost_micro_usd: 5000,
+          p_cost_micro_usd: 2000, // Haiku 4.5 single question ~$0.002
           p_plan_at_action: "free",
         });
       } catch (bumpErr) {
