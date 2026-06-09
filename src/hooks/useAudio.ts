@@ -42,6 +42,14 @@ const failedWordKeys = new Set<AudioCacheKey>() // Track words that failed to lo
 // Motivational sounds removed - these are now no-ops
 let currentMotivational: HowlType | null = null
 
+// The single word Howl that is currently playing. Auto-speak fires on every
+// word advance, so stopping ONLY this one (instead of iterating the whole
+// ~100-entry wordCache and calling .stop() on every cached <audio> element)
+// keeps the per-word cost O(1). Only one word ever plays at a time, so the
+// old stop-all was pure waste — and on low-end Android / old iPads it added
+// perceptible jank right as the next card animated in.
+let currentWord: HowlType | null = null
+
 // ── Pronunciation speed (student-adjustable) ──────────────────────────────────
 // Both the recorded MP3s and the browser-TTS fallback honour this.
 // Default 'slow' for clarity — a student is usually hearing the word for
@@ -578,8 +586,8 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     }
 
     // Motivational sounds removed - skip waiting logic
-    // Stop any currently playing audio first
-    Object.values(wordCache).forEach(h => h.stop())
+    // Stop the one word that's currently playing (only ever one at a time).
+    currentWord?.stop()
     window.speechSynthesis?.cancel()
 
     // If this word failed to load before, use TTS immediately
@@ -653,6 +661,9 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     // so toggling slow/normal mid-game takes effect on the next word.
     try { sound.rate(SPEED_RATES[pronunciationSpeed].mp3) } catch { /* rate unsupported */ }
 
+    // Remember this as the active word so the next speak() can stop just
+    // this one instead of the whole cache.
+    currentWord = sound
     if (sound.state() === 'loaded') {
       sound.play()
     } else {
@@ -671,7 +682,7 @@ export const useAudio = (options: UseAudioOptions = {}) => {
   const speakSlow = (_wordId: number, fallbackText?: string) => {
     if (!fallbackText) return
     window.speechSynthesis?.cancel()
-    Object.values(wordCache).forEach(h => h.stop())
+    currentWord?.stop()
     speakWithTTS(fallbackText, lang, 0.55)
   }
 

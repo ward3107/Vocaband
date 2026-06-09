@@ -565,15 +565,21 @@ export default defineConfig(() => {
               },
             },
             {
-              // Word-audio MP3s served from Supabase Storage.  Cache
-              // so a repeat game on weak Wi-Fi has the clip already.
-              // Bumped 500 → 2000 on 2026-04-25 — the dataset has
-              // ~9000 unique words, so a 500-entry LRU evicted half
-              // the cache for any teacher who used multiple
-              // assignments in a session, forcing re-fetches against
-              // Supabase Storage on every replay.  ~30 KB per MP3 ×
-              // 2000 = ~60 MB of cache, well within the SW budget.
-              urlPattern: /\/storage\/v1\/object\/public\/sound\//,
+              // Word-audio MP3s. Matched by PATH (`/sound/<id>.mp3` and the
+              // Hebrew-lemma `/sound-hebrew/<id>.mp3`) regardless of host, so
+              // the rule covers BOTH the production Cloudflare R2 CDN
+              // (VITE_CLOUDFLARE_URL → `<cdn>/sound/<id>.mp3`) and the
+              // Supabase Storage fallback (`/storage/v1/object/public/sound/`).
+              // The previous rule only matched the Supabase Storage path, so
+              // on prod (where audio comes from the CDN) word audio was never
+              // cached — every replay re-downloaded and the offline/assignment
+              // precache (useAssignmentPrecache) was a no-op. It also never
+              // matched the sound-hebrew bucket. See audioUrl.ts / useAudio.ts.
+              // Bumped 500 → 2000 on 2026-04-25 — the dataset has ~9000 unique
+              // words, so a smaller LRU evicted half the cache for any teacher
+              // using multiple assignments in a session. ~30 KB per MP3 × 2000
+              // = ~60 MB, well within the SW budget.
+              urlPattern: /\/sound(?:-hebrew)?\/[^/]+\.mp3$/,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'vocaband-word-audio',
@@ -581,8 +587,10 @@ export default defineConfig(() => {
               },
             },
             {
-              // Motivational praise phrases — same reasoning.
-              urlPattern: /\/storage\/v1\/object\/public\/motivational\//,
+              // Motivational praise phrases — same reasoning. Also served from
+              // the Cloudflare CDN in prod (`<cdn>/motivational/<key>.mp3`,
+              // useAudio.ts), so match by path, not the Supabase Storage URL.
+              urlPattern: /\/motivational\/[^/]+\.mp3$/,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'vocaband-praise-audio',
