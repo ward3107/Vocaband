@@ -65,6 +65,102 @@ Education.  This is a teacher-authored practice paper.
 Return ONLY the bagrut_test tool call.  No prose.`;
 }
 
+// ─── Single-question generation ──────────────────────────────────────────
+// Powers the editor's "Add question" buttons: instead of dropping in a blank
+// for the teacher to fill, the AI writes one complete, on-context question
+// (prompt + options + correct answer + answer-key note).  Server-only, same
+// as the full-test prompt above.
+
+export interface QuestionPromptInput {
+  module: BagrutModule;
+  kind: 'reading' | 'vocab_in_context' | 'writing'; // the section's context
+  type: 'mc' | 'short' | 'writing';                  // the question type to write
+  passage?: string;        // section passage (reading / vocab) for grounding
+  words: string[];         // target vocabulary the test focuses on
+  existingPrompts: string[]; // prompts already in the section — don't repeat
+  title?: string;          // test title, for topical flavour
+}
+
+const QUESTION_SYSTEM_INTRO = `You are an Israeli Ministry of Education curriculum expert writing ONE English practice-exam question for a junior-high teacher (grades 7–9).  The question must match the real Bagrut paper's style so students get format familiarity.
+
+Hard rules — your question must satisfy ALL of these:
+1. Write at the specified module's difficulty (you'll be told CEFR + grade band).
+2. Do NOT write "What does X mean?" / "Define X" questions.  Reading and vocabulary questions must require INFERENCE from the given context, not literal recall or dictionary definitions.
+3. Multiple-choice questions have EXACTLY 4 options labelled A, B, C, D, with exactly one correct.  Distractors must be plausible, not obviously wrong.  Set correct_answer to the right letter and put a 1–2 sentence justification in the explanation field (for the teacher's answer key).
+4. Short-answer questions: write the prompt, and put a concise sample answer / marking note in the explanation field.
+5. Writing questions: write a clear task prompt with EXACTLY 3 required content bullets, and set word_count_min / word_count_max to the module's range.
+6. Do NOT include the words "Bagrut", "Vocabagrut", "matriculation", or any phrasing implying Ministry of Education endorsement.
+7. Output ONLY the structured tool call.  No prose.`;
+
+export function buildQuestionSystemPrompt(input: QuestionPromptInput): string {
+  const spec = MODULE_SPECS[input.module];
+  return `${QUESTION_SYSTEM_INTRO}
+
+Module: ${spec.label} (${spec.pointTrack}-point program, CEFR ${spec.cefr}, suggested grade ${spec.gradeBand}).
+Writing word range for this module: ${spec.writingWords.min}–${spec.writingWords.max} words.`;
+}
+
+export function buildQuestionUserMessage(input: QuestionPromptInput): string {
+  const sectionLabel =
+    input.kind === 'reading' ? 'READING COMPREHENSION'
+    : input.kind === 'vocab_in_context' ? 'VOCABULARY IN CONTEXT'
+    : 'WRITTEN PRESENTATION';
+  const typeLabel =
+    input.type === 'mc' ? 'multiple-choice' : input.type === 'short' ? 'short-answer' : 'writing';
+  const pointHint =
+    input.type === 'mc' ? '4–6' : input.type === 'short' ? '4–8' : '15–25';
+
+  const parts: string[] = [];
+  parts.push(`Write ONE ${typeLabel} question for the ${sectionLabel} section.`);
+  if (input.title) parts.push(`The practice test topic is: "${input.title}".`);
+  if (input.passage && (input.kind === 'reading' || input.kind === 'vocab_in_context')) {
+    parts.push(`The question must be answerable from THIS passage and should test inference, not literal recall:\n"""\n${input.passage}\n"""`);
+  }
+  if (input.words.length > 0) {
+    parts.push(`Target vocabulary the test focuses on (use naturally where relevant): ${input.words.join(', ')}.`);
+  }
+  if (input.existingPrompts.length > 0) {
+    parts.push(`Do NOT duplicate or closely paraphrase any of these questions already in the section:\n${input.existingPrompts.map((p, i) => `${i + 1}. ${p}`).join('\n')}`);
+  }
+  parts.push(`Assign a points value sensible for a single ${typeLabel} question (${pointHint} points).  Use the id "${input.type}-1".`);
+  parts.push('Return ONLY the bagrut_question tool call.  No prose.');
+  return parts.join('\n\n');
+}
+
+// Tool schema for a single question — mirrors one item of BAGRUT_TOOL's
+// `sections[].questions[]` so the validator (validateBagrutQuestion) accepts
+// it unchanged.
+export const BAGRUT_QUESTION_TOOL = {
+  name: 'bagrut_question',
+  description: 'Submit one generated practice-exam question.',
+  input_schema: {
+    type: 'object',
+    required: ['id', 'type', 'prompt', 'points'],
+    properties: {
+      id: { type: 'string' },
+      type: { type: 'string', enum: ['mc', 'short', 'writing'] },
+      prompt: { type: 'string' },
+      points: { type: 'number' },
+      options: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['letter', 'text'],
+          properties: {
+            letter: { type: 'string', enum: ['A', 'B', 'C', 'D'] },
+            text: { type: 'string' },
+          },
+        },
+      },
+      correct_answer: { type: 'string', enum: ['A', 'B', 'C', 'D'] },
+      word_count_min: { type: 'number' },
+      word_count_max: { type: 'number' },
+      bullets: { type: 'array', items: { type: 'string' } },
+      explanation: { type: 'string' },
+    },
+  },
+} as const;
+
 // JSON Schema for the Anthropic tool_use API.  Claude returns its answer
 // inside a tool call matching this schema, which is far more reliable than
 // asking it to produce free-form JSON.

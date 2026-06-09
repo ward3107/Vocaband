@@ -53,29 +53,40 @@ function BagrutPaper({ test, withAnswerKey, t }: { test: BagrutTest; withAnswerK
       className="vb-paper mx-auto my-6 max-w-[820px] bg-white text-stone-900 shadow-xl rounded-sm px-10 py-10"
       style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
     >
-      {/* Header */}
-      <header className="text-center mb-5">
-        <h1 className="text-xl font-bold">English — Practice Test</h1>
-        <p className="text-sm mt-1">
-          {spec.label} &nbsp;|&nbsp; {spec.pointTrack}-point program &nbsp;|&nbsp; Suggested grade {spec.gradeBand}
+      {/* Header — the test title IS the heading.  We dropped the old generic
+          "English — Practice Test" h1 and the Hebrew restatement line: both
+          duplicated the title (which the generator already writes as
+          "English Practice Test — Module X: <topic>"), eating three bold-ish
+          lines at the top of every paper.  Level / module / grade / time /
+          total now fold into one compact meta line so more of the page goes
+          to the test itself. */}
+      <header className="text-center mb-4">
+        <h1 className="text-lg font-bold leading-snug">{sanitizeTitle(test.title)}</h1>
+        <p className="text-xs text-stone-600 mt-1">
+          Practice Test &nbsp;·&nbsp; {spec.label} &nbsp;·&nbsp; {spec.pointTrack}-point program &nbsp;·&nbsp; Suggested grade {spec.gradeBand} &nbsp;·&nbsp; {test.time_minutes} min &nbsp;·&nbsp; {test.total_points} pts
         </p>
-        <p className="text-sm" dir="rtl">{spec.hebrewLabel} — תרגול באנגלית</p>
-        <h2 className="text-lg font-bold mt-3">{sanitizeTitle(test.title)}</h2>
       </header>
 
+      {/* Name / class / date only — time + total moved into the meta line
+          above, so this stays a single tidy row. */}
       <div className="text-sm flex flex-wrap gap-x-8 gap-y-1 border-y border-stone-300 py-2 mb-5"
            style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
         <span>Name: ____________________________</span>
         <span>Class: ____________</span>
         <span>Date: ____________</span>
-        <span className="basis-full text-stone-600">
-          Time allowed: {test.time_minutes} minutes &nbsp;·&nbsp; Total: {test.total_points} points
-        </span>
       </div>
 
       {/* Sections */}
       {test.sections.map((section, si) => (
-        <section key={si} className="mb-7">
+        <section
+          key={si}
+          // Start the writing section on a fresh page so its instructions
+          // (bullets + word count) and the ruled answer space are guaranteed
+          // to print together — they used to split, with the bullets at the
+          // foot of one page and the lines on the next.  Never break before
+          // the very first section.
+          className={si > 0 && section.kind === 'writing' ? 'mb-7 vb-print-page-break-before' : 'mb-7'}
+        >
           <div className="flex items-baseline justify-between border-b-2 border-stone-800 pb-1 mb-3">
             <h3 className="text-base font-bold uppercase tracking-wide">{section.title}</h3>
             <span className="text-sm text-stone-600 whitespace-nowrap">({section.total_points} points)</span>
@@ -122,7 +133,7 @@ function BagrutPaper({ test, withAnswerKey, t }: { test: BagrutTest; withAnswerK
                   )}
 
                   {q.type === 'writing' && (
-                    <div className="mt-2" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                    <div className="mt-2 vb-write-block" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
                       {q.bullets && q.bullets.length > 0 && (
                         <>
                           <p className="text-sm font-medium ml-1">Your writing should include:</p>
@@ -214,6 +225,10 @@ export default function BagrutPreviewModal({ test, withAnswerKey, onClose, autoP
       <style>{`
         @media print {
           .vb-print-stack .vb-paper { box-shadow: none !important; margin: 0 !important; max-width: none !important; padding: 0 !important; border-radius: 0 !important; }
+          /* A writing task's instructions (bullets + word count) must never be
+             torn from the ruled space where the student writes — keep the
+             whole block on one page. */
+          .vb-print-stack .vb-write-block { break-inside: avoid; page-break-inside: avoid; }
         }
       `}</style>
 

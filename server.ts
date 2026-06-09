@@ -80,10 +80,10 @@ import { createClient as createRedisClient } from "redis";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-import { buildSystemPrompt, buildUserMessage, BAGRUT_TOOL } from "./src/features/vocabagrut/lib/bagrutPrompt";
-import { validateBagrutTest, computeMcMax, scoreMcAnswers, stripAnswerKey } from "./src/features/vocabagrut/lib/bagrutSchema";
+import { buildSystemPrompt, buildUserMessage, BAGRUT_TOOL, buildQuestionSystemPrompt, buildQuestionUserMessage, BAGRUT_QUESTION_TOOL } from "./src/features/vocabagrut/lib/bagrutPrompt";
+import { validateBagrutTest, validateBagrutQuestion, computeMcMax, scoreMcAnswers, stripAnswerKey } from "./src/features/vocabagrut/lib/bagrutSchema";
 import { MODULE_SPECS } from "./src/features/vocabagrut/lib/moduleMap";
-import type { BagrutModule, BagrutTest } from "./src/features/vocabagrut/types";
+import type { BagrutModule, BagrutTest, BagrutQuestion } from "./src/features/vocabagrut/types";
 import { synthesizeSpeechMp3 } from "./tts-common";
 import { isDevEmail } from "./src/core/dev-allowlist";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload } from "./src/core/types";
@@ -6012,6 +6012,174 @@ ${sanitizedText}`;
     }
 
     return res.json({ test: validated, cached: false, model });
+  });
+
+  // ─── Vocabagrut — single-question generator ────────────────────────────
+  // Backs the editor's "Add question" buttons: the AI writes one complete,
+  // on-context question (prompt + options + correct answer + answer-key note)
+  // instead of inserting a blank.  Reuses the full-test route's auth,
+  // allowlist and per-teacher quota wiring — only the prompt + tool schema
+  // differ.  Hourly limit is higher than the full-test route (teachers add
+  // several questions per sitting and each call is ~1/10th the cost of a
+  // whole exam); the per-teacher daily counter still gates runaway spend.
+  const bagrutQuestionHourLimiter = createSharedRateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 150,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "You've generated 150 questions in the last hour. Take a short break and try again shortly." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+  });
+
+  app.post("/api/suggest-bagrut-question", bagrutDayLimiter, bagrutQuestionHourLimiter, async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const auth = await verifyTokenWithEmail(token);
+    if (!auth) return res.status(401).json({ error: "Invalid token" });
+
+    const userData = await getUserRoleAndClass(auth.uid);
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
+      return res.status(403).json({ error: "Only teachers can generate questions" });
+    }
+
+    if (await isAiDisabledByAdmin(auth.uid)) {
+      return res.status(403).json({ error: "ai_disabled", message: "AI has been disabled for this account by an administrator." });
+    }
+
+    const { allowed, error: gateErr } = await isPremiumTeacher(auth.email);
+    if (gateErr) return res.status(503).json({ error: gateErr });
+    if (!allowed) return res.status(403).json({ error: "Vocabagrut is a premium feature. Contact your administrator to be added to the allowlist." });
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.status(503).json({ error: "AI generation not configured" });
+
+    const { module, kind, type, passage, words, existing_prompts, title } = req.body ?? {};
+    if (typeof module !== "string" || !(module in MODEL_BY_MODULE)) {
+      return res.status(400).json({ error: "module must be one of A|B|C|D|E" });
+    }
+    const moduleTyped = module as BagrutModule;
+    if (!MODULE_SPECS[moduleTyped].available) {
+      return res.status(400).json({ error: `Module ${moduleTyped} is not yet available. v1 supports A, B, C.` });
+    }
+    const SECTION_KINDS = ["reading", "vocab_in_context", "writing"];
+    const QUESTION_TYPES = ["mc", "short", "writing"];
+    if (typeof kind !== "string" || !SECTION_KINDS.includes(kind)) {
+      return res.status(400).json({ error: "kind must be reading|vocab_in_context|writing" });
+    }
+    if (typeof type !== "string" || !QUESTION_TYPES.includes(type)) {
+      return res.status(400).json({ error: "type must be mc|short|writing" });
+    }
+
+    // Bound every free-text input so the prompt stays small and the call cheap.
+    const sanitizedWords = sanitizeWords(words);
+    const passageText = typeof passage === "string" ? passage.slice(0, 4000) : undefined;
+    const existingPrompts = Array.isArray(existing_prompts)
+      ? existing_prompts.filter((p): p is string => typeof p === "string" && p.trim().length > 0).slice(0, 30).map((p) => p.slice(0, 400))
+      : [];
+    const titleText = typeof title === "string" ? title.slice(0, 200) : undefined;
+
+    // Per-teacher daily quota — same counter the full-test path bumps.
+    if (supabaseAdmin) {
+      try {
+        const { data: overQuota } = await supabaseAdmin.rpc("check_ai_quota", {
+          p_teacher_uid: auth.uid,
+          p_action: "ai_generate_questions",
+          p_plan: "free",
+        });
+        if (overQuota === true) {
+          return res.status(429).json({ error: "Daily Bagrut-generation quota exceeded. Try again tomorrow." });
+        }
+      } catch (quotaErr) {
+        console.warn(`[bagrut] question quota check failed:`, (quotaErr as Error)?.message || quotaErr);
+      }
+    }
+
+    const model = MODEL_BY_MODULE[moduleTyped];
+    const anthropic = new Anthropic({ apiKey });
+    const promptInput = {
+      module: moduleTyped,
+      kind: kind as "reading" | "vocab_in_context" | "writing",
+      type: type as "mc" | "short" | "writing",
+      passage: passageText,
+      words: sanitizedWords,
+      existingPrompts,
+      title: titleText,
+    };
+    const systemPrompt = buildQuestionSystemPrompt(promptInput);
+    const userMessage = buildQuestionUserMessage(promptInput);
+
+    let attempt = 0;
+    let lastError = "";
+    let validated: BagrutQuestion | null = null;
+
+    while (attempt < 2 && !validated) {
+      attempt++;
+      try {
+        const response = await anthropic.messages.create({
+          model,
+          max_tokens: 1500,
+          system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
+          tools: [{ ...(BAGRUT_QUESTION_TOOL as any), cache_control: { type: "ephemeral" } }],
+          tool_choice: { type: "tool", name: "bagrut_question" },
+          messages: [
+            {
+              role: "user",
+              content: attempt === 1
+                ? userMessage
+                : `${userMessage}\n\nThe previous attempt failed validation: ${lastError}. Fix that field and try again.`,
+            },
+          ],
+        });
+
+        const toolUse = response.content.find((b) => b.type === "tool_use");
+        if (!toolUse || toolUse.type !== "tool_use") {
+          lastError = "model did not return a tool_use block";
+          continue;
+        }
+
+        const result = validateBagrutQuestion(toolUse.input);
+        if (!result.ok) {
+          lastError = result.error;
+          continue;
+        }
+        // Guard against the model returning a different type than requested
+        // (e.g. an MC when the teacher asked for short answer).
+        if (result.value.type !== type) {
+          lastError = `expected type ${type}, got ${result.value.type}`;
+          continue;
+        }
+        validated = result.value;
+      } catch (err: any) {
+        console.error("[bagrut] question generation failed:", err?.message || err);
+        return res.status(502).json({ error: "AI service unavailable", detail: err?.message || String(err) });
+      }
+    }
+
+    if (!validated) {
+      console.warn("[bagrut] question generation failed after retry. lastError:", lastError);
+      return res.status(502).json({ error: "Generation failed validation", detail: lastError });
+    }
+
+    // Bump the per-teacher quota counter — a single question is ~1/10th the
+    // cost of a full exam.
+    if (supabaseAdmin) {
+      try {
+        await supabaseAdmin.rpc("bump_ai_usage", {
+          p_teacher_uid: auth.uid,
+          p_action: "ai_generate_questions",
+          p_count: 1,
+          p_cost_micro_usd: 5000,
+          p_plan_at_action: "free",
+        });
+      } catch (bumpErr) {
+        console.warn(`[bagrut] question usage bump failed:`, (bumpErr as Error)?.message || bumpErr);
+      }
+    }
+
+    return res.json({ question: validated, model });
   });
 
   // Per-student rate limit for bagrut submissions/lookups. A real student
