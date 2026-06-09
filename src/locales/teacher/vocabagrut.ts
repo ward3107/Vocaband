@@ -27,6 +27,7 @@ export interface VocabagrutStrings {
   sourcePaste: string;
   sourcePhoto: string;
   sourceClass: string;
+  sourceLibrary: string;
 
   // Paste source
   pastePlaceholder: string;
@@ -46,6 +47,13 @@ export interface VocabagrutStrings {
   wordsInAssignment: (n: number) => string;
   morePlusN: (n: number) => string;
   addAllToList: string;
+
+  // Library source
+  selectSet: string;
+  wordsInSet: (n: number) => string;
+  libraryEmpty: string;
+  libraryLoading: string;
+  libraryLoadFailed: string;
 
   // Review
   clearAll: string;
@@ -137,6 +145,7 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     sourcePaste: "Paste",
     sourcePhoto: "Photo",
     sourceClass: "From class",
+    sourceLibrary: "Library",
     pastePlaceholder: "Paste or type words separated by commas, new lines, or semicolons. Example: harvest, community, neighbour, garden, soil, vegetables",
     noValidWordsYet: "No valid words yet",
     readyToAdd: (n) => `${n} word${n === 1 ? "" : "s"} ready to add`,
@@ -150,6 +159,11 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     wordsInAssignment: (n) => `${n} word${n === 1 ? "" : "s"} in this assignment`,
     morePlusN: (n) => `+${n} more…`,
     addAllToList: "Add all to list",
+    selectSet: "Select a saved set…",
+    wordsInSet: (n) => `${n} word${n === 1 ? "" : "s"}`,
+    libraryEmpty: "You haven't saved any vocabulary sets in your library yet.",
+    libraryLoading: "Loading your library…",
+    libraryLoadFailed: "Couldn't load your library — try again.",
     clearAll: "Clear all",
     emptyReviewBody: "Add words from any source above. They'll appear here for you to review and remove false positives before generating.",
     wordsReady: (n) => `${n} word${n === 1 ? "" : "s"} ready`,
@@ -224,6 +238,7 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     sourcePaste: "הדבקה",
     sourcePhoto: "צילום",
     sourceClass: "מתוך כיתה",
+    sourceLibrary: "ספרייה",
     pastePlaceholder: "הדביקו או הקלידו מילים מופרדות בפסיקים, שורות חדשות או נקודה-פסיק. לדוגמה: harvest, community, neighbour, garden, soil, vegetables",
     noValidWordsYet: "אין עדיין מילים תקינות",
     readyToAdd: (n) => `${n} מילים מוכנות להוספה`,
@@ -237,6 +252,11 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     wordsInAssignment: (n) => `${n} מילים במטלה זו`,
     morePlusN: (n) => `+${n} נוספות…`,
     addAllToList: "הוסיפו הכל לרשימה",
+    selectSet: "בחרו סדרה שמורה…",
+    wordsInSet: (n) => `${n} מילים`,
+    libraryEmpty: "עדיין לא שמרתם סדרות אוצר מילים בספרייה.",
+    libraryLoading: "טוען את הספרייה…",
+    libraryLoadFailed: "טעינת הספרייה נכשלה — נסו שוב.",
     clearAll: "נקה הכל",
     emptyReviewBody: "הוסיפו מילים מכל מקור למעלה. הן יופיעו כאן כדי שתוכלו לסקור ולהסיר זיהויים שגויים לפני היצירה.",
     wordsReady: (n) => `${n} מילים מוכנות`,
@@ -311,6 +331,7 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     sourcePaste: "لصق",
     sourcePhoto: "صورة",
     sourceClass: "من صف",
+    sourceLibrary: "المكتبة",
     pastePlaceholder: "الصق أو اكتب كلمات مفصولة بفواصل أو أسطر جديدة أو فاصلة منقوطة. مثال: harvest, community, neighbour, garden, soil, vegetables",
     noValidWordsYet: "لا توجد كلمات صالحة بعد",
     readyToAdd: (n) => `${n} كلمة جاهزة للإضافة`,
@@ -324,6 +345,11 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     wordsInAssignment: (n) => `${n} كلمة في هذه المهمة`,
     morePlusN: (n) => `+${n} إضافية…`,
     addAllToList: "أضف الكل إلى القائمة",
+    selectSet: "اختر مجموعة محفوظة…",
+    wordsInSet: (n) => `${n} كلمة`,
+    libraryEmpty: "لم تحفظ أي مجموعات مفردات في مكتبتك بعد.",
+    libraryLoading: "جارٍ تحميل مكتبتك…",
+    libraryLoadFailed: "تعذّر تحميل مكتبتك — حاول مرة أخرى.",
     clearAll: "مسح الكل",
     emptyReviewBody: "أضف كلمات من أي مصدر أعلاه. ستظهر هنا لمراجعتها وإزالة الإيجابيات الكاذبة قبل التوليد.",
     wordsReady: (n) => `${n} كلمة جاهزة`,
@@ -398,6 +424,7 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     sourcePaste: "Paste",
     sourcePhoto: "Photo",
     sourceClass: "From class",
+    sourceLibrary: "Library",
     pastePlaceholder: "Paste or type words separated by commas, new lines, or semicolons. Example: harvest, community, neighbour, garden, soil, vegetables",
     noValidWordsYet: "No valid words yet",
     readyToAdd: (n) => `${n} word${n === 1 ? "" : "s"} ready to add`,
@@ -411,6 +438,11 @@ export const vocabagrutT: Record<Language, VocabagrutStrings> = {
     wordsInAssignment: (n) => `${n} word${n === 1 ? "" : "s"} in this assignment`,
     morePlusN: (n) => `+${n} more…`,
     addAllToList: "Add all to list",
+    selectSet: "Select a saved set…",
+    wordsInSet: (n) => `${n} word${n === 1 ? "" : "s"}`,
+    libraryEmpty: "You haven't saved any vocabulary sets in your library yet.",
+    libraryLoading: "Loading your library…",
+    libraryLoadFailed: "Couldn't load your library — try again.",
     clearAll: "Clear all",
     emptyReviewBody: "Add words from any source above. They'll appear here for you to review and remove false positives before generating.",
     wordsReady: (n) => `${n} word${n === 1 ? "" : "s"} ready`,

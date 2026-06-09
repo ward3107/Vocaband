@@ -8,7 +8,7 @@
 // generation runs — they can remove individual chips or clear all.
 
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { Camera, ClipboardPaste, FolderOpen, Sparkles, Loader2, X, Plus } from 'lucide-react';
+import { Camera, ClipboardPaste, FolderOpen, Library, Sparkles, Loader2, X, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AppUser, ClassData, AssignmentData } from '../../../core/supabase';
 import { supabase } from '../../../core/supabase';
@@ -19,8 +19,9 @@ import { useBagrutGenerator } from '../hooks/useBagrutGenerator';
 import type { BagrutModule, BagrutTest } from '../types';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { vocabagrutT } from '../../../locales/teacher/vocabagrut';
+import { listAllSets, listSetWords, touchSetUsed, type VocabularySet } from '../../../core/vocabularyLibrary';
 
-type WordSource = 'paste' | 'photo' | 'class';
+type WordSource = 'paste' | 'photo' | 'class' | 'library';
 
 interface Props {
   user: AppUser;
@@ -75,6 +76,13 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
   const [ocrLoading, setOcrLoading] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  // Vocabulary-library source: the teacher's saved sets, lazily loaded the
+  // first time they open the tab.  null = not loaded yet.
+  const [librarySets, setLibrarySets] = useState<VocabularySet[] | null>(null);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
+  const [setWords, setSetWords] = useState<string[]>([]);
+  const [setWordsLoading, setSetWordsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const gen = useBagrutGenerator();
 
@@ -211,6 +219,48 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
     else showToast(t.allDuplicates, 'info');
   }
 
+  // ── Vocabulary-library source ────────────────────────────────────────
+  // The teacher's saved sets (curated in the Vocabulary Library) are a
+  // first-class word source here. Sets load lazily the first time the tab
+  // is opened; picking one pulls its English words into the list.
+  function showLibrary() {
+    setSource('library');
+    if (librarySets === null && !libraryLoading) {
+      setLibraryLoading(true);
+      listAllSets()
+        .then(setLibrarySets)
+        .catch(() => { setLibrarySets([]); showToast(t.libraryLoadFailed, 'error'); })
+        .finally(() => setLibraryLoading(false));
+    }
+  }
+
+  async function selectSet(setId: string | null) {
+    setSelectedSetId(setId);
+    setSetWords([]);
+    if (!setId) return;
+    setSetWordsLoading(true);
+    try {
+      const words = await listSetWords(setId);
+      setSetWords(words.map(w => w.english.toLowerCase()));
+    } catch {
+      showToast(t.libraryLoadFailed, 'error');
+    } finally {
+      setSetWordsLoading(false);
+    }
+  }
+
+  function pullLibraryWords() {
+    if (!selectedSetId || setWords.length === 0) return;
+    const set = librarySets?.find(s => s.id === selectedSetId);
+    const { added, skippedDup } = addWords(setWords);
+    if (added > 0) {
+      touchSetUsed(selectedSetId); // surface this set in the library's "Recent"
+      showToast(t.addedFromAssignment(added, set?.name ?? '', skippedDup), 'success');
+    } else {
+      showToast(t.allDuplicates, 'info');
+    }
+  }
+
   // ── Generate ─────────────────────────────────────────────────────────
   async function handleGenerate() {
     if (pendingWords.length === 0) {
@@ -298,10 +348,11 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
           <h2 className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--vb-text-muted)' }}>
             {t.step2Heading}
           </h2>
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
             <SourceTab active={source === 'paste'} icon={<ClipboardPaste size={18} />} label={t.sourcePaste} onClick={() => setSource('paste')} />
             <SourceTab active={source === 'photo'} icon={<Camera size={18} />} label={t.sourcePhoto} onClick={() => setSource('photo')} />
             <SourceTab active={source === 'class'} icon={<FolderOpen size={18} />} label={t.sourceClass} onClick={() => setSource('class')} />
+            <SourceTab active={source === 'library'} icon={<Library size={18} />} label={t.sourceLibrary} onClick={showLibrary} />
           </div>
 
           {source === 'paste' && (
@@ -422,6 +473,62 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
               )}
             </div>
           )}
+
+          {source === 'library' && (
+            <div className="space-y-3">
+              {libraryLoading && (
+                <div className="text-sm flex items-center gap-2" style={{ color: 'var(--vb-text-secondary)' }}>
+                  <Loader2 size={14} className="animate-spin" /> {t.libraryLoading}
+                </div>
+              )}
+              {!libraryLoading && librarySets && librarySets.length === 0 && (
+                <div className="text-sm rounded-lg p-3 border" style={{ borderColor: 'var(--vb-border)', color: 'var(--vb-text-muted)' }}>
+                  {t.libraryEmpty}
+                </div>
+              )}
+              {!libraryLoading && librarySets && librarySets.length > 0 && (
+                <select
+                  value={selectedSetId ?? ''}
+                  onChange={e => void selectSet(e.target.value || null)}
+                  className="w-full p-3 rounded-lg border text-sm"
+                  style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
+                >
+                  <option value="">{t.selectSet}</option>
+                  {librarySets.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({t.wordsInSet(s.wordCount)})</option>
+                  ))}
+                </select>
+              )}
+              {setWordsLoading && (
+                <div className="text-sm flex items-center gap-2" style={{ color: 'var(--vb-text-secondary)' }}>
+                  <Loader2 size={14} className="animate-spin" /> {t.libraryLoading}
+                </div>
+              )}
+              {selectedSetId && !setWordsLoading && (
+                <div className="rounded-lg p-3 border" style={{ borderColor: 'var(--vb-border)' }}>
+                  <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--vb-text-muted)' }}>
+                    {t.wordsInSet(setWords.length)}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {setWords.slice(0, 30).map(w => (
+                      <span key={w} className="inline-block px-2 py-0.5 rounded-md text-xs" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}>{w}</span>
+                    ))}
+                    {setWords.length > 30 && (
+                      <span className="text-xs px-2 py-0.5" style={{ color: 'var(--vb-text-muted)' }}>{t.morePlusN(setWords.length - 30)}</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={pullLibraryWords}
+                    disabled={setWords.length === 0}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-40"
+                  >
+                    <Plus size={16} /> {t.addAllToList}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* ── Review and approve ── */}
@@ -513,7 +620,7 @@ export default function BagrutLandingView({ user, classes, teacherAssignments, o
   );
 }
 
-function SourceTab({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
+function SourceTab({ active, icon, label, onClick }: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
   return (
     <button
       type="button"
