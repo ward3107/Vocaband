@@ -65,6 +65,13 @@ export type View =
   // tap the correct option. See docs/speed-round-design.md.
   | "speed-round-host"
   | "speed-round-student"
+  // Word Hunt Arena (real-time multiplayer movement game). Built on the
+  // same Quick Play rails — a quick_play_sessions row whose allowed_modes
+  // is [QP_ARENA_MODE]. Students steer avatars around a shared map and
+  // race to grab floating word tokens; a grab pops the Speed Round buzzer.
+  // See docs/word-hunt-arena-design.md.
+  | "word-hunt-arena-host"
+  | "word-hunt-arena-student"
   | "hot-seat"
   | "wheel"
   | "class-show"

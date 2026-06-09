@@ -81,6 +81,26 @@ export const QP_EVENTS = {
   // A teacher ending the active word early. Server closes the word and
   // broadcasts SPEED_ENDED (revealing the correct option + winner).
   SPEED_END_ROUND: "qp:teacher:speed:end-round",
+
+  // ─── Word Hunt Arena (real-time multiplayer movement) ─────────────
+  // A teacher starting the arena. The host pre-authors EVERY word's
+  // question (buildSpeedQuestion in a loop) and ships the whole batch
+  // here; the server stores each correctIndex PRIVATELY and grants
+  // grabs instantly from memory — no host round-trip in the latency-
+  // critical grab moment. See docs/word-hunt-arena-design.md §2.
+  ARENA_START:     "qp:teacher:arena:start",
+  // A student moving their avatar. Client-authoritative + rate-limited:
+  // position cheating is low-harm because you still must answer the
+  // word's question correctly to score. NEVER broadcast per-move — the
+  // server batches positions into the ARENA_SNAPSHOT tick.
+  ARENA_MOVE:      "qp:student:arena:move",
+  // A student touching a word token. The server is the referee: first
+  // grab to reach the owning VM locks the word (single-threaded event
+  // loop ⇒ no double-grab race), range-checked against the server's
+  // last-known position for that student.
+  ARENA_GRAB:      "qp:student:arena:grab",
+  // A teacher ending the arena round (back to the lobby).
+  ARENA_END:       "qp:teacher:arena:end",
 } as const;
 
 /** Server → client events. */
@@ -124,6 +144,28 @@ export const QP_SERVER_EVENTS = {
   // The active word closed (deadline reached or teacher moved on) — the
   // server reveals the correct option + the per-word winner.
   SPEED_ENDED:     "qp:speed:ended",
+
+  // ─── Word Hunt Arena (real-time multiplayer movement) ──────────────
+  // Full arena state — sent to the room on ARENA_START and to a socket
+  // on (re)join so a refreshed student lands back on the live map.
+  // Words are the PUBLIC shape only (never correctIndex).
+  ARENA_STATE:        "qp:arena:state",
+  // The 10/sec position tick — ONE compact room broadcast per tick
+  // instead of a per-move relay, which is what keeps 30 moving students
+  // inside the load-tested egress budget (design §3).
+  ARENA_SNAPSHOT:     "qp:arena:snapshot",
+  // One word's lifecycle change (locked / released / answered) — small
+  // targeted patch so the room doesn't need a full ARENA_STATE re-send.
+  ARENA_WORD:         "qp:arena:word",
+  // Sent to the grabbing socket only: "you own this word — answer it."
+  // Shaped like SPEED_ROUND (options, NO correctIndex) so the student
+  // client reuses the Speed Round buzzer verbatim.
+  ARENA_GRAB_GRANTED: "qp:arena:grab:granted",
+  // Sent to the grabbing socket only: grab refused (someone beat you,
+  // out of range, cooldown…). Client shows a small toast and plays on.
+  ARENA_GRAB_DENIED:  "qp:arena:grab:denied",
+  // The teacher closed the arena — clients drop to the podium.
+  ARENA_ENDED:        "qp:arena:ended",
 } as const;
 
 // ─── Client → server payloads ───────────────────────────────────────────
@@ -503,6 +545,179 @@ export interface QpSpeedEndRoundPayload {
   roundId: string;
 }
 
+// ─── Word Hunt Arena payloads ───────────────────────────────────────────
+//
+// An arena session is a quick_play_sessions row whose allowed_modes is
+// exactly [QP_ARENA_MODE] and whose word list is empty — the discriminator
+// the student bootstrap branches on. Like Speed Round, every question is
+// authored CLIENT-SIDE on the teacher's screen (the server has no
+// vocabulary) — but here the host ships the WHOLE batch at arena start so
+// the server can grant grabs instantly from memory. The server stores each
+// correctIndex privately; answering reuses SPEED_SUBMIT / SPEED_RESULT.
+// See docs/word-hunt-arena-design.md.
+
+/** A point in arena LOGICAL units (0..QP_ARENA_WIDTH / HEIGHT) — never
+ *  pixels; each client maps logical → its own canvas size. */
+export interface QpArenaPos {
+  x: number;
+  y: number;
+}
+
+/** One avatar on the map, as carried in the full ARENA_STATE send. The
+ *  10/sec position stream uses the compact QpArenaSnapshotPayload instead. */
+export interface QpArenaPlayer {
+  clientId: string;
+  nickname: string;
+  avatar: string;
+  x: number;
+  y: number;
+}
+
+/** Client → server: one word in the host's pre-authored batch. correctIndex
+ *  is stored PRIVATELY server-side — it never appears in any room payload. */
+export interface QpArenaWordSeed {
+  /** The English word shown on the floating token. */
+  label: string;
+  mode: QpSpeedMode;
+  prompt: string;
+  promptKind: QpSpeedPromptKind;
+  /** 2–4 answer options, same discipline as QpSpeedStartPayload. */
+  options: string[];
+  /** Index into `options` of the correct answer. Stored privately. */
+  correctIndex: number;
+  /** Optional fixed spawn position; the server scatters when omitted. */
+  pos?: QpArenaPos;
+}
+
+/** A word token as the ROOM sees it. NEVER carries correctIndex (or the
+ *  prompt/options — those go only to the grabber via ARENA_GRAB_GRANTED),
+ *  so a tampered client can't pre-read any answer off the wire. */
+export interface QpArenaWordPublic {
+  /** Server-minted UUID — the grab/answer handle. */
+  wordId: string;
+  label: string;
+  pos: QpArenaPos;
+  state: "available" | "locked" | "answered";
+  /** clientId currently holding the lock (state === "locked"). */
+  lockedBy?: string;
+}
+
+/** Client → server: teacher starts the arena with the full question batch. */
+export interface QpArenaStartPayload {
+  sessionCode: string;
+  /** Supabase access token — verified against the session's teacher_uid. */
+  token: string;
+  /** The pre-authored batch — capped at QP_ARENA_MAX_WORDS server-side;
+   *  malformed entries are skipped (not fatal) so one bad word can't
+   *  cancel the whole arena. */
+  words: QpArenaWordSeed[];
+  config?: {
+    /** How many tokens float on the map at once. Clamped 3..15. */
+    visibleWords?: number;
+    /** Grab distance in logical units. Clamped 30..150. */
+    grabRadius?: number;
+    /** Seconds a grabber gets to answer. Same choices as Speed Round. */
+    roundSeconds?: number;
+  };
+}
+
+/** Client → server: a student's avatar position (client-authoritative —
+ *  position cheating is low-harm, the question still gates the points).
+ *  Sent at QP_ARENA_CLIENT_TICK_MS while moving; never relayed per-move. */
+export interface QpArenaMovePayload {
+  sessionCode: string;
+  clientId: string;
+  x: number;
+  y: number;
+}
+
+/** Client → server: a student touches a word token and asks for the lock. */
+export interface QpArenaGrabPayload {
+  sessionCode: string;
+  clientId: string;
+  wordId: string;
+  /** Client-reported position — the RANGE-CHECK FALLBACK for the cross-VM
+   *  path, where the word-owning VM may never have seen this student's
+   *  ARENA_MOVE stream. The owner prefers its own last-known position. */
+  x?: number;
+  y?: number;
+}
+
+/** Client → server: teacher closes the arena. */
+export interface QpArenaEndPayload {
+  sessionCode: string;
+  token: string;
+}
+
+/** Server → room (and to a re-joining socket): the full arena picture. */
+export interface QpArenaStatePayload {
+  sessionCode: string;
+  width: number;
+  height: number;
+  grabRadius: number;
+  roundSeconds: number;
+  words: QpArenaWordPublic[];
+  positions: QpArenaPlayer[];
+  /** Opaque id of the Fly VM that owns this arena — same multi-VM union
+   *  rationale as QpLeaderboardPayload.serverId. */
+  serverId?: string;
+}
+
+/** Server → room: the 10/sec position tick. Index-aligned arrays of
+ *  rounded ints instead of an object per player — the payload repeats
+ *  10×/sec to the whole room, so every byte is multiplied by
+ *  (tick rate × room size); arrays roughly halve it vs. keyed objects.
+ *  `ids` carries clientIds for simplicity — swapping them for per-session
+ *  small slot ints (slot compaction) is the next egress lever if these
+ *  snapshots ever show up in the bandwidth budget. */
+export interface QpArenaSnapshotPayload {
+  sessionCode: string;
+  serverTs: number;
+  ids: string[];
+  xs: number[];
+  ys: number[];
+  /** Per-VM source id — clients union snapshots across serverIds, keeping
+   *  the latest serverTs per clientId (multi-VM splits the room). */
+  serverId?: string;
+}
+
+/** Server → room: one word's lifecycle changed (locked/released/answered). */
+export interface QpArenaWordPayload {
+  sessionCode: string;
+  word: QpArenaWordPublic;
+}
+
+/** Server → grabbing socket only: you won the lock — answer this. Shaped
+ *  like QpSpeedRoundPayload minus correctIndex so the Speed Round buzzer
+ *  renders it verbatim; the answer goes back via the existing SPEED_SUBMIT
+ *  (matched by roundId) and scores through the same private-index core. */
+export interface QpArenaGrabGrantedPayload {
+  sessionCode: string;
+  wordId: string;
+  roundId: string;
+  mode: QpSpeedMode;
+  prompt: string;
+  promptKind: QpSpeedPromptKind;
+  options: string[];
+  roundSeconds: number;
+  /** Epoch ms the answer window closes — shared-clock countdown. */
+  deadlineTs: number;
+  /** Server's clock at grant — lets clients correct for offset. */
+  serverTs: number;
+}
+
+/** Server → grabbing socket only: grab refused. */
+export interface QpArenaGrabDeniedPayload {
+  sessionCode: string;
+  wordId: string;
+  reason: "already_locked" | "out_of_range" | "answered" | "cooldown" | "not_active";
+}
+
+/** Server → room: the teacher closed the arena. */
+export interface QpArenaEndedPayload {
+  sessionCode: string;
+}
+
 /** Error codes the server emits. Client maps to friendly copy. */
 export type QpErrorCode =
   | "invalid_payload"
@@ -727,3 +942,53 @@ export function isValidSpeedMode(v: unknown): v is QpSpeedMode {
 export function isValidSpeedRoundSeconds(v: unknown): v is number {
   return typeof v === "number" && (QP_SPEED_ROUND_SECONDS as readonly number[]).includes(v);
 }
+
+// ─── Word Hunt Arena constants ──────────────────────────────────────────
+
+/** allowed_modes sentinel that marks a quick_play_sessions row as a Word
+ *  Hunt Arena session. The student bootstrap branches on this to show the
+ *  arena instead of the regular game — same pattern as QP_SPEED_MODE. */
+export const QP_ARENA_MODE = "word-hunt-arena";
+
+/** Arena dimensions in LOGICAL units (not pixels) — every client maps
+ *  logical → its own canvas size, so phones and the projector agree on
+ *  where everything is regardless of screen. 10:7 fits both a landscape
+ *  projector and a portrait phone with letterboxing. */
+export const QP_ARENA_WIDTH = 1000;
+export const QP_ARENA_HEIGHT = 700;
+
+/** Server snapshot tick (ms) — one room broadcast per tick, never
+ *  per-move. ⚠️ Don't lower this (raise the rate) without re-running the
+ *  socket load harness; snapshot egress scales with tick × room size. */
+export const QP_ARENA_TICK_MS = 100;
+
+/** Client position-send tick (ms) — matched to the server tick; sending
+ *  faster than the server samples is pure wasted uplink. */
+export const QP_ARENA_CLIENT_TICK_MS = 100;
+
+/** Hard cap on tracked avatars per arena. Tighter than the 60-student
+ *  session cap because every extra mover multiplies snapshot bytes. */
+export const QP_ARENA_MAX_PLAYERS = 30;
+
+/** Default number of word tokens floating on the map at once. */
+export const QP_ARENA_DEFAULT_VISIBLE = 8;
+
+/** Default grab distance (logical units). Generous on purpose — the
+ *  server's view of a phone's position lags up to one tick + network,
+ *  so a tight radius punishes bad school Wi-Fi (design §8.2). */
+export const QP_ARENA_DEFAULT_GRAB_RADIUS = 60;
+
+/** Cap on the pre-authored question batch a host can ship. */
+export const QP_ARENA_MAX_WORDS = 60;
+
+/** Per-student cooldown (ms) after a grab resolves (answered OR fumbled)
+ *  before they may grab again — stops one fast kid from chain-locking
+ *  every token on the map. */
+export const QP_ARENA_GRAB_COOLDOWN_MS = 1_500;
+
+/** Arena scoring — deliberately SEPARATE from the Speed Round constants
+ *  so the two modes can be balanced independently: an arena player grabs
+ *  many words per game, so per-word points must be smaller or a fast
+ *  runner out-earns a whole Speed Round (design §8.5). */
+export const QP_ARENA_BASE_POINTS = 10;
+export const QP_ARENA_BONUS_MAX = 30;

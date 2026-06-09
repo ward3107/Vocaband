@@ -35,8 +35,8 @@ import { getCachedVocabulary } from "./useVocabularyLazy";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { getGameDebugger } from "../utils/gameDebug";
 import { ALL_GAME_MODES } from "../constants/game";
-import { QP_CATEGORY_RACE_MODE, QP_SPEED_MODE } from "../core/quickPlayProtocol";
-import { preloadCategoryRaceView, preloadQuickPlayView, preloadSpeedRoundView } from "../views/studentJoinChunks";
+import { QP_CATEGORY_RACE_MODE, QP_SPEED_MODE, QP_ARENA_MODE } from "../core/quickPlayProtocol";
+import { preloadCategoryRaceView, preloadQuickPlayView, preloadSpeedRoundView, preloadArenaView } from "../views/studentJoinChunks";
 import type { View } from "../core/views";
 
 /** Shape of a quick_play_sessions row as consumed by the join flow —
@@ -107,7 +107,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
     // to their QR URL so we can skip the ~139 kB English-vocab prefetch a
     // word session needs but these don't.
     const modeHint = params.get('mode');
-    const isRaceHint = modeHint === 'race' || modeHint === 'speed';
+    const isRaceHint = modeHint === 'race' || modeHint === 'speed' || modeHint === 'arena';
     // Sanitise the code. Session codes are exactly 6 chars from the
     // ambiguity-free alphabet generate_session_code() uses (A-H, J-N,
     // P-Z, 2-9). A scanned/typed/pasted link sometimes arrives with the
@@ -138,6 +138,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
         preloadCategoryRaceView();
         preloadQuickPlayView();
         preloadSpeedRoundView();
+        preloadArenaView();
         // ─── PERF: prewarm the vocabulary chunk in parallel ────────────
         // The English word data isn't consumed until ~150 lines below
         // (after the anon-auth handshake AND the session SELECT). Left
@@ -358,6 +359,29 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           // refresh re-bootstraps + auto-rejoins instead of dropping the
           // student on the public landing.
           setView("speed-round-student");
+          return;
+        }
+
+        // Word Hunt Arena sessions are wordless too (the host pre-authors
+        // every question client-side at arena start). Same branch shape as
+        // Speed Round — the student joins, then the view drops them onto
+        // the live map once the server confirms the join.
+        const isArena = Array.isArray(data.allowed_modes)
+          && data.allowed_modes.length === 1
+          && data.allowed_modes[0] === QP_ARENA_MODE;
+        if (isArena) {
+          setQuickPlayActiveSession({
+            id: data.id,
+            sessionCode: data.session_code,
+            wordIds: [],
+            words: [],
+            allowedModes: data.allowed_modes,
+            subject: 'english',
+          });
+          // Keep ?session in the URL (same rationale as Category Race) so a
+          // refresh re-bootstraps + auto-rejoins instead of dropping the
+          // student on the public landing.
+          setView("word-hunt-arena-student");
           return;
         }
 

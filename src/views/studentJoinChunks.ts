@@ -20,10 +20,12 @@ import { lazyWithRetry } from "../utils/lazyWithRetry";
 const categoryRaceFactory = () => import("./CategoryRaceStudentView");
 const quickPlayFactory = () => import("./QuickPlayStudentView");
 const speedRoundFactory = () => import("./SpeedRoundStudentView");
+const arenaFactory = () => import("./ArenaStudentView");
 
 export const CategoryRaceStudentViewLazy = lazyWithRetry(categoryRaceFactory);
 export const QuickPlayStudentViewLazy = lazyWithRetry(quickPlayFactory);
 export const SpeedRoundStudentViewLazy = lazyWithRetry(speedRoundFactory);
+export const ArenaStudentViewLazy = lazyWithRetry(arenaFactory);
 
 /** Start downloading the Category Race view chunk now (fire-and-forget). */
 export function preloadCategoryRaceView(): void {
@@ -38,4 +40,9 @@ export function preloadQuickPlayView(): void {
 /** Start downloading the Speed Round view chunk now (fire-and-forget). */
 export function preloadSpeedRoundView(): void {
   void speedRoundFactory().catch(() => {});
+}
+
+/** Start downloading the Word Hunt Arena view chunk now (fire-and-forget). */
+export function preloadArenaView(): void {
+  void arenaFactory().catch(() => {});
 }

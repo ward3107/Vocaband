@@ -19,6 +19,7 @@ const LiveChallengeView = lazyWithRetry(() => import('./LiveChallengeView'));
 const QuickPlayTeacherMonitorView = lazyWithRetry(() => import('./QuickPlayTeacherMonitorView'));
 const CategoryRaceHostView = lazyWithRetry(() => import('./CategoryRaceHostView'));
 const SpeedRoundHostView = lazyWithRetry(() => import('./SpeedRoundHostView'));
+const ArenaHostView = lazyWithRetry(() => import('./ArenaHostView'));
 const HebrewComingSoonView = lazyWithRetry(() => import('./HebrewComingSoonView'));
 
 function reconnectingFallback(
@@ -152,6 +153,27 @@ export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): Re
         )}
       >
         <SpeedRoundHostView
+          sessionCode={quickPlayActiveSession.sessionCode}
+          setView={setView}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  if (view === 'word-hunt-arena-host') {
+    if (!quickPlayActiveSession) {
+      setView('teacher-dashboard');
+      return null;
+    }
+    return (
+      <LazyWrapper
+        loadingMessage="Loading Word Hunt Arena..."
+        fallback={reconnectingFallback(
+          'The arena hit a hiccup. Your session is safe — return to the dashboard and start it again.',
+          () => setView('teacher-dashboard'),
+        )}
+      >
+        <ArenaHostView
           sessionCode={quickPlayActiveSession.sessionCode}
           setView={setView}
         />

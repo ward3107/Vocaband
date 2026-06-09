@@ -11,20 +11,21 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Hourglass, Check, X, Crown, ArrowRight, Loader2, Volume2 } from "lucide-react";
+import { Crown, ArrowRight, Loader2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import QPAvatarPicker from "../components/QPAvatarPicker";
 import QPAvatar from "../components/QPAvatar";
 import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
 import QuickPlayErrorScreen from "../components/QuickPlayErrorScreen";
+import SpeedBuzzer, { CountUp } from "../components/game/SpeedBuzzer";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
 import { playGood, playGentle, playFanfare } from "../utils/raceSfx";
 import { containsProfanity } from "../utils/nicknameProfanity";
 import type { QpSpeedResultPayload, QpSpeedRoundPayload } from "../core/quickPlayProtocol";
 import type { View } from "../core/views";
-import { SPEED_STUDENT_STRINGS, SPEED_MODE_META } from "./speedRoundStrings";
+import { SPEED_STUDENT_STRINGS } from "./speedRoundStrings";
 
 interface SpeedRoundStudentViewProps {
   sessionCode: string;
@@ -35,45 +36,6 @@ type Phase = "join" | "lobby" | "answering" | "locked" | "result" | "ended" | "k
 
 const DEFAULT_AVATAR = "🦊";
 const SPEED_GUEST_KEY = "vocaband_speed_guest";
-
-// Big-button colour set per option slot (Kahoot-style).
-const OPTION_STYLES = [
-  "from-rose-500 to-red-600 shadow-rose-500/30",
-  "from-indigo-500 to-violet-600 shadow-indigo-500/30",
-  "from-amber-500 to-orange-600 shadow-amber-500/30",
-  "from-emerald-500 to-teal-600 shadow-emerald-500/30",
-];
-
-/** Speak text via the browser's speech synthesis — used for listening mode,
- *  where the student must hear (not see) the word. Kept inline rather than
- *  going through useAudio.speak(wordId) because the student has no wordId,
- *  only the prompt string the host sent. */
-function speakText(text: string) {
-  try {
-    window.speechSynthesis?.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-US";
-    u.rate = 0.85;
-    window.speechSynthesis?.speak(u);
-  } catch { /* TTS unavailable — student just sees nothing to tap-hear */ }
-}
-
-function CountUp({ value, className }: { value: number; className?: string }) {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    const start = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - start) / 700);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setDisplay(Math.round(value * eased));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [value]);
-  return <span className={className}>{display}</span>;
-}
 
 export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRoundStudentViewProps) {
   const { language, dir } = useLanguage();
@@ -97,17 +59,11 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
-  const [secondsLeft, setSecondsLeft] = useState(0);
   const [lastResult, setLastResult] = useState<QpSpeedResultPayload | null>(null);
-  const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
-  // Snapshot of the active word's options, so the result screen can reveal
-  // the correct one WITHOUT reading the live ref during render (the broadcast
-  // may already be cleared by the time the result lands).
-  const [roundOptions, setRoundOptions] = useState<string[]>([]);
-
-  const speedRef = useRef<QpSpeedRoundPayload | null>(currentSpeed);
-  useEffect(() => { speedRef.current = currentSpeed; }, [currentSpeed]);
-  const answeredRef = useRef(false);
+  // Snapshot of the active word, so the locked/result screens keep rendering
+  // (and the result can reveal the correct option) WITHOUT reading the live
+  // broadcast state — that may already be cleared by the time they show.
+  const [roundSnapshot, setRoundSnapshot] = useState<QpSpeedRoundPayload | null>(null);
 
   // ─── Phone back-button trap (verbatim from Category Race) ───────────
   useEffect(() => {
@@ -179,44 +135,18 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
   }, [lastError, phase, t]);
 
   // ─── A new word started ────────────────────────────────────────────
+  // The countdown, lock-after-tap, and TTS now live inside SpeedBuzzer
+  // (shared with Word Hunt Arena); this effect just snapshots the word and
+  // flips the phase.
   useEffect(() => {
     if (phase === "join") return;
-    if (currentSpeed && currentSpeed.roundId !== activeRoundId) {
+    if (currentSpeed && currentSpeed.roundId !== roundSnapshot?.roundId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- a server-pushed new word resets local play state; matches Category Race convention
-      setActiveRoundId(currentSpeed.roundId);
+      setRoundSnapshot(currentSpeed);
       setLastResult(null);
-      setRoundOptions(currentSpeed.options);
-      answeredRef.current = false;
       setPhase("answering");
-      // Listening mode: speak the prompt immediately (the student must hear,
-      // not see, the word). primeAudio already unlocked iOS audio on join.
-      if (currentSpeed.promptKind === "audio") speakText(currentSpeed.prompt);
     }
-  }, [currentSpeed, activeRoundId, phase]);
-
-  // Countdown to the shared deadline; lock at zero (no answer = no submit).
-  useEffect(() => {
-    if (phase !== "answering" || !currentSpeed) return;
-    const tick = () => {
-      const left = Math.max(0, Math.round((currentSpeed.deadlineTs - Date.now()) / 1000));
-      setSecondsLeft(left);
-      if (left <= 0 && !answeredRef.current) {
-        answeredRef.current = true;
-        setPhase("locked");
-      }
-    };
-    tick();
-    const id = window.setInterval(tick, 250);
-    return () => window.clearInterval(id);
-  }, [phase, currentSpeed]);
-
-  const handleTap = (index: number) => {
-    const speed = speedRef.current;
-    if (!speed || answeredRef.current) return;
-    answeredRef.current = true;
-    setPhase("locked");
-    submitSpeedAnswer(speed.roundId, index);
-  };
+  }, [currentSpeed, roundSnapshot, phase]);
 
   useEffect(() => onSpeedResult((p) => {
     setLastResult(p);
@@ -318,65 +248,26 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
     );
   }
 
-  // ─── Answering: prompt + big tap buttons ─────────────────────────────
-  if (phase === "answering" && currentSpeed) {
-    const isAudio = currentSpeed.promptKind === "audio";
+  // ─── Answering / locked / result — the shared buzzer ─────────────────
+  if ((phase === "answering" || phase === "locked" || (phase === "result" && lastResult)) && roundSnapshot) {
     return (
-      <div className="min-h-[100dvh] flex flex-col px-4 py-5 bg-gradient-to-br from-fuchsia-50 via-white to-pink-50" dir={dir}>
-        <div className="flex items-center justify-between mb-4">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white shadow-sm font-black text-xs text-fuchsia-600">
-            {SPEED_MODE_META[currentSpeed.mode].emoji} {SPEED_STUDENT_STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"].joinTitle}
-          </span>
-          <span className={`tabular-nums font-black text-2xl ${secondsLeft <= 3 ? "text-red-600 animate-pulse" : "text-fuchsia-600"}`}>
-            {secondsLeft}
-          </span>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center justify-center text-center mb-5">
-          {isAudio ? (
-            <button
-              type="button"
-              onClick={() => speakText(currentSpeed.prompt)}
-              style={{ touchAction: "manipulation" }}
-              className="inline-flex flex-col items-center gap-2 px-8 py-6 rounded-3xl bg-white shadow-lg active:scale-95 transition"
-            >
-              <Volume2 size={48} className="text-fuchsia-500" />
-              <span className="font-black text-stone-500 text-sm">{t.tapToHear}</span>
-            </button>
-          ) : (
-            <h2 className="text-3xl sm:text-4xl font-black text-stone-900 break-words" dir="auto">{currentSpeed.prompt}</h2>
-          )}
-        </div>
-
-        <div className={`grid gap-3 ${currentSpeed.options.length === 2 ? "grid-cols-1" : "grid-cols-2"}`}>
-          {currentSpeed.options.map((opt, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => handleTap(i)}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`inline-flex items-center justify-center px-4 py-6 rounded-2xl font-black text-lg sm:text-xl text-white shadow-lg active:scale-[0.97] transition bg-gradient-to-br ${OPTION_STYLES[i % OPTION_STYLES.length]}`}
-              dir="auto"
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
+      <>
+        <SpeedBuzzer
+          phase={phase === "result" ? "result" : phase}
+          mode={roundSnapshot.mode}
+          prompt={roundSnapshot.prompt}
+          promptKind={roundSnapshot.promptKind}
+          options={roundSnapshot.options}
+          roundId={roundSnapshot.roundId}
+          deadlineTs={roundSnapshot.deadlineTs}
+          roundSeconds={roundSnapshot.roundSeconds}
+          onSubmit={(i) => { setPhase("locked"); submitSpeedAnswer(roundSnapshot.roundId, i); }}
+          onExpired={() => setPhase("locked")}
+          result={lastResult}
+          className="min-h-[100dvh]"
+        />
         {helpButton}
-      </div>
-    );
-  }
-
-  // ─── Locked (answered, waiting for result) ───────────────────────────
-  if (phase === "locked") {
-    return (
-      <Shell dir={dir}>
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
-          <Loader2 size={56} className="text-fuchsia-500 animate-spin mx-auto mb-4" />
-          <h1 className="text-2xl font-black text-stone-900">{t.locked}</h1>
-        </motion.div>
-        {helpButton}
-      </Shell>
+      </>
     );
   }
 
@@ -411,58 +302,6 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
           >
             {t.backHome}
           </button>
-        </motion.div>
-        {helpButton}
-      </Shell>
-    );
-  }
-
-  // ─── Result ────────────────────────────────────────────────────────────
-  if (phase === "result" && lastResult) {
-    const correct = lastResult.correct;
-    const correctOpt = roundOptions[lastResult.correctIndex];
-    return (
-      <Shell dir={dir}>
-        <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-md text-center">
-          <motion.div
-            initial={{ scale: 0.6, rotate: -12 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 16 }}
-            className={`inline-flex items-center justify-center w-20 h-20 rounded-full text-white shadow-lg mb-3 ${correct ? "bg-gradient-to-br from-emerald-500 to-teal-600" : "bg-gradient-to-br from-rose-500 to-red-600"}`}
-          >
-            {correct ? <Check size={40} strokeWidth={3} /> : <X size={40} strokeWidth={3} />}
-          </motion.div>
-          <h2 className="text-3xl font-black text-stone-900">{correct ? t.correct : t.incorrect}</h2>
-
-          {lastResult.firstCorrect && (
-            <motion.div
-              initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 320, damping: 16, delay: 0.1 }}
-              className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-sm shadow-md"
-            >
-              {t.first}
-            </motion.div>
-          )}
-
-          {correct && (
-            <p className="mt-3 font-black text-fuchsia-600 text-2xl">
-              +<CountUp value={lastResult.roundPoints + lastResult.speedBonus} /> · {t.yourScore} <CountUp value={lastResult.totalScore} />
-            </p>
-          )}
-          {correct && lastResult.speedBonus > 0 && (
-            <div className="mt-1.5 inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-amber-100 text-amber-700 font-black text-xs">
-              ⚡ +{lastResult.speedBonus} {t.speedLabel}
-            </div>
-          )}
-          {!correct && correctOpt && (
-            <p className="mt-3 text-sm font-bold text-stone-500">
-              {t.correctAnswer}: <span className="text-emerald-600" dir="auto">{correctOpt}</span>
-            </p>
-          )}
-
-          <div className="mt-6 flex items-center justify-center gap-2 text-stone-400 font-bold text-sm">
-            <Hourglass size={16} className="animate-pulse" /> {t.waitingNext}
-          </div>
         </motion.div>
         {helpButton}
       </Shell>

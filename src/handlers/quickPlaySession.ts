@@ -16,7 +16,7 @@
  */
 import { supabase } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
-import { QP_CATEGORY_RACE_MODE, QP_SPEED_MODE } from '../core/quickPlayProtocol';
+import { QP_CATEGORY_RACE_MODE, QP_SPEED_MODE, QP_ARENA_MODE } from '../core/quickPlayProtocol';
 
 type ToastFn = (
   message: string,
@@ -281,6 +281,39 @@ export async function createSpeedRoundSession(
     wordIds: [],
     words: [],
     allowedModes: [QP_SPEED_MODE],
+  });
+  return session.session_code;
+}
+
+/**
+ * Create a Word Hunt Arena session — a Quick Play row with NO words and
+ * allowed_modes set to the single arena sentinel. Like Speed Round, the
+ * questions aren't persisted: the teacher's host screen pre-authors the
+ * whole batch client-side and ships it live on ARENA_START. The sentinel
+ * is the discriminator the student bootstrap branches on to show the arena.
+ */
+export async function createWordHuntArenaSession(
+  deps: Pick<QuickPlaySessionDeps, 'showToast' | 'failedCreateSessionMsg' | 'setSessionCode' | 'setActiveSession'>,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('create_quick_play_session', {
+    p_word_ids: null,
+    p_custom_words: null,
+    p_allowed_modes: [QP_ARENA_MODE],
+  });
+
+  if (error) {
+    deps.showToast(deps.failedCreateSessionMsg(error.message), 'error');
+    throw error;
+  }
+
+  const session = data as { id: string; session_code: string };
+  deps.setSessionCode(session.session_code);
+  deps.setActiveSession({
+    id: session.id,
+    sessionCode: session.session_code,
+    wordIds: [],
+    words: [],
+    allowedModes: [QP_ARENA_MODE],
   });
   return session.session_code;
 }

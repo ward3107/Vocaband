@@ -29,6 +29,7 @@ import {
   startQuickPlayFromDashboard,
   startCategoryRaceFromDashboard,
   startSpeedRoundFromDashboard,
+  startWordHuntArenaFromDashboard,
   startAssignClassFlow,
   loadAssignmentIntoCreateForm,
   applySavedTask,
@@ -261,6 +262,9 @@ export function TeacherDashboardSection(deps: TeacherDashboardSectionDeps): Reac
           cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode, setView, showToast,
         }); }}
         onSpeedRoundClick={() => { void startSpeedRoundFromDashboard({
+          cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode, setView, showToast,
+        }); }}
+        onArenaClick={() => { void startWordHuntArenaFromDashboard({
           cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode, setView, showToast,
         }); }}
         onClassroomClick={() => {
