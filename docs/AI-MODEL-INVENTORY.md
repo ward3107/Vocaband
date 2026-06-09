@@ -15,12 +15,19 @@ in the code, treat the code as authoritative and update this doc.
 
 ## Inventory
 
-| Provider | Model | Pinned to | Used by | Source location |
-|---|---|---|---|---|
-| **Google** | Gemini 2.5 Flash | `gemini-2.5-flash` | Translation + AI Lesson Builder text generation + AI Lesson questions | `server.ts:2817`, `server.ts:4144`, `server.ts:4386` |
-| **Google** | Gemini 2.5 Flash-Lite | `gemini-2.5-flash-lite` | OCR + sentence generation + distractor generation (~half the cost per token of `gemini-2.5-flash`, similar quality on schema-validated tasks) | `server.ts:2433`, `server.ts:3506`, `server.ts:3799` |
+> Cost pass (2026-06-09): all Gemini text/vision calls consolidated onto
+> Flash-Lite (half the per-token price, and thinking is off by default so we
+> don't pay for reasoning tokens on schema-validated tasks); Vocabagrut's live
+> modules moved to Haiku 4.5. See the `/api/*` routes in `server.ts` for the
+> authoritative call sites.
+
+| Provider | Model | Pinned to | Used by |
+|---|---|---|---|
+| **Google** | Gemini 2.5 Flash-Lite | `gemini-2.5-flash-lite` | ALL Gemini text/vision tasks: translation (`/api/translate`), OCR (`/api/ocr`), sentence generation (`/api/library/generate-sentences`, `/api/generate-sentences`), distractor generation (`/api/library/generate-distractors`), AI Lesson text + questions (`/api/ai-process-text`, `/api/ai-generate-lesson`). Cheapest 2.5 tier; thinking off by default. |
+| **Google** | Gemini 2.5 Flash | `gemini-2.5-flash` | (No longer used — every Gemini call was moved to Flash-Lite in the 2026-06-09 cost pass. Flash has dynamic "thinking" ON by default, billed as output tokens.) |
 | **Google** | Cloud Text-to-Speech (Studio-O) | `en-US-Studio-O` | Word + phrase pronunciation MP3s (runtime fallback for custom words + batch generator for the 9,159-word corpus) | `tts-common.ts:20-24` |
-| **Anthropic** | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | Vocabagrut (Bagrut-style mock exam generator) | `server.ts:3965` |
+| **Anthropic** | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | Vocabagrut full-test generation for the live modules **A, B, C** (`/api/generate-bagrut`) + ALL single-question generation (`/api/suggest-bagrut-question`). Output-dominated, so Haiku's $5/1M output (vs Sonnet's $15) is the main lever. |
+| **Anthropic** | Claude Sonnet 4.6 | `claude-sonnet-4-6` | Reserved for Vocabagrut modules **D, E** (not yet available); revisit when they launch. |
 
 ## Why pinning matters
 
