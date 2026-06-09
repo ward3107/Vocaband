@@ -1,7 +1,29 @@
 # Speed Round — Design Report
 
-> Status: **proposal, awaiting approval**. No app/server code written yet.
-> Visual mockups live in [`docs/mockups/`](./mockups/) (9 SVGs, referenced throughout).
+> Status: **approved — Phase 1 (Game A) in build**. Phase 2 (map arena) is planned.
+> Visual mockups live in [`docs/mockups/`](./mockups/) (10 SVGs + PNG renders).
+
+---
+
+## 0. Two-phase roadmap (decided)
+
+The competition splits into two games that ship in order:
+
+- **✅ Game A — "Speed Round" buzzer (Phase 1, building now).** No map/movement.
+  Same word to everyone, race to tap the right answer fastest, live podium.
+  Reuses ~80% of the existing Category Race engine. This whole document specifies it.
+- **🔜 Game B — "Word Hunt Arena" (Phase 2, future).** A literal shared map where
+  each student steers an avatar that walks/runs to reach floating words; reaching a
+  word triggers a quick question — **which is exactly Game A's buzzer**. So Phase 1
+  is not throwaway: it becomes the "grab → answer" moment inside the arena.
+
+  Phase 2 is a substantially bigger build — it adds a **game canvas** (PixiJS/Phaser),
+  **joystick movement controls**, **high-frequency position sync (~15×/sec)**, and a
+  server-side **"who grabbed first" arena referee** with collision/respawn. It reuses
+  the room, join, leaderboard, and Game A's answer flow, but the arena itself is new
+  (~30% reuse). See `mockups/10-word-hunt-arena-phase2.svg`.
+
+Everything below specifies **Game A**.
 
 ---
 
