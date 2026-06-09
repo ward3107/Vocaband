@@ -273,6 +273,19 @@ const supabaseAdmin = hasSupabaseConfig
     )
   : null;
 
+// ── Gemini request timeouts ────────────────────────────────────────────
+// @google/generative-ai has NO default request timeout, so a hung Gemini
+// connection (their API stalls under load) would hold the Node socket AND
+// the route's rate-limit slot open indefinitely. During school-hours
+// OCR/sentence bursts a few stuck calls accumulate and starve the small Fly
+// VM, surfacing as an endless spinner on unrelated routes. SingleRequestOptions
+// supports a per-call `timeout` (the SDK aborts the underlying fetch), so every
+// model call fails fast and the handler returns a clean error the client can
+// retry / fall back on. Image OCR of large phone photos legitimately runs
+// longer than text generation, so it gets a more generous bound.
+const GEMINI_TIMEOUT_MS = 30_000;
+const GEMINI_OCR_TIMEOUT_MS = 60_000;
+
 // ── Generic AI result cache ────────────────────────────────────────────
 // Pure, deterministic AI generators (text analysis, lesson generation)
 // return the same payload for the same inputs, so there's no reason to
@@ -3078,7 +3091,7 @@ Examples:
 Input:
 ${JSON.stringify(uncachedOriginalCase)}`;
 
-        const result = await model.generateContent(prompt);
+        const result = await model.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS });
         const raw = result.response.text();
 
         // Schema-mode guarantees valid JSON matching TRANSLATE_SCHEMA.  We
@@ -3817,7 +3830,7 @@ Quality rules:
             mimeType,
           },
         },
-      ]);
+      ], { timeout: GEMINI_OCR_TIMEOUT_MS });
 
       const responseText = result.response.text();
 
@@ -4658,7 +4671,7 @@ Return JSON: an array, one item per word, each with the target word string and a
 
     const callGemini = async (targets: typeof words): Promise<Map<string, string[]>> => {
       const prompt = buildPrompt(targets);
-      const result = await generationModel.generateContent(prompt);
+      const result = await generationModel.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS });
       const raw = result.response.text();
       let parsed: GeminiItem[];
       try {
@@ -4955,7 +4968,7 @@ Return JSON: an array, one item per word, each with { word, distractors: [string
           responseSchema: LIBRARY_DISTRACTORS_SCHEMA,
         },
       });
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS });
       const raw = result.response.text();
       try {
         parsed = JSON.parse(raw);
@@ -5361,7 +5374,7 @@ Output ONLY the JSON, no markdown, no explanations.
         },
       });
 
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS });
       const response = await result.response;
       const jsonText = response.text();
 
@@ -5624,7 +5637,7 @@ Important notes:
         },
       });
 
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS });
       const response = await result.response;
       const jsonText = response.text();
 
@@ -5720,7 +5733,7 @@ Return ONLY a JSON object: {"text": "the full revised text"}.
 
 Current text:
 ${sanitizedText}`;
-          const repairResult = await repairModel.generateContent(repairPrompt);
+          const repairResult = await repairModel.generateContent(repairPrompt, { timeout: GEMINI_TIMEOUT_MS });
           const repaired = JSON.parse(repairResult.response.text()) as { text?: unknown };
           if (typeof repaired.text === "string" && repaired.text.trim().length > 0) {
             const repairedText = sanitizeAiOutput(repaired.text).slice(0, 10000);
