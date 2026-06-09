@@ -305,7 +305,7 @@ async function passthroughProxy(request: Request, url: URL, env: Env): Promise<R
   });
 }
 
-async function edgeCachedGet(request: Request, url: URL, env: Env, maxAge = 60): Promise<Response> {
+async function edgeCachedGet(request: Request, url: URL, env: Env, maxAge = 60, staleWhileRevalidate = maxAge * 5): Promise<Response> {
   const backendUrl = new URL(url.pathname + url.search, API_BACKEND);
   // The cache key purposely strips the Authorization header — these
   // endpoints have no per-user variance, so one cache entry is
@@ -335,9 +335,21 @@ async function edgeCachedGet(request: Request, url: URL, env: Env, maxAge = 60):
   // see a recovery.
   if (upstream.ok) {
     const headers = new Headers(upstream.headers);
-    // s-maxage governs the edge TTL; the stale-while-revalidate window (5×)
-    // lets a brief Fly cold-start still serve from the edge while it refills.
-    headers.set("Cache-Control", `public, s-maxage=${maxAge}, stale-while-revalidate=${maxAge * 5}`);
+    // s-maxage governs the edge TTL; the stale-while-revalidate window
+    // lets a brief Fly cold-start still serve from the edge while it
+    // refills. Callers that serve state which must go stale *exactly* at
+    // the TTL (e.g. a Quick Play session that the teacher just ended)
+    // pass staleWhileRevalidate=0 so the edge can't keep serving a
+    // now-ended session past its TTL.
+    headers.set("Cache-Control", `public, s-maxage=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`);
+    // Defence-in-depth parity with passthroughProxy: vary by Authorization
+    // so an accidentally-added downstream cache rule can't cross-contaminate
+    // users on shared classroom NAT IPs. (Our own cache key already strips
+    // Authorization, so this doesn't change our per-path single-entry cache.)
+    const existingVary = headers.get("Vary");
+    if (!existingVary || !/authorization/i.test(existingVary)) {
+      headers.set("Vary", existingVary ? `${existingVary}, Authorization` : "Authorization");
+    }
     headers.set("X-Edge-Cache", "MISS");
     const cacheable = new Response(upstream.clone().body, {
       status: upstream.status,
@@ -406,11 +418,14 @@ export default {
     // A whole class scans at once, and they typically share one school NAT IP,
     // so without this the origin's per-IP rate limiter throttles real students
     // (the reason the Tier-2 /join POST exists). A short edge TTL collapses
-    // those ~40 origin round-trips into one per window. Short so an ended
-    // session goes stale quickly; 404s aren't cached (edgeCachedGet only
-    // stores 2xx), so a not-yet-active code keeps re-hitting the origin.
+    // those ~40 origin round-trips into one per window. staleWhileRevalidate=0
+    // so an ended session goes stale at exactly the 15s TTL — otherwise the
+    // edge would keep serving a just-ended session as "active" for the stale
+    // window (students load the join form, then get bounced on Start). 404s
+    // aren't cached (edgeCachedGet only stores 2xx), so a not-yet-active code
+    // keeps re-hitting the origin.
     if (request.method === "GET" && url.pathname.startsWith("/api/quick-play/session/")) {
-      return edgeCachedGet(request, url, env, 15);
+      return edgeCachedGet(request, url, env, 15, 0);
     }
 
     // Proxy everything else under /api/* and /socket.io/* to the Fly.io
