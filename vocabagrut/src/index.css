@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+  font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body, #root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: linear-gradient(180deg, #faf5ff 0%, #eef2ff 100%);
+}
+
+/* RTL-friendly: flip directional flex rows automatically where used. */
+[dir="rtl"] .rtl-flip { flex-direction: row-reverse; }
