@@ -18,6 +18,12 @@ interface LiveChallengeViewProps {
 // ─── Podium step styling per place.  Solid metallic blocks + a glowing
 // avatar medallion so the top-3 reads as a real winners' stage instead
 // of three faint translucent bars.
+//
+// blockH gates the full-height blocks behind min-height:768px — the
+// header + title + code + medallions + full blocks total ~763px, which
+// fits 768-tall projectors (XGA / 1366×768 mirrors) exactly but clipped
+// the blocks' feet on 720p. Shorter screens get the base block heights
+// so the whole stage stays above the fold.
 const PLACE_STYLES: Record<1 | 2 | 3, {
   ring: string;
   block: string;
@@ -37,7 +43,7 @@ const PLACE_STYLES: Record<1 | 2 | 3, {
     badge: "bg-amber-500",
     glow: "shadow-[0_0_55px_-4px_rgba(251,191,36,0.75)]",
     avatar: "w-24 h-24 sm:w-28 sm:h-28 text-4xl sm:text-5xl",
-    blockH: "h-36 sm:h-52",
+    blockH: "h-36 sm:[@media(min-height:768px)]:h-52",
     nameSize: "text-base sm:text-lg",
     scoreSize: "text-3xl sm:text-4xl",
     delay: 0.1,
@@ -49,7 +55,7 @@ const PLACE_STYLES: Record<1 | 2 | 3, {
     badge: "bg-slate-500",
     glow: "shadow-[0_0_34px_-6px_rgba(203,213,225,0.6)]",
     avatar: "w-20 h-20 sm:w-24 sm:h-24 text-3xl sm:text-4xl",
-    blockH: "h-24 sm:h-40",
+    blockH: "h-24 sm:[@media(min-height:768px)]:h-40",
     nameSize: "text-sm sm:text-base",
     scoreSize: "text-2xl sm:text-3xl",
     delay: 0.25,
@@ -61,7 +67,7 @@ const PLACE_STYLES: Record<1 | 2 | 3, {
     badge: "bg-orange-600",
     glow: "shadow-[0_0_30px_-6px_rgba(251,146,60,0.6)]",
     avatar: "w-20 h-20 sm:w-24 sm:h-24 text-3xl sm:text-4xl",
-    blockH: "h-20 sm:h-32",
+    blockH: "h-20 sm:[@media(min-height:768px)]:h-32",
     nameSize: "text-sm sm:text-base",
     scoreSize: "text-2xl sm:text-3xl",
     delay: 0.4,

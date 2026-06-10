@@ -1596,7 +1596,14 @@ export default function QuickPlayMonitor({
               </div>
             </div>
           ) : (
-          <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
+          /* Inner layout: QR beside the controls only where the card is
+             actually wide enough.  Below lg the grid is single-column so
+             the full-width card fits a row; in the lg band (1024–1279,
+             i.e. XGA projectors) the card is ~312px wide and a row left
+             ~60px for the code + buttons — code clipped, buttons
+             overlapping — so stack vertically there; xl+ is wide enough
+             for the row again. */
+          <div className={`lg:col-span-4 bg-gradient-to-br ${t.qrCard} rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center gap-4 sm:gap-6 shadow-lg relative overflow-hidden`}>
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
             {/* QR code container — sized so students at the back of
                 the classroom can scan from their seats, but small
@@ -1615,12 +1622,12 @@ export default function QuickPlayMonitor({
                 />
               </div>
             </div>
-            <div className="flex flex-col justify-center text-white min-w-0 flex-1 text-center sm:text-left">
+            <div className="flex flex-col justify-center text-white min-w-0 flex-1 w-full text-center sm:text-left lg:text-center xl:text-left">
               <span className="font-label text-[10px] 2xl:text-xs uppercase tracking-[0.2em] opacity-80">{tT.qpJoinAtHost(window.location.host)}</span>
               {/* Session code — readable but supporting; QR is the
                   primary scan target, code is the type-by-hand fallback. */}
               <h2 className="font-headline text-2xl sm:text-3xl 2xl:text-4xl font-black tracking-tighter">{session.sessionCode}</h2>
-              <div className="mt-2 flex items-center gap-2 justify-center sm:justify-start">
+              <div className="mt-2 flex items-center gap-2 justify-center sm:justify-start lg:justify-center xl:justify-start">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                 <span className="text-xs 2xl:text-sm font-medium">{effectiveStudents.length > 0 ? tT.qpPlayersJoined(effectiveStudents.length) : tT.qpWaitingForPlayers}</span>
               </div>
