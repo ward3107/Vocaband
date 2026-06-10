@@ -238,14 +238,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             staff (teachers + principals; role-routed to the right console
             on login) and students (class code). The live demo is a clear
             secondary action; feature highlights sit below so they don't
-            compete with the primary CTAs. Content flows from the top (no
-            vertical centering) so the demo + trust strip stay above the
-            fold on short laptops without clipping. */}
+            compete with the primary CTAs.
+
+            Sizing responds to viewport HEIGHT, not just width: the
+            full-scale hero is ~1010px tall, which buried both CTAs below
+            the fold on 1280×720 / 1366×768 laptops. Compact sizing is the
+            base at every width; the large scale only applies via `tall:`
+            (≥930px high — see @custom-variant in index.css) where it
+            actually fits. Keep new hero sizing on this pattern. */}
         {/* pt clears the fixed PublicNav (~48px tall). pt-8 left the
-            eyebrow badge tucked behind the nav on phones; pt-16/28
-            clears it while staying compact enough that BOTH sign-in
-            lanes fit in the hero viewport on mobile. */}
-        <section className="min-h-screen pt-16 md:pt-28 pb-12 px-4 md:px-6 relative isolate overflow-hidden">
+            eyebrow badge tucked behind the nav on phones; pt-16 clears it
+            while staying compact enough that BOTH sign-in lanes fit in
+            the hero viewport on mobile and short laptops. min-h-svh (not
+            screen/100vh) so the snap target matches what mobile browsers
+            actually show above their URL bar. */}
+        <section className="min-h-svh pt-16 md:tall:pt-28 pb-12 px-4 md:px-6 relative isolate overflow-hidden">
           {/* Brand-tint backdrop — fully GPU-rendered gradient, no video
               fetch.  The animated mesh below paints the motion that used
               to come from a 2 MB MP4. */}
@@ -272,8 +279,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             </span>
 
             {/* Headline — smaller on phones so the two lanes below clear
-                the fold; full scale returns from sm up. */}
-            <h1 className="relative z-20 text-3xl sm:text-5xl md:text-6xl xl:text-7xl font-black font-headline italic leading-[1.05] text-balance break-words mb-2 md:mb-3">
+                the fold; 6xl/7xl only on screens tall enough to spend
+                ~130px on the headline without pushing the CTAs under. */}
+            <h1 className="relative z-20 text-3xl sm:text-5xl md:tall:text-6xl xl:tall:text-7xl font-black font-headline italic leading-[1.05] text-balance break-words mb-2 md:mb-3">
               <span className="inline-block bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
                 {t.heroTitleLine1}
               </span>
@@ -285,7 +293,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
             {/* Subtitle — hidden on phones so both sign-in lanes sit in
                 the first viewport; the eyebrow already carries the pitch. */}
-            <p className="hidden sm:block text-base md:text-lg text-white/75 max-w-2xl mx-auto mb-6">
+            <p className="hidden sm:block text-base md:tall:text-lg text-white/75 max-w-2xl mx-auto mb-4 md:tall:mb-6">
               {t.heroSubtitle}
             </p>
 
@@ -296,50 +304,50 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 screen and reads like "the" entrance. */}
             <div className={`grid sm:grid-cols-2 gap-3 sm:gap-6 max-w-5xl mx-auto ${isRTL ? "text-right" : "text-left"}`}>
               {/* Staff lane */}
-              <div className="rounded-[1.75rem] p-5 sm:p-8 md:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-violet-300/40 transition-colors flex flex-col">
-                <div className="w-12 h-12 sm:w-[4.5rem] sm:h-[4.5rem] rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/40 mb-3 sm:mb-5">
-                  <GraduationCap size={32} strokeWidth={2.5} className="text-white w-7 h-7 sm:w-10 sm:h-10" aria-hidden="true" />
+              <div className="rounded-[1.75rem] p-5 sm:p-6 md:tall:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-violet-300/40 transition-colors flex flex-col">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 md:tall:w-[4.5rem] md:tall:h-[4.5rem] rounded-2xl md:tall:rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/40 mb-3 md:tall:mb-5">
+                  <GraduationCap size={32} strokeWidth={2.5} className="text-white w-7 h-7 sm:w-8 sm:h-8 md:tall:w-10 md:tall:h-10" aria-hidden="true" />
                 </div>
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white mb-1.5 sm:mb-2">{t.heroV2.staffTitle}</h2>
-                <p className="hidden sm:block text-sm md:text-base text-white/70 mb-6 flex-1">{t.heroV2.staffDesc}</p>
+                <h2 className="text-xl sm:text-2xl md:tall:text-3xl font-black text-white mb-1.5 sm:mb-2">{t.heroV2.staffTitle}</h2>
+                <p className="hidden sm:block text-sm md:tall:text-base text-white/70 mb-4 md:tall:mb-6 flex-1">{t.heroV2.staffDesc}</p>
                 <button
                   type="button"
                   onClick={onTeacherLogin}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                   aria-label={`${t.navSignIn} — ${t.heroV2.staffTitle}`}
-                  className="w-full px-6 py-3.5 sm:py-5 rounded-2xl text-lg sm:text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/30 hover:ring-violet-300/50 shadow-[0_10px_0_0_#581c87,0_22px_44px_rgba(168,85,247,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#581c87] transition-all"
+                  className="w-full px-6 py-3.5 md:tall:py-5 rounded-2xl text-lg sm:text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/30 hover:ring-violet-300/50 shadow-[0_10px_0_0_#581c87,0_22px_44px_rgba(168,85,247,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#581c87] transition-all"
                 >
                   <LogIn size={24} strokeWidth={2.5} />
                   {t.navSignIn}
                 </button>
-                <p className="text-center text-xs sm:text-sm text-white/55 mt-2 sm:mt-3">{t.heroV2.staffNote}</p>
+                <p className="text-center text-xs sm:text-sm text-white/55 mt-2 md:tall:mt-3">{t.heroV2.staffNote}</p>
               </div>
 
               {/* Student lane */}
-              <div className="rounded-[1.75rem] p-5 sm:p-8 md:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-amber-300/40 transition-colors flex flex-col">
-                <div className="w-12 h-12 sm:w-[4.5rem] sm:h-[4.5rem] rounded-2xl sm:rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-orange-500/40 mb-3 sm:mb-5">
-                  <BookOpen size={40} strokeWidth={2.5} className="text-white w-7 h-7 sm:w-10 sm:h-10" aria-hidden="true" />
+              <div className="rounded-[1.75rem] p-5 sm:p-6 md:tall:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-amber-300/40 transition-colors flex flex-col">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 md:tall:w-[4.5rem] md:tall:h-[4.5rem] rounded-2xl md:tall:rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-orange-500/40 mb-3 md:tall:mb-5">
+                  <BookOpen size={40} strokeWidth={2.5} className="text-white w-7 h-7 sm:w-8 sm:h-8 md:tall:w-10 md:tall:h-10" aria-hidden="true" />
                 </div>
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white mb-1.5 sm:mb-2">{t.navStudents}</h2>
-                <p className="hidden sm:block text-sm md:text-base text-white/70 mb-6 flex-1">{t.heroV2.studentDesc}</p>
+                <h2 className="text-xl sm:text-2xl md:tall:text-3xl font-black text-white mb-1.5 sm:mb-2">{t.navStudents}</h2>
+                <p className="hidden sm:block text-sm md:tall:text-base text-white/70 mb-4 md:tall:mb-6 flex-1">{t.heroV2.studentDesc}</p>
                 <button
                   type="button"
                   onClick={onGetStarted}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                   aria-label={t.heroV2.studentCta}
-                  className="w-full px-6 py-3.5 sm:py-5 rounded-2xl text-lg sm:text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/40 hover:ring-amber-300/60 shadow-[0_10px_0_0_#9a3412,0_22px_44px_rgba(251,146,60,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#9a3412] transition-all"
+                  className="w-full px-6 py-3.5 md:tall:py-5 rounded-2xl text-lg sm:text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/40 hover:ring-amber-300/60 shadow-[0_10px_0_0_#9a3412,0_22px_44px_rgba(251,146,60,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#9a3412] transition-all"
                 >
                   <LogIn size={24} strokeWidth={2.5} />
                   {t.heroV2.studentCta}
                 </button>
-                <p className="text-center text-xs sm:text-sm text-white/55 mt-2 sm:mt-3">{t.heroV2.studentNote}</p>
+                <p className="text-center text-xs sm:text-sm text-white/55 mt-2 md:tall:mt-3">{t.heroV2.studentNote}</p>
               </div>
             </div>
 
             {/* Live demo — clear secondary action (only when available). */}
             {onTryDemo && (
               <>
-                <div className="mt-5 flex items-center justify-center gap-3" aria-hidden="true">
+                <div className="mt-4 md:tall:mt-5 flex items-center justify-center gap-3" aria-hidden="true">
                   <span className="h-px w-12 bg-white/20" />
                   <span className="text-xs uppercase tracking-widest text-white/40 font-bold">{t.heroV2.or}</span>
                   <span className="h-px w-12 bg-white/20" />
@@ -348,7 +356,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   type="button"
                   onClick={onTryDemo}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  className="mt-3 inline-flex items-center gap-2.5 px-7 py-3.5 rounded-2xl text-base font-bold text-white bg-white/10 border-2 border-white/30 hover:bg-white/15 hover:border-white/50 transition-colors backdrop-blur-sm"
+                  className="mt-2 md:tall:mt-3 inline-flex items-center gap-2.5 px-7 py-3.5 rounded-2xl text-base font-bold text-white bg-white/10 border-2 border-white/30 hover:bg-white/15 hover:border-white/50 transition-colors backdrop-blur-sm"
                 >
                   <PlayCircle size={22} strokeWidth={2.5} />
                   {t.heroV2.demoCta}
@@ -358,7 +366,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             )}
 
             {/* Hero trust strip — factual claims only. */}
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-2" dir={dir}>
+            <div className="mt-5 md:tall:mt-7 flex flex-wrap items-center justify-center gap-2" dir={dir}>
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-100 border border-amber-400/30 font-bold text-xs backdrop-blur-sm">
                 <BookOpen size={12} aria-hidden="true" />
                 {t.heroTrustCurriculum}
