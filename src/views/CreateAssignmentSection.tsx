@@ -2,6 +2,10 @@
  * The create-assignment view branch — CreateAssignmentView with its
  * 30+ wizard props.  Lifted out of App.tsx so the prop-forwarding
  * doesn't crowd the orchestrator.
+ *
+ * Closure deps from App's render scope (state, setters, sibling-hook
+ * helpers) come in via CreateAssignmentContext (App.tsx wraps this
+ * branch in a CreateAssignmentProvider).
  */
 import { type ReactNode } from 'react';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
@@ -9,90 +13,15 @@ import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import { isPro } from '../core/plan';
 import { generateAiLesson, type AiLessonParams } from '../utils/aiLesson';
-import type { Word } from '../data/vocabulary';
-import type { AppUser, ClassData, AssignmentData } from '../core/supabase';
-import type { SavedTaskInput } from '../hooks/useSavedTasks';
-import type { View } from '../core/views';
+import { useCreateAssignment, type CreateAssignmentSectionDeps } from './CreateAssignmentContext';
+
+// Re-export so existing importers keep resolving the deps type from here.
+export type { CreateAssignmentSectionDeps };
 
 const CreateAssignmentView = lazyWithRetry(() => import('./CreateAssignmentView'));
 
-export interface CreateAssignmentSectionDeps {
-  user: AppUser | null;
-  selectedClass: ClassData;
-  allWords: Word[];
-  set1Words: Word[];
-  set2Words: Word[];
-  topicPacks: { name: string; icon: string; ids: number[] }[];
-
-  customWords: Word[];
-  setCustomWords: React.Dispatch<React.SetStateAction<Word[]>>;
-  assignmentTitle: string;
-  setAssignmentTitle: React.Dispatch<React.SetStateAction<string>>;
-  assignmentDeadline: string;
-  setAssignmentDeadline: React.Dispatch<React.SetStateAction<string>>;
-  assignmentModes: string[];
-  setAssignmentModes: React.Dispatch<React.SetStateAction<string[]>>;
-  selectedWords: number[];
-  setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
-  selectedLevel: 'Set 1' | 'Set 2' | 'Custom';
-  setSelectedLevel: React.Dispatch<React.SetStateAction<'Set 1' | 'Set 2' | 'Custom'>>;
-  tagInput: string;
-  setTagInput: React.Dispatch<React.SetStateAction<string>>;
-  pastedText: string;
-  setPastedText: React.Dispatch<React.SetStateAction<string>>;
-  showPasteDialog: boolean;
-  setShowPasteDialog: React.Dispatch<React.SetStateAction<boolean>>;
-  pasteMatchedCount: number;
-  pasteUnmatched: string[];
-
-  // Passing through to CreateAssignmentView's existing signatures —
-  // these are too varied (event handlers, async with optional args) to
-  // pin down here so the section types them as any pass-throughs.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handlePasteSubmit: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleAddUnmatchedAsCustom: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleSkipUnmatched: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleTagInputKeyDown: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleDocxUpload: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleOcrUpload: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleSaveAssignment: any;
-
-  assignmentSentences: string[];
-  setAssignmentSentences: React.Dispatch<React.SetStateAction<string[]>>;
-  sentenceDifficulty: 1 | 2 | 3 | 4;
-  setSentenceDifficulty: React.Dispatch<React.SetStateAction<1 | 2 | 3 | 4>>;
-
-  isOcrProcessing: boolean;
-  ocrProgress: number;
-  ocrStatus: string;
-
-  showTopicPacks: boolean;
-  setShowTopicPacks: React.Dispatch<React.SetStateAction<boolean>>;
-  showAssignmentWelcome: boolean;
-  setShowAssignmentWelcome: React.Dispatch<React.SetStateAction<boolean>>;
-
-  editingAssignment: AssignmentData | null;
-  setEditingAssignment: React.Dispatch<React.SetStateAction<AssignmentData | null>>;
-  setActivityNavOrigin: React.Dispatch<React.SetStateAction<'create-assignment' | null>>;
-
-  setClassShowAssignment: React.Dispatch<
-    React.SetStateAction<{ title: string; wordIds: number[]; customWords?: Word[] } | null>
-  >;
-  setView: React.Dispatch<React.SetStateAction<View>>;
-
-  onSaveTemplate: (input: SavedTaskInput) => void;
-  showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
-  showPaywallToast: (msg: string) => void;
-  speakWord: (wordId: number, fallbackText: string) => void;
-}
-
-export function CreateAssignmentSection(deps: CreateAssignmentSectionDeps): ReactNode {
+export function CreateAssignmentSection(): ReactNode {
+  const deps = useCreateAssignment();
   const {
     user, selectedClass, allWords, set1Words, set2Words, topicPacks,
     customWords, setCustomWords,
@@ -119,7 +48,6 @@ export function CreateAssignmentSection(deps: CreateAssignmentSectionDeps): Reac
 
   return (
     <LazyWrapper loadingMessage="Loading assignment wizard...">
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <CreateAssignmentView
         selectedClass={selectedClass}
         allWords={allWords}

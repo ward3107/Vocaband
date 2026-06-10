@@ -41,6 +41,7 @@ import { useAppOverlays } from "./hooks/useAppOverlays";
 import { TeacherDashboardSection } from "./views/TeacherDashboardSection";
 import { TeacherDashboardProvider } from "./views/TeacherDashboardContext";
 import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
+import { CreateAssignmentProvider } from "./views/CreateAssignmentContext";
 import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
@@ -1166,30 +1167,39 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   }
 
   if (view === "create-assignment" && selectedClass) {
-    return CreateAssignmentSection({
-      user, selectedClass,
-      allWords: ALL_WORDS, set1Words: SET_1_WORDS, set2Words: SET_2_WORDS, topicPacks: TOPIC_PACKS,
-      customWords, setCustomWords,
-      assignmentTitle, setAssignmentTitle,
-      assignmentDeadline, setAssignmentDeadline,
-      assignmentModes, setAssignmentModes,
-      selectedWords, setSelectedWords,
-      selectedLevel, setSelectedLevel,
-      tagInput, setTagInput,
-      pastedText, setPastedText,
-      showPasteDialog, setShowPasteDialog,
-      pasteMatchedCount, pasteUnmatched,
-      handlePasteSubmit, handleAddUnmatchedAsCustom, handleSkipUnmatched,
-      handleTagInputKeyDown, handleDocxUpload, handleOcrUpload, handleSaveAssignment,
-      assignmentSentences, setAssignmentSentences,
-      sentenceDifficulty, setSentenceDifficulty,
-      isOcrProcessing, ocrProgress, ocrStatus,
-      showTopicPacks, setShowTopicPacks,
-      showAssignmentWelcome, setShowAssignmentWelcome,
-      editingAssignment, setEditingAssignment,
-      setActivityNavOrigin, setClassShowAssignment,
-      setView, onSaveTemplate: savedTasks.save, showToast, showPaywallToast, speakWord,
-    });
+    return (
+      <CreateAssignmentProvider value={{
+        user, selectedClass,
+        allWords: ALL_WORDS, set1Words: SET_1_WORDS, set2Words: SET_2_WORDS, topicPacks: TOPIC_PACKS,
+        customWords, setCustomWords,
+        assignmentTitle, setAssignmentTitle,
+        assignmentDeadline, setAssignmentDeadline,
+        assignmentModes, setAssignmentModes,
+        selectedWords, setSelectedWords,
+        selectedLevel, setSelectedLevel,
+        tagInput, setTagInput,
+        pastedText, setPastedText,
+        showPasteDialog, setShowPasteDialog,
+        pasteMatchedCount, pasteUnmatched,
+        handlePasteSubmit, handleAddUnmatchedAsCustom, handleSkipUnmatched,
+        handleTagInputKeyDown, handleDocxUpload, handleOcrUpload, handleSaveAssignment,
+        assignmentSentences, setAssignmentSentences,
+        sentenceDifficulty, setSentenceDifficulty,
+        isOcrProcessing, ocrProgress, ocrStatus,
+        showTopicPacks, setShowTopicPacks,
+        showAssignmentWelcome, setShowAssignmentWelcome,
+        editingAssignment, setEditingAssignment,
+        setActivityNavOrigin, setClassShowAssignment,
+        setView, onSaveTemplate: savedTasks.save, showToast, showPaywallToast, speakWord,
+      }}>
+        {/* WHY no useMemo on the value above: it's the same inline object
+            literal App always passed to CreateAssignmentSection, so the
+            context value's identity per render is unchanged — the wizard's
+            re-render behavior stays byte-for-byte identical to the
+            prop-drilled version. */}
+        <CreateAssignmentSection />
+      </CreateAssignmentProvider>
+    );
   }
 
 
