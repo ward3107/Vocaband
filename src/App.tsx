@@ -69,6 +69,9 @@ import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
 import { useQuickPlayEvents } from "./hooks/useQuickPlayEvents";
 import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useGameModeSetup } from "./hooks/useGameModeSetup";
+import { useGameStats } from "./hooks/useGameStats";
+import { useStudentAssignmentData } from "./hooks/useStudentAssignmentData";
+import { useGameFlowState } from "./hooks/useGameFlowState";
 // Lazy — these render only mid-Quick-Play, and they pull in motion/react.
 // Keeping them off App's eager import graph drops the ~42 kB gz motion
 // bundle from the cold first-paint (landing) critical path.
@@ -191,10 +194,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     copiedCode, setCopiedCode,
     openDropdownClassId, setOpenDropdownClassId,
   } = useTeacherUiModalsState();
-  const [xp, setXp] = useState(0);
-  const [coins, setCoins] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [badges, setBadges] = useState<string[]>([]);
+  const { xp, setXp, coins, setCoins, streak, setStreak, badges, setBadges } = useGameStats();
 
   // Retention state (daily chest, weekly challenge, comeback, limited
   // rotating item, pet evolution milestones).  Scoped per-user via uid.
@@ -379,11 +379,12 @@ export default function App({ initialView }: { initialView?: View } = {}) {
 
 
   // --- STUDENT DATA STATE ---
-  const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
-  const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
-  const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
-
-  const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
+  const {
+    activeAssignment, setActiveAssignment,
+    studentAssignments, setStudentAssignments,
+    studentProgress, setStudentProgress,
+    assignmentWords, setAssignmentWords,
+  } = useStudentAssignmentData();
   // Warm the audio cache for the active assignment so a student who loses
   // Wi-Fi mid-lesson can still hear the words. Idle-scheduled, skipped on
   // 2G / data-saver. See useAssignmentPrecache for the why.
@@ -423,8 +424,11 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const speakWord = speakWordRaw;
 
   // --- GAME STATE ---
-  const [gameMode, setGameMode] = useState<GameMode>("classic");
-  const [showModeSelection, setShowModeSelection] = useState(true);
+  const {
+    gameMode, setGameMode,
+    showModeSelection, setShowModeSelection,
+    showModeIntro, setShowModeIntro,
+  } = useGameFlowState();
 
   // Handle Quick Play session from URL parameter — extracted to a
   // dedicated hook because the load logic plus the page-refresh
@@ -441,7 +445,6 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     createGuestUser,
     showToast,
   });
-  const [showModeIntro, setShowModeIntro] = useState(false);
   const [spellingInput, setSpellingInput] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   // Score state; for QP resume kids we seed from the localStorage
