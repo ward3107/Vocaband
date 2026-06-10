@@ -22,8 +22,8 @@ import { useBoosters } from "./hooks/useBoosters";
 import { useFeatureFlag } from "./hooks/useFeatureFlag";
 import { useLevelUp } from "./hooks/useLevelUp";
 import { useAchievements } from "./hooks/useAchievements";
-import LevelUpModal from "./components/arcade/LevelUpModal";
-import AchievementToast from "./components/arcade/AchievementToast";
+import { AppCelebrations } from "./components/app/AppCelebrations";
+import { StudentSectionRoute } from "./components/app/StudentSectionRoute";
 import { grantRetentionXp, grantNonXpReward, claimPetMilestoneReward } from "./handlers/retentionGrants";
 import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
@@ -45,7 +45,7 @@ import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
 import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
-import { StudentDashboardSection, StudentHubSection, isStudentHubView } from "./views/StudentDashboardSection";
+import { isStudentHubView } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
 import { renderGameRoute } from "./views/GameRoutes";
 import { renderStudentAuthRoute } from "./views/StudentAuthRoutes";
@@ -1139,21 +1139,17 @@ export default function App({ initialView }: { initialView?: View } = {}) {
       // straight out of their session.
       onRequestLogout: () => setShowExitConfirmModal(true),
     };
-    const section = isStudentHubView(view)
-      ? StudentHubSection({ ...studentSectionDeps, view })
-      : StudentDashboardSection(studentSectionDeps);
-    // Celebrations must mount on these return paths too: XP grants,
-    // badge claims and achievement unlocks all happen here, and the pet
-    // transformation above already keys off levelUp.pending. Without these
-    // the student never sees the level-up modal / achievement toasts that
-    // their actions trigger (they only mounted in the final render branch,
-    // which these early-return past).
     return (
-      <>
-        {section}
-        <LevelUpModal tier={levelUp.pending} onClose={levelUp.dismiss} />
-        <AchievementToast toasts={achievements.toasts} onDismiss={achievements.dismissToast} />
-      </>
+      <StudentSectionRoute
+        deps={studentSectionDeps}
+        view={view}
+        celebrations={{
+          levelUpTier: levelUp.pending,
+          onLevelUpClose: levelUp.dismiss,
+          achievementToasts: achievements.toasts,
+          onAchievementDismiss: achievements.dismissToast,
+        }}
+      />
     );
   }
 
@@ -1404,8 +1400,12 @@ export default function App({ initialView }: { initialView?: View } = {}) {
           />
         </Suspense>
       )}
-      <LevelUpModal tier={levelUp.pending} onClose={levelUp.dismiss} />
-      <AchievementToast toasts={achievements.toasts} onDismiss={achievements.dismissToast} />
+      <AppCelebrations
+        levelUpTier={levelUp.pending}
+        onLevelUpClose={levelUp.dismiss}
+        achievementToasts={achievements.toasts}
+        onAchievementDismiss={achievements.dismissToast}
+      />
     </>
   );
 };
