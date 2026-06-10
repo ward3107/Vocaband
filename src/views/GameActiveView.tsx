@@ -1,10 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, X } from "lucide-react";
-import type { AppUser, AssignmentData } from "../core/supabase";
-import type { Word } from "../data/vocabulary";
-import type { LeaderboardEntry } from "../core/types";
 import { THEMES, PET_MILESTONES } from "../constants/game";
+import { useGameRoute } from "./GameRouteContext";
 import { useLanguage } from "../hooks/useLanguage";
 import { useCombo } from "../hooks/useCombo";
 import { useFeatureFlag } from "../hooks/useFeatureFlag";
@@ -79,90 +77,29 @@ import ReviewGame from "../components/game/ReviewGame";
 
 const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
-type MatchItem = { id: number; text: string; type: 'english' | 'arabic' };
-type MatchSelection = { id: number; type: 'english' | 'arabic' };
-
-interface GameActiveViewProps {
-  user: AppUser | null;
-  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
-  saveError: string | null;
-  setSaveError: React.Dispatch<React.SetStateAction<string | null>>;
-  score: number;
-  xp: number;
-  streak: number;
-  targetLanguage: "hebrew" | "arabic";
-  setTargetLanguage: React.Dispatch<React.SetStateAction<"hebrew" | "arabic">>;
-  gameMode: string;
-  gameWords: Word[];
-  currentIndex: number;
-  setCurrentIndex: React.Dispatch<React.SetStateAction<number>>;
-  currentWord: Word | undefined;
-  feedback: "correct" | "wrong" | "show-answer" | null;
-  options: Word[];
-  hiddenOptions: number[];
-  setHiddenOptions: React.Dispatch<React.SetStateAction<number[]>>;
-  isMatchingProcessing: boolean;
-  matchingPairs: MatchItem[];
-  matchedIds: number[];
-  selectedMatch: MatchSelection | null;
-  tfOption: Word | null;
-  isFlipped: boolean;
-  setIsFlipped: React.Dispatch<React.SetStateAction<boolean>>;
-  isProcessingRef: React.MutableRefObject<boolean>;
-  scrambledWord: string;
-  revealedLetters: number;
-  spellingInput: string;
-  setSpellingInput: React.Dispatch<React.SetStateAction<string>>;
-  activeAssignment: AssignmentData | null;
-  sentenceIndex: number;
-  sentenceFeedback: "correct" | "wrong" | null;
-  builtSentence: string[];
-  setBuiltSentence: React.Dispatch<React.SetStateAction<string[]>>;
-  availableWords: string[];
-  setAvailableWords: React.Dispatch<React.SetStateAction<string[]>>;
-  /** Kept in the prop shape so App.tsx's existing wiring doesn't need
-   *  to change, but no longer rendered — the per-game "Live Rank"
-   *  sidebar was removed at teacher request (noisy during solo play). */
-  leaderboard: Record<string, LeaderboardEntry>;
-  isFinished: boolean;
-  handleExitGame: () => void;
-  /** Persist a final score for self-contained modes (Idiom, Speed Round)
-   *  that don't go through the per-question saveScore path
-   *  that Classic / Listening / etc. trigger from their answer handlers.
-   *  Pass the second arg to bypass the per-word cap when the mode's
-   *  scoring isn't tied to gameWords.length. */
-  saveScore: (scoreOverride?: number, maxScoreOverride?: number) => void | Promise<void>;
-  handleAnswer: (word: Word) => void;
-  handleMatchClick: (item: MatchSelection) => void;
-  handleTFAnswer: (isTrue: boolean) => void;
-  handleFlashcardAnswer: (gotIt: boolean) => void;
-  handleSpellingSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  handleSentenceWordTap: (word: string, isFromAvailable: boolean) => void;
-  handleSentenceCheck: () => void;
-  speakWord: (wordId: number, fallbackText?: string) => void;
-  speak: (text: string) => void;
-  shuffle: <T>(arr: T[]) => T[];
-}
-
-export default function GameActiveView({
-  user, setUser, saveError, setSaveError,
-  score, xp, streak,
-  targetLanguage, setTargetLanguage,
-  gameMode, gameWords, currentIndex, setCurrentIndex, currentWord,
-  feedback,
-  options, hiddenOptions, setHiddenOptions,
-  isMatchingProcessing, matchingPairs, matchedIds, selectedMatch,
-  tfOption, isFlipped, setIsFlipped, isProcessingRef,
-  scrambledWord, revealedLetters,
-  spellingInput, setSpellingInput,
-  activeAssignment, sentenceIndex, sentenceFeedback,
-  builtSentence, setBuiltSentence, availableWords, setAvailableWords,
-  leaderboard: _leaderboard, isFinished,
-  handleExitGame, saveScore,
-  handleAnswer, handleMatchClick, handleTFAnswer,
-  handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap,
-  handleSentenceCheck, speakWord, speak, shuffle,
-}: GameActiveViewProps) {
+export default function GameActiveView() {
+  // Game-route bag now arrives via context instead of ~50 drilled props.
+  // GameActiveView is rendered solely by GameRoute, so context-only is
+  // safe — there's no other call site passing props.
+  const {
+    user, setUser, saveError, setSaveError,
+    score, xp, streak,
+    targetLanguage,
+    gameMode, gameWords, currentIndex, setCurrentIndex, currentWord,
+    feedback,
+    options, hiddenOptions, setHiddenOptions,
+    isMatchingProcessing, matchingPairs, matchedIds, selectedMatch,
+    tfOption, isFlipped, setIsFlipped, isProcessingRef,
+    scrambledWord, revealedLetters,
+    spellingInput, setSpellingInput,
+    activeAssignment, sentenceIndex, sentenceFeedback,
+    builtSentence, setBuiltSentence, availableWords, setAvailableWords,
+    isFinished,
+    handleExitGame, saveScore,
+    handleAnswer, handleMatchClick, handleTFAnswer,
+    handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap,
+    handleSentenceCheck, speakWord, speak, shuffle,
+  } = useGameRoute();
   // Self-contained modes (Idiom, Speed Round) don't go through the
   // per-question scoring path that Classic / Listening / etc. use to
   // trigger saveScore on the last correct answer.  Each mode emits

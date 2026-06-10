@@ -2,7 +2,6 @@ import React, { useState, useMemo, useRef, useCallback, useEffect, Suspense } fr
 import type { View } from "./core/views";
 import { lazyWithRetry } from "./utils/lazyWithRetry";
 import { getEntitledVocas } from "./core/subject";
-import type { Word } from "./data/vocabulary";
 import { useVocabularyLazyWithDefaults } from "./hooks/useVocabularyLazy";
 import SvgSpinner from "./components/svg/SvgSpinner";
 import AnnouncementBanner from "./components/AnnouncementBanner";
@@ -12,7 +11,6 @@ import AnnouncementBanner from "./components/AnnouncementBanner";
 // ~43 kB gz motion bundle drops out of the App.tsx modulepreload chain
 // on cold first-paint.
 import { supabase, hasTeacherAccess, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "./core/supabase";
-import { studentLoginViaServer } from "./api/studentLogin";
 import { useAudio } from "./hooks/useAudio";
 import { primeAudio } from "./utils/primeAudio";
 import { useLanguage } from "./hooks/useLanguage";
@@ -23,13 +21,12 @@ import { useBoosters } from "./hooks/useBoosters";
 import { useFeatureFlag } from "./hooks/useFeatureFlag";
 import { useLevelUp } from "./hooks/useLevelUp";
 import { useAchievements } from "./hooks/useAchievements";
-import LevelUpModal from "./components/arcade/LevelUpModal";
-import AchievementToast from "./components/arcade/AchievementToast";
+import { AppCelebrations } from "./components/app/AppCelebrations";
+import { StudentSectionRoute } from "./components/app/StudentSectionRoute";
 import { grantRetentionXp, grantNonXpReward, claimPetMilestoneReward } from "./handlers/retentionGrants";
 import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
 import { createGuestUser } from "./utils/createGuestUser";
-import { readQpResumeScore } from "./utils/qpResumeHint";
 import { clearIntendedClassCode } from "./utils/oauthIntent";
 import { useTeacherGuidesSync } from "./hooks/useTeacherGuidesSync";
 import { useVocaRouting } from "./hooks/useVocaRouting";
@@ -42,13 +39,16 @@ import { renderHebrewRoute } from "./views/HebrewRoutes";
 import { renderQuickPlayExitScreens } from "./views/QuickPlayExitScreens";
 import { useAppOverlays } from "./hooks/useAppOverlays";
 import { TeacherDashboardSection } from "./views/TeacherDashboardSection";
+import { TeacherDashboardProvider } from "./views/TeacherDashboardContext";
 import { CreateAssignmentSection } from "./views/CreateAssignmentSection";
+import { CreateAssignmentProvider } from "./views/CreateAssignmentContext";
 import { QuickPlaySetupSection } from "./views/QuickPlaySetupSection";
 import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection";
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
-import { StudentDashboardSection, StudentHubSection, isStudentHubView } from "./views/StudentDashboardSection";
+import { isStudentHubView } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
-import { renderGameRoute } from "./views/GameRoutes";
+import { GameRoute } from "./views/GameRoutes";
+import { GameRouteProvider } from "./views/GameRouteContext";
 import { renderStudentAuthRoute } from "./views/StudentAuthRoutes";
 import { renderPrivacySettingsSection } from "./views/PrivacySettingsSection";
 import { getGameDebugger } from "./utils/gameDebug";
@@ -69,6 +69,13 @@ import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
 import { useQuickPlayEvents } from "./hooks/useQuickPlayEvents";
 import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useGameModeSetup } from "./hooks/useGameModeSetup";
+import { useGameStats } from "./hooks/useGameStats";
+import { useStudentAssignmentData } from "./hooks/useStudentAssignmentData";
+import { useGameSession } from "./hooks/useGameSession";
+import { useTier2StudentLogin } from "./hooks/useTier2StudentLogin";
+import { useGameFlowState } from "./hooks/useGameFlowState";
+import { useAssignmentEditorState } from "./hooks/useAssignmentEditorState";
+import { useAssignmentBuilderState } from "./hooks/useAssignmentBuilderState";
 // Lazy — these render only mid-Quick-Play, and they pull in motion/react.
 // Keeping them off App's eager import graph drops the ~42 kB gz motion
 // bundle from the cold first-paint (landing) critical path.
@@ -191,10 +198,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     copiedCode, setCopiedCode,
     openDropdownClassId, setOpenDropdownClassId,
   } = useTeacherUiModalsState();
-  const [xp, setXp] = useState(0);
-  const [coins, setCoins] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [badges, setBadges] = useState<string[]>([]);
+  const { xp, setXp, coins, setCoins, streak, setStreak, badges, setBadges } = useGameStats();
 
   // Retention state (daily chest, weekly challenge, comeback, limited
   // rotating item, pet evolution milestones).  Scoped per-user via uid.
@@ -283,9 +287,12 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // --- TEACHER DATA STATE ---
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
-  const [selectedWords, setSelectedWords] = useState<number[]>([]);
-  const [selectedLevel, setSelectedLevel] = useState<"Set 1" | "Set 2" | "Custom">("Set 1");
-  const [customWords, setCustomWords] = useState<Word[]>([]);
+  // Word-selection core of the assignment editor. See useAssignmentEditorState.
+  const {
+    selectedWords, setSelectedWords,
+    selectedLevel, setSelectedLevel,
+    customWords, setCustomWords,
+  } = useAssignmentEditorState();
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
   const [ocrStatus, setOcrStatus] = useState("");
@@ -294,21 +301,23 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const [classStudents, setClassStudents] = useState<{name: string, classCode: string, lastActive: string}[]>([]);
   const [globalLeaderboard] = useState<{name: string, score: number, avatar: string}[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [assignmentTitle, setAssignmentTitle] = useState("");
-  const [assignmentDeadline, setAssignmentDeadline] = useState("");
-  const [assignmentModes, setAssignmentModes] = useState<string[]>([]);
-  const [assignmentSentences, setAssignmentSentences] = useState<string[]>([]);
-  const [sentenceDifficulty, setSentenceDifficulty] = useState<1 | 2 | 3 | 4>(2);
-  const [sentencesAutoGenerated, setSentencesAutoGenerated] = useState(false);
-  const [, setAssignmentStep] = useState(1);
-
-  // --- SMART PASTE STATE ---
-  const [pastedText, setPastedText] = useState("");
-  const [showPasteDialog, setShowPasteDialog] = useState(false);
-  const [pasteMatchedCount, setPasteMatchedCount] = useState(0);
-  const [pasteUnmatched, setPasteUnmatched] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
-  const [showTopicPacks, setShowTopicPacks] = useState(false);
+  // Assignment-builder form fields + Smart Paste dialog state.
+  // See useAssignmentBuilderState.
+  const {
+    assignmentTitle, setAssignmentTitle,
+    assignmentDeadline, setAssignmentDeadline,
+    assignmentModes, setAssignmentModes,
+    assignmentSentences, setAssignmentSentences,
+    sentenceDifficulty, setSentenceDifficulty,
+    sentencesAutoGenerated, setSentencesAutoGenerated,
+    setAssignmentStep,
+    pastedText, setPastedText,
+    showPasteDialog, setShowPasteDialog,
+    pasteMatchedCount, setPasteMatchedCount,
+    pasteUnmatched, setPasteUnmatched,
+    tagInput, setTagInput,
+    showTopicPacks, setShowTopicPacks,
+  } = useAssignmentBuilderState();
 
   // --- QUICK SEARCH & FILTERS STATE ---
   const [, setWordSearchQuery] = useState("");
@@ -379,11 +388,12 @@ export default function App({ initialView }: { initialView?: View } = {}) {
 
 
   // --- STUDENT DATA STATE ---
-  const [activeAssignment, setActiveAssignment] = useState<AssignmentData | null>(null);
-  const [studentAssignments, setStudentAssignments] = useState<AssignmentData[]>([]);
-  const [studentProgress, setStudentProgress] = useState<ProgressData[]>([]);
-
-  const [assignmentWords, setAssignmentWords] = useState<Word[]>([]);
+  const {
+    activeAssignment, setActiveAssignment,
+    studentAssignments, setStudentAssignments,
+    studentProgress, setStudentProgress,
+    assignmentWords, setAssignmentWords,
+  } = useStudentAssignmentData();
   // Warm the audio cache for the active assignment so a student who loses
   // Wi-Fi mid-lesson can still hear the words. Idle-scheduled, skipped on
   // 2G / data-saver. See useAssignmentPrecache for the why.
@@ -423,8 +433,11 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const speakWord = speakWordRaw;
 
   // --- GAME STATE ---
-  const [gameMode, setGameMode] = useState<GameMode>("classic");
-  const [showModeSelection, setShowModeSelection] = useState(true);
+  const {
+    gameMode, setGameMode,
+    showModeSelection, setShowModeSelection,
+    showModeIntro, setShowModeIntro,
+  } = useGameFlowState();
 
   // Handle Quick Play session from URL parameter — extracted to a
   // dedicated hook because the load logic plus the page-refresh
@@ -441,20 +454,14 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     createGuestUser,
     showToast,
   });
-  const [showModeIntro, setShowModeIntro] = useState(false);
-  const [spellingInput, setSpellingInput] = useState("");
-  const [currentIndex, setCurrentIndex] = useState(0);
-  // Score state; for QP resume kids we seed from the localStorage
-  // hint so the visible score doesn't snap back to 0 on rescan.
-  // (Server already preserves the cumulative — see qpCumulativeScoreRef
-  // initializer above.)
-  const [score, setScore] = useState(() => readQpResumeScore());
-  const [mistakes, setMistakes] = useState<number[]>([]);
-  // Per-word attempts accumulated during the current game.  Flushed to the
-  // word_attempts table via save_student_progress when the student finishes.
-  // Reset on game start so each session is independent.
-  const [wordAttemptBatch, setWordAttemptBatch] = useState<Array<{ word_id: number; is_correct: boolean }>>([]);
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
+  const {
+    spellingInput, setSpellingInput,
+    currentIndex, setCurrentIndex,
+    score, setScore,
+    mistakes, setMistakes,
+    wordAttemptBatch, setWordAttemptBatch,
+    feedback, setFeedback,
+  } = useGameSession();
   const {
     targetLanguage, setTargetLanguage,
     hasChosenLanguage, setHasChosenLanguage,
@@ -829,55 +836,11 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   // sets SUPABASE_ANON_KEY on Fly and flips the build flag.
   const tier2LoginEnabled =
     (import.meta as { env?: { VITE_ENABLE_TIER2_LOGIN?: string } }).env?.VITE_ENABLE_TIER2_LOGIN === 'true';
-  const handleTier2StudentLogin = useCallback(
-    async (email: string, pin: string): Promise<'ok' | 'invalid' | 'fallback'> => {
-      // User-local YYYY-MM-DD — drives the bootstrap's daily-missions / pet rollover.
-      const localDate = new Intl.DateTimeFormat('sv-SE').format(new Date());
-      // Suppress the onAuthStateChange restore that setSession() will fire —
-      // we hydrate directly from the server's bootstrap payload instead, so
-      // we don't pay the very client-side hops this endpoint exists to remove.
-      manualLoginInProgress.current = true;
-      try {
-        const result = await studentLoginViaServer({ email, pin, localDate });
-        if (result.kind === 'invalid') return 'invalid';
-        if (result.kind === 'unavailable') return 'fallback';
-        // Need a usable student dashboard payload to safely skip the client
-        // restore. If the server's bootstrap failed (null/non-ok/non-student),
-        // fall back to the direct path (which runs the normal restore) rather
-        // than landing the student on an empty dashboard.
-        const boot = result.bootstrap;
-        if (!boot || boot.status !== 'ok' || !boot.user || boot.user.role !== 'student') {
-          return 'fallback';
-        }
-        const { error: setErr } = await supabase.auth.setSession({
-          access_token: result.session.access_token,
-          refresh_token: result.session.refresh_token,
-        });
-        if (setErr) return 'fallback';
-        // Hydrate exactly what restoreSession's student branch would have set.
-        setUser(boot.user);
-        checkConsent(boot.user);
-        setStudentAssignments(boot.assignments);
-        setStudentProgress(boot.progress);
-        setBadges(boot.user.badges || []);
-        setXp(boot.user.xp ?? 0);
-        setCoins(boot.user.coins ?? 0);
-        setStreak(boot.user.streak ?? 0);
-        setLoading(false);
-        setView('student-dashboard');
-        return 'ok';
-      } catch {
-        return 'fallback';
-      } finally {
-        // Release the guard on the next tick so the SIGNED_IN event already
-        // queued by setSession() is skipped, while future events (token
-        // refresh, sign-out) are handled normally.
-        setTimeout(() => { manualLoginInProgress.current = false; }, 0);
-      }
-    },
-    [manualLoginInProgress, setUser, checkConsent, setStudentAssignments,
-     setStudentProgress, setBadges, setXp, setStreak, setLoading, setView],
-  );
+  // Tier-2 fast student login — see useTier2StudentLogin (extracted verbatim).
+  const handleTier2StudentLogin = useTier2StudentLogin({
+    manualLoginInProgressRef: manualLoginInProgress, setUser, checkConsent, setStudentAssignments,
+    setStudentProgress, setBadges, setXp, setCoins, setStreak, setLoading, setView,
+  });
 
   // Deep-link consumers: ?assignment=<id> + ?play=class-minute.
   useDeepLinkConsumers({
@@ -1130,21 +1093,17 @@ export default function App({ initialView }: { initialView?: View } = {}) {
       // straight out of their session.
       onRequestLogout: () => setShowExitConfirmModal(true),
     };
-    const section = isStudentHubView(view)
-      ? StudentHubSection({ ...studentSectionDeps, view })
-      : StudentDashboardSection(studentSectionDeps);
-    // Celebrations must mount on these return paths too: XP grants,
-    // badge claims and achievement unlocks all happen here, and the pet
-    // transformation above already keys off levelUp.pending. Without these
-    // the student never sees the level-up modal / achievement toasts that
-    // their actions trigger (they only mounted in the final render branch,
-    // which these early-return past).
     return (
-      <>
-        {section}
-        <LevelUpModal tier={levelUp.pending} onClose={levelUp.dismiss} />
-        <AchievementToast toasts={achievements.toasts} onDismiss={achievements.dismissToast} />
-      </>
+      <StudentSectionRoute
+        deps={studentSectionDeps}
+        view={view}
+        celebrations={{
+          levelUpTier: levelUp.pending,
+          onLevelUpClose: levelUp.dismiss,
+          achievementToasts: achievements.toasts,
+          onAchievementDismiss: achievements.dismissToast,
+        }}
+      />
     );
   }
 
@@ -1168,61 +1127,79 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   });
   if (hebrewRoute) return hebrewRoute;
   if (hasTeacherAccess(user) && view === "teacher-dashboard") {
-    return TeacherDashboardSection({
-      user, activeVoca, showVocaSwitcher: getEntitledVocas(user).length >= 2,
-      setActiveVoca, setView, setUser,
-      consentModal, exitConfirmModal, ocrCropModal,
-      showOnboarding, setShowOnboarding,
-      visibleClasses, visibleAssignments,
-      pendingStudentsCount: pendingStudents.length,
-      copiedCode, setCopiedCode, openDropdownClassId, setOpenDropdownClassId,
-      showCreateClassModal, setShowCreateClassModal,
-      newClassName, setNewClassName, handleCreateClass,
-      createdClassCode, createdClassName, setCreatedClassCode,
-      deleteConfirmModal, setDeleteConfirmModal,
-      setTeacherAssignments, setToasts, showToast, appToasts,
-      rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
-      toasts, confirmDialog, setConfirmDialog,
-      cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode,
-      fetchScores, fetchTeacherAssignments, loadPendingStudents,
-      setActivityNavOrigin, setClassShowAssignment, setWorksheetAssignment,
-      setSelectedClass, selectedClass, classes,
-      setAssignmentStep, setSelectedWords, setAssignmentTitle,
-      setAssignmentDeadline, setAssignmentModes, setAssignmentSentences,
-      setEditingAssignment, handleDeleteClass,
-      editingClass, setEditingClass, setClasses,
-      allWords: ALL_WORDS, set1Words: SET_1_WORDS, setCustomWords,
-      setSentenceDifficulty, setSentencesAutoGenerated, setSelectedLevel,
-      setRosterModalClass, rosterModalClass,
-      savedTasks, setQuickPlaySelectedWords, setQuickPlayInitialModes,
-    });
+    return (
+      <TeacherDashboardProvider value={{
+        user, activeVoca, showVocaSwitcher: getEntitledVocas(user).length >= 2,
+        setActiveVoca, setView, setUser,
+        consentModal, exitConfirmModal, ocrCropModal,
+        showOnboarding, setShowOnboarding,
+        visibleClasses, visibleAssignments,
+        pendingStudentsCount: pendingStudents.length,
+        copiedCode, setCopiedCode, openDropdownClassId, setOpenDropdownClassId,
+        showCreateClassModal, setShowCreateClassModal,
+        newClassName, setNewClassName, handleCreateClass,
+        createdClassCode, createdClassName, setCreatedClassCode,
+        deleteConfirmModal, setDeleteConfirmModal,
+        setTeacherAssignments, setToasts, showToast, appToasts,
+        rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
+        toasts, confirmDialog, setConfirmDialog,
+        cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode,
+        fetchScores, fetchTeacherAssignments, loadPendingStudents,
+        setActivityNavOrigin, setClassShowAssignment, setWorksheetAssignment,
+        setSelectedClass, selectedClass, classes,
+        setAssignmentStep, setSelectedWords, setAssignmentTitle,
+        setAssignmentDeadline, setAssignmentModes, setAssignmentSentences,
+        setEditingAssignment, handleDeleteClass,
+        editingClass, setEditingClass, setClasses,
+        allWords: ALL_WORDS, set1Words: SET_1_WORDS, setCustomWords,
+        setSentenceDifficulty, setSentencesAutoGenerated, setSelectedLevel,
+        setRosterModalClass, rosterModalClass,
+        savedTasks, setQuickPlaySelectedWords, setQuickPlayInitialModes,
+      }}>
+        {/* WHY no useMemo on the value above: it's the same inline object
+            literal App always passed to TeacherDashboardSection, so the
+            context value's identity per render is unchanged — the dashboard's
+            re-render behavior stays byte-for-byte identical to the
+            prop-drilled version. */}
+        <TeacherDashboardSection />
+      </TeacherDashboardProvider>
+    );
   }
 
   if (view === "create-assignment" && selectedClass) {
-    return CreateAssignmentSection({
-      user, selectedClass,
-      allWords: ALL_WORDS, set1Words: SET_1_WORDS, set2Words: SET_2_WORDS, topicPacks: TOPIC_PACKS,
-      customWords, setCustomWords,
-      assignmentTitle, setAssignmentTitle,
-      assignmentDeadline, setAssignmentDeadline,
-      assignmentModes, setAssignmentModes,
-      selectedWords, setSelectedWords,
-      selectedLevel, setSelectedLevel,
-      tagInput, setTagInput,
-      pastedText, setPastedText,
-      showPasteDialog, setShowPasteDialog,
-      pasteMatchedCount, pasteUnmatched,
-      handlePasteSubmit, handleAddUnmatchedAsCustom, handleSkipUnmatched,
-      handleTagInputKeyDown, handleDocxUpload, handleOcrUpload, handleSaveAssignment,
-      assignmentSentences, setAssignmentSentences,
-      sentenceDifficulty, setSentenceDifficulty,
-      isOcrProcessing, ocrProgress, ocrStatus,
-      showTopicPacks, setShowTopicPacks,
-      showAssignmentWelcome, setShowAssignmentWelcome,
-      editingAssignment, setEditingAssignment,
-      setActivityNavOrigin, setClassShowAssignment,
-      setView, onSaveTemplate: savedTasks.save, showToast, showPaywallToast, speakWord,
-    });
+    return (
+      <CreateAssignmentProvider value={{
+        user, selectedClass,
+        allWords: ALL_WORDS, set1Words: SET_1_WORDS, set2Words: SET_2_WORDS, topicPacks: TOPIC_PACKS,
+        customWords, setCustomWords,
+        assignmentTitle, setAssignmentTitle,
+        assignmentDeadline, setAssignmentDeadline,
+        assignmentModes, setAssignmentModes,
+        selectedWords, setSelectedWords,
+        selectedLevel, setSelectedLevel,
+        tagInput, setTagInput,
+        pastedText, setPastedText,
+        showPasteDialog, setShowPasteDialog,
+        pasteMatchedCount, pasteUnmatched,
+        handlePasteSubmit, handleAddUnmatchedAsCustom, handleSkipUnmatched,
+        handleTagInputKeyDown, handleDocxUpload, handleOcrUpload, handleSaveAssignment,
+        assignmentSentences, setAssignmentSentences,
+        sentenceDifficulty, setSentenceDifficulty,
+        isOcrProcessing, ocrProgress, ocrStatus,
+        showTopicPacks, setShowTopicPacks,
+        showAssignmentWelcome, setShowAssignmentWelcome,
+        editingAssignment, setEditingAssignment,
+        setActivityNavOrigin, setClassShowAssignment,
+        setView, onSaveTemplate: savedTasks.save, showToast, showPaywallToast, speakWord,
+      }}>
+        {/* WHY no useMemo on the value above: it's the same inline object
+            literal App always passed to CreateAssignmentSection, so the
+            context value's identity per render is unchanged — the wizard's
+            re-render behavior stays byte-for-byte identical to the
+            prop-drilled version. */}
+        <CreateAssignmentSection />
+      </CreateAssignmentProvider>
+    );
   }
 
 
@@ -1347,7 +1324,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   return (
     <>
       <AnnouncementBanner user={user} />
-      {renderGameRoute({
+      <GameRouteProvider value={{
         view, user, setUser, language: appLanguage,
         showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
         setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
@@ -1378,7 +1355,13 @@ export default function App({ initialView }: { initialView?: View } = {}) {
         saveScore, handleAnswer, handleMatchClick, handleTFAnswer,
         handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap, handleSentenceCheck,
         speakWord, speak, shuffle,
-      })}
+      }}>
+        {/* WHY no useMemo on the value above: it's the same inline object
+            literal App always passed to renderGameRoute, so the context
+            value's identity per render is unchanged — consumer re-render
+            behavior stays byte-for-byte identical to the prop-drilled version. */}
+        <GameRoute />
+      </GameRouteProvider>
       {showQpReactionBar && (
         <Suspense fallback={null}>
           <QpReactionBar sendReaction={quickPlaySocket.sendReaction} />
@@ -1395,8 +1378,12 @@ export default function App({ initialView }: { initialView?: View } = {}) {
           />
         </Suspense>
       )}
-      <LevelUpModal tier={levelUp.pending} onClose={levelUp.dismiss} />
-      <AchievementToast toasts={achievements.toasts} onDismiss={achievements.dismissToast} />
+      <AppCelebrations
+        levelUpTier={levelUp.pending}
+        onLevelUpClose={levelUp.dismiss}
+        achievementToasts={achievements.toasts}
+        onAchievementDismiss={achievements.dismissToast}
+      />
     </>
   );
 };
