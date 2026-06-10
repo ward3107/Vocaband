@@ -27,7 +27,6 @@ import { grantRetentionXp, grantNonXpReward, claimPetMilestoneReward } from "./h
 import { shuffle } from './utils';
 import { renderPublicView } from "./views/PublicViews";
 import { createGuestUser } from "./utils/createGuestUser";
-import { readQpResumeScore } from "./utils/qpResumeHint";
 import { clearIntendedClassCode } from "./utils/oauthIntent";
 import { useTeacherGuidesSync } from "./hooks/useTeacherGuidesSync";
 import { useVocaRouting } from "./hooks/useVocaRouting";
@@ -70,6 +69,7 @@ import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
 import { useGameModeSetup } from "./hooks/useGameModeSetup";
 import { useGameStats } from "./hooks/useGameStats";
 import { useStudentAssignmentData } from "./hooks/useStudentAssignmentData";
+import { useGameSession } from "./hooks/useGameSession";
 import { useTier2StudentLogin } from "./hooks/useTier2StudentLogin";
 import { useGameFlowState } from "./hooks/useGameFlowState";
 import { useAssignmentEditorState } from "./hooks/useAssignmentEditorState";
@@ -452,19 +452,14 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     createGuestUser,
     showToast,
   });
-  const [spellingInput, setSpellingInput] = useState("");
-  const [currentIndex, setCurrentIndex] = useState(0);
-  // Score state; for QP resume kids we seed from the localStorage
-  // hint so the visible score doesn't snap back to 0 on rescan.
-  // (Server already preserves the cumulative — see qpCumulativeScoreRef
-  // initializer above.)
-  const [score, setScore] = useState(() => readQpResumeScore());
-  const [mistakes, setMistakes] = useState<number[]>([]);
-  // Per-word attempts accumulated during the current game.  Flushed to the
-  // word_attempts table via save_student_progress when the student finishes.
-  // Reset on game start so each session is independent.
-  const [wordAttemptBatch, setWordAttemptBatch] = useState<Array<{ word_id: number; is_correct: boolean }>>([]);
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | "show-answer" | null>(null);
+  const {
+    spellingInput, setSpellingInput,
+    currentIndex, setCurrentIndex,
+    score, setScore,
+    mistakes, setMistakes,
+    wordAttemptBatch, setWordAttemptBatch,
+    feedback, setFeedback,
+  } = useGameSession();
   const {
     targetLanguage, setTargetLanguage,
     hasChosenLanguage, setHasChosenLanguage,
