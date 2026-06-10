@@ -46,7 +46,8 @@ import { renderClassShowOrWorksheet } from "./views/ClassShowAndWorksheetSection
 import { renderTeacherLiveScreens } from "./views/TeacherLiveScreens";
 import { isStudentHubView } from "./views/StudentDashboardSection";
 import { renderMiscViews } from "./views/MiscViewSections";
-import { renderGameRoute } from "./views/GameRoutes";
+import { GameRoute } from "./views/GameRoutes";
+import { GameRouteProvider } from "./views/GameRouteContext";
 import { renderStudentAuthRoute } from "./views/StudentAuthRoutes";
 import { renderPrivacySettingsSection } from "./views/PrivacySettingsSection";
 import { getGameDebugger } from "./utils/gameDebug";
@@ -1308,7 +1309,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   return (
     <>
       <AnnouncementBanner user={user} />
-      {renderGameRoute({
+      <GameRouteProvider value={{
         view, user, setUser, language: appLanguage,
         showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
         setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
@@ -1339,7 +1340,13 @@ export default function App({ initialView }: { initialView?: View } = {}) {
         saveScore, handleAnswer, handleMatchClick, handleTFAnswer,
         handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap, handleSentenceCheck,
         speakWord, speak, shuffle,
-      })}
+      }}>
+        {/* WHY no useMemo on the value above: it's the same inline object
+            literal App always passed to renderGameRoute, so the context
+            value's identity per render is unchanged — consumer re-render
+            behavior stays byte-for-byte identical to the prop-drilled version. */}
+        <GameRoute />
+      </GameRouteProvider>
       {showQpReactionBar && (
         <Suspense fallback={null}>
           <QpReactionBar sendReaction={quickPlaySocket.sendReaction} />

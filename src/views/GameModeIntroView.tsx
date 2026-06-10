@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import type { GameMode } from "../constants/game";
 import { useLanguage } from "../hooks/useLanguage";
 import { modeIntroT } from "../locales/student/mode-intro";
+import { useGameRoute } from "./GameRouteContext";
 
 // Per-mode theme colors — each game feels distinctive instead of a uniform look
 const modeThemes: Record<GameMode, {
@@ -32,26 +33,24 @@ const modeThemes: Record<GameMode, {
 };
 
 interface GameModeIntroViewProps {
-  gameMode: GameMode;
-  hasChosenLanguage: boolean;
-  setHasChosenLanguage: (v: boolean) => void;
-  setTargetLanguage: (lang: "hebrew" | "arabic") => void;
-  setShowModeIntro: (v: boolean) => void;
-  setShowModeSelection: (v: boolean) => void;
   /** Optional — caller can provide custom handler for the "Let's Go!" button
-   * (e.g. to add game debug tracking). Defaults to setShowModeIntro(false). */
+   * (e.g. to add game debug tracking). Defaults to setShowModeIntro(false).
+   * Kept as a prop (not from context) because GameRoute composes it inline
+   * with game-debug logging that isn't part of the shared bag. */
   onLetsGo?: () => void;
 }
 
-export default function GameModeIntroView({
-  gameMode,
-  hasChosenLanguage,
-  setHasChosenLanguage,
-  setTargetLanguage,
-  setShowModeIntro,
-  setShowModeSelection,
-  onLetsGo,
-}: GameModeIntroViewProps) {
+export default function GameModeIntroView({ onLetsGo }: GameModeIntroViewProps) {
+  // Rendered solely by GameRoute — the rest of its inputs come from the
+  // game-route context instead of being drilled as props.
+  const {
+    gameMode,
+    hasChosenLanguage,
+    setHasChosenLanguage,
+    setTargetLanguage,
+    setShowModeIntro,
+    setShowModeSelection,
+  } = useGameRoute();
   // Honour the language the student already picked at session start
   // (QuickPlay join screen, browser auto-detect, or the global picker).
   // The duplicate EN/AR/HE toggle that used to live on this screen
