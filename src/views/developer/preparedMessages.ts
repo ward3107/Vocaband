@@ -75,6 +75,28 @@ export const PREPARED_MESSAGES: PreparedMessage[] = [
     audience: "teachers",
   },
   {
+    id: "feat-ai-worksheets",
+    category: "New feature",
+    emoji: "🤖",
+    label: "AI worksheets",
+    title: "Generate a worksheet in seconds",
+    message:
+      "Pick a word set and let the AI lesson builder create a ready-to-print worksheet for your class. Find it in your teacher tools.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "feat-quick-play-qr",
+    category: "New feature",
+    emoji: "📱",
+    label: "QR Quick Play",
+    title: "Get the class playing in 10 seconds",
+    message:
+      "Show a QR code on the board and students join instantly — no logins, no class codes. Great for warm-ups and substitutes. Start it from Quick Play.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
     id: "feat-new-mode",
     category: "New feature",
     emoji: "🎮",
@@ -98,6 +120,39 @@ export const PREPARED_MESSAGES: PreparedMessage[] = [
   },
 
   // ── Engagement ───────────────────────────────────────────────────────────
+  {
+    id: "eng-teacher-recap",
+    category: "Engagement",
+    emoji: "📈",
+    label: "Weekly recap",
+    title: "Your class's week in review",
+    message:
+      "See how your students did this week — top players, words mastered, and who might need a nudge. Open your dashboard for the full picture.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "eng-teacher-quiet-class",
+    category: "Engagement",
+    emoji: "🔔",
+    label: "Re-engage a class",
+    title: "Bring a quiet class back to life",
+    message:
+      "Haven't assigned anything in a while? Set a quick 5-minute assignment and watch your class jump back in. It takes under two minutes to create.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "eng-teacher-leaderboard",
+    category: "Engagement",
+    emoji: "🏅",
+    label: "Class leaderboard",
+    title: "Celebrate your top students",
+    message:
+      "Check this week's class leaderboard and give a shout-out to your hardest workers. A little recognition keeps the whole class motivated.",
+    level: "info",
+    audience: "teachers",
+  },
   {
     id: "eng-streak",
     category: "Engagement",
@@ -224,6 +279,39 @@ export const PREPARED_MESSAGES: PreparedMessage[] = [
     audience: "all",
   },
   {
+    id: "tip-project-board",
+    category: "Tips & how-to",
+    emoji: "📺",
+    label: "Project on board",
+    title: "Turn any lesson into a class game",
+    message:
+      "Project a Live Challenge on your board and run the whole class through the words together. It's the easiest way to fill the last 10 minutes.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "tip-upload-list",
+    category: "Tips & how-to",
+    emoji: "📋",
+    label: "Upload your list",
+    title: "Use your own vocabulary list",
+    message:
+      "Paste or snap a photo of your own word list and Vocaband builds the games for you — perfect for matching your textbook or unit.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "tip-ministry-sets",
+    category: "Tips & how-to",
+    emoji: "🎯",
+    label: "Ministry word sets",
+    title: "Aligned with the Ministry vocabulary",
+    message:
+      "Assign Set 1, Set 2, or Set 3 straight from the library — already aligned to the curriculum, so you can assign with one tap.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
     id: "tip-language",
     category: "Tips & how-to",
     emoji: "🌍",
@@ -244,6 +332,28 @@ export const PREPARED_MESSAGES: PreparedMessage[] = [
     title: "Start the year strong",
     message:
       "Set up your classes and first assignments now so students hit the ground running. Need help? Everything starts from your dashboard.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "season-teacher-term-review",
+    category: "Seasonal",
+    emoji: "📚",
+    label: "End-of-term review",
+    title: "Build a quick end-of-term review",
+    message:
+      "Wrap up the term with a review assignment covering this period's words. Pick the sets, choose the modes, and send it home for revision.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "season-teacher-holiday-homework",
+    category: "Seasonal",
+    emoji: "✈️",
+    label: "Holiday homework",
+    title: "Set fun homework for the break",
+    message:
+      "Keep students practicing over the holiday with a light, game-based assignment. They keep their streaks — you come back to a class that's still sharp.",
     level: "info",
     audience: "teachers",
   },
