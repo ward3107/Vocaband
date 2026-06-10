@@ -209,6 +209,29 @@ export const PREPARED_MESSAGES: PreparedMessage[] = [
     audience: "students",
   },
 
+  {
+    id: "eng-teacher-goal",
+    category: "Engagement",
+    emoji: "🎯",
+    label: "Set a class goal",
+    title: "Set a class goal this week",
+    message:
+      "Challenge your class to hit a shared XP target this week. A clear goal turns practice into a team effort. Set it up from your dashboard.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "eng-teacher-most-improved",
+    category: "Engagement",
+    emoji: "🌟",
+    label: "Most improved",
+    title: "Spotlight your most improved student",
+    message:
+      "Your analytics show who's climbing fastest, not just who's on top. Give the most improved student a shout-out — it's a powerful motivator.",
+    level: "info",
+    audience: "teachers",
+  },
+
   // ── Promotion ────────────────────────────────────────────────────────────
   {
     id: "promo-invite",
@@ -251,6 +274,28 @@ export const PREPARED_MESSAGES: PreparedMessage[] = [
     title: "Limited-time offer — this week only",
     message:
       "For a limited time, upgrade at a special rate and unlock every premium feature for your classroom. Don't miss out!",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "promo-school-plan",
+    category: "Promotion",
+    emoji: "🏫",
+    label: "Whole-school plan",
+    title: "Bring Vocaband to your whole school",
+    message:
+      "Love it for your class? Ask about a school-wide plan so every English teacher gets the full toolkit. Reach out and we'll set it up.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "promo-free-term",
+    category: "Promotion",
+    emoji: "🎁",
+    label: "Free this term",
+    title: "Get the rest of the term free",
+    message:
+      "Sign up now and use every premium feature free for the rest of the term — no strings attached. Start with your first assignment today.",
     level: "info",
     audience: "teachers",
   },
@@ -312,6 +357,39 @@ export const PREPARED_MESSAGES: PreparedMessage[] = [
     audience: "teachers",
   },
   {
+    id: "tip-mix-modes",
+    category: "Tips & how-to",
+    emoji: "🎲",
+    label: "Mix game modes",
+    title: "Mix game modes to keep it fresh",
+    message:
+      "Pick a few different game modes for one assignment so students see each word in several ways. Variety is what makes it stick.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "tip-warmup-exit",
+    category: "Tips & how-to",
+    emoji: "⏱️",
+    label: "Warm-up / exit ticket",
+    title: "The perfect warm-up or exit ticket",
+    message:
+      "A 5-minute round at the start or end of class settles students and reinforces today's words. Quick Play makes it effortless.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "tip-due-date",
+    category: "Tips & how-to",
+    emoji: "📅",
+    label: "Set a due date",
+    title: "Add a deadline and track who's done",
+    message:
+      "Give assignments a due date and watch completion roll in on your dashboard. No more chasing — you can see exactly who's finished.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
     id: "tip-language",
     category: "Tips & how-to",
     emoji: "🌍",
@@ -354,6 +432,28 @@ export const PREPARED_MESSAGES: PreparedMessage[] = [
     title: "Set fun homework for the break",
     message:
       "Keep students practicing over the holiday with a light, game-based assignment. They keep their streaks — you come back to a class that's still sharp.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "season-teacher-exam-prep",
+    category: "Seasonal",
+    emoji: "📝",
+    label: "Exam prep",
+    title: "Help your class prep for the exam",
+    message:
+      "Assign a focused review of the words that'll be on the test. A few game rounds beat a worksheet for last-minute revision.",
+    level: "info",
+    audience: "teachers",
+  },
+  {
+    id: "season-teacher-new-term",
+    category: "Seasonal",
+    emoji: "🗓️",
+    label: "New term setup",
+    title: "Set up your classes for the new term",
+    message:
+      "Refresh your classes, add new students, and queue up your first assignments so the new term starts smoothly. It all begins on your dashboard.",
     level: "info",
     audience: "teachers",
   },
