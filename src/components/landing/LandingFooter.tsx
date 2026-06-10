@@ -19,7 +19,7 @@ import {
   Users,
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
-import { landingPageT } from "../../locales/student/landing-page";
+import { landingSectionsT } from "../../locales/student/landing-sections";
 import { teacherResourcesT } from "../../locales/student/teacher-resources";
 
 interface LandingFooterProps {
@@ -52,7 +52,7 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
   isAuthenticated,
 }) => {
   const { language, dir } = useLanguage();
-  const t = landingPageT[language];
+  const t = landingSectionsT[language];
   const tr = teacherResourcesT[language];
 
   return (
