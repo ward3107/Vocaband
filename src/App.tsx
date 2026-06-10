@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, Suspense } from "react";
 import type { View } from "./core/views";
 import { lazyWithRetry } from "./utils/lazyWithRetry";
-import { getEntitledVocas } from "./core/subject";
 import { useVocabularyLazyWithDefaults } from "./hooks/useVocabularyLazy";
 import SvgSpinner from "./components/svg/SvgSpinner";
 import AnnouncementBanner from "./components/AnnouncementBanner";
@@ -23,8 +22,7 @@ import { useLevelUp } from "./hooks/useLevelUp";
 import { useAchievements } from "./hooks/useAchievements";
 import { AppCelebrations } from "./components/app/AppCelebrations";
 import { StudentSectionRoute } from "./components/app/StudentSectionRoute";
-import { grantRetentionXp, grantNonXpReward, claimPetMilestoneReward } from "./handlers/retentionGrants";
-import { shuffle } from './utils';
+import { grantRetentionXp } from "./handlers/retentionGrants";
 import { renderPublicView } from "./views/PublicViews";
 import { createGuestUser } from "./utils/createGuestUser";
 import { clearIntendedClassCode } from "./utils/oauthIntent";
@@ -51,14 +49,13 @@ import { GameRoute } from "./views/GameRoutes";
 import { GameRouteProvider } from "./views/GameRouteContext";
 import { renderStudentAuthRoute } from "./views/StudentAuthRoutes";
 import { renderPrivacySettingsSection } from "./views/PrivacySettingsSection";
-import { getGameDebugger } from "./utils/gameDebug";
-import { type GameMode } from "./constants/game";
-import { useSpeechVoiceManager } from "./hooks/useSpeechVoiceManager";
 import { useBeforeUnloadWhileSaving } from "./hooks/useBeforeUnloadWhileSaving";
 import { useQuickPlaySocket } from "./hooks/useQuickPlaySocket";
 import { useTeacherActions } from "./hooks/useTeacherActions";
-import { useGameModeActions } from "./hooks/useGameModeActions";
-import { useGameFinish } from "./hooks/useGameFinish";
+import { useGameRouteDeps } from "./hooks/useGameRouteDeps";
+import { useTeacherDashboardDeps } from "./hooks/useTeacherDashboardDeps";
+import { useCreateAssignmentDeps } from "./hooks/useCreateAssignmentDeps";
+import { useStudentSectionDeps } from "./hooks/useStudentSectionDeps";
 import { useTranslate } from "./hooks/useTranslate";
 import { useSaveQueue } from "./hooks/useSaveQueue";
 import { useTeacherData } from "./hooks/useTeacherData";
@@ -67,8 +64,6 @@ import { useTeacherNotifications } from "./hooks/useTeacherNotifications";
 import { useLiveChallengeSocket } from "./hooks/useLiveChallengeSocket";
 import { useLiveChallengeEvents } from "./hooks/useLiveChallengeEvents";
 import { useQuickPlayEvents } from "./hooks/useQuickPlayEvents";
-import { useFeedbackTracking } from "./hooks/useFeedbackTracking";
-import { useGameModeSetup } from "./hooks/useGameModeSetup";
 import { useGameStats } from "./hooks/useGameStats";
 import { useStudentAssignmentData } from "./hooks/useStudentAssignmentData";
 import { useGameSession } from "./hooks/useGameSession";
@@ -87,7 +82,6 @@ import { useSaveQueueResilience } from "./hooks/useSaveQueueResilience";
 import { useAssignmentPrecache } from "./hooks/useAssignmentPrecache";
 import { useBackButtonTrap } from "./hooks/useBackButtonTrap";
 import { useViewGuards } from "./hooks/useViewGuards";
-import { useGameRoundOptions } from "./hooks/useGameRoundOptions";
 import { useStudentLogin } from "./hooks/useStudentLogin";
 import { useClassSwitch } from "./hooks/useClassSwitch";
 import { useConsent } from "./hooks/useConsent";
@@ -112,15 +106,12 @@ import { hasRestorableSession } from "./utils/hasRestorableSession";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { pickClassMinuteWords } from "./utils/classMinuteWords";
 import { isPublicView, shouldPreserveView } from "./utils/authViews";
-import { buildEmitScoreUpdate } from "./handlers/emitScoreUpdate";
 import { navigateToTeacherLogin, navigateToStudentLogin } from "./handlers/landingNav";
-import { buildCleanupSessionData, buildCleanupQuickPlayGuest } from "./handlers/sessionCleanups";
+import { buildCleanupSessionData } from "./handlers/sessionCleanups";
 
 type ConfirmDialog = { show: boolean; message: string; onConfirm: () => void };
 
 export default function App({ initialView }: { initialView?: View } = {}) {
-  // Initialize game debugger
-  const gameDebug = getGameDebugger();
   // Language-aware toast text — picked up at render time so a teacher
   // who flips EN/HE/AR before firing a callback sees the localised
   // version on the next render.
@@ -642,17 +633,6 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     handleGuestSessionEnded: () => { setQuickPlaySessionEnded(true); setActiveAssignment(null); },
   });
 
-  // Throttled Socket.IO score emit — routes to the live-challenge `/`
-  // namespace or the Quick Play `/quick-play` namespace depending on
-  // context. See handlers/emitScoreUpdate.
-  const emitScoreUpdate = buildEmitScoreUpdate({
-    user, socket, isFinished,
-    quickPlayActiveSession,
-    qpCumulativeScoreRef, lastScoreEmitRef,
-    quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
-  });
-
-
   // Emits JOIN_CHALLENGE / OBSERVE_CHALLENGE and listens for
   // challenge_error on the Live Challenge socket.  Pairs with
   // useLiveChallengeSocket (which owns the connection) — this hook
@@ -877,121 +857,38 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     currentWord, currentIndex, setIsFlipped,
   });
 
-  // Per-round derived data: 4-way options, T/F option, scrambled letters.
-  const { options, tfOption, scrambledWord } = useGameRoundOptions({
-    currentWord, gameWords, currentIndex,
-  });
-
-  // Feedback instrumentation: 5 s failsafe, processing-ref mirror,
-  // and gameDebug logs for feedback + word-change transitions.
-  useFeedbackTracking({
-    feedback, setFeedback,
-    currentIndex, view, gameMode,
-    showModeSelection, showModeIntro, isFinished,
-    gameWords, isProcessingRef,
-  });
-
-
-
-  // Voice selection + caching + voiceschanged listener are bundled in
-  // a hook so this component doesn't hold browser-API plumbing.
-  // speak() is provided by the voice manager — same wrapper as before
-  // (cancel-then-speak with parenthetical cleanup), just owned by the
-  // hook so this file doesn't carry browser-API plumbing.
-  const { speak } = useSpeechVoiceManager();
-
-  // Per-game-mode setup effects: auto-speak on word advance,
-  // matching-mode pairs build, letter-sounds reveal animation,
-  // sentence-builder first-sentence load.  All share the same
-  // `view === "game" && !showModeSelection` guard pattern.
-  useGameModeSetup({
-    view, gameMode, currentWord, currentIndex, gameWords,
-    showModeSelection, showModeIntro, isFinished,
-    targetLanguage, activeAssignment,
-    speakWord, speak,
-    setMatchingPairs, setMatchedIds, setSelectedMatch,
-    setRevealedLetters,
-    setSentenceIndex, setAvailableWords, setBuiltSentence, setSentenceFeedback,
-  });
-
-
-  // Guest exit cleanup — sign out anon auth, drop the resume hint,
-  // reset completedModes.  See handlers/sessionCleanups.
-  const cleanupQuickPlayGuest = buildCleanupQuickPlayGuest(
-    () => user,
-    () => quickPlayActiveSession,
-    setQuickPlayCompletedModes,
-  );
-
-  // Game-finish handlers (saveScore + handleExitGame), extracted into a
-  // dedicated hook. saveScore in particular is large — anti-farm cap,
-  // booster math, streak handling, badge checks, optimistic save with
-  // retry queue — and was crowding App.tsx. Behaviour unchanged.
-  const { saveScore, handleExitGame } = useGameFinish({
-    user,
-    score, gameMode, gameWords, mistakes, wordAttemptBatch, activeAssignment,
-    quickPlayActiveSession,
-    // On mode-finish: accumulate this mode's finalScore into the
-    // Accumulate mode score into the session-wide cumulative BEFORE
-    // emitting, so the QP socket sees a monotonically-increasing
-    // total across modes (server rejects regresses).
-    quickPlaySocketUpdateScore: (finalScore: number, extras?: {
-      streak?: number;
-      roundProgress?: { done: number; total: number };
-      perfectRound?: boolean;
-    }) => {
-      qpCumulativeScoreRef.current += Math.max(0, finalScore);
-      quickPlaySocket.updateScore(qpCumulativeScoreRef.current, extras);
-    },
-    xp, setXp, coins, setCoins, streak, setStreak, badges, studentProgress, setStudentProgress,
-    setIsSaving, setSaveError, setQuickPlayCompletedModes,
-    retention, boosters,
-    showToast, awardBadge, queueSaveOperation,
-    setView, setUser, setIsFinished, setCurrentIndex, setScore, setMistakes,
-    setWordAttemptBatch, setFeedback, setSpellingInput, setMatchedIds,
-    setSelectedMatch, setIsFlipped, setRevealedLetters, setSentenceIndex,
-    setAvailableWords, setBuiltSentence, setSentenceFeedback, setHiddenOptions,
-    showModeSelection, setShowModeSelection,
-    // App's quickPlayActiveSession is wider than the hook needs; the
-    // hook only sets it to null on exit, so the cast is sound.
-    setQuickPlayActiveSession: setQuickPlayActiveSession as React.Dispatch<React.SetStateAction<{ id: string; sessionCode: string; [k: string]: unknown } | null>>,
-    setQuickPlayStudentName,
-    cleanupSessionData, cleanupQuickPlayGuest,
-  });
-
-  // Game-mode handlers, extracted so App.tsx doesn't carry the full
-  // weight of the per-mode answer logic. Same behavior as the inline
-  // versions; the hook just owns the implementation now.
-  //
-  // Must be called AFTER `saveScore` and `emitScoreUpdate` are defined
-  // (the hook closes over them as callbacks), and BEFORE any JSX that
-  // wires the destructured handlers as props.
-  const {
-    handleSentenceWordTap,
-    handleSentenceCheck,
-    handleMatchClick,
-    handleAnswer,
-    handleTFAnswer,
-    handleFlashcardAnswer,
-    handleSpellingSubmit,
-  } = useGameModeActions({
-    score, setScore, currentIndex, setCurrentIndex, setIsFinished,
-    gameWords, currentWord, gameMode,
-    feedback, setFeedback, mistakes, setMistakes, setHiddenOptions,
-    wordAttempts, setWordAttempts, setWordAttemptBatch,
-    tfOption,
-    spellingInput, setSpellingInput,
-    setIsFlipped,
-    selectedMatch, setSelectedMatch,
-    matchedIds, setMatchedIds,
-    isMatchingProcessing, setIsMatchingProcessing,
-    matchingPairs,
-    activeAssignment, sentenceIndex, setSentenceIndex,
-    availableWords, setAvailableWords, builtSentence, setBuiltSentence,
-    setSentenceFeedback,
-    feedbackTimeoutRef, isProcessingRef,
-    emitScoreUpdate, saveScore,
-    speak, speakWord, playWrong,
+  // GameRouteProvider value bag + the game-tail hooks that feed only it
+  // (round options, feedback tracking, voice manager, mode setup, game
+  // finish, mode actions).  Called at the exact position the first of
+  // those hooks (useGameRoundOptions) used to occupy, so the global hook
+  // order is unchanged.  Returns a fresh (un-memoized) bag every render —
+  // same identity semantics as the old inline literal.
+  const gameRouteDeps = useGameRouteDeps({
+    view, user, setUser, language: appLanguage,
+    showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
+    setGameMode, setShowModeIntro, setView, quickPlayCompletedModes,
+    showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
+    gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
+    score, xp, streak, badges, mistakes, gameWords, quickPlayActiveSession,
+    isSaving, saveError, toasts, confirmDialog, setConfirmDialog,
+    setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
+    setWordAttempts, setHiddenOptions, setSpellingInput, setAssignmentWords,
+    cleanupSessionData, setQuickPlayActiveSession, setQuickPlayStudentName,
+    setSaveError, targetLanguage, hiddenOptions,
+    isMatchingProcessing, matchingPairs, matchedIds, selectedMatch,
+    isFlipped, setIsFlipped, revealedLetters, spellingInput,
+    sentenceIndex, sentenceFeedback, builtSentence, setBuiltSentence,
+    availableWords, setAvailableWords, leaderboard, speakWord,
+    setXp, coins, setCoins, setStreak, setStudentProgress,
+    setIsSaving, setQuickPlayCompletedModes,
+    wordAttempts, wordAttemptBatch, setWordAttemptBatch,
+    retention, boosters, showToast, awardBadge, queueSaveOperation,
+    socket, qpCumulativeScoreRef, lastScoreEmitRef,
+    quickPlaySocketUpdateScore: quickPlaySocket.updateScore,
+    feedbackTimeoutRef,
+    setMatchingPairs, setSelectedMatch, setMatchedIds, setIsMatchingProcessing,
+    setRevealedLetters, setSentenceIndex, setSentenceFeedback,
+    playWrong,
   });
 
   // Global cookie banner — renders on top of ANY view until accepted
@@ -1011,6 +908,84 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   const { cookieBannerOverlay, ocrCropModal, configErrorBanner } = useAppPreOverlays({
     user, showCookieBanner, handleCookieAccept, handleCookieCustomize, handleCookieReject,
     qpResumeSuppress, ocrPendingFile, setOcrPendingFile, processOcrFile,
+  });
+
+  // TeacherDashboardProvider value bag — null for non-teachers, so the
+  // render branch below stays equivalent to the old
+  // `hasTeacherAccess(user) && view === "teacher-dashboard"` gate.
+  // Hook-free assembly; returns a fresh (un-memoized) bag every render.
+  const teacherDashboardDeps = useTeacherDashboardDeps({
+    user, activeVoca,
+    setActiveVoca, setView, setUser,
+    consentModal, exitConfirmModal, ocrCropModal,
+    showOnboarding, setShowOnboarding,
+    visibleClasses, visibleAssignments,
+    pendingStudentsCount: pendingStudents.length,
+    copiedCode, setCopiedCode, openDropdownClassId, setOpenDropdownClassId,
+    showCreateClassModal, setShowCreateClassModal,
+    newClassName, setNewClassName, handleCreateClass,
+    createdClassCode, createdClassName, setCreatedClassCode,
+    deleteConfirmModal, setDeleteConfirmModal,
+    setTeacherAssignments, setToasts, showToast, appToasts,
+    rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
+    toasts, confirmDialog, setConfirmDialog,
+    cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode,
+    fetchScores, fetchTeacherAssignments, loadPendingStudents,
+    setActivityNavOrigin, setClassShowAssignment, setWorksheetAssignment,
+    setSelectedClass, selectedClass, classes,
+    setAssignmentStep, setSelectedWords, setAssignmentTitle,
+    setAssignmentDeadline, setAssignmentModes, setAssignmentSentences,
+    setEditingAssignment, handleDeleteClass,
+    editingClass, setEditingClass, setClasses,
+    allWords: ALL_WORDS, set1Words: SET_1_WORDS, setCustomWords,
+    setSentenceDifficulty, setSentencesAutoGenerated, setSelectedLevel,
+    setRosterModalClass, rosterModalClass,
+    savedTasks, setQuickPlaySelectedWords, setQuickPlayInitialModes,
+  });
+
+  // CreateAssignmentProvider value bag — null until a class is selected,
+  // so the render branch below stays equivalent to the old
+  // `view === "create-assignment" && selectedClass` gate.  Hook-free
+  // assembly; returns a fresh (un-memoized) bag every render.
+  const createAssignmentDeps = useCreateAssignmentDeps({
+    user, selectedClass,
+    allWords: ALL_WORDS, set1Words: SET_1_WORDS, set2Words: SET_2_WORDS, topicPacks: TOPIC_PACKS,
+    customWords, setCustomWords,
+    assignmentTitle, setAssignmentTitle,
+    assignmentDeadline, setAssignmentDeadline,
+    assignmentModes, setAssignmentModes,
+    selectedWords, setSelectedWords,
+    selectedLevel, setSelectedLevel,
+    tagInput, setTagInput,
+    pastedText, setPastedText,
+    showPasteDialog, setShowPasteDialog,
+    pasteMatchedCount, pasteUnmatched,
+    handlePasteSubmit, handleAddUnmatchedAsCustom, handleSkipUnmatched,
+    handleTagInputKeyDown, handleDocxUpload, handleOcrUpload, handleSaveAssignment,
+    assignmentSentences, setAssignmentSentences,
+    sentenceDifficulty, setSentenceDifficulty,
+    isOcrProcessing, ocrProgress, ocrStatus,
+    showTopicPacks, setShowTopicPacks,
+    showAssignmentWelcome, setShowAssignmentWelcome,
+    editingAssignment, setEditingAssignment,
+    setActivityNavOrigin, setClassShowAssignment,
+    setView, onSaveTemplate: savedTasks.save, showToast, showPaywallToast, speakWord,
+  });
+
+  // StudentSectionRoute prop bag — null for non-students, so the render
+  // branch below stays equivalent to the old `user?.role === "student"`
+  // gate.  Hook-free assembly; fresh (un-memoized) bag every render.
+  const studentSectionDeps = useStudentSectionDeps({
+    user, xp, coins, streak, badges, setXp, setCoins, setBadges, setUser,
+    copiedCode, setCopiedCode,
+    studentAssignments, studentProgress, studentDataLoading,
+    showStudentOnboarding, setShowStudentOnboarding,
+    consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
+    setView, setActiveAssignment, setAssignmentWords, setShowModeSelection,
+    setGameMode, setIsFinished,
+    startClassMinute, retention, boosters,
+    showToast, renameStudentDisplayName,
+    levelUpPending: levelUp.pending, setShowExitConfirmModal,
   });
 
   if (loading && !quickPlaySessionParam) {
@@ -1071,28 +1046,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   });
   if (studentAuthRoute) return studentAuthRoute;
 
-  if (user?.role === "student" && (view === "student-dashboard" || isStudentHubView(view))) {
-    // Shared prop bag — the dashboard and its hub sub-pages (Practice /
-    // Missions / Boosters / Badges) need the same handlers + state.
-    const studentSectionDeps = {
-      user, xp, coins, streak, badges, setXp, setCoins, setBadges, setUser,
-      copiedCode, setCopiedCode,
-      studentAssignments, studentProgress, studentDataLoading,
-      showStudentOnboarding, setShowStudentOnboarding,
-      consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
-      setView, setActiveAssignment, setAssignmentWords, setShowModeSelection,
-      setGameMode, setIsFinished,
-      startClassMinute, retention, boosters,
-      showToast, renameStudentDisplayName,
-      // Same crossing that fires LevelUpModal triggers the pet's
-      // transformation animation (XP_TITLES tiers coincide with
-      // PET_MILESTONES, so the pet has just evolved too).
-      evolutionPending: Boolean(levelUp.pending),
-      // Top-bar logout routes through the same soft-landing modal the
-      // hardware back button uses, so a stray tap doesn't drop the kid
-      // straight out of their session.
-      onRequestLogout: () => setShowExitConfirmModal(true),
-    };
+  if (studentSectionDeps && (view === "student-dashboard" || isStudentHubView(view))) {
     return (
       <StudentSectionRoute
         deps={studentSectionDeps}
@@ -1126,77 +1080,17 @@ export default function App({ initialView }: { initialView?: View } = {}) {
     setActiveVoca, setShowModeSelection, setView,
   });
   if (hebrewRoute) return hebrewRoute;
-  if (hasTeacherAccess(user) && view === "teacher-dashboard") {
+  if (view === "teacher-dashboard" && teacherDashboardDeps) {
     return (
-      <TeacherDashboardProvider value={{
-        user, activeVoca, showVocaSwitcher: getEntitledVocas(user).length >= 2,
-        setActiveVoca, setView, setUser,
-        consentModal, exitConfirmModal, ocrCropModal,
-        showOnboarding, setShowOnboarding,
-        visibleClasses, visibleAssignments,
-        pendingStudentsCount: pendingStudents.length,
-        copiedCode, setCopiedCode, openDropdownClassId, setOpenDropdownClassId,
-        showCreateClassModal, setShowCreateClassModal,
-        newClassName, setNewClassName, handleCreateClass,
-        createdClassCode, createdClassName, setCreatedClassCode,
-        deleteConfirmModal, setDeleteConfirmModal,
-        setTeacherAssignments, setToasts, showToast, appToasts,
-        rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
-        toasts, confirmDialog, setConfirmDialog,
-        cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode,
-        fetchScores, fetchTeacherAssignments, loadPendingStudents,
-        setActivityNavOrigin, setClassShowAssignment, setWorksheetAssignment,
-        setSelectedClass, selectedClass, classes,
-        setAssignmentStep, setSelectedWords, setAssignmentTitle,
-        setAssignmentDeadline, setAssignmentModes, setAssignmentSentences,
-        setEditingAssignment, handleDeleteClass,
-        editingClass, setEditingClass, setClasses,
-        allWords: ALL_WORDS, set1Words: SET_1_WORDS, setCustomWords,
-        setSentenceDifficulty, setSentencesAutoGenerated, setSelectedLevel,
-        setRosterModalClass, rosterModalClass,
-        savedTasks, setQuickPlaySelectedWords, setQuickPlayInitialModes,
-      }}>
-        {/* WHY no useMemo on the value above: it's the same inline object
-            literal App always passed to TeacherDashboardSection, so the
-            context value's identity per render is unchanged — the dashboard's
-            re-render behavior stays byte-for-byte identical to the
-            prop-drilled version. */}
+      <TeacherDashboardProvider value={teacherDashboardDeps}>
         <TeacherDashboardSection />
       </TeacherDashboardProvider>
     );
   }
 
-  if (view === "create-assignment" && selectedClass) {
+  if (view === "create-assignment" && createAssignmentDeps) {
     return (
-      <CreateAssignmentProvider value={{
-        user, selectedClass,
-        allWords: ALL_WORDS, set1Words: SET_1_WORDS, set2Words: SET_2_WORDS, topicPacks: TOPIC_PACKS,
-        customWords, setCustomWords,
-        assignmentTitle, setAssignmentTitle,
-        assignmentDeadline, setAssignmentDeadline,
-        assignmentModes, setAssignmentModes,
-        selectedWords, setSelectedWords,
-        selectedLevel, setSelectedLevel,
-        tagInput, setTagInput,
-        pastedText, setPastedText,
-        showPasteDialog, setShowPasteDialog,
-        pasteMatchedCount, pasteUnmatched,
-        handlePasteSubmit, handleAddUnmatchedAsCustom, handleSkipUnmatched,
-        handleTagInputKeyDown, handleDocxUpload, handleOcrUpload, handleSaveAssignment,
-        assignmentSentences, setAssignmentSentences,
-        sentenceDifficulty, setSentenceDifficulty,
-        isOcrProcessing, ocrProgress, ocrStatus,
-        showTopicPacks, setShowTopicPacks,
-        showAssignmentWelcome, setShowAssignmentWelcome,
-        editingAssignment, setEditingAssignment,
-        setActivityNavOrigin, setClassShowAssignment,
-        setView, onSaveTemplate: savedTasks.save, showToast, showPaywallToast, speakWord,
-      }}>
-        {/* WHY no useMemo on the value above: it's the same inline object
-            literal App always passed to CreateAssignmentSection, so the
-            context value's identity per render is unchanged — the wizard's
-            re-render behavior stays byte-for-byte identical to the
-            prop-drilled version. */}
+      <CreateAssignmentProvider value={createAssignmentDeps}>
         <CreateAssignmentSection />
       </CreateAssignmentProvider>
     );
@@ -1324,42 +1218,10 @@ export default function App({ initialView }: { initialView?: View } = {}) {
   return (
     <>
       <AnnouncementBanner user={user} />
-      <GameRouteProvider value={{
-        view, user, setUser, language: appLanguage,
-        showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
-        setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
-        petDisplayName: user?.displayName ?? "",
-        petXp: xp,
-        petCurrentStage: retention.currentPetStage,
-        petNextStage: retention.nextPetStage,
-        petClaimableMilestone: retention.claimablePetMilestone,
-        onClaimPetMilestone: (milestone) => claimPetMilestoneReward(
-          milestone,
-          (v, r) => grantRetentionXp(v, r, { user, setXp, showToast }),
-          (k, v) => grantNonXpReward(k, v, { user, setUser }),
-          retention.claimPetMilestone,
-        ),
-        showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
-        gameDebug, gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
-        score, xp, streak, badges, mistakes, gameWords, quickPlayActiveSession,
-        isSaving, saveError, toasts, confirmDialog, setConfirmDialog,
-        setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
-        setWordAttempts, setHiddenOptions, setSpellingInput, setAssignmentWords,
-        cleanupSessionData, cleanupQuickPlayGuest,
-        setQuickPlayActiveSession, setQuickPlayStudentName,
-        setSaveError, targetLanguage, options, hiddenOptions,
-        isMatchingProcessing, matchingPairs, matchedIds, selectedMatch, tfOption,
-        isFlipped, setIsFlipped, scrambledWord, revealedLetters, spellingInput,
-        sentenceIndex, sentenceFeedback, builtSentence, setBuiltSentence,
-        availableWords, setAvailableWords, leaderboard,
-        saveScore, handleAnswer, handleMatchClick, handleTFAnswer,
-        handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap, handleSentenceCheck,
-        speakWord, speak, shuffle,
-      }}>
-        {/* WHY no useMemo on the value above: it's the same inline object
-            literal App always passed to renderGameRoute, so the context
-            value's identity per render is unchanged — consumer re-render
-            behavior stays byte-for-byte identical to the prop-drilled version. */}
+      {/* Bag assembled by useGameRouteDeps — fresh object every render
+          (NOT memoized), so the context value's per-render identity is
+          unchanged from the old inline literal. */}
+      <GameRouteProvider value={gameRouteDeps}>
         <GameRoute />
       </GameRouteProvider>
       {showQpReactionBar && (
@@ -1372,7 +1234,7 @@ export default function App({ initialView }: { initialView?: View } = {}) {
           <QuickPlayHelpButton
             onAlertTeacher={() => quickPlaySocket.sendReaction('🙋')}
             onLeave={() => {
-              cleanupQuickPlayGuest();
+              gameRouteDeps.cleanupQuickPlayGuest();
               setView('public-landing');
             }}
           />
