@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* `tall:` — viewport-HEIGHT variant for above-the-fold layouts (landing hero).
+   Width breakpoints alone can't tell a 1280×720 laptop from a 1280×1024
+   desktop, so full-scale hero sizing is gated behind `tall:` and short
+   screens fall back to the compact base scale. 930px ≈ the height the
+   full-scale hero needs to keep its CTAs above the fold. */
+@custom-variant tall (@media (min-height: 930px));
+
 /* =============================================================================
    Self-hosted Latin web fonts — Plus Jakarta Sans (variable) + Be Vietnam Pro
    (4 static weights).  Files live in /public/fonts/ so they ship from the
