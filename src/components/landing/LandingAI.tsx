@@ -2,11 +2,11 @@ import React from "react";
 import { motion } from "motion/react";
 import { Sparkles } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
-import { landingPageT } from "../../locales/student/landing-page";
+import { landingSectionsT } from "../../locales/student/landing-sections";
 
 const LandingAI: React.FC = () => {
   const { language, dir, isRTL } = useLanguage();
-  const t = landingPageT[language];
+  const t = landingSectionsT[language];
 
   return (
     <section className="py-8 md:py-20 px-4 md:px-6 relative isolate overflow-hidden bg-gradient-to-b from-transparent via-violet-950/20 to-transparent">
