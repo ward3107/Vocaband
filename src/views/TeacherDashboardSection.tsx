@@ -4,11 +4,11 @@
  * so the 186-line JSX block doesn't crowd the orchestrator.
  *
  * Behaviour preserved exactly.  Closure deps from App's render scope
- * (state, setters, sibling-hook helpers) come in via a deps bag.
+ * (state, setters, sibling-hook helpers) come in via TeacherDashboardContext
+ * (App.tsx wraps this branch in a TeacherDashboardProvider).
  */
 import { Suspense, type ReactNode } from 'react';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
-import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 // Lazy — both pull in motion/react and only mount when a roster modal is
 // opened. Loading them eagerly put motion on the cold first-paint path.
@@ -32,133 +32,16 @@ import {
   loadAssignmentIntoCreateForm,
   applySavedTask,
 } from '../handlers/teacherDashboardActions';
-import type { Word } from '../data/vocabulary';
-import type { AppUser, ClassData, AssignmentData } from '../core/supabase';
-import type { VocaId } from '../core/subject';
 import type { SavedTask } from '../hooks/useSavedTasks';
-import type { View } from '../core/views';
+import { useTeacherDashboard, type TeacherDashboardSectionDeps } from './TeacherDashboardContext';
+
+// Re-export so existing importers keep resolving the deps type from here.
+export type { TeacherDashboardSectionDeps };
 
 const TeacherDashboardView = lazyWithRetry(() => import('./TeacherDashboardView'));
 
-type AppToasts = {
-  failedDeleteFromDb: (m: string) => string;
-  assignmentRestored: string;
-  failedDeleteAssignment: (m: string) => string;
-  assignmentDeleted: string;
-  couldNotSetupClass: string;
-};
-
-type Toast = { id: string; message: string; type: 'success' | 'error' | 'info'; action?: { label: string; onClick: () => void } };
-type ConfirmDialog = { show: boolean; message: string; onConfirm: () => void };
-
-export interface TeacherDashboardSectionDeps {
-  user: AppUser;
-  activeVoca: VocaId | null;
-  showVocaSwitcher: boolean;
-  setActiveVoca: React.Dispatch<React.SetStateAction<VocaId | null>>;
-  setView: React.Dispatch<React.SetStateAction<View>>;
-  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
-
-  consentModal: ReactNode;
-  exitConfirmModal: ReactNode;
-  ocrCropModal: ReactNode;
-
-  showOnboarding: boolean;
-  setShowOnboarding: React.Dispatch<React.SetStateAction<boolean>>;
-
-  visibleClasses: ClassData[];
-  visibleAssignments: AssignmentData[];
-  pendingStudentsCount: number;
-
-  copiedCode: string | null;
-  setCopiedCode: React.Dispatch<React.SetStateAction<string | null>>;
-  openDropdownClassId: string | null;
-  setOpenDropdownClassId: React.Dispatch<React.SetStateAction<string | null>>;
-
-  showCreateClassModal: boolean;
-  setShowCreateClassModal: React.Dispatch<React.SetStateAction<boolean>>;
-  newClassName: string;
-  setNewClassName: React.Dispatch<React.SetStateAction<string>>;
-  handleCreateClass: () => void;
-  createdClassCode: string | null;
-  createdClassName: string;
-  setCreatedClassCode: React.Dispatch<React.SetStateAction<string | null>>;
-
-  deleteConfirmModal: { id: string; title: string } | null;
-  setDeleteConfirmModal: React.Dispatch<React.SetStateAction<{ id: string; title: string } | null>>;
-  setTeacherAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
-  setToasts: React.Dispatch<React.SetStateAction<Toast[]>>;
-  showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
-  appToasts: AppToasts;
-
-  rejectStudentModal: { id: string; displayName: string } | null;
-  setRejectStudentModal: React.Dispatch<React.SetStateAction<{ id: string; displayName: string } | null>>;
-  confirmRejectStudent: (id: string) => Promise<void>;
-  toasts: Toast[];
-  confirmDialog: ConfirmDialog;
-  setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialog>>;
-
-  cleanupSessionData: () => void;
-  setQuickPlayActiveSession: React.Dispatch<
-    React.SetStateAction<{
-      id: string;
-      sessionCode: string;
-      wordIds: number[];
-      words: Word[];
-      allowedModes?: string[];
-      aiSentences?: string[];
-    } | null>
-  >;
-  setQuickPlaySessionCode: React.Dispatch<React.SetStateAction<string | null>>;
-
-  fetchScores: () => void;
-  fetchTeacherAssignments: (classIdsOverride?: string[]) => Promise<void> | void;
-  loadPendingStudents: () => void;
-  setActivityNavOrigin: React.Dispatch<React.SetStateAction<'create-assignment' | null>>;
-  setClassShowAssignment: React.Dispatch<
-    React.SetStateAction<{ title: string; wordIds: number[]; customWords?: Word[] } | null>
-  >;
-  setWorksheetAssignment: React.Dispatch<
-    React.SetStateAction<{ title: string; wordIds: number[]; customWords?: Word[]; className?: string | null } | null>
-  >;
-
-  setSelectedClass: React.Dispatch<React.SetStateAction<ClassData | null>>;
-  selectedClass: ClassData | null;
-  classes: ClassData[];
-  setAssignmentStep: React.Dispatch<React.SetStateAction<number>>;
-  setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
-  setAssignmentTitle: React.Dispatch<React.SetStateAction<string>>;
-  setAssignmentDeadline: React.Dispatch<React.SetStateAction<string>>;
-  setAssignmentModes: React.Dispatch<React.SetStateAction<string[]>>;
-  setAssignmentSentences: React.Dispatch<React.SetStateAction<string[]>>;
-  setEditingAssignment: React.Dispatch<React.SetStateAction<AssignmentData | null>>;
-  handleDeleteClass: (classId: string) => void;
-
-  editingClass: ClassData | null;
-  setEditingClass: React.Dispatch<React.SetStateAction<ClassData | null>>;
-  setClasses: React.Dispatch<React.SetStateAction<ClassData[]>>;
-
-  allWords: Word[];
-  set1Words: Word[];
-  setCustomWords: React.Dispatch<React.SetStateAction<Word[]>>;
-  setSentenceDifficulty: React.Dispatch<React.SetStateAction<1 | 2 | 3 | 4>>;
-  setSentencesAutoGenerated: React.Dispatch<React.SetStateAction<boolean>>;
-  setSelectedLevel: React.Dispatch<React.SetStateAction<'Set 1' | 'Set 2' | 'Custom'>>;
-
-  setRosterModalClass: React.Dispatch<React.SetStateAction<ClassData | null>>;
-  rosterModalClass: ClassData | null;
-
-  savedTasks: {
-    tasks: SavedTask[];
-    togglePin: (id: string) => void;
-    remove: (id: string) => void;
-    bumpUse: (id: string) => void;
-  };
-  setQuickPlaySelectedWords: React.Dispatch<React.SetStateAction<Word[]>>;
-  setQuickPlayInitialModes: React.Dispatch<React.SetStateAction<string[] | undefined>>;
-}
-
-export function TeacherDashboardSection(deps: TeacherDashboardSectionDeps): ReactNode {
+export function TeacherDashboardSection(): ReactNode {
+  const deps = useTeacherDashboard();
   const {
     user, activeVoca, showVocaSwitcher, setActiveVoca, setView, setUser,
     consentModal, exitConfirmModal, ocrCropModal,
