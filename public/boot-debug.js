@@ -12,56 +12,17 @@
   // promote.  font-display:swap on the local @font-face keeps the
   // first-paint behaviour identical.)
 
-  // RTL font loader.
+  // RTL font loader — now a no-op.
   //
-  // index.html only blocks on the Latin font CSS (Plus Jakarta Sans + Be
-  // Vietnam Pro). Hebrew + Arabic visitors need Heebo + Fredoka, which
-  // are 10 more @font-face declarations. To keep first-paint cost off
-  // English visitors we defer the RTL CSS to here: check the saved
-  // language preference (or the browser's preferred language on first
-  // visit) and inject a non-blocking <link> if the user actually reads
-  // RTL. Performed before React mounts so by the time the landing page
-  // hydrates, the RTL CSS is already in flight.
-  //
-  // Exposed as window.__vocabandLoadRtlFonts so useLanguage's
-  // setLanguage() can call it when a user toggles to HE/AR later.
-  function loadRtlFonts() {
-    if (window.__vocabandRtlFontsLoaded) return;
-    window.__vocabandRtlFontsLoaded = true;
-    var meta = document.querySelector('meta[name="vocaband-rtl-fonts"]');
-    if (!meta) return;
-    var href = meta.getAttribute('content');
-    if (!href) return;
-    var link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = href;
-    link.crossOrigin = 'anonymous';
-    document.head.appendChild(link);
-  }
+  // Heebo + Fredoka used to be lazy-loaded from fonts.googleapis.com here.
+  // They are now self-hosted via @font-face in src/index.css (variable
+  // woff2 in /public/fonts), so there's nothing to inject: the browser
+  // fetches the Hebrew woff2 on demand the first time a Hebrew glyph
+  // renders, and English-only sessions never touch it.  The stub is kept
+  // so useLanguage's setLanguage() can still call it harmlessly when a
+  // user toggles to HE/AR.
+  function loadRtlFonts() {}
   window.__vocabandLoadRtlFonts = loadRtlFonts;
-
-  function detectRtl() {
-    try {
-      var saved = localStorage.getItem('vocaband_legal_language');
-      if (saved === 'he' || saved === 'ar') return true;
-      if (saved === 'en') return false;
-    } catch (_) { /* localStorage unavailable */ }
-    var nav = navigator;
-    if (!nav) return false;
-    var cands = [];
-    if (Array.isArray(nav.languages)) {
-      for (var i = 0; i < nav.languages.length; i++) cands.push(nav.languages[i]);
-    }
-    if (nav.language) cands.push(nav.language);
-    for (var j = 0; j < cands.length; j++) {
-      var lc = (cands[j] || '').toLowerCase();
-      if (lc === 'he' || lc.indexOf('he-') === 0 || lc === 'iw' || lc.indexOf('iw-') === 0) return true;
-      if (lc === 'ar' || lc.indexOf('ar-') === 0) return true;
-      if (lc === 'en' || lc.indexOf('en-') === 0) return false;
-    }
-    return false;
-  }
-  if (detectRtl()) loadRtlFonts();
 
   window.addEventListener('error', function (e) {
     var el = document.getElementById('boot-debug');

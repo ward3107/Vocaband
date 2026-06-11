@@ -268,18 +268,15 @@
          is below-the-fold or interaction-blocking, so swap-loading
          them is fine.
 
-         RTL fonts (Heebo + Fredoka) are still lazy-loaded from Google
-         Fonts when the visitor's language is HE/AR — boot-debug.js
-         injects a <link> built from the meta tag below.  The preconnects
-         remain to warm the TLS handshake for that case; on EN-only
-         sessions the preconnect costs ~one cheap DNS lookup and is
-         dropped by the browser if it's never followed.  When Heebo +
-         Fredoka are also self-hosted (future PR) these can disappear
-         entirely. -->
+         RTL fonts (Heebo + Fredoka) are now ALSO self-hosted from
+         /public/fonts via @font-face in src/index.css — the browser
+         fetches the Hebrew woff2 on demand the first time a Hebrew glyph
+         renders, so EN-only sessions never pay for it and no request
+         reaches fonts.googleapis.com / fonts.gstatic.com at all.  The
+         Google Fonts preconnects + the vocaband-rtl-fonts meta tag were
+         removed with that change. -->
     <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/be-vietnam-pro-400-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Supabase auth + REST + storage origin.  Pre-warming the TLS
          handshake here knocks ~80–200 ms off the FIRST request the
          supabase-js client makes (auth.getSession on bootstrap), which
@@ -287,10 +284,6 @@
          Especially valuable on weak school Wi-Fi where the TLS round-
          trips dominate.  See R4 in docs/SCHOOL-PERFORMANCE-PLAN.md. -->
     <link rel="preconnect" href="https://auth.vocaband.com" crossorigin />
-    <!-- Pre-computed RTL fonts URL so boot-debug.js can inject it as a
-         single <link> without string-building. Kept as a meta tag so
-         CSP `style-src` doesn't have to allow inline href construction. -->
-    <meta name="vocaband-rtl-fonts" content="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;900&family=Fredoka:wght@400;500;600;700&display=swap" />
     <!-- Material Symbols link was removed: the font was loaded on every
          page but never actually rendered (lucide-react is used
          exclusively for icons).  On school networks that block
