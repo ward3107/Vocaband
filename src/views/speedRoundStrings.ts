@@ -21,10 +21,12 @@ interface HostStrings {
   title: string; joinHeading: string; code: string;
   wordsHeading: string; searchPlaceholder: string;
   wordsCount: (n: number) => string; needWords: (min: number) => string;
-  clearWords: string; noResults: string;
+  clearWords: string; noResults: string; savedListsHeading: string;
   autoPlayLabel: string; autoNextIn: (n: number) => string;
-  modeHeading: string; timerHeading: string;
+  modeHeading: string; modeHint: string; timerHeading: string;
   start: string; nextWord: string; wordLive: string;
+  roundDone: string; playAgain: string;
+  wordsPlayed: (done: number, total: number) => string;
   leaderboard: string; noStudents: string;
   end: string; endRound: string;
   seconds: (n: number) => string; players: (n: number) => string;
@@ -42,9 +44,14 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     wordsHeading: "Your words", searchPlaceholder: "Type a word to add it\u2026",
     wordsCount: (n) => `${n} words ready`, needWords: (min) => `Add at least ${min} words to start`,
     clearWords: "Clear all", noResults: "No matching words in the library",
+    savedListsHeading: "Your saved lists",
     autoPlayLabel: "Auto-play words", autoNextIn: (n) => `Next word in ${n}\u2026`,
-    modeHeading: "Question mode", timerHeading: "Time per word",
+    modeHeading: "Question modes",
+    modeHint: "Pick one or more \u2014 each word gets a random mode from your picks.",
+    timerHeading: "Time per word",
     start: "Start word", nextWord: "Next word", wordLive: "Word live",
+    roundDone: "All words played!", playAgain: "Play again",
+    wordsPlayed: (done, total) => `${done}/${total} words played`,
     leaderboard: "Leaderboard", noStudents: "Waiting for students to join…",
     end: "End game", endRound: "End word",
     seconds: (n) => `${n}s`, players: (n) => `${n} playing`,
@@ -65,8 +72,13 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     wordsCount: (n) => `${n} מילים מוכנות`, needWords: (min) => `הוסיפו לפחות ${min} מילים כדי להתחיל`,
     clearWords: "נקה הכל", noResults: "אין מילים תואמות במאגר",
     autoPlayLabel: "ניגון אוטומטי", autoNextIn: (n) => `המילה הבאה בעוד ${n}\u2026`,
-    modeHeading: "סוג שאלה", timerHeading: "זמן לכל מילה",
+    savedListsHeading: "הרשימות השמורות שלך",
+    modeHeading: "סוגי שאלות",
+    modeHint: "בחרו אחד או יותר — כל מילה מקבלת סוג אקראי מהבחירה שלכם.",
+    timerHeading: "זמן לכל מילה",
     start: "התחל מילה", nextWord: "מילה הבאה", wordLive: "מילה פעילה",
+    roundDone: "כל המילים שוחקו!", playAgain: "שחקו שוב",
+    wordsPlayed: (done, total) => `${done}/${total} מילים שוחקו`,
     leaderboard: "טבלת מובילים", noStudents: "ממתינים שתלמידים יצטרפו…",
     end: "סיים משחק", endRound: "סיים מילה",
     seconds: (n) => `${n} שנ'`, players: (n) => `${n} משחקים`,
@@ -87,8 +99,13 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     wordsCount: (n) => `${n} كلمات جاهزة`, needWords: (min) => `أضيفوا ${min} كلمات على الأقل للبدء`,
     clearWords: "مسح الكل", noResults: "لا توجد كلمات مطابقة في المكتبة",
     autoPlayLabel: "تشغيل تلقائي", autoNextIn: (n) => `الكلمة التالية خلال ${n}\u2026`,
-    modeHeading: "نوع السؤال", timerHeading: "الوقت لكل كلمة",
+    savedListsHeading: "قوائمك المحفوظة",
+    modeHeading: "أنواع الأسئلة",
+    modeHint: "اختر نوعًا واحدًا أو أكثر — كل كلمة تحصل على نوع عشوائي من اختيارك.",
+    timerHeading: "الوقت لكل كلمة",
     start: "ابدأ الكلمة", nextWord: "الكلمة التالية", wordLive: "كلمة نشطة",
+    roundDone: "تم لعب كل الكلمات!", playAgain: "العب مرة أخرى",
+    wordsPlayed: (done, total) => `${done}/${total} كلمات لُعبت`,
     leaderboard: "لوحة المتصدرين", noStudents: "في انتظار انضمام الطلاب…",
     end: "إنهاء اللعبة", endRound: "إنهاء الكلمة",
     seconds: (n) => `${n} ث`, players: (n) => `${n} يلعبون`,

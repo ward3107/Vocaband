@@ -15,6 +15,7 @@ interface ArenaHostStrings {
   // SpeedWordPicker strings — same contract as Speed Round's host.
   searchPlaceholder: string; wordsCount: (n: number) => string;
   needWords: (min: number) => string; clearWords: string; noResults: string;
+  savedListsHeading: string;
   start: string; arenaLive: string; restart: string;
   leaderboard: string; noStudents: string;
   end: string; endArena: string;
@@ -34,6 +35,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     searchPlaceholder: "Type a word to add it…",
     wordsCount: (n) => `${n} words ready`, needWords: (min) => `Add at least ${min} words to start`,
     clearWords: "Clear all", noResults: "No matching words in the library",
+    savedListsHeading: "Your saved lists",
     start: "Start arena", arenaLive: "Arena live", restart: "New arena",
     leaderboard: "Leaderboard", noStudents: "Waiting for students to join…",
     end: "End game", endArena: "End arena",
@@ -55,6 +57,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     searchPlaceholder: "הקלידו מילה כדי להוסיף…",
     wordsCount: (n) => `${n} מילים מוכנות`, needWords: (min) => `הוסיפו לפחות ${min} מילים כדי להתחיל`,
     clearWords: "נקה הכל", noResults: "אין מילים תואמות במאגר",
+    savedListsHeading: "הרשימות השמורות שלך",
     start: "התחל זירה", arenaLive: "זירה פעילה", restart: "זירה חדשה",
     leaderboard: "טבלת מובילים", noStudents: "ממתינים שתלמידים יצטרפו…",
     end: "סיים משחק", endArena: "סיים זירה",
@@ -76,6 +79,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     searchPlaceholder: "اكتبوا كلمة لإضافتها…",
     wordsCount: (n) => `${n} كلمات جاهزة`, needWords: (min) => `أضيفوا ${min} كلمات على الأقل للبدء`,
     clearWords: "مسح الكل", noResults: "لا توجد كلمات مطابقة في المكتبة",
+    savedListsHeading: "قوائمك المحفوظة",
     start: "ابدأ الساحة", arenaLive: "الساحة نشطة", restart: "ساحة جديدة",
     leaderboard: "لوحة المتصدرين", noStudents: "في انتظار انضمام الطلاب…",
     end: "إنهاء اللعبة", endArena: "إنهاء الساحة",

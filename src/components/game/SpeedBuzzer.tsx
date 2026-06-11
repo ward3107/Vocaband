@@ -160,7 +160,16 @@ export default function SpeedBuzzer({
               <span className="font-black text-stone-500 text-sm">{t.tapToHear}</span>
             </button>
           ) : (
-            <h2 className="text-3xl sm:text-4xl font-black text-stone-900 break-words" dir="auto">{prompt}</h2>
+            // Big enough to read across a desk — long prompts (true/false
+            // pairs, phrases) step down so they still fit a phone screen.
+            <h2
+              className={`font-black text-stone-900 break-words leading-tight ${
+                prompt.length > 24 ? "text-3xl sm:text-5xl" : "text-5xl sm:text-7xl"
+              }`}
+              dir="auto"
+            >
+              {prompt}
+            </h2>
           )}
         </div>
 
@@ -171,7 +180,9 @@ export default function SpeedBuzzer({
               type="button"
               onClick={() => handleTap(i)}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`inline-flex items-center justify-center px-4 py-6 rounded-2xl font-black text-lg sm:text-xl text-white shadow-lg active:scale-[0.97] transition bg-gradient-to-br ${OPTION_STYLES[i % OPTION_STYLES.length]}`}
+              className={`inline-flex items-center justify-center px-4 py-6 rounded-2xl font-black text-white shadow-lg active:scale-[0.97] transition bg-gradient-to-br break-words ${
+                opt.length > 18 ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl"
+              } ${OPTION_STYLES[i % OPTION_STYLES.length]}`}
               dir="auto"
             >
               {opt}

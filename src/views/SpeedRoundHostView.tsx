@@ -23,6 +23,7 @@ import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
+import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
@@ -60,7 +61,9 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   // fixed Set 1/2/3 picker (product call 2026-06-11: teachers run rounds
   // on exactly the 10–15 words they chose, not a whole curriculum set).
   const [pickedWords, setPickedWords] = useState<Word[]>([]);
-  const [mode, setMode] = useState<QpSpeedMode>("classic");
+  // One or more question modes — each word draws a random one, so the
+  // teacher can mix classic + listening + reverse… in a single round.
+  const [modes, setModes] = useState<QpSpeedMode[]>(["classic"]);
   const [roundSeconds, setRoundSeconds] = useState<number>(15);
   const [endedRoundId, setEndedRoundId] = useState<string | null>(null);
   const [winnerClientId, setWinnerClientId] = useState<string | null>(null);
@@ -75,10 +78,32 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const [autoPlay, setAutoPlay] = useState(true);
   const [autoCountdown, setAutoCountdown] = useState<number | null>(null);
   const tokenRef = useRef<string | null>(null);
-  // Cycle through the teacher's list without repeats until it's exhausted.
+  // Each word plays at most ONCE per run — the round is over when the
+  // teacher's whole list has been used (no endless recycling). The ref is
+  // the source of truth for picking; playedCount mirrors its size so the
+  // UI re-renders as words are consumed.
   const usedWordIdsRef = useRef(new Set<number>());
+  const [playedCount, setPlayedCount] = useState(0);
 
   const canStart = pickedWords.length >= MIN_WORDS;
+  const allPlayed = pickedWords.length > 0 && playedCount >= pickedWords.length;
+
+  // The teacher's saved word lists (same saved_word_groups the assignment
+  // wizard writes), resolved to library words — ids that don't resolve
+  // (e.g. custom OCR words) are dropped since they can't form questions.
+  const { groups: savedGroupsRaw } = useSavedWordGroups();
+  const savedGroups = useMemo(() => {
+    const lib = vocab?.ALL_WORDS;
+    if (!lib || savedGroupsRaw.length === 0) return [];
+    const byId = new Map(lib.map((w) => [w.id, w]));
+    return savedGroupsRaw
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        words: g.words.map((id) => byId.get(id)).filter((w): w is Word => !!w),
+      }))
+      .filter((g) => g.words.length > 0);
+  }, [vocab, savedGroupsRaw]);
 
   useEffect(() => {
     if (status !== "connected") return;
@@ -107,12 +132,12 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
     setWinnerClientId(p.winnerClientId);
   }), [onSpeedEnded]);
 
-  // Confetti the instant a word ends.
+  // Confetti the instant a word ends — bigger when it was the last one.
   const prevActiveRef = useRef(false);
   useEffect(() => {
-    if (prevActiveRef.current && !roundActive) celebrate("normal");
+    if (prevActiveRef.current && !roundActive) celebrate(allPlayed ? "big" : "normal");
     prevActiveRef.current = roundActive;
-  }, [roundActive]);
+  }, [roundActive, allPlayed]);
 
   // &mode=speed lets the student bootstrap skip the unused vocab prefetch.
   const joinUrl = useMemo(() => `${window.location.origin}/?session=${sessionCode}&mode=speed`, [sessionCode]);
@@ -121,32 +146,41 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const secondsLeft = currentSpeed ? Math.max(0, Math.round((currentSpeed.deadlineTs - now) / 1000)) : 0;
   const lowTime = roundActive && secondsLeft <= 3;
 
-  // Pick the next word from the teacher's list, cycling so nothing repeats
-  // until every word has run once (matters for short 10–15 word lists).
-  const pickNextWord = (): Word => {
+  // Pick the next unplayed word from the teacher's list. Returns null once
+  // every word has run — the round is OVER then, never recycled (teachers
+  // reported the old endless loop felt broken on short 10–15 word lists).
+  const pickNextWord = (): Word | null => {
     const unused = pickedWords.filter(w => !usedWordIdsRef.current.has(w.id));
-    const source = unused.length > 0 ? unused : pickedWords;
-    if (unused.length === 0) usedWordIdsRef.current.clear();
-    const word = source[Math.floor(Math.random() * source.length)];
+    if (unused.length === 0) return null;
+    const word = unused[Math.floor(Math.random() * unused.length)];
     usedWordIdsRef.current.add(word.id);
     return word;
   };
 
-  // Build the next word's question client-side, then push it. Retries a few
-  // words if a given word can't form a question for the chosen mode (no
-  // translation, etc.) before giving up with a soft error.
+  // Build the next word's question client-side, then push it. Each word
+  // draws a random mode from the teacher's selection; retries a few words
+  // if one can't form a question for the drawn mode (no translation, etc.)
+  // before giving up with a soft error.
   const handleStart = () => {
     if (!tokenRef.current || roundActive || !canStart) return;
     const fallback = vocab?.ALL_WORDS ?? pickedWords;
     let question = null;
     for (let attempt = 0; attempt < 8 && !question; attempt++) {
       const word = pickNextWord();
+      if (!word) break; // list exhausted — the run is complete
+      const mode = modes[Math.floor(Math.random() * modes.length)];
       question = buildSpeedQuestion({
         mode, word, pool: pickedWords, fallback, l1,
         trueFalseLabels: { yes: t.tfTrue, no: t.tfFalse },
       });
     }
-    if (!question) { setBuildError(true); return; }
+    setPlayedCount(usedWordIdsRef.current.size);
+    if (!question) {
+      // Only an error if words remained but none could build a question;
+      // exhausting the list is the normal "round complete" path.
+      if (usedWordIdsRef.current.size < pickedWords.length) setBuildError(true);
+      return;
+    }
     setBuildError(false);
     // The Start tap is a user gesture — prime + play the jingle.
     primeAudio();
@@ -157,14 +191,30 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
     setHasRunRound(true);
   };
 
+  // "Play again" — reset the used-words run and launch the first word in
+  // the same tap (the ref clears synchronously, so handleStart sees a
+  // fresh list).
+  const handlePlayAgain = () => {
+    usedWordIdsRef.current.clear();
+    setPlayedCount(0);
+    setWinnerClientId(null);
+    handleStart();
+  };
+
+  const toggleMode = (m: QpSpeedMode) =>
+    setModes(prev => prev.includes(m)
+      ? (prev.length > 1 ? prev.filter(x => x !== m) : prev)
+      : [...prev, m]);
+
   // ─── Auto-play: chain words automatically after the podium beat ──────
   // Armed only between words (hasRunRound && !roundActive) so the teacher
   // always launches the FIRST word explicitly. Any dependency change
-  // (toggle off, word starting, list shrinking) cancels the countdown.
+  // (toggle off, word starting, list shrinking, run completing) cancels
+  // the countdown.
   const handleStartRef = useRef(handleStart);
   useEffect(() => { handleStartRef.current = handleStart; });
   useEffect(() => {
-    if (!autoPlay || roundActive || !hasRunRound || pickedWords.length < MIN_WORDS) {
+    if (!autoPlay || roundActive || !hasRunRound || pickedWords.length < MIN_WORDS || allPlayed) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- cancels a pending countdown when auto-play conditions break
       setAutoCountdown(null);
       return;
@@ -182,7 +232,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
       });
     }, 1000);
     return () => window.clearInterval(id);
-  }, [autoPlay, roundActive, hasRunRound, pickedWords.length]);
+  }, [autoPlay, roundActive, hasRunRound, pickedWords.length, allPlayed]);
 
   const handleEndRound = () => {
     if (currentSpeed && tokenRef.current) endSpeedRound(currentSpeed.roundId, tokenRef.current);
@@ -340,21 +390,25 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               <SpeedWordPicker
                 library={vocab?.ALL_WORDS ?? null}
                 picked={pickedWords}
-                onChange={(words) => { setPickedWords(words); usedWordIdsRef.current.clear(); }}
+                onChange={(words) => { setPickedWords(words); usedWordIdsRef.current.clear(); setPlayedCount(0); }}
                 minWords={MIN_WORDS}
                 t={t}
+                savedGroups={savedGroups}
               />
 
-              {/* Mode */}
-              <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-3">{t.modeHeading}</h2>
+              {/* Modes — multi-select; each word draws a random one */}
+              <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-1">{t.modeHeading}</h2>
+              <p className="text-[11px] font-bold text-stone-400 mb-3">{t.modeHint}</p>
               <div className="grid grid-cols-2 gap-2">
                 {QP_SPEED_MODES.map((m) => {
-                  const picked = mode === m;
+                  const picked = modes.includes(m);
                   return (
                     <button
                       key={m}
                       type="button"
-                      onClick={() => setMode(m)}
+                      onClick={() => toggleMode(m)}
+                      role="checkbox"
+                      aria-checked={picked}
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                       className={`relative rounded-xl p-2.5 text-start border-2 transition-all ${picked ? "bg-gradient-to-br from-indigo-500 to-violet-600 border-transparent text-white shadow-md" : pillIdle}`}
                     >
@@ -403,20 +457,37 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               </button>
 
               {buildError && <p className="mt-3 text-xs font-bold text-rose-600">{t.buildError}</p>}
+              {hasRunRound && !roundActive && allPlayed && (
+                <p className="mt-3 text-center text-sm font-black text-emerald-600">🎉 {t.roundDone}</p>
+              )}
+              {hasRunRound && !allPlayed && (
+                <p className="mt-3 text-center text-xs font-bold text-stone-400">{t.wordsPlayed(playedCount, pickedWords.length)}</p>
+              )}
 
-              <button
-                type="button"
-                onClick={handleStart}
-                disabled={roundActive || !canStart}
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`mt-4 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || !canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]"}`}
-              >
-                {roundActive
-                  ? <><Clock size={18} /> {t.wordLive} · {secondsLeft}s</>
-                  : autoCountdown !== null
-                    ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
-                    : <><Play size={18} /> {startLabel}</>}
-              </button>
+              {allPlayed && !roundActive ? (
+                <button
+                  type="button"
+                  onClick={handlePlayAgain}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className="mt-4 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/30 active:scale-[0.98] transition"
+                >
+                  <Play size={18} /> {t.playAgain}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStart}
+                  disabled={roundActive || !canStart}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className={`mt-4 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || !canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]"}`}
+                >
+                  {roundActive
+                    ? <><Clock size={18} /> {t.wordLive} · {secondsLeft}s</>
+                    : autoCountdown !== null
+                      ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
+                      : <><Play size={18} /> {startLabel}</>}
+                </button>
+              )}
               {roundActive && (
                 <button
                   type="button"
@@ -432,18 +503,24 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
         </div>
       </div>
 
-      {/* Presentation mode floating start / end-round */}
+      {/* Presentation mode floating start / play-again / end-round */}
       <AnimatePresence>
         {presenting && !roundActive && (
           <motion.button
             type="button"
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}
-            onClick={handleStart}
+            onClick={allPlayed ? handlePlayAgain : handleStart}
             disabled={!canStart}
             style={{ touchAction: "manipulation" }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl shadow-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500 to-pink-600 active:scale-[0.98] transition disabled:opacity-60"
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl active:scale-[0.98] transition disabled:opacity-60 ${
+              allPlayed
+                ? "shadow-emerald-500/40 bg-gradient-to-r from-emerald-500 to-teal-600"
+                : "shadow-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500 to-pink-600"
+            }`}
           >
-            <Zap size={20} /> {autoCountdown !== null ? t.autoNextIn(autoCountdown) : startLabel}
+            {allPlayed
+              ? <><Play size={20} /> 🎉 {t.roundDone} · {t.playAgain}</>
+              : <><Zap size={20} /> {autoCountdown !== null ? t.autoNextIn(autoCountdown) : startLabel}</>}
           </motion.button>
         )}
       </AnimatePresence>

@@ -21,6 +21,7 @@ import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
+import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import ArenaCanvas from "../components/game/ArenaCanvas";
 import SpeedWordPicker from "../components/game/SpeedWordPicker";
@@ -75,6 +76,23 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const tokenRef = useRef<string | null>(null);
 
   const canStart = pickedWords.length >= MIN_WORDS && enabledModes.size > 0;
+
+  // The teacher's saved word lists (same saved_word_groups the assignment
+  // wizard writes), resolved to library words — ids that don't resolve
+  // (e.g. custom OCR words) are dropped since they can't form questions.
+  const { groups: savedGroupsRaw } = useSavedWordGroups();
+  const savedGroups = useMemo(() => {
+    const lib = vocab?.ALL_WORDS;
+    if (!lib || savedGroupsRaw.length === 0) return [];
+    const byId = new Map(lib.map((w) => [w.id, w]));
+    return savedGroupsRaw
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        words: g.words.map((id) => byId.get(id)).filter((w): w is Word => !!w),
+      }))
+      .filter((g) => g.words.length > 0);
+  }, [vocab, savedGroupsRaw]);
 
   useEffect(() => {
     if (status !== "connected") return;
@@ -276,6 +294,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 minWords={MIN_WORDS}
                 t={t}
                 chipClass="bg-indigo-100 text-indigo-700"
+                savedGroups={savedGroups}
               />
 
               {/* Mode mix — multi-toggle, unlike Speed Round's single pick */}
