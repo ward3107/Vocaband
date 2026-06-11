@@ -2218,19 +2218,26 @@ async function startServer() {
     };
   }
 
+  /** Beat between answering a word and it reappearing elsewhere (recycle).
+   *  Long enough to read the "✓ got it", short enough that the map never
+   *  feels empty. */
+  const QP_ARENA_RESPAWN_MS = 1500;
+
   /** Scatter `count` token positions with simple rejection sampling —
    *  min ~80 logical units apart, ~60 away from the edges — so two words
    *  never overlap enough for one touch to be ambiguous about which token
-   *  was grabbed. Falls back to a plain random spot after 40 rejected
-   *  candidates (a crowded map beats an infinite loop). */
-  function qpArenaScatterPositions(count: number): QpArenaPos[] {
+   *  was grabbed. `avoid` seeds the spacing check with positions already on
+   *  the map (used by respawn so a recycled word doesn't land on a live one)
+   *  without returning them. Falls back to a plain random spot after 40
+   *  rejected candidates (a crowded map beats an infinite loop). */
+  function qpArenaScatterPositions(count: number, avoid: QpArenaPos[] = []): QpArenaPos[] {
     const MARGIN = 60;
     const MIN_DIST = 80;
     const roll = (): QpArenaPos => ({
       x: MARGIN + Math.floor(Math.random() * (QP_ARENA_WIDTH - 2 * MARGIN)),
       y: MARGIN + Math.floor(Math.random() * (QP_ARENA_HEIGHT - 2 * MARGIN)),
     });
-    const out: QpArenaPos[] = [];
+    const out: QpArenaPos[] = [...avoid];
     for (let i = 0; i < count; i++) {
       let placed: QpArenaPos | null = null;
       for (let attempt = 0; attempt < 40 && !placed; attempt++) {
@@ -2239,7 +2246,39 @@ async function startServer() {
       }
       out.push(placed ?? roll());
     }
-    return out;
+    return out.slice(avoid.length); // drop the seeded avoid positions
+  }
+
+  /** Recycle an answered word back onto the map after a short beat: a new
+   *  position (clear of live tokens) + reshuffled options (correctIndex kept
+   *  pointed at the right answer, so muscle-memory can't game it). Reuses the
+   *  word's pre-authored question — the server has no vocabulary to build a
+   *  new one. Keeps the arena populated until the teacher ends it. No-ops if
+   *  the arena/word is gone or already back in play. */
+  function qpArenaScheduleRespawn(sessionCode: string, wordId: string): void {
+    setTimeout(() => {
+      const s = qpSessions.get(sessionCode);
+      const a = s?.currentArena;
+      const w = a?.words.get(wordId);
+      if (!s || !a || !w || w.state !== "answered") return;
+
+      // Reshuffle options in place, tracking where the correct answer lands.
+      const correctText = w.options[w.correctIndex];
+      for (let i = w.options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [w.options[i], w.options[j]] = [w.options[j], w.options[i]];
+      }
+      w.correctIndex = Math.max(0, w.options.indexOf(correctText));
+
+      const live = [...a.words.values()].filter((o) => o !== w && o.pos).map((o) => o.pos as QpArenaPos);
+      w.pos = qpArenaScatterPositions(1, live)[0] ?? w.pos;
+      w.state = "available";
+      w.lockedBy = null;
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_WORD, {
+        sessionCode,
+        word: qpArenaPublicWord(wordId, w),
+      });
+    }, QP_ARENA_RESPAWN_MS);
   }
 
   /** Project a word into the shape the ROOM is allowed to see — label +
@@ -2413,14 +2452,17 @@ async function startServer() {
       if (!scored) return null; // duplicate / too late — the fumble timer releases the word
       if (round.timer) clearTimeout(round.timer);
       word.activeRound = null;
-      // Retired either way (right OR wrong) — a missed word doesn't respawn
-      // until the phase-2c refill ships. lockedBy stays for "who took it".
+      // Show the "✓ got it" beat, then recycle the word back onto the map
+      // (new spot + reshuffled options) so the hunt never empties — the
+      // teacher's End arena button decides when it's over. Right OR wrong both
+      // retire-then-respawn; lockedBy stays for the brief "who took it".
       word.state = "answered";
       arena.grabCooldownUntil.set(args.clientId, Date.now() + QP_ARENA_GRAB_COOLDOWN_MS);
       qpIo.to(state.sessionCode).emit(QP_SERVER_EVENTS.ARENA_WORD, {
         sessionCode: state.sessionCode,
         word: qpArenaPublicWord(wordId, word),
       });
+      qpArenaScheduleRespawn(state.sessionCode, wordId);
       return { sessionCode: state.sessionCode, roundId, ...scored };
     }
     return null;
