@@ -35,6 +35,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/ios": "^8.4.0",
     "@floating-ui/react": "^0.27.19",
     "@google/generative-ai": "^0.24.1",
     "@google/model-viewer": "^4.3.1",
@@ -91,6 +94,7 @@
     "uuid": "^11.1.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.0",
     "@cloudflare/vite-plugin": "^1.40.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",

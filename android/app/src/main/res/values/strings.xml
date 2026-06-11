@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Vocaband</string>
+    <string name="title_activity_main">Vocaband</string>
+    <string name="package_name">com.vocaband.student</string>
+    <string name="custom_url_scheme">com.vocaband.student</string>
+</resources>

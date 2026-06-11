@@ -1,0 +1,100 @@
+/**
+ * Student app shell — the Capacitor wrapper shipped to Google Play /
+ * App Store is students-only.  These tests pin the two behaviours the
+ * shell relies on:
+ *   1. isStudentShell() detection (Capacitor bridge / ?shell= param /
+ *      persisted marker), and
+ *   2. resolveInitialView() never returning a teacher-facing view
+ *      inside the shell.
+ */
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { isStudentShell } from '../utils/studentShell';
+import { resolveInitialView } from '../utils/resolveInitialView';
+
+type CapacitorWindow = Window & { Capacitor?: { isNativePlatform?: () => boolean } };
+
+function setUrl(path: string, search = '') {
+  window.history.replaceState({}, '', `${path}${search}`);
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  setUrl('/');
+});
+
+afterEach(() => {
+  delete (window as CapacitorWindow).Capacitor;
+  localStorage.clear();
+  setUrl('/');
+});
+
+describe('isStudentShell', () => {
+  it('is false for a plain browser visit', () => {
+    expect(isStudentShell()).toBe(false);
+  });
+
+  it('detects the injected Capacitor bridge', () => {
+    (window as CapacitorWindow).Capacitor = { isNativePlatform: () => true };
+    expect(isStudentShell()).toBe(true);
+  });
+
+  it('ignores a Capacitor bridge reporting non-native (web preview)', () => {
+    (window as CapacitorWindow).Capacitor = { isNativePlatform: () => false };
+    expect(isStudentShell()).toBe(false);
+  });
+
+  it('detects ?shell=student and persists the marker for later reloads', () => {
+    setUrl('/student', '?shell=student');
+    expect(isStudentShell()).toBe(true);
+    // Marker survives in-app pushState navigation that drops the query.
+    setUrl('/');
+    expect(isStudentShell()).toBe(true);
+  });
+});
+
+describe('resolveInitialView inside the student shell', () => {
+  beforeEach(() => {
+    (window as CapacitorWindow).Capacitor = { isNativePlatform: () => true };
+  });
+
+  it('shell start URL lands on student login', () => {
+    setUrl('/student', '?shell=student');
+    expect(resolveInitialView()).toBe('student-account-login');
+  });
+
+  it('root path lands on student login, not the marketing landing', () => {
+    expect(resolveInitialView()).toBe('student-account-login');
+  });
+
+  it('"/" resolves to student login via the persisted marker alone', () => {
+    delete (window as CapacitorWindow).Capacitor;
+    localStorage.setItem('vb_student_shell', '1');
+    expect(resolveInitialView()).toBe('student-account-login');
+  });
+
+  it('"/teacher" resolves to student login, never teacher login', () => {
+    setUrl('/teacher');
+    expect(resolveInitialView()).toBe('student-account-login');
+  });
+
+  it('Quick Play QR links still win inside the shell', () => {
+    setUrl('/', '?session=ABC123');
+    expect(resolveInitialView()).toBe('quick-play-student');
+  });
+});
+
+describe('resolveInitialView outside the shell (unchanged behaviour)', () => {
+  it('"/" → public-landing', () => {
+    expect(resolveInitialView()).toBe('public-landing');
+  });
+
+  it('"/teacher" → teacher-login', () => {
+    setUrl('/teacher');
+    expect(resolveInitialView()).toBe('teacher-login');
+  });
+
+  it('"/student" → student-account-login', () => {
+    setUrl('/student');
+    expect(resolveInitialView()).toBe('student-account-login');
+  });
+});

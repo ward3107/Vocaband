@@ -18,8 +18,14 @@
  * not 27 lines of branching mixed into the useState call.
  */
 import type { View } from '../core/views';
+import { isStudentShell } from './studentShell';
 
 export function resolveInitialView(): View {
+  // Native student app (Capacitor wrapper): students-only, so both the
+  // marketing landing and the teacher login resolve to student login.
+  // Checked first because the shell's start URL is fixed — the deep-link
+  // rules below (?session, /w/) still apply if the shell ever opens one.
+  const studentShell = isStudentShell();
   // Quick Play QR-scan: ?session=… always wins, even over a known route.
   if (new URLSearchParams(window.location.search).get('session')) {
     return 'quick-play-student';
@@ -45,7 +51,7 @@ export function resolveInitialView(): View {
   // refresh keeps them on the login card instead of bouncing to the
   // marketing landing.
   if (window.location.pathname === '/teacher') {
-    return 'teacher-login';
+    return studentShell ? 'student-account-login' : 'teacher-login';
   }
   // `/privacy` opens the designed React PublicPrivacyPage instead of the
   // bare static `/privacy.html` (which still exists for SEO + external
@@ -77,5 +83,5 @@ export function resolveInitialView(): View {
   } catch {
     /* URLSearchParams unavailable — fall through */
   }
-  return 'public-landing';
+  return studentShell ? 'student-account-login' : 'public-landing';
 }
