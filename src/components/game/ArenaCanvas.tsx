@@ -49,17 +49,28 @@ interface ArenaCanvasProps {
   /** Auto-grab: fired once per approach when the local avatar enters an
    *  available word's grab radius. */
   onGrab?: (wordId: string, x: number, y: number) => void;
+  /** Tap-to-grab: word tokens become buttons. The server still referees
+   *  range, so tapping a far word answers with the "get closer" denial —
+   *  which doubles as the mechanic's teaching moment. */
+  onWordTap?: (wordId: string) => void;
   /** Host projector: no joystick, no prediction, no grabbing. */
   readOnly?: boolean;
   /** Buzzer open — freeze movement + sends (battery + focus). */
   isPaused?: boolean;
+  /** Fill the parent box instead of locking the 10:7 world aspect.
+   *  Portrait phones rendered a 10:7 letterbox at ~39% of the viewport;
+   *  filling uses the whole screen at the cost of anisotropic scale —
+   *  positions are mapped per-axis (scaleRef.x ≠ scaleRef.y), which the
+   *  transform path already supports, and the grab radius is checked in
+   *  world units so gameplay is unaffected. */
+  fill?: boolean;
   className?: string;
 }
 
 export default function ArenaCanvas({
   arena, positionsRef, leaderboard,
-  selfClientId, inputRef, selfPosRef, onGrab,
-  readOnly = false, isPaused = false, className = "",
+  selfClientId, inputRef, selfPosRef, onGrab, onWordTap,
+  readOnly = false, isPaused = false, fill = false, className = "",
 }: ArenaCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Pixels-per-logical-unit, refreshed by the ResizeObserver. A ref (not
@@ -183,20 +194,16 @@ export default function ArenaCanvas({
     <div
       ref={containerRef}
       dir="ltr" // coordinates are absolute — never mirrored for RTL
-      className={`relative w-full overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-100 via-violet-50 to-fuchsia-100 shadow-lg shadow-indigo-500/20 ${className}`}
-      style={{ aspectRatio: `${QP_ARENA_WIDTH} / ${QP_ARENA_HEIGHT}`, touchAction: "none" }}
+      className={`relative w-full ${fill ? "h-full" : ""} overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-100 via-violet-50 to-fuchsia-100 shadow-lg shadow-indigo-500/20 ${className}`}
+      style={{ ...(fill ? {} : { aspectRatio: `${QP_ARENA_WIDTH} / ${QP_ARENA_HEIGHT}` }), touchAction: "none" }}
     >
-      {/* Word tokens — React-rendered (lifecycle changes are rare). */}
-      {arena.words.map((w) => (
-        <div
-          key={w.wordId}
-          className="absolute z-10"
-          style={{
-            left: `${(w.pos.x / QP_ARENA_WIDTH) * 100}%`,
-            top: `${(w.pos.y / QP_ARENA_HEIGHT) * 100}%`,
-            transform: "translate(-50%, -50%)",
-          }}
-        >
+      {/* Word tokens — React-rendered (lifecycle changes are rare). When the
+          parent wires onWordTap, available tokens are real buttons: kids'
+          first instinct is to tap the word, not to know about the invisible
+          grab radius. */}
+      {arena.words.map((w) => {
+        const tappable = !readOnly && !!onWordTap && w.state === "available";
+        const pill = (
           <motion.div
             animate={w.state === "available" ? { y: [0, -5, 0] } : { y: 0 }}
             transition={w.state === "available" ? { repeat: Infinity, duration: 2.2, ease: "easeInOut" } : undefined}
@@ -213,8 +220,35 @@ export default function ArenaCanvas({
             {w.state === "answered" && <Check size={12} strokeWidth={3} />}
             {w.label}
           </motion.div>
-        </div>
-      ))}
+        );
+        return (
+          <div
+            key={w.wordId}
+            className="absolute z-10"
+            style={{
+              left: `${(w.pos.x / QP_ARENA_WIDTH) * 100}%`,
+              top: `${(w.pos.y / QP_ARENA_HEIGHT) * 100}%`,
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            {tappable ? (
+              <button
+                type="button"
+                onClick={() => onWordTap(w.wordId)}
+                aria-label={w.label}
+                // p-2 + -m-2 grows the hit box past the visual pill without
+                // shifting layout — fingertip-sized targets on the map.
+                className="block p-2 -m-2"
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              >
+                {pill}
+              </button>
+            ) : (
+              pill
+            )}
+          </div>
+        );
+      })}
 
       {/* Avatars — positioned exclusively by the RAF loop via refs. */}
       {players.map((p) => {

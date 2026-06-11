@@ -28,6 +28,10 @@ type SetNames = Record<SpeedSet, string>;
 
 interface HostStrings {
   title: string; joinHeading: string; code: string;
+  wordsHeading: string; searchPlaceholder: string;
+  wordsCount: (n: number) => string; needWords: (min: number) => string;
+  clearWords: string; noResults: string;
+  autoPlayLabel: string; autoNextIn: (n: number) => string;
   setHeading: string; modeHeading: string; timerHeading: string;
   start: string; nextWord: string; wordLive: string;
   leaderboard: string; noStudents: string;
@@ -44,6 +48,10 @@ interface HostStrings {
 export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
   en: {
     title: "Speed Round", joinHeading: "Students join here", code: "Class code",
+    wordsHeading: "Your words", searchPlaceholder: "Type a word to add it\u2026",
+    wordsCount: (n) => `${n} words ready`, needWords: (min) => `Add at least ${min} words to start`,
+    clearWords: "Clear all", noResults: "No matching words in the library",
+    autoPlayLabel: "Auto-play words", autoNextIn: (n) => `Next word in ${n}\u2026`,
     setHeading: "Word set", modeHeading: "Question mode", timerHeading: "Time per word",
     start: "Start word", nextWord: "Next word", wordLive: "Word live",
     leaderboard: "Leaderboard", noStudents: "Waiting for students to join…",
@@ -63,6 +71,10 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
   },
   he: {
     title: "סבב מהיר", joinHeading: "התלמידים מצטרפים כאן", code: "קוד כיתה",
+    wordsHeading: "המילים שלך", searchPlaceholder: "הקלידו מילה כדי להוסיף\u2026",
+    wordsCount: (n) => `${n} מילים מוכנות`, needWords: (min) => `הוסיפו לפחות ${min} מילים כדי להתחיל`,
+    clearWords: "נקה הכל", noResults: "אין מילים תואמות במאגר",
+    autoPlayLabel: "ניגון אוטומטי", autoNextIn: (n) => `המילה הבאה בעוד ${n}\u2026`,
     setHeading: "מאגר מילים", modeHeading: "סוג שאלה", timerHeading: "זמן לכל מילה",
     start: "התחל מילה", nextWord: "מילה הבאה", wordLive: "מילה פעילה",
     leaderboard: "טבלת מובילים", noStudents: "ממתינים שתלמידים יצטרפו…",
@@ -82,6 +94,10 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
   },
   ar: {
     title: "جولة سريعة", joinHeading: "ينضم الطلاب هنا", code: "رمز الصف",
+    wordsHeading: "كلماتك", searchPlaceholder: "اكتبوا كلمة لإضافتها\u2026",
+    wordsCount: (n) => `${n} كلمات جاهزة`, needWords: (min) => `أضيفوا ${min} كلمات على الأقل للبدء`,
+    clearWords: "مسح الكل", noResults: "لا توجد كلمات مطابقة في المكتبة",
+    autoPlayLabel: "تشغيل تلقائي", autoNextIn: (n) => `الكلمة التالية خلال ${n}\u2026`,
     setHeading: "مجموعة الكلمات", modeHeading: "نوع السؤال", timerHeading: "الوقت لكل كلمة",
     start: "ابدأ الكلمة", nextWord: "الكلمة التالية", wordLive: "كلمة نشطة",
     leaderboard: "لوحة المتصدرين", noStudents: "في انتظار انضمام الطلاب…",

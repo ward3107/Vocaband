@@ -63,7 +63,7 @@ export default function ModeIsland({
         aria-label={`${name} — ${stateWord}${done ? `, ${L.stars(mastery)}` : ""}`}
         whileTap={reduced || locked ? undefined : { scale: 0.92 }}
         whileHover={reduced || locked ? undefined : { scale: 1.06 }}
-        className={`${ARCADE_BUTTON_TOUCH} relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-3xl shadow-lg sm:h-24 sm:w-24 sm:text-4xl ${
+        className={`${ARCADE_BUTTON_TOUCH} relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-4xl shadow-lg sm:h-28 sm:w-28 sm:text-5xl ${
           done ? "ring-[3px] ring-amber-300" :
           next ? "ring-4 ring-amber-300/50 shadow-cyan-500/40" :
           "ring-2 ring-white/25"
@@ -91,7 +91,7 @@ export default function ModeIsland({
         {locked && <Lock aria-hidden size={16} className="absolute -bottom-1 -end-1 text-white/70" />}
       </motion.button>
 
-      <span className="pointer-events-none absolute left-1/2 top-full mt-2 w-24 -translate-x-1/2 text-center text-xs font-bold leading-tight text-white/90 drop-shadow">
+      <span className="pointer-events-none absolute left-1/2 top-full mt-2 w-28 -translate-x-1/2 text-center text-xs font-bold leading-tight text-white/90 drop-shadow">
         {name}
       </span>
     </div>

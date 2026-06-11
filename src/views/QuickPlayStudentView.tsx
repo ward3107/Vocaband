@@ -105,13 +105,13 @@ export default function QuickPlayStudentView({
   // Web Audio), and fires the server JOIN — no separate language /
   // get-ready screens.
   const { language: qpLanguage, setLanguage: setAppLanguage, isRTL: qpIsRTL } = useLanguage();
-  // In-game UI language. Hebrew/Arabic only — students learn English
-  // toward their native language, so an English UI would show no
-  // translations. Defaults to the current app language when it's already
-  // HE/AR, otherwise Hebrew.
-  const [selectedLang, setSelectedLang] = useState<"he" | "ar">(
-    qpLanguage === "ar" ? "ar" : "he",
-  );
+  // In-game UI language. English is back as a choice AND the default
+  // (product call, 2026-06-11): native-English and immersion students
+  // kept landing on a Hebrew UI. With EN the game chrome renders in
+  // English and the translation target keeps its existing default
+  // (GameModeIntroView only mirrors HE/AR into targetLanguage), so
+  // word translations still show.
+  const [selectedLang, setSelectedLang] = useState<"en" | "he" | "ar">("en");
   // Fatal-error gate. When set, the join body is replaced by a
   // friendly full-page error screen instead of a stale form + toast.
   const [fatalError, setFatalError] = useState<QuickPlayErrorKind | null>(null);
@@ -646,12 +646,11 @@ export default function QuickPlayStudentView({
                   onSelect={setQuickPlayAvatar}
                 />
 
-                {/* In-game language — inline toggle (HE / AR only; students
-                    learn English toward their native language, so an
-                    English UI would show no translations). Tapping it sets
+                {/* In-game language — inline toggle (EN default; HE/AR for
+                    students who want a native-language UI). Tapping it sets
                     the app language live so the form previews the choice. */}
                 <div className="flex items-center justify-center gap-2">
-                  {(['he', 'ar'] as const).map((lang) => {
+                  {(['en', 'he', 'ar'] as const).map((lang) => {
                     const active = selectedLang === lang;
                     return (
                       <button

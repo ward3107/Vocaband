@@ -349,7 +349,10 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
           )}
         </div>
 
-        <div className="relative flex-1 min-h-0 flex items-start justify-center">
+        {/* fill — the 10:7 letterbox used only ~39% of a portrait phone
+            (see ArenaCanvas.fill); the map now takes every pixel between
+            the HUD and the bottom edge, with the joystick overlaying it. */}
+        <div className="relative flex-1 min-h-0">
           <ArenaCanvas
             arena={currentArena}
             positionsRef={arenaPositionsRef}
@@ -358,8 +361,9 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             inputRef={inputRef}
             selfPosRef={selfPosRef}
             onGrab={(wordId, x, y) => requestGrab(wordId, x, y)}
+            onWordTap={(wordId) => requestGrab(wordId, selfPosRef.current.x, selfPosRef.current.y)}
             isPaused={!!grant}
-            className="max-h-full"
+            fill
           />
           <ArenaJoystick inputRef={inputRef} disabled={!!grant} />
 
