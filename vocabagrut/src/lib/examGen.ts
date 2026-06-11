@@ -1,5 +1,6 @@
 import type { ReadingPassage, ReadingQuestion, UnitLevel, WritingPrompt } from '../core/types';
 import { AiNotConfiguredError } from './wordImport';
+import { authHeader } from './supabase';
 
 // AI exam generation — turns a set of words into a full practice paper
 // (reading passage + questions + writing task) via POST /api/words. The
@@ -33,7 +34,7 @@ function toQuestion(raw: any): ReadingQuestion {
 export async function generateExam(words: string[], level: UnitLevel): Promise<GeneratedExam> {
   const res = await fetch('/api/words', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify({ mode: 'exam', words, level }),
   });
   if (res.status === 503) throw new AiNotConfiguredError();
