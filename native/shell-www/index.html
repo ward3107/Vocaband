@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- Offline fallback for the native student shell.  The real app loads
+     from https://www.vocaband.com/student (see capacitor.config.ts);
+     this page only shows if that first load fails with no connection. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Vocaband</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #4f46e5, #7c3aed, #c026d3);
+        font-family: system-ui, -apple-system, sans-serif;
+        color: #fff;
+        text-align: center;
+      }
+      .card { padding: 2rem; }
+      h1 { font-size: 1.5rem; margin: 0 0 0.5rem; }
+      p { opacity: 0.85; margin: 0 0 1.5rem; }
+      button {
+        border: 0;
+        border-radius: 9999px;
+        padding: 0.75rem 2rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #4f46e5;
+        background: #fff;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>📚 Vocaband</h1>
+      <p>No internet connection.<br />Connect to Wi-Fi or mobile data and try again.</p>
+      <button type="button" onclick="window.location.href='https://www.vocaband.com/student?shell=student'">
+        Try again
+      </button>
+    </div>
+  </body>
+</html>

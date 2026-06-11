@@ -30,6 +30,7 @@
  */
 import { useEffect } from 'react';
 import { hasTeacherAccess, hasManagerAccess, type AppUser, type AssignmentData, type ClassData } from '../core/supabase';
+import { isStudentShell } from '../utils/studentShell';
 import type { View } from '../core/views';
 
 export interface UseViewGuardsParams {
@@ -49,6 +50,18 @@ export function useViewGuards(params: UseViewGuardsParams): void {
     activeAssignment, quickPlayActiveSession,
     selectedClass,
   } = params;
+
+  // ─── Guard 0: students-only native app shell ───────────────────────
+  // Inside the Capacitor store app (Google Play / App Store) the
+  // marketing landing and teacher login don't exist — any navigation
+  // that lands there (logout, back buttons, the other guards' own
+  // public-landing fallbacks) snaps back to student login.  Teacher
+  // views past the login are auth-gated, so blocking the login itself
+  // is enough; no need to enumerate every teacher view here.
+  useEffect(() => {
+    if (view !== 'public-landing' && view !== 'teacher-login') return;
+    if (isStudentShell()) setView('student-account-login');
+  }, [view, setView]);
 
   // ─── Guard 1: orphaned "landing" view ──────────────────────────────
   useEffect(() => {
