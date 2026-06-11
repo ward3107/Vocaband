@@ -14,6 +14,20 @@ export interface GameActiveStrings {
   /** "Word 3 of 10" progress label below the answer card.
    *  Receives index + total at call site (e.g. `t.wordOfTotal(3, 10)`). */
   wordOfTotal: (index: number, total: number) => string;
+  /** "Question 3 of 10" — label for the shared GameProgress chrome at
+   *  the top of every orchestrated game mode. */
+  questionOfTotal: (index: number, total: number) => string;
+  /** Matching / Memory-Flip variant of the progress label — those modes
+   *  advance by pairs found, not by question index. */
+  pairsOfTotal: (found: number, total: number) => string;
+  /** "in a row!" suffix on the AnswerStreakBadge 🔥 counter. The count
+   *  itself renders separately as an LTR atom next to the flame. */
+  streakInARow: (count: number) => string;
+
+  // PauseOverlay (mid-game interruption — phone call / tab switch).
+  pausedTitle: string;
+  pausedTapToResume: string;
+  pausedResumeButton: string;
   /** Dismiss button aria-label on the save-error toast. */
   dismissError: string;
 
@@ -117,6 +131,12 @@ export interface GameActiveStrings {
 export const gameActiveT: Record<Language, GameActiveStrings> = {
   en: {
     wordOfTotal: (i, n) => `Word ${i} of ${n}`,
+    questionOfTotal: (i, n) => `Question ${i} of ${n}`,
+    pairsOfTotal: (f, n) => `${f} of ${n} pairs found`,
+    streakInARow: () => `in a row!`,
+    pausedTitle: "Game paused",
+    pausedTapToResume: "Tap anywhere to keep playing",
+    pausedResumeButton: "Keep playing",
     dismissError: "Dismiss error message",
     typeInEnglish: "Type in English...",
     typeTheWord: "Type the word...",
@@ -188,6 +208,12 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
   },
   he: {
     wordOfTotal: (i, n) => `מילה ${i} מתוך ${n}`,
+    questionOfTotal: (i, n) => `שאלה ${i} מתוך ${n}`,
+    pairsOfTotal: (f, n) => `נמצאו ${f} מתוך ${n} זוגות`,
+    streakInARow: () => `ברצף!`,
+    pausedTitle: "המשחק מושהה",
+    pausedTapToResume: "הקישו בכל מקום כדי להמשיך לשחק",
+    pausedResumeButton: "להמשיך לשחק",
     dismissError: "סגור הודעת שגיאה",
     typeInEnglish: "הקלד באנגלית...",
     typeTheWord: "הקלד את המילה...",
@@ -259,6 +285,12 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
   },
   ar: {
     wordOfTotal: (i, n) => `الكلمة ${i} من ${n}`,
+    questionOfTotal: (i, n) => `السؤال ${i} من ${n}`,
+    pairsOfTotal: (f, n) => `تم العثور على ${f} من ${n} أزواج`,
+    streakInARow: () => `على التوالي!`,
+    pausedTitle: "اللعبة متوقفة مؤقتًا",
+    pausedTapToResume: "اضغط في أي مكان لمتابعة اللعب",
+    pausedResumeButton: "متابعة اللعب",
     dismissError: "إغلاق رسالة الخطأ",
     typeInEnglish: "اكتب بالإنجليزية...",
     typeTheWord: "اكتب الكلمة...",
@@ -330,6 +362,12 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
   },
   ru: {
     wordOfTotal: (i, n) => `Word ${i} of ${n}`,
+    questionOfTotal: (i, n) => `Question ${i} of ${n}`,
+    pairsOfTotal: (f, n) => `${f} of ${n} pairs found`,
+    streakInARow: () => `in a row!`,
+    pausedTitle: "Game paused",
+    pausedTapToResume: "Tap anywhere to keep playing",
+    pausedResumeButton: "Keep playing",
     dismissError: "Dismiss error message",
     typeInEnglish: "Type in English...",
     typeTheWord: "Type the word...",

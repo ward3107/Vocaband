@@ -5,7 +5,7 @@ import type { GameThemeColor } from "./game/GameShell";
 import { useLanguage } from "../hooks/useLanguage";
 
 // Memoized Classic Mode Game component with debugging and error handling
-const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOptions, feedback, targetLanguage, gameWordsCount, currentIndex, onAnswer, themeColor }: {
+const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOptions, feedback, targetLanguage, gameWordsCount, currentIndex, onAnswer, themeColor, showKeyHints }: {
   gameMode: string;
   currentWord: Word | undefined;
   options: Word[];
@@ -20,6 +20,12 @@ const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOpti
    *  preserves the legacy stone palette for any caller that hasn't
    *  migrated yet. */
   themeColor?: GameThemeColor;
+  /** Chromebook support (open-issues §F): show the 1–4 number badges on
+   *  the option buttons. useGameKeyboard flips this on after the first
+   *  hardware keypress, so touch devices never see the hints. The badge
+   *  index MUST match the visible (post-50/50-filter) order — the same
+   *  filtered list the keyboard hook selects from. */
+  showKeyHints?: boolean;
 }) => {
   const { language } = useLanguage();
   const errLabels = language === 'he'
@@ -53,7 +59,7 @@ const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOpti
     // left/right) when the UI is Hebrew/Arabic. Each button keeps its
     // own dir for the translation text it renders.
     <div dir="ltr" className="grid grid-cols-2 gap-2 sm:gap-3">
-      {options.filter(o => !hiddenOptions.includes(o.id)).map((option) => (
+      {options.filter(o => !hiddenOptions.includes(o.id)).map((option, i) => (
         <AnswerOptionButton
           key={option.id}
           option={option}
@@ -63,6 +69,8 @@ const ClassicModeGame = React.memo(({ gameMode, currentWord, options, hiddenOpti
           targetLanguage={targetLanguage}
           onAnswer={onAnswer}
           themeColor={themeColor}
+          shortcutKey={i + 1}
+          showKeyHint={showKeyHints}
         />
       ))}
     </div>
