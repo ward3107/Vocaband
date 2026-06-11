@@ -22,6 +22,7 @@ interface ArenaHostStrings {
   seconds: (n: number) => string; players: (n: number) => string;
   copy: string; copied: string; enlarge: string; hide: string;
   present: string; controls: string;
+  musicOn: string; musicOff: string;
   tfTrue: string; tfFalse: string;
   buildError: string; loadingWords: string; pickMode: string;
   wordsLeft: (n: number) => string;
@@ -42,6 +43,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     seconds: (n) => `${n}s`, players: (n) => `${n} playing`,
     copy: "Copy link", copied: "Copied!", enlarge: "Enlarge", hide: "Hide",
     present: "Present", controls: "Controls",
+    musicOn: "Turn music on", musicOff: "Turn music off",
     tfTrue: "True", tfFalse: "False",
     buildError: "Couldn't build questions — try different words or modes.",
     loadingWords: "Loading words…", pickMode: "Pick at least one mode.",
@@ -64,6 +66,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     seconds: (n) => `${n} שנ'`, players: (n) => `${n} משחקים`,
     copy: "העתק קישור", copied: "הועתק!", enlarge: "הגדל", hide: "הסתר",
     present: "מצגת", controls: "פקדים",
+    musicOn: "הפעל מוזיקה", musicOff: "כבה מוזיקה",
     tfTrue: "נכון", tfFalse: "לא נכון",
     buildError: "לא ניתן לבנות שאלות — נסו מילים או מצבים אחרים.",
     loadingWords: "טוען מילים…", pickMode: "בחרו לפחות מצב אחד.",
@@ -86,6 +89,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     seconds: (n) => `${n} ث`, players: (n) => `${n} يلعبون`,
     copy: "نسخ الرابط", copied: "تم النسخ!", enlarge: "تكبير", hide: "إخفاء",
     present: "عرض", controls: "أدوات",
+    musicOn: "تشغيل الموسيقى", musicOff: "إيقاف الموسيقى",
     tfTrue: "صحيح", tfFalse: "خطأ",
     buildError: "تعذّر إنشاء الأسئلة — جرّبوا كلمات أو أوضاعًا أخرى.",
     loadingWords: "جارٍ تحميل الكلمات…", pickMode: "اختر وضعًا واحدًا على الأقل.",
