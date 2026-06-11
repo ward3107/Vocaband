@@ -6,9 +6,14 @@
  * whole curriculum set. Library-only on purpose: questions need the
  * word's translations for distractors, so free-typed strings that aren't
  * in the library can't form questions anyway.
+ *
+ * Besides typing, the teacher can one-tap import a saved word list
+ * (saved_word_groups — the same lists the assignment wizard saves);
+ * the host resolves the stored ids to library words before passing
+ * them down, so a group chip only ever adds question-capable words.
  */
 import { useMemo, useState } from "react";
-import { Plus, X, Search } from "lucide-react";
+import { Plus, X, Search, FolderOpen } from "lucide-react";
 import type { Word } from "../../data/vocabulary";
 
 interface SpeedWordPickerStrings {
@@ -18,6 +23,7 @@ interface SpeedWordPickerStrings {
   clearWords: string;
   noResults: string;
   loadingWords: string;
+  savedListsHeading: string;
 }
 
 interface SpeedWordPickerProps {
@@ -29,11 +35,14 @@ interface SpeedWordPickerProps {
   t: SpeedWordPickerStrings;
   /** Accent for the picked chips — host themes differ (fuchsia/indigo). */
   chipClass?: string;
+  /** Teacher's saved word lists, resolved to library words by the host. */
+  savedGroups?: Array<{ id: string; name: string; words: Word[] }>;
 }
 
 export default function SpeedWordPicker({
   library, picked, onChange, minWords, t,
   chipClass = "bg-fuchsia-100 text-fuchsia-700",
+  savedGroups = [],
 }: SpeedWordPickerProps) {
   const [query, setQuery] = useState("");
 
@@ -128,6 +137,39 @@ export default function SpeedWordPicker({
           </div>
         )}
       </div>
+
+      {savedGroups.length > 0 && (
+        <div className="mt-3">
+          <p className="text-[11px] font-black uppercase tracking-widest text-stone-400 mb-1.5 flex items-center gap-1">
+            <FolderOpen size={12} /> {t.savedListsHeading}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {savedGroups.map((g) => {
+              const pickedIds = new Set(picked.map((w) => w.id));
+              const newWords = g.words.filter((w) => !pickedIds.has(w.id));
+              const exhausted = newWords.length === 0;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => onChange([...picked, ...newWords])}
+                  disabled={exhausted}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full font-bold text-xs border transition active:scale-95 ${
+                    exhausted
+                      ? "border-outline-variant text-stone-300 cursor-not-allowed"
+                      : "border-outline-variant text-on-surface-variant hover:border-fuchsia-300 hover:text-fuchsia-600"
+                  }`}
+                >
+                  <Plus size={12} strokeWidth={3} className={exhausted ? "" : "text-fuchsia-500"} />
+                  {g.name}
+                  <span className="text-stone-400">({exhausted ? g.words.length : newWords.length})</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <p className={`mt-2 text-xs font-bold ${picked.length < minWords ? "text-amber-600" : "text-stone-400"}`}>
         {picked.length < minWords ? t.needWords(minWords) : t.wordsCount(picked.length)}
