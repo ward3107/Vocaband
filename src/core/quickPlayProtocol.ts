@@ -924,8 +924,9 @@ export type QpSpeedMode = typeof QP_SPEED_MODES[number];
 export const QP_SPEED_MODE = "speed-round";
 
 /** Round-timer choices the teacher can pick (seconds). Tighter than Category
- *  Race — Speed Round is about quick taps, not building answers. */
-export const QP_SPEED_ROUND_SECONDS = [5, 10, 15, 20, 30] as const;
+ *  Race — Speed Round is about quick taps, not building answers. Includes a
+ *  3s/7s rung for fast recall drills on short, familiar word lists. */
+export const QP_SPEED_ROUND_SECONDS = [3, 5, 7, 10, 15, 20, 30] as const;
 
 /** Base points for a correct answer, before the speed bonus. */
 export const QP_SPEED_BASE_POINTS = 10;

@@ -39,6 +39,9 @@ import { SPEED_HOST_STRINGS, SPEED_MODE_META } from "./speedRoundStrings";
 const MIN_WORDS = 4;
 /** Podium beat between auto-played words. */
 const AUTO_ADVANCE_SECONDS = 4;
+/** How many times the whole word list can cycle in one run. ×2 on a 10-word
+ *  list = 20 rounds — lets short lists fill a longer session. */
+const SPEED_REPEAT_OPTIONS = [1, 2, 3, 4] as const;
 
 interface SpeedRoundHostViewProps {
   sessionCode: string;
@@ -65,6 +68,9 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   // teacher can mix classic + listening + reverse… in a single round.
   const [modes, setModes] = useState<QpSpeedMode[]>(["classic"]);
   const [roundSeconds, setRoundSeconds] = useState<number>(15);
+  // How many times to cycle the whole word list in one run (×1–×4). The run
+  // is over after `pickedWords.length * passes` words, not just one pass.
+  const [passes, setPasses] = useState<number>(1);
   const [endedRoundId, setEndedRoundId] = useState<string | null>(null);
   const [winnerClientId, setWinnerClientId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -78,15 +84,18 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const [autoPlay, setAutoPlay] = useState(true);
   const [autoCountdown, setAutoCountdown] = useState<number | null>(null);
   const tokenRef = useRef<string | null>(null);
-  // Each word plays at most ONCE per run — the round is over when the
-  // teacher's whole list has been used (no endless recycling). The ref is
-  // the source of truth for picking; playedCount mirrors its size so the
-  // UI re-renders as words are consumed.
+  // Each word plays once PER PASS — when a pass is exhausted the list cycles
+  // again (reshuffled) until `passes` passes are done, then the run is over
+  // (no endless recycling). `usedWordIdsRef` tracks the CURRENT pass;
+  // `completedRoundsRef` counts total words served across all passes;
+  // `playedCount` mirrors that total so the UI re-renders as words are used.
   const usedWordIdsRef = useRef(new Set<number>());
+  const completedRoundsRef = useRef(0);
   const [playedCount, setPlayedCount] = useState(0);
 
   const canStart = pickedWords.length >= MIN_WORDS;
-  const allPlayed = pickedWords.length > 0 && playedCount >= pickedWords.length;
+  const totalRounds = pickedWords.length * passes;
+  const allPlayed = totalRounds > 0 && playedCount >= totalRounds;
 
   // The teacher's saved word lists (same saved_word_groups the assignment
   // wizard writes), resolved to library words — ids that don't resolve
@@ -146,14 +155,22 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const secondsLeft = currentSpeed ? Math.max(0, Math.round((currentSpeed.deadlineTs - now) / 1000)) : 0;
   const lowTime = roundActive && secondsLeft <= 3;
 
-  // Pick the next unplayed word from the teacher's list. Returns null once
-  // every word has run — the round is OVER then, never recycled (teachers
-  // reported the old endless loop felt broken on short 10–15 word lists).
+  // Pick the next word. Each pass uses every word once (reshuffled); when a
+  // pass is exhausted and more passes remain, the list cycles. Returns null
+  // only once all `passes` passes are done — the run is OVER then, never
+  // recycled past the chosen repeat count (teachers reported the old endless
+  // loop felt broken on short 10–15 word lists).
   const pickNextWord = (): Word | null => {
-    const unused = pickedWords.filter(w => !usedWordIdsRef.current.has(w.id));
-    if (unused.length === 0) return null;
+    if (completedRoundsRef.current >= totalRounds) return null;
+    let unused = pickedWords.filter(w => !usedWordIdsRef.current.has(w.id));
+    if (unused.length === 0) {
+      // Pass complete — start the next one with a fresh, reshuffled list.
+      usedWordIdsRef.current.clear();
+      unused = pickedWords.slice();
+    }
     const word = unused[Math.floor(Math.random() * unused.length)];
     usedWordIdsRef.current.add(word.id);
+    completedRoundsRef.current += 1;
     return word;
   };
 
@@ -174,11 +191,11 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
         trueFalseLabels: { yes: t.tfTrue, no: t.tfFalse },
       });
     }
-    setPlayedCount(usedWordIdsRef.current.size);
+    setPlayedCount(completedRoundsRef.current);
     if (!question) {
       // Only an error if words remained but none could build a question;
-      // exhausting the list is the normal "round complete" path.
-      if (usedWordIdsRef.current.size < pickedWords.length) setBuildError(true);
+      // exhausting the run is the normal "round complete" path.
+      if (completedRoundsRef.current < totalRounds) setBuildError(true);
       return;
     }
     setBuildError(false);
@@ -196,6 +213,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   // fresh list).
   const handlePlayAgain = () => {
     usedWordIdsRef.current.clear();
+    completedRoundsRef.current = 0;
     setPlayedCount(0);
     setWinnerClientId(null);
     handleStart();
@@ -390,7 +408,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               <SpeedWordPicker
                 library={vocab?.ALL_WORDS ?? null}
                 picked={pickedWords}
-                onChange={(words) => { setPickedWords(words); usedWordIdsRef.current.clear(); setPlayedCount(0); }}
+                onChange={(words) => { setPickedWords(words); usedWordIdsRef.current.clear(); completedRoundsRef.current = 0; setPlayedCount(0); }}
                 minWords={MIN_WORDS}
                 t={t}
                 savedGroups={savedGroups}
@@ -424,7 +442,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
 
               {/* Timer */}
               <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-3">{t.timerHeading}</h2>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 {QP_SPEED_ROUND_SECONDS.map((opt) => {
                   const picked = roundSeconds === opt;
                   return (
@@ -436,6 +454,27 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                       className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : pillIdle}`}
                     >
                       {t.seconds(opt)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Repeats — cycle the whole list ×1–×4 so short lists fill a
+                  longer session (e.g. 10 words ×2 = 20 rounds). */}
+              <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-1">{t.repeatsHeading}</h2>
+              <p className="text-[11px] font-bold text-stone-400 mb-3">{t.repeatsHint}</p>
+              <div className="grid grid-cols-4 gap-2">
+                {SPEED_REPEAT_OPTIONS.map((opt) => {
+                  const picked = passes === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setPasses(opt)}
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-md" : pillIdle}`}
+                    >
+                      {t.repeatsLabel(opt)}
                     </button>
                   );
                 })}
@@ -461,7 +500,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 <p className="mt-3 text-center text-sm font-black text-emerald-600">🎉 {t.roundDone}</p>
               )}
               {hasRunRound && !allPlayed && (
-                <p className="mt-3 text-center text-xs font-bold text-stone-400">{t.wordsPlayed(playedCount, pickedWords.length)}</p>
+                <p className="mt-3 text-center text-xs font-bold text-stone-400">{t.wordsPlayed(playedCount, totalRounds)}</p>
               )}
 
               {allPlayed && !roundActive ? (

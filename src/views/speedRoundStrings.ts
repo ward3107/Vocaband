@@ -24,6 +24,7 @@ interface HostStrings {
   clearWords: string; noResults: string; savedListsHeading: string;
   autoPlayLabel: string; autoNextIn: (n: number) => string;
   modeHeading: string; modeHint: string; timerHeading: string;
+  repeatsHeading: string; repeatsHint: string; repeatsLabel: (n: number) => string;
   start: string; nextWord: string; wordLive: string;
   roundDone: string; playAgain: string;
   wordsPlayed: (done: number, total: number) => string;
@@ -49,6 +50,9 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     modeHeading: "Question modes",
     modeHint: "Pick one or more \u2014 each word gets a random mode from your picks.",
     timerHeading: "Time per word",
+    repeatsHeading: "Repeats",
+    repeatsHint: "Cycle the whole list this many times — e.g. 10 words ×2 = 20 rounds.",
+    repeatsLabel: (n) => `×${n}`,
     start: "Start word", nextWord: "Next word", wordLive: "Word live",
     roundDone: "All words played!", playAgain: "Play again",
     wordsPlayed: (done, total) => `${done}/${total} words played`,
@@ -76,6 +80,9 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     modeHeading: "סוגי שאלות",
     modeHint: "בחרו אחד או יותר — כל מילה מקבלת סוג אקראי מהבחירה שלכם.",
     timerHeading: "זמן לכל מילה",
+    repeatsHeading: "חזרות",
+    repeatsHint: "מחזירים את כל הרשימה כמספר הזה — לדוגמה 10 מילים ×2 = 20 סבבים.",
+    repeatsLabel: (n) => `×${n}`,
     start: "התחל מילה", nextWord: "מילה הבאה", wordLive: "מילה פעילה",
     roundDone: "כל המילים שוחקו!", playAgain: "שחקו שוב",
     wordsPlayed: (done, total) => `${done}/${total} מילים שוחקו`,
@@ -103,6 +110,9 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     modeHeading: "أنواع الأسئلة",
     modeHint: "اختر نوعًا واحدًا أو أكثر — كل كلمة تحصل على نوع عشوائي من اختيارك.",
     timerHeading: "الوقت لكل كلمة",
+    repeatsHeading: "التكرارات",
+    repeatsHint: "كرّر القائمة كاملة بهذا العدد — مثال: 10 كلمات ×2 = 20 جولة.",
+    repeatsLabel: (n) => `×${n}`,
     start: "ابدأ الكلمة", nextWord: "الكلمة التالية", wordLive: "كلمة نشطة",
     roundDone: "تم لعب كل الكلمات!", playAgain: "العب مرة أخرى",
     wordsPlayed: (done, total) => `${done}/${total} كلمات لُعبت`,
