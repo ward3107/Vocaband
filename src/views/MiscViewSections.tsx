@@ -149,6 +149,11 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
     const hotSeatAssignments = visibleAssignments
       .filter((a) => !selectedClass || a.classId === selectedClass.id)
       .map((a) => ({ id: a.id, title: a.title, wordIds: a.wordIds, words: a.words }));
+    const hotSeatInitialNames = selectedClass
+      ? (classStudents as { name: string; classCode: string }[])
+          .filter((s) => s.classCode === selectedClass.code)
+          .map((s) => s.name)
+      : undefined;
     return (
       <LazyWrapper loadingMessage="Loading Hot Seat…">
         <HotSeatView
@@ -156,6 +161,9 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           speak={speakWord}
           assignments={hotSeatAssignments}
           topicPacks={topicPacks}
+          classes={visibleClasses}
+          initialClassId={selectedClass?.id ?? null}
+          initialPlayerNames={hotSeatInitialNames}
           activityTabs={
             <ActivityTabsSlot
               active="hot-seat"
@@ -190,6 +198,8 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           speak={speakWord}
           assignments={wheelAssignments}
           topicPacks={topicPacks}
+          classes={visibleClasses}
+          initialClassId={selectedClass?.id ?? null}
           initialPlayerNames={initialPlayerNames}
           activityTabs={
             <ActivityTabsSlot

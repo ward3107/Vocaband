@@ -43,6 +43,7 @@ import {
   type TranslationLang,
 } from '../utils/buildQuestion';
 import CreationPageShell from '../components/setup/CreationPageShell';
+import ClassRosterPicker, { type RosterClassOption } from '../components/setup/ClassRosterPicker';
 import InPageCamera from '../components/InPageCamera';
 import { postOcrImage, isPostOcrImageError } from '../utils/postOcrImage';
 import { celebrate } from '../utils/celebrate';
@@ -65,6 +66,12 @@ interface WheelViewProps {
   speak: (wordId: number, fallbackText?: string) => void;
   assignments?: WheelAssignment[];
   topicPacks?: WheelTopicPack[];
+  /** Teacher's classes — shown as a "load players from a class" picker
+   *  that auto-fills the roster textarea so names aren't retyped. */
+  classes?: RosterClassOption[];
+  /** Pre-select + auto-load this class's roster on entry (set when the
+   *  mode was launched from a class). */
+  initialClassId?: string | null;
   /** When launched from a class, pre-fill the roster textarea with
    *  that class's student names so the teacher doesn't retype them. */
   initialPlayerNames?: string[];
@@ -639,7 +646,7 @@ const STRINGS: Record<Language, {
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-export default function WheelView({ onExit, speak, assignments, topicPacks, initialPlayerNames, activityTabs }: WheelViewProps) {
+export default function WheelView({ onExit, speak, assignments, topicPacks, classes, initialClassId, initialPlayerNames, activityTabs }: WheelViewProps) {
   const { language, dir, isRTL } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
@@ -1176,6 +1183,12 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, init
       >
         <div className="rounded-2xl bg-white shadow-lg border border-violet-100 overflow-hidden">
             <div className="px-6 py-6 space-y-5">
+              <ClassRosterPicker
+                classes={classes ?? []}
+                initialClassId={initialClassId}
+                onNamesLoaded={(names) => setPlayersText(names.join('\n'))}
+                accent="violet"
+              />
               {/* Players */}
               <div>
                 <label className="block text-sm font-bold text-stone-700 mb-2">{t.playersLabel}</label>
