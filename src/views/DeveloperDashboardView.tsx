@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import {
   ArrowLeft, Bot, Database, Activity, Server, ShieldAlert, Users, School,
   Search, ScrollText, TrendingUp, ShieldCheck, Flag, Megaphone, Lock, BarChart3,
-  CreditCard, GraduationCap, RefreshCw, FileText,
+  CreditCard, GraduationCap, RefreshCw, FileText, LayoutGrid,
 } from "lucide-react";
 import { hasAdminAccess, type AppUser } from "../core/supabase";
 import type { View } from "../core/views";
@@ -11,7 +11,6 @@ import {
   callAdminRpcCached, invalidateAdminRpcCache, fmtUsd, fmtNum,
   type DevOverview, type DevAiUsage, type DevUserSearchResult, type DevStatsPoint,
 } from "./developer/devShared";
-import { Sparkline } from "./developer/charts";
 import CommandPalette from "./developer/CommandPalette";
 import PersonDrawer from "./developer/PersonDrawer";
 import DevAiCostPanel from "./developer/DevAiCostPanel";
@@ -30,6 +29,7 @@ import DevSecurityChecklistPanel from "./developer/DevSecurityChecklistPanel";
 import DevAuthzFailuresPanel from "./developer/DevAuthzFailuresPanel";
 import DevModerationPanel from "./developer/DevModerationPanel";
 import DevInsightsPanel from "./developer/DevInsightsPanel";
+import DevHomePanel from "./developer/DevHomePanel";
 
 interface Props {
   user: AppUser | null;
@@ -38,6 +38,7 @@ interface Props {
 }
 
 type Tab =
+  | "home"
   | "users" | "entitlements" | "classes" | "schools"
   | "ai" | "trials" | "insights" | "broadcast"
   | "privacy" | "audit" | "security" | "moderation"
@@ -68,8 +69,22 @@ const TABS: { id: Tab; label: string; icon: typeof Bot; group: Group }[] = [
 
 const GROUPS: Group[] = ["People & access", "Growth", "Safety & privacy", "System"];
 
+/** Trend descriptor for a KPI's daily series — drives the stat-strip delta line.
+ *  "abs" shows the raw change (counts), "pct" the percentage (AI cost/calls). */
+function seriesDelta(series: number[] | undefined, kind: "abs" | "pct"): { dir: "up" | "down" | "flat"; text: string } {
+  const s = (series ?? []).filter((n) => Number.isFinite(n));
+  if (s.length < 2) return { dir: "flat", text: "—" };
+  const diff = s[s.length - 1] - s[0];
+  if (diff === 0) return { dir: "flat", text: "steady" };
+  const dir = diff > 0 ? "up" : "down";
+  const sign = diff > 0 ? "+" : "−";
+  if (kind === "abs") return { dir, text: `${sign}${Math.abs(diff)}` };
+  const pct = s[0] === 0 ? 100 : Math.round((diff / s[0]) * 100);
+  return { dir, text: `${sign}${Math.abs(pct)}%` };
+}
+
 export default function DeveloperDashboardView({ user, setView, showToast }: Props) {
-  const [tab, setTab] = useState<Tab>("users");
+  const [tab, setTab] = useState<Tab>("home");
   const [ov, setOv] = useState<DevOverview | null>(null);
   const [ai, setAi] = useState<DevAiUsage | null>(null);
   const [stats, setStats] = useState<DevStatsPoint[] | null>(null);
@@ -134,56 +149,58 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
   const statSeries = (k: keyof DevStatsPoint) => (stats ?? []).map((s) => Number(s[k]));
 
   // Every cell carries a real series — counts from the daily snapshot
-  // (admin_stats_series), AI from ai_usage_counters. Sparklines only render
-  // once ≥2 days have accrued (see Sparkline); until then it's just the number.
-  const kpis: { label: string; value: string; icon: typeof Users; series?: number[]; tone?: string }[] = [
-    { label: "Teachers", value: fmtNum(ov?.teachers), icon: Users, series: statSeries("teachers"), tone: "text-violet-300" },
-    { label: "Students", value: fmtNum(ov?.students), icon: Users, series: statSeries("students"), tone: "text-emerald-300" },
-    { label: "Classes", value: fmtNum(ov?.classes), icon: GraduationCap, series: statSeries("classes"), tone: "text-sky-300" },
-    { label: "Schools", value: fmtNum(ov?.schools), icon: School, series: statSeries("schools"), tone: "text-fuchsia-300" },
-    { label: "AI 30d", value: fmtUsd(ov?.ai_cost_micro_30d), icon: Bot, series: costSeries, tone: "text-amber-300" },
-    { label: "AI calls 30d", value: fmtNum(ov?.ai_calls_30d), icon: Activity, series: callSeries, tone: "text-emerald-300" },
+  // (admin_stats_series), AI from ai_usage_counters. The strip shows the trend
+  // delta over the window (see seriesDelta); flat "—" until ≥2 days accrue.
+  const kpis: { label: string; value: string; icon: typeof Users; series?: number[]; kind: "abs" | "pct" }[] = [
+    { label: "Teachers", value: fmtNum(ov?.teachers), icon: Users, series: statSeries("teachers"), kind: "abs" },
+    { label: "Students", value: fmtNum(ov?.students), icon: Users, series: statSeries("students"), kind: "abs" },
+    { label: "Classes", value: fmtNum(ov?.classes), icon: GraduationCap, series: statSeries("classes"), kind: "abs" },
+    { label: "Schools", value: fmtNum(ov?.schools), icon: School, series: statSeries("schools"), kind: "abs" },
+    { label: "AI 30d", value: fmtUsd(ov?.ai_cost_micro_30d), icon: Bot, series: costSeries, kind: "pct" },
+    { label: "AI calls 30d", value: fmtNum(ov?.ai_calls_30d), icon: Activity, series: callSeries, kind: "pct" },
   ];
 
+  const navBtn = (id: Tab, label: string, Icon: typeof Bot) => {
+    const active = tab === id;
+    return (
+      <button key={id} type="button" onClick={() => setTab(id)} title={label}
+        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+        className={`shrink-0 w-[62px] lg:w-full flex flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 transition-all ${active ? "bg-teal-400/15 text-teal-300" : "text-white/45 hover:bg-white/5 hover:text-white"}`}>
+        <Icon className="w-5 h-5 shrink-0" />
+        <span className="text-[9px] font-bold leading-tight text-center w-full break-words">{label}</span>
+      </button>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white flex flex-col lg:flex-row">
-      <aside className="lg:w-60 lg:shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-slate-950/60 backdrop-blur-sm flex flex-col lg:sticky lg:top-0 lg:h-screen">
-        <div className="p-4 flex items-center gap-3 border-b border-white/10">
-          <button type="button" onClick={() => setView("voca-picker")} style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 shrink-0" aria-label="Back">
+    <div className="min-h-screen bg-[#0e1117] text-white flex flex-col lg:flex-row">
+      <aside className="lg:w-[76px] lg:shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0b0e14] flex flex-col lg:sticky lg:top-0 lg:h-screen">
+        <div className="p-3 flex lg:justify-center items-center border-b border-white/10">
+          <button type="button" onClick={() => setView("voca-picker")} style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 shrink-0" aria-label="Back to picker">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="min-w-0">
-            <h1 className="text-lg font-black font-headline truncate">Command center</h1>
-            <p className="text-white/40 text-xs font-bold truncate">Admin control</p>
-          </div>
         </div>
 
-        <nav className="p-3 flex lg:flex-col gap-1 flex-1 overflow-x-auto lg:overflow-y-auto">
+        <nav className="p-2 flex lg:flex-col gap-1 flex-1 overflow-x-auto lg:overflow-y-auto">
+          {navBtn("home", "Home", LayoutGrid)}
           {GROUPS.flatMap((g) => [
-            <div key={`h-${g}`} className="hidden lg:block px-3 pt-3 pb-1 text-[10px] font-black uppercase tracking-widest text-white/30">
-              {g}
-            </div>,
-            ...TABS.filter((t) => t.group === g).map((t) => {
-              const active = tab === t.id;
-              return (
-                <button key={t.id} type="button" onClick={() => setTab(t.id)} style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`shrink-0 whitespace-nowrap lg:w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-bold transition-all ${active ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-white/60 hover:bg-white/5 hover:text-white"}`}>
-                  <t.icon className="w-4 h-4 shrink-0" />
-                  <span className="flex-1 text-left">{t.label}</span>
-                </button>
-              );
-            }),
+            <div key={`sep-${g}`} className="hidden lg:block h-px bg-white/10 mx-3 my-1.5" />,
+            ...TABS.filter((t) => t.group === g).map((t) => navBtn(t.id, t.label, t.icon)),
           ])}
         </nav>
       </aside>
 
       <main className="flex-1 min-w-0 overflow-x-hidden">
         {/* Sticky command bar — ⌘K search + the KPI strip stay pinned while panels scroll. */}
-        <div className="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-md border-b border-white/10">
+        <div className="sticky top-0 z-30 bg-[#0e1117]/85 backdrop-blur-md border-b border-white/10">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 space-y-3">
             <div className="flex items-center gap-3">
+              <div className="hidden md:block shrink-0 mr-1">
+                <h1 className="text-sm font-black font-headline leading-none">Command center</h1>
+                <p className="text-white/40 text-[11px] font-bold mt-1">Admin control</p>
+              </div>
               <button type="button" onClick={() => setPaletteOpen(true)} style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className="flex-1 flex items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-white/40 text-base">
+                className="flex-1 flex items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 focus:border-teal-400/40 px-3 py-2 text-white/40 text-base">
                 <Search className="w-4 h-4" />
                 <span className="flex-1 text-left truncate">Search users, classes, schools…</span>
                 <kbd className="text-white/30 text-xs font-mono border border-white/15 rounded px-1.5 py-0.5 hidden sm:inline">⌘K</kbd>
@@ -194,24 +211,31 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
               </button>
             </div>
 
-            <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
-              {kpis.map((k) => (
-                <motion.div key={k.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 min-w-0">
-                  <div className="flex items-center gap-1.5 text-white/40 text-[10px] font-black uppercase tracking-wider">
-                    <k.icon className="w-3 h-3" /> <span className="truncate">{k.label}</span>
-                  </div>
-                  <div className="text-xl font-black leading-tight mt-0.5">{k.value}</div>
-                  {k.series && k.series.length > 1 && (
-                    <div className={`mt-1 ${k.tone ?? "text-indigo-300"}`}><Sparkline data={k.series} height={18} /></div>
-                  )}
-                </motion.div>
-              ))}
+            {/* Connected KPI strip — one panel, hairline dividers (gap-px over a tint). */}
+            <div className="rounded-2xl overflow-hidden border border-white/10">
+              <div className="grid grid-cols-3 lg:grid-cols-6 gap-px bg-white/10">
+                {kpis.map((k) => {
+                  const d = seriesDelta(k.series, k.kind);
+                  return (
+                    <motion.div key={k.label} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                      className="bg-[#11161e] px-3.5 py-2.5 min-w-0">
+                      <div className="flex items-center gap-1.5 text-white/40 text-[10px] font-black uppercase tracking-wider">
+                        <k.icon className="w-3 h-3" /> <span className="truncate">{k.label}</span>
+                      </div>
+                      <div className="text-xl font-black leading-tight mt-1">{k.value}</div>
+                      <div className={`text-[11px] font-bold mt-0.5 ${d.dir === "up" ? "text-emerald-400" : d.dir === "down" ? "text-rose-400" : "text-white/30"}`}>
+                        {d.dir === "up" ? "▲ " : d.dir === "down" ? "▼ " : ""}{d.text}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+          {tab === "home"         && <DevHomePanel ai={ai} showToast={showToast} onGotoTab={(id) => setTab(id as Tab)} />}
           {tab === "users"        && <DevUserLookupPanel showToast={showToast} onOpenPerson={setPerson} />}
           {tab === "entitlements" && <DevDatabasePanel showToast={showToast} />}
           {tab === "classes"      && <DevClassesPanel showToast={showToast} />}
@@ -238,7 +262,7 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
-        navItems={TABS.map((t) => ({ id: t.id, label: t.label }))}
+        navItems={[{ id: "home", label: "Home" }, ...TABS.map((t) => ({ id: t.id, label: t.label }))]}
         onGotoTab={(id) => setTab(id as Tab)}
         onOpenPerson={setPerson}
         showToast={showToast}
