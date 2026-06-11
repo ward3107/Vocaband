@@ -17,8 +17,8 @@ const LANES = [24, 70, 44, 78, 32, 60];
 // strict top-to-bottom ordering is preserved).
 const JITTER = [0, -12, 8, -8, 12, -4];
 const TOP = 110; // px below the fixed header before the first island
-const GAP = 156; // vertical spacing between consecutive islands (clears the
-                 // larger medallions + their labels without overlap)
+const GAP = 172; // vertical spacing between consecutive islands (clears the
+                 // 96/112px medallions + their labels without overlap)
 const BOTTOM_PAD = 160; // space below the last island (pet + label clearance)
 
 export function computeIslandPositions(count: number): IslandPos[] {

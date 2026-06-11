@@ -39,7 +39,10 @@ interface CategoryRaceHostViewProps {
   setView: (v: View) => void;
 }
 
-const DEFAULT_CATEGORY_IDS = ["country", "animal", "food", "verb", "adjective", "object"];
+// No categories pre-selected — the teacher picks the round's categories
+// deliberately (product call 2026-06-11; the old six-category default made
+// teachers launch rounds with categories they never chose).
+const DEFAULT_CATEGORY_IDS: string[] = [];
 
 /**
  * SlotLetter — projector letter reveal. On each new round (keyed by

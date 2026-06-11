@@ -27,10 +27,11 @@ interface TravelingPetProps {
 export default function TravelingPet({
   currentStage, nextStage, xp, hasClaimable, displayName, to, from, onTap, reduced,
 }: TravelingPetProps) {
-  // Pet sits just above its island; scaled down so CharacterStage's large
-  // hub footprint fits the map without colliding with neighbours.
-  const target = { left: `${to.xPct}%`, top: `${to.y - 30}px` }; // -30 lifts the pet so it stands just above the island centre
-  const start = from ? { left: `${from.xPct}%`, top: `${from.y - 30}px` } : target;
+  // Pet stands on the TOP EDGE of its island (not over its centre) so the
+  // sprite never covers the tappable medallion: -64 = island half-height
+  // (48px) + breathing room for the pet's lower half.
+  const target = { left: `${to.xPct}%`, top: `${to.y - 64}px` };
+  const start = from ? { left: `${from.xPct}%`, top: `${from.y - 64}px` } : target;
 
   return (
     <motion.div
@@ -39,7 +40,11 @@ export default function TravelingPet({
       animate={target}
       transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 90, damping: 16 }}
     >
-      <div className="pointer-events-auto scale-[0.55]">
+      {/* Mobile: decorative only — fingers aiming at the island below kept
+          hitting the pet and opening the PetCompanion popup mid-flow (the
+          home-screen pet still opens it). sm+ keeps the tap (mouse aim is
+          precise and the hearts/giggle delight is worth keeping). */}
+      <div className="pointer-events-none sm:pointer-events-auto scale-[0.55]">
         <CharacterStage
           currentStage={currentStage}
           nextStage={nextStage}
