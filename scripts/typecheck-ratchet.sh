@@ -41,11 +41,12 @@ if ! [[ "$BASELINE" =~ ^[0-9]+$ ]]; then
   exit 2
 fi
 
-# Run tsc, count error lines.  We grep for "^src/" / "^vite.config" because
+# Run tsc, count error lines.  The prefix list mirrors tsconfig.ci.json's
+# include set (plus server.ts, which can get pulled in via imports) because
 # tsc prints summary lines too ("Found N errors") and we only want the
 # per-error rows.
 CURRENT=$(npx tsc --noEmit -p "$CONFIG" 2>&1 \
-  | grep -cE '^(src/|vite\.config)' \
+  | grep -cE '^(src/|e2e/|scripts/|server\.ts|vite\.config|vitest\.config)' \
   || true)
 
 echo "TypeScript errors — baseline: $BASELINE, current: $CURRENT"
