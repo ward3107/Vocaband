@@ -96,6 +96,11 @@ interface TeacherDashboardViewProps {
   /** Live, teacher-driven Word Hunt Arena (multiplayer movement). Fourth
    *  "Live games" tile on the English dashboard. */
   onArenaClick: () => void;
+  /** Classroom tools — projector / single-device in-room modes, surfaced
+   *  as their own dashboard tiles (English layout only). */
+  onClassShowClick: () => void;
+  onHotSeatClick: () => void;
+  onWheelClick: () => void;
   /** Single entry point that opens the merged Classroom view. */
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
@@ -173,7 +178,8 @@ export default function TeacherDashboardView({
   deleteConfirmModal, setDeleteConfirmModal, onConfirmDeleteAssignment,
   rejectStudentModal, setRejectStudentModal, confirmRejectStudent,
   toasts, confirmDialog, setConfirmDialog,
-  onQuickPlayClick, onCategoryRaceClick, onSpeedRoundClick, onArenaClick, onClassroomClick, onApprovalsClick,
+  onQuickPlayClick, onCategoryRaceClick, onSpeedRoundClick, onArenaClick,
+  onClassShowClick, onHotSeatClick, onWheelClick, onClassroomClick, onApprovalsClick,
   onWorksheetResultsClick,
   onLibraryClick,
   onProjectAssignmentToClass,
@@ -409,6 +415,9 @@ export default function TeacherDashboardView({
               onCategoryRaceClick={onCategoryRaceClick}
               onSpeedRoundClick={onSpeedRoundClick}
               onArenaClick={onArenaClick}
+              onClassShowClick={onClassShowClick}
+              onHotSeatClick={onHotSeatClick}
+              onWheelClick={onWheelClick}
               onClassroomClick={onClassroomClick}
               onApprovalsClick={onApprovalsClick}
               onWorksheetResultsClick={onWorksheetResultsClick}
