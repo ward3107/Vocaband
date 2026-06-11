@@ -18,6 +18,7 @@ import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 import type { GameMode } from '../constants/game';
 import type { LeaderboardEntry } from '../core/types';
+import type { QpStudentEntry } from '../core/quickPlayProtocol';
 import type { Language } from '../hooks/useLanguage';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,6 +73,9 @@ export interface GameRoutesDeps {
   mistakes: number[];
   gameWords: Word[];
   quickPlayActiveSession: { id: string; sessionCode: string } | null;
+  /** Live Quick Play session leaderboard (merged across VMs) — lets the
+   *  finish screen show "3rd of 24 students" without a network call. */
+  qpLeaderboard: QpStudentEntry[];
   isSaving: boolean;
   saveError: string | null;
   toasts: Anyish[];
