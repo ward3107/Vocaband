@@ -79,7 +79,7 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient as createRedisClient } from "redis";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { buildSystemPrompt, buildUserMessage, BAGRUT_TOOL, buildQuestionSystemPrompt, buildQuestionUserMessage, BAGRUT_QUESTION_TOOL } from "./src/features/vocabagrut/lib/bagrutPrompt";
 import { validateBagrutTest, validateBagrutQuestion, computeMcMax, scoreMcAnswers, stripAnswerKey } from "./src/features/vocabagrut/lib/bagrutSchema";
 import { MODULE_SPECS } from "./src/features/vocabagrut/lib/moduleMap";
@@ -206,13 +206,61 @@ flagNonAscii('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY)
 flagNonAscii('GOOGLE_AI_API_KEY', process.env.GOOGLE_AI_API_KEY);
 flagNonAscii('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY);
 
-// Boot diagnostic: which Gemini tier are we on?  This is a one-shot
-// reminder for the operator (audit finding H-5, 2026-05-23).  We
-// don't have a way to query the GCP project's billing status from
-// here, so we just log the endpoint that's being used + the link to
-// the migration plan so it's discoverable in the boot log.  Quiet
-// in dev (no key set).
-if (process.env.GOOGLE_AI_API_KEY) {
+// ── Gemini client factory (audit finding H-5: Vertex AI migration) ────
+// One decision, made once at boot, applied to every Gemini call site:
+//   • GOOGLE_APPLICATION_CREDENTIALS_JSON set → Vertex AI
+//     (aiplatform.googleapis.com) pinned to europe-west1.  That buys, in
+//     writing: EU data residency + no use of prompts for model training
+//     (Google Cloud DPA / Cloud Data Processing Addendum).
+//   • not set → AI Studio (generativelanguage.googleapis.com) via the
+//     per-route GOOGLE_AI_API_KEY checks, exactly as before this change.
+//     Deploying this code WITHOUT the new Fly secret therefore changes
+//     nothing in production — the migration only activates when the
+//     operator completes the GCP setup in docs/operator-tasks.md → H-5.
+// The unified @google/genai SDK speaks both endpoints through one client
+// interface, so the call sites stay mode-agnostic.
+const GEMINI_VERTEX_LOCATION = "europe-west1";
+const geminiVertexCredentials = (() => {
+  const raw = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { project_id?: string; client_email?: string; private_key?: string };
+    if (!parsed?.project_id || !parsed?.client_email || !parsed?.private_key) {
+      console.error("[gemini] GOOGLE_APPLICATION_CREDENTIALS_JSON is set but is missing project_id / client_email / private_key — IGNORING it and falling back to the AI Studio endpoint. Re-paste the full service-account key JSON.");
+      return null;
+    }
+    return parsed;
+  } catch {
+    console.error("[gemini] GOOGLE_APPLICATION_CREDENTIALS_JSON is set but is not valid JSON — IGNORING it and falling back to the AI Studio endpoint. Re-paste the full service-account key JSON.");
+    return null;
+  }
+})();
+
+// Every call site still gates on its API-key env var before calling this
+// (the key must stay set either way — Google Cloud TTS runs on it), so
+// `apiKey` is always present here; in Vertex mode it simply isn't used.
+function createGeminiClient(apiKey: string): GoogleGenAI {
+  if (geminiVertexCredentials) {
+    return new GoogleGenAI({
+      vertexai: true,
+      project: geminiVertexCredentials.project_id,
+      location: GEMINI_VERTEX_LOCATION,
+      googleAuthOptions: { credentials: geminiVertexCredentials },
+    });
+  }
+  return new GoogleGenAI({ apiKey });
+}
+
+// Boot diagnostic: say which Gemini endpoint this process will use.  One
+// clear line, no secrets.  The AI Studio branch keeps the H-5 reminder
+// about Pay-As-You-Go billing (the interim no-training control).  Quiet
+// in dev (nothing configured).
+if (geminiVertexCredentials) {
+  console.log(
+    `[gemini] Vertex AI endpoint in use (aiplatform.googleapis.com, location=${GEMINI_VERTEX_LOCATION}) — ` +
+    "region-pinned + no-training per the Google Cloud DPA (audit H-5 target state)."
+  );
+} else if (process.env.GOOGLE_AI_API_KEY) {
   console.log(
     "[gemini] AI Studio endpoint in use (generativelanguage.googleapis.com). " +
     "Verify Pay-As-You-Go billing is enabled in the GCP project for the no-training " +
@@ -304,15 +352,15 @@ const supabaseAdmin = hasSupabaseConfig
   : null;
 
 // ── Gemini request timeouts ────────────────────────────────────────────
-// @google/generative-ai has NO default request timeout, so a hung Gemini
-// connection (their API stalls under load) would hold the Node socket AND
-// the route's rate-limit slot open indefinitely. During school-hours
-// OCR/sentence bursts a few stuck calls accumulate and starve the small Fly
-// VM, surfacing as an endless spinner on unrelated routes. SingleRequestOptions
-// supports a per-call `timeout` (the SDK aborts the underlying fetch), so every
-// model call fails fast and the handler returns a clean error the client can
-// retry / fall back on. Image OCR of large phone photos legitimately runs
-// longer than text generation, so it gets a more generous bound.
+// A hung Gemini connection (their API stalls under load) would hold the
+// Node socket AND the route's rate-limit slot open indefinitely. During
+// school-hours OCR/sentence bursts a few stuck calls accumulate and starve
+// the small Fly VM, surfacing as an endless spinner on unrelated routes.
+// @google/genai supports a per-call `config.httpOptions.timeout` (the SDK
+// aborts the underlying fetch via AbortController), so every model call
+// fails fast and the handler returns a clean error the client can retry /
+// fall back on. Image OCR of large phone photos legitimately runs longer
+// than text generation, so it gets a more generous bound.
 const GEMINI_TIMEOUT_MS = 30_000;
 const GEMINI_OCR_TIMEOUT_MS = 60_000;
 
@@ -726,49 +774,49 @@ function sanitizeAiOutput(value: unknown): string {
 // responses.  Required fields enforce the minimum we depend on.
 
 const TRANSLATE_SCHEMA = {
-  type: SchemaType.ARRAY,
+  type: Type.ARRAY,
   items: {
-    type: SchemaType.OBJECT,
+    type: Type.OBJECT,
     properties: {
-      english: { type: SchemaType.STRING },
-      hebrew: { type: SchemaType.STRING },
-      arabic: { type: SchemaType.STRING },
-      russian: { type: SchemaType.STRING },
+      english: { type: Type.STRING },
+      hebrew: { type: Type.STRING },
+      arabic: { type: Type.STRING },
+      russian: { type: Type.STRING },
     },
     required: ["english", "hebrew", "arabic", "russian"],
   },
 };
 
 const OCR_SCHEMA = {
-  type: SchemaType.ARRAY,
-  items: { type: SchemaType.STRING },
+  type: Type.ARRAY,
+  items: { type: Type.STRING },
 };
 
 const AI_TEXT_SCHEMA = {
-  type: SchemaType.OBJECT,
+  type: Type.OBJECT,
   properties: {
     vocabulary: {
-      type: SchemaType.ARRAY,
+      type: Type.ARRAY,
       items: {
-        type: SchemaType.OBJECT,
+        type: Type.OBJECT,
         properties: {
-          english: { type: SchemaType.STRING },
-          hebrew: { type: SchemaType.STRING },
-          arabic: { type: SchemaType.STRING },
-          example: { type: SchemaType.STRING },
+          english: { type: Type.STRING },
+          hebrew: { type: Type.STRING },
+          arabic: { type: Type.STRING },
+          example: { type: Type.STRING },
         },
         required: ["english", "hebrew", "arabic"],
       },
     },
     questions: {
-      type: SchemaType.ARRAY,
+      type: Type.ARRAY,
       items: {
-        type: SchemaType.OBJECT,
+        type: Type.OBJECT,
         properties: {
-          question: { type: SchemaType.STRING },
-          answer: { type: SchemaType.STRING },
+          question: { type: Type.STRING },
+          answer: { type: Type.STRING },
           type: {
-            type: SchemaType.STRING,
+            type: Type.STRING,
             enum: ["literal", "inferential"],
           },
         },
@@ -779,16 +827,16 @@ const AI_TEXT_SCHEMA = {
 };
 
 const AI_LESSON_SCHEMA = {
-  type: SchemaType.OBJECT,
+  type: Type.OBJECT,
   properties: {
-    text: { type: SchemaType.STRING },
+    text: { type: Type.STRING },
     questions: {
-      type: SchemaType.ARRAY,
+      type: Type.ARRAY,
       items: {
-        type: SchemaType.OBJECT,
+        type: Type.OBJECT,
         properties: {
           type: {
-            type: SchemaType.STRING,
+            type: Type.STRING,
             enum: [
               "yesNo",
               "wh",
@@ -801,11 +849,11 @@ const AI_LESSON_SCHEMA = {
               "sentenceComplete",
             ],
           },
-          question: { type: SchemaType.STRING },
-          answer: { type: SchemaType.STRING },
+          question: { type: Type.STRING },
+          answer: { type: Type.STRING },
           options: {
-            type: SchemaType.ARRAY,
-            items: { type: SchemaType.STRING },
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
           },
         },
         required: ["type", "question", "answer"],
@@ -851,6 +899,12 @@ let cloudflareBlockList: BlockList = buildCloudflareBlockList(
   CLOUDFLARE_IPV4_RANGES,
   CLOUDFLARE_IPV6_RANGES,
 );
+// Not consulted by cloudflareOnlyIngress yet: the header/secret checks
+// replaced the CIDR comparison after the 2026-05-20 ingress/egress outage,
+// but the list + its 24h refresh are retained for the module-11 hardening
+// tier (Authenticated Origin Pulls / IP re-check).  The void read keeps
+// tsc's noUnusedLocals satisfied without deleting that pipeline.
+void cloudflareBlockList;
 
 async function refreshCloudflareBlockListFromUpstream(): Promise<void> {
   try {
@@ -1017,8 +1071,13 @@ async function startServer() {
       subClient.on("error", (err) => console.error("[redis-adapter] sub error:", err.message));
       await Promise.all([pubClient.connect(), subClient.connect()]);
       io.adapter(createAdapter(pubClient, subClient));
-      redisPubClient = pubClient;
-      redisSubClient = subClient;
+      // Assertion needed because redis v6's createClient() overloads infer
+      // concrete generics ({}, {}, {}, 3, {}) for this call, while
+      // ReturnType<typeof createRedisClient> resolves to the unbound generic
+      // defaults — structurally the same client, but TS can't unify the
+      // RespVersions parameter (3 vs 2|3).  Type-level only; no runtime change.
+      redisPubClient = pubClient as unknown as ReturnType<typeof createRedisClient>;
+      redisSubClient = subClient as unknown as ReturnType<typeof createRedisClient>;
       redisAdapterStatus = "attached";
       console.log("[redis-adapter] attached — multi-VM socket.io broadcasts enabled");
 
@@ -4080,28 +4139,7 @@ async function startServer() {
 
     if (uncachedOriginalCase.length > 0) {
       try {
-        const genAI = new GoogleGenerativeAI(apiKey.trim());
-        // gemini-2.5-flash-lite: cheapest tier in the 2.5 family
-        // (~half the cost of `gemini-2.5-flash` per token, similar
-        // quality for mechanical tasks like translation).  Chosen so the
-        // "translate these 40 words" button stays cheap at classroom
-        // scale.  Upgrade here if we ever need nuance the lite tier
-        // can't deliver — translation is a well-solved task and lite
-        // handles idioms + multi-word phrases fine.
-        // Schema-mode: Gemini is constrained to emit a JSON array matching
-        // TRANSLATE_SCHEMA, so the regex-based parse fallback below is no
-        // longer needed.  The prompt still describes what to translate —
-        // the schema only enforces shape, not semantics.
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash-lite",
-          generationConfig: {
-            // Translation is deterministic — temperature 0 gives the single
-            // best answer every time and keeps cached results consistent.
-            temperature: 0,
-            responseMimeType: "application/json",
-            responseSchema: TRANSLATE_SCHEMA,
-          },
-        });
+        const genAI = createGeminiClient(apiKey.trim());
 
         // Structured prompt so we can parse deterministically.
         // Now also produces Russian alongside Hebrew + Arabic.  Arabic
@@ -4124,8 +4162,30 @@ Examples:
 Input:
 ${JSON.stringify(uncachedOriginalCase)}`;
 
-        const result = await model.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS });
-        const raw = result.response.text();
+        // gemini-2.5-flash-lite: cheapest tier in the 2.5 family
+        // (~half the cost of `gemini-2.5-flash` per token, similar
+        // quality for mechanical tasks like translation).  Chosen so the
+        // "translate these 40 words" button stays cheap at classroom
+        // scale.  Upgrade here if we ever need nuance the lite tier
+        // can't deliver — translation is a well-solved task and lite
+        // handles idioms + multi-word phrases fine.
+        // Schema-mode: Gemini is constrained to emit a JSON array matching
+        // TRANSLATE_SCHEMA, so the regex-based parse fallback below is no
+        // longer needed.  The prompt still describes what to translate —
+        // the schema only enforces shape, not semantics.
+        const result = await genAI.models.generateContent({
+          model: "gemini-2.5-flash-lite",
+          contents: prompt,
+          config: {
+            // Translation is deterministic — temperature 0 gives the single
+            // best answer every time and keeps cached results consistent.
+            temperature: 0,
+            responseMimeType: "application/json",
+            responseSchema: TRANSLATE_SCHEMA,
+            httpOptions: { timeout: GEMINI_TIMEOUT_MS },
+          },
+        });
+        const raw = result.text ?? "";
 
         // Schema-mode guarantees valid JSON matching TRANSLATE_SCHEMA.  We
         // still wrap in try/catch as belt-and-braces — a stricter SDK
@@ -4758,22 +4818,7 @@ ${JSON.stringify(uncachedOriginalCase)}`;
 
     try {
       // Trim whitespace — common paste error in env var consoles
-      const genAI = new GoogleGenerativeAI(apiKey.trim());
-      // gemini-2.5-flash-lite: cheapest 2.5 tier (~half the per-token price of
-      // gemini-2.5-flash) and supports multimodal (image) input. Crucially it
-      // also has "thinking" OFF by default, so we don't pay for reasoning
-      // tokens on what is a pure transcription task. Schema-mode constrains
-      // the response to a JSON array of strings.
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash-lite",
-        generationConfig: {
-          // temperature 0: OCR must transcribe, not improvise. Higher
-          // temperatures are the main driver of invented/hallucinated words.
-          temperature: 0,
-          responseMimeType: "application/json",
-          responseSchema: OCR_SCHEMA,
-        },
-      });
+      const genAI = createGeminiClient(apiKey.trim());
 
       // Gemini accepts the raw image buffer directly via inlineData.
       //
@@ -4856,17 +4901,33 @@ Quality rules:
 
       const prompt = lang === "he" ? hebrewPrompt : englishPrompt;
 
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: req.file.buffer.toString("base64"),
-            mimeType,
+      // gemini-2.5-flash-lite: cheapest 2.5 tier (~half the per-token price of
+      // gemini-2.5-flash) and supports multimodal (image) input. Crucially it
+      // also has "thinking" OFF by default, so we don't pay for reasoning
+      // tokens on what is a pure transcription task. Schema-mode constrains
+      // the response to a JSON array of strings.
+      const result = await genAI.models.generateContent({
+        model: "gemini-2.5-flash-lite",
+        contents: [
+          prompt,
+          {
+            inlineData: {
+              data: req.file.buffer.toString("base64"),
+              mimeType,
+            },
           },
+        ],
+        config: {
+          // temperature 0: OCR must transcribe, not improvise. Higher
+          // temperatures are the main driver of invented/hallucinated words.
+          temperature: 0,
+          responseMimeType: "application/json",
+          responseSchema: OCR_SCHEMA,
+          httpOptions: { timeout: GEMINI_OCR_TIMEOUT_MS },
         },
-      ], { timeout: GEMINI_OCR_TIMEOUT_MS });
+      });
 
-      const responseText = result.response.text();
+      const responseText = result.text ?? "";
 
       // Schema-mode (OCR_SCHEMA) guarantees a JSON array of strings.
       // The old markdown-fence strip + regex-token fallback was needed
@@ -5492,14 +5553,14 @@ Quality rules:
   //     helper) — the endpoint is stateless, easier to test, and keeps
   //     the storage layer out of the Express handler.
   const LIBRARY_SENTENCES_SCHEMA = {
-    type: SchemaType.ARRAY,
+    type: Type.ARRAY,
     items: {
-      type: SchemaType.OBJECT,
+      type: Type.OBJECT,
       properties: {
-        word: { type: SchemaType.STRING },
+        word: { type: Type.STRING },
         sentences: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.STRING },
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
         },
       },
       required: ["word", "sentences"],
@@ -5688,25 +5749,24 @@ Return JSON: an array, one item per word, each with the target word string and a
 
     type GeminiItem = { word: string; sentences: string[] };
 
-    const generationModel = (() => {
-      const genAI = new GoogleGenerativeAI(apiKey.trim());
-      return genAI.getGenerativeModel({
+    const genAI = createGeminiClient(apiKey.trim());
+
+    const callGemini = async (targets: typeof words): Promise<Map<string, string[]>> => {
+      const prompt = buildPrompt(targets);
+      const result = await genAI.models.generateContent({
         model: "gemini-2.5-flash-lite",
-        generationConfig: {
+        contents: prompt,
+        config: {
           // Moderate temperature: we generate several sentences per word and
           // explicitly want varied contexts, so some randomness is desirable
           // (unlike translation/OCR, which want temperature 0).
           temperature: 0.8,
           responseMimeType: "application/json",
           responseSchema: LIBRARY_SENTENCES_SCHEMA,
+          httpOptions: { timeout: GEMINI_TIMEOUT_MS },
         },
       });
-    })();
-
-    const callGemini = async (targets: typeof words): Promise<Map<string, string[]>> => {
-      const prompt = buildPrompt(targets);
-      const result = await generationModel.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS });
-      const raw = result.response.text();
+      const raw = result.text ?? "";
       let parsed: GeminiItem[];
       try {
         parsed = JSON.parse(raw);
@@ -5849,14 +5909,14 @@ Return JSON: an array, one item per word, each with the target word string and a
   // designed in Phase 0 for exactly this kind of structured-but-flexible
   // per-word data.
   const LIBRARY_DISTRACTORS_SCHEMA = {
-    type: SchemaType.ARRAY,
+    type: Type.ARRAY,
     items: {
-      type: SchemaType.OBJECT,
+      type: Type.OBJECT,
       properties: {
-        word: { type: SchemaType.STRING },
+        word: { type: Type.STRING },
         distractors: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.STRING },
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
         },
       },
       required: ["word", "distractors"],
@@ -5991,19 +6051,20 @@ Return JSON: an array, one item per word, each with { word, distractors: [string
 
     let parsed: GeminiItem[];
     try {
-      const genAI = new GoogleGenerativeAI(apiKey.trim());
-      const model = genAI.getGenerativeModel({
+      const genAI = createGeminiClient(apiKey.trim());
+      const result = await genAI.models.generateContent({
         model: "gemini-2.5-flash-lite",
-        generationConfig: {
+        contents: prompt,
+        config: {
           // Low temperature: distractors should be plausible and on-category,
           // not creative. A little >0 to avoid always picking the same word.
           temperature: 0.4,
           responseMimeType: "application/json",
           responseSchema: LIBRARY_DISTRACTORS_SCHEMA,
+          httpOptions: { timeout: GEMINI_TIMEOUT_MS },
         },
       });
-      const result = await model.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS });
-      const raw = result.response.text();
+      const raw = result.text ?? "";
       try {
         parsed = JSON.parse(raw);
         if (!Array.isArray(parsed)) throw new Error("not an array");
@@ -6393,27 +6454,26 @@ ${extractVocab && generateQuestions ? `{
 Output ONLY the JSON, no markdown, no explanations.
 `;
 
-      const genAI = new GoogleGenerativeAI(apiKey);
+      const genAI = createGeminiClient(apiKey);
       // Schema-mode constrains the response to AI_TEXT_SCHEMA — the
       // markdown-fence cleanup + object-regex salvage parser that
       // followed the old call has been removed.
-      const model = genAI.getGenerativeModel({
+      const result = await genAI.models.generateContent({
         // Flash-Lite: ~half the per-token price of Flash and thinking is off by
         // default (no reasoning-token cost) — fine for schema-constrained vocab
         // extraction + comprehension questions.
         model: "gemini-2.5-flash-lite",
-        generationConfig: {
+        contents: prompt,
+        config: {
           // Low temperature: vocab extraction + comprehension questions are
           // analysis tasks that want accuracy, not creativity.
           temperature: 0.2,
           responseMimeType: "application/json",
           responseSchema: AI_TEXT_SCHEMA,
+          httpOptions: { timeout: GEMINI_TIMEOUT_MS },
         },
       });
-
-      const result = await model.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS });
-      const response = await result.response;
-      const jsonText = response.text();
+      const jsonText = result.text ?? "";
 
       let resultData: {
         vocabulary?: Array<{ english: string; hebrew: string; arabic: string; example?: string }>;
@@ -6659,27 +6719,26 @@ Important notes:
 - Output ONLY the JSON, no markdown, no explanations
 `;
 
-      const genAI = new GoogleGenerativeAI(apiKey);
+      const genAI = createGeminiClient(apiKey);
       // Schema-mode constrains the response to AI_LESSON_SCHEMA — the
       // markdown-fence cleanup + object-regex salvage parser that
       // followed the old call has been removed.
-      const model = genAI.getGenerativeModel({
+      const result = await genAI.models.generateContent({
         // Flash-Lite: ~half the per-token price of Flash, thinking off by
         // default. Re-baseline reading-passage quality if it regresses — this
         // is the most generative of the Gemini calls.
         model: "gemini-2.5-flash-lite",
-        generationConfig: {
+        contents: prompt,
+        config: {
           // Moderate temperature: the reading text should read naturally and
           // varied, but not so loose that it drifts off the requested level.
           temperature: 0.7,
           responseMimeType: "application/json",
           responseSchema: AI_LESSON_SCHEMA,
+          httpOptions: { timeout: GEMINI_TIMEOUT_MS },
         },
       });
-
-      const result = await model.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS });
-      const response = await result.response;
-      const jsonText = response.text();
+      const jsonText = result.text ?? "";
 
       let lessonData: {
         text: string;
@@ -6753,18 +6812,6 @@ Important notes:
       if (missingWords.length > 0) {
         console.warn(`[AI Lesson] uid=${auth.uid}: ${missingWords.length}/${words.length} words missing, attempting repair: ${missingWords.slice(0, 10).join(", ")}`);
         try {
-          const repairModel = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash-lite",
-            generationConfig: {
-              temperature: 0.5,
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: SchemaType.OBJECT,
-                properties: { text: { type: SchemaType.STRING } },
-                required: ["text"],
-              },
-            },
-          });
           const repairPrompt = `Revise the reading text below so that EVERY one of these missing vocabulary words appears at least once, used naturally and in context: ${missingWords.join(", ")}.
 
 Keep all content that is already in the text, keep roughly the same length, keep the ${config.textDifficulty} level, and keep the 3-5 paragraph structure (paragraphs separated by "\\n\\n"). Use regular straight quotes only.
@@ -6773,8 +6820,21 @@ Return ONLY a JSON object: {"text": "the full revised text"}.
 
 Current text:
 ${sanitizedText}`;
-          const repairResult = await repairModel.generateContent(repairPrompt, { timeout: GEMINI_TIMEOUT_MS });
-          const repaired = JSON.parse(repairResult.response.text()) as { text?: unknown };
+          const repairResult = await genAI.models.generateContent({
+            model: "gemini-2.5-flash-lite",
+            contents: repairPrompt,
+            config: {
+              temperature: 0.5,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: { text: { type: Type.STRING } },
+                required: ["text"],
+              },
+              httpOptions: { timeout: GEMINI_TIMEOUT_MS },
+            },
+          });
+          const repaired = JSON.parse(repairResult.text ?? "") as { text?: unknown };
           if (typeof repaired.text === "string" && repaired.text.trim().length > 0) {
             const repairedText = sanitizeAiOutput(repaired.text).slice(0, 10000);
             const repairedMisses = coverageMisses(repairedText);
