@@ -289,8 +289,10 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
     refresh();
   };
 
+  // --vb-surface-alt (not --vb-bg, which is never defined) so the page
+  // chrome actually follows the active teacher theme.
   return (
-    <div className="min-h-screen bg-[var(--vb-bg)]">
+    <div className="min-h-screen bg-[var(--vb-surface-alt)]">
       <PageHero
         icon={<ClipboardList size={32} className="text-white" />}
         title="Worksheet Results"

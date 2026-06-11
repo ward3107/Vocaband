@@ -273,7 +273,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
   // Legacy "students" view merged into gradebook — redirect on next frame.
   if (view === 'students') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-100">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--vb-surface-alt)]">
         <SvgSpinner className="animate-spin text-blue-700" size={48} />
       </div>
     );

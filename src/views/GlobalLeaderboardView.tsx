@@ -26,18 +26,20 @@ export default function GlobalLeaderboardView({
   const headingLabel = language === 'he' ? '10 המובילים בעולם' : language === 'ar' ? 'أفضل 10 في العالم' : 'Global Top 10';
   const blurbLabel = language === 'he' ? 'התלמידים הטובים ביותר בכל הכיתות!' : language === 'ar' ? 'أفضل الطلاب في جميع الفصول!' : 'The best students across all classes!';
   const pointsLabel = language === 'he' ? 'נקודות' : language === 'ar' ? 'نقاط' : 'Points';
+  // Theme tokens (not hardcoded stone) so the page follows the active
+  // teacher theme; the :root defaults keep students on the light look.
   return (
-    <div className="min-h-screen bg-stone-100 p-6" dir={dir}>
+    <div className="min-h-screen bg-[var(--vb-surface-alt)] p-6" dir={dir}>
       <div className="max-w-2xl mx-auto">
         <button onClick={() => setView((userRole === "teacher" || userRole === "admin") ? "teacher-dashboard" : "student-dashboard")} className="mb-6 signature-gradient text-white px-6 py-3 rounded-lg font-bold hover:scale-105 active:scale-95 transition-all shadow-lg">{backLabel}</button>
-        <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-10">
+        <div className="rounded-2xl shadow-xl p-6 sm:p-10 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
           <div className="flex items-center gap-4 mb-8">
-            <div className="p-4 bg-yellow-100 rounded-2xl">
-              <Trophy size={40} className="text-yellow-600" />
+            <div className="p-4 rounded-2xl" style={{ backgroundColor: 'var(--vb-warning-soft)' }}>
+              <Trophy size={40} style={{ color: 'var(--vb-warning)' }} />
             </div>
             <div>
-              <h2 className="text-3xl font-black text-stone-900">{headingLabel}</h2>
-              <p className="text-stone-500">{blurbLabel}</p>
+              <h2 className="text-3xl font-black" style={{ color: 'var(--vb-text-primary)' }}>{headingLabel}</h2>
+              <p style={{ color: 'var(--vb-text-secondary)' }}>{blurbLabel}</p>
             </div>
           </div>
 
@@ -48,18 +50,24 @@ export default function GlobalLeaderboardView({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                className="flex justify-between items-center p-5 bg-stone-50 rounded-xl border border-stone-100"
+                className="flex justify-between items-center p-5 rounded-xl border"
+                style={{ backgroundColor: 'var(--vb-surface-alt)', borderColor: 'var(--vb-border)' }}
               >
                 <div className="flex items-center gap-4">
-                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-black text-sm ${idx === 0 ? "bg-yellow-400 text-white" : idx === 1 ? "bg-stone-300 text-white" : idx === 2 ? "bg-orange-300 text-white" : "bg-stone-200 text-stone-500"}`}>
+                  {/* Medal chips keep their gold/silver/bronze identity on
+                      every theme; only the no-medal chip follows the palette. */}
+                  <span
+                    className={`w-8 h-8 flex items-center justify-center rounded-full font-black text-sm ${idx === 0 ? "bg-yellow-400 text-white" : idx === 1 ? "bg-stone-300 text-white" : idx === 2 ? "bg-orange-300 text-white" : ""}`}
+                    style={idx > 2 ? { backgroundColor: 'var(--vb-surface)', color: 'var(--vb-text-muted)' } : undefined}
+                  >
                     {idx + 1}
                   </span>
                   <span className="text-3xl">{entry.avatar}</span>
-                  <span className="font-black text-stone-800 text-lg">{entry.name}</span>
+                  <span className="font-black text-lg" style={{ color: 'var(--vb-text-primary)' }}>{entry.name}</span>
                 </div>
                 <div className="text-end">
-                  <p className="text-2xl font-black text-blue-700">{entry.score}</p>
-                  <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{pointsLabel}</p>
+                  <p className="text-2xl font-black" style={{ color: 'var(--vb-accent)' }}>{entry.score}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--vb-text-muted)' }}>{pointsLabel}</p>
                 </div>
               </motion.div>
             ))}

@@ -139,7 +139,7 @@ export function AppViewRouter(props: AppViewRouterProps) {
   } = props;
 
   if (loading && !quickPlaySessionParam) {
-    return <div className="min-h-screen flex items-center justify-center bg-stone-100">
+    return <div className="min-h-screen flex items-center justify-center bg-[var(--vb-surface-alt)]">
       <SvgSpinner className="animate-spin text-blue-700" size={48} />
     </div>;
   }
@@ -360,7 +360,7 @@ export function AppViewRouter(props: AppViewRouterProps) {
   // through shows the spinner for the frame it takes useViewGuards to
   // route the user back to a real home.
   if (view !== "game") {
-    return <div className="min-h-screen flex items-center justify-center bg-stone-100">
+    return <div className="min-h-screen flex items-center justify-center bg-[var(--vb-surface-alt)]">
       <SvgSpinner className="animate-spin text-blue-700" size={48} />
     </div>;
   }
