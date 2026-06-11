@@ -26,7 +26,7 @@ import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import ArenaCanvas from "../components/game/ArenaCanvas";
 import SpeedWordPicker from "../components/game/SpeedWordPicker";
 import { primeAudio } from "../utils/primeAudio";
-import { playRoundStart } from "../utils/raceSfx";
+import { playRoundStart, startArenaMusic, stopArenaMusic } from "../utils/raceSfx";
 import { shuffle } from "../utils";
 import { buildSpeedQuestion, type L1 } from "../utils/speedRoundQuestion";
 import {
@@ -108,6 +108,16 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   }, [status, observeAsTeacher]);
 
   const arenaActive = !!currentArena;
+
+  // Background music plays on the projector (one source for the room) while an
+  // arena is live — the teacher's Start tap already unlocked audio. Muting via
+  // vb-race-muted makes startArenaMusic a no-op.
+  useEffect(() => {
+    if (!arenaActive) return;
+    startArenaMusic();
+    return () => stopArenaMusic();
+  }, [arenaActive]);
+
   // &mode=arena lets the student bootstrap skip the unused vocab prefetch.
   const joinUrl = useMemo(() => `${window.location.origin}/?session=${sessionCode}&mode=arena`, [sessionCode]);
 

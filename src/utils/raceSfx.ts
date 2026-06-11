@@ -124,3 +124,74 @@ export function playRoundStart(): void {
   for (const [f, at] of seq) note(c, f, at, 0.16, "triangle", 0.16);
   note(c, 1318.51, 0.78, 0.4, "sine", 0.18); // E6 held finish
 }
+
+// ─── Looping background music (Word Hunt Arena) ────────────────────────────
+// Asset-free, same as the SFX above: a gentle 4-chord chiptune scheduled one
+// bar at a time on a setInterval, kept quiet so the answer cues sit on top.
+// Respects the same vb-race-muted toggle (audioCtx() returns null when muted).
+// Meant to run on ONE device per room (the teacher's projector) so a class of
+// phones doesn't blast 30 out-of-sync loops.
+
+let musicTimer: ReturnType<typeof setInterval> | null = null;
+let musicGain: GainNode | null = null;
+let musicNextBar = 0;
+
+/** Start the arena loop. No-ops if audio is blocked/muted or already playing. */
+export function startArenaMusic(): void {
+  const c = audioCtx();
+  if (!c || musicTimer !== null) return;
+
+  musicGain = c.createGain();
+  musicGain.gain.value = 0.12; // master trim — voices stay well under the SFX
+  musicGain.connect(c.destination);
+
+  const BAR = 1.92;            // seconds per bar (~150 bpm, 8 eighth-notes)
+  const EIGHTH = BAR / 8;
+  // C major energy: walking bass roots under a bright arpeggio.
+  const BASS = [130.81, 130.81, 196.0, 196.0, 174.61, 174.61, 196.0, 196.0]; // C3 G3 F3 G3
+  const ARP  = [523.25, 659.25, 783.99, 659.25, 698.46, 880.0, 783.99, 659.25];
+
+  const voice = (freq: number, start: number, dur: number, type: OscillatorType, peak: number) => {
+    if (!musicGain) return;
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, start);
+    g.gain.setValueAtTime(0.0001, start);
+    g.gain.exponentialRampToValueAtTime(peak, start + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    osc.connect(g).connect(musicGain);
+    osc.start(start);
+    osc.stop(start + dur + 0.02);
+  };
+
+  musicNextBar = c.currentTime + 0.06;
+  const scheduleBar = () => {
+    if (!musicGain) return;
+    // Clamp so a laggy interval never schedules into the past.
+    const base = Math.max(musicNextBar, c.currentTime + 0.02);
+    for (let i = 0; i < 8; i++) {
+      const at = base + i * EIGHTH;
+      voice(BASS[i], at, EIGHTH * 0.95, "triangle", 0.42);
+      voice(ARP[i], at, EIGHTH * 0.8, "square", 0.2);
+    }
+    musicNextBar = base + BAR;
+  };
+  scheduleBar();
+  musicTimer = setInterval(scheduleBar, BAR * 1000);
+}
+
+/** Stop the loop with a short fade so it doesn't cut off with a click. */
+export function stopArenaMusic(): void {
+  if (musicTimer !== null) { clearInterval(musicTimer); musicTimer = null; }
+  if (!musicGain) return;
+  const g = musicGain;
+  musicGain = null; // any in-flight scheduleBar bails on the null check
+  try {
+    const c = g.context;
+    g.gain.cancelScheduledValues(c.currentTime);
+    g.gain.setValueAtTime(g.gain.value, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.3);
+  } catch { /* context gone — ignore */ }
+  setTimeout(() => { try { g.disconnect(); } catch { /* ignore */ } }, 400);
+}

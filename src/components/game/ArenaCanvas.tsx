@@ -251,7 +251,7 @@ export default function ArenaCanvas({
           <motion.div
             animate={w.state === "available" ? { y: [0, -5, 0] } : { y: 0 }}
             transition={w.state === "available" ? { repeat: Infinity, duration: 2.2, ease: "easeInOut" } : undefined}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-black text-xs sm:text-sm whitespace-nowrap shadow-md transition-opacity ${
+            className={`flex items-center gap-1 px-4 py-2.5 rounded-full font-black text-base sm:text-lg whitespace-nowrap shadow-md transition-opacity ${
               w.state === "available"
                 ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-amber-500/30"
                 : w.state === "locked"
@@ -280,9 +280,10 @@ export default function ArenaCanvas({
                 type="button"
                 onClick={() => handleWordTap(w.wordId)}
                 aria-label={w.label}
-                // p-2 + -m-2 grows the hit box past the visual pill without
-                // shifting layout — fingertip-sized targets on the map.
-                className="block p-2 -m-2"
+                // p-4 + -m-4 grows the hit box well past the visual pill
+                // without shifting layout — a fat fingertip target on the map
+                // (kids kept missing the small pill on phones).
+                className="block p-4 -m-4"
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 {pill}

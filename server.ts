@@ -1799,6 +1799,12 @@ async function startServer() {
         lockedBy: string | null;
         activeRound: {
           roundId: string;
+          /** Copied from the word so the shared qpScoreChoice core can read
+           *  correctIndex/optionCount off the round (like currentSpeed does).
+           *  Without these the index compare is `choiceIndex === undefined`,
+           *  marking every correct arena answer wrong. */
+          correctIndex: number;
+          optionCount: number;
           deadlineTs: number;
           startTs: number;
           submitted: Set<string>;
@@ -2340,6 +2346,10 @@ async function startServer() {
     word.lockedBy = args.clientId;
     word.activeRound = {
       roundId, deadlineTs, startTs: now,
+      // Carry the scoring fields onto the round so qpScoreChoice (shared with
+      // Speed Round) compares against the right answer — not undefined.
+      correctIndex: word.correctIndex,
+      optionCount: word.optionCount,
       submitted: new Set(),
       firstCorrectClientId: null,
       timer: null,
