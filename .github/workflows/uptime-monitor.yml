@@ -1,0 +1,154 @@
+# =============================================================================
+# uptime-monitor.yml
+#
+# External-ish availability monitor for production. Closes the bulk of
+# operator task §0c (docs/operator-tasks.md): a cert that silently fails
+# to auto-renew, a dead health endpoint, or a deleted DNS record should
+# page the operator BEFORE Monday-morning classes hit a security warning.
+#
+# What it checks:
+#   - every hour:  HTTP probe of https://www.vocaband.com/api/health
+#   - daily 04:00: TLS cert expiry (< 14 days remaining = alarm) and
+#                  DNS A/AAAA resolution for vocaband.com, www, auth
+#     (manual dispatch runs everything)
+#
+# How it pages:
+#   On failure it opens a GitHub issue labelled `uptime-alert` (or leaves
+#   the existing one open — no spam, one issue per incident). On the next
+#   green run it comments + closes the issue. Install the GitHub mobile
+#   app and enable push notifications for issues on this repo so an alert
+#   reaches your phone — email alone is too easy to miss at 3am.
+#
+# Honest limits vs a real external monitor (UptimeRobot / Better Stack):
+#   - hourly granularity, not 5-minute; scheduled runs can also be
+#     delayed several minutes by GitHub under load
+#   - no SMS paging; GitHub mobile push is the loudest channel here
+#   - if GitHub itself is down, no probes run
+#   Upgrade path stays documented in docs/operator-tasks.md §0c.
+# =============================================================================
+
+name: Uptime + SSL + DNS monitor
+
+on:
+  schedule:
+    # Hourly health probe (~24 runner-minutes/day — keep an eye on the
+    # Actions minutes budget before making this more frequent).
+    - cron: "7 * * * *"
+    # Daily deep check: cert expiry + DNS. 04:00 UTC = morning IL, so a
+    # red issue is waiting before the school day starts.
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: uptime-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Decide probe depth
+        id: depth
+        run: |
+          # The hourly cron only runs the cheap health probe; the daily
+          # cron and manual dispatch also run cert + DNS checks.
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event.schedule }}" == "0 4 * * *" ]]; then
+            echo "deep=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deep=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Health probe — /api/health
+        run: |
+          set -euo pipefail
+          URL="https://www.vocaband.com/api/health"
+          # 3 attempts 20s apart so a single edge blip doesn't page anyone.
+          for attempt in 1 2 3; do
+            if BODY=$(curl -fsS --max-time 15 "$URL"); then
+              echo "✓ $URL reachable (attempt $attempt): $BODY"
+              exit 0
+            fi
+            echo "✗ attempt $attempt failed"
+            [[ $attempt -lt 3 ]] && sleep 20
+          done
+          echo "::error::Health probe failed 3/3 attempts: $URL"
+          exit 1
+
+      - name: TLS cert expiry — alarm under 14 days
+        if: steps.depth.outputs.deep == 'true'
+        run: |
+          set -euo pipefail
+          FAIL=0
+          for HOST in www.vocaband.com auth.vocaband.com; do
+            NOT_AFTER=$(echo | openssl s_client -servername "$HOST" -connect "$HOST:443" 2>/dev/null \
+              | openssl x509 -noout -enddate | cut -d= -f2)
+            EXPIRY_EPOCH=$(date -d "$NOT_AFTER" +%s)
+            NOW_EPOCH=$(date +%s)
+            DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+            echo "$HOST cert expires: $NOT_AFTER (${DAYS_LEFT} days left)"
+            if [[ $DAYS_LEFT -lt 14 ]]; then
+              echo "::error::$HOST certificate expires in ${DAYS_LEFT} days — auto-renewal has likely failed"
+              FAIL=1
+            fi
+          done
+          exit $FAIL
+
+      - name: DNS resolution — A/AAAA records present
+        if: steps.depth.outputs.deep == 'true'
+        run: |
+          set -euo pipefail
+          FAIL=0
+          for HOST in vocaband.com www.vocaband.com auth.vocaband.com; do
+            # Resolve against a public resolver, not the runner's cache.
+            ANSWERS=$(dig +short A "$HOST" @1.1.1.1; dig +short AAAA "$HOST" @1.1.1.1)
+            if [[ -z "$ANSWERS" ]]; then
+              echo "::error::$HOST resolves to nothing — DNS record missing?"
+              FAIL=1
+            else
+              echo "✓ $HOST → $(echo "$ANSWERS" | paste -sd' ')"
+            fi
+          done
+          exit $FAIL
+
+      # ── Paging ────────────────────────────────────────────────────────
+      # One issue per incident: open it on first failure, leave it alone
+      # while the outage persists, close it on recovery. The issue label
+      # is the dedup key.
+
+      - name: Open alert issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh label create uptime-alert --color B60205 \
+            --description "Automated production availability alert" 2>/dev/null || true
+          EXISTING=$(gh issue list --label uptime-alert --state open --json number --jq '.[0].number // empty')
+          if [[ -n "$EXISTING" ]]; then
+            echo "Alert issue #$EXISTING already open — not spamming another."
+            exit 0
+          fi
+          gh issue create \
+            --title "🔴 Production availability alert ($(date -u +%Y-%m-%d\ %H:%M) UTC)" \
+            --label uptime-alert \
+            --body "$(printf 'An automated probe failed.\n\n- Run: %s/%s/actions/runs/%s\n- Trigger: %s\n\nCheck the run logs for which probe failed (health / cert expiry / DNS), then see docs/INCIDENT-RESPONSE.md.\n\nThis issue closes automatically on the next green run.' "$GITHUB_SERVER_URL" "$GH_REPO" "$GITHUB_RUN_ID" "${{ github.event_name }}")"
+
+      - name: Close alert issue on recovery
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          EXISTING=$(gh issue list --label uptime-alert --state open --json number --jq '.[0].number // empty')
+          if [[ -n "$EXISTING" ]]; then
+            gh issue comment "$EXISTING" --body "✅ Probes green again ($(date -u +%Y-%m-%d\ %H:%M) UTC) — closing."
+            gh issue close "$EXISTING"
+          fi

@@ -395,25 +395,32 @@ teacher OTP login.
 
 ---
 
-## 0c. ⚠️ HIGH — External cert + DNS expiry monitor (STILL OPEN)
+## 0c. 🟡 MOSTLY CLOSED 2026-06-11 — Cert + DNS expiry monitor (GitHub Actions)
 
-**Why:** Cloudflare and Fly auto-renew TLS certs, but auto-renewal
-fails silently (DNS race, ACME challenge timeout, rate limit).  Result:
-cert expires at 3am Sunday, every device sees a security warning
-Monday morning, classes can't run.
+**Shipped:** `.github/workflows/uptime-monitor.yml` —
+- hourly HTTP probe of `https://www.vocaband.com/api/health` (3 attempts)
+- daily TLS-expiry check for `www` + `auth` (alarms < 14 days remaining)
+- daily DNS A/AAAA resolution check for apex / `www` / `auth` (via 1.1.1.1)
+- pages by opening a GitHub issue labelled `uptime-alert` (one per
+  incident, auto-closed on recovery)
 
-Set up free external monitoring (UptimeRobot, Better Stack, or
-Cronitor):
+**Operator action remaining (~2 min):** install the GitHub mobile app and
+enable push notifications for Issues on this repo — that's the "page via
+push, not email" channel. Then trigger the workflow once by hand
+(Actions → "Uptime + SSL + DNS monitor" → Run workflow) to verify a
+green run.
 
-- HTTP probe `https://www.vocaband.com/api/health` every 5 minutes —
-  alerts if 5xx or unreachable
-- **SSL expiry probe** that pages you when cert has < 14 days
-  remaining (UptimeRobot has this as a built-in monitor type)
-- DNS A/AAAA record monitor for `vocaband.com` and `auth.vocaband.com`
-
-Page via SMS or push, not email — email is too easy to miss at 3am.
+**Honest residual gaps vs a true external monitor:** hourly (not 5-min)
+granularity, no SMS, and no probes if GitHub itself is down. If the app
+outgrows this, the original plan stands: free UptimeRobot account with
+an HTTP monitor + SSL-expiry monitor + DNS monitor and SMS alerting.
 
 Notion: *Vocaband — Risk Register* → "DNS / cert auto-renewal failure".
+
+**Why (original):** Cloudflare and Fly auto-renew TLS certs, but
+auto-renewal fails silently (DNS race, ACME challenge timeout, rate
+limit).  Result: cert expires at 3am Sunday, every device sees a
+security warning Monday morning, classes can't run.
 
 ---
 
