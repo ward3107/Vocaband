@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Megaphone, Plus, Trash2, AlertTriangle, Info, AlertCircle, Sparkles } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevAnnouncement } from "./devShared";
 import ConfirmDialog from "./ConfirmDialog";
@@ -64,7 +64,7 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
   }, [reload]);
 
   const submit = useCallback(
-    async (e: React.FormEvent) => {
+    async (e: FormEvent) => {
       e.preventDefault();
       if (!title.trim() || !message.trim()) return;
       setBusy(true);

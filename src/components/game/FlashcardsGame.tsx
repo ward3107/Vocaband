@@ -1,3 +1,4 @@
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
 import type { Word } from "../../data/vocabulary";
@@ -11,8 +12,8 @@ interface FlashcardsGameProps {
   currentWord: Word | undefined;
   targetLanguage: "hebrew" | "arabic";
   isFlipped: boolean;
-  setIsFlipped: React.Dispatch<React.SetStateAction<boolean>>;
-  isProcessingRef: React.MutableRefObject<boolean>;
+  setIsFlipped: Dispatch<SetStateAction<boolean>>;
+  isProcessingRef: MutableRefObject<boolean>;
   onAnswer: (gotIt: boolean) => void;
   speakWord: (wordId: number, fallbackText?: string) => void;
   /** Phase-3e theme — drives the front face tint, the speaker pill,

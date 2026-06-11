@@ -11,22 +11,21 @@
  * old value, which is fine as a soft failure.  Real users won't see a
  * hard error from a transient Supabase blip.
  */
+import type { Dispatch, SetStateAction } from 'react';
 import { motion } from "motion/react";
 import { X } from "lucide-react";
 import { TEACHER_DASHBOARD_THEMES } from "../../constants/teacherDashboardThemes";
 import { supabase, type AppUser } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
-import { teacherModalsT } from "../../locales/teacher/modals";
 
 interface TeacherThemeMenuProps {
   user: AppUser | null;
-  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
+  setUser: Dispatch<SetStateAction<AppUser | null>>;
   onClose: () => void;
 }
 
 export default function TeacherThemeMenu({ user, setUser, onClose }: TeacherThemeMenuProps) {
   const { language, dir } = useLanguage();
-  const t = teacherModalsT[language];
   const currentId = user?.teacherDashboardTheme ?? 'default';
 
   const pick = async (themeId: string) => {

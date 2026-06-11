@@ -28,7 +28,7 @@
  * simulated progress, audio gen, dictionary cross-check — which the
  * pre-existing useTeacherActions version didn't have.
  */
-import { useCallback } from "react";
+import { useCallback, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import { type ClassData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import { getCachedVocabulary } from "./useVocabularyLazy";
@@ -40,14 +40,14 @@ import { createSet, addWordsToSet } from "../core/vocabularyLibrary";
 export interface UseOcrUploadParams {
   classes: ClassData[];
   setSelectedClass: (c: ClassData | null) => void;
-  setCustomWords: React.Dispatch<React.SetStateAction<Word[]>>;
-  setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
+  setCustomWords: Dispatch<SetStateAction<Word[]>>;
+  setSelectedWords: Dispatch<SetStateAction<number[]>>;
   setSelectedLevel: (v: string) => void;
   setView: (v: string) => void;
   setIsOcrProcessing: (v: boolean) => void;
   setOcrProgress: (v: number) => void;
   setOcrStatus: (v: string) => void;
-  setOcrPendingFile: (v: { file: File; inputRef: React.ChangeEvent<HTMLInputElement> | null } | null) => void;
+  setOcrPendingFile: (v: { file: File; inputRef: ChangeEvent<HTMLInputElement> | null } | null) => void;
   showToast: (message: string, type: "success" | "error" | "info") => void;
   /** Optional paywall toast helper — shown when /api/ocr returns 403
    *  ai_requires_pro.  Falls back to plain showToast when not provided
@@ -74,7 +74,7 @@ export function useOcrUpload(params: UseOcrUploadParams) {
   // Step 2: User confirms from the preview → run OCR
   const processOcrFile = useCallback(async (
     fileToProcess: File,
-    originalEvent?: React.ChangeEvent<HTMLInputElement> | null,
+    originalEvent?: ChangeEvent<HTMLInputElement> | null,
   ) => {
     setOcrPendingFile(null);
     setIsOcrProcessing(true);
@@ -249,7 +249,7 @@ export function useOcrUpload(params: UseOcrUploadParams) {
     showToast, showPaywallToast, translateWordsBatch, teacherUid,
   ]);
 
-  const handleOcrUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOcrUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
     processOcrFile(rawFile, e);

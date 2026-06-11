@@ -17,7 +17,7 @@
  * Pass `tone` explicitly to opt out of that scale (e.g. 'indigo' for
  * neutral counts like "12 active students").
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Info } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherClassroomT } from "../../locales/teacher/classroom";
@@ -42,7 +42,7 @@ interface StatChipProps {
   /** Optional tap handler for the whole card (e.g. jump to a tab). */
   onClick?: () => void;
   /** Optional leading emoji / icon rendered left of the big number. */
-  icon?: React.ReactNode;
+  icon?: ReactNode;
 }
 
 // Semantic StatChip tones map onto the active teacher palette so the

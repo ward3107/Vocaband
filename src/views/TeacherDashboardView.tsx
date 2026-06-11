@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { Palette, Tv2 } from "lucide-react";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
@@ -44,12 +44,12 @@ interface TeacherDashboardViewProps {
   user: AppUser;
   /** Needed for the dashboard theme picker to optimistically update
    *  the theme locally after the DB write succeeds. */
-  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
-  consentModal: React.ReactNode;
-  exitConfirmModal: React.ReactNode;
-  ocrCropModal: React.ReactNode;
+  setUser: Dispatch<SetStateAction<AppUser | null>>;
+  consentModal: ReactNode;
+  exitConfirmModal: ReactNode;
+  ocrCropModal: ReactNode;
   showOnboarding: boolean;
-  setShowOnboarding: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowOnboarding: Dispatch<SetStateAction<boolean>>;
 
   // Classes + assignments
   classes: ClassData[];
@@ -58,32 +58,32 @@ interface TeacherDashboardViewProps {
 
   // Clipboard / dropdown state
   copiedCode: string | null;
-  setCopiedCode: React.Dispatch<React.SetStateAction<string | null>>;
+  setCopiedCode: Dispatch<SetStateAction<string | null>>;
   openDropdownClassId: string | null;
-  setOpenDropdownClassId: React.Dispatch<React.SetStateAction<string | null>>;
+  setOpenDropdownClassId: Dispatch<SetStateAction<string | null>>;
 
   // Modals
   showCreateClassModal: boolean;
-  setShowCreateClassModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowCreateClassModal: Dispatch<SetStateAction<boolean>>;
   newClassName: string;
-  setNewClassName: React.Dispatch<React.SetStateAction<string>>;
+  setNewClassName: Dispatch<SetStateAction<string>>;
   handleCreateClass: () => void;
 
   createdClassCode: string | null;
   createdClassName: string;
-  setCreatedClassCode: React.Dispatch<React.SetStateAction<string | null>>;
+  setCreatedClassCode: Dispatch<SetStateAction<string | null>>;
 
   deleteConfirmModal: { id: string; title: string } | null;
-  setDeleteConfirmModal: React.Dispatch<React.SetStateAction<{ id: string; title: string } | null>>;
+  setDeleteConfirmModal: Dispatch<SetStateAction<{ id: string; title: string } | null>>;
   onConfirmDeleteAssignment: (id: string, title: string) => void;
 
   rejectStudentModal: { id: string; displayName: string } | null;
-  setRejectStudentModal: React.Dispatch<React.SetStateAction<{ id: string; displayName: string } | null>>;
+  setRejectStudentModal: Dispatch<SetStateAction<{ id: string; displayName: string } | null>>;
   confirmRejectStudent: (id: string) => Promise<void>;
 
   toasts: Toast[];
   confirmDialog: ConfirmDialogState;
-  setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialogState>>;
+  setConfirmDialog: Dispatch<SetStateAction<ConfirmDialogState>>;
 
   // Quick actions
   onQuickPlayClick: () => void;
@@ -163,7 +163,7 @@ interface TeacherDashboardViewProps {
    *  controls (before Exit / scale / language / user chip).  Used by
    *  App.tsx to host the Voca switcher button so it lives in the
    *  header instead of floating over the page. */
-  headerExtra?: React.ReactNode;
+  headerExtra?: ReactNode;
 }
 
 export default function TeacherDashboardView({

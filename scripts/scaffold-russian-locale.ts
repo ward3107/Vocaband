@@ -36,7 +36,7 @@ const propKey = (p: ts.ObjectLiteralElementLike): string | null => {
 interface MapInfo {
   enProp: ts.PropertyAssignment;
   lastProp: ts.PropertyAssignment;
-  prevProp: ts.PropertyAssignment | null;
+  prevProp: ts.PropertyAssignment;
 }
 
 const inspectLiteral = (node: ts.ObjectLiteralExpression): MapInfo | null => {

@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import QuickPlayMonitor from "../components/QuickPlayMonitor";
 import { supabase } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
@@ -12,7 +13,7 @@ interface QuickPlaySession {
 
 interface QuickPlayTeacherMonitorViewProps {
   quickPlayActiveSession: QuickPlaySession;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
   setQuickPlayActiveSession: (s: QuickPlaySession | null) => void;
   setQuickPlaySelectedWords: (w: Word[]) => void;
   setQuickPlaySessionCode: (c: string | null) => void;
@@ -47,7 +48,7 @@ export default function QuickPlayTeacherMonitorView({
         setQuickPlayCustomWords(new Map());
         setQuickPlayAddingCustom(new Set());
         setQuickPlayTranslating(new Set());
-        try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
+        try { localStorage.removeItem('vocaband_quick_play_session'); } catch { /* best-effort */ }
       }}
       onEndSession={async () => {
         showToast("Ending session...", "info");
@@ -66,7 +67,7 @@ export default function QuickPlayTeacherMonitorView({
         setQuickPlayCustomWords(new Map());
         setQuickPlayAddingCustom(new Set());
         setQuickPlayTranslating(new Set());
-        try { localStorage.removeItem('vocaband_quick_play_session'); } catch {}
+        try { localStorage.removeItem('vocaband_quick_play_session'); } catch { /* best-effort */ }
         showToast("Quick Play session ended", "success");
       }}
       showToast={showToast}

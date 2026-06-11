@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, School, Lock, Mail, Database, Gavel, Globe, Clock, Users, AlertTriangle, FileText, ExternalLink, ArrowLeft } from "lucide-react";
+import { Shield, School, Lock, Mail, Database, Gavel, Globe, Clock, Users, AlertTriangle, FileText, ArrowLeft } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
 import BackButton from "./BackButton";

@@ -14,7 +14,7 @@
  * persists the row.  That function already branches on the parent
  * class's subject and pulls the `words` JSONB from HEBREW_LEMMAS.
  */
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, BookOpen, Camera, Upload, FolderOpen, Loader2, Pin, Repeat } from "lucide-react";
 import { HEBREW_LEMMAS, HEBREW_LEMMAS_BY_ID } from "../data/vocabulary-hebrew";
@@ -64,7 +64,7 @@ export const HEBREW_MODE_OPTIONS: ReadonlyArray<{
 export interface HebrewAssignmentWizardProps {
   selectedClass: ClassData;
   selectedWords: number[];
-  setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
+  setSelectedWords: Dispatch<SetStateAction<number[]>>;
   assignmentTitle: string;
   setAssignmentTitle: (v: string) => void;
   assignmentDeadline: string;
@@ -125,7 +125,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
     setWordSource("packs");
   }
 
-  async function handleOcrFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleOcrFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (e.target) e.target.value = "";
     if (!file) return;
@@ -553,7 +553,7 @@ function SourceTab({
 }: {
   active: boolean;
   onClick: () => void;
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   disabled?: boolean;
 }) {

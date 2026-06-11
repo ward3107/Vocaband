@@ -34,7 +34,7 @@
  * from the same word pool — the mode tests speed at recall, not
  * disambiguation between obscure words.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Volume2, X, SkipForward, Zap, Clock } from "lucide-react";
 import type { Word } from "../../data/vocabulary";

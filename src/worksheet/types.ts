@@ -10,6 +10,7 @@
  * The dashboard's per-answer renderer mirrors the `Answer` union, so
  * any new `kind` here must get a matching render branch over there.
  */
+import type { FC } from 'react';
 import type { Word } from "../data/vocabulary";
 
 export type Language = "en" | "he" | "ar" | "ru";
@@ -90,7 +91,7 @@ export interface ExerciseComponentProps<C extends Exercise = Exercise> {
   onComplete: (result: ExerciseResult) => void;
 }
 
-export type ExerciseComponent<C extends Exercise = Exercise> = React.FC<ExerciseComponentProps<C>>;
+export type ExerciseComponent<C extends Exercise = Exercise> = FC<ExerciseComponentProps<C>>;
 
 // Stored in interactive_worksheets.settings — only `language` is read
 // today, but the field is a JSONB blob so future per-worksheet options

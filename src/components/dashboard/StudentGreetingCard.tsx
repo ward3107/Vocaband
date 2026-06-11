@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { motion } from "motion/react";
 import { Check, Copy, Flame, ShoppingBag, Pencil, X as XIcon, Crown } from "lucide-react";
 import { getXpTitle, NAME_FRAMES, NAME_TITLES, XP_TITLES } from "../../constants/game";
@@ -21,7 +21,7 @@ interface StudentGreetingCardProps {
   streak: number;
   badges: string[];
   copiedCode: string | null;
-  setCopiedCode: React.Dispatch<React.SetStateAction<string | null>>;
+  setCopiedCode: Dispatch<SetStateAction<string | null>>;
   /** Tap handler for the shop button inlined in the greeting card.
    * Optional — when omitted (e.g. the arcade hub already has a Shop
    * orbit circle), the shop button is hidden so it isn't duplicated. */

@@ -26,7 +26,7 @@
  * The hook owns its internal lastSpokenWordRef.  All other state
  * is owned by App.tsx and passed in as setters.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import type { GameMode } from '../constants/game';
 import type { View } from '../core/views';
 import type { AssignmentData } from '../core/supabase';
@@ -65,18 +65,18 @@ export interface UseGameModeSetupParams {
   speak: (text: string) => void;
 
   // Matching-mode setters
-  setMatchingPairs: React.Dispatch<React.SetStateAction<MatchingPair[]>>;
-  setMatchedIds: React.Dispatch<React.SetStateAction<number[]>>;
-  setSelectedMatch: React.Dispatch<React.SetStateAction<SelectedMatch>>;
+  setMatchingPairs: Dispatch<SetStateAction<MatchingPair[]>>;
+  setMatchedIds: Dispatch<SetStateAction<number[]>>;
+  setSelectedMatch: Dispatch<SetStateAction<SelectedMatch>>;
 
   // Letter-sounds setter
-  setRevealedLetters: React.Dispatch<React.SetStateAction<number>>;
+  setRevealedLetters: Dispatch<SetStateAction<number>>;
 
   // Sentence-builder setters
-  setSentenceIndex: React.Dispatch<React.SetStateAction<number>>;
-  setAvailableWords: React.Dispatch<React.SetStateAction<string[]>>;
-  setBuiltSentence: React.Dispatch<React.SetStateAction<string[]>>;
-  setSentenceFeedback: React.Dispatch<React.SetStateAction<SentenceFeedback>>;
+  setSentenceIndex: Dispatch<SetStateAction<number>>;
+  setAvailableWords: Dispatch<SetStateAction<string[]>>;
+  setBuiltSentence: Dispatch<SetStateAction<string[]>>;
+  setSentenceFeedback: Dispatch<SetStateAction<SentenceFeedback>>;
 }
 
 export function useGameModeSetup(params: UseGameModeSetupParams): void {

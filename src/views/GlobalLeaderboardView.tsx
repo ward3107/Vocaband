@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { motion } from "motion/react";
 import { Trophy } from "lucide-react";
 import type { View } from "../core/views";
@@ -11,7 +12,7 @@ interface GlobalLeaderboardEntry {
 
 interface GlobalLeaderboardViewProps {
   userRole: "teacher" | "student" | "admin" | "manager" | "guest" | undefined;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
   globalLeaderboard: GlobalLeaderboardEntry[];
 }
 

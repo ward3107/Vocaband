@@ -17,8 +17,7 @@
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
-
+import { useEffect, type ReactNode, type ButtonHTMLAttributes } from "react";
 export type ModalVariant = "brand" | "success" | "danger" | "calm";
 
 interface ModalShellProps {
@@ -205,7 +204,7 @@ export function ModalFootSpacer() {
  * Buttons styled to match the modal foot — use these instead of
  * hand-rolling pills so every modal's actions look the same.
  */
-export function ModalQuietButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function ModalQuietButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   const { className = "", style, ...rest } = props;
   return (
     <button
@@ -221,7 +220,7 @@ export function ModalQuietButton(props: React.ButtonHTMLAttributes<HTMLButtonEle
   );
 }
 
-export function ModalPrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function ModalPrimaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   const { className = "", style, ...rest } = props;
   return (
     <button
@@ -239,7 +238,7 @@ export function ModalPrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonE
   );
 }
 
-export function ModalDangerButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function ModalDangerButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   const { className = "", style, ...rest } = props;
   return (
     <button

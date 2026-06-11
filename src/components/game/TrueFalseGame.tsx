@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, type TouchEvent } from "react";
 import { motion } from "motion/react";
 import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -44,12 +44,12 @@ export default function TrueFalseGame({
 
   // Touch-swipe gesture support — kids swipe instead of aiming.
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
+  const onTouchStart = useCallback((e: TouchEvent) => {
     if (feedback) return;
     const t = e.touches[0];
     touchStartRef.current = { x: t.clientX, y: t.clientY };
   }, [feedback]);
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
+  const onTouchMove = useCallback((e: TouchEvent) => {
     if (feedback || !touchStartRef.current) return;
     const t = e.touches[0];
     const dx = t.clientX - touchStartRef.current.x;
@@ -60,7 +60,7 @@ export default function TrueFalseGame({
     }
     setSwiping(dx > 0 ? "right" : "left");
   }, [feedback]);
-  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+  const onTouchEnd = useCallback((e: TouchEvent) => {
     if (feedback || !touchStartRef.current) {
       setSwiping(null);
       return;

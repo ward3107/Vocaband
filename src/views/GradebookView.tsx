@@ -21,7 +21,7 @@
  *
  * Props contract is preserved; App.tsx doesn't need any changes.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Users, Trophy, GraduationCap, ChevronDown, Download, Gift, Award,
@@ -56,7 +56,7 @@ interface GradebookViewProps {
   classes: ClassData[];
   expandedStudent: string | null;
   setExpandedStudent: (key: string | null) => void;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
   showToast: (message: string, type: "success" | "error" | "info") => void;
   /** When true, render without the page-level TopAppBar / outer wrapper.
    *  Used by ClassroomView which provides its own header + tab bar. */
@@ -968,7 +968,7 @@ function PulseCard({
   students: StudentRollup[];
   title: string;
   subtitle: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   /** Localised "Strong engagement" caption shown only on the on-track card. */
   strongEngagementLabel: string;
 }) {

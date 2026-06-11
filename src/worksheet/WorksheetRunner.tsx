@@ -9,7 +9,7 @@
  * caller.  Nothing about score persistence, name entry, or the
  * student/teacher UX lives here — that's the caller's job.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FC } from "react";
 import { motion } from "motion/react";
 import { SkipForward } from "lucide-react";
 import { ALL_WORDS, type Word } from "../data/vocabulary";
@@ -66,7 +66,7 @@ const SKIP_NOTICE_MS = 1400;
 
 const EMPTY_SENTENCES: Record<string, string> = {};
 
-export const WorksheetRunner: React.FC<Props> = ({
+export const WorksheetRunner: FC<Props> = ({
   exercises,
   targetLang,
   onFinish,
@@ -209,7 +209,7 @@ const EXERCISE_LABEL: Record<ExerciseType, string> = {
   true_false: "True or False",
 };
 
-const SkipNotice: React.FC<{ type: ExerciseType }> = ({ type }) => (
+const SkipNotice: FC<{ type: ExerciseType }> = ({ type }) => (
   <div className="bg-white rounded-2xl p-8 sm:p-10 shadow-2xl text-center max-w-md mx-auto">
     <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-amber-100 text-amber-600 mb-4">
       <SkipForward size={26} />
@@ -229,7 +229,7 @@ const SkipNotice: React.FC<{ type: ExerciseType }> = ({ type }) => (
 // Slim per-exercise progress strip shown above the active exercise
 // when the worksheet contains more than one.  Single-exercise
 // worksheets skip this entirely so the UI matches the old solver.
-const ExerciseProgressBar: React.FC<{
+const ExerciseProgressBar: FC<{
   currentIndex: number;
   total: number;
   exercises: Exercise[];

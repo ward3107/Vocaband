@@ -12,6 +12,7 @@
 // The card returns null when no priority matches (very rare — fallback
 // fires for any student with at least one unowned avatar).
 
+import type { ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { Gift, Pin, Sparkles, Star } from 'lucide-react';
 import type { AppUser } from '../../core/supabase';
@@ -235,10 +236,10 @@ export default function Spotlight(props: SpotlightProps) {
   if (!card) return null;
 
   // Headline + sub + CTA per kind.
-  let icon: React.ReactNode;
+  let icon: ReactNode;
   let gradient: string;
   let header: string;
-  let body: React.ReactNode;
+  let body: ReactNode;
   let cta: { label: string; onClick: () => void };
 
   if (card.kind === 'almost-unlocked') {

@@ -5,7 +5,6 @@ import {
   isValidUid,
   isValidToken,
   createSocketRateLimiter,
-  VALIDATION,
 } from '../server-utils';
 
 // ─── isValidClassCode ───────────────────────────────────────────────────────

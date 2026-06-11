@@ -116,7 +116,7 @@ function getCalendarGrid(viewYear: number, viewMonth: number): Date[] {
 }
 
 export function DateTimePicker({ value, onChange, placeholder, minDate }: DateTimePickerProps) {
-  const { language, dir } = useLanguage();
+  const { language } = useLanguage();
   const WEEKDAY_LABELS = WEEKDAY_LABELS_BY_LANG[language];
   const MONTH_LABELS = MONTH_LABELS_BY_LANG[language];
   const labels = language === "he"

@@ -23,7 +23,7 @@
  * useGameModeActions + the JSX read it too — we take it as an
  * input and just update its .current.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { getGameDebugger } from '../utils/gameDebug';
 import type { GameMode } from '../constants/game';
 import type { View } from '../core/views';
@@ -33,7 +33,7 @@ export type FeedbackState = 'correct' | 'wrong' | 'show-answer' | null;
 
 export interface UseFeedbackTrackingParams {
   feedback: FeedbackState;
-  setFeedback: React.Dispatch<React.SetStateAction<FeedbackState>>;
+  setFeedback: Dispatch<SetStateAction<FeedbackState>>;
   currentIndex: number;
   view: View;
   gameMode: GameMode;
@@ -43,7 +43,7 @@ export interface UseFeedbackTrackingParams {
   gameWords: Word[];
   /** Shared with useGameModeActions + the game UI — the hook updates
    *  .current to `!!feedback` on every change but doesn't own it. */
-  isProcessingRef: React.MutableRefObject<boolean>;
+  isProcessingRef: MutableRefObject<boolean>;
 }
 
 export function useFeedbackTracking(params: UseFeedbackTrackingParams): void {
