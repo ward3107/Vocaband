@@ -1,11 +1,9 @@
 /**
- * speedRoundStrings — i18n + mode/set metadata shared by the Speed Round
- * host + student views. Kept in one place so both screens name the modes,
- * sets, and UI copy identically across en / he / ar.
+ * speedRoundStrings — i18n + mode metadata shared by the Speed Round
+ * host + student views. Kept in one place so both screens name the modes
+ * and UI copy identically across en / he / ar.
  */
 import type { QpSpeedMode } from "../core/quickPlayProtocol";
-
-export type SpeedSet = "Set 1" | "Set 2" | "Set 3";
 
 /** Emoji per mode — non-translated, used in both host + student chrome. */
 export const SPEED_MODE_META: Record<QpSpeedMode, { emoji: string }> = {
@@ -17,14 +15,7 @@ export const SPEED_MODE_META: Record<QpSpeedMode, { emoji: string }> = {
   "letter-sounds": { emoji: "🔤" },
 };
 
-export const SPEED_SET_META: Record<SpeedSet, { emoji: string }> = {
-  "Set 1": { emoji: "1️⃣" },
-  "Set 2": { emoji: "2️⃣" },
-  "Set 3": { emoji: "3️⃣" },
-};
-
 type ModeNames = Record<QpSpeedMode, string>;
-type SetNames = Record<SpeedSet, string>;
 
 interface HostStrings {
   title: string; joinHeading: string; code: string;
@@ -32,7 +23,7 @@ interface HostStrings {
   wordsCount: (n: number) => string; needWords: (min: number) => string;
   clearWords: string; noResults: string; savedListsHeading: string;
   autoPlayLabel: string; autoNextIn: (n: number) => string;
-  setHeading: string; modeHeading: string; modeHint: string; timerHeading: string;
+  modeHeading: string; modeHint: string; timerHeading: string;
   start: string; nextWord: string; wordLive: string;
   roundDone: string; playAgain: string;
   wordsPlayed: (done: number, total: number) => string;
@@ -44,7 +35,7 @@ interface HostStrings {
   tfTrue: string; tfFalse: string;
   buildError: string; loadingWords: string;
   firstWinner: (name: string) => string;
-  modeNames: ModeNames; setNames: SetNames;
+  modeNames: ModeNames;
 }
 
 export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
@@ -55,7 +46,7 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     clearWords: "Clear all", noResults: "No matching words in the library",
     savedListsHeading: "Your saved lists",
     autoPlayLabel: "Auto-play words", autoNextIn: (n) => `Next word in ${n}\u2026`,
-    setHeading: "Word set", modeHeading: "Question modes",
+    modeHeading: "Question modes",
     modeHint: "Pick one or more \u2014 each word gets a random mode from your picks.",
     timerHeading: "Time per word",
     start: "Start word", nextWord: "Next word", wordLive: "Word live",
@@ -74,7 +65,6 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
       "true-false": "True / False", "classic": "Classic", "reverse": "Reverse",
       "listening": "Listening", "idiom": "Idioms", "letter-sounds": "Letter Sounds",
     },
-    setNames: { "Set 1": "Set 1", "Set 2": "Set 2", "Set 3": "Set 3" },
   },
   he: {
     title: "סבב מהיר", joinHeading: "התלמידים מצטרפים כאן", code: "קוד כיתה",
@@ -83,7 +73,7 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     clearWords: "נקה הכל", noResults: "אין מילים תואמות במאגר",
     autoPlayLabel: "ניגון אוטומטי", autoNextIn: (n) => `המילה הבאה בעוד ${n}\u2026`,
     savedListsHeading: "הרשימות השמורות שלך",
-    setHeading: "מאגר מילים", modeHeading: "סוגי שאלות",
+    modeHeading: "סוגי שאלות",
     modeHint: "בחרו אחד או יותר — כל מילה מקבלת סוג אקראי מהבחירה שלכם.",
     timerHeading: "זמן לכל מילה",
     start: "התחל מילה", nextWord: "מילה הבאה", wordLive: "מילה פעילה",
@@ -102,7 +92,6 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
       "true-false": "נכון / לא נכון", "classic": "קלאסי", "reverse": "הפוך",
       "listening": "האזנה", "idiom": "ביטויים", "letter-sounds": "צלילי אותיות",
     },
-    setNames: { "Set 1": "מאגר 1", "Set 2": "מאגר 2", "Set 3": "מאגר 3" },
   },
   ar: {
     title: "جولة سريعة", joinHeading: "ينضم الطلاب هنا", code: "رمز الصف",
@@ -111,7 +100,7 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     clearWords: "مسح الكل", noResults: "لا توجد كلمات مطابقة في المكتبة",
     autoPlayLabel: "تشغيل تلقائي", autoNextIn: (n) => `الكلمة التالية خلال ${n}\u2026`,
     savedListsHeading: "قوائمك المحفوظة",
-    setHeading: "مجموعة الكلمات", modeHeading: "أنواع الأسئلة",
+    modeHeading: "أنواع الأسئلة",
     modeHint: "اختر نوعًا واحدًا أو أكثر — كل كلمة تحصل على نوع عشوائي من اختيارك.",
     timerHeading: "الوقت لكل كلمة",
     start: "ابدأ الكلمة", nextWord: "الكلمة التالية", wordLive: "كلمة نشطة",
@@ -130,7 +119,6 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
       "true-false": "صح / خطأ", "classic": "كلاسيكي", "reverse": "عكسي",
       "listening": "استماع", "idiom": "تعابير", "letter-sounds": "أصوات الحروف",
     },
-    setNames: { "Set 1": "المجموعة 1", "Set 2": "المجموعة 2", "Set 3": "المجموعة 3" },
   },
 };
 

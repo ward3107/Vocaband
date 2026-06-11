@@ -6,14 +6,16 @@
  * reuses SPEED_STUDENT_STRINGS via the shared SpeedBuzzer component).
  */
 import type { QpSpeedMode } from "../core/quickPlayProtocol";
-import type { SpeedSet } from "./speedRoundStrings";
 
 type ModeNames = Record<QpSpeedMode, string>;
-type SetNames = Record<SpeedSet, string>;
 
 interface ArenaHostStrings {
   title: string; joinHeading: string; code: string;
-  setHeading: string; modeHeading: string; timerHeading: string;
+  wordsHeading: string; modeHeading: string; timerHeading: string;
+  // SpeedWordPicker strings — same contract as Speed Round's host.
+  searchPlaceholder: string; wordsCount: (n: number) => string;
+  needWords: (min: number) => string; clearWords: string; noResults: string;
+  savedListsHeading: string;
   start: string; arenaLive: string; restart: string;
   leaderboard: string; noStudents: string;
   end: string; endArena: string;
@@ -23,13 +25,17 @@ interface ArenaHostStrings {
   tfTrue: string; tfFalse: string;
   buildError: string; loadingWords: string; pickMode: string;
   wordsLeft: (n: number) => string;
-  modeNames: ModeNames; setNames: SetNames;
+  modeNames: ModeNames;
 }
 
 export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = {
   en: {
     title: "Word Hunt Arena", joinHeading: "Students join here", code: "Class code",
-    setHeading: "Word set", modeHeading: "Question modes", timerHeading: "Time per word",
+    wordsHeading: "Your words", modeHeading: "Question modes", timerHeading: "Time per word",
+    searchPlaceholder: "Type a word to add it…",
+    wordsCount: (n) => `${n} words ready`, needWords: (min) => `Add at least ${min} words to start`,
+    clearWords: "Clear all", noResults: "No matching words in the library",
+    savedListsHeading: "Your saved lists",
     start: "Start arena", arenaLive: "Arena live", restart: "New arena",
     leaderboard: "Leaderboard", noStudents: "Waiting for students to join…",
     end: "End game", endArena: "End arena",
@@ -37,18 +43,21 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     copy: "Copy link", copied: "Copied!", enlarge: "Enlarge", hide: "Hide",
     present: "Present", controls: "Controls",
     tfTrue: "True", tfFalse: "False",
-    buildError: "Couldn't build questions — try another set or mode mix.",
+    buildError: "Couldn't build questions — try different words or modes.",
     loadingWords: "Loading words…", pickMode: "Pick at least one mode.",
     wordsLeft: (n) => `${n} words left`,
     modeNames: {
       "true-false": "True / False", "classic": "Classic", "reverse": "Reverse",
       "listening": "Listening", "idiom": "Idioms", "letter-sounds": "Letter Sounds",
     },
-    setNames: { "Set 1": "Set 1", "Set 2": "Set 2", "Set 3": "Set 3" },
   },
   he: {
     title: "זירת ציד מילים", joinHeading: "התלמידים מצטרפים כאן", code: "קוד כיתה",
-    setHeading: "מאגר מילים", modeHeading: "סוגי שאלות", timerHeading: "זמן לכל מילה",
+    wordsHeading: "המילים שלך", modeHeading: "סוגי שאלות", timerHeading: "זמן לכל מילה",
+    searchPlaceholder: "הקלידו מילה כדי להוסיף…",
+    wordsCount: (n) => `${n} מילים מוכנות`, needWords: (min) => `הוסיפו לפחות ${min} מילים כדי להתחיל`,
+    clearWords: "נקה הכל", noResults: "אין מילים תואמות במאגר",
+    savedListsHeading: "הרשימות השמורות שלך",
     start: "התחל זירה", arenaLive: "זירה פעילה", restart: "זירה חדשה",
     leaderboard: "טבלת מובילים", noStudents: "ממתינים שתלמידים יצטרפו…",
     end: "סיים משחק", endArena: "סיים זירה",
@@ -56,18 +65,21 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     copy: "העתק קישור", copied: "הועתק!", enlarge: "הגדל", hide: "הסתר",
     present: "מצגת", controls: "פקדים",
     tfTrue: "נכון", tfFalse: "לא נכון",
-    buildError: "לא ניתן לבנות שאלות — נסו מאגר או שילוב מצבים אחר.",
+    buildError: "לא ניתן לבנות שאלות — נסו מילים או מצבים אחרים.",
     loadingWords: "טוען מילים…", pickMode: "בחרו לפחות מצב אחד.",
     wordsLeft: (n) => `נותרו ${n} מילים`,
     modeNames: {
       "true-false": "נכון / לא נכון", "classic": "קלאסי", "reverse": "הפוך",
       "listening": "האזנה", "idiom": "ביטויים", "letter-sounds": "צלילי אותיות",
     },
-    setNames: { "Set 1": "מאגר 1", "Set 2": "מאגר 2", "Set 3": "מאגר 3" },
   },
   ar: {
     title: "ساحة صيد الكلمات", joinHeading: "ينضم الطلاب هنا", code: "رمز الصف",
-    setHeading: "مجموعة الكلمات", modeHeading: "أنواع الأسئلة", timerHeading: "الوقت لكل كلمة",
+    wordsHeading: "كلماتك", modeHeading: "أنواع الأسئلة", timerHeading: "الوقت لكل كلمة",
+    searchPlaceholder: "اكتبوا كلمة لإضافتها…",
+    wordsCount: (n) => `${n} كلمات جاهزة`, needWords: (min) => `أضيفوا ${min} كلمات على الأقل للبدء`,
+    clearWords: "مسح الكل", noResults: "لا توجد كلمات مطابقة في المكتبة",
+    savedListsHeading: "قوائمك المحفوظة",
     start: "ابدأ الساحة", arenaLive: "الساحة نشطة", restart: "ساحة جديدة",
     leaderboard: "لوحة المتصدرين", noStudents: "في انتظار انضمام الطلاب…",
     end: "إنهاء اللعبة", endArena: "إنهاء الساحة",
@@ -75,14 +87,13 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     copy: "نسخ الرابط", copied: "تم النسخ!", enlarge: "تكبير", hide: "إخفاء",
     present: "عرض", controls: "أدوات",
     tfTrue: "صحيح", tfFalse: "خطأ",
-    buildError: "تعذّر إنشاء الأسئلة — جرّب مجموعة أو مزيجًا آخر.",
+    buildError: "تعذّر إنشاء الأسئلة — جرّبوا كلمات أو أوضاعًا أخرى.",
     loadingWords: "جارٍ تحميل الكلمات…", pickMode: "اختر وضعًا واحدًا على الأقل.",
     wordsLeft: (n) => `تبقّى ${n} كلمات`,
     modeNames: {
       "true-false": "صح / خطأ", "classic": "كلاسيكي", "reverse": "عكسي",
       "listening": "استماع", "idiom": "تعابير", "letter-sounds": "أصوات الحروف",
     },
-    setNames: { "Set 1": "المجموعة 1", "Set 2": "المجموعة 2", "Set 3": "المجموعة 3" },
   },
 };
 
