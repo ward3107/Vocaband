@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Play, Users, LogOut, Check, Copy, Maximize2, X, Monitor, Minimize2, Square } from "lucide-react";
+import { Play, Users, LogOut, Check, Copy, Maximize2, X, Monitor, Minimize2, Square, Music, VolumeX } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
@@ -109,14 +109,20 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
 
   const arenaActive = !!currentArena;
 
-  // Background music plays on the projector (one source for the room) while an
-  // arena is live — the teacher's Start tap already unlocked audio. Muting via
-  // vb-race-muted makes startArenaMusic a no-op.
+  // Teacher-controlled background music — plays on THIS screen (the
+  // projector/dashboard) only, never on student phones. Default on; the
+  // choice is remembered across sessions.
+  const [musicOn, setMusicOn] = useState(() => {
+    try { return localStorage.getItem("vb-arena-music") !== "off"; } catch { return true; }
+  });
   useEffect(() => {
-    if (!arenaActive) return;
+    try { localStorage.setItem("vb-arena-music", musicOn ? "on" : "off"); } catch { /* storage blocked */ }
+  }, [musicOn]);
+  useEffect(() => {
+    if (!arenaActive || !musicOn) { stopArenaMusic(); return; }
     startArenaMusic();
     return () => stopArenaMusic();
-  }, [arenaActive]);
+  }, [arenaActive, musicOn]);
 
   // &mode=arena lets the student bootstrap skip the unused vocab prefetch.
   const joinUrl = useMemo(() => `${window.location.origin}/?session=${sessionCode}&mode=arena`, [sessionCode]);
@@ -192,6 +198,25 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
   const iconBtn = "bg-surface text-indigo-600 hover:bg-surface-container border border-outline-variant";
 
+  // Music on/off — shown in both the controls and presenting headers so the
+  // teacher can silence the room at any moment.
+  const musicBtn = (
+    <button
+      type="button"
+      onClick={() => setMusicOn(v => !v)}
+      role="switch"
+      aria-checked={musicOn}
+      aria-label={musicOn ? t.musicOff : t.musicOn}
+      title={musicOn ? t.musicOff : t.musicOn}
+      style={{ touchAction: "manipulation" }}
+      className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl font-black text-sm transition active:scale-95 ${
+        musicOn ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200" : "bg-stone-200 text-stone-500 hover:bg-stone-300"
+      }`}
+    >
+      {musicOn ? <Music size={16} /> : <VolumeX size={16} />}
+    </button>
+  );
+
   return (
     <div className="min-h-[100dvh] transition-colors" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -205,6 +230,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               <span className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] bg-indigo-50 text-indigo-700">
                 {t.code}: {sessionCode}
               </span>
+              {musicBtn}
               <button
                 type="button"
                 onClick={() => setPresenting(false)}
@@ -216,6 +242,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             </div>
           ) : (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              {musicBtn}
               <button
                 type="button"
                 onClick={() => setPresenting(true)}
