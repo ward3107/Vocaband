@@ -150,6 +150,22 @@ export function TeacherDashboardSection(): ReactNode {
         onArenaClick={() => { void startWordHuntArenaFromDashboard({
           cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode, setView, showToast,
         }); }}
+        onClassShowClick={() => {
+          // Fresh launch from the dashboard tile — no assignment pre-loaded
+          // (the teacher picks words inside Class Show) and the back button
+          // returns to the dashboard, not the wizard.
+          setActivityNavOrigin(null);
+          setClassShowAssignment(null);
+          setView('class-show');
+        }}
+        onHotSeatClick={() => {
+          setActivityNavOrigin(null);
+          setView('hot-seat');
+        }}
+        onWheelClick={() => {
+          setActivityNavOrigin(null);
+          setView('wheel');
+        }}
         onClassroomClick={() => {
           fetchScores();
           fetchTeacherAssignments();

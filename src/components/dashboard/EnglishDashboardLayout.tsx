@@ -35,14 +35,36 @@ const ARENA_HERO = {
   accent: "#115E59",
   ctaShadow: "0 10px 24px -8px rgba(17,94,89,0.45)",
 } as const;
+// Classroom (in-room / projector) tools — Class Show, Hot Seat, Vocab
+// Wheel. Surfaced as their own dashboard tiles (same LiveGameHero shape
+// as the live games) so teachers reach them in one tap instead of
+// digging into the New Activity wizard's tab strip.
+const CLASS_SHOW_HERO = {
+  background: "radial-gradient(120% 140% at 0% 0%, #6366F1 0%, #4F46E5 45%, #4338CA 80%, #3730A3 100%)",
+  boxShadow: "0 20px 50px -22px rgba(79,70,229,0.5), 0 8px 22px -10px rgba(67,56,202,0.35)",
+  accent: "#312E81",
+  ctaShadow: "0 10px 24px -8px rgba(49,46,129,0.45)",
+} as const;
+const HOT_SEAT_HERO = {
+  background: "radial-gradient(120% 140% at 0% 0%, #F87171 0%, #EF4444 45%, #DC2626 80%, #B91C1C 100%)",
+  boxShadow: "0 20px 50px -22px rgba(239,68,68,0.5), 0 8px 22px -10px rgba(185,28,28,0.35)",
+  accent: "#7F1D1D",
+  ctaShadow: "0 10px 24px -8px rgba(127,29,29,0.45)",
+} as const;
+const WHEEL_HERO = {
+  background: "radial-gradient(120% 140% at 0% 0%, #A78BFA 0%, #8B5CF6 45%, #7C3AED 80%, #6D28D9 100%)",
+  boxShadow: "0 20px 50px -22px rgba(139,92,246,0.5), 0 8px 22px -10px rgba(109,40,217,0.35)",
+  accent: "#4C1D95",
+  ctaShadow: "0 10px 24px -8px rgba(76,29,149,0.45)",
+} as const;
 
 // Strings for the "Live games" pairing (Quick Play hero + Category
 // Race card). Kept inline so this layout doesn't have to thread new
 // keys through the shared teacher-dashboard locale.
 const LIVE_GAMES_STRINGS = {
-  en: { liveGames: "Live games", live: "Live", raceTitle: "Category Race", raceDescription: "Pick a letter, race the class to fill the categories.", raceStart: "Start", speedTitle: "Speed Round", speedDescription: "Drop one word on the class — fastest correct answer wins.", arenaTitle: "Word Hunt Arena", arenaDescription: "Students run around a shared map and race to grab words." },
-  he: { liveGames: "משחקים חיים", live: "חי", raceTitle: "מרוץ קטגוריות", raceDescription: "אות אחת — כל הכיתה מתחרה למלא את הקטגוריות.", raceStart: "התחל", speedTitle: "סבב מהיר", speedDescription: "מילה אחת לכל הכיתה — התשובה הנכונה המהירה מנצחת.", arenaTitle: "זירת ציד מילים", arenaDescription: "התלמידים רצים במפה משותפת ומתחרים לתפוס מילים." },
-  ar: { liveGames: "ألعاب مباشرة", live: "مباشر", raceTitle: "سباق الفئات", raceDescription: "حرف واحد — يتسابق الصف لملء الفئات.", raceStart: "ابدأ", speedTitle: "جولة سريعة", speedDescription: "كلمة واحدة للصف — الإجابة الصحيحة الأسرع تفوز.", arenaTitle: "ساحة صيد الكلمات", arenaDescription: "يركض الطلاب في خريطة مشتركة ويتسابقون لالتقاط الكلمات." },
+  en: { liveGames: "Live games", live: "Live", classroomGames: "Classroom tools", classBadge: "Class", raceTitle: "Category Race", raceDescription: "Pick a letter, race the class to fill the categories.", raceStart: "Start", speedTitle: "Speed Round", speedDescription: "Drop one word on the class — fastest correct answer wins.", arenaTitle: "Word Hunt Arena", arenaDescription: "Students run around a shared map and race to grab words." },
+  he: { liveGames: "משחקים חיים", live: "חי", classroomGames: "כלים לכיתה", classBadge: "כיתה", raceTitle: "מרוץ קטגוריות", raceDescription: "אות אחת — כל הכיתה מתחרה למלא את הקטגוריות.", raceStart: "התחל", speedTitle: "סבב מהיר", speedDescription: "מילה אחת לכל הכיתה — התשובה הנכונה המהירה מנצחת.", arenaTitle: "זירת ציד מילים", arenaDescription: "התלמידים רצים במפה משותפת ומתחרים לתפוס מילים." },
+  ar: { liveGames: "ألعاب مباشرة", live: "مباشر", classroomGames: "أدوات الصف", classBadge: "الصف", raceTitle: "سباق الفئات", raceDescription: "حرف واحد — يتسابق الصف لملء الفئات.", raceStart: "ابدأ", speedTitle: "جولة سريعة", speedDescription: "كلمة واحدة للصف — الإجابة الصحيحة الأسرع تفوز.", arenaTitle: "ساحة صيد الكلمات", arenaDescription: "يركض الطلاب في خريطة مشتركة ويتسابقون لالتقاط الكلمات." },
 } as const;
 
 // Mirrors the WhatsApp share text the legacy section produced — the
@@ -81,6 +103,10 @@ interface EnglishDashboardLayoutProps {
   onCategoryRaceClick: () => void;
   onSpeedRoundClick: () => void;
   onArenaClick: () => void;
+  // Classroom (in-room) tools surfaced as their own dashboard tiles.
+  onClassShowClick: () => void;
+  onHotSeatClick: () => void;
+  onWheelClick: () => void;
   onClassroomClick: () => void;
   onApprovalsClick: () => void;
   onWorksheetResultsClick?: () => void;
@@ -127,6 +153,9 @@ export default function EnglishDashboardLayout({
   onCategoryRaceClick,
   onSpeedRoundClick,
   onArenaClick,
+  onClassShowClick,
+  onHotSeatClick,
+  onWheelClick,
   onClassroomClick,
   onApprovalsClick,
   onWorksheetResultsClick,
@@ -203,6 +232,50 @@ export default function EnglishDashboardLayout({
             isRTL={isRTL}
             dataTour="word-hunt-arena"
             {...ARENA_HERO}
+          />
+        </div>
+      </section>
+
+      {/* ─── Classroom tools ─── Class Show, Hot Seat, Vocab Wheel.
+          In-room / projector experiences a teacher runs on one device
+          (no per-student phone needed).  Promoted to their own dashboard
+          tiles so they're reachable in one tap, mirroring the live games
+          above, instead of being buried in the New Activity tab strip. */}
+      <section className="mt-7 sm:mt-9">
+        <SectionLabel>{rt.classroomGames}</SectionLabel>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-stretch">
+          <LiveGameHero
+            emoji="📺"
+            title={t.classShowTitle}
+            badge={rt.classBadge}
+            description={t.classShowDescription}
+            ctaLabel={rt.raceStart}
+            onStart={onClassShowClick}
+            isRTL={isRTL}
+            dataTour="class-show"
+            {...CLASS_SHOW_HERO}
+          />
+          <LiveGameHero
+            emoji="🔥"
+            title={t.hotSeatTitle}
+            badge={rt.classBadge}
+            description={t.hotSeatDescription}
+            ctaLabel={rt.raceStart}
+            onStart={onHotSeatClick}
+            isRTL={isRTL}
+            dataTour="hot-seat"
+            {...HOT_SEAT_HERO}
+          />
+          <LiveGameHero
+            emoji="🎡"
+            title={t.wheelTitle}
+            badge={rt.classBadge}
+            description={t.wheelDescription}
+            ctaLabel={rt.raceStart}
+            onStart={onWheelClick}
+            isRTL={isRTL}
+            dataTour="wheel"
+            {...WHEEL_HERO}
           />
         </div>
       </section>
