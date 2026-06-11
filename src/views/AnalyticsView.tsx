@@ -61,6 +61,33 @@ interface AnalyticsViewProps {
 // their scores and silently hid one of them from "who needs help".
 const identityOf = (s: ProgressData): string => s.studentUid || s.studentName;
 
+// ─── Server-side aggregates (get_teacher_class_analytics RPC) ─────────────
+// fetchScores bounds the client dataset (90-day window, 2000-row chunks), so
+// once a busy class passes the cap the client-side aggregation silently
+// under-counts. The RPC runs the same GROUP BY in Postgres over the full
+// window with no row cap and returns tiny pre-bucketed arrays; the cheap
+// final shaping below (struggling = avg < 70, top-8 mistakes, best mode)
+// is unchanged. `allScores` stays the source for the per-attempt detail
+// modal, which wants raw rows anyway and is fine on the capped set.
+const ANALYTICS_WINDOW_DAYS = 90; // mirror fetchScores so both paths agree
+
+interface RpcStudentBucket {
+  uid: string | null;
+  name: string;
+  avatar: string | null;
+  total: number;
+  count: number;
+}
+interface RpcAnalyticsRow {
+  class_code: string;
+  student_count: number;
+  total_attempts: number;
+  total_score: number;
+  students: RpcStudentBucket[];
+  mistakes: Array<{ word_id: number; count: number }>;
+  modes: Array<{ mode: string; count: number; total: number }>;
+}
+
 export default function AnalyticsView({
   user,
   classes,
@@ -105,6 +132,30 @@ export default function AnalyticsView({
     [teacherAssignments],
   );
 
+  // Server-side aggregates. Keyed on the code list (not the array identity)
+  // so a parent re-render with a fresh-but-equal `classes` array doesn't
+  // refire the RPC. On error we stay on the client-side aggregation below —
+  // the view degrades to the capped behaviour instead of going blank.
+  const [rpcRows, setRpcRows] = useState<RpcAnalyticsRow[] | null>(null);
+  const classCodesKey = classes.map(c => c.code).sort().join(',');
+  useEffect(() => {
+    if (!classCodesKey) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc('get_teacher_class_analytics', {
+        p_class_codes: classCodesKey.split(','),
+        p_since: new Date(Date.now() - ANALYTICS_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+      });
+      if (cancelled) return;
+      if (error) {
+        console.error('get_teacher_class_analytics failed; using client-side aggregation:', error);
+        return;
+      }
+      if (Array.isArray(data)) setRpcRows(data as RpcAnalyticsRow[]);
+    })();
+    return () => { cancelled = true; };
+  }, [classCodesKey]);
+
   // Per-class analytics
   const classAnalytics = useMemo(() => {
     const analytics: Map<string, {
@@ -125,6 +176,58 @@ export default function AnalyticsView({
       }>;
     }> = new Map();
 
+    // Preferred path: shape the RPC's pre-aggregated buckets. Same outputs
+    // as the row-crunching below, but accurate past the client row cap.
+    if (rpcRows) {
+      rpcRows.forEach(row => {
+        const strugglingStudents = row.students
+          .map(s => ({
+            id: s.uid || s.name,
+            name: s.name,
+            uid: s.uid || null,
+            avg: s.count > 0 ? Math.round(s.total / s.count) : 0,
+            avatar: s.avatar || '🦊',
+            attempts: s.count,
+          }))
+          .filter(s => s.avg < 70)
+          .sort((a, b) => a.avg - b.avg);
+
+        const topMistakes = [...row.mistakes]
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 8)
+          .map(({ word_id, count }) => {
+            const word = lookupDisplayWord(word_id, wordIdSubjectMap.get(word_id) ?? "english");
+            return word ? { wordId: word_id, count, word } : null;
+          })
+          .filter((m): m is { wordId: number; count: number; word: DisplayWord } => m !== null);
+
+        let bestMode = "flashcards";
+        let bestScore = -1;
+        const modeCounts: Record<string, number> = {};
+        row.modes.forEach(m => {
+          modeCounts[m.mode] = m.count;
+          const avg = m.total / m.count;
+          if (avg > bestScore && m.count >= 3) {
+            bestScore = avg;
+            bestMode = m.mode;
+          }
+        });
+
+        analytics.set(row.class_code, {
+          studentCount: row.student_count,
+          avgScore: row.total_attempts > 0 ? Math.round(row.total_score / row.total_attempts) : 0,
+          totalAttempts: row.total_attempts,
+          strugglingCount: strugglingStudents.length,
+          topMistakes,
+          bestMode,
+          modeCounts,
+          strugglingStudents,
+        });
+      });
+      return analytics;
+    }
+
+    // Fallback path: aggregate the capped client rows (pre-RPC behaviour).
     // Group scores by class
     const byClass: Map<string, ProgressData[]> = new Map();
     allScores.forEach(s => {
@@ -220,7 +323,7 @@ export default function AnalyticsView({
     });
 
     return analytics;
-  }, [allScores]);
+  }, [allScores, rpcRows, wordIdSubjectMap]);
 
   // Get analytics for selected class (or "all")
   const currentAnalytics = selectedClass
@@ -247,18 +350,32 @@ export default function AnalyticsView({
           });
         });
 
-        // Build struggling students list from all scores — keyed by identity
-        // (UID) so same-name students across classes don't collapse together.
+        // Build struggling students list — keyed by identity (UID) so
+        // same-name students across classes don't collapse together.
+        // Sourced from the RPC's per-class buckets when available (merging a
+        // student's buckets across classes), else from the capped raw rows.
         const studentStats: Map<string, { total: number; count: number; avatar: string; name: string; uid: string | null }> = new Map();
-        allScores.forEach(s => {
-          const id = identityOf(s);
-          if (!studentStats.has(id)) {
-            studentStats.set(id, { total: 0, count: 0, avatar: s.avatar || '🦊', name: s.studentName, uid: s.studentUid || null });
-          }
-          const stat = studentStats.get(id)!;
-          stat.total += s.score;
-          stat.count++;
-        });
+        if (rpcRows) {
+          rpcRows.forEach(row => row.students.forEach(s => {
+            const id = s.uid || s.name;
+            if (!studentStats.has(id)) {
+              studentStats.set(id, { total: 0, count: 0, avatar: s.avatar || '🦊', name: s.name, uid: s.uid || null });
+            }
+            const stat = studentStats.get(id)!;
+            stat.total += s.total;
+            stat.count += s.count;
+          }));
+        } else {
+          allScores.forEach(s => {
+            const id = identityOf(s);
+            if (!studentStats.has(id)) {
+              studentStats.set(id, { total: 0, count: 0, avatar: s.avatar || '🦊', name: s.studentName, uid: s.studentUid || null });
+            }
+            const stat = studentStats.get(id)!;
+            stat.total += s.score;
+            stat.count++;
+          });
+        }
 
         const strugglingStudents: Array<{ id: string; name: string; uid: string | null; avg: number; avatar: string; attempts: number }> = [];
         studentStats.forEach((stat, id) => {
@@ -468,7 +585,7 @@ export default function AnalyticsView({
           </div>
         </div>
 
-        {allScores.length === 0 ? (
+        {allScores.length === 0 && !rpcRows?.length ? (
           <div className="bg-[var(--vb-surface)] p-12 rounded-2xl shadow-xl text-center">
             <Sparkles className="mx-auto text-[var(--vb-border)] mb-4" size={48} />
             <p className="text-[var(--vb-text-muted)] font-medium">{t.noStudentData}</p>
