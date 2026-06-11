@@ -246,13 +246,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             base at every width; the large scale only applies via `tall:`
             (≥930px high — see @custom-variant in index.css) where it
             actually fits. Keep new hero sizing on this pattern. */}
-        {/* pt clears the fixed PublicNav (~48px tall). pt-8 left the
-            eyebrow badge tucked behind the nav on phones; pt-16 clears it
-            while staying compact enough that BOTH sign-in lanes fit in
-            the hero viewport on mobile and short laptops. min-h-svh (not
-            screen/100vh) so the snap target matches what mobile browsers
-            actually show above their URL bar. */}
-        <section className="min-h-svh pt-16 md:tall:pt-28 pb-12 px-4 md:px-6 relative isolate overflow-hidden">
+        {/* pt clears the fixed PublicNav — measured 59px on phones and
+            75px from md (desktop links + CTA). pt-16 left the eyebrow
+            11px UNDER the md nav on short screens (1366×768, 1920×900);
+            pt-[5.25rem] clears it while the compact stack still keeps
+            both sign-in lanes + the demo CTA above a 720px fold.
+            min-h-svh (not screen/100vh) so the snap target matches what
+            mobile browsers actually show above their URL bar. */}
+        <section className="min-h-svh pt-20 md:pt-[5.25rem] md:tall:pt-28 pb-12 px-4 md:px-6 relative isolate overflow-hidden">
           {/* Brand-tint backdrop — fully GPU-rendered gradient, no video
               fetch.  The animated mesh below paints the motion that used
               to come from a 2 MB MP4. */}
@@ -273,7 +274,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
           <div className="max-w-6xl mx-auto w-full relative z-10 text-center" dir={dir}>
             {/* Eyebrow */}
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs font-bold text-white/80 mb-3 md:mb-4">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs font-bold text-white/80 mb-2 md:tall:mb-4">
               <Sparkles size={13} aria-hidden="true" />
               {t.heroV2.eyebrow}
             </span>
@@ -293,7 +294,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
 
             {/* Subtitle — hidden on phones so both sign-in lanes sit in
                 the first viewport; the eyebrow already carries the pitch. */}
-            <p className="hidden sm:block text-base md:tall:text-lg text-white/75 max-w-2xl mx-auto mb-4 md:tall:mb-6">
+            <p className="hidden sm:block text-base md:tall:text-lg text-white/75 max-w-2xl mx-auto mb-3 md:tall:mb-6">
               {t.heroSubtitle}
             </p>
 
@@ -309,7 +310,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <GraduationCap size={32} strokeWidth={2.5} className="text-white w-7 h-7 sm:w-8 sm:h-8 md:tall:w-10 md:tall:h-10" aria-hidden="true" />
                 </div>
                 <h2 className="text-xl sm:text-2xl md:tall:text-3xl font-black text-white mb-1.5 sm:mb-2">{t.heroV2.staffTitle}</h2>
-                <p className="hidden sm:block text-sm md:tall:text-base text-white/70 mb-4 md:tall:mb-6 flex-1">{t.heroV2.staffDesc}</p>
+                <p className="hidden sm:block text-sm md:tall:text-base text-white/70 mb-3 md:tall:mb-6 flex-1">{t.heroV2.staffDesc}</p>
                 <button
                   type="button"
                   onClick={onTeacherLogin}
@@ -329,7 +330,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <BookOpen size={40} strokeWidth={2.5} className="text-white w-7 h-7 sm:w-8 sm:h-8 md:tall:w-10 md:tall:h-10" aria-hidden="true" />
                 </div>
                 <h2 className="text-xl sm:text-2xl md:tall:text-3xl font-black text-white mb-1.5 sm:mb-2">{t.navStudents}</h2>
-                <p className="hidden sm:block text-sm md:tall:text-base text-white/70 mb-4 md:tall:mb-6 flex-1">{t.heroV2.studentDesc}</p>
+                <p className="hidden sm:block text-sm md:tall:text-base text-white/70 mb-3 md:tall:mb-6 flex-1">{t.heroV2.studentDesc}</p>
                 <button
                   type="button"
                   onClick={onGetStarted}
@@ -347,7 +348,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             {/* Live demo — clear secondary action (only when available). */}
             {onTryDemo && (
               <>
-                <div className="mt-4 md:tall:mt-5 flex items-center justify-center gap-3" aria-hidden="true">
+                <div className="mt-3 md:tall:mt-5 flex items-center justify-center gap-3" aria-hidden="true">
                   <span className="h-px w-12 bg-white/20" />
                   <span className="text-xs uppercase tracking-widest text-white/40 font-bold">{t.heroV2.or}</span>
                   <span className="h-px w-12 bg-white/20" />
