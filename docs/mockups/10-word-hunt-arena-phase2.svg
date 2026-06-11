@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820" font-family="'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient>
+    <radialGradient id="field" cx="50%" cy="40%" r="75%"><stop offset="0%" stop-color="#1e3a5f"/><stop offset="100%" stop-color="#0b1f3a"/></radialGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#d946ef"/></linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f97316"/></linearGradient>
+    <filter id="sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="4" stdDeviation="7" flood-color="#000" flood-opacity="0.45"/></filter>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1280" height="820" fill="url(#bg)"/>
+  <text x="640" y="48" fill="#fff" font-size="30" font-weight="800" text-anchor="middle">PHASE 2 vision — "Word Hunt Arena" (the map you run on)</text>
+  <text x="640" y="78" fill="#94a3b8" font-size="16" text-anchor="middle">Steer your avatar to reach a floating word → grab it → answer fast. Everyone moves live on one shared map.</text>
+
+  <!-- THE MAP (big screen / phone view) -->
+  <g filter="url(#sh)"><rect x="60" y="104" width="800" height="600" rx="28" fill="url(#field)" stroke="#334155" stroke-width="2"/></g>
+  <!-- grid -->
+  <g stroke="#1e40af" stroke-opacity="0.25" stroke-width="1">
+    <line x1="60" y1="204" x2="860" y2="204"/><line x1="60" y1="304" x2="860" y2="304"/><line x1="60" y1="404" x2="860" y2="404"/><line x1="60" y1="504" x2="860" y2="504"/><line x1="60" y1="604" x2="860" y2="604"/>
+    <line x1="200" y1="104" x2="200" y2="704"/><line x1="340" y1="104" x2="340" y2="704"/><line x1="480" y1="104" x2="480" y2="704"/><line x1="620" y1="104" x2="620" y2="704"/><line x1="760" y1="104" x2="760" y2="704"/>
+  </g>
+
+  <!-- floating word tokens -->
+  <g filter="url(#glow)">
+    <g transform="translate(250,200)"><rect x="-58" y="-22" width="116" height="44" rx="22" fill="url(#word)"/><text x="0" y="6" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">abundant</text></g>
+    <g transform="translate(610,330)"><rect x="-48" y="-22" width="96" height="44" rx="22" fill="url(#word)"/><text x="0" y="6" fill="#fff" font-size="16" font-weight="700" text-anchor="middle">scarce</text></g>
+    <g transform="translate(420,540)"><rect x="-42" y="-22" width="84" height="44" rx="22" fill="url(#word)"/><text x="0" y="6" fill="#fff" font-size="16" font-weight="700" text-anchor="middle">vivid</text></g>
+    <g transform="translate(720,560)"><rect x="-50" y="-22" width="100" height="44" rx="22" fill="url(#word)"/><text x="0" y="6" fill="#fff" font-size="16" font-weight="700" text-anchor="middle">gloomy</text></g>
+    <g transform="translate(160,470)"><rect x="-48" y="-22" width="96" height="44" rx="22" fill="url(#word)"/><text x="0" y="6" fill="#fff" font-size="16" font-weight="700" text-anchor="middle">eager</text></g>
+  </g>
+
+  <!-- avatars with motion trails -->
+  <!-- you (running toward abundant) -->
+  <path d="M470 300 Q380 250 305 215" fill="none" stroke="#fbbf24" stroke-width="4" stroke-dasharray="2 9" stroke-linecap="round" opacity="0.8"/>
+  <g transform="translate(470,300)" filter="url(#sh)"><circle r="30" fill="#fbbf24"/><text x="0" y="9" font-size="30" text-anchor="middle">🐯</text><text x="0" y="-40" fill="#fde047" font-size="14" font-weight="800" text-anchor="middle">YOU</text></g>
+
+  <!-- Maya racing for same word -->
+  <path d="M540 430 Q400 330 305 225" fill="none" stroke="#f87171" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round" opacity="0.7"/>
+  <g transform="translate(540,430)" filter="url(#sh)"><circle r="26" fill="#94a3b8"/><text x="0" y="8" font-size="26" text-anchor="middle">🦊</text><text x="0" y="-34" fill="#fca5a5" font-size="12" font-weight="700" text-anchor="middle">Maya →</text></g>
+
+  <!-- others -->
+  <g transform="translate(700,200)" filter="url(#sh)"><circle r="24" fill="#a78bfa"/><text x="0" y="8" font-size="24" text-anchor="middle">🐼</text></g>
+  <g transform="translate(220,620)" filter="url(#sh)"><circle r="24" fill="#34d399"/><text x="0" y="8" font-size="24" text-anchor="middle">🐧</text></g>
+
+  <text x="265" y="170" fill="#fde047" font-size="13" font-weight="700" text-anchor="middle">↑ two players racing to this word!</text>
+
+  <!-- joystick control hint -->
+  <g transform="translate(150,630)">
+    <circle r="46" fill="#000" fill-opacity="0.4" stroke="#64748b" stroke-width="2"/>
+    <circle cx="22" cy="-14" r="22" fill="#fbbf24" fill-opacity="0.8"/>
+    <text x="0" y="78" fill="#94a3b8" font-size="13" text-anchor="middle">drag to run</text>
+  </g>
+
+  <!-- RIGHT: the "grab → answer" moment -->
+  <text x="1070" y="140" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">When you reach a word…</text>
+  <g filter="url(#sh)"><rect x="900" y="160" width="340" height="250" rx="22" fill="#ffffff" fill-opacity="0.06"/></g>
+  <g filter="url(#sh)"><rect x="930" y="186" width="280" height="70" rx="16" fill="url(#word)"/></g>
+  <text x="1070" y="214" fill="#ede9fe" font-size="13" text-anchor="middle">GRABBED! pick the meaning ⏱</text>
+  <text x="1070" y="240" fill="#fff" font-size="24" font-weight="800" text-anchor="middle">abundant</text>
+  <g transform="translate(930,272)"><rect width="280" height="40" rx="12" fill="#10b981"/><text x="140" y="26" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">plentiful ✓</text></g>
+  <g transform="translate(930,320)"><rect width="280" height="40" rx="12" fill="#ffffff" fill-opacity="0.14"/><text x="140" y="26" fill="#fff" font-size="14" text-anchor="middle">rare</text></g>
+  <text x="1070" y="392" fill="#5eead4" font-size="13" text-anchor="middle">← this is exactly Game A's buzzer!</text>
+
+  <!-- note box -->
+  <g filter="url(#sh)"><rect x="900" y="440" width="340" height="264" rx="22" fill="#ffffff" fill-opacity="0.05" stroke="#ef4444" stroke-opacity="0.4" stroke-width="2"/></g>
+  <text x="924" y="476" fill="#f87171" font-size="16" font-weight="800">What's new for the map (Phase 2)</text>
+  <g font-size="13.5" fill="#e2e8f0">
+    <text x="924" y="508">🆕 Game canvas (PixiJS / Phaser)</text>
+    <text x="924" y="536">🆕 Joystick movement controls</text>
+    <text x="924" y="564">🆕 Live position sync ~15×/sec</text>
+    <text x="924" y="592">🆕 "Who grabbed first" arena referee</text>
+    <text x="924" y="620">🆕 Collision / respawn logic</text>
+  </g>
+  <text x="924" y="656" fill="#5eead4" font-size="13" font-weight="700">♻️ Reuses: room, join, leaderboard,</text>
+  <text x="924" y="676" fill="#5eead4" font-size="13" font-weight="700">    and Game A's grab-and-answer.</text>
+
+  <text x="640" y="744" fill="#fbbf24" font-size="16" font-weight="700" text-anchor="middle">Roadmap: ✅ Phase 1 — buzzer (building now) → 🔜 Phase 2 — drop the buzzer onto this moving map.</text>
+  <text x="640" y="774" fill="#94a3b8" font-size="14" text-anchor="middle">The arena is a bigger build (new framework + high-frequency networking), but it sits on top of everything we ship in Phase 1.</text>
+</svg>

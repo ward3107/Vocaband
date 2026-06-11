@@ -59,6 +59,19 @@ export type View =
   // student joins via code/QR and answers in a full-screen focus card.
   | "category-race-host"
   | "category-race-student"
+  // Speed Round (Kahoot-style synchronized buzzer). Sibling of Category
+  // Race — a quick_play_sessions row whose allowed_modes is [QP_SPEED_MODE].
+  // The teacher drops one word on the whole class at once; students race to
+  // tap the correct option. See docs/speed-round-design.md.
+  | "speed-round-host"
+  | "speed-round-student"
+  // Word Hunt Arena (real-time multiplayer movement game). Built on the
+  // same Quick Play rails — a quick_play_sessions row whose allowed_modes
+  // is [QP_ARENA_MODE]. Students steer avatars around a shared map and
+  // race to grab floating word tokens; a grab pops the Speed Round buzzer.
+  // See docs/word-hunt-arena-design.md.
+  | "word-hunt-arena-host"
+  | "word-hunt-arena-student"
   | "hot-seat"
   | "wheel"
   | "class-show"

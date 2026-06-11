@@ -28,6 +28,8 @@ import {
 import {
   startQuickPlayFromDashboard,
   startCategoryRaceFromDashboard,
+  startSpeedRoundFromDashboard,
+  startWordHuntArenaFromDashboard,
   startAssignClassFlow,
   loadAssignmentIntoCreateForm,
   applySavedTask,
@@ -140,6 +142,12 @@ export function TeacherDashboardSection(): ReactNode {
           cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode, setView,
         })}
         onCategoryRaceClick={() => { void startCategoryRaceFromDashboard({
+          cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode, setView, showToast,
+        }); }}
+        onSpeedRoundClick={() => { void startSpeedRoundFromDashboard({
+          cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode, setView, showToast,
+        }); }}
+        onArenaClick={() => { void startWordHuntArenaFromDashboard({
           cleanupSessionData, setQuickPlayActiveSession, setQuickPlaySessionCode, setView, showToast,
         }); }}
         onClassroomClick={() => {

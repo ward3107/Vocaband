@@ -108,6 +108,8 @@ export default function TeacherThemePreview() {
               setOpenDropdownClassId={setOpenDropdownClassId}
               onQuickPlayClick={noop}
               onCategoryRaceClick={noop}
+              onSpeedRoundClick={noop}
+              onArenaClick={noop}
               onClassroomClick={() => setPage("classroom")}
               onApprovalsClick={noop}
               onWorksheetResultsClick={noop}

@@ -22,7 +22,7 @@
  *   - clientId is persisted in localStorage so a full page refresh
  *     lands the same identity back on the leaderboard.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { Socket } from "socket.io-client";
 import { loadSocketIO } from "../utils/lazyLoad";
 import {
@@ -40,6 +40,17 @@ import {
   type QpRaceRoundPayload,
   type QpRaceResultPayload,
   type QpRaceEndedPayload,
+  type QpSpeedRoundPayload,
+  type QpSpeedResultPayload,
+  type QpSpeedEndedPayload,
+  type QpSpeedStartPayload,
+  type QpArenaStartPayload,
+  type QpArenaStatePayload,
+  type QpArenaSnapshotPayload,
+  type QpArenaWordPayload,
+  type QpArenaGrabGrantedPayload,
+  type QpArenaGrabDeniedPayload,
+  type QpArenaEndedPayload,
 } from "../core/quickPlayProtocol";
 
 const CLIENT_ID_STORAGE_KEY = "vocaband_qp_client_id";
@@ -237,6 +248,57 @@ export interface QuickPlaySocketApi {
   onRaceResult: (cb: (p: QpRaceResultPayload) => void) => () => void;
   /** Fires when the active round closes (deadline reached). */
   onRaceEnded: (cb: (p: QpRaceEndedPayload) => void) => () => void;
+
+  // ─── Speed Round ─────────────────────────────────────────────────────
+  /** The active Speed Round word (latest SPEED_ROUND broadcast), or null
+   *  between words / after a word closes. Carries the options but NOT the
+   *  correct index — the server reveals that only in the result / ended. */
+  currentSpeed: QpSpeedRoundPayload | null;
+  /** Teacher: start a synchronized word. The question is built client-side
+   *  (the server has no vocabulary); the server stores correctIndex
+   *  privately and broadcasts only the options. */
+  startSpeedRound: (payload: Omit<QpSpeedStartPayload, "sessionCode" | "token">, token: string) => void;
+  /** Teacher: end the active word early (before its deadline). */
+  endSpeedRound: (roundId: string, token: string) => void;
+  /** Student: tap an option (an INDEX, never text) for the active word. */
+  submitSpeedAnswer: (roundId: string, choiceIndex: number) => void;
+  /** Student: fires with this client's per-word scoring after a tap. */
+  onSpeedResult: (cb: (p: QpSpeedResultPayload) => void) => () => void;
+  /** Fires when the active word closes — reveals the answer + winner. */
+  onSpeedEnded: (cb: (p: QpSpeedEndedPayload) => void) => () => void;
+
+  // ─── Word Hunt Arena ─────────────────────────────────────────────────
+  /** The live arena (latest ARENA_STATE, words patched in-place on each
+   *  ARENA_WORD), or null when no arena is running. Word entries never
+   *  carry correctIndex — the server keeps it private. */
+  currentArena: QpArenaStatePayload | null;
+  /** Live avatar positions, fed by the 10/sec ARENA_SNAPSHOT stream.
+   *  Deliberately a REF, not state: setState at 10/sec would re-render the
+   *  whole tree every tick; instead the canvas's single RAF loop reads the
+   *  ref each frame and eases avatars toward these targets. Entries are
+   *  unioned across serverIds keeping the freshest serverTs per clientId
+   *  (multi-VM splits the room — same rationale as the leaderboard union). */
+  arenaPositionsRef: RefObject<Map<string, { x: number; y: number }>>;
+  /** Teacher: start the arena with the pre-authored question batch. */
+  startArena: (
+    words: QpArenaStartPayload["words"],
+    config: QpArenaStartPayload["config"],
+    token: string,
+  ) => void;
+  /** Student: stream the local avatar's position (client-authoritative). */
+  sendArenaMove: (x: number, y: number) => void;
+  /** Student: ask the referee for a word's lock. x/y is the client-side
+   *  position fallback for the cross-VM range check. */
+  requestGrab: (wordId: string, x: number, y: number) => void;
+  /** Teacher: close the arena (back to the podium). */
+  endArena: (token: string) => void;
+  /** Student: fires when the server grants this client a word's lock —
+   *  payload is buzzer-shaped; answer via submitSpeedAnswer. */
+  onArenaGrabGranted: (cb: (p: QpArenaGrabGrantedPayload) => void) => () => void;
+  /** Student: fires when a grab is refused (beaten to it, cooldown…). */
+  onArenaGrabDenied: (cb: (p: QpArenaGrabDeniedPayload) => void) => () => void;
+  /** Fires when the teacher closes the arena. */
+  onArenaEnded: (cb: (p: QpArenaEndedPayload) => void) => () => void;
 }
 
 /**
@@ -320,6 +382,15 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const [lastError, setLastError] = useState<QuickPlaySocketApi["lastError"]>(null);
   const [joinedSessionCode, setJoinedSessionCode] = useState<string | null>(null);
   const [currentRace, setCurrentRace] = useState<QpRaceRoundPayload | null>(null);
+  const [currentSpeed, setCurrentSpeed] = useState<QpSpeedRoundPayload | null>(null);
+  const [currentArena, setCurrentArena] = useState<QpArenaStatePayload | null>(null);
+
+  // Arena avatar positions — a ref on purpose (see QuickPlaySocketApi).
+  // The 10/sec ARENA_SNAPSHOT stream writes here; the canvas RAF loop
+  // reads each frame. Per-clientId freshness is tracked so multi-VM
+  // snapshots union instead of an older VM's tick clobbering a newer one.
+  const arenaPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const arenaPositionTsRef = useRef<Map<string, number>>(new Map());
 
   // Latest leaderboard snapshot per VM (keyed by the broadcast's serverId).
   // `leaderboard` is always the merged union of these — see
@@ -355,6 +426,11 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const sessionEndedRef = useRef<((p: QpSessionEndedPayload) => void) | null>(null);
   const raceResultRef = useRef<((p: QpRaceResultPayload) => void) | null>(null);
   const raceEndedRef = useRef<((p: QpRaceEndedPayload) => void) | null>(null);
+  const speedResultRef = useRef<((p: QpSpeedResultPayload) => void) | null>(null);
+  const speedEndedRef = useRef<((p: QpSpeedEndedPayload) => void) | null>(null);
+  const arenaGrabGrantedRef = useRef<((p: QpArenaGrabGrantedPayload) => void) | null>(null);
+  const arenaGrabDeniedRef = useRef<((p: QpArenaGrabDeniedPayload) => void) | null>(null);
+  const arenaEndedRef = useRef<((p: QpArenaEndedPayload) => void) | null>(null);
 
   // Last known student-side join payload — replayed on reconnect so a
   // dropped connection doesn't kick the kid off the board.
@@ -448,6 +524,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       const onSessionEnded = (p: QpSessionEndedPayload) => {
         setJoinedSessionCode(null);
         setCurrentRace(null);
+        setCurrentSpeed(null);
+        setCurrentArena(null);
+        arenaPositionsRef.current = new Map();
+        arenaPositionTsRef.current = new Map();
         sessionEndedRef.current?.(p);
       };
       const onErr = (p: QpErrorPayload) => {
@@ -478,6 +558,70 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         raceEndedRef.current?.(p);
       };
 
+      const onSpeedRound = (p: QpSpeedRoundPayload) => {
+        if (p?.sessionCode === sessionCode) setCurrentSpeed(p);
+      };
+      const onSpeedResult = (p: QpSpeedResultPayload) => {
+        if (p?.sessionCode === sessionCode) speedResultRef.current?.(p);
+      };
+      const onSpeedEnded = (p: QpSpeedEndedPayload) => {
+        if (p?.sessionCode !== sessionCode) return;
+        setCurrentSpeed(prev => (prev && prev.roundId === p.roundId ? null : prev));
+        speedEndedRef.current?.(p);
+      };
+
+      const onArenaState = (p: QpArenaStatePayload) => {
+        if (p?.sessionCode !== sessionCode || !Array.isArray(p.words)) return;
+        setCurrentArena(p);
+        // Seed the position ref from the full state so avatars have a target
+        // before the first snapshot tick lands.
+        const now = Date.now();
+        for (const player of p.positions ?? []) {
+          arenaPositionsRef.current.set(player.clientId, { x: player.x, y: player.y });
+          arenaPositionTsRef.current.set(player.clientId, now);
+        }
+      };
+      const onArenaSnapshot = (p: QpArenaSnapshotPayload) => {
+        // Ref-only write — NEVER setState here. This lands 10×/sec; the
+        // canvas RAF loop reads the ref each frame instead. Union across
+        // serverIds: keep the freshest serverTs per clientId so an older
+        // VM's tick can't clobber a newer one (multi-VM splits the room).
+        if (p?.sessionCode !== sessionCode || !Array.isArray(p.ids)) return;
+        for (let i = 0; i < p.ids.length; i++) {
+          const id = p.ids[i];
+          const prevTs = arenaPositionTsRef.current.get(id) ?? 0;
+          if (p.serverTs < prevTs) continue;
+          arenaPositionsRef.current.set(id, { x: p.xs[i], y: p.ys[i] });
+          arenaPositionTsRef.current.set(id, p.serverTs);
+        }
+      };
+      const onArenaWord = (p: QpArenaWordPayload) => {
+        if (p?.sessionCode !== sessionCode || !p.word) return;
+        // Patch the one word in place; a token that just spawned (future
+        // refill) appends. The rest of the arena state is untouched.
+        setCurrentArena(prev => {
+          if (!prev) return prev;
+          const idx = prev.words.findIndex(w => w.wordId === p.word.wordId);
+          const words = idx >= 0
+            ? prev.words.map(w => (w.wordId === p.word.wordId ? p.word : w))
+            : [...prev.words, p.word];
+          return { ...prev, words };
+        });
+      };
+      const onArenaGrabGranted = (p: QpArenaGrabGrantedPayload) => {
+        if (p?.sessionCode === sessionCode) arenaGrabGrantedRef.current?.(p);
+      };
+      const onArenaGrabDenied = (p: QpArenaGrabDeniedPayload) => {
+        if (p?.sessionCode === sessionCode) arenaGrabDeniedRef.current?.(p);
+      };
+      const onArenaEnded = (p: QpArenaEndedPayload) => {
+        if (p?.sessionCode !== sessionCode) return;
+        setCurrentArena(null);
+        arenaPositionsRef.current = new Map();
+        arenaPositionTsRef.current = new Map();
+        arenaEndedRef.current?.(p);
+      };
+
       socket.on("connect", onConnect);
       socket.on("disconnect", onDisconnect);
       socket.on("connect_error", onConnectError);
@@ -490,6 +634,15 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
       socket.on(QP_SERVER_EVENTS.RACE_RESULT,   onRaceResult);
       socket.on(QP_SERVER_EVENTS.RACE_ENDED,    onRaceEnded);
+      socket.on(QP_SERVER_EVENTS.SPEED_ROUND,   onSpeedRound);
+      socket.on(QP_SERVER_EVENTS.SPEED_RESULT,  onSpeedResult);
+      socket.on(QP_SERVER_EVENTS.SPEED_ENDED,   onSpeedEnded);
+      socket.on(QP_SERVER_EVENTS.ARENA_STATE,        onArenaState);
+      socket.on(QP_SERVER_EVENTS.ARENA_SNAPSHOT,     onArenaSnapshot);
+      socket.on(QP_SERVER_EVENTS.ARENA_WORD,         onArenaWord);
+      socket.on(QP_SERVER_EVENTS.ARENA_GRAB_GRANTED, onArenaGrabGranted);
+      socket.on(QP_SERVER_EVENTS.ARENA_GRAB_DENIED,  onArenaGrabDenied);
+      socket.on(QP_SERVER_EVENTS.ARENA_ENDED,        onArenaEnded);
 
       if (socket.connected) onConnect();
 
@@ -506,6 +659,15 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
         socket.off(QP_SERVER_EVENTS.RACE_RESULT,   onRaceResult);
         socket.off(QP_SERVER_EVENTS.RACE_ENDED,    onRaceEnded);
+        socket.off(QP_SERVER_EVENTS.SPEED_ROUND,   onSpeedRound);
+        socket.off(QP_SERVER_EVENTS.SPEED_RESULT,  onSpeedResult);
+        socket.off(QP_SERVER_EVENTS.SPEED_ENDED,   onSpeedEnded);
+        socket.off(QP_SERVER_EVENTS.ARENA_STATE,        onArenaState);
+        socket.off(QP_SERVER_EVENTS.ARENA_SNAPSHOT,     onArenaSnapshot);
+        socket.off(QP_SERVER_EVENTS.ARENA_WORD,         onArenaWord);
+        socket.off(QP_SERVER_EVENTS.ARENA_GRAB_GRANTED, onArenaGrabGranted);
+        socket.off(QP_SERVER_EVENTS.ARENA_GRAB_DENIED,  onArenaGrabDenied);
+        socket.off(QP_SERVER_EVENTS.ARENA_ENDED,        onArenaEnded);
       };
     });
 
@@ -704,6 +866,94 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     return () => { raceEndedRef.current = null; };
   }, []);
 
+  // ─── Speed Round ─────────────────────────────────────────────────────
+
+  const startSpeedRound = useCallback((
+    payload: Omit<QpSpeedStartPayload, "sessionCode" | "token">,
+    token: string,
+  ) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.SPEED_START, { ...payload, sessionCode, token });
+  }, [sessionCode]);
+
+  const endSpeedRound = useCallback((roundId: string, token: string) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.SPEED_END_ROUND, { sessionCode, token, roundId });
+  }, [sessionCode]);
+
+  const submitSpeedAnswer = useCallback((roundId: string, choiceIndex: number) => {
+    if (!sessionCode || !socketRef.current) return;
+    // Same sessionStorage-sourced clientId rationale as submitRaceAnswers —
+    // both hook instances must agree on the id the server owns.
+    const id = readStoredClientId() ?? clientIdRef.current;
+    socketRef.current.emit(QP_EVENTS.SPEED_SUBMIT, {
+      sessionCode, clientId: id, roundId, choiceIndex,
+    });
+  }, [sessionCode]);
+
+  const onSpeedResult = useCallback((cb: (p: QpSpeedResultPayload) => void) => {
+    speedResultRef.current = cb;
+    return () => { speedResultRef.current = null; };
+  }, []);
+
+  const onSpeedEnded = useCallback((cb: (p: QpSpeedEndedPayload) => void) => {
+    speedEndedRef.current = cb;
+    return () => { speedEndedRef.current = null; };
+  }, []);
+
+  // ─── Word Hunt Arena ─────────────────────────────────────────────────
+
+  const startArena = useCallback((
+    words: QpArenaStartPayload["words"],
+    config: QpArenaStartPayload["config"],
+    token: string,
+  ) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.ARENA_START, {
+      sessionCode, token, words, ...(config ? { config } : {}),
+    });
+  }, [sessionCode]);
+
+  const sendArenaMove = useCallback((x: number, y: number) => {
+    if (!sessionCode || !socketRef.current) return;
+    // Same sessionStorage-sourced clientId rationale as updateScore —
+    // both hook instances must agree on the id the server owns.
+    const id = readStoredClientId() ?? clientIdRef.current;
+    socketRef.current.emit(QP_EVENTS.ARENA_MOVE, {
+      sessionCode, clientId: id, x: Math.round(x), y: Math.round(y),
+    });
+  }, [sessionCode]);
+
+  const requestGrab = useCallback((wordId: string, x: number, y: number) => {
+    if (!sessionCode || !socketRef.current) return;
+    const id = readStoredClientId() ?? clientIdRef.current;
+    // x/y is the owner VM's range-check fallback (it may never have seen
+    // this student's move stream on a multi-VM split).
+    socketRef.current.emit(QP_EVENTS.ARENA_GRAB, {
+      sessionCode, clientId: id, wordId, x: Math.round(x), y: Math.round(y),
+    });
+  }, [sessionCode]);
+
+  const endArena = useCallback((token: string) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.ARENA_END, { sessionCode, token });
+  }, [sessionCode]);
+
+  const onArenaGrabGranted = useCallback((cb: (p: QpArenaGrabGrantedPayload) => void) => {
+    arenaGrabGrantedRef.current = cb;
+    return () => { arenaGrabGrantedRef.current = null; };
+  }, []);
+
+  const onArenaGrabDenied = useCallback((cb: (p: QpArenaGrabDeniedPayload) => void) => {
+    arenaGrabDeniedRef.current = cb;
+    return () => { arenaGrabDeniedRef.current = null; };
+  }, []);
+
+  const onArenaEnded = useCallback((cb: (p: QpArenaEndedPayload) => void) => {
+    arenaEndedRef.current = cb;
+    return () => { arenaEndedRef.current = null; };
+  }, []);
+
   return {
     status,
     clientId,
@@ -727,5 +977,20 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     submitRaceAnswers,
     onRaceResult,
     onRaceEnded,
+    currentSpeed,
+    startSpeedRound,
+    endSpeedRound,
+    submitSpeedAnswer,
+    onSpeedResult,
+    onSpeedEnded,
+    currentArena,
+    arenaPositionsRef,
+    startArena,
+    sendArenaMove,
+    requestGrab,
+    endArena,
+    onArenaGrabGranted,
+    onArenaGrabDenied,
+    onArenaEnded,
   };
 }

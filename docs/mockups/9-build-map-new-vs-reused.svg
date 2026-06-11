@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" font-family="'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#000" flood-opacity="0.45"/></filter>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <text x="640" y="50" fill="#fff" font-size="28" font-weight="800" text-anchor="middle">Build map — what's reused vs. what's new</text>
+  <text x="640" y="80" fill="#94a3b8" font-size="15" text-anchor="middle">Green = already exists (reuse) · Amber = new code · Red = protected zone, needs your sign-off</text>
+
+  <!-- REUSE column -->
+  <text x="220" y="130" fill="#5eead4" font-size="20" font-weight="800" text-anchor="middle">♻️ REUSE (already built)</text>
+  <g font-size="15" fill="#fff">
+    <g transform="translate(60,150)"><rect width="320" height="56" rx="14" fill="#10b981" fill-opacity="0.18" stroke="#10b981" stroke-opacity="0.5"/><text x="20" y="26" font-weight="700">socket.io /quick-play</text><text x="20" y="46" font-size="12" fill="#a7f3d0">always-open connection + reconnect</text></g>
+    <g transform="translate(60,218)"><rect width="320" height="56" rx="14" fill="#10b981" fill-opacity="0.18" stroke="#10b981" stroke-opacity="0.5"/><text x="20" y="26" font-weight="700">Category Race engine</text><text x="20" y="46" font-size="12" fill="#a7f3d0">shared deadline + speed scoring</text></g>
+    <g transform="translate(60,286)"><rect width="320" height="56" rx="14" fill="#10b981" fill-opacity="0.18" stroke="#10b981" stroke-opacity="0.5"/><text x="20" y="26" font-weight="700">LiveChallengeView podium</text><text x="20" y="46" font-size="12" fill="#a7f3d0">top-3 + confetti + leader chime</text></g>
+    <g transform="translate(60,354)"><rect width="320" height="56" rx="14" fill="#10b981" fill-opacity="0.18" stroke="#10b981" stroke-opacity="0.5"/><text x="20" y="26" font-weight="700">QR / code join flow</text><text x="20" y="46" font-size="12" fill="#a7f3d0">avatar, nickname, kick, reconnect</text></g>
+    <g transform="translate(60,422)"><rect width="320" height="56" rx="14" fill="#10b981" fill-opacity="0.18" stroke="#10b981" stroke-opacity="0.5"/><text x="20" y="26" font-weight="700">XP / progress saving</text><text x="20" y="46" font-size="12" fill="#a7f3d0">Supabase persistence on end</text></g>
+  </g>
+
+  <!-- NEW column -->
+  <text x="640" y="130" fill="#fbbf24" font-size="20" font-weight="800" text-anchor="middle">🆕 NEW (unprotected)</text>
+  <g font-size="15" fill="#fff">
+    <g transform="translate(480,150)"><rect width="320" height="56" rx="14" fill="#f59e0b" fill-opacity="0.18" stroke="#f59e0b" stroke-opacity="0.6"/><text x="20" y="26" font-weight="700">Buzzer round — student screen</text><text x="20" y="46" font-size="12" fill="#fde68a">QuickPlayStudentView: reveal → tap → result</text></g>
+    <g transform="translate(480,218)"><rect width="320" height="56" rx="14" fill="#f59e0b" fill-opacity="0.18" stroke="#f59e0b" stroke-opacity="0.6"/><text x="20" y="26" font-weight="700">Teacher controls</text><text x="20" y="46" font-size="12" fill="#fde68a">start / pick mode / next / auto-run / end</text></g>
+    <g transform="translate(480,286)"><rect width="320" height="56" rx="14" fill="#f59e0b" fill-opacity="0.18" stroke="#f59e0b" stroke-opacity="0.6"/><text x="20" y="26" font-weight="700">Socket hook methods</text><text x="20" y="46" font-size="12" fill="#fde68a">useQuickPlaySocket: new listeners/emit</text></g>
+    <g transform="translate(480,354)"><rect width="320" height="56" rx="14" fill="#f59e0b" fill-opacity="0.18" stroke="#f59e0b" stroke-opacity="0.6"/><text x="20" y="26" font-weight="700">Per-round result UI</text><text x="20" y="46" font-size="12" fill="#fde68a">"+47 ⚡ you were 2nd" + final awards</text></g>
+    <g transform="translate(480,422)"><rect width="320" height="56" rx="14" fill="#f59e0b" fill-opacity="0.18" stroke="#f59e0b" stroke-opacity="0.6"/><text x="20" y="26" font-weight="700">Question builder for buzzer</text><text x="20" y="46" font-size="12" fill="#fde68a">word → choices/true-false per mode</text></g>
+  </g>
+
+  <!-- PROTECTED column -->
+  <text x="1060" y="130" fill="#f87171" font-size="20" font-weight="800" text-anchor="middle">🔒 NEEDS SIGN-OFF</text>
+  <g font-size="15" fill="#fff">
+    <g transform="translate(900,150)"><rect width="320" height="124" rx="14" fill="#ef4444" fill-opacity="0.16" stroke="#ef4444" stroke-opacity="0.6"/>
+      <text x="20" y="30" font-weight="700">server.ts — buzzer handler</text>
+      <text x="20" y="54" font-size="12" fill="#fecaca">the "referee": reveal word,</text>
+      <text x="20" y="74" font-size="12" fill="#fecaca">time answers, mark fastest,</text>
+      <text x="20" y="94" font-size="12" fill="#fecaca">auto-advance. Modeled on</text>
+      <text x="20" y="114" font-size="12" fill="#fecaca">Category Race (low risk).</text>
+    </g>
+    <g transform="translate(900,290)"><rect width="320" height="86" rx="14" fill="#ef4444" fill-opacity="0.16" stroke="#ef4444" stroke-opacity="0.6"/>
+      <text x="20" y="30" font-weight="700">src/core/quickPlayProtocol</text>
+      <text x="20" y="54" font-size="12" fill="#fecaca">add buzzer events + payload</text>
+      <text x="20" y="74" font-size="12" fill="#fecaca">fields (shared contract).</text>
+    </g>
+    <g transform="translate(900,392)"><rect width="320" height="86" rx="14" fill="#64748b" fill-opacity="0.18" stroke="#64748b" stroke-opacity="0.6"/>
+      <text x="20" y="30" font-weight="700">DB migration?</text>
+      <text x="20" y="54" font-size="12" fill="#cbd5e1">maybe add "speed-round" to</text>
+      <text x="20" y="74" font-size="12" fill="#cbd5e1">allowed_modes — TBD by architect</text>
+    </g>
+  </g>
+
+  <!-- bottom summary -->
+  <g transform="translate(60,520)" filter="url(#sh)"><rect width="1160" height="150" rx="20" fill="#ffffff" fill-opacity="0.05"/></g>
+  <text x="90" y="558" fill="#fff" font-size="18" font-weight="800">Bottom line</text>
+  <text x="90" y="590" fill="#5eead4" font-size="15">• Most of the heavy lifting (realtime, scoring, podium, join, XP) is REUSED — no new framework, no new server.</text>
+  <text x="90" y="618" fill="#fde68a" font-size="15">• The bulk of new work is on UNPROTECTED screens (student + teacher views) you can approve freely.</text>
+  <text x="90" y="646" fill="#fca5a5" font-size="15">• Only ONE meaningful protected change: the server-side buzzer "referee" — a contained, reviewed edit you sign off on.</text>
+</svg>
