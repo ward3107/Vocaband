@@ -21,6 +21,22 @@ import type {
 } from "../worksheet/types";
 import { computeWorksheetScore, extractMisses } from "../worksheet/types";
 
+// Phase-1 worksheets stored a single `format` whose values ("fillblank",
+// "listening") differ from the Phase-2 registry keys ("fill_blank",
+// "listening_dictation"). The backfill migration copied `format` verbatim
+// into exercises[].type, so legacy rows carry a type the registry doesn't
+// know — which would render <undefined/> and white-screen the student.
+// Remap those aliases to the canonical keys so legacy worksheets play.
+const LEGACY_TYPE_ALIASES: Record<string, string> = {
+  fillblank: "fill_blank",
+  listening: "listening_dictation",
+};
+
+const canonicalizeExercise = (ex: Exercise): Exercise => {
+  const alias = ex && typeof ex.type === "string" ? LEGACY_TYPE_ALIASES[ex.type] : undefined;
+  return alias ? ({ ...ex, type: alias } as Exercise) : ex;
+};
+
 interface WorksheetRow {
   slug: string;
   topic_name: string;
@@ -229,17 +245,18 @@ export default function InteractiveWorksheetView({ slug, onBack }: Props) {
   const exercises: Exercise[] = useMemo(() => {
     if (!row) return [];
     if (Array.isArray(row.exercises) && row.exercises.length > 0) {
-      // Drop any exercise type that's since been retired (e.g. the
-      // removed synonym_antonym) so a worksheet saved before the
-      // removal doesn't crash the runner on a now-missing registry
-      // entry. A worksheet left empty by the filter falls through.
-      const playable = (row.exercises as Exercise[]).filter(
-        (ex) => ex && ex.type in EXERCISE_REGISTRY,
-      );
+      // Map any legacy type alias to its canonical registry key, then
+      // drop types that have since been retired (e.g. synonym_antonym)
+      // so a worksheet saved before the rename/removal doesn't crash the
+      // runner on a now-missing registry entry. Empty after filtering →
+      // fall through to the legacy single-format path below.
+      const playable = (row.exercises as Exercise[])
+        .map(canonicalizeExercise)
+        .filter((ex) => ex && ex.type in EXERCISE_REGISTRY);
       if (playable.length > 0) return playable;
     }
     if (row.format && Array.isArray(row.word_ids) && row.word_ids.length > 0) {
-      return [{ type: row.format, word_ids: row.word_ids } as Exercise];
+      return [canonicalizeExercise({ type: row.format, word_ids: row.word_ids } as Exercise)];
     }
     return [];
   }, [row]);

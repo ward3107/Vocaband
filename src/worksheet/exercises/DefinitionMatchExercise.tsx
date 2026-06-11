@@ -65,9 +65,29 @@ export const DefinitionMatchExercise: ExerciseComponent<ExerciseOf<"definition_m
 
   useEffect(() => {
     if (items.length === 0) {
+      // No banked definitions at all — auto-skip with an empty result.
       onComplete({ score: 0, total: 0, answers: [] });
+    } else if (options.length < 2 && current) {
+      // Only one banked definition: can't build a multiple-choice round
+      // (1 correct + ≥1 distractor), so auto-mark the lone word correct
+      // and advance, rather than stranding the student on a dead-end
+      // screen that never calls onComplete and freezes the worksheet.
+      onComplete({
+        score: 1,
+        total: 1,
+        answers: [
+          {
+            kind: "definition_match",
+            word_id: current.word_id,
+            word: current.word.english,
+            given: current.definition,
+            correct: current.definition,
+            is_correct: true,
+          },
+        ],
+      });
     }
-  }, [items.length, onComplete]);
+  }, [items.length, options.length, current, onComplete]);
 
   if (!current || items.length === 0) return null;
 
@@ -124,19 +144,10 @@ export const DefinitionMatchExercise: ExerciseComponent<ExerciseOf<"definition_m
   };
 
   // Need at least 2 items to render a quiz with 1 correct + ≥1
-  // distractor.  With only 1 word that has a definition, auto-mark
-  // it correct (the student can't be wrong) and move on rather than
-  // dropping the exercise entirely.
-  if (options.length < 2) {
-    return (
-      <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl text-center">
-        <p className="text-stone-700">
-          Not enough banked definitions in this worksheet for a Definition
-          Match round.
-        </p>
-      </div>
-    );
-  }
+  // distractor.  The single-definition case is auto-completed by the
+  // effect above (marks the lone word correct and advances), so render
+  // nothing here rather than a dead-end screen with no way forward.
+  if (options.length < 2) return null;
 
   return (
     <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">

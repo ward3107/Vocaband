@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { Rocket, Sparkles, GraduationCap } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
-import { landingPageT } from "../../locales/student/landing-page";
+import { landingSectionsT } from "../../locales/student/landing-sections";
 
 interface LandingFinalCTAProps {
   onTryDemo?: () => void;
@@ -12,7 +12,7 @@ interface LandingFinalCTAProps {
 
 const LandingFinalCTA: React.FC<LandingFinalCTAProps> = ({ onTryDemo, onTeacherLogin, isAuthenticated }) => {
   const { language, dir } = useLanguage();
-  const t = landingPageT[language];
+  const t = landingSectionsT[language];
 
   return (
     <section className="py-8 md:py-24 px-4 md:px-6 bg-violet-950 relative overflow-hidden">

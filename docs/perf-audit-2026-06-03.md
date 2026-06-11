@@ -1,5 +1,14 @@
 # Performance audit — 2026-06-03 (landing eager-closure analysis)
 
+> ✅ **RESOLVED 2026-06-09.** The entry-closure artifact described below is
+> fixed — closure cut **132 kB gz → 66 kB gz (−50 %)**. Root cause was
+> rolldown overriding the `manualChunks` *names* for shared CJS-interop
+> modules (React core leaked via `lucide`; the `__vitePreload` helper via
+> `supabase`). Fix: moved `rollupOptions.output` to `codeSplitting.groups`,
+> which has real placement authority. Guarded by
+> `scripts/check-entry-closure.mjs`. See `docs/open-issues.md` for the
+> summary. The diagnosis below is kept for the historical record.
+
 ## TL;DR
 
 The landing page is **already heavily optimized** — the prior sprints

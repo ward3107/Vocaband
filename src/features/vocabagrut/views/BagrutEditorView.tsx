@@ -2,12 +2,13 @@
 // edits, export PDF, save draft, optionally publish to a class.
 
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Copy, Download, Save, Upload, Loader2, FileText, Eye, Share2, Minus, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Download, Save, Upload, Loader2, FileText, Eye, Share2, Minus, Plus, Trash2, Sparkles } from 'lucide-react';
 import type { AppUser, ClassData } from '../../../core/supabase';
 import type { BagrutTest, BagrutQuestion, BagrutQuestionType, BagrutSectionKind } from '../types';
 import { MODULE_SPECS, type ModuleSpec } from '../lib/moduleMap';
 import BagrutPreviewModal from './BagrutPreviewModal';
 import { saveBagrutDraft, updateBagrutTest } from '../hooks/useBagrutTests';
+import { suggestBagrutQuestion } from '../lib/suggestQuestion';
 import { ALL_WORDS } from '../../../data/vocabulary';
 import { ShareWorksheetDialog, type ShareSource } from '../../../components/ShareWorksheetDialog';
 import { useLanguage } from '../../../hooks/useLanguage';
@@ -78,6 +79,10 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
   // Preview / export both use the print-ready modal. autoPrint=true is the
   // "Export PDF" path (opens straight into the Save-as-PDF dialog).
   const [preview, setPreview] = useState<{ open: boolean; autoPrint: boolean }>({ open: false, autoPrint: false });
+  // Question ids the AI is currently writing. "Add question" inserts a blank
+  // right away, then fills it in when the model returns; a Set lets several
+  // adds be in flight at once.
+  const [aiLoading, setAiLoading] = useState<Set<string>>(new Set());
 
   const teacherClasses = classes.filter(c => c.teacherUid === user.uid);
   const spec = MODULE_SPECS[draft.module];
@@ -154,11 +159,47 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
 
   // Add / remove questions. Section + paper totals are kept derived from the
   // questions so the header, chips, and printed paper stay correct.
-  function addQuestion(secIdx: number, type: BagrutQuestionType) {
+  // Insert a blank question immediately (the card appears at once), then ask
+  // the AI to write it from the section's context — passage, target words,
+  // module level, and the prompts already in the section (so it won't repeat
+  // one). On failure the blank stays so the teacher can write it by hand.
+  async function addQuestion(secIdx: number, type: BagrutQuestionType) {
+    const section = draft.sections[secIdx];
+    const blank = buildBlankQuestion(type, spec);
     setDraft(d => {
       const sections = d.sections.map((s, i) => {
         if (i !== secIdx) return s;
-        const questions = [...s.questions, buildBlankQuestion(type, spec)];
+        const questions = [...s.questions, blank];
+        return { ...s, questions, total_points: questions.reduce((sum, q) => sum + q.points, 0) };
+      });
+      return { ...d, sections, total_points: sections.reduce((sum, s) => sum + s.total_points, 0) };
+    });
+
+    setAiLoading(prev => new Set(prev).add(blank.id));
+    try {
+      const { question, error } = await suggestBagrutQuestion({
+        module: draft.module,
+        kind: section.kind,
+        type,
+        passage: section.passage,
+        words: sourceWords,
+        existingPrompts: section.questions.map(q => q.prompt).filter(Boolean),
+        title: draft.title,
+      });
+      if (question) applyAiQuestion(secIdx, blank.id, question);
+      else if (error) showToast(error, 'error');
+    } finally {
+      setAiLoading(prev => { const next = new Set(prev); next.delete(blank.id); return next; });
+    }
+  }
+
+  // Merge an AI-written question into the blank we inserted, keeping our
+  // stable id + the teacher's chosen type. Totals stay derived from points.
+  function applyAiQuestion(secIdx: number, qId: string, ai: BagrutQuestion) {
+    setDraft(d => {
+      const sections = d.sections.map((s, i) => {
+        if (i !== secIdx) return s;
+        const questions = s.questions.map(q => (q.id === qId ? { ...ai, id: q.id, type: q.type } : q));
         return { ...s, questions, total_points: questions.reduce((sum, q) => sum + q.points, 0) };
       });
       return { ...d, sections, total_points: sections.reduce((sum, s) => sum + s.total_points, 0) };
@@ -437,9 +478,15 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
                       </button>
                     </div>
                   </div>
+                  {aiLoading.has(q.id) && (
+                    <div className="flex items-center gap-2 mt-2 text-xs font-medium" style={{ color: 'var(--vb-accent)' }}>
+                      <Loader2 size={14} className="animate-spin" /> {t.aiWriting}
+                    </div>
+                  )}
                   <textarea
                     value={q.prompt}
                     onChange={e => patchQuestion(secIdx, qIdx, { prompt: e.target.value })}
+                    placeholder={aiLoading.has(q.id) ? t.aiWritingPlaceholder : undefined}
                     className="w-full mt-2 p-2 rounded border text-sm"
                     style={{ backgroundColor: 'var(--vb-bg)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
                     rows={2}
@@ -476,6 +523,23 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
                       {q.bullets.map((b, i) => <li key={i}>{b}</li>)}
                     </ul>
                   )}
+                  {/* The AI's answer / sample, editable — flows into the
+                      teacher's answer-key page on export. */}
+                  {(q.type === 'mc' || q.type === 'short') && (
+                    <div className="mt-2">
+                      <label className="text-[11px] font-bold uppercase tracking-wide" style={{ color: 'var(--vb-text-muted)' }}>
+                        {t.answerNoteLabel}
+                      </label>
+                      <textarea
+                        value={q.explanation ?? ''}
+                        onChange={e => patchQuestion(secIdx, qIdx, { explanation: e.target.value })}
+                        placeholder={t.answerNotePlaceholder}
+                        className="w-full mt-1 p-2 rounded border text-sm"
+                        style={{ backgroundColor: 'var(--vb-bg)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-secondary)' }}
+                        rows={2}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -506,6 +570,10 @@ export default function BagrutEditorView({ user, classes, test, sourceWords, exi
                   );
                 })}
               </div>
+              {/* Make it explicit that the AI does the writing. */}
+              <p className="flex items-center gap-1.5 text-[11px] mt-1.5" style={{ color: 'var(--vb-text-muted)' }}>
+                <Sparkles size={12} /> {t.aiAddHint}
+              </p>
             </div>
           </div>
         ))}

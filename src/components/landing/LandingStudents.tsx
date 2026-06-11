@@ -3,7 +3,7 @@ import { motion, useScroll, useTransform } from "motion/react";
 import { Trophy, Coins, Gift, Zap, Crown, Flame } from "lucide-react";
 import Tilt from "react-parallax-tilt";
 import { useLanguage } from "../../hooks/useLanguage";
-import { landingPageT } from "../../locales/student/landing-page";
+import { landingSectionsT } from "../../locales/student/landing-sections";
 import CssAnimation from "../CssAnimation";
 
 // "Why Students Love Vocaband" — scroll-driven parallax.  Each card
@@ -12,7 +12,7 @@ import CssAnimation from "../CssAnimation";
 // the grid stays roughly aligned at mid-scroll.
 const LandingStudents: React.FC = () => {
   const { language, dir } = useLanguage();
-  const t = landingPageT[language];
+  const t = landingSectionsT[language];
 
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({

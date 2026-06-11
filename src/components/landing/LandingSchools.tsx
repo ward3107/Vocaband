@@ -1,7 +1,7 @@
 import React from "react";
 import { School, Users, TrendingUp, Target, Send, GraduationCap } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
-import { landingPageT } from "../../locales/student/landing-page";
+import { landingSectionsT } from "../../locales/student/landing-sections";
 
 // "For school leaders" — surfaces the principal dashboard to prospective
 // schools and opens the school-inquiry form. The console preview on the
@@ -13,7 +13,7 @@ interface Props {
 
 const LandingSchools: React.FC<Props> = ({ onInquire }) => {
   const { language, dir, isRTL } = useLanguage();
-  const t = landingPageT[language].schools;
+  const t = landingSectionsT[language].schools;
   const ta = isRTL ? "text-right" : "text-left";
 
   const points = [

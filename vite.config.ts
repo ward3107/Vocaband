@@ -306,6 +306,10 @@ export default defineConfig(() => {
             // Critical bootstrap chunks (always loaded on every page)
             'assets/index-*.js',
             'assets/rolldown-runtime-*.js',
+            // Vite's __vitePreload helper — its own tiny chunk (see
+            // codeSplitting.groups). The entry statically imports it, so it
+            // must be in the precache shell for offline second visits.
+            'assets/vite-preload-*.js',
             'assets/react-vendor-*.js',
             // App orchestrator + landing page — React.lazy targets
             // resolved within ms of first paint.
@@ -561,15 +565,21 @@ export default defineConfig(() => {
               },
             },
             {
-              // Word-audio MP3s served from Supabase Storage.  Cache
-              // so a repeat game on weak Wi-Fi has the clip already.
-              // Bumped 500 → 2000 on 2026-04-25 — the dataset has
-              // ~9000 unique words, so a 500-entry LRU evicted half
-              // the cache for any teacher who used multiple
-              // assignments in a session, forcing re-fetches against
-              // Supabase Storage on every replay.  ~30 KB per MP3 ×
-              // 2000 = ~60 MB of cache, well within the SW budget.
-              urlPattern: /\/storage\/v1\/object\/public\/sound\//,
+              // Word-audio MP3s. Matched by PATH (`/sound/<id>.mp3` and the
+              // Hebrew-lemma `/sound-hebrew/<id>.mp3`) regardless of host, so
+              // the rule covers BOTH the production Cloudflare R2 CDN
+              // (VITE_CLOUDFLARE_URL → `<cdn>/sound/<id>.mp3`) and the
+              // Supabase Storage fallback (`/storage/v1/object/public/sound/`).
+              // The previous rule only matched the Supabase Storage path, so
+              // on prod (where audio comes from the CDN) word audio was never
+              // cached — every replay re-downloaded and the offline/assignment
+              // precache (useAssignmentPrecache) was a no-op. It also never
+              // matched the sound-hebrew bucket. See audioUrl.ts / useAudio.ts.
+              // Bumped 500 → 2000 on 2026-04-25 — the dataset has ~9000 unique
+              // words, so a smaller LRU evicted half the cache for any teacher
+              // using multiple assignments in a session. ~30 KB per MP3 × 2000
+              // = ~60 MB, well within the SW budget.
+              urlPattern: /\/sound(?:-hebrew)?\/[^/]+\.mp3$/,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'vocaband-word-audio',
@@ -577,8 +587,10 @@ export default defineConfig(() => {
               },
             },
             {
-              // Motivational praise phrases — same reasoning.
-              urlPattern: /\/storage\/v1\/object\/public\/motivational\//,
+              // Motivational praise phrases — same reasoning. Also served from
+              // the Cloudflare CDN in prod (`<cdn>/motivational/<key>.mp3`,
+              // useAudio.ts), so match by path, not the Supabase Storage URL.
+              urlPattern: /\/motivational\/[^/]+\.mp3$/,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'vocaband-praise-audio',
@@ -668,70 +680,98 @@ export default defineConfig(() => {
       // serially after LandingPage requests it.
       rollupOptions: {
         output: {
-          manualChunks(id) {
-            if (id.includes('lucide-react')) return 'lucide';
-            // Split the Hebrew lemma corpus from the English vocabulary.
-            // The old single `src/data/vocabulary` glob matched
-            // vocabulary.ts, vocabulary-hebrew.ts AND vocabulary-ru.ts,
-            // merging all three into one ~595 kB chunk.  Because they
-            // shared a chunk, importing the Hebrew corpus (or English)
-            // dragged the other onto the wire too — so a student doing
-            // English still downloaded the Hebrew lemmas and vice versa.
-            // Hebrew data is independent (nothing in vocabulary.ts imports
-            // it), so it gets its own chunk.  vocabulary-ru stays inside
-            // `vocabulary` because vocabulary.ts hard-imports it at module
-            // eval to build ALL_WORDS — splitting it would only add a
-            // guaranteed second request with no payoff.  MORE-SPECIFIC
-            // MATCH FIRST: vocabulary-hebrew must be tested before the
-            // generic `vocabulary` substring.
-            if (id.includes('src/data/vocabulary-hebrew')) return 'vocabulary-hebrew';
-            if (id.includes('src/data/vocabulary')) return 'vocabulary';
-            // Pin Sentry to its own chunk.  Bundled into `index` it
-            // bloated the entry by ~40 kB gz and any change to main.tsx
-            // busted the Sentry cache.  Splitting it means cold-load
-            // is one extra parallel request but warm-load reuses the
-            // long-cached Sentry chunk across deploys.
-            if (id.includes('node_modules/@sentry/')) return 'sentry';
-            // React + react-dom — 130 kB raw, never changes; pin so
-            // upgrades to other deps don't invalidate React's cache.
-            //
-            // ORDER MATTERS: this rule MUST come BEFORE the motion
-            // rule below. motion's source files transitively import
-            // react/jsx-runtime; if we let the motion matcher catch
-            // first, it pulls jsx-runtime into the motion chunk and
-            // every JSX-using component (including LandingPage,
-            // which no longer animates anything) ends up with a
-            // static `import` from motion-*.js to grab the JSX
-            // runtime. Putting react first keeps the runtime in the
-            // react-vendor chunk where it belongs, so non-animated
-            // components don't need to load motion at all.
-            if (
-              id.includes('node_modules/react/') ||
-              id.includes('node_modules/react-dom/') ||
-              id.includes('node_modules/scheduler/')
-            ) return 'react-vendor';
-            // motion/framer-motion — deliberately NOT force-chunked.
-            //
-            // React's jsx-runtime is CommonJS (react/jsx-runtime.js ->
-            // cjs/react-jsx-runtime.production.js). When motion got its own
-            // manualChunk, rolldown's CJS interop made that motion chunk the
-            // canonical holder of jsx/jsxs, so EVERY JSX-using page (incl.
-            // the public landing) had to statically import the ~42 kB motion
-            // chunk just to render — it sat on the cold first-paint path and
-            // resisted every attempt to pin jsx-runtime elsewhere (rolldown
-            // overrides manualChunks for CJS-interop modules).
-            //
-            // Letting rolldown auto-split motion instead: jsx-runtime settles
-            // into react-vendor (where it belongs, +0.1 kB), and motion lands
-            // in a single shared chunk pulled in ONLY by the lazy views that
-            // animate. No duplication, total weight unchanged, and motion is
-            // off the landing critical path. (The lazy boundaries in App.tsx /
-            // TeacherDashboard* are what keep eager importers from dragging it
-            // back on.)
-            // supabase-js was already a chunk via natural splitting
-            // but pin it so the chunk name is stable across builds.
-            if (id.includes('node_modules/@supabase/')) return 'supabase';
-            return undefined;
+          // Chunk grouping via rolldown's `codeSplitting.groups` (NOT the
+          // legacy `manualChunks` function). We switched because the
+          // function form is only a NAMING hint — rolldown's own pass
+          // overrides it for CJS-interop modules and shared helpers, which
+          // is exactly what silently hoisted ~70 kB gz of vendor code onto
+          // every page (see docs/perf-audit-2026-06-03.md):
+          //   • React's CJS core (`react/cjs/react.production.js`) was tied
+          //     to its first ESM importer — the `lucide` chunk — so the
+          //     entry imported React FROM lucide and dragged all the icons
+          //     onto the cold landing.
+          //   • Vite's `__vitePreload` helper got parked inside the
+          //     `supabase` chunk, so the entry (which does dynamic imports)
+          //     imported the helper FROM supabase and dragged all 200 kB of
+          //     supabase-js static.
+          // `groups` has real authority over placement, so React core and
+          // the preload helper land where we say, and supabase/lucide stay
+          // dynamic-only. Higher `priority` wins when a module matches more
+          // than one group (replaces the old "more-specific-first" ordering
+          // of the if-chain). Anything matching no group keeps rolldown's
+          // automatic splitting — notably `motion`, which we deliberately do
+          // NOT force-chunk so its CJS jsx-runtime interop can't drag the
+          // ~42 kB motion chunk onto the landing (it auto-splits into the
+          // lazy views that animate instead).
+          codeSplitting: {
+            groups: [
+              // Vite's `__vitePreload` helper. Highest priority so it never
+              // gets absorbed into a vendor chunk (it previously landed in
+              // `supabase`). Its own tiny chunk keeps every dynamic-import
+              // call site — including the entry — off the big vendors.
+              {
+                name: 'vite-preload',
+                test: /preload-helper/,
+                priority: 120,
+              },
+              // React + react-dom + scheduler — 130 kB raw, never changes,
+              // pinned so dep upgrades don't bust React's long-lived cache.
+              // tslib (a tiny shared TS-helper runtime pulled in by
+              // @supabase/*) rides along here: left on its own rolldown
+              // merges it back into whatever vendor imports it, so giving it
+              // a stable home in this always-loaded chunk keeps it from
+              // dragging supabase. Priority above `lucide` so React's CJS
+              // core is claimed here, not by the icon chunk.
+              {
+                name: 'react-vendor',
+                test: /node_modules\/(react|react-dom|scheduler|tslib)\//,
+                priority: 100,
+              },
+              // Consolidate ALL lucide icons into one chunk. Without this
+              // group rolldown auto-splits lucide into ~290 per-icon chunks
+              // (one extra request per icon on first paint). Kept OFF the
+              // entry now that React core no longer hides inside it.
+              {
+                name: 'lucide',
+                test: /node_modules\/lucide-react\//,
+                priority: 90,
+              },
+              // Split the Hebrew lemma corpus from the English vocabulary.
+              // They share nothing, so a student doing English shouldn't
+              // download the Hebrew lemmas (or vice versa). Higher priority
+              // than the generic `vocabulary` group so it wins the overlap.
+              // (vocabulary-ru stays inside `vocabulary` — vocabulary.ts
+              // hard-imports it at module eval to build ALL_WORDS, so
+              // splitting it would only add a guaranteed second request.)
+              {
+                name: 'vocabulary-hebrew',
+                test: /src\/data\/vocabulary-hebrew/,
+                priority: 85,
+              },
+              {
+                name: 'vocabulary',
+                test: /src\/data\/vocabulary/,
+                priority: 80,
+              },
+              // Sentry — bundled into `index` it bloated the entry ~40 kB gz
+              // and any main.tsx change busted its cache. Own chunk = one
+              // extra parallel cold request, but warm loads reuse it across
+              // deploys.
+              {
+                name: 'sentry',
+                test: /node_modules\/@sentry\//,
+                priority: 80,
+              },
+              // supabase-js — stable chunk name so the modulepreload filter
+              // (build.modulePreload.resolveDependencies) and the SW
+              // precache glob can keep matching `supabase-*`. Dynamic-only:
+              // it loads on the OAuth ?code= callback or once App mounts.
+              {
+                name: 'supabase',
+                test: /node_modules\/@supabase\//,
+                priority: 80,
+              },
+            ],
           },
         },
       },

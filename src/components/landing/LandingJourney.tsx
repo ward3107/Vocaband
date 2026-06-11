@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 import { Target, Star } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
-import { landingPageT } from "../../locales/student/landing-page";
+import { landingSectionsT } from "../../locales/student/landing-sections";
 
 // "Your Journey to Mastery" — scroll-driven traveler.  As the user
 // scrolls past the section, a traveler emoji walks down a curved
@@ -10,7 +10,7 @@ import { landingPageT } from "../../locales/student/landing-page";
 // (scales up + colors in + glows).
 const LandingJourney: React.FC = () => {
   const { language, dir } = useLanguage();
-  const t = landingPageT[language];
+  const t = landingSectionsT[language];
 
   const journeyRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress: journeyProgress } = useScroll({

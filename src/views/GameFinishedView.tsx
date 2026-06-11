@@ -1,16 +1,14 @@
-import React, { useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut, RefreshCw, Printer } from "lucide-react";
-import type { AppUser } from "../core/supabase";
 import { supabase } from "../core/supabase";
-import type { Word } from "../data/vocabulary";
 import { THEMES } from "../constants/game";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import RatingPrompt from "../components/RatingPrompt";
 import { useLanguage } from "../hooks/useLanguage";
 import { gameFinishedT } from "../locales/student/game-finished";
-import type { View } from "../core/views";
+import { useGameRoute } from "./GameRouteContext";
 
 // Lazy — html2pdf + the certificate render chain is heavy (200+ kB)
 // and only loads when a student actually taps "Get my certificate".
@@ -24,60 +22,31 @@ function secureRandomInt(max: number): number {
   return arr[0] % max;
 }
 
-interface Toast {
-  id: string;
-  message: string;
-  type: "success" | "error" | "info";
-  action?: { label: string; onClick: () => void };
-}
-
-interface ConfirmDialogState {
-  show: boolean;
-  message: string;
-  onConfirm: () => void;
-}
-
 interface GameFinishedViewProps {
-  user: AppUser | null;
-  score: number;
-  xp: number;
-  streak: number;
-  badges: string[];
-  mistakes: number[];
-  gameWords: Word[];
-  isSaving: boolean;
-  saveError: string | null;
   /** Optional Quick Play context. When the player is a QP guest, this
    *  carries the active session_code so the rating prompt can write to
    *  public.quick_play_ratings instead of users.first_rating (guests
-   *  have no users row). Caller passes undefined for non-QP games. */
+   *  have no users row). Caller passes undefined for non-QP games.
+   *  Kept as props (not from context): GameRoute derives both from the
+   *  active QP session at render time — they aren't in the shared bag. */
   quickPlaySessionCode?: string;
-  toasts: Toast[];
-  confirmDialog: ConfirmDialogState;
-  setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialogState>>;
-  setIsFinished: React.Dispatch<React.SetStateAction<boolean>>;
-  setScore: React.Dispatch<React.SetStateAction<number>>;
-  setCurrentIndex: React.Dispatch<React.SetStateAction<number>>;
-  setMistakes: React.Dispatch<React.SetStateAction<number[]>>;
-  setFeedback: React.Dispatch<React.SetStateAction<"correct" | "wrong" | "show-answer" | null>>;
-  setWordAttempts: React.Dispatch<React.SetStateAction<Record<number, number>>>;
-  setHiddenOptions: React.Dispatch<React.SetStateAction<number[]>>;
-  setSpellingInput: React.Dispatch<React.SetStateAction<string>>;
-  setAssignmentWords: React.Dispatch<React.SetStateAction<Word[]>>;
-  setShowModeSelection: React.Dispatch<React.SetStateAction<boolean>>;
-  setView: React.Dispatch<React.SetStateAction<View>>;
   /** Exit Quick Play entirely — only used for guest users. */
   onQuickPlayExit?: () => void;
 }
 
 export default function GameFinishedView({
-  user, score, xp, streak, badges, mistakes, gameWords,
-  isSaving, saveError, quickPlaySessionCode, toasts, confirmDialog, setConfirmDialog,
-  setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
-  setWordAttempts, setHiddenOptions, setSpellingInput,
-  setAssignmentWords, setShowModeSelection, setView,
+  quickPlaySessionCode,
   onQuickPlayExit,
 }: GameFinishedViewProps) {
+  // Rendered solely by GameRoute — everything except the QP-specific
+  // props above comes from the game-route context instead of drilling.
+  const {
+    user, score, xp, streak, badges, mistakes, gameWords,
+    isSaving, saveError, toasts, confirmDialog, setConfirmDialog,
+    setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
+    setWordAttempts, setHiddenOptions, setSpellingInput,
+    setAssignmentWords, setShowModeSelection, setView,
+  } = useGameRoute();
   const isGuest = !!user?.isGuest;
 
   // ─── Rating prompt for students ────────────────────────────────────

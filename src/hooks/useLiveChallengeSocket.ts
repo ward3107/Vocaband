@@ -44,6 +44,37 @@ export interface UseLiveChallengeSocketApi {
   leaderboard: Record<string, LeaderboardEntry>;
 }
 
+/**
+ * Union per-VM leaderboard snapshots into one uid-keyed map.
+ *
+ * Each Fly machine only knows the students whose sockets landed on it, so the
+ * teacher receives one snapshot per VM (tagged by serverId). We keep the
+ * latest snapshot per source and render their union: for any uid seen in more
+ * than one source (e.g. a student with two tabs on different VMs) we keep the
+ * entry with the highest effective score (baseScore + currentGameScore).
+ * Live-challenge scores only increase within a session, so "highest" is also
+ * "most recent". Single-VM deployments send one source → behaviour unchanged.
+ */
+export function mergeLiveLeaderboards(
+  bySource: Map<string, Record<string, LeaderboardEntry>>,
+): Record<string, LeaderboardEntry> {
+  const byUid: Record<string, LeaderboardEntry> = {};
+  for (const snapshot of bySource.values()) {
+    for (const uid in snapshot) {
+      const entry = snapshot[uid];
+      const existing = byUid[uid];
+      if (
+        !existing ||
+        entry.baseScore + entry.currentGameScore >
+          existing.baseScore + existing.currentGameScore
+      ) {
+        byUid[uid] = entry;
+      }
+    }
+  }
+  return byUid;
+}
+
 export function useLiveChallengeSocket(
   params: UseLiveChallengeSocketParams,
 ): UseLiveChallengeSocketApi {
@@ -52,6 +83,17 @@ export function useLiveChallengeSocket(
   const [socket, setSocket] = useState<Socket | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [leaderboard, setLeaderboard] = useState<Record<string, LeaderboardEntry>>({});
+
+  // Latest leaderboard snapshot per source: the legacy single broadcast under
+  // "legacy", and each VM's serverId-tagged V2 broadcast under "vm:<id>".
+  // Rendered as their union — see mergeLiveLeaderboards.
+  const leaderboardBySourceRef = useRef<Map<string, Record<string, LeaderboardEntry>>>(new Map());
+  // Once any V2 (serverId-tagged) broadcast arrives the server is known to be
+  // multi-VM-aware, so we drop the legacy single-source snapshot and rely only
+  // on the per-VM sources (which clear correctly when a VM empties; the legacy
+  // event is never emitted empty, so it can't self-clear). Until then the
+  // legacy event keeps the board working against an un-upgraded server.
+  const sawV2Ref = useRef(false);
 
   // Mirror the inputs so the one-shot `reconnect` handler (registered
   // exactly once during socket setup) always reads the latest user /
@@ -155,12 +197,46 @@ export function useLiveChallengeSocket(
           console.error('Socket connection error:', err.message);
         }
       });
+      const applyLeaderboardSource = (
+        sourceId: string,
+        entries: Record<string, LeaderboardEntry>,
+      ) => {
+        leaderboardBySourceRef.current.set(sourceId, entries);
+        setLeaderboard(mergeLiveLeaderboards(leaderboardBySourceRef.current));
+      };
+
+      // Legacy single broadcast (no serverId). Honoured only until the first
+      // V2 arrives — after that the server is known multi-VM-aware and we drop
+      // this source so a stale "legacy" subset can't linger in the union (the
+      // legacy event is never emitted empty, so it can't self-clear).
       sock.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: unknown) => {
+        if (sawV2Ref.current) return;
         if (typeof data === 'object' && data !== null) {
-          setLeaderboard(data as Record<string, LeaderboardEntry>);
+          applyLeaderboardSource('legacy', data as Record<string, LeaderboardEntry>);
         } else {
-          setLeaderboard({});
+          leaderboardBySourceRef.current.delete('legacy');
+          setLeaderboard(mergeLiveLeaderboards(leaderboardBySourceRef.current));
         }
+      });
+
+      // Multi-VM-aware broadcast: one snapshot per emitting Fly machine,
+      // unioned so a class split across machines shows the WHOLE leaderboard
+      // instead of one machine's half.
+      sock.on(SOCKET_EVENTS.LEADERBOARD_UPDATE_V2, (data: unknown) => {
+        const payload = data as { serverId?: unknown; entries?: unknown } | null;
+        if (
+          !payload || typeof payload !== 'object' ||
+          typeof payload.serverId !== 'string' ||
+          typeof payload.entries !== 'object' || payload.entries === null
+        ) return;
+        if (!sawV2Ref.current) {
+          sawV2Ref.current = true;
+          leaderboardBySourceRef.current.delete('legacy');
+        }
+        applyLeaderboardSource(
+          `vm:${payload.serverId}`,
+          payload.entries as Record<string, LeaderboardEntry>,
+        );
       });
     };
 

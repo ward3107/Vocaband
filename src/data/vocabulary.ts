@@ -6730,16 +6730,19 @@ const _ALL_TUPLES: readonly WordTuple[] = [
   [9448,"write up","לכתוב בפירוט","يكتب بالتفصيل",3]
 ] as const;
 
-import { RUSSIAN_TRANSLATIONS } from "./vocabulary-ru";
+// NOTE: Russian is no longer baked into the static curriculum words.
+// `ru` was retired as a UI language (see src/hooks/useLanguage.tsx), so
+// shipping a Russian translation for all 6.5k words was ~60 kB gz of dead
+// weight on every student's first load. The `russian?` field on Word is
+// kept because custom words + teacher corrections (word_corrections table /
+// AI translate) still populate it on demand — those paths are unaffected.
 
 export const ALL_WORDS: Word[] = _ALL_TUPLES.map(([id, english, hebrew, arabic, lvl]) => {
-  const russian = RUSSIAN_TRANSLATIONS[id];
   return {
     id,
     english,
     hebrew,
     arabic,
-    ...(russian ? { russian } : {}),
     level: _LEVEL_CODE_TO_STRING[lvl],
   };
 });

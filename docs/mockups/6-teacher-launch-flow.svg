@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="700" viewBox="0 0 1280 700" font-family="'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#3b0764"/></linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#d946ef"/></linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f97316"/></linearGradient>
+    <marker id="arr" markerWidth="12" markerHeight="12" refX="7" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 Z" fill="#c4b5fd"/></marker>
+    <filter id="sh" x="-25%" y="-25%" width="150%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#000" flood-opacity="0.45"/></filter>
+  </defs>
+  <rect width="1280" height="700" fill="url(#bg)"/>
+  <text x="640" y="50" fill="#fff" font-size="28" font-weight="800" text-anchor="middle">Teacher launch flow — what the teacher taps to start a Speed Round</text>
+
+  <!-- STEP 1 pick set -->
+  <g filter="url(#sh)"><rect x="40" y="100" width="280" height="470" rx="22" fill="#ffffff" fill-opacity="0.06"/></g>
+  <text x="180" y="136" fill="#fde047" font-size="16" font-weight="800" text-anchor="middle">STEP 1</text>
+  <text x="180" y="160" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">Pick the words</text>
+  <g transform="translate(64,184)">
+    <rect width="232" height="60" rx="14" fill="url(#hero)"/><text x="20" y="36" fill="#fff" font-size="16" font-weight="700">📚 Set 2 · 12 words ✓</text>
+  </g>
+  <g transform="translate(64,256)"><rect width="232" height="52" rx="14" fill="#ffffff" fill-opacity="0.1"/><text x="20" y="33" fill="#fff" font-size="15">Set 1</text></g>
+  <g transform="translate(64,318)"><rect width="232" height="52" rx="14" fill="#ffffff" fill-opacity="0.1"/><text x="20" y="33" fill="#fff" font-size="15">Set 3</text></g>
+  <g transform="translate(64,380)"><rect width="232" height="52" rx="14" fill="#ffffff" fill-opacity="0.1"/><text x="20" y="33" fill="#fff" font-size="15">My custom list</text></g>
+
+  <line x1="324" y1="335" x2="372" y2="335" stroke="#c4b5fd" stroke-width="4" marker-end="url(#arr)"/>
+
+  <!-- STEP 2 pick mode -->
+  <g filter="url(#sh)"><rect x="380" y="100" width="280" height="470" rx="22" fill="#ffffff" fill-opacity="0.06"/></g>
+  <text x="520" y="136" fill="#fde047" font-size="16" font-weight="800" text-anchor="middle">STEP 2</text>
+  <text x="520" y="160" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">Pick "⚡ Speed Round"</text>
+  <text x="520" y="182" fill="#c4b5fd" font-size="13" text-anchor="middle">+ choose a fast mode</text>
+  <g transform="translate(404,200)"><rect width="232" height="52" rx="14" fill="url(#amber)"/><text x="116" y="33" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">true-false ✓</text></g>
+  <g transform="translate(404,262)"><rect width="232" height="48" rx="14" fill="#ffffff" fill-opacity="0.1"/><text x="116" y="31" fill="#fff" font-size="14" text-anchor="middle">classic (meaning)</text></g>
+  <g transform="translate(404,320)"><rect width="232" height="48" rx="14" fill="#ffffff" fill-opacity="0.1"/><text x="116" y="31" fill="#fff" font-size="14" text-anchor="middle">reverse</text></g>
+  <g transform="translate(404,378)"><rect width="232" height="48" rx="14" fill="#ffffff" fill-opacity="0.1"/><text x="116" y="31" fill="#fff" font-size="14" text-anchor="middle">listening</text></g>
+  <g transform="translate(404,436)"><rect width="232" height="48" rx="14" fill="#ffffff" fill-opacity="0.1"/><text x="116" y="31" fill="#fff" font-size="14" text-anchor="middle">⏱ Timer per word: 5s</text></g>
+
+  <line x1="664" y1="335" x2="712" y2="335" stroke="#c4b5fd" stroke-width="4" marker-end="url(#arr)"/>
+
+  <!-- STEP 3 lobby -->
+  <g filter="url(#sh)"><rect x="720" y="100" width="280" height="470" rx="22" fill="#ffffff" fill-opacity="0.06"/></g>
+  <text x="860" y="136" fill="#fde047" font-size="16" font-weight="800" text-anchor="middle">STEP 3</text>
+  <text x="860" y="160" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">Lobby — kids join</text>
+  <g transform="translate(800,184)"><rect width="120" height="120" rx="14" fill="#fff"/>
+    <rect x="14" y="14" width="92" height="92" fill="#1e1b4b"/>
+    <rect x="26" y="26" width="24" height="24" fill="#fff"/><rect x="70" y="26" width="24" height="24" fill="#fff"/><rect x="26" y="70" width="24" height="24" fill="#fff"/><rect x="56" y="56" width="14" height="14" fill="#fff"/>
+  </g>
+  <text x="860" y="332" fill="#fde047" font-size="22" font-weight="800" text-anchor="middle">CODE: 7K2Q</text>
+  <text x="860" y="362" fill="#c4b5fd" font-size="14" text-anchor="middle">🟢 18 players joined…</text>
+  <g transform="translate(744,386)" font-size="13" fill="#fff">
+    <text x="0" y="14">🐯 Daniel</text><text x="120" y="14">🦊 Maya</text>
+    <text x="0" y="38">🐼 Noa</text><text x="120" y="38">🐧 Lara</text>
+    <text x="0" y="62">🦉 Omar</text><text x="120" y="62">🐸 Yossi …</text>
+  </g>
+
+  <line x1="1004" y1="335" x2="1052" y2="335" stroke="#c4b5fd" stroke-width="4" marker-end="url(#arr)"/>
+
+  <!-- START -->
+  <g filter="url(#sh)"><rect x="1060" y="280" width="180" height="120" rx="24" fill="url(#amber)"/></g>
+  <text x="1150" y="335" fill="#fff" font-size="22" font-weight="800" text-anchor="middle">▶ START</text>
+  <text x="1150" y="365" fill="#fff7ed" font-size="13" text-anchor="middle">first word fires</text>
+  <text x="1150" y="382" fill="#fff7ed" font-size="13" text-anchor="middle">to all phones</text>
+
+  <text x="640" y="630" fill="#94a3b8" font-size="15" text-anchor="middle">Reuses the existing Quick Play session + QR join. The only new bit is the "Speed Round + fast mode" choice in step 2.</text>
+  <text x="640" y="660" fill="#5eead4" font-size="14" text-anchor="middle" font-weight="700">After START, the round loop from picture 5 takes over.</text>
+</svg>

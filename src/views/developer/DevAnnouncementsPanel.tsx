@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
-import { Megaphone, Plus, Trash2, AlertTriangle, Info, AlertCircle } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Megaphone, Plus, Trash2, AlertTriangle, Info, AlertCircle, Sparkles } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevAnnouncement } from "./devShared";
 import ConfirmDialog from "./ConfirmDialog";
+import { PREPARED_CATEGORIES, PREPARED_MESSAGES, type PreparedCategory, type PreparedMessage } from "./preparedMessages";
 
 interface Props {
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -35,6 +36,22 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
   const [dismissible, setDismissible] = useState(true);
   const [busy, setBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DevAnnouncement | null>(null);
+  const [templateCategory, setTemplateCategory] = useState<PreparedCategory>(PREPARED_CATEGORIES[0]);
+  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  const applyTemplate = useCallback(
+    (t: PreparedMessage) => {
+      setTitle(t.title);
+      setMessage(t.message);
+      setLevel(t.level);
+      setAudience(t.audience);
+      setAppliedTemplateId(t.id);
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      showToast("Template loaded — review and publish", "info");
+    },
+    [showToast],
+  );
 
   const reload = useCallback(async () => {
     const res = await callAdminRpcCached<DevAnnouncement[]>("admin_list_announcements", {}, showToast);
@@ -70,6 +87,7 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
         setTitle("");
         setMessage("");
         setEndsAt("");
+        setAppliedTemplateId(null);
         invalidateAdminRpcCache("admin_list_announcements");
         await reload();
       }
@@ -103,7 +121,60 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
         </p>
       </div>
 
-      <form onSubmit={submit} className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+      <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+        <div className="flex items-center gap-2 text-white font-black text-base">
+          <Sparkles className="w-5 h-5 text-amber-300" /> Prepared messages
+        </div>
+        <p className="text-white/50 text-sm">
+          Pick a ready-made message to grab attention for a new feature, a promo, or a tip. It fills the form below —
+          tweak it, then publish.
+        </p>
+
+        <div className="flex gap-2 flex-wrap">
+          {PREPARED_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setTemplateCategory(cat)}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className={`px-3 py-1.5 rounded-xl font-bold text-sm transition-all ${
+                templateCategory === cat
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20"
+                  : "bg-white/5 text-white/60 hover:bg-white/10"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          {PREPARED_MESSAGES.filter((t) => t.category === templateCategory).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => applyTemplate(t)}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className={`text-left p-3 rounded-xl border transition-all ${
+                appliedTemplateId === t.id
+                  ? "bg-amber-500/15 border-amber-400/50"
+                  : "bg-white/5 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg shrink-0">{t.emoji}</span>
+                <span className="text-white font-bold text-sm">{t.label}</span>
+                <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-white/10 text-white/50 shrink-0">
+                  {t.audience}
+                </span>
+              </div>
+              <div className="text-white/50 text-xs mt-1.5 line-clamp-2">{t.title}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <form ref={formRef} onSubmit={submit} className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}

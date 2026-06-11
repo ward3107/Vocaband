@@ -96,7 +96,11 @@ export function useTeacherData(params: UseTeacherDataParams) {
         'classes',
         async () => {
           const { data, error } = await supabase
-            .from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid);
+            .from('classes').select(CLASS_COLUMNS).eq('teacher_uid', uid)
+            // Admin-archived classes drop off the teacher's dashboard (reversible
+            // via admin restore). archived_at ships in migration 20260720; rows
+            // where it's NULL are the live classes.
+            .is('archived_at', null);
           if (error) throw error;
           if (!data) throw new Error('classes fetch returned no data');
           return data.map(mapClass);

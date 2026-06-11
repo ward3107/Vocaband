@@ -10,10 +10,14 @@
  *     words the student kept substituting in their native language so
  *     the teacher knows what to drill.
  *
- * Coverage in v1: 8 common letters × 12 categories × 3 answers each.
- * Rarer letters (J, K, Q, V, X, Y, Z) are intentionally absent from the
- * roll pool so a round never opens with a letter that has no answers.
- * Expand by adding letters to LETTER_POOL + entries here.
+ * Validation is OPEN by design: any word-shaped answer that starts with
+ * the rolled letter counts, for every category. No finite bank can list
+ * every valid food/animal/color a student might know, and rejecting a
+ * perfectly good word just because it isn't seeded made rounds feel
+ * broken. So the whole A–Z alphabet is in the roll pool, and the seeded
+ * bank below is used ONLY for: (a) the canonical English spelling shown
+ * in round results, (b) the L1 (Hebrew/Arabic) fallback report, and
+ * (c) the in-game "need ideas?" hint scaffold — never as a whitelist.
  */
 import type { Language } from "../hooks/useLanguage";
 
@@ -68,10 +72,13 @@ export const CATEGORIES: ReadonlyArray<CategoryMeta> = [
   { id: "adjective",  emoji: "✨", gradient: "from-fuchsia-500 to-rose-600",   labelEn: "Adjective",  labelHe: "שם תואר",  labelAr: "صفة",      placeholderEn: "e.g. Soft",      placeholderHe: "למשל רך",       placeholderAr: "مثل ناعم" },
 ];
 
-/** Letters in the roll pool. Only letters with seeded entries below
- *  should appear here — adding a letter without seeding answers will
- *  give the student an unwinnable round. */
-export const LETTER_POOL: ReadonlyArray<string> = ["A", "B", "C", "F", "M", "P", "S", "T"];
+/** Letters in the roll pool — the full alphabet. Validation is open
+ *  (any word starting with the rolled letter counts), so every letter is
+ *  winnable even without seeded bank entries; no letter is excluded. */
+export const LETTER_POOL: ReadonlyArray<string> = [
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+];
 
 export interface Entry {
   /** Canonical English answer.  MUST start with the keyed letter. */
@@ -82,10 +89,11 @@ export interface Entry {
   ar: string;
 }
 
-/** Per-category, per-letter answer bank.  Letters absent for a given
- *  category mean "no canonical answers here" — students who type a
- *  plausible English word still get rejected, which is intentional in
- *  v1.  Adding entries here automatically expands what's accepted. */
+/** Per-category, per-letter answer bank — a seed for canonical spelling,
+ *  L1 reporting, and hints only, NOT a whitelist. Letters/cells absent
+ *  here are still fully playable: any word starting with the rolled letter
+ *  is accepted (see validateAnswer). Adding entries just enriches the
+ *  hints + L1 fallback for that cell. */
 export const CATEGORY_ANSWERS: Record<CategoryId, Record<string, Entry[]>> = {
   country: {
     A: [
@@ -593,26 +601,21 @@ export const CATEGORY_ANSWERS: Record<CategoryId, Record<string, Entry[]>> = {
   },
 };
 
-/** Categories whose membership can't be enumerated by a finite bank, so
- *  any plausible English answer starting with the rolled letter counts.
- *  "Name" is the clear case — there are thousands of valid given names
- *  (Amy, Aaron, Aisha…), so the seeded trio per letter is only used for
- *  hints + L1 reporting, never as a whitelist. Rejecting "Amy" because
- *  it isn't one of {Alex, Anna, Adam} made the round feel broken. */
-const OPEN_CATEGORIES: ReadonlySet<CategoryId> = new Set<CategoryId>(["name"]);
-
-/** Title-case a free-typed open-category answer so it reads as a proper
- *  noun in the round results ("amy" → "Amy"). */
+/** Title-case a free-typed answer so it reads cleanly in the round
+ *  results ("apple tree" → "Apple Tree", "amy" → "Amy"). */
 function titleCase(s: string): string {
   return s.replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 
-/** Does a free-typed answer look like a valid open-category entry for the
- *  rolled letter? Must start with that letter and be a single Latin-script
- *  word (allowing internal hyphen/apostrophe — "Mary-Jane", "O'Brien"). */
+/** Does a free-typed answer look like a valid open answer for the rolled
+ *  letter? Must start with that letter and read as a Latin-script word or
+ *  short phrase — letters with optional internal spaces, hyphens, or
+ *  apostrophes ("Apple tree", "Mary-Jane", "O'Brien"). The first word must
+ *  be at least two letters so stray single characters ("a b") are rejected. */
 function looksLikeOpenAnswer(letter: string, normalizedInput: string): boolean {
   if (!normalizedInput.startsWith(letter.toLowerCase())) return false;
-  return /^[a-z][a-z'-]*$/.test(normalizedInput) && normalizedInput.length >= 2;
+  if (!/^[a-z][a-z' -]*[a-z]$/.test(normalizedInput)) return false;
+  return normalizedInput.split(" ")[0].length >= 2;
 }
 
 export type AnswerLanguage = "en" | "he" | "ar";
@@ -642,24 +645,6 @@ function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-/** Levenshtein edit distance, capped — bails early when lengths differ by
- *  more than 2 (can't be within our spelling-grace threshold anyway). */
-function editDistance(a: string, b: string): number {
-  const m = a.length, n = b.length;
-  if (Math.abs(m - n) > 2) return 99;
-  let prev = Array.from({ length: n + 1 }, (_, j) => j);
-  let curr = new Array<number>(n + 1).fill(0);
-  for (let i = 1; i <= m; i++) {
-    curr[0] = i;
-    for (let j = 1; j <= n; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
-    }
-    [prev, curr] = [curr, prev];
-  }
-  return prev[n];
-}
-
 /** All canonical answers for a (category, letter) cell — powers the
  *  student "need ideas?" suggestions + the first-letters hint. */
 export function answersFor(category: CategoryId, letter: string): Entry[] {
@@ -678,8 +663,9 @@ export function validateAnswer(
   const bank = CATEGORY_ANSWERS[category]?.[letter.toUpperCase()] ?? [];
   const normalizedInput = normalize(trimmed);
 
-  // Exact / translation match against the seeded bank. Also drives the
-  // L1-fallback report when the student typed Hebrew/Arabic.
+  // Exact / translation match against the seeded bank first. This is what
+  // gives the canonical English spelling in round results and drives the
+  // L1-fallback report when the student typed the Hebrew/Arabic translation.
   for (const entry of bank) {
     if (normalize(entry.en) === normalizedInput) {
       return { valid: true, matchedEn: entry.en, matchedLanguage: "en" };
@@ -692,30 +678,11 @@ export function validateAnswer(
     }
   }
 
-  // Open categories (names): no finite bank can list every member, so
-  // accept any proper-noun-shaped English answer that starts with the
-  // rolled letter. Echo the student's own spelling as the canonical
-  // answer since it isn't one we seeded.
-  if (OPEN_CATEGORIES.has(category) && looksLikeOpenAnswer(letter, normalizedInput)) {
+  // Open for every category: the bank can't enumerate every valid word, so
+  // accept any word-shaped English answer that starts with the rolled
+  // letter. Echo the student's own spelling as the canonical answer.
+  if (looksLikeOpenAnswer(letter, normalizedInput)) {
     return { valid: true, matchedEn: titleCase(normalizedInput), matchedLanguage: "en" };
-  }
-
-  if (bank.length === 0) {
-    return { valid: false, matchedEn: null, matchedLanguage: null };
-  }
-
-  // Spelling grace: no exact hit, so accept a near-miss English answer —
-  // 1 edit for short words, 2 for longer ones — so a weaker speller who
-  // typed "snak" / "aple" / "tigr" still gets credit. Match against the
-  // closest entry only, to limit false positives.
-  let best: { en: string; dist: number; len: number } | null = null;
-  for (const entry of bank) {
-    const target = normalize(entry.en);
-    const d = editDistance(normalizedInput, target);
-    if (best === null || d < best.dist) best = { en: entry.en, dist: d, len: target.length };
-  }
-  if (best && best.dist <= (best.len >= 6 ? 2 : 1)) {
-    return { valid: true, matchedEn: best.en, matchedLanguage: "en" };
   }
 
   return { valid: false, matchedEn: null, matchedLanguage: null };

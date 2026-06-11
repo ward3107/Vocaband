@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { Compass, FileText } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
-import { landingPageT } from "../../locales/student/landing-page";
+import { landingSectionsT } from "../../locales/student/landing-sections";
 
 interface LandingVocasProps {
   onOpenSubjectRequest: () => void;
@@ -15,7 +15,7 @@ interface LandingVocasProps {
 // labelled "Coming soon" so we never misrepresent shipped features.
 const LandingVocas: React.FC<LandingVocasProps> = ({ onOpenSubjectRequest }) => {
   const { language, dir } = useLanguage();
-  const t = landingPageT[language];
+  const t = landingSectionsT[language];
 
   const subjects = [
     { name: t.vocaHistoryName, emoji: "📜", color: "from-amber-500 to-orange-600", tag: t.vocaHistoryTag },
