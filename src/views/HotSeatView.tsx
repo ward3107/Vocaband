@@ -51,6 +51,7 @@ import InPageCamera from "../components/InPageCamera";
 import { postOcrImage, isPostOcrImageError } from "../utils/postOcrImage";
 import type { Language } from "../hooks/useLanguage";
 import CreationPageShell from "../components/setup/CreationPageShell";
+import ClassRosterPicker, { type RosterClassOption } from "../components/setup/ClassRosterPicker";
 
 export interface HotSeatAssignment {
   id: string;
@@ -76,6 +77,15 @@ interface HotSeatViewProps {
    *  Same shape as `TOPIC_PACKS` in vocabulary.ts — passing the whole
    *  array is fine, the picker UI scopes display itself. */
   topicPacks?: HotSeatTopicPack[];
+  /** Teacher's classes — shown as a "load players from a class" picker
+   *  that auto-fills the roster textarea so names aren't retyped. */
+  classes?: RosterClassOption[];
+  /** Pre-select + auto-load this class's roster on entry (set when the
+   *  mode was launched from a class). */
+  initialClassId?: string | null;
+  /** When launched from a class, pre-fill the roster textarea with
+   *  that class's student names so the teacher doesn't retype them. */
+  initialPlayerNames?: string[];
   /** Activity-type tab strip rendered under the hero on the setup
    *  screen, so teachers can jump to the other creation tools.  Built
    *  by the section renderer (it owns navigation); omit to hide. */
@@ -437,7 +447,7 @@ const STRINGS: Record<Language, {
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-export default function HotSeatView({ onExit, speak, assignments, topicPacks, activityTabs }: HotSeatViewProps) {
+export default function HotSeatView({ onExit, speak, assignments, topicPacks, classes, initialClassId, initialPlayerNames, activityTabs }: HotSeatViewProps) {
   const { language, dir, isRTL } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
@@ -447,7 +457,9 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, ac
   const vocab = useVocabularyLazy(true);
 
   const [phase, setPhase] = useState<Phase>('setup');
-  const [playersText, setPlayersText] = useState('');
+  const [playersText, setPlayersText] = useState(() =>
+    initialPlayerNames && initialPlayerNames.length > 0 ? initialPlayerNames.join('\n') : '',
+  );
   const [questionsPerPlayer, setQuestionsPerPlayer] = useState(5);
   const [targetLang, setTargetLang] = useState<TargetLang>('hebrew');
   const [sourceKind, setSourceKind] = useState<SourceKind>('paste');
@@ -771,6 +783,12 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, ac
       >
         <div className="rounded-2xl bg-white shadow-lg border border-orange-100 overflow-hidden">
             <div className="px-6 py-6 space-y-5">
+              <ClassRosterPicker
+                classes={classes ?? []}
+                initialClassId={initialClassId}
+                onNamesLoaded={(names) => setPlayersText(names.join('\n'))}
+                accent="orange"
+              />
               <div>
                 <label className="block text-sm font-bold text-stone-700 mb-2">
                   {t.playersLabel}
