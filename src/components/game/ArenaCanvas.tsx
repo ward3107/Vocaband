@@ -13,7 +13,7 @@
  *     joystick input immediately (client prediction) so steering feels
  *     instant despite the 10/sec uplink.
  */
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { motion } from "motion/react";
 import { Lock, Check } from "lucide-react";
 import QPAvatar from "../QPAvatar";
@@ -47,12 +47,12 @@ interface ArenaCanvasProps {
    *  parent's 10/sec send loop reads it (decoupled from the RAF rate). */
   selfPosRef?: RefObject<{ x: number; y: number }>;
   /** Auto-grab: fired once per approach when the local avatar enters an
-   *  available word's grab radius. */
+   *  available word's grab radius. Also makes word tokens tappable —
+   *  tapping a word in range grabs it; tapping a far word sets it as the
+   *  run target and the avatar auto-runs there until the grab fires
+   *  (kids tap the word, not the joystick — the server's range referee
+   *  used to deny those taps outright, which read as "clicking is broken"). */
   onGrab?: (wordId: string, x: number, y: number) => void;
-  /** Tap-to-grab: word tokens become buttons. The server still referees
-   *  range, so tapping a far word answers with the "get closer" denial —
-   *  which doubles as the mechanic's teaching moment. */
-  onWordTap?: (wordId: string) => void;
   /** Host projector: no joystick, no prediction, no grabbing. */
   readOnly?: boolean;
   /** Buzzer open — freeze movement + sends (battery + focus). */
@@ -69,7 +69,7 @@ interface ArenaCanvasProps {
 
 export default function ArenaCanvas({
   arena, positionsRef, leaderboard,
-  selfClientId, inputRef, selfPosRef, onGrab, onWordTap,
+  selfClientId, inputRef, selfPosRef, onGrab,
   readOnly = false, isPaused = false, fill = false, className = "",
 }: ArenaCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -83,6 +83,15 @@ export default function ArenaCanvas({
   // Words the local player already attempted this approach — re-armed only
   // after leaving radius × REARM_FACTOR, so one pass can't spam the referee.
   const attemptedRef = useRef(new Set<string>());
+  // Tap-to-run target. State drives the highlight ring (taps are rare);
+  // the ref mirror is what the 60fps loop reads.
+  const [navTargetId, setNavTargetId] = useState<string | null>(null);
+  const navTargetRef = useRef<string | null>(null);
+  const setNavTarget = useCallback((id: string | null) => {
+    if (navTargetRef.current === id) return;
+    navTargetRef.current = id;
+    setNavTargetId(id);
+  }, []);
 
   // Mirror render-time data into refs so the RAF loop never closes over
   // stale props (and the effect doesn't restart on every word patch).
@@ -110,6 +119,9 @@ export default function ArenaCanvas({
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
   const paused = isPaused || tabHidden;
+  // Don't resume a stale run after the buzzer closes — the hunt restarts
+  // from wherever the player chooses next.
+  useEffect(() => { if (paused) setNavTarget(null); }, [paused, setNavTarget]);
 
   // Track the container's pixel size — transforms are written in pixels,
   // positions live in logical units.
@@ -146,8 +158,26 @@ export default function ArenaCanvas({
         const self = selfRef.current;
         const input = inputRef?.current;
         if (input && (input.dx !== 0 || input.dy !== 0)) {
+          setNavTarget(null); // the joystick always overrides a tapped target
           self.x = Math.max(0, Math.min(QP_ARENA_WIDTH, self.x + input.dx * SELF_SPEED * dt));
           self.y = Math.max(0, Math.min(QP_ARENA_HEIGHT, self.y + input.dy * SELF_SPEED * dt));
+        } else if (navTargetRef.current) {
+          // Tap-to-run: head straight for the tapped word; the auto-grab
+          // below fires the moment its radius is entered.
+          const target = wordsRef.current.find(w => w.wordId === navTargetRef.current);
+          if (!target || target.state !== "available") {
+            setNavTarget(null); // grabbed by someone else mid-run — stop
+          } else {
+            const ddx = target.pos.x - self.x;
+            const ddy = target.pos.y - self.y;
+            const dist = Math.hypot(ddx, ddy);
+            if (dist > 1) {
+              const step = Math.min(dist, SELF_SPEED * dt);
+              self.x += (ddx / dist) * step;
+              self.y += (ddy / dist) * step;
+            }
+            if (dist <= grabRadiusRef.current) setNavTarget(null);
+          }
         }
         if (selfPosRef?.current) {
           selfPosRef.current.x = self.x;
@@ -188,7 +218,20 @@ export default function ArenaCanvas({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef]);
+  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, setNavTarget]);
+
+  // Tap = grab when in range, otherwise run there (auto-grab on arrival).
+  const handleWordTap = useCallback((wordId: string) => {
+    const self = selfRef.current;
+    const word = wordsRef.current.find(w => w.wordId === wordId);
+    if (!word || word.state !== "available") return;
+    if (self && Math.hypot(self.x - word.pos.x, self.y - word.pos.y) <= grabRadiusRef.current) {
+      attemptedRef.current.add(wordId);
+      onGrabRef.current?.(wordId, self.x, self.y);
+      return;
+    }
+    setNavTarget(wordId);
+  }, [setNavTarget]);
 
   return (
     <div
@@ -197,12 +240,13 @@ export default function ArenaCanvas({
       className={`relative w-full ${fill ? "h-full" : ""} overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-100 via-violet-50 to-fuchsia-100 shadow-lg shadow-indigo-500/20 ${className}`}
       style={{ ...(fill ? {} : { aspectRatio: `${QP_ARENA_WIDTH} / ${QP_ARENA_HEIGHT}` }), touchAction: "none" }}
     >
-      {/* Word tokens — React-rendered (lifecycle changes are rare). When the
-          parent wires onWordTap, available tokens are real buttons: kids'
-          first instinct is to tap the word, not to know about the invisible
-          grab radius. */}
+      {/* Word tokens — React-rendered (lifecycle changes are rare). On the
+          student side, available tokens are real buttons: kids' first
+          instinct is to tap the word, not to know about the invisible
+          grab radius — so a tap runs the avatar there. */}
       {arena.words.map((w) => {
-        const tappable = !readOnly && !!onWordTap && w.state === "available";
+        const tappable = !readOnly && !!onGrab && w.state === "available";
+        const targeted = w.wordId === navTargetId && w.state === "available";
         const pill = (
           <motion.div
             animate={w.state === "available" ? { y: [0, -5, 0] } : { y: 0 }}
@@ -213,7 +257,7 @@ export default function ArenaCanvas({
                 : w.state === "locked"
                   ? "bg-stone-400/80 text-white opacity-70"
                   : "bg-emerald-100 text-emerald-600 opacity-40"
-            }`}
+            } ${targeted ? "ring-4 ring-fuchsia-400/80" : ""}`}
             dir="auto"
           >
             {w.state === "locked" && <Lock size={12} strokeWidth={3} />}
@@ -234,7 +278,7 @@ export default function ArenaCanvas({
             {tappable ? (
               <button
                 type="button"
-                onClick={() => onWordTap(w.wordId)}
+                onClick={() => handleWordTap(w.wordId)}
                 aria-label={w.label}
                 // p-2 + -m-2 grows the hit box past the visual pill without
                 // shifting layout — fingertip-sized targets on the map.

@@ -3,7 +3,9 @@
  * for a classroom projector. A sibling of SpeedRoundHostView on the same
  * Quick Play socket rails:
  *   - shows the join code + QR (students join the same way as Quick Play)
- *   - the teacher picks a word SET + a MODE MIX + a per-word timer, then
+ *   - the teacher builds their OWN word list (typed / picked from the
+ *     library via SpeedWordPicker, like Speed Round) + a MODE MIX + a
+ *     per-word timer, then
  *     "Start arena" pre-authors the WHOLE question batch CLIENT-SIDE here
  *     (buildSpeedQuestion in a loop — the server has no vocabulary) and
  *     ships it on ARENA_START; the server stores every correctIndex
@@ -21,6 +23,7 @@ import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import ArenaCanvas from "../components/game/ArenaCanvas";
+import SpeedWordPicker from "../components/game/SpeedWordPicker";
 import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
 import { shuffle } from "../utils";
@@ -31,13 +34,16 @@ import {
 } from "../core/quickPlayProtocol";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
-import { SPEED_MODE_META, SPEED_SET_META, type SpeedSet } from "./speedRoundStrings";
+import { SPEED_MODE_META } from "./speedRoundStrings";
 import { ARENA_HOST_STRINGS } from "./arenaStrings";
 
 interface ArenaHostViewProps {
   sessionCode: string;
   setView: (v: View) => void;
 }
+
+/** Enough words for distractor options (questions need 2–4 choices). */
+const MIN_WORDS = 4;
 
 export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewProps) {
   const { language, dir } = useLanguage();
@@ -53,7 +59,11 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
     observeAsTeacher, startArena, endArena, endSession,
   } = qp;
 
-  const [selectedSet, setSelectedSet] = useState<SpeedSet>("Set 1");
+  // The teacher's own word list (typed / picked from the library) — the
+  // question pool AND the preferred distractor source. Replaces the old
+  // fixed Set 1/2/3 picker, same product call as Speed Round (2026-06-11):
+  // teachers run an arena on exactly the words THEY chose.
+  const [pickedWords, setPickedWords] = useState<Word[]>([]);
   // Multi-toggle — every enabled mode joins the cycle the batch builder
   // walks, so the floating words mix question types. Default: all six.
   const [enabledModes, setEnabledModes] = useState<Set<QpSpeedMode>>(new Set(QP_SPEED_MODES));
@@ -64,13 +74,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const [buildError, setBuildError] = useState(false);
   const tokenRef = useRef<string | null>(null);
 
-  // The word pool for the chosen set — the preferred distractor source.
-  const setWords: Word[] = useMemo(() => {
-    if (!vocab) return [];
-    if (selectedSet === "Set 1") return vocab.SET_1_WORDS;
-    if (selectedSet === "Set 2") return vocab.SET_2_WORDS;
-    return vocab.SET_3_WORDS;
-  }, [vocab, selectedSet]);
+  const canStart = pickedWords.length >= MIN_WORDS && enabledModes.size > 0;
 
   useEffect(() => {
     if (status !== "connected") return;
@@ -92,21 +96,21 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const sorted = useMemo(() => [...leaderboard].sort((a, b) => b.score - a.score), [leaderboard]);
   const wordsLeft = currentArena ? currentArena.words.filter(w => w.state !== "answered").length : 0;
 
-  // Pre-author the whole batch: walk a shuffled copy of the set, cycling
-  // the enabled modes; a word that can't form a question for the current
-  // mode tries the other enabled modes before being skipped entirely.
+  // Pre-author the whole batch: walk a shuffled copy of the teacher's
+  // list, cycling the enabled modes; a word that can't form a question for
+  // the current mode tries the other enabled modes before being skipped.
   const buildBatch = (): QpArenaWordSeed[] => {
-    const fallback = vocab?.ALL_WORDS ?? setWords;
+    const fallback = vocab?.ALL_WORDS ?? pickedWords;
     const modes = QP_SPEED_MODES.filter(m => enabledModes.has(m));
     const seeds: QpArenaWordSeed[] = [];
     let modeCursor = 0;
-    for (const word of shuffle([...setWords])) {
+    for (const word of shuffle([...pickedWords])) {
       if (seeds.length >= QP_ARENA_MAX_WORDS) break;
       let question = null;
       for (let attempt = 0; attempt < modes.length && !question; attempt++) {
         question = buildSpeedQuestion({
           mode: modes[(modeCursor + attempt) % modes.length],
-          word, pool: setWords, fallback, l1,
+          word, pool: pickedWords, fallback, l1,
           trueFalseLabels: { yes: t.tfTrue, no: t.tfFalse },
         });
       }
@@ -118,7 +122,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   };
 
   const handleStart = () => {
-    if (!tokenRef.current || arenaActive || setWords.length === 0 || enabledModes.size === 0) return;
+    if (!tokenRef.current || arenaActive || !canStart) return;
     const seeds = buildBatch();
     if (seeds.length === 0) { setBuildError(true); return; }
     setBuildError(false);
@@ -263,25 +267,16 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             </section>
 
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-              {/* Word set */}
-              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-3">{t.setHeading}</h2>
-              <div className="grid grid-cols-3 gap-2">
-                {(["Set 1", "Set 2", "Set 3"] as SpeedSet[]).map((s) => {
-                  const picked = selectedSet === s;
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setSelectedSet(s)}
-                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`rounded-xl p-2.5 text-center border-2 transition-all ${picked ? "bg-gradient-to-br from-indigo-500 to-violet-600 border-transparent text-white shadow-md" : pillIdle}`}
-                    >
-                      <div className="text-lg">{SPEED_SET_META[s].emoji}</div>
-                      <div className="font-black text-xs">{t.setNames[s]}</div>
-                    </button>
-                  );
-                })}
-              </div>
+              {/* The teacher's word list — typed / picked from the library. */}
+              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-3">{t.wordsHeading}</h2>
+              <SpeedWordPicker
+                library={vocab?.ALL_WORDS ?? null}
+                picked={pickedWords}
+                onChange={setPickedWords}
+                minWords={MIN_WORDS}
+                t={t}
+                chipClass="bg-indigo-100 text-indigo-700"
+              />
 
               {/* Mode mix — multi-toggle, unlike Speed Round's single pick */}
               <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mt-5 mb-3">{t.modeHeading}</h2>
@@ -327,7 +322,6 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               </div>
 
               {buildError && <p className="mt-3 text-xs font-bold text-rose-600">{t.buildError}</p>}
-              {setWords.length === 0 && <p className="mt-3 text-xs font-bold text-stone-400">{t.loadingWords}</p>}
 
               {arenaActive ? (
                 <button
@@ -342,9 +336,9 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 <button
                   type="button"
                   onClick={handleStart}
-                  disabled={setWords.length === 0 || enabledModes.size === 0}
+                  disabled={!canStart}
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`mt-5 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${setWords.length === 0 || enabledModes.size === 0 ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-indigo-500 to-violet-600 shadow-indigo-500/30 active:scale-[0.98]"}`}
+                  className={`mt-5 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${!canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-indigo-500 to-violet-600 shadow-indigo-500/30 active:scale-[0.98]"}`}
                 >
                   <Play size={18} /> {t.start}
                 </button>
@@ -361,7 +355,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             type="button"
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}
             onClick={handleStart}
-            disabled={setWords.length === 0 || enabledModes.size === 0}
+            disabled={!canStart}
             style={{ touchAction: "manipulation" }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl shadow-indigo-500/40 bg-gradient-to-r from-indigo-500 to-violet-600 active:scale-[0.98] transition disabled:opacity-60"
           >

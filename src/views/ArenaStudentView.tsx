@@ -2,8 +2,9 @@
  * ArenaStudentView — the student side of Word Hunt Arena, from join to
  * play. A sibling of SpeedRoundStudentView; reuses its join / rejoin /
  * back-trap / error plumbing verbatim. Play is different: the student
- * steers an avatar around the shared map (ArenaCanvas + ArenaJoystick);
- * running into a word auto-grabs it, and a granted grab pops the SHARED
+ * steers an avatar around the shared map (ArenaCanvas + ArenaJoystick) —
+ * or just taps a word and the avatar runs to it; reaching a word
+ * auto-grabs it, and a granted grab pops the SHARED
  * Speed Round buzzer as a modal overlay (the grant payload is shaped like
  * a speed round on purpose — answers go back via submitSpeedAnswer).
  *
@@ -361,7 +362,6 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             inputRef={inputRef}
             selfPosRef={selfPosRef}
             onGrab={(wordId, x, y) => requestGrab(wordId, x, y)}
-            onWordTap={(wordId) => requestGrab(wordId, selfPosRef.current.x, selfPosRef.current.y)}
             isPaused={!!grant}
             fill
           />
