@@ -122,11 +122,47 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
     },
   },
 
+  // ─── Calm light theme ───────────────────────────────────────────
+  // Flat cool-grey "paper" for teachers who find Daylight's warm
+  // brightness glaring.  No gradient and a slightly deeper page tone
+  // than Daylight, so the page recedes and the colourful game cards
+  // carry the personality instead of competing with the background.
+  {
+    id: 'paper',
+    name: 'Cool Paper',
+    emoji: '📄',
+    bg: 'bg-[#eceef1]',
+    swatch: 'bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300',
+    dark: false,
+    palette: {
+      surface: '#f8fafc',
+      surfaceAlt: '#eef1f5',
+      border: '#dde2e9',
+      textPrimary: '#0f172a',
+      textSecondary: '#475569',
+      textMuted: '#94a3b8',
+      accent: '#4f46e5',
+      accentSoft: '#e7e9fb',
+      accentText: '#ffffff',
+      // Cool-leaning soft tints (slate undertone, not warm cream) so
+      // badges settle into the grey page instead of glowing against it.
+      success: '#059669',
+      successSoft: '#e6f4ee',
+      danger: '#e11d48',
+      dangerSoft: '#fceef1',
+      warning: '#d97706',
+      warningSoft: '#faf1e2',
+      info: '#4f46e5',
+      infoSoft: '#e7e9fb',
+    },
+  },
+
   // ─── Dark themes ────────────────────────────────────────────────
-  // Two carefully picked dark variants — one neutral slate/indigo for
-  // classic dark-mode users, one warm graphite/amber for evening
-  // teaching.  Surfaces are tinted near-black so cards separate from
-  // the slightly darker page background instead of merging into it.
+  // Dark variants — neutral slate/indigo for classic dark-mode users,
+  // warm graphite/amber for evening teaching, and a dimmer low-contrast
+  // slate/teal for long sessions.  Surfaces are tinted near-black so
+  // cards separate from the slightly darker page background instead of
+  // merging into it.
 
   {
     id: 'midnight',
@@ -200,6 +236,40 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
       warningSoft: '#3a2a0c',
       info: '#a5b4fc',
       infoSoft: '#20223e',
+    },
+  },
+  {
+    id: 'dimslate',
+    name: 'Dim Slate',
+    emoji: '🌒',
+    // Softer than Midnight: a lifted blue-grey rather than near-black
+    // navy, tuned for "the bright cards are tiring me" rather than
+    // "I want true dark mode".  Cards keep their colour; the page and
+    // chrome drop back so nothing glares.
+    bg: 'bg-gradient-to-b from-[#1e2230] to-[#14171f]',
+    swatch: 'bg-gradient-to-br from-slate-600 via-slate-700 to-slate-900',
+    dark: true,
+    palette: {
+      surface: '#262b3a',
+      surfaceAlt: '#2f3547',
+      border: '#414a61',
+      textPrimary: '#f1f5f9',
+      textSecondary: '#b7c1d4',
+      textMuted: '#8591a8',
+      // Teal accent (vs Midnight's indigo) so the two dark themes read
+      // as distinct choices in the picker; dark accentText because
+      // teal-300 fails contrast under white text.
+      accent: '#5eead4',
+      accentSoft: '#1d3a3a',
+      accentText: '#042f2e',
+      success: '#34d399',
+      successSoft: '#143129',
+      danger: '#fb7185',
+      dangerSoft: '#3a1b23',
+      warning: '#fbbf24',
+      warningSoft: '#36290e',
+      info: '#7dd3fc',
+      infoSoft: '#16304a',
     },
   },
 ];
