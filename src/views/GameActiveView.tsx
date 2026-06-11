@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { AlertTriangle, X } from "lucide-react";
 import { THEMES, PET_MILESTONES } from "../constants/game";
 import { useGameRoute } from "./GameRouteContext";
@@ -58,6 +58,7 @@ const MODE_THEME: Partial<Record<string, GameThemeColor>> = {
  *  HE/AR translation correctly. */
 const ENGLISH_ANSWER_MODES = new Set(["reverse", "spelling", "scramble", "letter-sounds", "fill-blank"]);
 import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
+import AnswerFeedback, { cardShake, cardShakeTransition } from "../components/game/AnswerFeedback";
 import ClassicModeGame from "../components/ClassicModeGame";
 import GameHeader from "../components/game/GameHeader";
 import WordPromptCard from "../components/game/WordPromptCard";
@@ -185,6 +186,15 @@ export default function GameActiveView() {
   // toolbar / per-word progress bar above the mode component — those
   // chrome pieces show stale data from the fallback `gameWords` pool
   // and push the mode's own UI below the fold on mobile.
+  // Main multiple-choice trio — the only modes wired to the shared
+  // AnswerFeedback celebration layer for now (open-issues §C scoped
+  // this slice; the every-mode sweep is a separate multi-day effort).
+  // Their scoring path awards a flat +10 per correct word, which is
+  // what the floating XP badge shows.
+  const isMainMultiChoice =
+    gameMode === "classic" || gameMode === "listening" || gameMode === "reverse";
+  const reduceMotion = useReducedMotion();
+
   const isSelfContainedMode =
     gameMode === 'idiom' ||
     gameMode === 'speed-round' || gameMode === 'class-minute' ||
@@ -446,7 +456,11 @@ export default function GameActiveView() {
               <motion.div
                 key={currentIndex}
                 initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
+                // Multiple-choice wrong taps shake the whole card —
+                // border colour alone was invisible to kids mid-game
+                // (open-issues §C). Other modes keep the plain settle.
+                animate={isMainMultiChoice ? cardShake(feedback, reduceMotion) : { opacity: 1, x: 0 }}
+                transition={isMainMultiChoice ? cardShakeTransition(feedback, reduceMotion) : undefined}
                 exit={{ opacity: 0, x: -50 }}
                 className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-2 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-emerald-50 border-3 border-emerald-500" : feedback === "wrong" ? "bg-rose-50 border-3 border-rose-400" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-transparent"}`}
               >
@@ -471,6 +485,12 @@ export default function GameActiveView() {
                     />
                   </div>
                 )}
+
+                {/* Floating "+10 XP" + sparkle burst on correct taps —
+                    ties the reward to the tap itself (screen confetti
+                    already fires from celebrate() but reads as ambient,
+                    not earned). Multiple-choice trio only for now. */}
+                {isMainMultiChoice && <AnswerFeedback feedback={feedback} xpGain={10} />}
 
                 {/* Fill-in-the-Blank renders its own gapped sentence as
                     the prompt — the standard WordPromptCard would show
