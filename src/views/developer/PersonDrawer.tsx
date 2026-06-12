@@ -181,7 +181,7 @@ export default function PersonDrawer({ person, onClose, onChanged, showToast }: 
                   {p.role === "student" && (
                     <button type="button" disabled={busy} onClick={() => void setRole("teacher")}
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2">
+                      className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2">
                       <UserCog className="w-4 h-4" /> Promote to teacher
                     </button>
                   )}

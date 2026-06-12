@@ -29,7 +29,7 @@ export interface ConfirmDialogProps {
 const TONES = {
   danger:  { ring: "border-rose-500/30",   accent: "text-rose-300",   btn: "bg-rose-600 hover:bg-rose-500",       chip: "bg-rose-500/15" },
   warning: { ring: "border-amber-500/30",  accent: "text-amber-300",  btn: "bg-amber-600 hover:bg-amber-500",     chip: "bg-amber-500/15" },
-  default: { ring: "border-indigo-500/30", accent: "text-indigo-300", btn: "bg-indigo-600 hover:bg-indigo-500",   chip: "bg-indigo-500/15" },
+  default: { ring: "border-teal-500/30", accent: "text-teal-300", btn: "bg-teal-600 hover:bg-teal-500",   chip: "bg-teal-500/15" },
 } as const;
 
 export default function ConfirmDialog({

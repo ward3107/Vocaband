@@ -167,7 +167,7 @@ export default function CommandPalette({ open, onClose, navItems, onGotoTab, onO
                       data-idx={i}
                       onMouseEnter={() => setActive(i)}
                       onClick={() => select(r)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-xl ${isActive ? "bg-indigo-600 text-white" : "text-white/70 hover:bg-white/5"}`}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left rounded-xl ${isActive ? "bg-teal-600 text-white" : "text-white/70 hover:bg-white/5"}`}
                     >
                       <Icon className="w-4 h-4 shrink-0 opacity-80" />
                       <span className="flex-1 min-w-0 truncate font-bold text-base">{primaryFor(r)}</span>

@@ -90,7 +90,7 @@ export default function DevDataRequestsPanel({ showToast }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl p-5 bg-gradient-to-br from-sky-500/20 via-indigo-500/15 to-violet-500/20 border border-white/10">
+      <div className="rounded-2xl p-5 bg-gradient-to-br from-sky-500/20 via-cyan-500/15 to-teal-500/20 border border-white/10">
         <div className="flex items-center gap-2 text-white font-black text-base mb-2">
           <ShieldCheck className="w-5 h-5 text-sky-300" /> Privacy requests (GDPR Art. 15 + 17)
         </div>
