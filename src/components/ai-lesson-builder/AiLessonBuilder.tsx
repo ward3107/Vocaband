@@ -10,7 +10,7 @@
  * Appears in Review step (Step 3) after words are selected.
  */
 
-import { useState, useCallback, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, type ReactNode, type FC } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import {
@@ -99,7 +99,7 @@ interface StepperProps {
   label?: string;
 }
 
-const Stepper: React.FC<StepperProps> = ({ value, onChange, min = 0, max = 50, label }) => (
+const Stepper: FC<StepperProps> = ({ value, onChange, min = 0, max = 50, label }) => (
   <div className="flex items-center gap-2">
     <button
       type="button"

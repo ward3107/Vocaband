@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useEffect, useState } from "react";
+import { type ReactNode, type Dispatch, type SetStateAction, useRef, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, KeyRound } from "lucide-react";
 import StudentPinLoginCard from "../components/StudentPinLoginCard";
@@ -8,7 +8,7 @@ import { studentLoginT } from "../locales/student/student-login";
 import { Globe } from "lucide-react";
 
 interface StudentAccountLoginViewProps {
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
   /** Error banner text owned by App.tsx — typically the OAuth-reject
    *  notice routed here by useAuthRestore when a stale OAuth student
    *  session is restored, or any auth-restore failure that surfaces
