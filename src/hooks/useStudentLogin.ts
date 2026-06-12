@@ -15,7 +15,7 @@
  * sign-in) was removed when we moved student login to OAuth-only.
  * Brand-new students now go through `OAuthClassCode` post-redirect.
  */
-import { useCallback } from "react";
+import { useCallback, type Dispatch, type SetStateAction } from "react";
 import {
   supabase,
   mapClass,
@@ -41,12 +41,12 @@ export interface UseStudentLoginParams {
   setUser: (u: AppUser | null) => void;
   setError: (msg: string | null) => void;
   setView: (v: View) => void;
-  setBadges: React.Dispatch<React.SetStateAction<string[]>>;
-  setXp: React.Dispatch<React.SetStateAction<number>>;
-  setCoins: React.Dispatch<React.SetStateAction<number>>;
-  setStreak: React.Dispatch<React.SetStateAction<number>>;
-  setStudentAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
-  setStudentProgress: React.Dispatch<React.SetStateAction<ProgressData[]>>;
+  setBadges: Dispatch<SetStateAction<string[]>>;
+  setXp: Dispatch<SetStateAction<number>>;
+  setCoins: Dispatch<SetStateAction<number>>;
+  setStreak: Dispatch<SetStateAction<number>>;
+  setStudentAssignments: Dispatch<SetStateAction<AssignmentData[]>>;
+  setStudentProgress: Dispatch<SetStateAction<ProgressData[]>>;
 
   // ─── Cross-hook collaborators ──────────────────────────────────────
   /** From useTeacherData: hydrate the student's class assignments. */
