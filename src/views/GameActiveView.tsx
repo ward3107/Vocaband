@@ -74,6 +74,7 @@ import ScrambleGame from "../components/game/ScrambleGame";
 import IdiomGame from "../components/game/IdiomGame";
 import SpeedRoundGame from "../components/game/SpeedRoundGame";
 import ReviewGame from "../components/game/ReviewGame";
+import LiveLeaderboardWidget from "../components/game/LiveLeaderboardWidget";
 import GameProgress from "../components/game/GameProgress";
 import AnswerStreakBadge from "../components/game/AnswerStreakBadge";
 import PauseOverlay from "../components/game/PauseOverlay";
@@ -98,7 +99,7 @@ export default function GameActiveView() {
     spellingInput, setSpellingInput,
     activeAssignment, sentenceIndex, sentenceFeedback,
     builtSentence, setBuiltSentence, availableWords, setAvailableWords,
-    isFinished, quickPlayActiveSession,
+    isFinished, quickPlayActiveSession, leaderboard,
     handleExitGame, saveScore,
     handleAnswer, handleMatchClick, handleTFAnswer,
     handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap,
@@ -131,8 +132,15 @@ export default function GameActiveView() {
     handleExitGame();
   };
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
-  const { language } = useLanguage();
+  const { language, isRTL } = useLanguage();
   const t = gameActiveT[language];
+
+  // Live-challenge leaderboard presence drives the tablet/landscape
+  // two-column layout (open-issues §F). Mirrors LiveLeaderboardWidget's
+  // own visibility guard so the side panel and the column-width switch
+  // stay in lock-step — guests and solo/assignment play (empty board)
+  // keep the single-column phone layout at every breakpoint.
+  const hasLeaderboard = !user?.isGuest && Object.keys(leaderboard).length > 0;
   const modeTheme: GameThemeColor | undefined = MODE_THEME[gameMode];
   const modeLabel = t.modeLabels[gameMode] ?? gameMode;
 
@@ -485,6 +493,25 @@ export default function GameActiveView() {
         onExit={handleExitGame}
       />
 
+      {/* Tablet/landscape layout (open-issues §F) — on phones everything
+          stays a single narrow column (`w-full`, byte-identical to the
+          portrait design). From `lg:` up the play area + the live-rank
+          sidebar sit side-by-side; without a leaderboard the play area
+          simply widens (`md:max-w-5xl lg:max-w-6xl`) so an iPad in
+          landscape no longer wastes its horizontal space on a phone-
+          width column. `lg:flex-row-reverse` mirrors the sidebar to the
+          start edge in Hebrew/Arabic, matching the rest of the app. */}
+      <div
+        className={`w-full ${
+          hasLeaderboard
+            ? 'lg:max-w-6xl lg:flex ' + (isRTL ? 'lg:flex-row-reverse' : 'lg:flex-row') + ' lg:items-start lg:gap-6'
+            : 'max-w-4xl md:max-w-5xl lg:max-w-6xl'
+        } mx-auto`}
+      >
+        {/* Play column — owns the progress chrome + the game card. Grows
+            to fill the row beside the sidebar; centres its own card. */}
+        <div className={`w-full ${hasLeaderboard ? 'lg:flex-1 lg:min-w-0' : ''} flex flex-col items-center`}>
+
       {/* Shared progress + answer-streak chrome — every orchestrated
           mode gets the same "Question 3 of 10" placement at the top
           (open-issues §C: matching/memory had no progress at all, the
@@ -502,12 +529,13 @@ export default function GameActiveView() {
         </div>
       )}
 
-      {/* Single centered column (the Live Rank sidebar was removed long
-          ago — every mode, matching/quiz alike, sits centered). The
-          min-height pulls content to the vertical centre of the viewport
-          on phones; matching/memory get a touch more room for their
-          larger grids. Content shorter than this never scrolls. */}
-      <div className={`w-full max-w-4xl mx-auto ${(gameMode === 'matching' || gameMode === 'memory-flip') ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
+      {/* Centered game column. The min-height pulls content to the
+          vertical centre of the viewport on phones; matching/memory get
+          a touch more room for their larger grids. max-w-4xl is the
+          phone-portrait width (unchanged); md:max-w-5xl lets the card
+          grow on tablet/landscape so the prompt + answer grid use the
+          extra width. Content shorter than this never scrolls. */}
+      <div className={`w-full max-w-4xl md:max-w-5xl mx-auto ${(gameMode === 'matching' || gameMode === 'memory-flip') ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
         <div className="w-full">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (
@@ -623,6 +651,20 @@ export default function GameActiveView() {
       {/* The below-the-card progress bar + "Word 3 of 10" label moved to
           the shared GameProgress chrome at the top of the page, where
           it's visible without scrolling on every mode (open-issues §C). */}
+        </div>{/* end play column */}
+
+        {/* Live-rank sidebar — only rendered during live challenges (the
+            widget self-hides for guests / empty boards, matching the
+            hasLeaderboard guard above). On phones it stacks BELOW the
+            game (full width); from lg: up it docks to a fixed-width
+            column beside the play area so an iPad in landscape shows the
+            standings without the student scrolling. */}
+        {hasLeaderboard && (
+          <div className="w-full lg:w-72 lg:flex-shrink-0 mt-4 lg:mt-0">
+            <LiveLeaderboardWidget user={user} leaderboard={leaderboard} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

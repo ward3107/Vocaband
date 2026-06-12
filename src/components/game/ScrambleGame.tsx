@@ -196,7 +196,7 @@ export default function ScrambleGame({
   return (
     <form
       onSubmit={onSpellingSubmit}
-      className="max-w-md mx-auto px-2"
+      className="max-w-md lg:max-w-xl mx-auto px-2"
     >
       {/* Translation prompt — indigo-tinted hero card. */}
       <div

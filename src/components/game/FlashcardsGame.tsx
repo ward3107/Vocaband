@@ -62,7 +62,7 @@ export default function FlashcardsGame({
   };
 
   return (
-    <div className="max-w-md mx-auto px-2 space-y-4 sm:space-y-5">
+    <div className="max-w-md lg:max-w-xl mx-auto px-2 space-y-4 sm:space-y-5">
       {/* 3D flip card.
           - Outer wrapper: perspective gives the rotation depth.
           - Inner: preserve-3d + animated rotateY drives the flip.

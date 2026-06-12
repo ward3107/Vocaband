@@ -56,7 +56,7 @@ export default function LetterSoundsGame({
   const allRevealed = revealedLetters >= (cleanAnswer.length || 99);
 
   return (
-    <div className="max-w-lg mx-auto px-2">
+    <div className="max-w-lg lg:max-w-2xl mx-auto px-2">
       {/* Translation hero card */}
       <div
         className={`p-4 sm:p-5 rounded-xl mb-5 sm:mb-7 text-center ${
