@@ -240,14 +240,20 @@ export default function GameActiveView() {
     gameInProgress && !quickPlayActiveSession,
   );
 
-  // Chromebook keyboard shortcuts (open-issues §F) — multiple-choice
-  // trio only; the other modes have their own input surfaces. Selection
-  // maps over the VISIBLE options so a 50/50 power-up keeps the number
-  // keys aligned with what's actually on screen.
-  const isChoiceTrio = gameMode === "classic" || gameMode === "listening" || gameMode === "reverse";
+  // Chromebook keyboard shortcuts (open-issues §F). Each mode binds its
+  // own key map; only one is `enabled` at a time so the listeners never
+  // collide. The number-key path maps over the VISIBLE options so a
+  // 50/50 power-up keeps the keys aligned with what's actually on screen.
+  //
+  // Fill-blank shares the same "choice" map as the MC trio — same
+  // handleAnswer path, same 1–4 selection — so it joins isChoiceMode.
+  const isChoiceMode =
+    gameMode === "classic" || gameMode === "listening" ||
+    gameMode === "reverse" || gameMode === "fill-blank";
   const visibleOptions = options.filter(o => !hiddenOptions.includes(o.id));
   const keyboardActive = useGameKeyboard({
-    enabled: isChoiceTrio && !isFinished && !isPaused,
+    mode: "choice",
+    enabled: isChoiceMode && !isFinished && !isPaused,
     optionCount: visibleOptions.length,
     onSelect: (i) => {
       // Mirror AnswerOptionButton's disabled guard — number keys must
@@ -256,6 +262,31 @@ export default function GameActiveView() {
     },
     onReplayAudio: () => {
       if (currentWord) speakWord(currentWord.id, currentWord.english);
+    },
+  });
+
+  // True/False — T/→ = true, F/← = false. handleTFAnswer self-guards on
+  // feedback (auto-advances on correct, clears on wrong), but we mirror
+  // the guard here too so a held key during feedback is a clean no-op.
+  const tfKeyboardActive = useGameKeyboard({
+    mode: "true-false",
+    enabled: gameMode === "true-false" && !isFinished && !isPaused,
+    onTrueFalse: (isTrue) => {
+      if (!feedback) handleTFAnswer(isTrue);
+    },
+  });
+
+  // Flashcards — Space/Enter flip, →/← self-grade. isProcessingRef
+  // guards the answer + flip against the brief auto-advance window
+  // (matches the on-card tap handlers).
+  const flashKeyboardActive = useGameKeyboard({
+    mode: "flashcards",
+    enabled: gameMode === "flashcards" && !isFinished && !isPaused,
+    onFlip: () => {
+      if (!isProcessingRef.current) setIsFlipped(f => !f);
+    },
+    onFlashcardAnswer: (knewIt) => {
+      if (!isProcessingRef.current) handleFlashcardAnswer(knewIt);
     },
   });
 
@@ -278,7 +309,7 @@ export default function GameActiveView() {
       );
     }
     if (gameMode === "true-false") {
-      return <TrueFalseGame tfOption={tfOption} targetLanguage={targetLanguage} feedback={feedback} onAnswer={handleTFAnswer} themeColor={modeTheme} />;
+      return <TrueFalseGame tfOption={tfOption} targetLanguage={targetLanguage} feedback={feedback} onAnswer={handleTFAnswer} themeColor={modeTheme} showKeyHints={tfKeyboardActive} />;
     }
     if (gameMode === "flashcards") {
       return (
@@ -291,6 +322,7 @@ export default function GameActiveView() {
           onAnswer={handleFlashcardAnswer}
           speakWord={speakWord}
           themeColor={modeTheme}
+          showKeyHints={flashKeyboardActive}
         />
       );
     }
@@ -339,6 +371,7 @@ export default function GameActiveView() {
           targetLanguage={targetLanguage}
           onAnswer={handleAnswer}
           themeColor={modeTheme}
+          showKeyHints={keyboardActive}
         />
       );
     }
