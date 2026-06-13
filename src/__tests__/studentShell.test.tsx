@@ -12,6 +12,7 @@ import { isStudentShell } from '../utils/studentShell';
 import { resolveInitialView } from '../utils/resolveInitialView';
 import { PUBLIC_PAGE_VIEW } from '../utils/publicNavigation';
 import { VIEW_PATH, pathForView, viewForPath } from '../utils/routes';
+import { isPublicView } from '../utils/authViews';
 import type { View } from '../core/views';
 
 type CapacitorWindow = Window & { Capacitor?: { isNativePlatform?: () => boolean } };
@@ -150,8 +151,38 @@ describe('view ⇄ path registry (routes.ts)', () => {
 
   it('each registry path resolves back to its view via resolveInitialView', () => {
     for (const [view, path] of Object.entries(VIEW_PATH) as [View, string][]) {
+      localStorage.clear();
+      // Landable authenticated views (Slice 3) only resolve from the URL
+      // when a session might restore — seed a fake Supabase token so
+      // hasRestorableSession() is true. Public marketing pages need none.
+      if (!isPublicView(view)) localStorage.setItem('sb-test-auth-token', '{}');
       setUrl(path);
       expect(resolveInitialView()).toBe(view);
     }
   });
+});
+
+// Slice 3: "landable" authenticated views (shop, leaderboard, library)
+// resolve from the URL on a fresh load — but ONLY for a user whose session
+// can restore. A logged-out deep link must fall through to the public
+// landing, never render a dataless authed screen.
+describe('landable authenticated views (routes.ts, Slice 3)', () => {
+  const AUTHED = [
+    ['shop', '/shop'],
+    ['global-leaderboard', '/leaderboard'],
+    ['vocabulary-library', '/vocabulary-library'],
+  ] as const;
+
+  for (const [view, path] of AUTHED) {
+    it(`"${path}" → ${view} when a session is restorable`, () => {
+      localStorage.setItem('sb-test-auth-token', '{}'); // hasRestorableSession() → true
+      setUrl(path);
+      expect(resolveInitialView()).toBe(view);
+    });
+
+    it(`"${path}" falls through to public-landing when logged out`, () => {
+      setUrl(path); // no session seeded
+      expect(resolveInitialView()).toBe('public-landing');
+    });
+  }
 });

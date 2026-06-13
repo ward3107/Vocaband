@@ -2,12 +2,14 @@
  * routes.ts — the single source of truth mapping each View to its
  * canonical, refresh-stable URL path (and back again).
  *
- * Slice 2 of the URL-routing migration (docs/url-routing-migration-plan.md).
- * Today VIEW_PATH covers the views that already own a real path — the
- * public marketing pages. Later slices extend the table as more views
- * become URL-addressable; resolveInitialView + handlePublicNavigate read
- * from here so there's one place to keep in sync (slice 1 had the path
- * list duplicated across publicNavigation.ts and resolveInitialView.ts).
+ * Introduced in Slice 2 of the URL-routing migration
+ * (docs/url-routing-migration-plan.md). VIEW_PATH covers the public
+ * marketing pages (Slice 1) plus the "landable" authenticated views
+ * (Slice 3) — those resolvable from the URL alone on a fresh load.
+ * Later slices extend the table as more views become URL-addressable;
+ * resolveInitialView + handlePublicNavigate read from here so there's
+ * one place to keep in sync (slice 1 had the path list duplicated across
+ * publicNavigation.ts and resolveInitialView.ts).
  *
  * This is deliberately NOT a full router. Parametric / conditional routes
  * stay as imperative rules in resolveInitialView because a static table
@@ -25,6 +27,7 @@ import type { View } from '../core/views';
  * URL-addressable yet; pathForView returns null for those.
  */
 export const VIEW_PATH: Partial<Record<View, string>> = {
+  // Public marketing pages (Slice 1) — always landable, no session needed.
   'public-landing': '/',
   'public-terms': '/terms',
   'public-privacy': '/privacy',
@@ -32,6 +35,17 @@ export const VIEW_PATH: Partial<Record<View, string>> = {
   'public-free-resources': '/free-resources',
   'public-status': '/status',
   'accessibility-statement': '/accessibility-statement',
+
+  // "Landable" authenticated views (Slice 3) — they need only data the
+  // auth flow already loads (no transient in-memory object) and are
+  // already in shouldPreserveView's keep-sets (authViews.ts), so a token
+  // refresh / fresh load on one of these URLs stays put instead of being
+  // bounced to the dashboard. resolveInitialView gates them behind
+  // hasRestorableSession so a logged-OUT deep link falls through to the
+  // landing rather than rendering a dataless authed screen.
+  'shop': '/shop',
+  'global-leaderboard': '/leaderboard',
+  'vocabulary-library': '/vocabulary-library',
 };
 
 // Reverse lookup, built once at module load. Path → View.
