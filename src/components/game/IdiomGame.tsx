@@ -187,11 +187,22 @@ export default function IdiomGame({
         </div>
       </div>
 
-      {/* Idiom phrase — English, always LTR. */}
-      <div className="mb-2 text-center">
-        <h2 dir="ltr" className="text-3xl sm:text-5xl font-black tracking-tight text-stone-900 dark:text-stone-100">
-          {current.english}
-        </h2>
+      {/* Idiom phrase — English, always LTR — set in a speech bubble so
+          it reads as "a saying" rather than a vocab word, reinforcing
+          that we want the figurative meaning. */}
+      <div className="mb-2 flex flex-col items-center">
+        <div className="text-2xl sm:text-3xl mb-1" aria-hidden="true">🗣️💭</div>
+        <div className={`relative inline-block rounded-3xl border-2 ${theme.border} ${theme.cardBg} px-5 py-4 sm:px-8 sm:py-5 shadow-sm`}>
+          <h2 dir="ltr" className="text-3xl sm:text-5xl font-black tracking-tight text-stone-900 dark:text-stone-100">
+            “{current.english}”
+          </h2>
+          {/* bubble tail — a rotated square sharing the bubble's fill so
+              it merges seamlessly into the bottom edge. */}
+          <span
+            aria-hidden="true"
+            className={`absolute -bottom-1.5 start-8 h-4 w-4 rotate-45 rounded-sm ${theme.cardBg} border-b-2 border-e-2 ${theme.border}`}
+          />
+        </div>
       </div>
       <button
         type="button"

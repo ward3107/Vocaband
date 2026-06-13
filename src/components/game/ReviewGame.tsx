@@ -257,6 +257,20 @@ export default function ReviewGame({
         </div>
       </div>
 
+      {/* Comeback ribbon — frames review as redemption, not repetition:
+          these are words the student missed before and is winning back. */}
+      <div
+        className={`mb-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs sm:text-sm font-black ${theme.pillBg} ${theme.pillText} shadow-sm`}
+        dir={dir}
+      >
+        <span aria-hidden="true">🔁</span>
+        {language === 'he'
+          ? 'פספסת את זו פעם — תפוס אותה עכשיו!'
+          : language === 'ar'
+          ? 'فاتتك سابقًا — استعِدها الآن!'
+          : 'You missed this before — win it back!'}
+      </div>
+
       {/* Big prompt word — English, always LTR. */}
       <div className="mb-2 text-center">
         <h2 dir="ltr" className="text-4xl sm:text-6xl font-black tracking-tight text-stone-900 dark:text-stone-100">

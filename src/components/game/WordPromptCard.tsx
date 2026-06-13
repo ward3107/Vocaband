@@ -95,6 +95,17 @@ export default function WordPromptCard({
         // ── Word hero: prompt word + tap-to-hear affordance ──
         <>
           <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            {/* Reverse mode shows the translation and asks for the English
+                word — a small direction flag makes that swap explicit. */}
+            {gameMode === "reverse" && (
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide ${themed?.pillBg ?? "bg-stone-100"} ${themed?.pillText ?? "text-stone-500"}`}
+              >
+                {targetLanguage === "hebrew" ? "HE" : "AR"}
+                <span aria-hidden="true">→</span>
+                EN
+              </span>
+            )}
             {currentWord?.imageUrl && (
               <motion.img
                 initial={{ scale: 0.8, opacity: 0 }}
