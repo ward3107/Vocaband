@@ -170,7 +170,9 @@ describe('landable authenticated views (routes.ts, Slice 3)', () => {
   const AUTHED = [
     ['shop', '/shop'],
     ['global-leaderboard', '/leaderboard'],
+    ['privacy-settings', '/privacy-settings'],
     ['vocabulary-library', '/vocabulary-library'],
+    ['vocabagrut', '/vocabagrut'],
   ] as const;
 
   for (const [view, path] of AUTHED) {
