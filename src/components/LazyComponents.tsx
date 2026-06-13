@@ -11,7 +11,6 @@ import { lazyWithRetry } from '../utils/lazyWithRetry';
 // chain. Same path data as lucide-react v0.546.0 (ISC).
 import { LazyErrorBoundary } from './LazyErrorBoundary';
 import { useLanguage } from '../hooks/useLanguage';
-import type { Language } from "../hooks/useLanguage";
 
 const InlineLoaderIcon = ({ className }: { className?: string }) => (
   <svg

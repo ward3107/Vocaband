@@ -19,7 +19,7 @@
  *     locally and wrote 1200 back to the DB).  Thanks! now only
  *     dismisses + marks the row seen.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Gift, Sparkles, X, Trophy, Crown, Smile } from "lucide-react";
 import { supabase } from "../../core/supabase";
@@ -63,7 +63,7 @@ interface RewardInboxCardProps {
   }) => void;
 }
 
-const buildTypeMeta = (t: TeacherViewsT): Record<string, { gradient: string; icon: React.ReactNode; label: string }> => ({
+const buildTypeMeta = (t: TeacherViewsT): Record<string, { gradient: string; icon: ReactNode; label: string }> => ({
   xp:     { gradient: 'from-amber-400 to-orange-500',   icon: <Sparkles size={22} />, label: t.rewardXpLabel },
   badge:  { gradient: 'from-emerald-400 to-teal-500',   icon: <Trophy size={22} />,   label: t.rewardBadgeLabel },
   title:  { gradient: 'from-fuchsia-500 to-pink-600',   icon: <Crown size={22} />,    label: t.rewardTitleLabel },

@@ -66,7 +66,7 @@ export default function DevInsightsPanel({ showToast }: Props) {
             onClick={() => setDays(r)}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             className={`px-4 py-2 rounded-xl font-bold text-base transition-all ${
-              days === r ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "bg-white/5 text-white/70 hover:bg-white/10"
+              days === r ? "bg-teal-600 text-white shadow-lg shadow-teal-500/20" : "bg-white/5 text-white/70 hover:bg-white/10"
             }`}
           >
             {r}d window
@@ -77,7 +77,7 @@ export default function DevInsightsPanel({ showToast }: Props) {
       {/* Onboarding funnel */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-indigo-300" />
+          <TrendingUp className="w-5 h-5 text-teal-300" />
           <h3 className="text-white font-black text-base">Onboarding funnel</h3>
           <span className="text-white/40 text-sm">teachers who signed up in the last {days}d</span>
         </div>
@@ -171,7 +171,7 @@ export default function DevInsightsPanel({ showToast }: Props) {
       {/* Top assignments */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <ClipboardList className="w-5 h-5 text-violet-300" />
+          <ClipboardList className="w-5 h-5 text-teal-300" />
           <h3 className="text-white font-black text-base">Top assignments · {days}d</h3>
         </div>
         <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">

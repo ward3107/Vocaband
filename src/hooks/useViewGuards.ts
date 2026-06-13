@@ -28,14 +28,14 @@
  *   and redirected before the bootstrap's anon-auth + RLS-protected
  *   `quick_play_sessions` SELECT had a chance to land state.
  */
-import { useEffect } from 'react';
+import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { hasTeacherAccess, hasManagerAccess, type AppUser, type AssignmentData, type ClassData } from '../core/supabase';
 import { isStudentShell } from '../utils/studentShell';
 import type { View } from '../core/views';
 
 export interface UseViewGuardsParams {
   view: View;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
   user: AppUser | null;
   loading: boolean;
   activeAssignment: AssignmentData | null;

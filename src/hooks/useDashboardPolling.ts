@@ -39,7 +39,7 @@
  * CLOSED we degrade to slow polling so the teacher's data is at
  * most a few minutes stale instead of indefinitely.
  */
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
 import {
   supabase,
   mapAssignment,
@@ -59,7 +59,7 @@ export interface UseDashboardPollingParams {
   /** Drives the adaptive teacher-approval poll. > 0 → fast loop
    *  (something to watch); === 0 → slow loop. */
   pendingStudentsCount: number;
-  setStudentAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
+  setStudentAssignments: Dispatch<SetStateAction<AssignmentData[]>>;
   /** Fetcher from useTeacherData that hydrates `pendingStudents`. */
   loadPendingStudents: () => void | Promise<void>;
   /** Fetcher from useTeacherActions that hydrates `allScores`. */

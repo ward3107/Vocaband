@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import type { View } from "../core/views";
 import { useVocabularyLazyWithDefaults } from "./useVocabularyLazy";
-import { supabase, hasTeacherAccess, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "../core/supabase";
+import { hasTeacherAccess, type AppUser, type ClassData, type AssignmentData, type ProgressData } from "../core/supabase";
 import { useAudio } from "./useAudio";
 import { primeAudio } from "../utils/primeAudio";
 import { useLanguage } from "./useLanguage";
@@ -14,7 +14,6 @@ import { useLevelUp } from "./useLevelUp";
 import { useAchievements } from "./useAchievements";
 import { grantRetentionXp } from "../handlers/retentionGrants";
 import { createGuestUser } from "../utils/createGuestUser";
-import { clearIntendedClassCode } from "../utils/oauthIntent";
 import { useTeacherGuidesSync } from "./useTeacherGuidesSync";
 import { useVocaRouting } from "./useVocaRouting";
 import { useApplyTeacherTheme } from "./useApplyTeacherTheme";
@@ -188,10 +187,9 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // OAuth callback state + class-switch confirmation state. See
   // useOAuthState for the (classNotFoundIntent / pendingClassSwitch) docs.
   const {
-    isOAuthCallback, setIsOAuthCallback,
-    oauthEmail, setOauthEmail,
-    oauthAuthUid, setOauthAuthUid,
-    showOAuthClassCode, setShowOAuthClassCode,
+    setOauthEmail,
+    setOauthAuthUid,
+    setShowOAuthClassCode,
     classNotFoundIntent, setClassNotFoundIntent,
     pendingClassSwitch, setPendingClassSwitch,
   } = useOAuthState();
@@ -839,6 +837,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
     showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
     gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
     score, xp, streak, badges, mistakes, gameWords, quickPlayActiveSession,
+    qpLeaderboard: quickPlaySocket.leaderboard,
     isSaving, saveError, toasts, confirmDialog, setConfirmDialog,
     setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
     setWordAttempts, setHiddenOptions, setSpellingInput, setAssignmentWords,

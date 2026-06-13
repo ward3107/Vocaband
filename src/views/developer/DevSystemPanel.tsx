@@ -96,7 +96,7 @@ export default function DevSystemPanel({ showToast }: Props = {}) {
         <>
           <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
             <div className="px-5 py-3 flex items-center gap-2 border-b border-white/5">
-              <Database className="w-4 h-4 text-indigo-300" />
+              <Database className="w-4 h-4 text-teal-300" />
               <span className="font-black text-white/80 text-base">Table sizes</span>
               <span className="text-white/40 text-sm ml-auto">top {dbHealth.table_sizes.length}</span>
             </div>
@@ -113,7 +113,7 @@ export default function DevSystemPanel({ showToast }: Props = {}) {
 
           <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
             <div className="px-5 py-3 flex items-center gap-2 border-b border-white/5">
-              <Lock className="w-4 h-4 text-indigo-300" />
+              <Lock className="w-4 h-4 text-teal-300" />
               <span className="font-black text-white/80 text-base">RLS coverage</span>
               <span className="text-white/40 text-sm ml-auto">
                 {dbHealth.rls_coverage.filter((r) => r.rls_enabled).length} / {dbHealth.rls_coverage.length} enabled

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, type TouchEvent } from "react";
 import { motion } from "motion/react";
 import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -15,6 +15,11 @@ interface TrueFalseGameProps {
    *  binary palette regardless, since paired colours read fastest
    *  for binary judgement.  Theme only affects the prompt card. */
   themeColor?: GameThemeColor;
+  /** Chromebook support (open-issues §F): reveal the T/F key badges on
+   *  the buttons. Flipped on by useGameKeyboard after the first hardware
+   *  keypress, so touch devices never see the hints. aria-keyshortcuts
+   *  is always present regardless. */
+  showKeyHints?: boolean;
 }
 
 /**
@@ -30,7 +35,7 @@ interface TrueFalseGameProps {
  *   - Subtle hint copy below the buttons telling kids they can swipe.
  */
 export default function TrueFalseGame({
-  tfOption, targetLanguage, feedback, onAnswer, themeColor,
+  tfOption, targetLanguage, feedback, onAnswer, themeColor, showKeyHints,
 }: TrueFalseGameProps) {
   const { language } = useLanguage();
   const t = gameActiveT[language];
@@ -44,12 +49,12 @@ export default function TrueFalseGame({
 
   // Touch-swipe gesture support — kids swipe instead of aiming.
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
+  const onTouchStart = useCallback((e: TouchEvent) => {
     if (feedback) return;
     const t = e.touches[0];
     touchStartRef.current = { x: t.clientX, y: t.clientY };
   }, [feedback]);
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
+  const onTouchMove = useCallback((e: TouchEvent) => {
     if (feedback || !touchStartRef.current) return;
     const t = e.touches[0];
     const dx = t.clientX - touchStartRef.current.x;
@@ -60,7 +65,7 @@ export default function TrueFalseGame({
     }
     setSwiping(dx > 0 ? "right" : "left");
   }, [feedback]);
-  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+  const onTouchEnd = useCallback((e: TouchEvent) => {
     if (feedback || !touchStartRef.current) {
       setSwiping(null);
       return;
@@ -120,9 +125,18 @@ export default function TrueFalseGame({
           type="button"
           onClick={handleTap(false)}
           disabled={!!feedback}
+          aria-keyshortcuts="F ArrowLeft"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '96px' }}
-          className="py-7 sm:py-10 rounded-2xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-xl hover:shadow-2xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
+          className="relative py-7 sm:py-10 rounded-2xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-xl hover:shadow-2xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
         >
+          {showKeyHints && (
+            <kbd
+              aria-hidden="true"
+              className="absolute top-1.5 start-1.5 min-w-[1.25rem] px-1 py-0.5 rounded-md bg-white/30 text-white text-[10px] font-black leading-none"
+            >
+              F
+            </kbd>
+          )}
           <span className="text-3xl sm:text-4xl">✗</span>
           <span>{t.falseLabel}</span>
         </button>
@@ -130,9 +144,18 @@ export default function TrueFalseGame({
           type="button"
           onClick={handleTap(true)}
           disabled={!!feedback}
+          aria-keyshortcuts="T ArrowRight"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: '96px' }}
-          className="py-7 sm:py-10 rounded-2xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-xl hover:shadow-2xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
+          className="relative py-7 sm:py-10 rounded-2xl text-2xl sm:text-3xl font-black bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-xl hover:shadow-2xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
         >
+          {showKeyHints && (
+            <kbd
+              aria-hidden="true"
+              className="absolute top-1.5 start-1.5 min-w-[1.25rem] px-1 py-0.5 rounded-md bg-white/30 text-white text-[10px] font-black leading-none"
+            >
+              T
+            </kbd>
+          )}
           <span className="text-3xl sm:text-4xl">✓</span>
           <span>{t.trueLabel}</span>
         </button>

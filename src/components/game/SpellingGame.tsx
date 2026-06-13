@@ -1,3 +1,4 @@
+import type { Dispatch, FormEvent, SetStateAction } from 'react';
 import { ShowAnswerFeedback } from "../ShowAnswerFeedback";
 import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -11,8 +12,8 @@ interface SpellingGameProps {
   targetLanguage: "hebrew" | "arabic";
   feedback: "correct" | "wrong" | "show-answer" | null;
   spellingInput: string;
-  setSpellingInput: React.Dispatch<React.SetStateAction<string>>;
-  onSpellingSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  setSpellingInput: Dispatch<SetStateAction<string>>;
+  onSpellingSubmit: (e: FormEvent<HTMLFormElement>) => void;
   /** Phase-3c theme — drives the "Translation:" label colour, the
    *  Check button gradient, and the letter-slot ring on submit.
    *  spelling=violet, scramble inherits via Phase 3g (own commit). */

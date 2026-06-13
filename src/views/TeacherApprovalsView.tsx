@@ -1,3 +1,4 @@
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, Check, RefreshCw, X, AlertTriangle, Info, GraduationCap } from "lucide-react";
 import { supabase } from "../core/supabase";
@@ -29,9 +30,9 @@ interface TeacherApprovalsViewProps {
   user: { displayName?: string; avatar?: string } | null;
   pendingStudents: PendingStudent[];
   toasts: Toast[];
-  consentModal: React.ReactNode;
-  exitConfirmModal: React.ReactNode;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  consentModal: ReactNode;
+  exitConfirmModal: ReactNode;
+  setView: Dispatch<SetStateAction<View>>;
   loadPendingStudents: () => Promise<void> | void;
   handleApproveStudent: (id: string, displayName: string) => void;
   handleRejectStudent: (id: string, displayName: string) => void;

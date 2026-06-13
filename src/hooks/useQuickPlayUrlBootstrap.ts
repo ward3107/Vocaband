@@ -38,6 +38,22 @@ import { ALL_GAME_MODES } from "../constants/game";
 import { QP_CATEGORY_RACE_MODE, QP_SPEED_MODE, QP_ARENA_MODE } from "../core/quickPlayProtocol";
 import { preloadCategoryRaceView, preloadQuickPlayView, preloadSpeedRoundView, preloadArenaView } from "../views/studentJoinChunks";
 import type { View } from "../core/views";
+import { LANGUAGE_KEY, type Language } from "./useLanguage";
+import { quickPlayT } from "../locales/student/quick-play";
+
+/** Kid-speak strings for the bootstrap's failure toasts. The bootstrap
+ *  fires before any React language context is interesting (the student
+ *  just scanned a QR), so read the persisted language directly — a
+ *  Hebrew/Arabic kid whose device already chose a language should never
+ *  see English tech-speak on a dead-session bounce. */
+function qpBootstrapStrings() {
+  let lang: Language = "en";
+  try {
+    const saved = localStorage.getItem(LANGUAGE_KEY);
+    if (saved === "en" || saved === "he" || saved === "ar" || saved === "ru") lang = saved;
+  } catch { /* localStorage blocked — default English */ }
+  return quickPlayT[lang] ?? quickPlayT.en;
+}
 
 /** Shape of a quick_play_sessions row as consumed by the join flow —
  *  same fields whether it arrives via the direct RLS SELECT or the
@@ -306,7 +322,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
         if (!data) {
           // Both paths gave up — session genuinely isn't reachable.
           // The verbose logging above tells DevTools why.
-          showToast("Invalid or expired Quick Play session. Please scan the QR code again.", "error");
+          showToast(qpBootstrapStrings().toastSessionExpired, "error");
           window.history.replaceState({}, '', window.location.pathname);
           setView("public-landing");
           return;
@@ -474,7 +490,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
 
         if (allWords.length === 0) {
           console.error('[Quick Play Load] No words in session!');
-          showToast("This Quick Play session has no words. Please contact your teacher.", "error");
+          showToast(qpBootstrapStrings().toastNoWordsInSession, "error");
           window.history.replaceState({}, '', window.location.pathname);
           setView("public-landing");
           return;
@@ -568,10 +584,7 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
       const QP_BOOTSTRAP_TIMEOUT_MS = 15000;
       const bootstrapFailed = (reason: string) => {
         console.error('[Quick Play Bootstrap] failed, bouncing to landing:', reason);
-        showToast(
-          "Couldn't load the Quick Play session. Please scan the QR code again.",
-          "error",
-        );
+        showToast(qpBootstrapStrings().toastCantLoadGame, "error");
         window.history.replaceState({}, '', window.location.pathname);
         setView("public-landing");
       };

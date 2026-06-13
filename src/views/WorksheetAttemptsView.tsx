@@ -13,7 +13,7 @@
  * rows whose parent worksheet has teacher_uid = auth.uid().  Anonymous
  * shares (no owner) never appear here.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FC } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Archive,
@@ -339,7 +339,7 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
 // ─────────────────────────────────────────────────────────────────────
 // Screen 1: list of every worksheet this teacher owns.
 // ─────────────────────────────────────────────────────────────────────
-const WorksheetList: React.FC<{
+const WorksheetList: FC<{
   worksheets: Worksheet[];
   attemptsBySlug: Map<string, Attempt[]>;
   childrenByParent: Map<string, Worksheet[]>;
@@ -448,7 +448,7 @@ const WorksheetList: React.FC<{
   );
 };
 
-const FilterChip: React.FC<{
+const FilterChip: FC<{
   label: string;
   active: boolean;
   onClick: () => void;
@@ -470,7 +470,7 @@ const FilterChip: React.FC<{
 // ─────────────────────────────────────────────────────────────────────
 // Screen 2: per-worksheet attempts list with expandable rows.
 // ─────────────────────────────────────────────────────────────────────
-const WorksheetDetail: React.FC<{
+const WorksheetDetail: FC<{
   worksheet: Worksheet;
   attempts: Attempt[];
   childWorksheets: Worksheet[];
@@ -802,7 +802,7 @@ const WorksheetDetail: React.FC<{
 //      student's missed word IDs, so the teacher can send a focused
 //      practice worksheet instead of re-sending the whole pool.
 // ─────────────────────────────────────────────────────────────────────
-const AttemptSummary: React.FC<{
+const AttemptSummary: FC<{
   attempt: Attempt;
   onSendRetry: () => void;
 }> = ({ attempt, onSendRetry }) => {
@@ -889,7 +889,7 @@ const AttemptSummary: React.FC<{
 // the teacher reads the storyline left-to-right: first attempt at the
 // parent, then practice 1, then practice 2…
 // ─────────────────────────────────────────────────────────────────────
-const PracticeRounds: React.FC<{
+const PracticeRounds: FC<{
   firstAttempt: Attempt;
   rounds: Attempt[];
 }> = ({ firstAttempt, rounds }) => {
@@ -1058,7 +1058,7 @@ const buildRetryTitle = (topic: string, student: string): string => {
 // Per-question detail — format-aware because matching emits
 // mistakes_count and quiz emits given/correct.
 // ─────────────────────────────────────────────────────────────────────
-const AnswerBreakdown: React.FC<{ answers: AnswerRow[] }> = ({ answers }) => {
+const AnswerBreakdown: FC<{ answers: AnswerRow[] }> = ({ answers }) => {
   if (!answers || answers.length === 0) {
     return (
       <div className="p-4 text-sm text-[var(--vb-text-muted)]">
@@ -1137,7 +1137,7 @@ const AnswerBreakdown: React.FC<{ answers: AnswerRow[] }> = ({ answers }) => {
 // branch above.  Reads whatever label-shaped field is present so the
 // dashboard shows *something* meaningful per question instead of
 // dropping the answer or crashing.
-const GenericAnswerRow: React.FC<{ answer: GenericAnswer }> = ({ answer }) => {
+const GenericAnswerRow: FC<{ answer: GenericAnswer }> = ({ answer }) => {
   const correct = answer.is_correct ?? (answer.solved !== undefined ? answer.solved : undefined);
   const label =
     answer.prompt ??
@@ -1199,7 +1199,7 @@ const GenericAnswerRow: React.FC<{ answer: GenericAnswer }> = ({ answer }) => {
   );
 };
 
-const ErrorCard: React.FC<{ message: string }> = ({ message }) => (
+const ErrorCard: FC<{ message: string }> = ({ message }) => (
   <div
     style={{ backgroundColor: 'var(--vb-danger-soft)', borderColor: 'var(--vb-danger)' }}
     className="text-center max-w-md mx-auto p-8 rounded-2xl border"

@@ -9,7 +9,6 @@ import {
   ArrowRight,
   ArrowLeft,
   RefreshCw,
-  Gift,
   Sparkles,
   Check,
   ShoppingBag,
@@ -22,12 +21,11 @@ import {
   Layers,
   Shuffle,
   Repeat,
-  Globe,
   GraduationCap,
 } from "lucide-react";
 import { Word, ALL_WORDS } from "../data/vocabulary";
 import { useAudio } from "../hooks/useAudio";
-import { useLanguage, Language, ALL_LANGUAGES } from "../hooks/useLanguage";
+import { useLanguage, ALL_LANGUAGES } from "../hooks/useLanguage";
 import { AvatarPicker } from "./AvatarPicker";
 import { getSentencesForWord } from "../data/sentence-bank";
 import { isAnswerCorrect, cleanWordForDisplay } from "../utils/answerMatch";
@@ -181,45 +179,6 @@ const MODE_COLORS: Record<string, string> = {
   "sentence-builder": "teal",
 };
 
-const MODE_CARD_CLASSES: Record<string, string> = {
-  classic:      'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 hover:from-emerald-100 hover:to-emerald-200 text-emerald-800 shadow-emerald-200/50 hover:shadow-emerald-300/70',
-  listening:    'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 text-blue-800 shadow-blue-200/50 hover:shadow-blue-300/70',
-  spelling:     'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:from-purple-100 hover:to-purple-200 text-purple-800 shadow-purple-200/50 hover:shadow-purple-300/70',
-  matching:     'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 hover:from-amber-100 hover:to-amber-200 text-amber-800 shadow-amber-200/50 hover:shadow-amber-300/70',
-  "true-false":    'bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200 hover:from-rose-100 hover:to-rose-200 text-rose-800 shadow-rose-200/50 hover:shadow-rose-300/70',
-  flashcards:   'bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200 hover:from-cyan-100 hover:to-cyan-200 text-cyan-800 shadow-cyan-200/50 hover:shadow-cyan-300/70',
-  scramble:     'bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 hover:from-indigo-100 hover:to-indigo-200 text-indigo-800 shadow-indigo-200/50 hover:shadow-indigo-300/70',
-  reverse:      'bg-gradient-to-br from-fuchsia-50 to-fuchsia-100 border-fuchsia-200 hover:from-fuchsia-100 hover:to-fuchsia-200 text-fuchsia-800 shadow-fuchsia-200/50 hover:shadow-fuchsia-300/70',
-  "letter-sounds": 'bg-gradient-to-br from-violet-50 to-violet-100 border-violet-200 hover:from-violet-100 hover:to-violet-200 text-violet-800 shadow-violet-200/50 hover:shadow-violet-300/70',
-  "sentence-builder":     'bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200 hover:from-teal-100 hover:to-teal-200 text-teal-800 shadow-teal-200/50 hover:shadow-teal-300/70',
-};
-
-const MODE_ICON_COLORS: Record<string, string> = {
-  classic:      'text-emerald-600 bg-emerald-100',
-  listening:    'text-blue-600 bg-blue-100',
-  spelling:     'text-purple-600 bg-purple-100',
-  matching:     'text-amber-600 bg-amber-100',
-  "true-false":    'text-rose-600 bg-rose-100',
-  flashcards:   'text-cyan-600 bg-cyan-100',
-  scramble:     'text-indigo-600 bg-indigo-100',
-  reverse:      'text-fuchsia-600 bg-fuchsia-100',
-  "letter-sounds": 'text-violet-600 bg-violet-100',
-  "sentence-builder":     'text-teal-600 bg-teal-100',
-};
-
-const MODE_ICONS: Record<string, React.ReactNode> = {
-  classic:      <BookOpen size={24} />,
-  listening:    <Volume2 size={24} />,
-  spelling:     <PenTool size={24} />,
-  matching:     <Zap size={24} />,
-  "true-false":    <CheckCircle2 size={24} />,
-  flashcards:   <Layers size={24} />,
-  scramble:     <Shuffle size={24} />,
-  reverse:      <Repeat size={24} />,
-  "letter-sounds": <span className="text-2xl">🔡</span>,
-  "sentence-builder":     <span className="text-2xl">🧩</span>,
-};
-
 // Game mode configuration with tooltips — matching GameModeSelectionView exactly.
 // Flashcards is flagged as the LEARNING mode (isLearnMode) so the demo's
 // mode picker can render it as a hero card above the practice grid, just
@@ -316,58 +275,6 @@ const GAME_MODES_CONFIG: Array<{
     },
   ];
 
-// Localized mode data for translations (kept for backwards compatibility)
-const GAME_MODES: Record<Language, { id: string; name: string; emoji: string; desc: string }[]> = {
-  en: [
-    { id: "classic", name: "Classic", emoji: "📖", desc: "See the word, pick the right translation." },
-    { id: "listening", name: "Listening", emoji: "🎧", desc: "Only hear the word. No English text!" },
-    { id: "spelling", name: "Spelling", emoji: "✏️", desc: "Hear the word, type it in English." },
-    { id: "matching", name: "Matching", emoji: "⚡", desc: "Match Hebrew/Arabic to English pairs." },
-    { id: "true-false", name: "True / False", emoji: "✅", desc: "Is the translation correct? Quick!" },
-    { id: "flashcards", name: "Flashcards", emoji: "🃏", desc: "Review at your own pace." },
-    { id: "scramble", name: "Scramble", emoji: "🔤", desc: "Unscramble the letters into a word." },
-    { id: "reverse", name: "Reverse", emoji: "🔄", desc: "See the translation, pick the English word." },
-    { id: "letter-sounds", name: "Letter Sounds", emoji: "🔡", desc: "Hear each letter, type the full word." },
-    { id: "sentence-builder", name: "Sentence Builder", emoji: "🧩", desc: "Tap the words in the right order." },
-  ],
-  he: [
-    { id: "classic", name: "קלאסי", emoji: "📖", desc: "בחר את הפירוש הנכון" },
-    { id: "listening", name: "הקשבה", emoji: "🎧", desc: "שמע וזהה" },
-    { id: "spelling", name: "איות", emoji: "✏️", desc: "הקלד את המילה נכון" },
-    { id: "matching", name: "התאמה", emoji: "⚡", desc: "התאם מילים לפירושים" },
-    { id: "true-false", name: "נכון/לא נכון", emoji: "✅", desc: "האם זה נכון?" },
-    { id: "flashcards", name: "כרטיסיות", emoji: "🃏", desc: "הפוך ולמד" },
-    { id: "scramble", name: "ערבוב", emoji: "🔤", desc: "סדר את האותיות" },
-    { id: "reverse", name: "הפוך", emoji: "🔄", desc: "תרגם לאנגלית" },
-    { id: "letter-sounds", name: "צלילי אותיות", emoji: "🔡", desc: "השמע את זה" },
-    { id: "sentence-builder", name: "בונה משפטים", emoji: "🧩", desc: "בנה משפטים" },
-  ],
-  ar: [
-    { id: "classic", name: "كلاسيكي", emoji: "📖", desc: "اختر المعنى الصحيح" },
-    { id: "listening", name: "استماع", emoji: "🎧", desc: "اسمع وحدد" },
-    { id: "spelling", name: "تهجئة", emoji: "✏️", desc: "اكتب الكلمة بشكل صحيح" },
-    { id: "matching", name: "مطابقة", emoji: "⚡", desc: "طابق الكلمات مع المعاني" },
-    { id: "true-false", name: "صح/خطأ", emoji: "✅", desc: "هل هذا صحيح؟" },
-    { id: "flashcards", name: "بطاقات", emoji: "🃏", desc: "اقلب وتعلم" },
-    { id: "scramble", name: "خلط", emoji: "🔤", desc: "رتب الحروف" },
-    { id: "reverse", name: "عكس", emoji: "🔄", desc: "ترجم للإنجليزية" },
-    { id: "letter-sounds", name: "أصوات الحروف", emoji: "🔡", desc: "انطقها" },
-    { id: "sentence-builder", name: "بناء الجمل", emoji: "🧩", desc: "ابني جملًا" },
-  ],
-  ru: [
-    { id: "classic", name: "Classic", emoji: "📖", desc: "See the word, pick the right translation." },
-    { id: "listening", name: "Listening", emoji: "🎧", desc: "Only hear the word. No English text!" },
-    { id: "spelling", name: "Spelling", emoji: "✏️", desc: "Hear the word, type it in English." },
-    { id: "matching", name: "Matching", emoji: "⚡", desc: "Match Hebrew/Arabic to English pairs." },
-    { id: "true-false", name: "True / False", emoji: "✅", desc: "Is the translation correct? Quick!" },
-    { id: "flashcards", name: "Flashcards", emoji: "🃏", desc: "Review at your own pace." },
-    { id: "scramble", name: "Scramble", emoji: "🔤", desc: "Unscramble the letters into a word." },
-    { id: "reverse", name: "Reverse", emoji: "🔄", desc: "See the translation, pick the English word." },
-    { id: "letter-sounds", name: "Letter Sounds", emoji: "🔡", desc: "Hear each letter, type the full word." },
-    { id: "sentence-builder", name: "Sentence Builder", emoji: "🧩", desc: "Tap the words in the right order." },
-  ],
-};
-
 type TargetLang = 'hebrew' | 'arabic';
 
 const getMeaning = (word: Word, targetLang: TargetLang): string => {
@@ -377,7 +284,6 @@ const getMeaning = (word: Word, targetLang: TargetLang): string => {
 const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
   const { language, setLanguage, dir, isRTL, textAlign } = useLanguage();
   const t = demoTranslations[language];
-  const modes = GAME_MODES[language];
 
   const [view, setView] = useState<DemoView>("welcome");
   const [shopTab, setShopTab] = useState<ShopTab>("avatars");

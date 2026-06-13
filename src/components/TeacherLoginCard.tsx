@@ -15,7 +15,7 @@
  * App.tsx state or props consumed -- just an `onCancel` callback so
  * the parent can pop the user back to the landing page.
  */
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Mail, ArrowLeft, Loader2, AlertTriangle, MapPin, ShieldCheck, BookOpen, Gamepad2, Trophy, Flame, Gift } from "lucide-react";
 import { supabase } from "../core/supabase";
@@ -97,7 +97,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
     }
   };
 
-  const onSubmitEmail = (e: React.FormEvent) => {
+  const onSubmitEmail = (e: FormEvent) => {
     e.preventDefault();
     if (otp.stage === "sending") return;
     try {
@@ -113,7 +113,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
     void otp.sendCode(emailInput);
   };
 
-  const onSubmitCode = (e: React.FormEvent) => {
+  const onSubmitCode = (e: FormEvent) => {
     e.preventDefault();
     if (otp.stage === "verifying") return;
     void otp.verifyCode(codeInput);

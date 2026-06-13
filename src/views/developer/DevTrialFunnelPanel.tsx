@@ -71,7 +71,7 @@ export default function DevTrialFunnelPanel({ showToast }: Props) {
             onClick={() => setDays(r)}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             className={`px-4 py-2 rounded-xl font-bold text-base transition-all ${
-              days === r ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "bg-white/5 text-white/70 hover:bg-white/10"
+              days === r ? "bg-teal-600 text-white shadow-lg shadow-teal-500/20" : "bg-white/5 text-white/70 hover:bg-white/10"
             }`}
           >
             {r}d window
@@ -119,7 +119,7 @@ export default function DevTrialFunnelPanel({ showToast }: Props) {
           transition={{ delay: 0.15 }}
           className="rounded-2xl bg-white/5 border border-white/10 p-5"
         >
-          <Award className="w-5 h-5 mb-2 text-violet-300" />
+          <Award className="w-5 h-5 mb-2 text-teal-300" />
           <div className="text-3xl font-black leading-none">
             {fmtNum((data?.paid_total.pro ?? 0) + (data?.paid_total.school ?? 0))}
           </div>
@@ -157,7 +157,7 @@ export default function DevTrialFunnelPanel({ showToast }: Props) {
 
       <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
         <div className="px-5 py-3 flex items-center gap-2 border-b border-white/5">
-          <Users className="w-4 h-4 text-indigo-300" />
+          <Users className="w-4 h-4 text-teal-300" />
           <span className="text-white/80 font-black text-base">Trialing teachers</span>
           <span className="text-white/40 text-sm ml-auto">{fmtNum(data?.trialing_teachers.length)}</span>
         </div>

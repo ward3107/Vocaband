@@ -13,7 +13,7 @@ import type { AppUser } from "../core/supabase";
  */
 export function useRenderLoopRefs(initialUser: AppUser | null) {
   const userRef = useRef(initialUser);
-  const feedbackTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const isProcessingRef = useRef<boolean>(false);
   const lastScoreEmitRef = useRef<number>(0);
   return { userRef, feedbackTimeoutRef, isProcessingRef, lastScoreEmitRef };

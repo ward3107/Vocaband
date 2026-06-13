@@ -1,3 +1,4 @@
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
 import type { Word } from "../../data/vocabulary";
@@ -11,13 +12,18 @@ interface FlashcardsGameProps {
   currentWord: Word | undefined;
   targetLanguage: "hebrew" | "arabic";
   isFlipped: boolean;
-  setIsFlipped: React.Dispatch<React.SetStateAction<boolean>>;
-  isProcessingRef: React.MutableRefObject<boolean>;
+  setIsFlipped: Dispatch<SetStateAction<boolean>>;
+  isProcessingRef: MutableRefObject<boolean>;
   onAnswer: (gotIt: boolean) => void;
   speakWord: (wordId: number, fallbackText?: string) => void;
   /** Phase-3e theme — drives the front face tint, the speaker pill,
    *  and the "Got It" button gradient.  flashcards = cyan. */
   themeColor?: GameThemeColor;
+  /** Chromebook support (open-issues §F): reveal the Space/←/→ key
+   *  badges. Flipped on by useGameKeyboard after the first hardware
+   *  keypress, so touch devices never see the hints. aria-keyshortcuts
+   *  is always present regardless. */
+  showKeyHints?: boolean;
 }
 
 /**
@@ -45,7 +51,7 @@ interface FlashcardsGameProps {
  */
 export default function FlashcardsGame({
   currentWord, targetLanguage, isFlipped, setIsFlipped, isProcessingRef,
-  onAnswer, speakWord, themeColor,
+  onAnswer, speakWord, themeColor, showKeyHints,
 }: FlashcardsGameProps) {
   const { language } = useLanguage();
   const t = gameActiveT[language];
@@ -76,6 +82,7 @@ export default function FlashcardsGame({
       <div className="[perspective:1200px]">
         <motion.div
           onClick={handleFlip}
+          aria-keyshortcuts="Space Enter"
           animate={{ rotateY: isFlipped ? 180 : 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 22 }}
           className="relative w-full min-h-72 sm:min-h-80 cursor-pointer"
@@ -132,6 +139,14 @@ export default function FlashcardsGame({
               <span className="text-xs sm:text-sm font-black uppercase tracking-wider">
                 {t.showTranslation}
               </span>
+              {showKeyHints && (
+                <kbd
+                  aria-hidden="true"
+                  className="px-1.5 py-0.5 rounded-md bg-white/60 text-stone-600 text-[10px] font-black leading-none"
+                >
+                  Space
+                </kbd>
+              )}
             </motion.div>
           </div>
 
@@ -165,9 +180,18 @@ export default function FlashcardsGame({
           onTouchStart={(e) => { if (!isProcessingRef.current) e.currentTarget.click(); }}
           disabled={isProcessingRef.current}
           type="button"
+          aria-keyshortcuts="ArrowLeft"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", minHeight: "88px" }}
-          className="rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 text-white font-black py-5 sm:py-6 shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
+          className="relative rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 text-white font-black py-5 sm:py-6 shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
         >
+          {showKeyHints && (
+            <kbd
+              aria-hidden="true"
+              className="absolute top-1.5 start-1.5 min-w-[1.25rem] px-1 py-0.5 rounded-md bg-white/30 text-white text-[10px] font-black leading-none"
+            >
+              ←
+            </kbd>
+          )}
           <span className="text-2xl sm:text-3xl">🤔</span>
           <span className="text-base sm:text-lg">{t.stillLearning}</span>
         </button>
@@ -176,9 +200,18 @@ export default function FlashcardsGame({
           onTouchStart={(e) => { if (!isProcessingRef.current) e.currentTarget.click(); }}
           disabled={isProcessingRef.current}
           type="button"
+          aria-keyshortcuts="ArrowRight"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", minHeight: "88px" }}
-          className="rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-black py-5 sm:py-6 shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
+          className="relative rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-black py-5 sm:py-6 shadow-lg hover:shadow-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
         >
+          {showKeyHints && (
+            <kbd
+              aria-hidden="true"
+              className="absolute top-1.5 start-1.5 min-w-[1.25rem] px-1 py-0.5 rounded-md bg-white/30 text-white text-[10px] font-black leading-none"
+            >
+              →
+            </kbd>
+          )}
           <span className="text-2xl sm:text-3xl">✓</span>
           <span className="text-base sm:text-lg">{t.gotIt}</span>
         </button>

@@ -6,7 +6,7 @@
  * and submits the aggregated result once everything is done.  The
  * runner owns all per-exercise UI; this view owns load/submit/results.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FC, type ReactNode } from "react";
 import { ArrowLeft, CheckCircle2, Loader2, RotateCcw, XCircle } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
@@ -519,7 +519,7 @@ const FORMAT_LABEL: Record<string, string> = {
 
 const formatLabel = (type: string) => FORMAT_LABEL[type] ?? "Worksheet";
 
-const NameEntryCard: React.FC<{
+const NameEntryCard: FC<{
   topicName: string;
   exerciseCount: number;
   firstType: string;
@@ -663,7 +663,7 @@ const NameEntryCard: React.FC<{
   );
 };
 
-const Shell: React.FC<{ children: React.ReactNode; onBack: () => void; isRTL: boolean; language: Language }> = ({
+const Shell: FC<{ children: ReactNode; onBack: () => void; isRTL: boolean; language: Language }> = ({
   children,
   onBack,
   isRTL,
@@ -684,7 +684,7 @@ const Shell: React.FC<{ children: React.ReactNode; onBack: () => void; isRTL: bo
   </div>
 );
 
-const ResultsCard: React.FC<{
+const ResultsCard: FC<{
   exercises: Exercise[];
   results: ExerciseResult[];
   topicName: string;
@@ -846,7 +846,7 @@ const ResultsCard: React.FC<{
 // worksheets when we found a matching parent attempt for this browser.
 // Same fuchsia palette as the teacher dashboard's practice strip so the
 // student and teacher views are visually linked.
-const ProgressFromParent: React.FC<{
+const ProgressFromParent: FC<{
   parent: ParentAttempt;
   nowScore: number;
   nowTotal: number;

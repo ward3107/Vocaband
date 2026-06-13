@@ -11,12 +11,11 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Copy, Share2, Check, BookOpen, Target, ArrowLeft } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Copy, Share2, Check, BookOpen, Target } from 'lucide-react';
 import { Word } from '../data/vocabulary';
 import { SentenceDifficulty } from '../constants/game';
-import { supabase } from '../core/supabase';
-import SetupWizard, { SetupWizardProps } from './setup/SetupWizard';
+import SetupWizard from './setup/SetupWizard';
 import { AssignmentData } from './setup/types';
 import { useTranslate } from '../hooks/useTranslate';
 import { useSavedWordGroups } from '../hooks/useSavedWordGroups';
@@ -24,10 +23,6 @@ import { saveCorrection } from '../utils/translationCorrections';
 import { useLanguage } from '../hooks/useLanguage';
 import { teacherWizardsT } from '../locales/teacher/wizards';
 
-// Keep the existing AssignmentData interface for backward compatibility
-export interface AssignmentDataCompat extends AssignmentData {
-  // Extended if needed for compatibility
-}
 
 export interface CreateAssignmentWizardProps {
   selectedClass: { name: string; code: string; studentCount?: number; id?: string };
@@ -150,20 +145,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   setAssignmentModes,
   selectedWords: selectedWordsIds,
   setSelectedWords,
-  selectedLevel,
-  setSelectedLevel,
-  tagInput,
-  setTagInput,
-  pastedText,
-  setPastedText,
-  showPasteDialog,
-  setShowPasteDialog,
-  pasteMatchedCount,
-  pasteUnmatched,
-  handlePasteSubmit,
-  handleAddUnmatchedAsCustom,
-  handleSkipUnmatched,
-  handleTagInputKeyDown,
   handleDocxUpload,
   handleOcrUpload,
   handleSaveAssignment,
@@ -174,10 +155,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   isOcrProcessing = false,
   ocrProgress = 0,
   ocrStatus = "",
-  showTopicPacks,
-  setShowTopicPacks,
-  showAssignmentWelcome,
-  setShowAssignmentWelcome,
   TOPIC_PACKS,
   onBack,
   editingAssignment,

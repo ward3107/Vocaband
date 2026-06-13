@@ -22,7 +22,7 @@
  *
  * All data is passed in as props — pure component, no RPC of its own.
  */
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { CheckCircle2, Clock, Moon, Users, Send } from "lucide-react";
 import AdaptiveDrawer from "../../components/classroom/AdaptiveDrawer";
 import type { ProgressData } from "../../core/supabase";
@@ -197,7 +197,7 @@ export default function AssignmentDetail({
               <Empty text={t.doneEmpty} />
             ) : (
               done.slice(0, 20).map(s => (
-                <StudentRow key={s.name} student={s} rowSummary={t.studentRowSummary} showScore />
+                <StudentRow key={s.name} student={s} showScore />
               ))
             )}
           </Bucket>
@@ -213,7 +213,7 @@ export default function AssignmentDetail({
               <Empty text={t.stuckEmpty} />
             ) : (
               stuck.slice(0, 20).map(s => (
-                <StudentRow key={s.name} student={s} rowSummary={t.studentRowSummary} showScore />
+                <StudentRow key={s.name} student={s} showScore />
               ))
             )}
           </Bucket>
@@ -273,12 +273,12 @@ export default function AssignmentDetail({
 function Bucket({
   icon, title, subtitle, count, tone, children,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   subtitle: string;
   count: number;
   tone: "emerald" | "amber" | "stone";
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const toneRing: Record<string, string> = {
     emerald: "border-[color:var(--vb-success)]/30",
@@ -298,7 +298,7 @@ function Bucket({
   );
 }
 
-function StudentRow({ student, showScore, rowSummary }: { student: StudentScore; showScore?: boolean; rowSummary: (plays: number, best: number) => string }) {
+function StudentRow({ student, showScore }: { student: StudentScore; showScore?: boolean }) {
   return (
     <div className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <span className="text-lg shrink-0" aria-hidden>{student.avatar}</span>

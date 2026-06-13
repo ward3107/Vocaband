@@ -10,7 +10,6 @@
 import type { Word } from '../data/vocabulary';
 import {
   normalizeText,
-  levenshteinDistance,
   isFuzzyMatch,
   extractRootWord,
 } from '../data/vocabulary-matching';

@@ -26,7 +26,7 @@ export default function FrostedEmoji({ emoji, size = 64, tone = "gradient" }: Fr
         backdropFilter: "blur(12px) saturate(160%)",
         WebkitBackdropFilter: "blur(12px) saturate(160%)",
         boxShadow:
-          "inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.04), 0 6px 18px -8px rgba(60,40,120,0.25)",
+          "inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.04), 0 6px 18px -8px rgba(15,23,42,0.22)",
         fontSize: size * 0.52,
         lineHeight: 1,
       }}

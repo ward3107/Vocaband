@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Send, CheckCircle2, Phone, School, User } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
-import { landingPageT } from "../locales/student/landing-page";
-import type { Language } from "../hooks/useLanguage";
 
 interface SubjectRequestModalProps {
   isOpen: boolean;
@@ -12,7 +10,6 @@ interface SubjectRequestModalProps {
 
 const SubjectRequestModal: React.FC<SubjectRequestModalProps> = ({ isOpen, onClose }) => {
   const { language, dir } = useLanguage();
-  const t = landingPageT[language];
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     name: "",

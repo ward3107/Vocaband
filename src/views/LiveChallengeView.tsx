@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import type { LeaderboardEntry } from "../core/types";
 import type { ClassData } from "../core/supabase";
@@ -11,7 +11,7 @@ interface LiveChallengeViewProps {
   selectedClass: ClassData;
   leaderboard: Record<string, LeaderboardEntry>;
   socketConnected: boolean;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
   setIsLiveChallenge: (v: boolean) => void;
 }
 

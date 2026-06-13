@@ -10,7 +10,7 @@
  * same paths the live dashboard uses, so any class-name regression
  * (left/right vs start/end) shows up here too.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { LanguageProvider } from "../hooks/useLanguage";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import { PET_MILESTONES } from "../constants/game";
@@ -84,7 +84,7 @@ const FAKE_RETENTION = {
   recordPlay: () => {},
 };
 
-const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+const SectionLabel = ({ children }: { children: ReactNode }) => (
   <div className="mt-8 mb-2 text-[11px] font-black uppercase tracking-[0.2em] text-violet-700">
     <span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500 me-2 align-middle" />
     {children}

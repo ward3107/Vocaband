@@ -19,7 +19,7 @@
  * Both hydrate the student dashboard after the choice so the user
  * lands cleanly regardless of path.
  */
-import { useCallback } from "react";
+import { useCallback, type Dispatch, type SetStateAction } from "react";
 import {
   supabase,
   mapClass,
@@ -44,11 +44,11 @@ interface PendingClassSwitch {
 export interface UseClassSwitchParams {
   pendingClassSwitch: PendingClassSwitch | null;
   setPendingClassSwitch: (v: PendingClassSwitch | null) => void;
-  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
+  setUser: Dispatch<SetStateAction<AppUser | null>>;
   setView: (v: View) => void;
   setLoading: (v: boolean) => void;
-  setStudentAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
-  setStudentProgress: React.Dispatch<React.SetStateAction<ProgressData[]>>;
+  setStudentAssignments: Dispatch<SetStateAction<AssignmentData[]>>;
+  setStudentProgress: Dispatch<SetStateAction<ProgressData[]>>;
   showToast: (message: string, type: "success" | "error" | "info") => void;
 }
 

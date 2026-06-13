@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
 import ModalShell, { ModalDangerButton, ModalFootSpacer, ModalQuietButton } from "../ui/ModalShell";
@@ -10,7 +11,7 @@ export interface ConfirmDialogState {
 
 interface ConfirmDialogProps {
   confirmDialog: ConfirmDialogState;
-  setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialogState>>;
+  setConfirmDialog: Dispatch<SetStateAction<ConfirmDialogState>>;
 }
 
 /**

@@ -12,7 +12,7 @@
  * dashboards by design — the RPC stamps `teacher_uid` only when the
  * caller is signed in.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FC } from "react";
 import { motion } from "motion/react";
 import { Share2, X, Loader2, Check, CheckCircle2, Plus, Sparkles, TriangleAlert } from "lucide-react";
 import { supabase } from "../core/supabase";
@@ -20,9 +20,11 @@ import type { Word } from "../data/vocabulary";
 import { FILLBLANK_SENTENCES } from "../data/sentence-bank-fillblank";
 import { useLanguage } from "../hooks/useLanguage";
 import { shareWorksheetT } from "../locales/teacher/share-worksheet";
+// Convenience type alias so the helper components don't repeat the
+// long `(typeof shareWorksheetT)[Language]` shape in their props.
+type Translator = (typeof shareWorksheetT)["en"];
 import type { Exercise, ExerciseType, TranslationDirection } from "../worksheet/types";
 import { WorksheetShareCard } from "./WorksheetShareCard";
-import type { Language } from "../hooks/useLanguage";
 import { getOrCreateMinterFingerprint, recordMyWorksheet } from "../utils/myWorksheets";
 
 // Exercise types that need a context sentence for each word. When the
@@ -97,7 +99,7 @@ const defaultConfig = (
   return { type, word_ids: wordIds } as Exercise;
 };
 
-export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onClose, parentSlug }) => {
+export const ShareWorksheetDialog: FC<Props> = ({ source, defaultLang, onClose, parentSlug }) => {
   const { language, dir } = useLanguage();
   const t = shareWorksheetT[language];
   const uniqueIds = useMemo(
@@ -461,8 +463,8 @@ export const ShareWorksheetDialog: React.FC<Props> = ({ source, defaultLang, onC
   );
 };
 
-const ExercisePicker: React.FC<{
-  t: ReturnType<typeof getTranslator>;
+const ExercisePicker: FC<{
+  t: Translator;
   plan: Exercise[];
   onToggle: (type: ExerciseType) => void;
   onUpdate: <T extends ExerciseType>(
@@ -574,8 +576,8 @@ const ExercisePicker: React.FC<{
   );
 };
 
-const AiConfirmPanel: React.FC<{
-  t: ReturnType<typeof getTranslator>;
+const AiConfirmPanel: FC<{
+  t: Translator;
   wordCount: number;
   onConfirm: () => void;
   onSkip: () => void;
@@ -613,9 +615,9 @@ const AiConfirmPanel: React.FC<{
   </div>
 );
 
-const AiStatusPill: React.FC<{
+const AiStatusPill: FC<{
   phase: "idle" | "generating" | "ready" | "failed";
-  t: ReturnType<typeof getTranslator>;
+  t: Translator;
 }> = ({ phase, t }) => {
   if (phase === "generating") {
     return (
@@ -644,9 +646,9 @@ const AiStatusPill: React.FC<{
   return null;
 };
 
-const ExerciseConfigRow: React.FC<{
+const ExerciseConfigRow: FC<{
   exercise: Exercise;
-  t: ReturnType<typeof getTranslator>;
+  t: Translator;
   onUpdate: <T extends ExerciseType>(
     type: T,
     patch: Partial<Extract<Exercise, { type: T }>>,
@@ -686,8 +688,5 @@ const ExerciseConfigRow: React.FC<{
   return null;
 };
 
-// Convenience type-extractor so the helper components don't repeat the
-// long `(typeof shareWorksheetT)[Language]` shape in their props.
-const getTranslator = (): typeof shareWorksheetT["en"] => shareWorksheetT.en;
 
 export default ShareWorksheetDialog;

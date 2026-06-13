@@ -39,7 +39,7 @@ export interface UseAppMiscEffectsDeps {
   lastUserRoleRef: React.MutableRefObject<AppUser['role'] | null>;
 
   // Feedback timeout for cleanup
-  feedbackTimeoutRef: React.MutableRefObject<NodeJS.Timeout | undefined>;
+  feedbackTimeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | undefined>;
 
   // Round-finish
   isFinished: boolean;

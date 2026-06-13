@@ -14,7 +14,7 @@
  */
 import type { ReactNode } from "react";
 import { motion } from "motion/react";
-import { Brain, Timer, ArrowRight, CheckCircle2, Flame } from "lucide-react";
+import { Brain, Timer, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import type { Language } from "../../hooks/useLanguage";
 import { useFeatureFlag } from "../../hooks/useFeatureFlag";

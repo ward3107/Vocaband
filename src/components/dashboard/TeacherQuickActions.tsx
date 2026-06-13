@@ -1,3 +1,4 @@
+import type { FC, ReactNode } from 'react';
 import { GraduationCap, UserCircle, Zap, ClipboardList, Library } from "lucide-react";
 import { HelpTooltip } from "../HelpTooltip";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -190,7 +191,7 @@ export default function TeacherQuickActions({
    Less padding, smaller icon, no button text — just click the card.
 ────────────────────────────────────────────────────────────────────────────────── */
 interface CompactActionCardProps {
-  icon: React.ReactNode;
+  icon: ReactNode;
   /** CSS-variable string for the icon badge background (e.g. "var(--vb-accent-soft)"). */
   iconBgVar: string;
   /** CSS-variable string for the icon glyph colour (e.g. "var(--vb-accent)"). */
@@ -203,7 +204,7 @@ interface CompactActionCardProps {
   isHebrew?: boolean;
 }
 
-const CompactActionCard: React.FC<CompactActionCardProps> = ({
+const CompactActionCard: FC<CompactActionCardProps> = ({
   icon,
   iconBgVar,
   iconColorVar,

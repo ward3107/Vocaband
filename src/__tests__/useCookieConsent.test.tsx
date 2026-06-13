@@ -9,6 +9,7 @@
  *  - Each persistence fires a `vocaband:consent-changed` CustomEvent so
  *    deferred-init telemetry (Sentry) can wake up on opt-in.
  */
+import type { MouseEvent } from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { getCookieConsent, useCookieConsent } from '../hooks/useCookieConsent';
@@ -117,7 +118,7 @@ describe('useCookieConsent', () => {
 
   it('ignores a React MouseEvent passed as the preferences arg (legacy quirk)', () => {
     const { result } = renderHook(() => useCookieConsent());
-    const fakeEvent = { nativeEvent: {}, currentTarget: {} } as unknown as React.MouseEvent;
+    const fakeEvent = { nativeEvent: {}, currentTarget: {} } as unknown as MouseEvent;
     act(() => { result.current.handleCookieAccept(fakeEvent); });
     // Should fall back to "Accept All" defaults rather than persisting the event object.
     expect(getCookieConsent()).toEqual({ essential: true, analytics: true, functional: true });

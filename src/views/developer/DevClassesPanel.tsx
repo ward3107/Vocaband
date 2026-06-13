@@ -196,7 +196,7 @@ export default function DevClassesPanel({ showToast }: Props) {
             key={f.id}
             type="button"
             onClick={() => setFilter(f.id)}
-            className={`px-3 py-1 rounded-full text-sm font-bold ${filter === f.id ? "bg-indigo-600 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"}`}
+            className={`px-3 py-1 rounded-full text-sm font-bold ${filter === f.id ? "bg-teal-600 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"}`}
           >
             {f.label}
           </button>
@@ -208,7 +208,7 @@ export default function DevClassesPanel({ showToast }: Props) {
       )}
 
       {selectedCount > 0 && (
-        <div className="sticky top-2 z-10 flex items-center gap-3 rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-500/30 px-4 py-2.5">
+        <div className="sticky top-2 z-10 flex items-center gap-3 rounded-2xl bg-teal-600 shadow-lg shadow-teal-500/30 px-4 py-2.5">
           <span className="text-white font-black text-base">{selectedCount} selected</span>
           <button type="button" onClick={() => setSelected(new Set())} className="text-white/80 hover:text-white text-sm font-bold">Clear</button>
           <button
@@ -229,14 +229,14 @@ export default function DevClassesPanel({ showToast }: Props) {
           const archived = !!c.archived_at;
           const owner = c.teacher_name || c.teacher_email || (c.pending_teacher_email ? null : "unclaimed");
           return (
-            <div key={c.id} className={`rounded-2xl bg-white/5 border overflow-hidden ${selected.has(c.id) ? "border-indigo-400/60" : "border-white/10"} ${archived ? "opacity-70" : ""}`}>
+            <div key={c.id} className={`rounded-2xl bg-white/5 border overflow-hidden ${selected.has(c.id) ? "border-teal-400/60" : "border-white/10"} ${archived ? "opacity-70" : ""}`}>
               <div className="flex items-center">
               <label className="pl-4 pr-1 self-stretch flex items-center cursor-pointer" style={{ touchAction: "manipulation" }}>
                 <input
                   type="checkbox"
                   checked={selected.has(c.id)}
                   onChange={() => toggleSelect(c.id)}
-                  className="w-4 h-4 rounded border-white/20 bg-white/10 accent-indigo-500"
+                  className="w-4 h-4 rounded border-white/20 bg-white/10 accent-teal-500"
                   aria-label={`Select ${c.name}`}
                 />
               </label>
@@ -249,7 +249,7 @@ export default function DevClassesPanel({ showToast }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-white font-bold text-base truncate">{c.name}</span>
-                    <span className="px-2 py-0.5 rounded-full text-xs font-black font-mono tracking-wider bg-indigo-500/20 text-indigo-200">{c.code}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-black font-mono tracking-wider bg-teal-500/20 text-teal-200">{c.code}</span>
                     {archived && <span className="px-2 py-0.5 rounded-full text-xs font-black uppercase bg-amber-500/20 text-amber-200">Archived</span>}
                   </div>
                   <div className="text-white/50 text-sm mt-0.5 flex items-center gap-3 flex-wrap">
@@ -300,7 +300,7 @@ export default function DevClassesPanel({ showToast }: Props) {
                         autoFocus
                         onChange={(e) => setEditName(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") void rename(c, editName); if (e.key === "Escape") setEditName(null); }}
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-indigo-400"
+                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-teal-400"
                       />
                       <button type="button" disabled={busy} onClick={() => void rename(c, editName)}
                         className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50" aria-label="Save name">
@@ -356,11 +356,11 @@ export default function DevClassesPanel({ showToast }: Props) {
                         onChange={(e) => setTransferEmail(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") void transfer(c, transferEmail); }}
                         placeholder="new-teacher@school.edu"
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-indigo-400"
+                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-teal-400"
                       />
                       <button type="button" disabled={busy || !transferEmail.trim()} onClick={() => void transfer(c, transferEmail)}
                         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base disabled:opacity-40">
+                        className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-base disabled:opacity-40">
                         Transfer
                       </button>
                     </div>

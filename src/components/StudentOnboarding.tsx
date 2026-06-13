@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState } from 'react';
+import { motion } from 'motion/react';
 import { ChevronRight, X } from 'lucide-react';
 import { useLanguage, type Language } from '../hooks/useLanguage';
 

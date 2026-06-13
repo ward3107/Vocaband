@@ -153,20 +153,20 @@ export default function DevEntitlementsSection({ showToast }: Props) {
           onChange={(e) => setNewEmail(e.target.value)}
           placeholder={"teacher@school.edu\nanother@school.edu\n(one per line — or paste a comma-separated list)"}
           rows={3}
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-indigo-400 font-mono"
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-teal-400 font-mono"
         />
         <button
           type="submit"
           disabled={busy || !newEmail.trim()}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
+          className="px-5 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
         >
           <UserPlus className="w-4 h-4" /> Add teacher(s)
         </button>
       </form>
 
       {selected.size > 0 && (
-        <div className="sticky top-2 z-10 flex items-center gap-2 flex-wrap rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-500/30 px-4 py-2.5">
+        <div className="sticky top-2 z-10 flex items-center gap-2 flex-wrap rounded-2xl bg-teal-600 shadow-lg shadow-teal-500/30 px-4 py-2.5">
           <span className="text-white font-black text-base">{selected.size} selected</span>
           <button type="button" onClick={() => setSelected(new Set())} className="text-white/80 hover:text-white text-sm font-bold">Clear</button>
           <div className="ml-auto flex items-center gap-2">
@@ -202,7 +202,7 @@ export default function DevEntitlementsSection({ showToast }: Props) {
                 checked={selected.has(it.email)}
                 onChange={() => toggleSelect(it.email)}
                 aria-label={`Select ${it.email}`}
-                className="w-4 h-4 rounded border-white/20 bg-white/10 accent-indigo-500 shrink-0"
+                className="w-4 h-4 rounded border-white/20 bg-white/10 accent-teal-500 shrink-0"
               />
             )}
             <div className="flex-1 min-w-[160px]">
@@ -232,7 +232,7 @@ export default function DevEntitlementsSection({ showToast }: Props) {
                 onClick={() => void run("admin_set_role", { p_uid: it.uid, p_role: "teacher" }, "Promoted to teacher")}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 title="This email belongs to an existing student. Click to flip role to teacher."
-                className="px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-black flex items-center gap-1.5"
+                className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-sm font-black flex items-center gap-1.5"
               >
                 <UserCog className="w-3.5 h-3.5" /> Promote
               </button>
