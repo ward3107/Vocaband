@@ -8,8 +8,6 @@ import type { Word } from "../../data/vocabulary";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
 
 interface WordPromptCardProps {
-  currentIndex: number;
-  gameWordsLength: number;
   currentWord: Word | undefined;
   gameMode: string;
   targetLanguage: "hebrew" | "arabic";
@@ -33,7 +31,7 @@ interface WordPromptCardProps {
  *   - Optional themed hero card via the new themeColor prop.
  */
 export default function WordPromptCard({
-  currentIndex, gameWordsLength, currentWord, gameMode, targetLanguage,
+  currentWord, gameMode, targetLanguage,
   feedback, isFlipped, scrambledWord, speakWord, themeColor,
 }: WordPromptCardProps) {
   const { language } = useLanguage();
@@ -47,9 +45,9 @@ export default function WordPromptCard({
           : ""
       }`}
     >
-      <span className="inline-block bg-stone-100 text-stone-500 font-black text-[10px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded-full mb-2 sm:mb-1">
-        {currentIndex + 1} / {gameWordsLength}
-      </span>
+      {/* The "3 / 10" counter pill that used to sit here moved into the
+          shared GameProgress chrome above the card (open-issues §C) so
+          every mode shows ONE consistent progress signal. */}
       <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
         {currentWord?.imageUrl && (
           <motion.img

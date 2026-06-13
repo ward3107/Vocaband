@@ -18,7 +18,7 @@ import { getThemeColors, type GameThemeColor } from "./game/GameShell";
  *     state without a theme still uses the original stone styling
  *     so any caller that hasn't been migrated yet stays unchanged.
  */
-const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMode, targetLanguage, onAnswer, themeColor }: {
+const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMode, targetLanguage, onAnswer, themeColor, shortcutKey, showKeyHint }: {
   option: Word;
   currentWordId: number;
   feedback: string | null;
@@ -26,6 +26,13 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
   targetLanguage: "hebrew" | "arabic";
   onAnswer: (w: Word) => void;
   themeColor?: GameThemeColor;
+  /** 1-based number key (1–4) that selects this option on a physical
+   *  keyboard (Chromebooks — open-issues §F). Drives aria-keyshortcuts
+   *  unconditionally; the visible badge below is opt-in. */
+  shortcutKey?: number;
+  /** Reveal the on-button number badge — only flipped on after the
+   *  first hardware keypress so touch-only phones never see it. */
+  showKeyHint?: boolean;
 }) => {
   const isCorrect = option.id === currentWordId;
   const showCorrect = feedback === "correct" && isCorrect;
@@ -77,8 +84,9 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
       onClick={handleClick}
       disabled={isDisabled}
       dir={optionDir}
+      aria-keyshortcuts={shortcutKey ? String(shortcutKey) : undefined}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-      className={`py-5 px-5 sm:py-6 sm:px-8 rounded-xl sm:rounded-2xl text-xl sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[88px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
+      className={`relative py-5 px-5 sm:py-6 sm:px-8 rounded-xl sm:rounded-2xl text-xl sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[88px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
         showCorrect
           ? "bg-blue-600 text-white motion-safe:scale-105 shadow-xl"
           : feedback === "wrong" && !isCorrect
@@ -92,6 +100,17 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
           : idleClass
       }`}
     >
+      {/* Number-key badge — corner placement uses a logical inset so it
+          stays in the grid's top-left (the options grid is pinned LTR by
+          ClassicModeGame, so top-1.5 start-1.5 reads consistently). */}
+      {showKeyHint && shortcutKey != null && (
+        <kbd
+          aria-hidden="true"
+          className="absolute top-1.5 start-1.5 min-w-[1.25rem] px-1 py-0.5 rounded-md bg-stone-200/80 text-stone-500 text-[10px] font-black leading-none"
+        >
+          {shortcutKey}
+        </kbd>
+      )}
       {showCorrect && <span aria-hidden="true">✓</span>}
       {showAnswer && <span aria-hidden="true">→</span>}
       <span>{renderedText}</span>

@@ -74,8 +74,12 @@ import ScrambleGame from "../components/game/ScrambleGame";
 import IdiomGame from "../components/game/IdiomGame";
 import SpeedRoundGame from "../components/game/SpeedRoundGame";
 import ReviewGame from "../components/game/ReviewGame";
-
-const toProgressValue = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+import GameProgress from "../components/game/GameProgress";
+import AnswerStreakBadge from "../components/game/AnswerStreakBadge";
+import PauseOverlay from "../components/game/PauseOverlay";
+import { useAnswerStreak } from "../hooks/useAnswerStreak";
+import { useInterruptionPause } from "../hooks/useInterruptionPause";
+import { useGameKeyboard } from "../hooks/useGameKeyboard";
 
 export default function GameActiveView() {
   // Game-route bag now arrives via context instead of ~50 drilled props.
@@ -94,7 +98,7 @@ export default function GameActiveView() {
     spellingInput, setSpellingInput,
     activeAssignment, sentenceIndex, sentenceFeedback,
     builtSentence, setBuiltSentence, availableWords, setAvailableWords,
-    isFinished,
+    isFinished, quickPlayActiveSession,
     handleExitGame, saveScore,
     handleAnswer, handleMatchClick, handleTFAnswer,
     handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap,
@@ -195,6 +199,97 @@ export default function GameActiveView() {
     // that don't apply.
     gameMode === 'review';
 
+  // ── Shared classroom-gameplay chrome (open-issues §C + §F) ─────────
+  // Pairs modes advance by matched pairs, not question index — they get
+  // the same GameProgress with a pairs-found label. matchingPairs holds
+  // BOTH card sides of every pair, so the pair total is half its length;
+  // matchedIds gains one word-id per matched pair.
+  const isPairsMode = gameMode === "matching" || gameMode === "memory-flip";
+  // Sentence Builder advances sentenceIndex over the assignment's
+  // sentences, NOT currentIndex over gameWords — the old bottom bar
+  // showed the wrong denominator for it. Same trim-filter the mode
+  // component applies, so the counts always agree.
+  const isSentenceMode = gameMode === "sentence-builder";
+  const sentenceTotal = isSentenceMode
+    ? ((activeAssignment as { sentences?: string[] } | null)?.sentences?.filter(s => s.trim()).length ?? 0)
+    : 0;
+  const progressCurrent = isPairsMode
+    ? matchedIds.length
+    : isSentenceMode
+    ? Math.min(sentenceIndex + 1, sentenceTotal)
+    : Math.min(currentIndex + 1, gameWords.length);
+  const progressTotal = isPairsMode
+    ? Math.floor(matchingPairs.length / 2)
+    : isSentenceMode
+    ? sentenceTotal
+    : gameWords.length;
+  const progressLabel = isPairsMode
+    ? t.pairsOfTotal(progressCurrent, progressTotal)
+    : t.questionOfTotal(progressCurrent, progressTotal);
+
+  // Always-on 🔥 answer-streak counter (vs. GameHeader's chip, which is
+  // the persisted DAILY streak, and useCombo, which is arcade-gated).
+  // Pairs modes don't emit feedback, so the badge is skipped for them.
+  const answerStreak = useAnswerStreak(feedback, gameMode, isFinished);
+
+  // Interruption pause — SOLO/ASSIGNMENT play only. Quick Play stays
+  // un-paused on purpose: the session's socket events + teacher monitor
+  // keep flowing server-side, so a local freeze would silently desync
+  // the student from the live leaderboard.
+  const { isPaused, resume } = useInterruptionPause(
+    gameInProgress && !quickPlayActiveSession,
+  );
+
+  // Chromebook keyboard shortcuts (open-issues §F). Each mode binds its
+  // own key map; only one is `enabled` at a time so the listeners never
+  // collide. The number-key path maps over the VISIBLE options so a
+  // 50/50 power-up keeps the keys aligned with what's actually on screen.
+  //
+  // Fill-blank shares the same "choice" map as the MC trio — same
+  // handleAnswer path, same 1–4 selection — so it joins isChoiceMode.
+  const isChoiceMode =
+    gameMode === "classic" || gameMode === "listening" ||
+    gameMode === "reverse" || gameMode === "fill-blank";
+  const visibleOptions = options.filter(o => !hiddenOptions.includes(o.id));
+  const keyboardActive = useGameKeyboard({
+    mode: "choice",
+    enabled: isChoiceMode && !isFinished && !isPaused,
+    optionCount: visibleOptions.length,
+    onSelect: (i) => {
+      // Mirror AnswerOptionButton's disabled guard — number keys must
+      // not land answers while feedback is still showing.
+      if (!feedback && visibleOptions[i]) handleAnswer(visibleOptions[i]);
+    },
+    onReplayAudio: () => {
+      if (currentWord) speakWord(currentWord.id, currentWord.english);
+    },
+  });
+
+  // True/False — T/→ = true, F/← = false. handleTFAnswer self-guards on
+  // feedback (auto-advances on correct, clears on wrong), but we mirror
+  // the guard here too so a held key during feedback is a clean no-op.
+  const tfKeyboardActive = useGameKeyboard({
+    mode: "true-false",
+    enabled: gameMode === "true-false" && !isFinished && !isPaused,
+    onTrueFalse: (isTrue) => {
+      if (!feedback) handleTFAnswer(isTrue);
+    },
+  });
+
+  // Flashcards — Space/Enter flip, →/← self-grade. isProcessingRef
+  // guards the answer + flip against the brief auto-advance window
+  // (matches the on-card tap handlers).
+  const flashKeyboardActive = useGameKeyboard({
+    mode: "flashcards",
+    enabled: gameMode === "flashcards" && !isFinished && !isPaused,
+    onFlip: () => {
+      if (!isProcessingRef.current) setIsFlipped(f => !f);
+    },
+    onFlashcardAnswer: (knewIt) => {
+      if (!isProcessingRef.current) handleFlashcardAnswer(knewIt);
+    },
+  });
+
   const renderModeContent = () => {
     if (gameMode === "classic" || gameMode === "listening" || gameMode === "reverse") {
       return (
@@ -209,11 +304,12 @@ export default function GameActiveView() {
           currentIndex={currentIndex}
           onAnswer={handleAnswer}
           themeColor={modeTheme}
+          showKeyHints={keyboardActive}
         />
       );
     }
     if (gameMode === "true-false") {
-      return <TrueFalseGame tfOption={tfOption} targetLanguage={targetLanguage} feedback={feedback} onAnswer={handleTFAnswer} themeColor={modeTheme} />;
+      return <TrueFalseGame tfOption={tfOption} targetLanguage={targetLanguage} feedback={feedback} onAnswer={handleTFAnswer} themeColor={modeTheme} showKeyHints={tfKeyboardActive} />;
     }
     if (gameMode === "flashcards") {
       return (
@@ -226,6 +322,7 @@ export default function GameActiveView() {
           onAnswer={handleFlashcardAnswer}
           speakWord={speakWord}
           themeColor={modeTheme}
+          showKeyHints={flashKeyboardActive}
         />
       );
     }
@@ -274,6 +371,7 @@ export default function GameActiveView() {
           targetLanguage={targetLanguage}
           onAnswer={handleAnswer}
           themeColor={modeTheme}
+          showKeyHints={keyboardActive}
         />
       );
     }
@@ -305,6 +403,7 @@ export default function GameActiveView() {
           themeColor={modeTheme ?? "red"}
           targetLanguage={targetLanguage}
           speak={speakWord}
+          paused={isPaused}
           onFinish={(score) => { finishSelfContainedMode(score, 'speed-round'); }}
         />
       );
@@ -322,6 +421,7 @@ export default function GameActiveView() {
           themeColor={modeTheme ?? "amber"}
           targetLanguage={targetLanguage}
           speak={speakWord}
+          paused={isPaused}
           onFinish={(score) => { finishSelfContainedMode(score, 'class-minute'); }}
         />
       );
@@ -407,12 +507,33 @@ export default function GameActiveView() {
           </button>
         </div>
       )}
+      {/* Interruption pause — phone call / notification / tab switch
+          (open-issues §C). Solo/assignment play only; see the hook
+          wiring above for why Quick Play is excluded. */}
+      {isPaused && <PauseOverlay onResume={resume} />}
       <GameHeader
         score={score}
         xp={xp}
         streak={streak}
         onExit={handleExitGame}
       />
+
+      {/* Shared progress + answer-streak chrome — every orchestrated
+          mode gets the same "Question 3 of 10" placement at the top
+          (open-issues §C: matching/memory had no progress at all, the
+          rest had three competing signals). Self-contained modes own
+          their full UI, progress included, so they skip this row. */}
+      {!isSelfContainedMode && progressTotal > 0 && (
+        <div className="w-full max-w-4xl mx-auto flex items-end gap-3 mb-2 sm:mb-3">
+          <GameProgress
+            label={progressLabel}
+            current={progressCurrent}
+            total={progressTotal}
+            themeColor={modeTheme}
+          />
+          {!isPairsMode && <AnswerStreakBadge count={answerStreak} />}
+        </div>
+      )}
 
       {/* Single centered column (the Live Rank sidebar was removed long
           ago — every mode, matching/quiz alike, sits centered). The
@@ -450,14 +571,9 @@ export default function GameActiveView() {
                 exit={{ opacity: 0, x: -50 }}
                 className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-2 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-emerald-50 border-3 border-emerald-500" : feedback === "wrong" ? "bg-rose-50 border-3 border-rose-400" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-transparent"}`}
               >
-                {/* Progress Bar — inherits dir from <html> so it fills
-                    end-to-start in RTL (which means right-to-left in
-                    Hebrew/Arabic, matching reading direction). */}
-                <progress
-                  className="absolute top-0 start-0 h-2 w-full [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
-                  max={100}
-                  value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
-                />
+                {/* The card-edge progress bar that used to sit here was
+                    consolidated into the shared GameProgress chrome
+                    above the card (open-issues §C). */}
 
                 {/* Show correct answer after 3 failed attempts.  When
                     the rendered answer is an English vocab word we
@@ -501,8 +617,6 @@ export default function GameActiveView() {
                     the full English word here spoiled the mechanic). */}
                 {!isSelfContainedMode && gameMode !== "fill-blank" && gameMode !== "flashcards" && gameMode !== "scramble" && gameMode !== "sentence-builder" && gameMode !== "letter-sounds" && (
                   <WordPromptCard
-                    currentIndex={currentIndex}
-                    gameWordsLength={gameWords.length}
                     currentWord={currentWord}
                     gameMode={gameMode}
                     targetLanguage={targetLanguage}
@@ -539,20 +653,9 @@ export default function GameActiveView() {
         </div>
       </div>
 
-      {!isSelfContainedMode && gameMode !== "matching" && gameMode !== "memory-flip" && (
-        <div className="w-full max-w-5xl mt-12 flex justify-center">
-          <div className="w-full max-w-md">
-            <progress
-              className="h-2 w-full rounded-full overflow-hidden [&::-webkit-progress-bar]:bg-stone-200 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
-              max={100}
-              value={toProgressValue(((currentIndex + 1) / gameWords.length) * 100)}
-            />
-            <p className="text-center text-stone-400 text-xs font-bold mt-2 uppercase tracking-widest">
-              {t.wordOfTotal(currentIndex + 1, gameWords.length)}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* The below-the-card progress bar + "Word 3 of 10" label moved to
+          the shared GameProgress chrome at the top of the page, where
+          it's visible without scrolling on every mode (open-issues §C). */}
     </div>
   );
 }

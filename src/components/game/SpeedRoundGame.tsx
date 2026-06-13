@@ -54,6 +54,10 @@ interface SpeedRoundGameProps {
   onFinish: (score: number) => void;
   /** Override for testing — production rounds are 60s. */
   durationSeconds?: number;
+  /** Interruption pause (open-issues §C): freezes the countdown and
+   *  ignores input while GameActiveView's PauseOverlay is up, so a
+   *  phone call doesn't burn the student's 60 seconds. */
+  paused?: boolean;
 }
 
 interface Question {
@@ -106,6 +110,7 @@ export default function SpeedRoundGame({
   speak,
   onFinish,
   durationSeconds = 60,
+  paused = false,
 }: SpeedRoundGameProps) {
   const { language, dir } = useLanguage();
   const tAria = gameAriasT[language];
@@ -141,6 +146,10 @@ export default function SpeedRoundGame({
   // for the displayed timer and a tenths counter for ticking.
   useEffect(() => {
     if (finishedRef.current) return;
+    // Interruption pause: simply don't run the interval — timeLeft is
+    // already the source of truth, so resuming re-mounts the ticker
+    // from exactly where it stopped.
+    if (paused) return;
     if (timeLeft <= 0) {
       finishedRef.current = true;
       onFinish(score);
@@ -150,7 +159,7 @@ export default function SpeedRoundGame({
       setTimeLeft(t => Math.max(0, t - 0.1));
     }, 100);
     return () => window.clearInterval(interval);
-  }, [timeLeft, score, onFinish]);
+  }, [timeLeft, score, onFinish, paused]);
 
   // Watch for round-end via timer (separate from the interval so the
   // finish callback doesn't fire mid-tick before state settles).
@@ -177,7 +186,7 @@ export default function SpeedRoundGame({
   };
 
   const handlePick = (opt: Word) => {
-    if (picked || finishedRef.current) return;
+    if (picked || finishedRef.current || paused) return;
     setPicked(opt);
     setQuestionsAnswered(n => n + 1);
 
