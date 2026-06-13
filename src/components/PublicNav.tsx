@@ -103,10 +103,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
     | { kind: "anchor"; id: string; label: string }
     | { kind: "page"; page: NavPage; label: string }
   > = [
-    { kind: "anchor", id: "students",   label: t.navStudents },
-    { kind: "anchor", id: "ai",         label: t.navAi },
-    { kind: "anchor", id: "teachers",   label: t.navTeachers },
-    { kind: "anchor", id: "curriculum", label: t.navCurriculum },
+    { kind: "anchor", id: "how-it-works", label: t.navHowItWorks },
     { kind: "anchor", id: "vocas",      label: t.navVocas },
     { kind: "anchor", id: "guides",     label: t.navGuides },
     { kind: "page",   page: "resources", label: t.navResources },

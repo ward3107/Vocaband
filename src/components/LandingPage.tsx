@@ -42,10 +42,11 @@ const SchoolInquiryModal = lazyWithRetry(() => import("./SchoolInquiryModal"));
 // mounts. Without the gate, a post-logout reload sees ~87 background
 // requests / ~20 s of network activity even though the user usually
 // only ever sees the hero before clicking "Sign in" again.
-const LandingStudents = lazyWithRetry(() => import("./landing/LandingStudents"));
-const LandingAI = lazyWithRetry(() => import("./landing/LandingAI"));
-const LandingTeachers = lazyWithRetry(() => import("./landing/LandingTeachers"));
-const LandingJourney = lazyWithRetry(() => import("./landing/LandingJourney"));
+// The old Students / AI / Teachers / Journey deep sections were replaced
+// by a single condensed "How it works" band (Version B redesign) — fewer
+// chunks, and the band itself is motion/react-free so it doesn't drag the
+// animation runtime onto the page. The originals remain in git history.
+const LandingHowItWorks = lazyWithRetry(() => import("./landing/LandingHowItWorks"));
 const LandingVocas = lazyWithRetry(() => import("./landing/LandingVocas"));
 const LandingSchools = lazyWithRetry(() => import("./landing/LandingSchools"));
 const LandingFinalCTA = lazyWithRetry(() => import("./landing/LandingFinalCTA"));
@@ -401,27 +402,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           </div>
         </section>
 
-        <DeferredSection id="students" className="scroll-mt-20" minHeight={800}>
+        <DeferredSection id="how-it-works" className="scroll-mt-20" minHeight={520}>
           <Suspense fallback={null}>
-            <LandingStudents />
-          </Suspense>
-        </DeferredSection>
-
-        <DeferredSection id="ai" className="scroll-mt-20" minHeight={600}>
-          <Suspense fallback={null}>
-            <LandingAI />
-          </Suspense>
-        </DeferredSection>
-
-        <DeferredSection id="teachers" className="scroll-mt-20" minHeight={700}>
-          <Suspense fallback={null}>
-            <LandingTeachers />
-          </Suspense>
-        </DeferredSection>
-
-        <DeferredSection id="curriculum" className="scroll-mt-20" minHeight={600}>
-          <Suspense fallback={null}>
-            <LandingJourney />
+            <LandingHowItWorks />
           </Suspense>
         </DeferredSection>
 
