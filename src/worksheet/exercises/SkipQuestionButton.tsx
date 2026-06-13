@@ -19,6 +19,7 @@
  * a reveal is in flight (the parent passes `disabled` then) so
  * double-taps during the 800ms post-answer pause are ignored.
  */
+import type { FC } from 'react';
 import { SkipForward } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 
@@ -37,7 +38,7 @@ interface Props {
   className?: string;
 }
 
-export const SkipQuestionButton: React.FC<Props> = ({
+export const SkipQuestionButton: FC<Props> = ({
   onSkip,
   disabled,
   className,

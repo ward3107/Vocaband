@@ -28,6 +28,7 @@
  * row — replacing the old hard-coded "A / True / translation" guesses
  * that were wrong for the majority of questions.
  */
+import type { ReactNode } from 'react';
 import { WordListSheet } from './sheets/WordListSheet';
 import { ScrambleSheet } from './sheets/ScrambleSheet';
 import { FillBlankSheet } from './sheets/FillBlankSheet';
@@ -143,7 +144,7 @@ function renderAnswer(
   shapes: QuestionShapes | undefined,
   aiSentences: Record<number, string> | undefined,
   t: any,
-): React.ReactNode {
+): ReactNode {
   const translation = pickTranslation(w, lang);
 
   if (type === 'scramble') return w.english.toUpperCase();

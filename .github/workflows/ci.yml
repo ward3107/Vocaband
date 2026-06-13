@@ -93,6 +93,18 @@ jobs:
       # PR — the ratchet only goes down.  See
       # `scripts/typecheck-ratchet.sh` for the full logic.
       #
+      # 2026-06-11 (typecheck-debt cleanup): tsconfig.ci.json went
+      # STRICT — unused-vars checks are back on and e2e/ + scripts/
+      # joined the checked set, matching a full `npx tsc --noEmit`
+      # minus protected-zone leftovers.  Baseline ratcheted from the
+      # old lenient-config 0 to strict-config 1: the one remaining
+      # error is in src/core/supabase.ts (protected zone — needs owner
+      # approval to touch).  server.ts carries 9 more (Redis generics,
+      # Gemini schema typing) outside the CI include set.  Path to
+      # full enforcement: fix those with owner sign-off, ratchet the
+      # baseline to 0, add server.ts to tsconfig.ci.json's include —
+      # at 0 the ratchet already behaves as a plain hard gate.
+      #
       # Net effect: new code is held to the strict standard, old code
       # becomes a measurable backlog.  PR #458's three regressions
       # (FeatureRequestModal duplicate JSX attr, AccessibilityStatement
@@ -110,6 +122,14 @@ jobs:
       # (manifest issues, unresolvable imports, broken dynamic chunks).
       - name: Build
         run: npm run build
+
+      # Entry static-closure guardrail (docs/open-issues.md, perf entry):
+      # asserts the entry chunk's static import closure stays under its
+      # gz budget and that no forbidden vendor (supabase-js, full React
+      # ecosystem, etc.) re-hoists onto the cold landing path.  Built for
+      # CI alongside the codeSplitting fix; wired 2026-06-11.
+      - name: Entry-closure check
+        run: npm run check:entry-closure
 
       # Surface the build artifact size so PRs that bloat the bundle
       # are visible at review time.  Output appears in the GH Actions

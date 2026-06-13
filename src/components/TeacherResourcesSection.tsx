@@ -210,7 +210,7 @@ const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRT
         {heading}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 items-stretch">
-        {cards.map((card, i) => {
+        {cards.map((card) => {
           const title = titleFor(card, t);
           const blurb = blurbFor(card, t);
           const availableSet = card.availableLanguages ?? AVAILABLE_PDF_LANGUAGES;

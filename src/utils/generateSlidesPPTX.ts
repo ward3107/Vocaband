@@ -7,7 +7,6 @@
  * the HTML generators; same `lang` argument for translation column.
  */
 import type { Word } from "../data/vocabulary";
-import type { Language } from "../hooks/useLanguage";
 
 type WorksheetLang = "en" | "he" | "ar" | "ru";
 

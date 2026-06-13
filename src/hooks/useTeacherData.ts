@@ -20,7 +20,7 @@
  * The old `loadStudentsInClass` was removed when student login moved
  * to OAuth-only — the "Is that you?" name picker it fed is gone.
  */
-import { useCallback } from "react";
+import { useCallback, type Dispatch, type SetStateAction } from "react";
 import {
   supabase,
   mapClass,
@@ -52,11 +52,11 @@ export interface UseTeacherDataParams {
    *  handler to enforce the Free-tier 30-students-per-class cap. */
   user: AppUser | null;
   classes: ClassData[];
-  setClasses: React.Dispatch<React.SetStateAction<ClassData[]>>;
-  setStudentAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
-  setStudentProgress: React.Dispatch<React.SetStateAction<ProgressData[]>>;
-  setPendingStudents: React.Dispatch<React.SetStateAction<PendingStudent[]>>;
-  setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setClasses: Dispatch<SetStateAction<ClassData[]>>;
+  setStudentAssignments: Dispatch<SetStateAction<AssignmentData[]>>;
+  setStudentProgress: Dispatch<SetStateAction<ProgressData[]>>;
+  setPendingStudents: Dispatch<SetStateAction<PendingStudent[]>>;
+  setError: Dispatch<SetStateAction<string | null>>;
   showToast: (message: string, type: "success" | "error" | "info") => void;
   /** Opens the reject-confirmation modal in App.tsx. handleRejectStudent
    *  flows through here so the destructive action requires explicit
@@ -68,7 +68,7 @@ export function useTeacherData(params: UseTeacherDataParams) {
   const {
     user, classes, setClasses,
     setStudentAssignments, setStudentProgress, setPendingStudents,
-    setError, showToast, setRejectStudentModal,
+    showToast, setRejectStudentModal,
   } = params;
 
   const fetchTeacherData = useCallback(async (uid: string): Promise<ClassData[]> => {

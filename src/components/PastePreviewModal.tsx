@@ -5,9 +5,9 @@
  * Now with inline translation editing and remove functionality
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X, AlertCircle, FileText, Filter, Zap, Edit3, Sparkles, Loader2, Trash2 } from 'lucide-react';
-import { WordMatch, PastedTerm, WordAnalysisResult } from '../utils/wordAnalysis';
+import { WordAnalysisResult } from '../utils/wordAnalysis';
 import { applyCorrections, loadCorrectionsForWords, saveCorrection } from '../utils/translationCorrections';
 import type { TranslationCorrection } from '../utils/translationCorrections';
 import { useTranslate } from '../hooks/useTranslate';
@@ -28,7 +28,6 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
   analysis,
   onConfirm,
   onCancel,
-  onToggleWord,
   onRemoveUnmatched,
   onRemoveMatched,
   onQuickSave,
@@ -38,7 +37,7 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
   const [corrections, setCorrections] = useState<Map<number, TranslationCorrection>>(new Map());
   const [inlineEdits, setInlineEdits] = useState<Map<number, { hebrew: string; arabic: string }>>(new Map());
   const [editingWordId, setEditingWordId] = useState<number | null>(null);
-  const [isLoadingCorrections, setIsLoadingCorrections] = useState(false);
+  const [, setIsLoadingCorrections] = useState(false);
 
   // State for custom word translations
   const [customWordTranslations, setCustomWordTranslations] = useState<Map<string, { hebrew: string; arabic: string }>>(new Map());
@@ -129,10 +128,6 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
     setEditingWordId(null);
   };
 
-  const handleConfirm = () => {
-    onConfirm(customWordTranslations);
-  };
-
   const handleQuickSave = () => {
     if (onQuickSave) {
       onQuickSave(customWordTranslations, addedSuggestionIds);
@@ -212,7 +207,6 @@ export const PastePreviewModal: React.FC<PastePreviewModalProps> = ({
                   {autoAdded.map((mw, index) => {
                     const corrected = applyCorrections(mw.word, corrections);
                     const isEditing = editingWordId === mw.word.id;
-                    const inlineEdit = inlineEdits.get(mw.word.id);
 
                     return (
                       <div

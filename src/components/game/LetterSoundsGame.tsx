@@ -1,3 +1,4 @@
+import type { Dispatch, FormEvent, SetStateAction } from 'react';
 import { motion } from "motion/react";
 import { LETTER_COLORS } from "../../constants/game";
 import { ShowAnswerFeedback } from "../ShowAnswerFeedback";
@@ -12,9 +13,9 @@ interface LetterSoundsGameProps {
   targetLanguage: "hebrew" | "arabic";
   revealedLetters: number;
   spellingInput: string;
-  setSpellingInput: React.Dispatch<React.SetStateAction<string>>;
+  setSpellingInput: Dispatch<SetStateAction<string>>;
   feedback: "correct" | "wrong" | "show-answer" | null;
-  onSpellingSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSpellingSubmit: (e: FormEvent<HTMLFormElement>) => void;
   /** Phase-3d theme — drives the translation hero card, the Check
    *  button gradient, and the input border.  letter-sounds = violet. */
   themeColor?: GameThemeColor;

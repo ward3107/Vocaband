@@ -18,7 +18,7 @@
  * collapses to nothing on empty classes, which is the right signal
  * for the teacher ("nothing needs doing right now").
  */
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { ArrowRight, BellRing, AlertTriangle, Send } from "lucide-react";
 import { ALL_WORDS } from "../../data/vocabulary";
 import type { ProgressData, AssignmentData } from "../../core/supabase";
@@ -59,7 +59,7 @@ export default function TodayActionList({
   const items = useMemo(() => {
     const actions: Array<{
       key: string;
-      icon: React.ReactNode;
+      icon: ReactNode;
       tone: "amber" | "rose" | "indigo";
       title: string;
       cta: string;

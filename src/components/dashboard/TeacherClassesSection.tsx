@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { Users, Plus } from "lucide-react";
 import ClassCard from "../ClassCard";
 import type { ClassData, AssignmentData, CompetitionData } from "../../core/supabase";
@@ -28,9 +29,9 @@ interface TeacherClassesSectionProps {
   classes: ClassData[];
   teacherAssignments: AssignmentData[];
   copiedCode: string | null;
-  setCopiedCode: React.Dispatch<React.SetStateAction<string | null>>;
+  setCopiedCode: Dispatch<SetStateAction<string | null>>;
   openDropdownClassId: string | null;
-  setOpenDropdownClassId: React.Dispatch<React.SetStateAction<string | null>>;
+  setOpenDropdownClassId: Dispatch<SetStateAction<string | null>>;
   onNewClass: () => void;
   onAssign: (c: ClassData) => void;
   onDeleteClass: (classId: string) => void;

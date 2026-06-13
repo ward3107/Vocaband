@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/app.fixture';
-import { goToLanding, waitForAppLoad } from '../helpers/navigation';
+import { goToLanding } from '../helpers/navigation';
 
 test.describe('Public Pages', () => {
   test('landing page loads with hero content', async ({ publicPage: page }) => {
@@ -27,10 +27,7 @@ test.describe('Public Pages', () => {
     await page.getByText('Start Learning').first().click();
     await page.waitForTimeout(2000);
 
-    // Should be on a different view (no longer landing)
-    const hasVocabHeading = await page.getByText('Level Up Your Vocabulary').isVisible().catch(() => false);
-    // If we navigated away from landing, the hero heading should be gone
-    // But the app might show a different view
+    // The app may land on different views here, so only assert the page rendered content
     const bodyText = await page.textContent('body');
     expect(bodyText?.length).toBeGreaterThan(50);
   });

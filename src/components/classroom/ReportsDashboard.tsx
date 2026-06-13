@@ -15,7 +15,7 @@
  *
  * Renders read-only.  Pure derivation from props.  No fetches.
  */
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { TrendingUp, BarChart3 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherClassroomT } from "../../locales/teacher/classroom";
@@ -201,7 +201,7 @@ export default function ReportsDashboard({
  * on every render. Gating on a non-zero ResizeObserver measurement renders
  * the chart exactly once it can be drawn correctly — no warning, no flash.
  */
-function ChartFrame({ children }: { children: React.ReactNode }) {
+function ChartFrame({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
 
@@ -238,7 +238,7 @@ function KpiChip({ label, value }: { label: string; value: number }) {
 
 function Section({
   icon, title, sub, children,
-}: { icon: React.ReactNode; title: string; sub: string; children: React.ReactNode }) {
+}: { icon: ReactNode; title: string; sub: string; children: ReactNode }) {
   return (
     <section
       className="rounded-xl border-2 shadow-sm p-4 sm:p-5"

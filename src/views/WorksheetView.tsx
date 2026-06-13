@@ -18,7 +18,7 @@
  * everything except `.vb-print-only` is suppressed and the worksheet
  * is the only thing on the page.
  */
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { Printer, FileText, Shuffle, Link2, BookOpen, ArrowLeft, Wand2, Sparkles, Loader2, Check, ArrowLeftRight, CheckCircle, Layers, Grid3x3, Puzzle, MessageCircle, Share2 } from 'lucide-react';
@@ -78,7 +78,7 @@ const TRANSLATION_DEPENDENT_SHEETS: ReadonlySet<WorksheetSheetType> = new Set([
 ]);
 
 // Build sheet types with translations (called inside component where t is available)
-function buildSheetTypes(t: WorksheetStrings): Array<{ id: WorksheetSheetType; label: string; description: string; icon: React.ReactNode; gradient: string; needsSentences?: boolean }> {
+function buildSheetTypes(t: WorksheetStrings): Array<{ id: WorksheetSheetType; label: string; description: string; icon: ReactNode; gradient: string; needsSentences?: boolean }> {
   return [
     { id: 'word-list',           label: t.wordListLabel,           description: t.wordListDesc,           icon: <BookOpen size={26} />,         gradient: 'from-emerald-300 to-teal-400', needsSentences: false },
     { id: 'scramble',            label: t.scrambleLabel,            description: t.scrambleDesc,               icon: <Shuffle size={26} />,          gradient: 'from-orange-300 to-red-400', needsSentences: false },

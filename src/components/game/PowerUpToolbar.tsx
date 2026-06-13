@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { supabase, type AppUser } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -9,13 +10,13 @@ interface PowerUpToolbarProps {
   feedback: "correct" | "wrong" | "show-answer" | null;
   options: Word[];
   hiddenOptions: number[];
-  setHiddenOptions: React.Dispatch<React.SetStateAction<number[]>>;
+  setHiddenOptions: Dispatch<SetStateAction<number[]>>;
   currentWord: Word | undefined;
   gameWordsLength: number;
   spellingInput: string;
-  setSpellingInput: React.Dispatch<React.SetStateAction<string>>;
-  setCurrentIndex: React.Dispatch<React.SetStateAction<number>>;
-  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
+  setSpellingInput: Dispatch<SetStateAction<string>>;
+  setCurrentIndex: Dispatch<SetStateAction<number>>;
+  setUser: Dispatch<SetStateAction<AppUser | null>>;
   shuffle: <T>(arr: T[]) => T[];
 }
 

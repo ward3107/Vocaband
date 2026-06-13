@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Language } from '../hooks/useLanguage';
 
 // Public fallback values — these are the production Supabase URL + anon
 // ("publishable") key. They're already visible inside every shipped JS

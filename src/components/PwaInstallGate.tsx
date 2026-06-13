@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, Check, Menu, MoreVertical, Share, X } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
 import { usePwaInstall, type PwaPlatform } from '../hooks/usePwaInstall';
@@ -207,7 +207,7 @@ function InstallModal({ platform, t, dir, isRTL, hasNativePrompt, onInstall, onD
 }
 
 function IosSteps({ t, isRTL }: { t: PwaInstallStrings; isRTL: boolean }) {
-  const steps: Array<React.ReactNode> = [
+  const steps: Array<ReactNode> = [
     <>
       {t.iosStep1Before}{' '}
       <span className="mx-1 inline-flex items-center gap-1 rounded-md bg-indigo-100 px-1.5 py-0.5 align-middle text-xs font-semibold text-indigo-700">
@@ -266,7 +266,7 @@ function StepsList({
   isRTL,
 }: {
   heading: string;
-  steps: Array<React.ReactNode>;
+  steps: Array<ReactNode>;
   arrowDirection: 'up' | 'down';
   isRTL: boolean;
 }) {
@@ -340,7 +340,7 @@ function FirefoxAndroidSteps({ t, isRTL }: { t: PwaInstallStrings; isRTL: boolea
 function AndroidSteps({ t, isRTL }: { t: PwaInstallStrings; isRTL: boolean }) {
   // Chrome's three-dot menu lives in the top-right on Android, so the
   // visual cue points up — opposite of the iPhone Share-button arrow.
-  const steps: Array<React.ReactNode> = [
+  const steps: Array<ReactNode> = [
     <>
       {t.androidStep1Before}{' '}
       <span className="mx-1 inline-flex items-center gap-1 rounded-md bg-indigo-100 px-1.5 py-0.5 align-middle text-xs font-semibold text-indigo-700">

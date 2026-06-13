@@ -29,7 +29,7 @@
  * app clears auth.  The function wraps the ref + timer + modal
  * close + history reset so the caller just has to do signOut.
  */
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { supabase, hasTeacherAccess, type AppUser } from '../core/supabase';
 import type { View } from '../core/views';
 
@@ -75,14 +75,14 @@ const EXIT_INTENT_WINDOW_MS = 500;
 
 export interface UseBackButtonTrapParams {
   view: View;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
   user: AppUser | null;
   showExitConfirmModal: boolean;
-  setShowExitConfirmModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowExitConfirmModal: Dispatch<SetStateAction<boolean>>;
   /** Shared with the auth restore flow; when true, popstate treats
    *  the user as "present" and re-traps to avoid escaping during
    *  the ~500 ms restore window after a fresh mount. */
-  restoreInProgressRef: React.MutableRefObject<boolean>;
+  restoreInProgressRef: MutableRefObject<boolean>;
 }
 
 export interface UseBackButtonTrapApi {
@@ -268,7 +268,7 @@ export function useBackButtonTrap(
           setShowExitConfirmModal(false);
           exitIntentRef.current = true;
           supabase.auth.signOut().catch(() => {});
-          try { window.history.replaceState({ view: 'public-landing' }, ''); } catch {}
+          try { window.history.replaceState({ view: 'public-landing' }, ''); } catch { /* best-effort */ }
           setTimeout(() => { exitIntentRef.current = false; }, EXIT_INTENT_WINDOW_MS);
           return;
         }
@@ -314,7 +314,7 @@ export function useBackButtonTrap(
   const beginExitFlow = useCallback(() => {
     setShowExitConfirmModal(false);
     exitIntentRef.current = true;
-    try { window.history.replaceState({ view: 'public-landing' }, ''); } catch {}
+    try { window.history.replaceState({ view: 'public-landing' }, ''); } catch { /* best-effort */ }
     setTimeout(() => { exitIntentRef.current = false; }, EXIT_INTENT_WINDOW_MS);
   }, [setShowExitConfirmModal]);
 

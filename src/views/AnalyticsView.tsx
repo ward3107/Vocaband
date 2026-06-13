@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type Dispatch, type SetStateAction } from "react";
 import {
   Users,
   TrendingUp,
@@ -37,16 +37,16 @@ interface AnalyticsViewProps {
   classes: ClassData[];
   allScores: ProgressData[];
   teacherAssignments: AssignmentData[];
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
   // Assignment creation state from App.tsx — accept the full ClassData
   // shape (includes teacherUid + avatar) since callers (ClassroomView,
   // App.tsx) pass it in directly.  We only read name/code/id, so the
   // wider type is functionally inert but the setter must accept what
   // the parent passes.
   selectedClass: ClassData | null;
-  setSelectedClass: React.Dispatch<React.SetStateAction<ClassData | null>>;
+  setSelectedClass: Dispatch<SetStateAction<ClassData | null>>;
   selectedWords: number[];
-  setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
+  setSelectedWords: Dispatch<SetStateAction<number[]>>;
   /** When true, render without the page-level TopAppBar / outer min-h-screen
    *  so the parent (ClassroomView) can host its own header + tab bar.
    *  Defaults to false so the standalone /analytics route still works as
@@ -94,9 +94,7 @@ export default function AnalyticsView({
   allScores,
   teacherAssignments,
   setView,
-  selectedClass: appSelectedClass,
   setSelectedClass: setAppSelectedClass,
-  selectedWords: appSelectedWords,
   setSelectedWords: setAppSelectedWords,
   embedded = false,
 }: AnalyticsViewProps) {

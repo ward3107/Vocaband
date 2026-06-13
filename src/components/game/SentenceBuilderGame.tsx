@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { Volume2, X } from "lucide-react";
 import type { AssignmentData } from "../../core/supabase";
@@ -11,9 +12,9 @@ interface SentenceBuilderGameProps {
   sentenceIndex: number;
   sentenceFeedback: "correct" | "wrong" | null;
   builtSentence: string[];
-  setBuiltSentence: React.Dispatch<React.SetStateAction<string[]>>;
+  setBuiltSentence: Dispatch<SetStateAction<string[]>>;
   availableWords: string[];
-  setAvailableWords: React.Dispatch<React.SetStateAction<string[]>>;
+  setAvailableWords: Dispatch<SetStateAction<string[]>>;
   onSentenceWordTap: (word: string, isFromAvailable: boolean) => void;
   onSentenceCheck: () => void;
   speak: (text: string) => void;
