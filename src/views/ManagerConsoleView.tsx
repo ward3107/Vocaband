@@ -74,6 +74,10 @@ const tip = {
   boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
 };
 const daysSince = (iso: string | null) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000) : Infinity);
+/** Game scores are stored on a raw 0–1000 scale; principals read them as a
+ *  percentage, so divide by 10 and round before display. Exported for tests. */
+export const formatAvgScore = (raw: number | null): string | null =>
+  raw == null ? null : `${Math.round(raw / 10)}%`;
 
 /* ───────── shared ───────── */
 function ChartCard({ title, children, ta }: { title: string; children: ReactNode; ta: string }) {
@@ -301,7 +305,7 @@ export default function ManagerConsoleView({ user, setView, setUser }: Props) {
                       {c.teacher_name && <div className="text-xs text-[var(--vb-text-muted)] mb-2 truncate">{c.teacher_name}</div>}
                       <div className={`flex flex-wrap gap-x-4 gap-y-1 text-sm ${rowR}`}>
                         <span className="text-[var(--vb-text-secondary)]"><b className="text-[var(--vb-text-primary)]">{c.students}</b> {t.colStudents}</span>
-                        {c.avg_score != null && <span className="text-[var(--vb-text-secondary)]"><b className="text-[var(--vb-text-primary)]">{c.avg_score}</b> {t.kAvg}</span>}
+                        {c.avg_score != null && <span className="text-[var(--vb-text-secondary)]"><b className="text-[var(--vb-text-primary)]">{formatAvgScore(c.avg_score)}</b> {t.kAvg}</span>}
                         <span className="text-[var(--vb-text-secondary)]"><b className="text-[var(--vb-text-primary)]">{c.active_7d}</b> {t.colActive}</span>
                       </div>
                       <div className="mt-3 h-1.5 rounded-full bg-[var(--vb-surface-alt)] overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500" style={{ width: `${c.completion}%` }} /></div>
@@ -321,7 +325,7 @@ export default function ManagerConsoleView({ user, setView, setUser }: Props) {
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <Kpi icon={<GraduationCap className="w-4 h-4" />} label={t.kStudents} value={`${classDetail.class.students}`} grad="from-emerald-500 to-teal-500" />
-                      <Kpi icon={<Target className="w-4 h-4" />} label={t.kAvg} value={classDetail.class.avg_score != null ? `${classDetail.class.avg_score}` : '—'} grad="from-indigo-500 to-violet-500" />
+                      <Kpi icon={<Target className="w-4 h-4" />} label={t.kAvg} value={formatAvgScore(classDetail.class.avg_score) ?? '—'} grad="from-indigo-500 to-violet-500" />
                       <Kpi icon={<Activity className="w-4 h-4" />} label={t.kActive} value={`${classDetail.class.active_7d}`} grad="from-fuchsia-500 to-pink-500" />
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
