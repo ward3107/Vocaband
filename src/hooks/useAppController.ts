@@ -72,7 +72,8 @@ import { useDeepLinkUrlParams } from "./useDeepLinkUrlParams";
 import { useTargetLanguageState } from "./useTargetLanguageState";
 import { resolveInitialView } from "../utils/resolveInitialView";
 import { hasRestorableSession } from "../utils/hasRestorableSession";
-import { PUBLIC_PAGE_VIEW, PUBLIC_PAGE_PATH, type PublicPage } from "../utils/publicNavigation";
+import { PUBLIC_PAGE_VIEW, type PublicPage } from "../utils/publicNavigation";
+import { pathForView } from "../utils/routes";
 import { pickClassMinuteWords } from "../utils/classMinuteWords";
 import { isPublicView, shouldPreserveView } from "../utils/authViews";
 import { buildCleanupSessionData } from "../handlers/sessionCleanups";
@@ -135,13 +136,14 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // state lets useBackButtonTrap's view-change effect skip its own
   // redundant push — it early-returns when state.view already matches.
   const handlePublicNavigate = (page: PublicPage) => {
-    const path = PUBLIC_PAGE_PATH[page];
+    const view = PUBLIC_PAGE_VIEW[page];
+    const path = pathForView(view);
     try {
-      if (window.location.pathname !== path) {
-        window.history.pushState({ view: PUBLIC_PAGE_VIEW[page] }, "", path);
+      if (path && window.location.pathname !== path) {
+        window.history.pushState({ view }, "", path);
       }
     } catch { /* history API blocked — fall back to view-only nav */ }
-    setView(PUBLIC_PAGE_VIEW[page]);
+    setView(view);
   };
   const [showDemo, setShowDemo] = useState(false);
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);

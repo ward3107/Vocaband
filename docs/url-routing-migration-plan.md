@@ -65,13 +65,20 @@ back-trap interaction.
   (`src/hooks/useAppController.ts`), mirroring `navigateToStudentLogin`.
 - Tests: round-trip coverage in `src/__tests__/studentShell.test.tsx`.
 
-### Slice 2 — Central view ⇄ path registry
-One source of truth mapping every `View` to its path (and back), replacing
-the scattered string checks in `resolveInitialView`.
-- New module (proposed `src/core/routes.ts` — **PROTECTED zone `src/core/`,
-  needs sign-off**) or `src/utils/routes.ts` if we keep it out of core.
-- `resolveInitialView` becomes a thin consumer of the reverse map.
-- No behavior change yet — pure refactor + tests. De-risks every later slice.
+### Slice 2 — Central view ⇄ path registry ✅ DONE
+One source of truth mapping View ⇄ path, replacing the scattered string
+checks in `resolveInitialView`.
+- `src/utils/routes.ts` — `VIEW_PATH` + `pathForView` / `viewForPath`. Kept
+  in `src/utils` (NOT `src/core`) so it stays out of the protected zone — no
+  sign-off needed.
+- `resolveInitialView` resolves static public paths via `viewForPath` (the
+  per-path `if` ladder is gone); parametric / conditional routes (`?session`,
+  `?class`, `/w/`, the shell remaps of `/student` & `/teacher`) stay
+  imperative — a static table can't express them.
+- `PUBLIC_PAGE_PATH` removed from `publicNavigation.ts`;
+  `handlePublicNavigate` now reads `pathForView`. One source of truth.
+- Pure refactor, no behavior change. Tests: registry round-trip +
+  path→view resolution in `studentShell.test.tsx`.
 
 ### Slice 3 — "Landable" authenticated views
 Views that need only data the auth flow already loads (no transient
