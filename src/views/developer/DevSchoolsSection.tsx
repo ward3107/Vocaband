@@ -63,13 +63,13 @@ export default function DevSchoolsSection({ showToast, onOpen }: Props) {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="New school name"
-          className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-indigo-400"
+          className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-teal-400"
         />
         <button
           type="submit"
           disabled={busy}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
+          className="px-5 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Create
         </button>
@@ -89,7 +89,7 @@ export default function DevSchoolsSection({ showToast, onOpen }: Props) {
           return (
             <div key={s.id} className="px-5 py-3">
               <div className="flex items-center gap-3">
-                <School className="w-5 h-5 text-indigo-300 shrink-0" />
+                <School className="w-5 h-5 text-teal-300 shrink-0" />
                 {/* Tap the name/counts to drill into the school's roster. The
                     manager (×) chips and the delete button live OUTSIDE this
                     button — nesting buttons would be invalid markup. */}
@@ -100,7 +100,7 @@ export default function DevSchoolsSection({ showToast, onOpen }: Props) {
                   className="flex-1 min-w-0 flex items-center gap-2 text-left group"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="text-white font-bold text-base truncate group-hover:text-indigo-200">{s.name}</div>
+                    <div className="text-white font-bold text-base truncate group-hover:text-teal-200">{s.name}</div>
                     <div className="text-white/40 text-xs">
                       {s.teachers} staff · {s.students} students · {s.classes} classes
                     </div>
@@ -162,7 +162,7 @@ export default function DevSchoolsSection({ showToast, onOpen }: Props) {
           value={mgrEmail}
           onChange={(e) => setMgrEmail(e.target.value)}
           placeholder="manager@school.edu (must have signed in once)"
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-indigo-400"
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-teal-400"
         />
         <div className="flex gap-2">
           <select
@@ -179,7 +179,7 @@ export default function DevSchoolsSection({ showToast, onOpen }: Props) {
             type="submit"
             disabled={busy || !mgrEmail.trim() || !mgrSchool}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-base"
+            className="px-5 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-base"
           >
             Assign
           </button>

@@ -107,7 +107,7 @@ export default function DevSchoolDetail({ school, onBack, showToast }: Props) {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <School className="w-6 h-6 text-indigo-300 shrink-0" />
+        <School className="w-6 h-6 text-teal-300 shrink-0" />
         <div className="min-w-0 flex-1">
           <h2 className="text-xl font-black truncate">{school.name}</h2>
           <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -150,7 +150,7 @@ export default function DevSchoolDetail({ school, onBack, showToast }: Props) {
           { label: "Students", value: totalStudents, icon: Users },
         ].map((k) => (
           <div key={k.label} className="rounded-2xl bg-white/5 border border-white/10 p-4">
-            <k.icon className="w-4 h-4 text-indigo-300 mb-2" />
+            <k.icon className="w-4 h-4 text-teal-300 mb-2" />
             <div className="text-2xl font-black leading-none">{k.value}</div>
             <div className="text-white/40 text-xs font-bold mt-1">{k.label}</div>
           </div>

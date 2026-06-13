@@ -9,29 +9,35 @@ import MgmtCard from "./MgmtCard";
 import FrostedEmoji from "./FrostedEmoji";
 import { accentForClass, HERO_AURORA } from "./dashboardAccents";
 
+// "Cool Paper" direction: every live-games card keeps its vivid radial
+// gradient (its colour identity) but drops the coloured halo. A single
+// soft, NEUTRAL dark-translucent shadow reads as a calm lift on every
+// theme instead of a busy glow, so we reuse it across all heroes.
+const NEUTRAL_CARD_SHADOW = "0 12px 28px -16px rgba(15,23,42,0.45)";
+
 // Shared "Live games" hero styling — both cards use the identical
 // LiveGameHero layout and differ only in colour + copy.
 const QP_HERO = {
   background: HERO_AURORA,
-  boxShadow: "0 20px 50px -22px rgba(99,102,241,0.55), 0 8px 22px -10px rgba(217,70,239,0.35)",
+  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#5B21B6",
   ctaShadow: "0 10px 24px -8px rgba(91,33,182,0.45)",
 } as const;
 const RACE_HERO = {
   background: "radial-gradient(120% 140% at 0% 0%, #D946EF 0%, #EC4899 45%, #F43F5E 80%, #FB7185 100%)",
-  boxShadow: "0 20px 50px -22px rgba(217,70,239,0.5), 0 8px 22px -10px rgba(244,63,94,0.35)",
+  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#9D174D",
   ctaShadow: "0 10px 24px -8px rgba(157,23,77,0.45)",
 } as const;
 const SPEED_HERO = {
   background: "radial-gradient(120% 140% at 0% 0%, #F59E0B 0%, #F97316 45%, #EF4444 80%, #F43F5E 100%)",
-  boxShadow: "0 20px 50px -22px rgba(249,115,22,0.5), 0 8px 22px -10px rgba(239,68,68,0.35)",
+  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#9A3412",
   ctaShadow: "0 10px 24px -8px rgba(154,52,18,0.45)",
 } as const;
 const ARENA_HERO = {
   background: "radial-gradient(120% 140% at 0% 0%, #10B981 0%, #14B8A6 45%, #06B6D4 80%, #0EA5E9 100%)",
-  boxShadow: "0 20px 50px -22px rgba(20,184,166,0.5), 0 8px 22px -10px rgba(6,182,212,0.35)",
+  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#115E59",
   ctaShadow: "0 10px 24px -8px rgba(17,94,89,0.45)",
 } as const;
@@ -41,19 +47,19 @@ const ARENA_HERO = {
 // digging into the New Activity wizard's tab strip.
 const CLASS_SHOW_HERO = {
   background: "radial-gradient(120% 140% at 0% 0%, #6366F1 0%, #4F46E5 45%, #4338CA 80%, #3730A3 100%)",
-  boxShadow: "0 20px 50px -22px rgba(79,70,229,0.5), 0 8px 22px -10px rgba(67,56,202,0.35)",
+  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#312E81",
   ctaShadow: "0 10px 24px -8px rgba(49,46,129,0.45)",
 } as const;
 const HOT_SEAT_HERO = {
   background: "radial-gradient(120% 140% at 0% 0%, #F87171 0%, #EF4444 45%, #DC2626 80%, #B91C1C 100%)",
-  boxShadow: "0 20px 50px -22px rgba(239,68,68,0.5), 0 8px 22px -10px rgba(185,28,28,0.35)",
+  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#7F1D1D",
   ctaShadow: "0 10px 24px -8px rgba(127,29,29,0.45)",
 } as const;
 const WHEEL_HERO = {
   background: "radial-gradient(120% 140% at 0% 0%, #A78BFA 0%, #8B5CF6 45%, #7C3AED 80%, #6D28D9 100%)",
-  boxShadow: "0 20px 50px -22px rgba(139,92,246,0.5), 0 8px 22px -10px rgba(109,40,217,0.35)",
+  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#4C1D95",
   ctaShadow: "0 10px 24px -8px rgba(76,29,149,0.45)",
 } as const;

@@ -43,8 +43,11 @@ export default function MgmtCard({
         background:
           "linear-gradient(135deg, var(--vb-accent) 0%, color-mix(in srgb, var(--vb-accent), #000 30%) 100%)",
         color: "var(--vb-accent-text)",
+        // Keep the top inset highlight (the tile's crisp edge) but swap the
+        // coloured drop halo for a soft NEUTRAL one so the tile lifts calmly
+        // instead of glowing in the accent hue ("Cool Paper" direction).
         boxShadow:
-          "0 1px 0 color-mix(in srgb, var(--vb-accent-text), transparent 75%) inset, 0 14px 30px -12px color-mix(in srgb, var(--vb-accent), transparent 50%)",
+          "0 1px 0 color-mix(in srgb, var(--vb-accent-text), transparent 75%) inset, 0 12px 28px -16px rgba(15,23,42,0.45)",
       }}
       className="group flex w-full items-center gap-[18px] rounded-3xl px-[18px] sm:px-[22px] py-5 text-start hover:-translate-y-0.5 transition-transform"
     >

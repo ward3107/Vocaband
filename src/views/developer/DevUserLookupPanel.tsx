@@ -154,7 +154,7 @@ export default function DevUserLookupPanel({ showToast, onOpenPerson }: Props) {
                       type="button"
                       onClick={() => onOpenPerson(r)}
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-base"
                     >
                       <ExternalLink className="w-4 h-4" /> Open full profile (360)
                     </button>
@@ -219,7 +219,7 @@ export default function DevUserLookupPanel({ showToast, onOpenPerson }: Props) {
                           disabled={busyUid === r.uid}
                           onClick={() => void applyRole(r, "teacher")}
                           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                          className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
+                          className="px-5 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
                         >
                           <UserCog className="w-4 h-4" /> Promote to teacher
                         </button>

@@ -68,9 +68,9 @@ export default function DevFeatureFlagsPanel({ showToast }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl p-5 bg-gradient-to-br from-indigo-500/15 via-violet-500/15 to-fuchsia-500/15 border border-white/10">
+      <div className="rounded-2xl p-5 bg-gradient-to-br from-teal-500/15 via-cyan-500/15 to-sky-500/15 border border-white/10">
         <div className="flex items-center gap-2 text-white font-black text-base mb-1">
-          <Flag className="w-5 h-5 text-violet-300" /> Feature flags
+          <Flag className="w-5 h-5 text-teal-300" /> Feature flags
         </div>
         <p className="text-white/60 text-sm">
           Admin-managed kill-switches. Read by all authenticated users via the <code className="text-white/80">useFeatureFlag</code> hook —
@@ -98,19 +98,19 @@ export default function DevFeatureFlagsPanel({ showToast }: Props) {
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
           placeholder="flag_key (e.g. live_challenge_v2)"
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-indigo-400 font-mono"
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-teal-400 font-mono"
         />
         <input
           value={newDesc}
           onChange={(e) => setNewDesc(e.target.value)}
           placeholder="Short description (what this gates)"
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-indigo-400"
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-teal-400"
         />
         <button
           type="submit"
           disabled={busy || !newKey.trim()}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
+          className="px-5 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Create flag (starts off)
         </button>
