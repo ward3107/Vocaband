@@ -122,7 +122,11 @@ the object from the id in the URL — or find it in an already-loaded array),
   fetch). READ side only — wiring the reverse (view → URL on in-app nav) lands
   with the back-trap rework in Slice 5, the same split used in Slice 3. e2e:
   `rehydrate.auth.spec.ts` (2 views × 2 viewports).
-- `create-assignment` → `?classId=` → reload class (`useViewGuards.ts:118`)
+- ✅ DONE — `create-assignment` re-hydrates from `?classId=<id>`:
+  `useViewGuards` Guard 4 now selects the class from the already-loaded
+  `classes` (instead of bouncing to the dashboard) when the id matches. The
+  re-hydration lives INSIDE the guard, so there's no race with the bounce; a
+  missing/unknown id still bounces as before. e2e: `rehydrate.auth.spec.ts`.
 - `game` → needs `activeAssignment` (`useViewGuards.ts:81`)
 - `live-challenge`, `live-challenge-class-select` → need `selectedClass`
 - `class-show`, `worksheet` → need an assignment object

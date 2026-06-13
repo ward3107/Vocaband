@@ -55,10 +55,12 @@ export const VIEW_PATH: Partial<Record<View, string>> = {
   'admin-security': '/admin-security',
   'manager-dashboard': '/manager',
   // Stateful sub-views (Slice 4) — landable via a URL param re-hydrated from
-  // already-loaded data. Both carry ?assignmentId=<id>, restored by
-  // useAssignmentViewDeepLink from the teacher's loaded assignments.
+  // already-loaded data. class-show / worksheet carry ?assignmentId=<id>
+  // (useAssignmentViewDeepLink); create-assignment carries ?classId=<id>,
+  // re-hydrated by useViewGuards' Guard 4 instead of bouncing.
   'class-show': '/class-show',
   'worksheet': '/worksheet',
+  'create-assignment': '/create-assignment',
 };
 
 // Reverse lookup, built once at module load. Path → View.

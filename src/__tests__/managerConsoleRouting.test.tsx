@@ -96,6 +96,8 @@ describe("useViewGuards — orphaned 'landing' redirect", () => {
       activeAssignment: null,
       quickPlayActiveSession: null,
       selectedClass: null,
+      classes: [],
+      setSelectedClass: vi.fn(),
     };
     renderHook(() => useViewGuards(params));
     return setView;
