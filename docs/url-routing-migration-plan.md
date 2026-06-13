@@ -115,8 +115,11 @@ preserving the role-aware guarantees above. This is the highest-risk slice.
 - Not protected by glob, but treat as protected: **real-phone testing**
   (Android Chrome edge-swipe, iOS PWA) is mandatory — the existing behavior
   is device-specific and not covered by CI.
-- Add Playwright e2e for the back/forward/refresh matrix per role first, so
-  there's a regression net before touching the trap.
+- FIRST: stand up the authenticated e2e harness (preview build pointed at
+  `TEST_SUPABASE_URL` + a logged-in student/teacher fixture) and add the
+  per-role back / forward / refresh + dashboard-floor matrix, so there's a
+  regression net BEFORE touching the trap. The public net
+  (`e2e/tests/url-routing.spec.ts`) already exists.
 
 ### Slice 6 — Auth restore respects the URL (PROTECTED)
 `useAuthRestore.ts` should hydrate to the URL's view instead of forcing the
@@ -134,9 +137,21 @@ dashboard (still falling back to dashboard for non-landable URLs).
   (Slice 5); treat as protected.
 
 ## Testing strategy
-- Unit: view⇄path round-trip (every `View` with a path resolves back).
-- e2e (Playwright): per-role back / forward / refresh / deep-link matrix —
-  **added before** Slices 5–6.
+- Unit: view⇄path round-trip (every `View` with a path resolves back) —
+  `src/__tests__/studentShell.test.tsx`.
+- e2e (Playwright): PUBLIC deep-link + refresh matrix —
+  `e2e/tests/url-routing.spec.ts` ✅ added. Asserts every public path is
+  deep-linkable and refresh-stable and routes to the right (non-landing)
+  view. In-app click → pushState (address-bar-tracks-the-page) is NOT
+  covered: the e2e preview build (`VITE_SUPABASE_URL=""`) renders public
+  pages in a degraded/config-error mode where SPA history state isn't
+  seeded, so click-driven push/pop can't be asserted there — deferred to
+  the Slice-5 authenticated harness.
+- e2e (authenticated): the student/teacher back-button matrix (dashboard
+  floor, no-logout-on-back) needs the preview build pointed at
+  `TEST_SUPABASE_URL` plus a logged-in fixture. The harness can't drive
+  logged-in flows today (`VITE_SUPABASE_URL=""` in the e2e webServer — see
+  `auth-flow.spec.ts`). **Standing this up is the first task of Slice 5.**
 - Manual: real-phone back-button + PWA checklist for Slice 5.
 
 ## Rollback
