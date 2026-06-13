@@ -93,6 +93,20 @@ export interface RenderMiscViewsDeps {
   socket: Anyish;
 }
 
+/** Group the progress-derived student names by class code so the
+ *  roster picker can fall back to them for classes without a structured
+ *  roster (self-join / Google). */
+function namesByClassCode(
+  students: { name: string; classCode: string }[],
+): Record<string, string[]> {
+  const map: Record<string, string[]> = {};
+  for (const s of students ?? []) {
+    if (!s?.name || !s?.classCode) continue;
+    (map[s.classCode] ??= []).push(s.name);
+  }
+  return map;
+}
+
 export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
   const {
     view, user, activeVoca, selectedClass, activityNavOrigin,
@@ -164,6 +178,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           classes={visibleClasses}
           initialClassId={selectedClass?.id ?? null}
           initialPlayerNames={hotSeatInitialNames}
+          fallbackNamesByCode={namesByClassCode(classStudents)}
           activityTabs={
             <ActivityTabsSlot
               active="hot-seat"
@@ -201,6 +216,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
           classes={visibleClasses}
           initialClassId={selectedClass?.id ?? null}
           initialPlayerNames={initialPlayerNames}
+          fallbackNamesByCode={namesByClassCode(classStudents)}
           activityTabs={
             <ActivityTabsSlot
               active="wheel"

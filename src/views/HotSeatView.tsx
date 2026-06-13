@@ -86,6 +86,9 @@ interface HotSeatViewProps {
   /** When launched from a class, pre-fill the roster textarea with
    *  that class's student names so the teacher doesn't retype them. */
   initialPlayerNames?: string[];
+  /** Progress-derived student names per class code — the roster picker's
+   *  fallback for classes without a structured roster. */
+  fallbackNamesByCode?: Record<string, string[]>;
   /** Activity-type tab strip rendered under the hero on the setup
    *  screen, so teachers can jump to the other creation tools.  Built
    *  by the section renderer (it owns navigation); omit to hide. */
@@ -447,7 +450,7 @@ const STRINGS: Record<Language, {
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-export default function HotSeatView({ onExit, speak, assignments, topicPacks, classes, initialClassId, initialPlayerNames, activityTabs }: HotSeatViewProps) {
+export default function HotSeatView({ onExit, speak, assignments, topicPacks, classes, initialClassId, initialPlayerNames, fallbackNamesByCode, activityTabs }: HotSeatViewProps) {
   const { language, dir, isRTL } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
@@ -787,6 +790,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
                 classes={classes ?? []}
                 initialClassId={initialClassId}
                 onNamesLoaded={(names) => setPlayersText(names.join('\n'))}
+                fallbackNamesByCode={fallbackNamesByCode}
                 accent="orange"
               />
               <div>
