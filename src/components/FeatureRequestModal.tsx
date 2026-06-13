@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Send, CheckCircle2, Lightbulb, Star, Sparkles } from "lucide-react";
+import { X, CheckCircle2, Lightbulb, Star, Sparkles } from "lucide-react";
 import { useLanguage, Language } from "../hooks/useLanguage";
 
 interface FeatureRequestModalProps {

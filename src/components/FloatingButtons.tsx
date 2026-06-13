@@ -506,7 +506,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
           role="menu"
           aria-label={shareAria}
         >
-            {shareOptions.map((option, index) => {
+            {shareOptions.map((option) => {
               const Icon = option.icon;
               const isThisHovered = isHovered === option.name;
 

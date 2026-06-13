@@ -8,7 +8,7 @@ import { supabase, type AppUser } from "../core/supabase";
  */
 export function buildCleanupSessionData(
   clearSaveQueue: () => void,
-  feedbackTimeoutRef: MutableRefObject<NodeJS.Timeout | undefined>,
+  feedbackTimeoutRef: MutableRefObject<ReturnType<typeof setTimeout> | undefined>,
 ) {
   return () => {
     clearSaveQueue();

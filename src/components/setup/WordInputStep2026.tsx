@@ -16,7 +16,7 @@ import {
   BookOpen, Plus, Trash2, Pencil
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
-import { analyzePastedText, type WordAnalysisResult } from '../../utils/wordAnalysis';
+import { analyzePastedText } from '../../utils/wordAnalysis';
 import {
   suggestCorrections,
   applySuggestion,
@@ -34,10 +34,6 @@ import { wordInputStepT } from '../../locales/teacher/word-input-step';
 // Default English fallback — overridden inside the component by the
 // language-aware `TEXT` derived from useLanguage().  Kept here so any
 // module-level usage (none today) still resolves.
-// Build marker bumped each diagnostic deploy — lets us confirm the
-// user is seeing the latest code, not a stale service-worker copy.
-const APP_VERSION = 'ocr-debug-2026-04-29-e';
-
 /**
  * Hook used by every sub-component in this file to pick the right
  * locale at render time.  Centralises the lookup so we don't repeat
@@ -638,7 +634,7 @@ const WordCard: React.FC<WordCardProps> = ({
 }) => {
   const TEXT = useStepTexts();
   const [localTranslating, setLocalTranslating] = useState(false);
-  const [translateError, setTranslateError] = useState<string | null>(null);
+  const [, setTranslateError] = useState<string | null>(null);
 
   // Check if word has the required translation(s) based on preference
   const hasRequiredTranslation = (() => {
@@ -1020,7 +1016,7 @@ interface OcrModalProps {
 }
 
 const OcrModal: React.FC<OcrModalProps> = ({
-  isOpen, onClose, onUpload, onOpenCamera, onOpenGallery, state, progress, extractedWords, onConfirm, onEditWord, errorMessage,
+  isOpen, onClose, onOpenCamera, onOpenGallery, state, progress, extractedWords, onConfirm, onEditWord, errorMessage,
 }) => {
   const TEXT = useStepTexts();
 
@@ -1861,7 +1857,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   selectedWords,
   onSelectedWordsChange,
   onNext,
-  onBack,
   onTranslateWord,
   onTranslateBatch,
   onOcrUpload,
@@ -1870,8 +1865,6 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   savedGroups = [],
   onRenameSavedGroup,
   onDeleteSavedGroup,
-  customWords = [],
-  onCustomWordsChange,
   hideContinueButton = false,
   translationLang: controlledTranslationLang,
   onTranslationLangChange,
@@ -1890,7 +1883,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   // ref target is conditionally rendered behind selectedWords.length.)
   const [shouldScrollToSelected, setShouldScrollToSelected] = useState(false);
   // Diagnostic-only — visible banner showing the last OCR add call.
-  const [ocrDebugInfo, setOcrDebugInfo] = useState<string | null>(null);
+  const [, setOcrDebugInfo] = useState<string | null>(null);
   useEffect(() => {
     if (!shouldScrollToSelected) return;
     if (selectedWords.length === 0) return;

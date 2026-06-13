@@ -265,9 +265,12 @@ export default function QuickPlayStudentView({
     } else if (code === "rate_limited") {
       showToast(qpT.toastTooManyJoining, "error");
     } else {
-      // `message` from the server is plain English; prefer the kid-
-      // friendly localized fallback for the generic case.
-      showToast(message || qpT.toastGenericJoinFail, "error");
+      // The server's `message` is plain-English tech-speak ("Failed to
+      // fetch" etc.) — never show it to a 9-year-old. Always toast the
+      // localized kid-speak fallback; keep the raw message in DevTools
+      // for whoever is debugging over the kid's shoulder.
+      console.warn("[QP join error]", code, message);
+      showToast(qpT.toastGenericJoinFail, "error");
     }
     // A failed join must clear any pending setup so the deferred
     // useEffect doesn't fire when a LATER (successful) join arrives
@@ -606,33 +609,10 @@ export default function QuickPlayStudentView({
                 <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
                   <QrCode className="text-white w-8 h-8 sm:w-10 sm:h-10" />
                 </div>
-                {(() => {
-                  // Localize so the headline + subhead don't bidi-flip
-                  // into "!Quick Play" / "words • No login needed 11"
-                  // when the student picks Hebrew/Arabic before naming
-                  // themselves. Inline ternaries match the existing
-                  // pattern in this file (no quick-play.ts locale
-                  // module yet).
-                  const wordsCount = quickPlayActiveSession.words.length;
-                  const headline =
-                    qpLanguage === "he"
-                      ? "משחק מהיר!"
-                      : qpLanguage === "ar"
-                      ? "لعب سريع!"
-                      : "Quick Play!";
-                  const subhead =
-                    qpLanguage === "he"
-                      ? `${wordsCount} מילים · אין צורך בהתחברות`
-                      : qpLanguage === "ar"
-                      ? `${wordsCount} كلمات · لا حاجة لتسجيل الدخول`
-                      : `${wordsCount} words • No login needed`;
-                  return (
-                    <>
-                      <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">{headline}</h1>
-                      <p className="text-sm sm:text-base text-on-surface-variant font-bold">{subhead}</p>
-                    </>
-                  );
-                })()}
+                <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">{qpT.headline}</h1>
+                <p className="text-sm sm:text-base text-on-surface-variant font-bold">
+                  {qpT.subheadWords(quickPlayActiveSession.words.length)}
+                </p>
               </div>
 
               <div className="space-y-3 sm:space-y-4">
@@ -672,7 +652,7 @@ export default function QuickPlayStudentView({
 
                 <div className="relative">
                   <label className="absolute -top-2.5 start-4 px-2 bg-surface text-primary font-black text-xs z-10">
-                    {qpLanguage === "he" ? "השם שלך" : qpLanguage === "ar" ? "اسمك" : "YOUR NAME"}
+                    {qpT.yourNameLabel}
                   </label>
                   {(() => {
                     // Check if student already joined this session — lock their name
@@ -697,13 +677,9 @@ export default function QuickPlayStudentView({
                           className="w-full px-4 py-3 sm:py-4 bg-surface-container border-4 border-stone-200 rounded-xl text-base sm:text-lg font-black text-on-surface cursor-not-allowed opacity-70"
                         />
                         <p className="text-xs text-on-surface-variant mt-1 text-center">
-                          {qpLanguage === "he" ? (
-                            <>כבר הצטרפת בשם <strong><bdi>{lockedName}</bdi></strong></>
-                          ) : qpLanguage === "ar" ? (
-                            <>لقد انضممت بالفعل باسم <strong><bdi>{lockedName}</bdi></strong></>
-                          ) : (
-                            <>You already joined as <strong><bdi>{lockedName}</bdi></strong></>
-                          )}
+                          {/* <bdi> isolates the LTR nickname so it doesn't
+                              bidi-flip the surrounding HE/AR sentence. */}
+                          {qpT.alreadyJoinedAsPrefix}<strong><bdi>{lockedName}</bdi></strong>
                         </p>
                       </>
                     ) : (
@@ -727,7 +703,16 @@ export default function QuickPlayStudentView({
                         // the page direction.
                         dir="auto"
                         defaultValue={quickPlayStudentName}
-                        placeholder={qpLanguage === 'he' ? 'הכניסו כינוי...' : qpLanguage === 'ar' ? 'أدخل اسمك المستعار...' : 'Enter your nickname...'}
+                        placeholder={qpT.namePlaceholder}
+                        // Small Android screens: the soft keyboard slides
+                        // over the input. Re-centre once the keyboard has
+                        // started resizing the visual viewport (~300ms),
+                        // otherwise the scroll target is computed against
+                        // the pre-keyboard layout and lands wrong.
+                        onFocus={(e) => {
+                          const el = e.currentTarget;
+                          setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+                        }}
                         className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         autoFocus
                       />
@@ -788,11 +773,11 @@ export default function QuickPlayStudentView({
                   {joining ? (
                     <>
                       <Loader2 className="animate-spin w-5 h-5" />
-                      {qpLanguage === "he" ? "מצטרפים…" : qpLanguage === "ar" ? "ينضم…" : "Joining…"}
+                      {qpT.joining}
                     </>
                   ) : (
                     <>
-                      🎮 {qpLanguage === "he" ? "בואו נתחיל" : qpLanguage === "ar" ? "لنبدأ" : "Start playing"} {qpIsRTL ? '←' : '→'}
+                      🎮 {qpT.startPlaying} {qpIsRTL ? '←' : '→'}
                     </>
                   )}
                 </button>
@@ -800,11 +785,7 @@ export default function QuickPlayStudentView({
 
               <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-surface-container-low rounded-xl border-2 border-surface-container-highest">
                 <p className="text-xs sm:text-sm text-on-surface-variant text-center">
-                  {qpLanguage === "he"
-                    ? "ℹ️ ההתקדמות שלך לא תישמר (מצב אורח). פתחו חשבון כדי לעקוב אחר הנקודות ולפתוח אפשרויות נוספות!"
-                    : qpLanguage === "ar"
-                    ? "ℹ️ لن يتم حفظ تقدمك (وضع الضيف). أنشئ حسابًا لتتبع نقاطك وفتح ميزات إضافية!"
-                    : "ℹ️ Your progress won't be saved (guest mode). Create an account to track your XP and unlock features!"}
+                  {qpT.guestModeNote}
                 </p>
               </div>
             </div>

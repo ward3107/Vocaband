@@ -103,7 +103,7 @@ export default function DevAuthzFailuresPanel({ showToast }: Props) {
             key={r.id}
             type="button"
             onClick={() => setRange(r.id)}
-            className={`px-3 py-1 rounded-full text-sm font-bold ${range === r.id ? "bg-indigo-600 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"}`}
+            className={`px-3 py-1 rounded-full text-sm font-bold ${range === r.id ? "bg-teal-600 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"}`}
           >
             {r.label}
           </button>

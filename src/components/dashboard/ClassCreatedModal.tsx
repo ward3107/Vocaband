@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { Check, Copy, MessageCircle } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
@@ -7,7 +8,7 @@ interface ClassCreatedModalProps {
   createdClassCode: string | null;
   createdClassName: string;
   copiedCode: string | null;
-  setCopiedCode: React.Dispatch<React.SetStateAction<string | null>>;
+  setCopiedCode: Dispatch<SetStateAction<string | null>>;
   onDone: () => void;
 }
 

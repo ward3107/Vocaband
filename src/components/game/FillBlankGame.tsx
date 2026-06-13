@@ -20,6 +20,12 @@ interface FillBlankGameProps {
    *  and the AnswerOptionButton accents.  The blank slot is always
    *  lime-bordered regardless (it's the mode signature). */
   themeColor?: GameThemeColor;
+  /** Chromebook support (open-issues §F): show the 1–4 number badges on
+   *  the option buttons. Flipped on by useGameKeyboard after the first
+   *  hardware keypress, so touch devices never see the hints. The badge
+   *  index MUST match the visible (post-50/50-filter) order — the same
+   *  filtered list the keyboard hook selects from. */
+  showKeyHints?: boolean;
 }
 
 // Replace the target word in the sentence with a sentinel so the
@@ -79,7 +85,7 @@ export function redactSentence(sentence: string, target: string): string {
 const FillBlankGame = React.memo(({
   activeAssignment, currentWord, currentIndex,
   options, hiddenOptions, feedback,
-  gameWordsCount, targetLanguage, onAnswer, themeColor,
+  gameWordsCount, targetLanguage, onAnswer, themeColor, showKeyHints,
 }: FillBlankGameProps) => {
   const { language } = useLanguage();
   const t = gameActiveT[language];
@@ -164,7 +170,7 @@ const FillBlankGame = React.memo(({
           dir="ltr" pins the option positions — the answers are English
           words, so without it they swap sides under a Hebrew/Arabic UI. */}
       <div dir="ltr" className="grid grid-cols-2 gap-2 sm:gap-3">
-        {options.filter(o => !hiddenOptions.includes(o.id)).map(option => (
+        {options.filter(o => !hiddenOptions.includes(o.id)).map((option, i) => (
           <AnswerOptionButton
             key={option.id}
             option={option}
@@ -174,6 +180,8 @@ const FillBlankGame = React.memo(({
             targetLanguage={targetLanguage}
             onAnswer={onAnswer}
             themeColor={themeColor}
+            shortcutKey={i + 1}
+            showKeyHint={showKeyHints}
           />
         ))}
       </div>

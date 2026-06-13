@@ -118,9 +118,9 @@ export default function DevSecurityChecklistPanel({ showToast }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl p-5 bg-gradient-to-br from-indigo-500/15 via-violet-500/15 to-fuchsia-500/15 border border-white/10">
+      <div className="rounded-2xl p-5 bg-gradient-to-br from-teal-500/15 via-cyan-500/15 to-sky-500/15 border border-white/10">
         <div className="flex items-center gap-2 text-white font-black text-base mb-1">
-          <Lock className="w-5 h-5 text-indigo-300" /> Operational security checklist
+          <Lock className="w-5 h-5 text-teal-300" /> Operational security checklist
         </div>
         <p className="text-white/60 text-sm">
           Recurring security tasks. Each "Mark done" stamps the time + actor in the DB and the audit log, so cadence is
@@ -221,7 +221,7 @@ export default function DevSecurityChecklistPanel({ showToast }: Props) {
                   onChange={(e) => setNotesDraft((prev) => ({ ...prev, [c.key]: e.target.value }))}
                   placeholder="Optional: what you found, ticket #, etc."
                   rows={2}
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-indigo-400"
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-teal-400"
                 />
               )}
             </div>

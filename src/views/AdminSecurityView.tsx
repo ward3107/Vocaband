@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { motion } from "motion/react";
 import { ArrowLeft, RefreshCw, ShieldAlert, Filter, Activity } from "lucide-react";
 import { supabase } from "../core/supabase";
@@ -61,7 +61,7 @@ function formatWhen(iso: string): string {
 }
 
 interface AdminSecurityViewProps {
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
 }
 
 export default function AdminSecurityView({ setView }: AdminSecurityViewProps) {

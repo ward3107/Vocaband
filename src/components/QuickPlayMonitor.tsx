@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, LogOut, Volume2, VolumeX,
-  ChevronDown, Music, Palette, SkipForward, SkipBack, Play, Pause,
+  Palette, SkipForward, SkipBack, Play, Pause,
   Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap, ZapOff, Plus
 } from 'lucide-react';
 import { getXpTitle } from '../constants/game';
@@ -744,14 +744,13 @@ export default function QuickPlayMonitor({
   const toggleQrCollapsed = useCallback(() => {
     setQrCollapsed(prev => {
       const next = !prev;
-      try { localStorage.setItem('vocaband-qp-qr-collapsed', next ? '1' : '0'); } catch {}
+      try { localStorage.setItem('vocaband-qp-qr-collapsed', next ? '1' : '0'); } catch { /* best-effort */ }
       return next;
     });
   }, []);
   const [endModal, setEndModal] = useState(false);
   const [showWordsModal, setShowWordsModal] = useState(false);
   const [theme, setTheme] = useState<ThemeKey>('neon');
-  const [showThemePicker, setShowThemePicker] = useState(false);
   // Reduced-motion toggle for sensory-sensitive classrooms — disables
   // particles, +N floaters, sparkles, and the gentle ambient bobs.
   // Persisted to localStorage so the teacher's preference sticks
@@ -762,7 +761,7 @@ export default function QuickPlayMonitor({
   const toggleReducedMotion = useCallback(() => {
     setReducedMotion(prev => {
       const next = !prev;
-      try { localStorage.setItem('vocaband-qp-reduced-motion', next ? '1' : '0'); } catch {}
+      try { localStorage.setItem('vocaband-qp-reduced-motion', next ? '1' : '0'); } catch { /* best-effort */ }
       return next;
     });
   }, []);
@@ -770,7 +769,10 @@ export default function QuickPlayMonitor({
   // up to a full-screen card for ~5s. Null means no current spotlight.
   const [spotlightStudent, setSpotlightStudent] = useState<Student | null>(null);
   const [musicPlaying, setMusicPlaying] = useState(false);
-  const [showMusicPicker, setShowMusicPicker] = useState(false);
+  const [, setShowMusicPicker] = useState(false);
+  // Value is never read (drag feature was removed) but the open-reset effect still
+  // calls the setter; keep the slot so behavior is unchanged.
+  const [, setQrModalDragControls] = useState({ x: 0, y: 0 });
   const [confirmKick, setConfirmKick] = useState<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState(() => {
     try { return parseInt(localStorage.getItem('vocaband-music-track') || '0') || 0; } catch { return 0; }
@@ -780,9 +782,6 @@ export default function QuickPlayMonitor({
   });
   const musicRef = useRef<Howl | null>(null);
 
-  // ─── Draggable QR modal state ────────────────────────────────────────────
-  const qrModalDragRef = useRef({ x: 0, y: 0 });
-  const [qrModalDragControls, setQrModalDragControls] = useState({ x: 0, y: 0 });
 
   // Reset position when modal opens
   useEffect(() => {
@@ -869,7 +868,7 @@ export default function QuickPlayMonitor({
         if (storedIp) {
           return `http://${storedIp}:5173`;
         }
-      } catch (e) {}
+      } catch { /* best-effort */ }
       // Fallback: use localhost (teacher can set vocaband_local_ip in localStorage)
       return 'http://localhost:5173';
     }
@@ -1066,7 +1065,7 @@ export default function QuickPlayMonitor({
 
   const changeTrack = (idx: number) => {
     setCurrentTrack(idx);
-    try { localStorage.setItem('vocaband-music-track', String(idx)); } catch {}
+    try { localStorage.setItem('vocaband-music-track', String(idx)); } catch { /* best-effort */ }
 
     // Crossfade: fade out old, start new
     if (musicRef.current) {
@@ -1090,7 +1089,7 @@ export default function QuickPlayMonitor({
 
   useEffect(() => {
     if (musicRef.current) musicRef.current.volume(musicVolume);
-    try { localStorage.setItem('vocaband-music-volume', String(musicVolume)); } catch {}
+    try { localStorage.setItem('vocaband-music-volume', String(musicVolume)); } catch { /* best-effort */ }
   }, [musicVolume]);
 
   // Cleanup music on unmount
@@ -1174,7 +1173,7 @@ export default function QuickPlayMonitor({
       const kicked: string[] = JSON.parse(localStorage.getItem(key) || '[]');
       if (!kicked.includes(name)) kicked.push(name);
       localStorage.setItem(key, JSON.stringify(kicked));
-    } catch {}
+    } catch { /* best-effort */ }
     showToast(`${name} removed from session`, 'info');
     setConfirmKick(null);
   };
@@ -2177,7 +2176,7 @@ export default function QuickPlayMonitor({
                 {qrCollapsed && (
                   <button
                     type="button"
-                    onClick={() => { setQrCollapsed(false); try { localStorage.setItem('vocaband-qp-qr-collapsed', '0'); } catch {} setQrEnlarged(false); }}
+                    onClick={() => { setQrCollapsed(false); try { localStorage.setItem('vocaband-qp-qr-collapsed', '0'); } catch { /* best-effort */ } setQrEnlarged(false); }}
                     className="flex-1 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold transition-colors text-sm"
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                   >

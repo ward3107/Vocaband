@@ -28,5 +28,8 @@
     "noImplicitReturns": true,
     "types": ["vite/client", "vite-plugin-pwa/client"]
   },
-  "exclude": ["supabase/functions/**", "node_modules", "dist"]
+  // vocabagrut/ is a standalone Vercel sub-project with its own package.json,
+  // tsconfig and dependency tree (@vercel/node etc.) — typecheck it from inside
+  // that folder, not with the root project's compiler settings.
+  "exclude": ["supabase/functions/**", "node_modules", "dist", "vocabagrut"]
 }

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { TEST_CLASS, TEST_STUDENT_USER, TEST_TEACHER, TEST_ASSIGNMENT, TEST_PROGRESS } from '../fixtures/test-data';
+import { TEST_CLASS, TEST_STUDENT_USER, TEST_TEACHER, TEST_ASSIGNMENT } from '../fixtures/test-data';
 
 /**
  * Schema validation tests — verify the E2E test mock data
@@ -24,16 +24,6 @@ const ASSIGNMENTS_COLUMNS = [
   'id', 'class_id', 'word_ids', 'words', 'title', 'deadline', 'created_at', 'allowed_modes',
   // Added in 20260417_add_missing_columns.sql:
   'sentences', 'sentence_difficulty',
-];
-
-const PROGRESS_COLUMNS = [
-  'id', 'student_name', 'student_uid', 'assignment_id', 'class_code',
-  'score', 'mode', 'completed_at', 'mistakes', 'avatar',
-];
-
-const STUDENT_PROFILES_COLUMNS = [
-  'id', 'unique_id', 'display_name', 'class_code', 'email', 'status',
-  'auth_uid', 'xp', 'avatar', 'badges', 'joined_at', 'approved_at', 'approved_by',
 ];
 
 test.describe('Schema Validation', () => {

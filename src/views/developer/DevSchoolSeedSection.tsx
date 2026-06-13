@@ -128,7 +128,7 @@ export default function DevSchoolSeedSection({ showToast }: Props) {
   };
 
   const input =
-    "px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:border-indigo-400";
+    "px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:border-teal-400";
 
   return (
     <div className="space-y-5">
@@ -173,7 +173,7 @@ export default function DevSchoolSeedSection({ showToast }: Props) {
             onClick={() => void saveCode()}
             disabled={busy || !schoolId || !/^[0-9]{1,4}$/.test(code)}
             style={{ touchAction: "manipulation" }}
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm whitespace-nowrap shrink-0"
+            className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-sm whitespace-nowrap shrink-0"
           >
             Save code
           </button>
@@ -196,7 +196,7 @@ export default function DevSchoolSeedSection({ showToast }: Props) {
             </button>
           </div>
         ))}
-        <button type="button" onClick={() => setRows((p) => [...p, blankRow()])} className="flex items-center gap-2 text-indigo-300 hover:text-indigo-200 text-sm font-bold pt-1">
+        <button type="button" onClick={() => setRows((p) => [...p, blankRow()])} className="flex items-center gap-2 text-teal-300 hover:text-teal-200 text-sm font-bold pt-1">
           <Plus className="w-4 h-4" /> Add row
         </button>
       </div>
@@ -206,7 +206,7 @@ export default function DevSchoolSeedSection({ showToast }: Props) {
         onClick={() => void seed()}
         disabled={busy}
         style={{ touchAction: "manipulation" }}
-        className="w-full px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-base flex items-center justify-center gap-2"
+        className="w-full px-5 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-base flex items-center justify-center gap-2"
       >
         <Wand2 className="w-4 h-4" /> {busy ? "Generating…" : "Generate & seed"}
       </button>

@@ -38,8 +38,6 @@ const STEPPER_BRAND_GRADIENT = 'linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%,
 const STEPPER_DONE_FILL = '#4DBA8A';
 
 const Stepper = memo(({ currentStep, mode }: StepperProps) => {
-  const { language } = useLanguage();
-  const t = teacherWizardsT[language];
   return (
     <div className="flex items-center justify-center gap-2.5 sm:gap-3 mb-7 sm:mb-8">
       {[1, 2, 3].map((step) => {
@@ -232,12 +230,8 @@ export interface SetupWizardProps {
 export const SetupWizard: React.FC<SetupWizardProps> = ({
   mode,
   allWords,
-  set1Words,
-  set2Words,
   onComplete,
   onBack,
-  autoMatchPartial,
-  showLevelFilter,
   selectedClass,
   assignmentTitle = '',
   onTitleChange,
@@ -250,19 +244,12 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   sentenceDifficulty = 1,
   onSentenceDifficultyChange,
   editingAssignment = null,
-  setEditingAssignment,
   onGenerateQR,
   showToast,
-  onPlayWord,
   onTranslateWord,
   onTranslateBatch,
   onGenerateLesson,
   topicPacks = [],
-  onOcrUpload,
-  isOcrProcessing = false,
-  ocrProgress = 0,
-  ocrStatus = "",
-  onDocxUpload,
   customWords = [],
   onCustomWordsChange,
   initialSelectedWords,

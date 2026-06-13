@@ -2,7 +2,7 @@
 // Lobby hub. One scroll, big horizontal carousels per category,
 // Spotlight dynamic hero at the top. See docs/shop-redesign-plan.md.
 
-import { useState } from "react";
+import { useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Zap, Pin, Lock, Check, ChevronLeft } from "lucide-react";
 import { supabase, type AppUser } from "../core/supabase";
@@ -28,8 +28,8 @@ interface Props {
   setXp: (xp: number) => void;
   coins: number;
   setCoins: (coins: number) => void;
-  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setUser: Dispatch<SetStateAction<AppUser | null>>;
+  setView: Dispatch<SetStateAction<View>>;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   activateBooster: (id: 'streak_freeze' | 'lucky_spin' | 'xp_booster' | 'lucky_charm' | 'focus_mode' | 'weekend_warrior') => void;
 }
@@ -305,7 +305,7 @@ export default function ShopMarketplaceView({
   // Frosted dark card shell with a rarity-tinted ring + glow. `active`
   // (equipped) overrides the rarity ring with the cyan "selected" look.
   const ItemShell = ({ rarity, active, width, children }: {
-    rarity: Rarity; active?: boolean; width: string; children: React.ReactNode;
+    rarity: Rarity; active?: boolean; width: string; children: ReactNode;
   }) => (
     <div
       className={`relative ${width} overflow-hidden rounded-2xl bg-white/10 p-3 shadow-lg shadow-violet-900/30 ring-2 backdrop-blur-md ${

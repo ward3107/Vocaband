@@ -8,7 +8,7 @@
  * don't need an extra rasteriser dependency — jspdf is already in the
  * tree for the gradebook export, so the PDF branch reuses it.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FC } from "react";
 import qrcode from "qrcode-generator";
 import { Check, Copy, Download, FileText, MessageCircle, Share2 } from "lucide-react";
 import { jsPDF } from "jspdf";
@@ -68,7 +68,7 @@ const triggerDownload = (dataUrl: string, filename: string) => {
   document.body.removeChild(a);
 };
 
-export const WorksheetShareCard: React.FC<Props> = ({ slug, topicName, t }) => {
+export const WorksheetShareCard: FC<Props> = ({ slug, topicName, t }) => {
   const shareUrl = `${window.location.origin}/w/${slug}`;
   const [copied, setCopied] = useState(false);
 

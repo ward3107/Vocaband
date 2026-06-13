@@ -12,14 +12,14 @@
  * Called from useGameFinish's saveScore when the student hits one of
  * the score / streak / XP milestones. No other callers today.
  */
-import { useCallback } from "react";
+import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { supabase, type AppUser } from "../core/supabase";
 import { celebrate } from "../utils/celebrate";
 
 export interface UseAwardBadgeParams {
   user: AppUser | null;
   badges: string[];
-  setBadges: React.Dispatch<React.SetStateAction<string[]>>;
+  setBadges: Dispatch<SetStateAction<string[]>>;
   setSaveError: (msg: string | null) => void;
 }
 

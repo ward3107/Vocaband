@@ -7,7 +7,6 @@ interface JoystickIllustrationProps {
 }
 
 export const JoystickIllustration: React.FC<JoystickIllustrationProps> = ({ className = '', size = 80 }) => {
-  const scale = size / 80;
 
   return (
     <div className={className} style={{ width: size, height: size }}>

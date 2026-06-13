@@ -101,7 +101,7 @@ interface ClassShowSetupProps {
 // Idioms are intentionally excluded from Class Show — it doesn't
 // translate well to the projected single-screen-for-the-whole-class
 // format and is available in the student game flow.
-const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: React.ReactNode; gradient: string }> = [
+const MODES: Array<{ id: ClassShowMode; nameKey: keyof ClassShowStrings; icon: ReactNode; gradient: string }> = [
   { id: 'classic',          nameKey: 'modeClassic',         icon: <Layers size={26} />,         gradient: 'from-indigo-300 to-violet-400' },
   { id: 'listening',        nameKey: 'modeListening',       icon: <Headphones size={26} />,     gradient: 'from-sky-300 to-cyan-400' },
   { id: 'reverse',          nameKey: 'modeReverse',         icon: <ArrowLeftRight size={26} />, gradient: 'from-amber-300 to-orange-400' },

@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { motion } from "motion/react";
 import { Zap, ChevronRight } from "lucide-react";
 import type { Socket } from "socket.io-client";
@@ -12,7 +13,7 @@ interface LiveChallengeClassSelectViewProps {
   user: { displayName?: string; avatar?: string } | null;
   classes: ClassData[];
   socket: Socket | null;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
   setSelectedClass: (cls: ClassData) => void;
   setIsLiveChallenge: (val: boolean) => void;
 }

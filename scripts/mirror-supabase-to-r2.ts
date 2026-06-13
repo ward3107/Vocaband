@@ -35,6 +35,9 @@ import { config as dotenvConfig } from 'dotenv';
 dotenvConfig({ path: '.env.local' });
 dotenvConfig(); // fall through to `.env` for anyone using that convention
 import { createClient } from '@supabase/supabase-js';
+// @ts-expect-error -- @aws-sdk/client-s3 is an optional, install-on-demand dep for this
+// one-off mirror script (kept out of package.json to avoid dragging the AWS SDK into
+// every `npm ci`). Run `npm i --no-save @aws-sdk/client-s3` before using the script.
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;

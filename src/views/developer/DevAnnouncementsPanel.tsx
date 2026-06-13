@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Megaphone, Plus, Trash2, AlertTriangle, Info, AlertCircle, Sparkles } from "lucide-react";
 import { callAdminRpc, callAdminRpcCached, invalidateAdminRpcCache, type DevAnnouncement } from "./devShared";
 import ConfirmDialog from "./ConfirmDialog";
@@ -64,7 +64,7 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
   }, [reload]);
 
   const submit = useCallback(
-    async (e: React.FormEvent) => {
+    async (e: FormEvent) => {
       e.preventDefault();
       if (!title.trim() || !message.trim()) return;
       setBusy(true);
@@ -180,7 +180,7 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Headline (e.g. Scheduled maintenance tonight)"
           maxLength={200}
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base font-bold focus:outline-none focus:border-indigo-400"
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base font-bold focus:outline-none focus:border-teal-400"
         />
         <textarea
           value={message}
@@ -188,7 +188,7 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
           placeholder="Body — one short sentence works best"
           rows={2}
           maxLength={2000}
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-indigo-400"
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-base focus:outline-none focus:border-teal-400"
         />
 
         <div className="flex gap-2 flex-wrap">
@@ -216,7 +216,7 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
               onClick={() => setAudience(a.id)}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className={`px-3 py-2 rounded-xl font-bold text-sm transition-all ${
-                audience === a.id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "bg-white/5 text-white/60 hover:bg-white/10"
+                audience === a.id ? "bg-teal-600 text-white shadow-lg shadow-teal-500/20" : "bg-white/5 text-white/60 hover:bg-white/10"
               }`}
             >
               {a.label}
@@ -230,14 +230,14 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
             type="datetime-local"
             value={endsAt}
             onChange={(e) => setEndsAt(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-400"
+            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-teal-400"
           />
           <label className="flex items-center gap-2 text-white/70 text-sm font-bold cursor-pointer">
             <input
               type="checkbox"
               checked={dismissible}
               onChange={(e) => setDismissible(e.target.checked)}
-              className="w-4 h-4 accent-indigo-500"
+              className="w-4 h-4 accent-teal-500"
             />
             Dismissible
           </label>
@@ -247,7 +247,7 @@ export default function DevAnnouncementsPanel({ showToast }: Props) {
           type="submit"
           disabled={busy || !title.trim() || !message.trim()}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
+          className="px-5 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-base flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Publish
         </button>

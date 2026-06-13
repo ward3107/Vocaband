@@ -81,7 +81,11 @@ function generateUuid(): string {
   });
 }
 
-function readStoredClientId(): string | null {
+// Exported so the game-finished screen can locate "me" in the session
+// leaderboard.  sessionStorage is the source of truth for the tab's
+// clientId (NOT any hook instance's state) — see the updateScore comment
+// below for why the two hook instances can disagree.
+export function readStoredClientId(): string | null {
   try {
     const existing = sessionStorage.getItem(CLIENT_ID_STORAGE_KEY);
     if (existing && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(existing)) {

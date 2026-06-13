@@ -10,6 +10,7 @@
  * ships).  Strip hides itself when every count is zero so a new
  * student doesn't see empty clutter.
  */
+import type { ReactNode } from 'react';
 import { FastForward, Scissors, Lightbulb } from 'lucide-react';
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
@@ -23,7 +24,7 @@ export interface PowerUpsStripProps {
  * with ActiveBoostersStrip.  Labels are looked up at render time from
  * studentDashboardT so the chip text follows the student's UI language.
  */
-const POWERUP_CHIPS: Array<{ id: string; labelKey: 'powerUpSkip' | 'powerUpFiftyFifty' | 'powerUpRevealLetter'; icon: React.ReactNode; bg: string }> = [
+const POWERUP_CHIPS: Array<{ id: string; labelKey: 'powerUpSkip' | 'powerUpFiftyFifty' | 'powerUpRevealLetter'; icon: ReactNode; bg: string }> = [
   { id: 'skip',          labelKey: 'powerUpSkip',         icon: <FastForward size={11} />,  bg: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
   { id: 'fifty_fifty',   labelKey: 'powerUpFiftyFifty',   icon: <Scissors size={11} />,     bg: 'bg-pink-100 text-pink-800 border-pink-200' },
   { id: 'reveal_letter', labelKey: 'powerUpRevealLetter', icon: <Lightbulb size={11} />,    bg: 'bg-yellow-100 text-yellow-800 border-yellow-200' },

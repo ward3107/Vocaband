@@ -78,7 +78,7 @@ export default function DevAuditLogPanel({ showToast }: Props) {
               onClick={() => setSinceIdx(i)}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className={`px-4 py-2 rounded-xl font-bold text-base transition-all ${
-                sinceIdx === i ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "bg-white/5 text-white/70 hover:bg-white/10"
+                sinceIdx === i ? "bg-teal-600 text-white shadow-lg shadow-teal-500/20" : "bg-white/5 text-white/70 hover:bg-white/10"
               }`}
             >
               {opt.label}

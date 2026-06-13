@@ -26,10 +26,10 @@
  * with the same in-card title + Back button used by Worksheet/Class
  * Show. Mobile bottom-nav stays outside the card by design.
  */
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { motion } from "motion/react";
-import { Activity, ArrowLeft, Brain } from "lucide-react";
+import { Activity, Brain } from "lucide-react";
 import { type ProgressData, type AssignmentData, type ClassData } from "../core/supabase";
 import type { View } from "../core/views";
 import StatChip from "../components/classroom/StatChip";
@@ -71,12 +71,12 @@ interface ClassroomViewProps {
   classStudents: ClassStudent[];
   classes: ClassData[];
   selectedClass: ClassData | null;
-  setSelectedClass: React.Dispatch<React.SetStateAction<ClassData | null>>;
+  setSelectedClass: Dispatch<SetStateAction<ClassData | null>>;
   selectedWords: number[];
-  setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
+  setSelectedWords: Dispatch<SetStateAction<number[]>>;
   expandedStudent: string | null;
   setExpandedStudent: (key: string | null) => void;
-  setView: React.Dispatch<React.SetStateAction<View>>;
+  setView: Dispatch<SetStateAction<View>>;
   showToast: (message: string, type: "success" | "error" | "info") => void;
   /** Legacy tab entry point — kept so /analytics and /gradebook button
    *  paths still land on something familiar. "pulse" -> "today" in v2,
@@ -116,7 +116,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
 
   // Tab metadata depends on `t` (labels + blurbs) so it has to live
   // inside the component.  Static gradients + emojis don't translate.
-  const LEGACY_TABS: Array<{ id: LegacyTab; label: string; icon: React.ReactNode; gradient: string }> = [
+  const LEGACY_TABS: Array<{ id: LegacyTab; label: string; icon: ReactNode; gradient: string }> = [
     { id: "pulse",   label: t.tabPulse,   icon: <Activity size={16} />, gradient: "from-emerald-500 to-teal-600" },
     { id: "mastery", label: t.tabMastery, icon: <Brain size={16} />,    gradient: "from-violet-500 to-fuchsia-600" },
   ];

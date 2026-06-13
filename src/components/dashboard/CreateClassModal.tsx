@@ -1,3 +1,4 @@
+import type { Dispatch, FormEvent, SetStateAction } from 'react';
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
 import ModalShell, {
@@ -9,7 +10,7 @@ import ModalShell, {
 interface CreateClassModalProps {
   show: boolean;
   newClassName: string;
-  setNewClassName: React.Dispatch<React.SetStateAction<string>>;
+  setNewClassName: Dispatch<SetStateAction<string>>;
   onCancel: () => void;
   onCreate: () => void;
 }
@@ -29,7 +30,7 @@ export default function CreateClassModal({
   const { language, dir } = useLanguage();
   const t = teacherModalsT[language];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (newClassName.trim()) onCreate();
   };
