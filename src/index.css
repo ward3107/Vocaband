@@ -572,13 +572,18 @@ body {
    alone — saturated gradients read well on dark and their white text
    stays white.
 
-   Scope: `:not([data-theme-dark])` makes global dark mode YIELD to the
-   teacher theme system whenever a teacher palette is active (that system
-   sets data-theme-dark on <html> and already ships its own dark themes).
-   So the two never fight: teachers use their picker; everyone else uses
-   this toggle.
+   Scope: this block also serves as the dark-token FALLBACK for any
+   `html[data-theme-dark="true"]` — the flag a teacher's dark palette sets
+   AND the flag useApplyStudentTheme now sets for a student's dark shop
+   theme (Dark Mode / Neon / Galaxy / Esports).  Teacher palettes write
+   their brand tokens INLINE on <html> via applyThemePalette, so inline
+   specificity overrides these stone defaults and the teacher's colours
+   still win.  Student dark themes set no inline tokens, so they inherit
+   this stone-dark palette — which is exactly what the remap rules below
+   need to darken every hardcoded light surface.  The global a11y toggle
+   still YIELDS to a teacher palette via `:not([data-theme-dark])`.
    ============================================================================= */
-html.a11y-dark:not([data-theme-dark]) {
+:is(html.a11y-dark:not([data-theme-dark]), html[data-theme-dark="true"]) {
   color-scheme: dark;
 
   /* Surfaces → stone-900/800 family */
