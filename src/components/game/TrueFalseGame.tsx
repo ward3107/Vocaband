@@ -82,6 +82,8 @@ export default function TrueFalseGame({
 
   return (
     <div
+      // lg:max-w-2xl — fill the wider tablet/landscape card (open-issues
+      // §F); phone width (max-w-lg) is unchanged.
       className="max-w-lg lg:max-w-2xl mx-auto px-4 select-none"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}

@@ -134,7 +134,7 @@ const FillBlankGame = React.memo(({
   const after = (sentinelIdx >= 0 ? redacted.slice(sentinelIdx + BLANK_SENTINEL.length) : "").split(BLANK_SENTINEL).join(" ");
 
   return (
-    <div className="max-w-xl lg:max-w-2xl mx-auto px-2 space-y-4 sm:space-y-5">
+    <div className="max-w-xl lg:max-w-3xl mx-auto px-2 space-y-4 sm:space-y-5">
       <p className="text-stone-400 text-[10px] sm:text-xs font-black uppercase tracking-[0.25em] text-center">
         {t.sentenceCounter(currentIndex + 1, gameWordsCount)}
       </p>

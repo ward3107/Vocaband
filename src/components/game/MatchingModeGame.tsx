@@ -108,7 +108,7 @@ export default function MatchingModeGame({
           Hebrew/Arabic UI — without it the two columns swap sides. Each
           tile still sets its own dir for the text it shows. */}
       <div dir="ltr" className="w-full max-w-2xl lg:max-w-4xl mx-auto">
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 items-center">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:gap-8 items-center">
           <div className="flex flex-col items-center justify-center gap-2 sm:gap-3">
             <AnimatePresence>
               {visibleEnglish.map(item => renderTile(item))}
