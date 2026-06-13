@@ -26,3 +26,8 @@ export const PUBLIC_PAGE_VIEW: Record<PublicPage, View> = {
   resources: 'public-free-resources',
   status: 'public-status',
 };
+
+// The path each public page lives at is owned by the central VIEW_PATH
+// registry (src/utils/routes.ts) — look it up with pathForView(view).
+// Keeping the path table in one place is what slice 2 of the URL-routing
+// migration consolidated; it used to be duplicated here as PUBLIC_PAGE_PATH.

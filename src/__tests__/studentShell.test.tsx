@@ -10,6 +10,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { isStudentShell } from '../utils/studentShell';
 import { resolveInitialView } from '../utils/resolveInitialView';
+import { PUBLIC_PAGE_VIEW } from '../utils/publicNavigation';
+import { VIEW_PATH, pathForView, viewForPath } from '../utils/routes';
+import type { View } from '../core/views';
 
 type CapacitorWindow = Window & { Capacitor?: { isNativePlatform?: () => boolean } };
 
@@ -96,5 +99,59 @@ describe('resolveInitialView outside the shell (unchanged behaviour)', () => {
   it('"/student" → student-account-login', () => {
     setUrl('/student');
     expect(resolveInitialView()).toBe('student-account-login');
+  });
+
+  // Public marketing pages now own real, refresh-stable paths (URL routing
+  // slice 1). A hard GET / refresh on each must re-resolve to its view.
+  it('"/security" → public-security', () => {
+    setUrl('/security');
+    expect(resolveInitialView()).toBe('public-security');
+  });
+
+  it('"/free-resources" → public-free-resources', () => {
+    setUrl('/free-resources');
+    expect(resolveInitialView()).toBe('public-free-resources');
+  });
+
+  it('"/status" → public-status', () => {
+    setUrl('/status');
+    expect(resolveInitialView()).toBe('public-status');
+  });
+
+  it('"/terms" → public-terms', () => {
+    setUrl('/terms');
+    expect(resolveInitialView()).toBe('public-terms');
+  });
+
+  it('"/privacy" → public-privacy', () => {
+    setUrl('/privacy');
+    expect(resolveInitialView()).toBe('public-privacy');
+  });
+});
+
+// Slice 2: routes.ts is the single source of truth for view⇄path. The
+// registry must round-trip, every public page the landing nav can reach
+// must have a path there, and each path must resolve back through
+// resolveInitialView — otherwise a refresh on that URL would silently
+// bounce the visitor elsewhere.
+describe('view ⇄ path registry (routes.ts)', () => {
+  it('every VIEW_PATH entry round-trips through pathForView / viewForPath', () => {
+    for (const [view, path] of Object.entries(VIEW_PATH) as [View, string][]) {
+      expect(pathForView(view)).toBe(path);
+      expect(viewForPath(path)).toBe(view);
+    }
+  });
+
+  it('every public page reachable from the landing nav has a registry path', () => {
+    for (const page of Object.keys(PUBLIC_PAGE_VIEW) as Array<keyof typeof PUBLIC_PAGE_VIEW>) {
+      expect(pathForView(PUBLIC_PAGE_VIEW[page])).not.toBeNull();
+    }
+  });
+
+  it('each registry path resolves back to its view via resolveInitialView', () => {
+    for (const [view, path] of Object.entries(VIEW_PATH) as [View, string][]) {
+      setUrl(path);
+      expect(resolveInitialView()).toBe(view);
+    }
   });
 });

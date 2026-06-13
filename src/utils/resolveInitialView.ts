@@ -7,10 +7,12 @@
  *
  * The routing rules (in priority order):
  *   - ?session=…           → quick-play-student (QR-scan Live Play)
- *   - /accessibility-statement → accessibility-statement
  *   - /w/<slug>            → public-interactive-worksheet (WhatsApp share)
  *   - /student             → student-account-login (dedicated route)
  *   - /teacher             → teacher-login (dedicated route)
+ *   - static public paths  → via the VIEW_PATH registry (src/utils/routes.ts):
+ *                            /privacy /terms /security /free-resources
+ *                            /status /accessibility-statement
  *   - ?class=XXX           → student-account-login (classroom poster QR)
  *   - otherwise            → public-landing
  *
@@ -19,6 +21,7 @@
  */
 import type { View } from '../core/views';
 import { isStudentShell } from './studentShell';
+import { viewForPath } from './routes';
 
 export function resolveInitialView(): View {
   // Native student app (Capacitor wrapper): students-only, so both the
@@ -29,9 +32,6 @@ export function resolveInitialView(): View {
   // Quick Play QR-scan: ?session=… always wins, even over a known route.
   if (new URLSearchParams(window.location.search).get('session')) {
     return 'quick-play-student';
-  }
-  if (window.location.pathname === '/accessibility-statement') {
-    return 'accessibility-statement';
   }
   // Public interactive worksheet — WhatsApp-shareable link teachers paste
   // from the Free Resources page.  Path is /w/<slug>; the slug is read in
@@ -53,20 +53,20 @@ export function resolveInitialView(): View {
   if (window.location.pathname === '/teacher') {
     return studentShell ? 'student-account-login' : 'teacher-login';
   }
-  // `/privacy` opens the designed React PublicPrivacyPage instead of the
-  // bare static `/privacy.html` (which still exists for SEO + external
-  // links like the Google Play listing).  The cookie banner + consent
-  // modal point here with `target="_blank"` so the policy renders in a
-  // new tab over the modal-locked dashboard.
-  if (window.location.pathname === '/privacy') {
-    return 'public-privacy';
-  }
-  // `/terms` mirrors `/privacy` — opens the designed React TermsPage
-  // instead of the bare static `/terms.html`.  Same rationale: the
-  // consent modal + Privacy Settings link here so the policy renders
-  // in a new tab with full chrome.
-  if (window.location.pathname === '/terms') {
-    return 'public-terms';
+  // Static public paths resolve via the central VIEW_PATH registry
+  // (src/utils/routes.ts): /privacy, /terms, /security, /free-resources,
+  // /status, /accessibility-statement. The Worker serves the SPA for these
+  // (not_found_handling: "single-page-application"), so a hard GET / refresh
+  // boots the app and lands here. "/" is intentionally excluded so the
+  // student-shell fallback below still owns the root path.
+  //
+  // /privacy and /terms also have bare static /privacy.html, /terms.html
+  // counterparts kept for SEO + external links (e.g. the Google Play
+  // listing); the React routes here are what the in-app links + consent
+  // modal open.
+  const staticView = viewForPath(window.location.pathname);
+  if (staticView && staticView !== 'public-landing') {
+    return staticView;
   }
   // Classroom-poster QR code / teacher-shared invite link.  When the URL
   // carries a `?class=XXX` parameter and there's no already-active session,
