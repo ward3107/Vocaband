@@ -54,4 +54,26 @@ test.describe('Slice 3 — landable authenticated views (deep-link)', () => {
     await expect(page.getByText('Vocabagrut')).not.toHaveCount(0, { timeout: 20_000 });
     await expect(page).toHaveURL(/\/vocabagrut$/);
   });
+
+  test('admin deep-links straight to /developer', async ({ adminPage: page }) => {
+    await page.goto('/developer', { waitUntil: 'domcontentloaded' });
+    await waitForAppLoad(page);
+    // "Command center" is the admin view; non-admins get an "Admins only" gate.
+    await expect(page.getByText('Command center')).not.toHaveCount(0, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/developer$/);
+  });
+
+  test('admin deep-links straight to /admin-security', async ({ adminPage: page }) => {
+    await page.goto('/admin-security', { waitUntil: 'domcontentloaded' });
+    await waitForAppLoad(page);
+    await expect(page.getByText('Security audit log')).not.toHaveCount(0, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/admin-security$/);
+  });
+
+  test('manager deep-links straight to /manager', async ({ managerPage: page }) => {
+    await page.goto('/manager', { waitUntil: 'domcontentloaded' });
+    await waitForAppLoad(page);
+    await expect(page.getByText('Principal console')).not.toHaveCount(0, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/manager$/);
+  });
 });

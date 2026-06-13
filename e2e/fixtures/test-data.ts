@@ -89,3 +89,60 @@ export const FAKE_TEACHER_SESSION = {
     user_metadata: { full_name: 'Ms. Teacher' },
   },
 };
+
+// Admin (hasTeacherAccess + hasAdminAccess) — for the developer-dashboard
+// and admin-security landable views.
+export const TEST_ADMIN = {
+  uid: 'admin-uid-001',
+  email: 'admin@test.com',
+  display_name: 'Admin User',
+  role: 'admin',
+  class_code: null,
+  avatar: null,
+  badges: [],
+  xp: 0,
+  streak: 0,
+  unlocked_avatars: [],
+  unlocked_themes: [],
+  power_ups: {},
+  active_theme: 'default',
+};
+
+// School manager / principal (hasManagerAccess) — for manager-dashboard.
+export const TEST_MANAGER = {
+  uid: 'manager-uid-001',
+  email: 'principal@test.com',
+  display_name: 'Principal',
+  role: 'manager',
+  class_code: null,
+  avatar: null,
+  badges: [],
+  xp: 0,
+  streak: 0,
+  unlocked_avatars: [],
+  unlocked_themes: [],
+  power_ups: {},
+  active_theme: 'default',
+};
+
+export const FAKE_ADMIN_SESSION = {
+  ...FAKE_AUTH_SESSION,
+  user: {
+    ...FAKE_AUTH_SESSION.user,
+    id: 'admin-uid-001',
+    email: 'admin@test.com',
+    app_metadata: { provider: 'google' },
+    user_metadata: { full_name: 'Admin User' },
+  },
+};
+
+export const FAKE_MANAGER_SESSION = {
+  ...FAKE_AUTH_SESSION,
+  user: {
+    ...FAKE_AUTH_SESSION.user,
+    id: 'manager-uid-001',
+    email: 'principal@test.com',
+    app_metadata: { provider: 'google' },
+    user_metadata: { full_name: 'Principal' },
+  },
+};

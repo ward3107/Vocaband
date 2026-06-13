@@ -7,11 +7,15 @@ import {
   TEST_TEACHER,
   TEST_ASSIGNMENT,
   TEST_PROGRESS,
+  TEST_ADMIN,
+  TEST_MANAGER,
   FAKE_AUTH_SESSION,
   FAKE_TEACHER_SESSION,
+  FAKE_ADMIN_SESSION,
+  FAKE_MANAGER_SESSION,
 } from './test-data';
 
-type MockScenario = 'public' | 'student' | 'teacher';
+type MockScenario = 'public' | 'student' | 'teacher' | 'admin' | 'manager';
 
 /**
  * Sets up Supabase API mocking via Playwright route interception.
@@ -20,23 +24,29 @@ type MockScenario = 'public' | 'student' | 'teacher';
 export async function mockSupabase(page: Page, scenario: MockScenario = 'public') {
   const BASE = TEST_SUPABASE_URL;
 
+  // The persisted session + users-row the app sees, per role scenario.
+  const sessionFor = (s: MockScenario) =>
+    s === 'teacher' ? FAKE_TEACHER_SESSION
+    : s === 'admin' ? FAKE_ADMIN_SESSION
+    : s === 'manager' ? FAKE_MANAGER_SESSION
+    : FAKE_AUTH_SESSION;
+  const userRowFor = (s: MockScenario) =>
+    s === 'teacher' ? TEST_TEACHER
+    : s === 'admin' ? TEST_ADMIN
+    : s === 'manager' ? TEST_MANAGER
+    : TEST_STUDENT_USER;
+
   // --- Auth endpoints ---
 
   // GET /auth/v1/session (getSession)
   await page.route(`${BASE}/auth/v1/session`, (route) => {
-    if (scenario === 'student') {
-      route.fulfill({ json: { data: { session: FAKE_AUTH_SESSION } } });
-    } else if (scenario === 'teacher') {
-      route.fulfill({ json: { data: { session: FAKE_TEACHER_SESSION } } });
-    } else {
-      route.fulfill({ json: { data: { session: null } } });
-    }
+    const session = scenario === 'public' ? null : sessionFor(scenario);
+    route.fulfill({ json: { data: { session } } });
   });
 
   // POST /auth/v1/token (refresh token, sign in)
   await page.route(`${BASE}/auth/v1/token**`, (route) => {
-    const session = scenario === 'teacher' ? FAKE_TEACHER_SESSION : FAKE_AUTH_SESSION;
-    route.fulfill({ json: session });
+    route.fulfill({ json: sessionFor(scenario) });
   });
 
   // POST /auth/v1/signup (anonymous sign-in)
@@ -46,8 +56,7 @@ export async function mockSupabase(page: Page, scenario: MockScenario = 'public'
 
   // GET /auth/v1/user
   await page.route(`${BASE}/auth/v1/user`, (route) => {
-    const session = scenario === 'teacher' ? FAKE_TEACHER_SESSION : FAKE_AUTH_SESSION;
-    route.fulfill({ json: session.user });
+    route.fulfill({ json: sessionFor(scenario).user });
   });
 
   // --- RPC endpoints ---
@@ -62,10 +71,10 @@ export async function mockSupabase(page: Page, scenario: MockScenario = 'public'
         route.fulfill({ json: scenario === 'teacher' });
         break;
       case 'is_admin':
-        route.fulfill({ json: false });
+        route.fulfill({ json: scenario === 'admin' });
         break;
       case 'is_teacher_allowed':
-        route.fulfill({ json: scenario === 'teacher' });
+        route.fulfill({ json: scenario === 'teacher' || scenario === 'admin' });
         break;
       case 'list_students_in_class':
         route.fulfill({ json: TEST_STUDENTS });
@@ -106,8 +115,7 @@ export async function mockSupabase(page: Page, scenario: MockScenario = 'public'
   // GET /rest/v1/users
   await page.route(`${BASE}/rest/v1/users**`, (route) => {
     if (route.request().method() === 'GET') {
-      const userData = scenario === 'teacher' ? TEST_TEACHER : TEST_STUDENT_USER;
-      route.fulfill({ json: userData });
+      route.fulfill({ json: userRowFor(scenario) });
     } else {
       // POST/PATCH/PUT for upsert/update
       route.fulfill({ status: 200, json: {} });
@@ -159,6 +167,13 @@ export async function mockSupabase(page: Page, scenario: MockScenario = 'public'
   // GET /rest/v1/teacher_allowlist
   await page.route(`${BASE}/rest/v1/teacher_allowlist**`, (route) => {
     route.fulfill({ json: scenario === 'teacher' ? [{ email: 'teacher@test.com' }] : [] });
+  });
+
+  // GET /rest/v1/authz_failures (admin-security view) — admin-only via RLS;
+  // empty for the mock so the view renders its "no events" state instead of
+  // hanging on an un-mocked request to the (non-existent) test host.
+  await page.route(`${BASE}/rest/v1/authz_failures**`, (route) => {
+    route.fulfill({ json: [] });
   });
 
   // Realtime WebSocket — just let it fail silently

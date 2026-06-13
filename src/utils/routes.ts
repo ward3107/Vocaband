@@ -48,6 +48,12 @@ export const VIEW_PATH: Partial<Record<View, string>> = {
   'privacy-settings': '/privacy-settings',
   'vocabulary-library': '/vocabulary-library',
   'vocabagrut': '/vocabagrut',
+  // Admin / manager internal dashboards — role-gated inside the view (not at
+  // the router), so a non-privileged deep link sees the view's own gate /
+  // empty state, never another role's data.
+  'developer-dashboard': '/developer',
+  'admin-security': '/admin-security',
+  'manager-dashboard': '/manager',
 };
 
 // Reverse lookup, built once at module load. Path → View.
