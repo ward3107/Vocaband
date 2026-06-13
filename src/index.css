@@ -215,13 +215,41 @@
 
 /* Root font-size = the teacher's chosen accessibility scale
    (--a11y-font-size, written by useUiScale) × the active display
-   multiplier (--vb-font-scale, raised to 1.4 by .vb-presentation).
-   Every rem-based Tailwind size scales off this. The two inputs are
-   separate variables so they compose instead of fighting over one
-   inline value; !important beats the UA's default `html { font-size:
-   medium }`. */
+   multiplier (--vb-font-scale, raised to 1.4 by .vb-presentation) ×
+   the viewport-comfort multiplier (--vb-viewport-scale, raised on
+   large screens below).  Every rem-based Tailwind size scales off
+   this. The inputs are separate variables so they compose instead of
+   fighting over one inline value; !important beats the UA's default
+   `html { font-size: medium }`. */
 html {
-  font-size: calc(var(--a11y-font-size, 16px) * var(--vb-font-scale, 1)) !important;
+  font-size: calc(
+    var(--a11y-font-size, 16px) *
+    var(--vb-font-scale, 1) *
+    var(--vb-viewport-scale, 1)
+  ) !important;
+}
+
+/* Desktop comfort scale — the app is designed mobile-first, so on the
+   roomy monitors in school computer labs everything reads a touch small
+   and cramped.  Bumping the root font-size at desktop widths enlarges
+   every rem-based size app-wide in one place — fonts, padding, gaps,
+   rem-based widths all grow proportionally, so the whole UI scales up
+   without per-page edits.
+
+   Triggers are px-based (so they don't feed back on themselves) and sit
+   at genuine desktop widths — NOT at the `lg` (1024px) boundary.  Two
+   reasons: (1) school-lab monitors are ≥1280px anyway, and (2) raising
+   the root font-size also stretches Tailwind v4's rem-based breakpoints,
+   so firing the bump right on the `lg` edge could flip two-column
+   layouts at the boundary.  Starting at 1280px keeps a comfortable gap
+   above the (shifted) `lg` breakpoint.  Kept modest (~6% then ~10%) so
+   layouts don't reflow oddly.  Composes with the a11y + presentation
+   multipliers above. */
+@media (min-width: 1280px) {
+  :root { --vb-viewport-scale: 1.06; }
+}
+@media (min-width: 1920px) {
+  :root { --vb-viewport-scale: 1.10; }
 }
 
 /* When prefers-reduced-motion is set, disable theme transitions. */

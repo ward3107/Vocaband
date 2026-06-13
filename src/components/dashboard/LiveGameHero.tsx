@@ -88,6 +88,19 @@ export default function LiveGameHero({
         <rect width="100%" height="100%" fill="url(#vc-hero-dots)" />
       </svg>
 
+      {/* Glare softener — the brand gradients peak at very high luminance,
+          which teachers told us "shines" uncomfortably on the max-backlight
+          monitors in school computer labs.  This thin dark veil sits ABOVE
+          the gradient + white blobs but BELOW the content (which is
+          `relative`, so it paints on top), pulling the peak brightness down
+          a notch without recolouring the seven brand gradients or dimming
+          the white text/CTA. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "rgba(15,23,42,0.12)" }}
+      />
+
       {/* Icon + badge row */}
       <div className="relative flex items-center justify-between gap-3 mb-3">
         <FrostedEmoji emoji={emoji} size={48} tone="gradient" />

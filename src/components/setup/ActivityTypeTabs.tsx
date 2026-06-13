@@ -61,6 +61,12 @@ interface TabDef {
   iconColor: string;
 }
 
+// Vocabagrut is OFF by default — only schools/teachers who explicitly
+// ask for it should see it.  Flip to `true` (or gate per-account) to
+// surface the tab again.  The /vocabagrut route itself still resolves,
+// so a requesting school can be linked straight to it without this flag.
+const VOCABAGRUT_VISIBLE = false;
+
 const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
   active,
   onSwitch,
@@ -77,7 +83,9 @@ const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
     ...(hideEnglishOnlyTabs ? [] : [
       { id: 'hot-seat' as const, label: td.hotSeatTitle, icon: <Users size={16} />, activeBg: 'bg-orange-600', iconColor: 'text-orange-600' },
       { id: 'wheel' as const, label: td.wheelTitle, icon: <Disc3 size={16} />, activeBg: 'bg-violet-600', iconColor: 'text-violet-600' },
-      { id: 'vocabagrut' as const, label: td.vocabagrutTitle, icon: <Sparkles size={16} />, activeBg: 'bg-violet-600', iconColor: 'text-violet-600' },
+      ...(VOCABAGRUT_VISIBLE ? [
+        { id: 'vocabagrut' as const, label: td.vocabagrutTitle, icon: <Sparkles size={16} />, activeBg: 'bg-violet-600', iconColor: 'text-violet-600' },
+      ] : []),
     ]),
   ];
 
