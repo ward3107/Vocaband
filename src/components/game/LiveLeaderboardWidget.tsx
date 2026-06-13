@@ -18,8 +18,12 @@ export default function LiveLeaderboardWidget({ user, leaderboard }: LiveLeaderb
   if (user?.isGuest || Object.keys(leaderboard).length === 0) return null;
 
   return (
-    <div className="lg:col-span-1">
-      <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-xl p-6 sticky top-6 border border-white/20">
+    // Container width is owned by the caller (GameActiveView docks this
+    // into a fixed-width sidebar at lg:). lg:sticky keeps the standings
+    // in view while the game card scrolls on shorter landscape panels;
+    // on phones it sits inline below the game so no sticky is needed.
+    <div>
+      <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-xl p-6 lg:sticky lg:top-6 border border-white/20">
         <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-white">
           <span aria-hidden="true">🏆</span> {t.liveRank}
         </h3>

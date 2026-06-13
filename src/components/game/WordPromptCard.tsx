@@ -56,11 +56,14 @@ export default function WordPromptCard({
             src={currentWord.imageUrl}
             alt={currentWord.english}
             referrerPolicy="no-referrer"
-            className="w-28 h-28 sm:w-48 sm:h-48 object-cover rounded-2xl sm:rounded-2xl shadow-lg border-4 border-white"
+            className="w-28 h-28 sm:w-48 sm:h-48 lg:w-56 lg:h-56 object-cover rounded-2xl sm:rounded-2xl shadow-lg border-4 border-white"
           />
         )}
         <h2
-          className={`text-4xl sm:text-5xl md:text-6xl font-black text-stone-900 relative z-10 break-words w-full text-center ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}
+          // lg:text-7xl — the prompt word fills the wider card the
+          // tablet/landscape layout gives it (open-issues §F); phone +
+          // sm/md sizes are unchanged.
+          className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-stone-900 relative z-10 break-words w-full text-center ${gameMode === "listening" ? "blur-xl select-none opacity-20" : ""}`}
           dir={(gameMode === "spelling" || gameMode === "reverse" || (gameMode === "flashcards" && isFlipped)) ? "auto" : "ltr"}
         >
           {gameMode === "spelling" || gameMode === "reverse"

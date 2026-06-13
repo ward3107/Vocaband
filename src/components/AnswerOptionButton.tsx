@@ -86,7 +86,7 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
       dir={optionDir}
       aria-keyshortcuts={shortcutKey ? String(shortcutKey) : undefined}
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-      className={`relative py-5 px-5 sm:py-6 sm:px-8 rounded-xl sm:rounded-2xl text-xl sm:text-2xl font-bold motion-safe:transition-all duration-300 min-h-[88px] sm:min-h-[80px] flex items-center justify-center gap-2 ${
+      className={`relative py-5 px-5 sm:py-6 sm:px-8 lg:py-7 lg:px-10 rounded-xl sm:rounded-2xl text-xl sm:text-2xl lg:text-3xl font-bold motion-safe:transition-all duration-300 min-h-[88px] sm:min-h-[80px] lg:min-h-[96px] flex items-center justify-center gap-2 ${
         showCorrect
           ? "bg-blue-600 text-white motion-safe:scale-105 shadow-xl"
           : feedback === "wrong" && !isCorrect

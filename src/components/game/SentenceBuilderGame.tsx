@@ -84,7 +84,7 @@ export default function SentenceBuilderGame({
           : "border-stone-200 bg-stone-50";
 
   return (
-    <div className="max-w-xl mx-auto px-2 space-y-4 sm:space-y-5">
+    <div className="max-w-xl lg:max-w-3xl mx-auto px-2 space-y-4 sm:space-y-5">
       {/* Listen hero — the prompt is AUDIO ONLY, so the speaker
           button has to be unmissable.  Big teal card, huge tap
           target, sentence counter sits below as supporting text. */}
