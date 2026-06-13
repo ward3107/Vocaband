@@ -39,4 +39,19 @@ test.describe('Slice 3 — landable authenticated views (deep-link)', () => {
     await expect(page.getByText('Vocabulary Library')).not.toHaveCount(0, { timeout: 20_000 });
     await expect(page).toHaveURL(/\/vocabulary-library$/);
   });
+
+  test('student deep-links straight to /privacy-settings', async ({ studentPage: page }) => {
+    await page.goto('/privacy-settings', { waitUntil: 'domcontentloaded' });
+    await waitForAppLoad(page);
+    await expect(page.getByText('Privacy & Data Settings')).not.toHaveCount(0, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/privacy-settings$/);
+  });
+
+  test('teacher deep-links straight to /vocabagrut', async ({ teacherPage: page }) => {
+    await page.goto('/vocabagrut', { waitUntil: 'domcontentloaded' });
+    await waitForAppLoad(page);
+    // "Vocabagrut" is the product brand — same string in EN/HE/AR.
+    await expect(page.getByText('Vocabagrut')).not.toHaveCount(0, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/vocabagrut$/);
+  });
 });

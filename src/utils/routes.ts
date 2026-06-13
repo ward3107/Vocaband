@@ -45,7 +45,9 @@ export const VIEW_PATH: Partial<Record<View, string>> = {
   // landing rather than rendering a dataless authed screen.
   'shop': '/shop',
   'global-leaderboard': '/leaderboard',
+  'privacy-settings': '/privacy-settings',
   'vocabulary-library': '/vocabulary-library',
+  'vocabagrut': '/vocabagrut',
 };
 
 // Reverse lookup, built once at module load. Path → View.

@@ -94,16 +94,22 @@ in-memory object). It splits into two halves:
     safety-critical trap, so it's **deferred to Slice 5** (real-phone
     tested). Until then the URL reflects these views on a deep-link /
     refresh, but not after in-app navigation.
-- ✅ DONE (first batch): `shop` → `/shop`, `global-leaderboard` →
-  `/leaderboard`, `vocabulary-library` → `/vocabulary-library`. Coverage:
-  registry round-trip + logged-in/out gating (`studentShell.test.tsx`) and
-  deep-link e2e (`landable-views.auth.spec.ts`, 3 views × 2 viewports).
+- ✅ DONE (5 views): `shop` → `/shop`, `global-leaderboard` →
+  `/leaderboard`, `privacy-settings` → `/privacy-settings`,
+  `vocabulary-library` → `/vocabulary-library`, `vocabagrut` →
+  `/vocabagrut`. First 3 shipped in #1185; privacy-settings + vocabagrut
+  follow. Coverage: registry round-trip + logged-in/out gating
+  (`studentShell.test.tsx`) and deep-link e2e (`landable-views.auth.spec.ts`,
+  5 views × 2 viewports).
 - Remaining candidates (same pattern — validate each against `useViewGuards`
-  + `useVocaRouting` first): `student-practice`, `student-daily`,
-  `privacy-settings`, `vocabagrut`, `developer-dashboard`, `admin-security`,
-  `manager-dashboard`, `voca-picker`, `vocahebrew-*`. The dashboards
-  (`teacher-dashboard` / `student-dashboard`) are role-dependent and
-  entangled with auth-restore's default destination → handle in Slice 6.
+  + `useVocaRouting` first): `developer-dashboard`, `admin-security`,
+  `manager-dashboard`, `voca-picker`, `vocahebrew-*`, `student-practice`,
+  `student-daily`. The admin/manager ones first need an admin/manager e2e
+  fixture; `vocahebrew-*` is gated by Voca entitlement; `student-practice` /
+  `student-daily` aren't in `shouldPreserveView` yet (would need an
+  authViews.ts keep-set entry). The dashboards (`teacher-dashboard` /
+  `student-dashboard`) are role-dependent and entangled with auth-restore's
+  default destination → handle in Slice 6.
 
 ### Slice 4 — Stateful sub-views (the real work)
 Views that today rely on transient state and are bounced by `useViewGuards`
