@@ -737,9 +737,12 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // Apply a student's equipped shop theme's dark intent the same way: a
   // dark theme (Dark Mode / Neon / Galaxy / Esports) sets data-theme-dark
   // so the index.css remap darkens every hardcoded light surface app-wide.
-  // Gated behind `!teacherThemeId` so the two hooks never write the same
-  // flag — a teacher's palette always owns it.
-  const studentThemeId = teacherThemeId ? null : (user?.activeTheme ?? null);
+  // The unequipped 'default' theme follows the device's prefers-color-scheme
+  // (auto dark on a dark phone).  Pass null for teachers (their palette owns
+  // the flag via useApplyTeacherTheme) and for signed-out visitors, so this
+  // hook only ever drives the flag for student-like users.
+  const studentThemeId =
+    user && !hasTeacherAccess(user) ? (user.activeTheme ?? 'default') : null;
   useApplyStudentTheme(studentThemeId);
 
   // View-state guards — redirect out of orphaned/broken views.
