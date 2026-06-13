@@ -9,6 +9,14 @@
  * handed back to the parent which fills the players textarea, keeping
  * the list fully editable after the auto-fill.
  *
+ * That RPC only returns structured-roster students (those created via
+ * the coded-roster flow, `roster_created = TRUE`).  Classes whose
+ * students self-joined by class code or Google OAuth aren't in that
+ * table, so the RPC comes back empty and the teacher would have to
+ * type every name.  To cover those classes, the parent can pass
+ * `fallbackNamesByCode` — the progress-derived names per class code —
+ * which we use whenever the RPC returns nothing (or errors).
+ *
  * When `initialClassId` is set (the mode was launched from a class
  * card) the roster loads automatically on mount so the teacher lands
  * on a ready-to-start screen.
@@ -34,6 +42,11 @@ interface ClassRosterPickerProps {
    *  an empty roster shows the "no students yet" hint instead so it
    *  can't wipe names the teacher already typed). */
   onNamesLoaded: (names: string[]) => void;
+  /** Progress-derived student names keyed by class code.  Used as a
+   *  fallback when `teacher_view_roster` returns no structured-roster
+   *  students (self-join / Google classes), so those teachers still get
+   *  an auto-filled list instead of typing every name. */
+  fallbackNamesByCode?: Record<string, string[]>;
   /** Match the host mode's theme colour. */
   accent?: 'orange' | 'violet';
 }
@@ -91,6 +104,7 @@ export default function ClassRosterPicker({
   classes,
   initialClassId,
   onNamesLoaded,
+  fallbackNamesByCode,
   accent = 'violet',
 }: ClassRosterPickerProps) {
   const { language, dir } = useLanguage();
@@ -116,10 +130,21 @@ export default function ClassRosterPicker({
   useEffect(() => {
     classesRef.current = classes;
   });
+  const fallbackRef = useRef(fallbackNamesByCode);
+  useEffect(() => {
+    fallbackRef.current = fallbackNamesByCode;
+  });
+
+  // De-duplicate + numeric-aware sort, shared by the RPC result and the
+  // progress-derived fallback so both render in a stable, sensible order.
+  const normalizeNames = (raw: string[]): string[] =>
+    Array.from(new Set(raw.map((n) => n.trim()).filter((n) => n.length > 0)))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
   const loadClass = useCallback(async (classId: string) => {
     const cls = classesRef.current.find((c) => c.id === classId);
     if (!cls) return;
+    const fallback = normalizeNames(fallbackRef.current?.[cls.code] ?? []);
     const cached = cacheRef.current.get(cls.code);
     if (cached) {
       setStatus(cached.length > 0 ? 'done' : 'empty');
@@ -133,11 +158,15 @@ export default function ClassRosterPicker({
         p_class_code: cls.code,
       });
       if (error) throw error;
-      const names = ((data ?? []) as Array<Record<string, unknown>>)
-        .map((r) => (r.display_name as string) ?? '')
-        .filter((n) => n.trim().length > 0)
-        // Numeric-aware sort so coded names order 2 before 14.
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      let names = normalizeNames(
+        ((data ?? []) as Array<Record<string, unknown>>).map(
+          (r) => (r.display_name as string) ?? '',
+        ),
+      );
+      // No structured roster for this class (self-join / Google) — fall
+      // back to the names we already know from the progress table so the
+      // teacher isn't left typing the whole list by hand.
+      if (names.length === 0) names = fallback;
       cacheRef.current.set(cls.code, names);
       setLoadedCount(names.length);
       if (names.length > 0) {
@@ -147,7 +176,16 @@ export default function ClassRosterPicker({
         setStatus('empty');
       }
     } catch {
-      setStatus('error');
+      // The RPC failed (e.g. a class the teacher can't roster-read) — still
+      // offer the progress-derived names rather than dead-ending on error.
+      if (fallback.length > 0) {
+        cacheRef.current.set(cls.code, fallback);
+        setLoadedCount(fallback.length);
+        setStatus('done');
+        onNamesLoadedRef.current(fallback);
+      } else {
+        setStatus('error');
+      }
     }
   }, []);
 
