@@ -112,7 +112,7 @@ export default function ModalShell({
             transition={{ type: "spring", stiffness: 220, damping: 22 }}
             onClick={(e) => e.stopPropagation()}
             className={`relative w-full overflow-hidden rounded-[28px] bg-white flex flex-col ${
-              wide ? "max-w-[560px]" : "max-w-[480px]"
+              wide ? "max-w-[560px] md:max-w-[680px]" : "max-w-[480px] md:max-w-[580px]"
             }`}
             style={{
               boxShadow: "0 40px 80px -30px rgba(0,0,0,0.4), 0 12px 26px -10px rgba(60,40,120,0.35)",

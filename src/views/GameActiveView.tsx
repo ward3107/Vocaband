@@ -561,7 +561,7 @@ export default function GameActiveView() {
           rest had three competing signals). Self-contained modes own
           their full UI, progress included, so they skip this row. */}
       {!isSelfContainedMode && progressTotal > 0 && (
-        <div className="w-full max-w-4xl mx-auto flex items-end gap-3 mb-2 sm:mb-3">
+        <div className="w-full max-w-4xl md:max-w-5xl mx-auto flex items-end gap-3 mb-2 sm:mb-3">
           <GameProgress
             label={progressLabel}
             current={progressCurrent}

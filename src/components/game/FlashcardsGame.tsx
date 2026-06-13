@@ -174,7 +174,7 @@ export default function FlashcardsGame({
           min-h-[88px], stacked emoji + label inside. */}
       {/* dir="ltr" keeps "Still Learning" left and "Got It" right
           regardless of UI language, so the buttons don't swap sides. */}
-      <div dir="ltr" className="grid grid-cols-2 gap-3 sm:gap-4">
+      <div dir="ltr" className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
         <button
           onClick={() => onAnswer(false)}
           onTouchStart={(e) => { if (!isProcessingRef.current) e.currentTarget.click(); }}

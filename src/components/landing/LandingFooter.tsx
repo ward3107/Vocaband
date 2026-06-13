@@ -62,7 +62,7 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-80px" }}
-          className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 md:gap-10 lg:gap-12 pb-10 border-b border-white/10"
+          className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-8 md:gap-10 lg:gap-12 pb-10 border-b border-white/10"
         >
           {/* Col 1: Brand + tagline + contact */}
           <div className="col-span-2 md:col-span-1">

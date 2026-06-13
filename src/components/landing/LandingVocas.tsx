@@ -52,7 +52,7 @@ const LandingVocas: React.FC<LandingVocasProps> = ({ onOpenSubjectRequest }) => 
         </p>
       </motion.div>
 
-      <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5">
+      <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-5">
         {subjects.map((subject, i) => (
           <motion.div
             key={subject.name}
