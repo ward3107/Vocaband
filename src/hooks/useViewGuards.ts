@@ -41,6 +41,10 @@ export interface UseViewGuardsParams {
   activeAssignment: AssignmentData | null;
   quickPlayActiveSession: { id: string; sessionCode: string } | null;
   selectedClass: ClassData | null;
+  /** Teacher's loaded classes — used to re-hydrate create-assignment from
+   *  ?classId= (Slice 4) before the guard would otherwise bounce. */
+  classes: ClassData[];
+  setSelectedClass: Dispatch<SetStateAction<ClassData | null>>;
 }
 
 export function useViewGuards(params: UseViewGuardsParams): void {
@@ -48,7 +52,7 @@ export function useViewGuards(params: UseViewGuardsParams): void {
     view, setView,
     user, loading,
     activeAssignment, quickPlayActiveSession,
-    selectedClass,
+    selectedClass, classes, setSelectedClass,
   } = params;
 
   // ─── Guard 0: students-only native app shell ───────────────────────
@@ -110,13 +114,26 @@ export function useViewGuards(params: UseViewGuardsParams): void {
   // ─── Guard 4: `create-assignment` needs a selectedClass ───────────
   // create-assignment is preserved across a refresh by shouldPreserveView,
   // but selectedClass resets to null on a fresh mount.  The render branch
-  // (`view === 'create-assignment' && selectedClass`) then fails to match,
-  // execution falls through every branch to the legacy default game
-  // screen, and the teacher lands on the student SET-2 word list (the
-  // "1 / 809 CLASSIC" screen).  Bounce them back to the dashboard, where
-  // they can re-open the class and resume creating the assignment.
+  // (`view === 'create-assignment' && selectedClass`) then fails to match
+  // and the teacher falls through to the legacy default game screen.
+  //
+  // Slice 4 (URL routing): before bouncing, try to re-hydrate the class from
+  // `?classId=<id>` using the already-loaded `classes`, so a deep-link /
+  // refresh of /create-assignment?classId=X lands on the wizard for that
+  // class. Doing it INSIDE the guard avoids a race with the bounce — one
+  // effect either selects the class or recovers to the dashboard. A missing
+  // or unknown id still bounces, exactly as before.
   useEffect(() => {
     if (view !== 'create-assignment' || selectedClass || loading) return;
+    let classId: string | null = null;
+    try {
+      classId = new URLSearchParams(window.location.search).get('classId');
+    } catch { /* URLSearchParams unavailable — fall through to the bounce */ }
+    if (classId) {
+      if (classes.length === 0) return; // wait for classes to load before deciding
+      const match = classes.find((c) => c.id === classId);
+      if (match) { setSelectedClass(match); return; }
+    }
     setView('teacher-dashboard');
-  }, [view, selectedClass, loading, setView]);
+  }, [view, selectedClass, loading, classes, setSelectedClass, setView]);
 }
