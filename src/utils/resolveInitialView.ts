@@ -13,6 +13,9 @@
  *   - static public paths  → via the VIEW_PATH registry (src/utils/routes.ts):
  *                            /privacy /terms /security /free-resources
  *                            /status /accessibility-statement
+ *   - landable authed paths → via the same registry, but only with a
+ *                            restorable session (/shop /leaderboard
+ *                            /vocabulary-library); logged-out falls through
  *   - ?class=XXX           → student-account-login (classroom poster QR)
  *   - otherwise            → public-landing
  *
@@ -22,6 +25,8 @@
 import type { View } from '../core/views';
 import { isStudentShell } from './studentShell';
 import { viewForPath } from './routes';
+import { isPublicView } from './authViews';
+import { hasRestorableSession } from './hasRestorableSession';
 
 export function resolveInitialView(): View {
   // Native student app (Capacitor wrapper): students-only, so both the
@@ -66,7 +71,17 @@ export function resolveInitialView(): View {
   // modal open.
   const staticView = viewForPath(window.location.pathname);
   if (staticView && staticView !== 'public-landing') {
-    return staticView;
+    // Public marketing pages are always landable. The "landable"
+    // authenticated views (shop, leaderboard, library — Slice 3) only
+    // resolve when a session might restore; for a logged-OUT visitor we
+    // fall through to the landing/login resolution below rather than
+    // render a dataless authed screen. Auth restore then KEEPS the view
+    // for a logged-in user because each is in shouldPreserveView's
+    // keep-set (authViews.ts) — making restore actively honor the URL for
+    // non-landable views is Slice 6.
+    if (isPublicView(staticView) || hasRestorableSession()) {
+      return staticView;
+    }
   }
   // Classroom-poster QR code / teacher-shared invite link.  When the URL
   // carries a `?class=XXX` parameter and there's no already-active session,

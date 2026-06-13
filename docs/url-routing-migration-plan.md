@@ -80,15 +80,30 @@ checks in `resolveInitialView`.
 - Pure refactor, no behavior change. Tests: registry round-trip +
   path→view resolution in `studentShell.test.tsx`.
 
-### Slice 3 — "Landable" authenticated views
+### Slice 3 — "Landable" authenticated views (IN PROGRESS)
 Views that need only data the auth flow already loads (no transient
-in-memory object). Wire each to push/read its path. Back-trap untouched
-(still guards), but the URL now updates.
-- Candidates: `teacher-dashboard`, `student-dashboard`, `student-practice`,
-  `student-daily`, `shop`, `global-leaderboard`, `privacy-settings`,
-  `vocabulary-library`, `vocabagrut`, `developer-dashboard`, `admin-security`,
-  `manager-dashboard`, `voca-picker`, `vocahebrew-*`.
-- Each gets an e2e refresh check.
+in-memory object). It splits into two halves:
+  - **READ (URL → view on fresh load / deep link)** — add the view to the
+    `VIEW_PATH` registry; `resolveInitialView` resolves it, gated behind
+    `hasRestorableSession()` so a logged-OUT deep link falls through to the
+    landing instead of a dataless screen. Auth-restore already KEEPS these
+    views via `shouldPreserveView`'s keep-sets (`authViews.ts`) — **no
+    protected file touched.** ✅ This is what Slice 3 ships.
+  - **PUSH (view → URL as you navigate in-app)** — requires
+    `useBackButtonTrap` to push the path on a view change. That's the
+    safety-critical trap, so it's **deferred to Slice 5** (real-phone
+    tested). Until then the URL reflects these views on a deep-link /
+    refresh, but not after in-app navigation.
+- ✅ DONE (first batch): `shop` → `/shop`, `global-leaderboard` →
+  `/leaderboard`, `vocabulary-library` → `/vocabulary-library`. Coverage:
+  registry round-trip + logged-in/out gating (`studentShell.test.tsx`) and
+  deep-link e2e (`landable-views.auth.spec.ts`, 3 views × 2 viewports).
+- Remaining candidates (same pattern — validate each against `useViewGuards`
+  + `useVocaRouting` first): `student-practice`, `student-daily`,
+  `privacy-settings`, `vocabagrut`, `developer-dashboard`, `admin-security`,
+  `manager-dashboard`, `voca-picker`, `vocahebrew-*`. The dashboards
+  (`teacher-dashboard` / `student-dashboard`) are role-dependent and
+  entangled with auth-restore's default destination → handle in Slice 6.
 
 ### Slice 4 — Stateful sub-views (the real work)
 Views that today rely on transient state and are bounced by `useViewGuards`
