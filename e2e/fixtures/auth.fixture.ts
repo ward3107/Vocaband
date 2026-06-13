@@ -1,6 +1,6 @@
 import { test as base, expect, Page } from '@playwright/test';
 import { disableAnimations, presetLocalStorage, mockSupabase } from './supabase-mock';
-import { FAKE_AUTH_SESSION, FAKE_TEACHER_SESSION } from './test-data';
+import { FAKE_AUTH_SESSION, FAKE_TEACHER_SESSION, FAKE_ADMIN_SESSION, FAKE_MANAGER_SESSION } from './test-data';
 
 /**
  * Authenticated fixtures — only usable under playwright.auth.config.ts,
@@ -32,6 +32,10 @@ type AuthFixtures = {
   studentPage: Page;
   /** Page that boots as a logged-in teacher (TEST_TEACHER). */
   teacherPage: Page;
+  /** Page that boots as a logged-in admin (TEST_ADMIN — hasAdminAccess). */
+  adminPage: Page;
+  /** Page that boots as a logged-in school manager (TEST_MANAGER). */
+  managerPage: Page;
 };
 
 export const test = base.extend<AuthFixtures>({
@@ -47,6 +51,20 @@ export const test = base.extend<AuthFixtures>({
     await presetLocalStorage(page);
     await seedSession(page, FAKE_TEACHER_SESSION);
     await mockSupabase(page, 'teacher');
+    await use(page);
+  },
+  adminPage: async ({ page }, use) => {
+    await disableAnimations(page);
+    await presetLocalStorage(page);
+    await seedSession(page, FAKE_ADMIN_SESSION);
+    await mockSupabase(page, 'admin');
+    await use(page);
+  },
+  managerPage: async ({ page }, use) => {
+    await disableAnimations(page);
+    await presetLocalStorage(page);
+    await seedSession(page, FAKE_MANAGER_SESSION);
+    await mockSupabase(page, 'manager');
     await use(page);
   },
 });
