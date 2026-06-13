@@ -26,3 +26,22 @@ export const PUBLIC_PAGE_VIEW: Record<PublicPage, View> = {
   resources: 'public-free-resources',
   status: 'public-status',
 };
+
+/**
+ * The canonical, refresh-stable URL path for each public page.  Navigating
+ * to a public page pushes this path (see handlePublicNavigate) so the
+ * address bar reflects the page and a refresh/share re-resolves to it.
+ *
+ * Kept in lock-step with PUBLIC_PAGE_VIEW above AND with the path→view
+ * rules in resolveInitialView.ts — the round-trip (click → URL → refresh →
+ * same view) only holds while all three agree.
+ */
+export const PUBLIC_PAGE_PATH: Record<PublicPage, string> = {
+  home: '/',
+  terms: '/terms',
+  privacy: '/privacy',
+  accessibility: '/accessibility-statement',
+  security: '/security',
+  resources: '/free-resources',
+  status: '/status',
+};

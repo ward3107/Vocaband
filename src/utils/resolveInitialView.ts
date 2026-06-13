@@ -68,6 +68,21 @@ export function resolveInitialView(): View {
   if (window.location.pathname === '/terms') {
     return 'public-terms';
   }
+  // Public marketing pages reached from the landing header/footer. Each
+  // owns a real path so the address bar reflects the page and a refresh
+  // (or a shared link) re-resolves to it — the Worker serves the SPA for
+  // these via not_found_handling: "single-page-application", so a hard GET
+  // on /security etc. boots the app here. Kept in lock-step with
+  // PUBLIC_PAGE_PATH in publicNavigation.ts.
+  if (window.location.pathname === '/security') {
+    return 'public-security';
+  }
+  if (window.location.pathname === '/free-resources') {
+    return 'public-free-resources';
+  }
+  if (window.location.pathname === '/status') {
+    return 'public-status';
+  }
   // Classroom-poster QR code / teacher-shared invite link.  When the URL
   // carries a `?class=XXX` parameter and there's no already-active session,
   // skip the landing page and drop the visitor straight on the

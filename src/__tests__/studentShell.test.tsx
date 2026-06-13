@@ -10,6 +10,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { isStudentShell } from '../utils/studentShell';
 import { resolveInitialView } from '../utils/resolveInitialView';
+import { PUBLIC_PAGE_PATH, PUBLIC_PAGE_VIEW } from '../utils/publicNavigation';
 
 type CapacitorWindow = Window & { Capacitor?: { isNativePlatform?: () => boolean } };
 
@@ -96,5 +97,44 @@ describe('resolveInitialView outside the shell (unchanged behaviour)', () => {
   it('"/student" → student-account-login', () => {
     setUrl('/student');
     expect(resolveInitialView()).toBe('student-account-login');
+  });
+
+  // Public marketing pages now own real, refresh-stable paths (URL routing
+  // slice 1). A hard GET / refresh on each must re-resolve to its view.
+  it('"/security" → public-security', () => {
+    setUrl('/security');
+    expect(resolveInitialView()).toBe('public-security');
+  });
+
+  it('"/free-resources" → public-free-resources', () => {
+    setUrl('/free-resources');
+    expect(resolveInitialView()).toBe('public-free-resources');
+  });
+
+  it('"/status" → public-status', () => {
+    setUrl('/status');
+    expect(resolveInitialView()).toBe('public-status');
+  });
+
+  it('"/terms" → public-terms', () => {
+    setUrl('/terms');
+    expect(resolveInitialView()).toBe('public-terms');
+  });
+
+  it('"/privacy" → public-privacy', () => {
+    setUrl('/privacy');
+    expect(resolveInitialView()).toBe('public-privacy');
+  });
+});
+
+// Every public page the landing nav can reach must have a path that
+// resolveInitialView maps straight back to the same view — otherwise a
+// refresh on that URL would silently bounce the visitor elsewhere.
+describe('public-page URL round-trip (PUBLIC_PAGE_PATH ⇄ resolveInitialView)', () => {
+  it('each PUBLIC_PAGE_PATH resolves back to its PUBLIC_PAGE_VIEW', () => {
+    for (const page of Object.keys(PUBLIC_PAGE_PATH) as Array<keyof typeof PUBLIC_PAGE_PATH>) {
+      setUrl(PUBLIC_PAGE_PATH[page]);
+      expect(resolveInitialView()).toBe(PUBLIC_PAGE_VIEW[page]);
+    }
   });
 });
