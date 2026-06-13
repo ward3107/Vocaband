@@ -52,7 +52,7 @@ const LandingAI: React.FC = () => {
         </p>
       </motion.div>
 
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
         {/* Zero Prep Work */}
         <motion.div
           initial={{ opacity: 0, x: isRTL ? 100 : -100 }}

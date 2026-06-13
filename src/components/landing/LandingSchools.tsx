@@ -33,7 +33,7 @@ const LandingSchools: React.FC<Props> = ({ onInquire }) => {
       <div className="max-w-6xl mx-auto">
         <div className="rounded-[2rem] bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900 p-8 md:p-12 text-white shadow-2xl shadow-violet-500/20 overflow-hidden relative">
           <div className="absolute -top-24 -right-24 w-80 h-80 bg-fuchsia-500/20 rounded-full blur-3xl" aria-hidden="true" />
-          <div className="grid md:grid-cols-2 gap-10 items-center relative">
+          <div className="grid md:grid-cols-2 gap-6 md:gap-10 items-center relative">
             {/* Pitch */}
             <div className={ta}>
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs font-bold text-white/85 mb-4">

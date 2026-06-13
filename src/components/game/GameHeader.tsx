@@ -48,7 +48,7 @@ export default function GameHeader({
     setSpeed(next);
   };
   return (
-    <div className="w-full max-w-4xl flex flex-wrap justify-between items-center gap-1 mb-1.5 sm:mb-6">
+    <div className="w-full max-w-4xl lg:max-w-5xl flex flex-wrap justify-between items-center gap-1 mb-1.5 sm:mb-6">
       <div className="flex items-center gap-1.5 sm:gap-4 flex-wrap">
         <div className="bg-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl shadow-sm flex items-center gap-1.5">
           <Trophy className="text-amber-500" size={16} />

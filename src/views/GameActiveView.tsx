@@ -534,7 +534,7 @@ export default function GameActiveView() {
           rest had three competing signals). Self-contained modes own
           their full UI, progress included, so they skip this row. */}
       {!isSelfContainedMode && progressTotal > 0 && (
-        <div className="w-full max-w-4xl mx-auto flex items-end gap-3 mb-2 sm:mb-3">
+        <div className="w-full max-w-4xl lg:max-w-5xl mx-auto flex items-end gap-3 mb-2 sm:mb-3">
           <GameProgress
             label={progressLabel}
             current={progressCurrent}
@@ -550,7 +550,7 @@ export default function GameActiveView() {
           min-height pulls content to the vertical centre of the viewport
           on phones; matching/memory get a touch more room for their
           larger grids. Content shorter than this never scrolls. */}
-      <div className={`w-full max-w-4xl mx-auto ${(gameMode === 'matching' || gameMode === 'memory-flip') ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
+      <div className={`w-full max-w-4xl lg:max-w-5xl mx-auto ${(gameMode === 'matching' || gameMode === 'memory-flip') ? 'min-h-[60vh]' : 'min-h-[55vh]'} flex items-center justify-center`}>
         <div className="w-full">
           <AnimatePresence mode="wait">
             {gameMode === "matching" ? (

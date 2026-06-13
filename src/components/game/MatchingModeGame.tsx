@@ -107,7 +107,7 @@ export default function MatchingModeGame({
           in the RIGHT column (the documented layout) even under a
           Hebrew/Arabic UI — without it the two columns swap sides. Each
           tile still sets its own dir for the text it shows. */}
-      <div dir="ltr" className="w-full max-w-2xl mx-auto">
+      <div dir="ltr" className="w-full max-w-2xl lg:max-w-4xl mx-auto">
         <div className="grid grid-cols-2 gap-3 sm:gap-6 items-center">
           <div className="flex flex-col items-center justify-center gap-2 sm:gap-3">
             <AnimatePresence>

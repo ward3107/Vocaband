@@ -188,7 +188,7 @@ export default function GameModeSelectionView({
         )}
       </header>
 
-      <div className="relative z-10 mx-auto max-w-xl px-2 pb-20">
+      <div className="relative z-10 mx-auto max-w-xl sm:max-w-2xl lg:max-w-3xl px-2 pb-20">
         <IslandMap
           assignmentId={activeAssignment?.id ?? "none"}
           islands={islands}
