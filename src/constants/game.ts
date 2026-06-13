@@ -215,21 +215,27 @@ export const AVATAR_CATEGORY_UNLOCKS: Record<string, { xpRequired: number; label
 // Each theme maps to a Tailwind bg class chain + the accent used elsewhere.
 // New 2026 themes use richer gradients for a more premium feel; the page
 // wrapper picks `colors.bg` directly, so gradient classes are supported.
+// `dark` marks a theme whose background is dark enough that the app's
+// hardcoded light surfaces (bg-white, text-stone-900, borders…) need the
+// global dark-mode remap in index.css to stay readable.  useApplyStudentTheme
+// reads this flag to set `data-theme-dark="true"` so that remap kicks in —
+// without it, equipping a dark theme only darkened the page background and
+// left cards + buttons stuck in light colours.
 export const THEMES = [
-  { id: 'default', name: 'Classic', preview: '⬜', colors: { bg: 'bg-stone-100', card: 'bg-white', text: 'text-stone-900', accent: 'blue' }, cost: 0 },
-  { id: 'dark', name: 'Dark Mode', preview: '🌑', colors: { bg: 'bg-gray-900', card: 'bg-gray-800', text: 'text-white', accent: 'blue' }, cost: 100 },
-  { id: 'ocean', name: 'Ocean', preview: '🌊', colors: { bg: 'bg-gradient-to-b from-cyan-50 to-sky-100', card: 'bg-white', text: 'text-stone-900', accent: 'cyan' }, cost: 150 },
-  { id: 'sunset', name: 'Sunset', preview: '🌅', colors: { bg: 'bg-gradient-to-b from-orange-100 via-rose-100 to-pink-100', card: 'bg-white', text: 'text-stone-900', accent: 'orange' }, cost: 150 },
-  { id: 'neon', name: 'Neon', preview: '💚', colors: { bg: 'bg-gray-950', card: 'bg-gray-900', text: 'text-green-400', accent: 'green' }, cost: 200 },
-  { id: 'forest', name: 'Forest', preview: '🌲', colors: { bg: 'bg-gradient-to-b from-green-50 to-emerald-100', card: 'bg-white', text: 'text-stone-900', accent: 'green' }, cost: 150 },
-  { id: 'royal', name: 'Royal', preview: '👑', colors: { bg: 'bg-gradient-to-b from-purple-50 to-violet-100', card: 'bg-white', text: 'text-stone-900', accent: 'purple' }, cost: 200 },
+  { id: 'default', name: 'Classic', preview: '⬜', colors: { bg: 'bg-stone-100', card: 'bg-white', text: 'text-stone-900', accent: 'blue' }, cost: 0, dark: false },
+  { id: 'dark', name: 'Dark Mode', preview: '🌑', colors: { bg: 'bg-gray-900', card: 'bg-gray-800', text: 'text-white', accent: 'blue' }, cost: 100, dark: true },
+  { id: 'ocean', name: 'Ocean', preview: '🌊', colors: { bg: 'bg-gradient-to-b from-cyan-50 to-sky-100', card: 'bg-white', text: 'text-stone-900', accent: 'cyan' }, cost: 150, dark: false },
+  { id: 'sunset', name: 'Sunset', preview: '🌅', colors: { bg: 'bg-gradient-to-b from-orange-100 via-rose-100 to-pink-100', card: 'bg-white', text: 'text-stone-900', accent: 'orange' }, cost: 150, dark: false },
+  { id: 'neon', name: 'Neon', preview: '💚', colors: { bg: 'bg-gray-950', card: 'bg-gray-900', text: 'text-green-400', accent: 'green' }, cost: 200, dark: true },
+  { id: 'forest', name: 'Forest', preview: '🌲', colors: { bg: 'bg-gradient-to-b from-green-50 to-emerald-100', card: 'bg-white', text: 'text-stone-900', accent: 'green' }, cost: 150, dark: false },
+  { id: 'royal', name: 'Royal', preview: '👑', colors: { bg: 'bg-gradient-to-b from-purple-50 to-violet-100', card: 'bg-white', text: 'text-stone-900', accent: 'purple' }, cost: 200, dark: false },
   // 2026 additions — each fits a distinct student vibe.
-  { id: 'galaxy',  name: 'Galaxy',     preview: '🌌', colors: { bg: 'bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900', card: 'bg-slate-900', text: 'text-violet-100', accent: 'purple' }, cost: 250 },
-  { id: 'aurora',  name: 'Aurora',     preview: '🌈', colors: { bg: 'bg-gradient-to-b from-emerald-100 via-teal-100 to-violet-100', card: 'bg-white', text: 'text-stone-900', accent: 'teal' }, cost: 250 },
-  { id: 'retro80', name: 'Retro 80s',  preview: '🕹️', colors: { bg: 'bg-gradient-to-b from-fuchsia-200 via-pink-200 to-cyan-200', card: 'bg-white', text: 'text-fuchsia-900', accent: 'pink' }, cost: 300 },
-  { id: 'sakura',  name: 'Sakura',     preview: '🌸', colors: { bg: 'bg-gradient-to-b from-pink-50 via-rose-50 to-fuchsia-50', card: 'bg-white', text: 'text-stone-900', accent: 'pink' }, cost: 200 },
-  { id: 'chill',   name: 'Chill Mode', preview: '🏖️', colors: { bg: 'bg-gradient-to-b from-sky-100 via-amber-50 to-rose-100', card: 'bg-white', text: 'text-stone-900', accent: 'sky' }, cost: 200 },
-  { id: 'esports', name: 'Esports RGB', preview: '⚡', colors: { bg: 'bg-gradient-to-br from-black via-gray-900 to-black', card: 'bg-gray-900', text: 'text-green-400', accent: 'green' }, cost: 350 },
+  { id: 'galaxy',  name: 'Galaxy',     preview: '🌌', colors: { bg: 'bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-900', card: 'bg-slate-900', text: 'text-violet-100', accent: 'purple' }, cost: 250, dark: true },
+  { id: 'aurora',  name: 'Aurora',     preview: '🌈', colors: { bg: 'bg-gradient-to-b from-emerald-100 via-teal-100 to-violet-100', card: 'bg-white', text: 'text-stone-900', accent: 'teal' }, cost: 250, dark: false },
+  { id: 'retro80', name: 'Retro 80s',  preview: '🕹️', colors: { bg: 'bg-gradient-to-b from-fuchsia-200 via-pink-200 to-cyan-200', card: 'bg-white', text: 'text-fuchsia-900', accent: 'pink' }, cost: 300, dark: false },
+  { id: 'sakura',  name: 'Sakura',     preview: '🌸', colors: { bg: 'bg-gradient-to-b from-pink-50 via-rose-50 to-fuchsia-50', card: 'bg-white', text: 'text-stone-900', accent: 'pink' }, cost: 200, dark: false },
+  { id: 'chill',   name: 'Chill Mode', preview: '🏖️', colors: { bg: 'bg-gradient-to-b from-sky-100 via-amber-50 to-rose-100', card: 'bg-white', text: 'text-stone-900', accent: 'sky' }, cost: 200, dark: false },
+  { id: 'esports', name: 'Esports RGB', preview: '⚡', colors: { bg: 'bg-gradient-to-br from-black via-gray-900 to-black', card: 'bg-gray-900', text: 'text-green-400', accent: 'green' }, cost: 350, dark: true },
 ];
 
 // --- SHOP: MYSTERY EGGS & CHESTS ---

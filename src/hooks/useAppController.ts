@@ -17,6 +17,7 @@ import { createGuestUser } from "../utils/createGuestUser";
 import { useTeacherGuidesSync } from "./useTeacherGuidesSync";
 import { useVocaRouting } from "./useVocaRouting";
 import { useApplyTeacherTheme } from "./useApplyTeacherTheme";
+import { useApplyStudentTheme } from "./useApplyStudentTheme";
 import { useAuthRestore } from "./useAuthRestore";
 import { useDeepLinkConsumers } from "./useDeepLinkConsumers";
 import { useAppMiscEffects } from "./useAppMiscEffects";
@@ -717,6 +718,14 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const teacherThemeId = hasTeacherAccess(user) ? (user as any).teacherDashboardTheme : null;
   useApplyTeacherTheme(teacherThemeId);
+
+  // Apply a student's equipped shop theme's dark intent the same way: a
+  // dark theme (Dark Mode / Neon / Galaxy / Esports) sets data-theme-dark
+  // so the index.css remap darkens every hardcoded light surface app-wide.
+  // Gated behind `!teacherThemeId` so the two hooks never write the same
+  // flag — a teacher's palette always owns it.
+  const studentThemeId = teacherThemeId ? null : (user?.activeTheme ?? null);
+  useApplyStudentTheme(studentThemeId);
 
   // View-state guards — redirect out of orphaned/broken views.
   useViewGuards({
