@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "motion/react";
 import {
   User,
   Mail,
@@ -30,20 +29,15 @@ interface LandingFooterProps {
   isAuthenticated?: boolean;
 }
 
-const footerItemVariant = {
-  hidden: { opacity: 0, y: 8 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.22, delay: i * 0.025, ease: "easeOut" as const },
-  }),
-};
-
 const scrollToFaq = () => {
   const el = document.getElementById("faq");
   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 
+// motion/react was removed from this footer — the only animation was a
+// staggered fade-in on scroll, not worth dragging the ~43 kB runtime
+// onto the landing chunk for a section that sits at the very bottom.
+// Links keep their `transition-colors` hover affordance via Tailwind.
 const LandingFooter: React.FC<LandingFooterProps> = ({
   onNavigate,
   onTryDemo,
@@ -58,45 +52,27 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
   return (
     <footer className="pt-16 pb-4 md:pt-24 md:pb-6 px-4 md:px-6 relative bg-slate-950 mt-8 md:mt-12">
       <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-8 md:gap-10 lg:gap-12 pb-10 border-b border-white/10"
-        >
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-8 md:gap-10 lg:gap-12 pb-10 border-b border-white/10">
           {/* Col 1: Brand + tagline + contact */}
           <div className="col-span-2 md:col-span-1">
-            <motion.div
-              variants={footerItemVariant}
-              custom={0}
-              className="flex items-center gap-3 mb-3"
-            >
+            <div className="flex items-center gap-3 mb-3">
               <div className="w-11 h-11 rounded-lg signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
                 <span className="text-white text-2xl font-black font-headline italic">V</span>
               </div>
               <span className="text-white font-black text-xl">Vocaband</span>
-            </motion.div>
-            <motion.p
-              variants={footerItemVariant}
-              custom={1}
-              className="text-white/75 text-sm leading-relaxed mb-5 max-w-xs"
-              dir={dir}
-            >
+            </div>
+            <p className="text-white/75 text-sm leading-relaxed mb-5 max-w-xs" dir={dir}>
               {t.footerTagline}
-            </motion.p>
+            </p>
           </div>
 
           {/* Col 2: Product */}
           <div>
-            <motion.h4
-              variants={footerItemVariant}
-              custom={2}
-              className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
-            >
+            <h4 className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4">
               {t.footerProduct}
-            </motion.h4>
+            </h4>
             <ul className="space-y-2.5">
-              <motion.li variants={footerItemVariant} custom={3}>
+              <li>
                 <button
                   onClick={onTryDemo}
                   type="button"
@@ -104,9 +80,9 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                 >
                   {t.footerTryDemo}
                 </button>
-              </motion.li>
+              </li>
               {!isAuthenticated && (
-                <motion.li variants={footerItemVariant} custom={4}>
+                <li>
                   <button
                     onClick={onTeacherLogin}
                     type="button"
@@ -114,46 +90,42 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   >
                     {t.footerTeacherLogin}
                   </button>
-                </motion.li>
+                </li>
               )}
             </ul>
           </div>
 
           {/* Col 3: Resources */}
           <div>
-            <motion.h4
-              variants={footerItemVariant}
-              custom={5}
-              className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
-            >
+            <h4 className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4">
               {t.footerResources}
-            </motion.h4>
+            </h4>
             <ul className="space-y-2.5">
-              <motion.li variants={footerItemVariant} custom={6}>
+              <li>
                 <a
                   href="/answers/cefr-a1-vocabulary-list.html"
                   className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                 >
                   {t.footerCefrVocab}
                 </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={7}>
+              </li>
+              <li>
                 <a
                   href="/answers/cefr-a1-vs-a2-vocabulary.html"
                   className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                 >
                   {t.footerCefrExplained}
                 </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={8}>
+              </li>
+              <li>
                 <a
                   href="/answers/best-english-vocabulary-app-grade-5.html"
                   className="text-white/85 hover:text-white text-sm font-semibold transition-colors"
                 >
                   {t.footerBestEsl}
                 </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={9}>
+              </li>
+              <li>
                 <button
                   type="button"
                   onClick={scrollToFaq}
@@ -162,8 +134,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <CircleHelp size={14} aria-hidden="true" />
                   {t.footerFaq}
                 </button>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={10}>
+              </li>
+              <li>
                 <a
                   href="mailto:contact@vocaband.com"
                   className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
@@ -171,13 +143,13 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Mail size={14} aria-hidden="true" />
                   {t.footerContact}
                 </a>
-              </motion.li>
+              </li>
               {/* Private channel for individual teachers — per
                   docs/PRICING-MODEL.md the public face is schools-first;
                   this footer mailto is the casual entry point for solo
                   teachers who want a Pro quote.  The subject line lets
                   sales triage the inbox without a separate form. */}
-              <motion.li variants={footerItemVariant} custom={11}>
+              <li>
                 <a
                   href="mailto:contact@vocaband.com?subject=Individual%20Teacher"
                   className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
@@ -185,8 +157,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <User size={14} aria-hidden="true" />
                   {t.footerTeacherInquiry}
                 </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={12}>
+              </li>
+              <li>
                 <button
                   type="button"
                   onClick={onOpenFeatureRequest}
@@ -195,8 +167,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Lightbulb size={14} aria-hidden="true" />
                   {t.footerFeatureRequest}
                 </button>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={13}>
+              </li>
+              <li>
                 <button
                   type="button"
                   onClick={() => onNavigate("resources")}
@@ -205,7 +177,7 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Download size={14} aria-hidden="true" />
                   {t.footerFreeResources}
                 </button>
-              </motion.li>
+              </li>
             </ul>
           </div>
 
@@ -214,15 +186,11 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
               PDF.js viewer.  School pitch ships HE/AR; teacher
               handouts ship in the user's UI language. */}
           <div>
-            <motion.h4
-              variants={footerItemVariant}
-              custom={14}
-              className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
-            >
+            <h4 className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4">
               {t.footerDownloads}
-            </motion.h4>
+            </h4>
             <ul className="space-y-2.5">
-              <motion.li variants={footerItemVariant} custom={15}>
+              <li>
                 <a
                   href={
                     language === "he"
@@ -238,8 +206,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Presentation size={14} aria-hidden="true" />
                   {t.footerSchoolDeck}
                 </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={16}>
+              </li>
+              <li>
                 <a
                   href="/Vocaband-Presentation-HE.pdf"
                   download="Vocaband-Presentation-HE.pdf"
@@ -248,8 +216,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <FileText size={14} aria-hidden="true" />
                   {t.footerSchoolPdfHe}
                 </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={17}>
+              </li>
+              <li>
                 <a
                   href="/Vocaband-Presentation-AR.pdf"
                   download="Vocaband-Presentation-AR.pdf"
@@ -258,8 +226,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <FileText size={14} aria-hidden="true" />
                   {t.footerSchoolPdfAr}
                 </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={17.5}>
+              </li>
+              <li>
                 <a
                   href="/Vocaband-OnePager-AR.pdf"
                   download="Vocaband-OnePager-AR.pdf"
@@ -268,8 +236,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <FileText size={14} aria-hidden="true" />
                   {t.footerSchoolOnePagerAr}
                 </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={17.7}>
+              </li>
+              <li>
                 <a
                   href="/Vocaband-Presentation-AR.pptx"
                   download="Vocaband-Presentation-AR.pptx"
@@ -278,9 +246,9 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Presentation size={14} aria-hidden="true" />
                   {t.footerSchoolPptxAr}
                 </a>
-              </motion.li>
+              </li>
               {(language === "he" || language === "ar") && (
-                <motion.li variants={footerItemVariant} custom={18}>
+                <li>
                   <a
                     href={`/Vocaband-Teacher-OnePager-${language.toUpperCase()}.pdf`}
                     download={`Vocaband-Teacher-OnePager-${language.toUpperCase()}.pdf`}
@@ -289,9 +257,9 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                     <BookOpen size={14} aria-hidden="true" />
                     {tr.teacherGuideTitle}
                   </a>
-                </motion.li>
+                </li>
               )}
-              <motion.li variants={footerItemVariant} custom={20}>
+              <li>
                 <a
                   href={`/docs/student-guide-${language}.pdf`}
                   download={`student-guide-${language}.pdf`}
@@ -300,8 +268,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Gamepad2 size={14} aria-hidden="true" />
                   {tr.studentGuideTitle}
                 </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={21}>
+              </li>
+              <li>
                 <a
                   href={`/docs/parent-letter-${language}.pdf`}
                   download={`parent-letter-${language}.pdf`}
@@ -310,21 +278,17 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Mail size={14} aria-hidden="true" />
                   {tr.parentLetterTitle}
                 </a>
-              </motion.li>
+              </li>
             </ul>
           </div>
 
           {/* Col 5: Legal + Trust */}
           <div>
-            <motion.h4
-              variants={footerItemVariant}
-              custom={15}
-              className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4"
-            >
+            <h4 className="text-white/50 text-[12px] font-bold uppercase tracking-[0.12em] mb-4">
               {t.footerLegal}
-            </motion.h4>
+            </h4>
             <ul className="space-y-2.5">
-              <motion.li variants={footerItemVariant} custom={16}>
+              <li>
                 <button
                   onClick={() => onNavigate("terms")}
                   type="button"
@@ -333,8 +297,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <FileText size={14} aria-hidden="true" />
                   {t.footerTerms}
                 </button>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={17}>
+              </li>
+              <li>
                 <button
                   onClick={() => onNavigate("privacy")}
                   type="button"
@@ -343,12 +307,12 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <ShieldCheck size={14} aria-hidden="true" />
                   {t.footerPrivacy}
                 </button>
-              </motion.li>
+              </li>
               {/* "For Parents" — static HTML pages localized at build time
                   by scripts/generate-parents-html.ts.  Plain <a> (not the
                   onNavigate SPA router) because the parent-facing pages
                   are intentionally framework-free and printable. */}
-              <motion.li variants={footerItemVariant} custom={17.5}>
+              <li>
                 <a
                   href={
                     language === "he" ? "/parents-he.html"
@@ -363,8 +327,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Users size={14} aria-hidden="true" />
                   {t.footerForParents}
                 </a>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={18}>
+              </li>
+              <li>
                 <button
                   onClick={() => onNavigate("security")}
                   type="button"
@@ -373,8 +337,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Lock size={14} aria-hidden="true" />
                   {t.footerSecurity}
                 </button>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={19}>
+              </li>
+              <li>
                 <button
                   onClick={() => onNavigate("accessibility")}
                   type="button"
@@ -383,8 +347,8 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Accessibility size={14} aria-hidden="true" />
                   {t.footerAccessibility}
                 </button>
-              </motion.li>
-              <motion.li variants={footerItemVariant} custom={20}>
+              </li>
+              <li>
                 <button
                   onClick={() => onNavigate("status")}
                   type="button"
@@ -393,10 +357,10 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   <Activity size={14} aria-hidden="true" />
                   {t.footerStatus}
                 </button>
-              </motion.li>
+              </li>
             </ul>
           </div>
-        </motion.div>
+        </div>
 
         {/* ── Bottom bar: trust strip + copyright ───────────── */}
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">

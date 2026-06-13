@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
 import { CircleHelp, GraduationCap, Users, Globe, ChevronDown, Mail } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { faqT } from "../../locales/student/faq";
@@ -54,12 +53,7 @@ const LandingFAQ: React.FC = () => {
   return (
     <section className="py-12 md:py-24 px-4 md:px-6 relative bg-gradient-to-b from-transparent via-slate-950/60 to-slate-950">
       <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12 md:mb-16"
-        >
+        <div className="text-center mb-12 md:mb-16">
           <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-violet-500/20 border border-violet-400/30 mb-6">
             <CircleHelp size={20} className="text-violet-300" />
             <span className="text-violet-200 font-bold text-sm">FAQ</span>
@@ -70,15 +64,11 @@ const LandingFAQ: React.FC = () => {
           <p className="text-lg text-white/70 max-w-2xl mx-auto text-center" dir={dir}>
             {fq.subtitle}
           </p>
-        </motion.div>
+        </div>
 
-        {groups.map((group, gi) => (
-          <motion.div
+        {groups.map((group) => (
+          <div
             key={group.section}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 + gi * 0.05 }}
             className="mb-10 md:mb-12"
           >
             <div className={`flex items-center gap-3 mb-6 ${isRTL ? "flex-row-reverse" : ""}`}>
@@ -103,44 +93,34 @@ const LandingFAQ: React.FC = () => {
                     >
                       <CircleHelp size={22} className="text-violet-400 flex-shrink-0" />
                       <span className="flex-1 font-bold text-white text-base md:text-lg">{item.q}</span>
-                      <motion.div
-                        animate={{ rotate: isOpen ? 180 : 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex-shrink-0"
-                      >
-                        <ChevronDown size={24} className="text-white/60" />
-                      </motion.div>
+                      <ChevronDown
+                        size={24}
+                        className={`text-white/60 flex-shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                      />
                     </button>
-                    <AnimatePresence>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-5 md:px-6 pb-5 pt-0">
-                            <div className={`text-white/80 leading-relaxed ${isRTL ? "pr-9 text-right" : "pl-9 text-left"}`} dir={dir}>
-                              {item.a}
-                            </div>
+                    {/* CSS-only expand: grid-template-rows 0fr→1fr animates
+                        height with no JS animation runtime. The inner
+                        wrapper must be overflow-hidden for the collapse. */}
+                    <div
+                      className="grid transition-[grid-template-rows] duration-200 ease-out"
+                      style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="px-5 md:px-6 pb-5 pt-0">
+                          <div className={`text-white/80 leading-relaxed ${isRTL ? "pr-9 text-right" : "pl-9 text-left"}`} dir={dir}>
+                            {item.a}
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </motion.div>
+          </div>
         ))}
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center p-6 md:p-8 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10"
-        >
+        <div className="text-center p-6 md:p-8 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10">
           <Mail size={32} className="text-violet-400 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-white mb-4">{fq.cta}</h3>
           <a
@@ -149,7 +129,7 @@ const LandingFAQ: React.FC = () => {
           >
             {fq.ctaButton}
           </a>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
