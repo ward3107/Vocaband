@@ -123,6 +123,19 @@ export interface LandingSectionsT {
   finalCtaSubtitle: string;
   finalCtaStart: string;
   finalCtaTeacher: string;
+  // "How it works" — the condensed 3-step band that replaces the old
+  // Students / AI / Teachers / Journey deep sections. One flow, shown
+  // from both sides of the class.
+  howItWorks: {
+    h2: string;
+    subtitle: string;
+    step1Title: string;
+    step1Desc: string;
+    step2Title: string;
+    step2Desc: string;
+    step3Title: string;
+    step3Desc: string;
+  };
   aiSectionH2: string;
   aiSectionSubtitle: string;
   aiZeroWork: string;
@@ -270,6 +283,16 @@ export const landingSectionsT: Record<Language, LandingSectionsT> = {
     finalCtaSubtitle: "Join thousands of teachers turning vocabulary lessons into a game students actually want to play.",
     finalCtaStart: "Try the Demo",
     finalCtaTeacher: "Teacher Login",
+    howItWorks: {
+      h2: "From sign-in to first win in minutes",
+      subtitle: "The same flow, from both sides of the class.",
+      step1Title: "Create or join",
+      step1Desc: "Teachers spin up a class in seconds; students join with a class code or Google — no app to install.",
+      step2Title: "Assign & play",
+      step2Desc: "Pick Ministry of Education word sets or upload your own list, then choose from 15 game modes.",
+      step3Title: "Track & reward",
+      step3Desc: "Watch live progress and leaderboards while students chase XP, streaks, pets and titles.",
+    },
     aiSectionH2: "AI Does All the Work",
     aiSectionSubtitle: "You focus on teaching. AI handles the rest.",
     aiZeroWork: "⚡ Zero Prep Work",
@@ -416,6 +439,16 @@ export const landingSectionsT: Record<Language, LandingSectionsT> = {
     finalCtaSubtitle: "הצטרפו לאלפי מורים שהופכים שיעורי אוצר מילים למשחק שתלמידים באמת רוצים לשחק.",
     finalCtaStart: "נסו את הדמו",
     finalCtaTeacher: "כניסת מורים",
+    howItWorks: {
+      h2: "מהכניסה לניצחון הראשון תוך דקות",
+      subtitle: "אותו תהליך, משני צידי הכיתה.",
+      step1Title: "יצירה או הצטרפות",
+      step1Desc: "מורים פותחים כיתה בשניות; תלמידים מצטרפים עם קוד כיתה או Google — בלי להתקין אפליקציה.",
+      step2Title: "הקצאה ומשחק",
+      step2Desc: "בחרו ערכות מילים של משרד החינוך או העלו רשימה משלכם, ואז בחרו מתוך 15 מצבי משחק.",
+      step3Title: "מעקב ותגמול",
+      step3Desc: "עקבו אחרי התקדמות ולוחות תוצאות בזמן אמת בזמן שהתלמידים אוספים נקודות, רצפים, חיות ותארים.",
+    },
     aiSectionH2: "הבינה המלאכותית עושה את כל העבודה",
     aiSectionSubtitle: "אתם מתמקדים בלימוד. הבינה המלאכותית מטפלת בכל השאר.",
     aiZeroWork: "⚡ אפס עבודת הכנה",
@@ -562,6 +595,16 @@ export const landingSectionsT: Record<Language, LandingSectionsT> = {
     finalCtaSubtitle: "انضموا إلى آلاف المعلمين الذين يحوّلون دروس المفردات إلى لعبة يرغب الطلاب فعلاً بلعبها.",
     finalCtaStart: "جرّبوا العرض التوضيحي",
     finalCtaTeacher: "دخول المعلمين",
+    howItWorks: {
+      h2: "من تسجيل الدخول إلى أول فوز خلال دقائق",
+      subtitle: "نفس المسار، من جانبي الصف.",
+      step1Title: "أنشئ أو انضم",
+      step1Desc: "ينشئ المعلمون صفًا في ثوانٍ؛ وينضم الطلاب برمز الصف أو عبر Google — دون تثبيت أي تطبيق.",
+      step2Title: "عيّن والعب",
+      step2Desc: "اختر مجموعات كلمات وزارة التربية أو ارفع قائمتك الخاصة، ثم اختر من بين 15 نمط لعب.",
+      step3Title: "تابع وكافئ",
+      step3Desc: "تابع التقدم ولوحات الصدارة مباشرةً بينما يجمع الطلاب النقاط والسلاسل والحيوانات والألقاب.",
+    },
     aiSectionH2: "الذكاء الاصطناعي يقوم بكل العمل",
     aiSectionSubtitle: "أنت تركز على التدريس. الذكاء الاصطناعي يتولى الباقي.",
     aiZeroWork: "⚡ لا حاجة للتحضير",
@@ -708,6 +751,16 @@ export const landingSectionsT: Record<Language, LandingSectionsT> = {
     finalCtaSubtitle: "Join thousands of teachers turning vocabulary lessons into a game students actually want to play.",
     finalCtaStart: "Try the Demo",
     finalCtaTeacher: "Teacher Login",
+    howItWorks: {
+      h2: "From sign-in to first win in minutes",
+      subtitle: "The same flow, from both sides of the class.",
+      step1Title: "Create or join",
+      step1Desc: "Teachers spin up a class in seconds; students join with a class code or Google — no app to install.",
+      step2Title: "Assign & play",
+      step2Desc: "Pick Ministry of Education word sets or upload your own list, then choose from 15 game modes.",
+      step3Title: "Track & reward",
+      step3Desc: "Watch live progress and leaderboards while students chase XP, streaks, pets and titles.",
+    },
     aiSectionH2: "AI Does All the Work",
     aiSectionSubtitle: "You focus on teaching. AI handles the rest.",
     aiZeroWork: "⚡ Zero Prep Work",

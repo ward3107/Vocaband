@@ -31,6 +31,7 @@ export interface LandingPageT {
   navAi: string;
   navTeachers: string;
   navCurriculum: string;
+  navHowItWorks: string;
   navVocas: string;
   navPricing: string;
   navForSchools: string;
@@ -118,6 +119,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navAi: "AI",
     navTeachers: "Teachers",
     navCurriculum: "Curriculum",
+    navHowItWorks: "How it works",
     navVocas: "Vocas",
     navPricing: "Pricing",
     navForSchools: "For Schools",
@@ -203,6 +205,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navAi: "בינה מלאכותית",
     navTeachers: "מורים",
     navCurriculum: "תכנית לימודים",
+    navHowItWorks: "איך זה עובד",
     navVocas: "ווקות",
     navPricing: "מחירים",
     navForSchools: "לבתי ספר",
@@ -288,6 +291,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navAi: "الذكاء الاصطناعي",
     navTeachers: "المعلمون",
     navCurriculum: "المنهاج",
+    navHowItWorks: "كيف يعمل",
     navVocas: "Vocas",
     navPricing: "الأسعار",
     navForSchools: "للمدارس",
@@ -373,6 +377,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navAi: "AI",
     navTeachers: "Teachers",
     navCurriculum: "Curriculum",
+    navHowItWorks: "How it works",
     navVocas: "Vocas",
     navPricing: "Pricing",
     navForSchools: "For Schools",
