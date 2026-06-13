@@ -20,7 +20,7 @@ import { useApplyTeacherTheme } from "./useApplyTeacherTheme";
 import { useApplyStudentTheme } from "./useApplyStudentTheme";
 import { useAuthRestore } from "./useAuthRestore";
 import { useDeepLinkConsumers } from "./useDeepLinkConsumers";
-import { useClassShowDeepLink } from "./useClassShowDeepLink";
+import { useAssignmentViewDeepLink } from "./useAssignmentViewDeepLink";
 import { useAppMiscEffects } from "./useAppMiscEffects";
 import { useAppPreOverlays } from "./useAppPreOverlays";
 import { useAppOverlays } from "./useAppOverlays";
@@ -827,10 +827,16 @@ export function useAppController(initialView?: View): AppViewRouterProps {
     setPendingAssignmentId, setPendingPlayMode,
   });
 
-  // Slice 4: re-hydrate /class-show?assignmentId=<id> from the loaded
-  // teacher assignments so a deep-link / refresh lands on the projector.
-  useClassShowDeepLink({
-    view, user, teacherAssignments, classShowAssignment, setClassShowAssignment,
+  // Slice 4: re-hydrate the assignment-backed projector sub-views
+  // (class-show, worksheet) from /<view>?assignmentId=<id> using the loaded
+  // teacher assignments, so a deep-link / refresh lands on the projector.
+  useAssignmentViewDeepLink({
+    view, targetView: 'class-show', user, teacherAssignments,
+    current: classShowAssignment, set: setClassShowAssignment,
+  });
+  useAssignmentViewDeepLink({
+    view, targetView: 'worksheet', user, teacherAssignments,
+    current: worksheetAssignment, set: setWorksheetAssignment,
   });
 
 
