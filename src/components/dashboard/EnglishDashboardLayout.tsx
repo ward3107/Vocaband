@@ -194,7 +194,7 @@ export default function EnglishDashboardLayout({
           the Management utilities below). */}
       <section>
         <SectionLabel>{rt.liveGames}</SectionLabel>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-stretch">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3 items-stretch">
           <LiveGameHero
             emoji="⚡"
             title={t.qpTitle}
@@ -249,7 +249,7 @@ export default function EnglishDashboardLayout({
           above, instead of being buried in the New Activity tab strip. */}
       <section className="mt-7 sm:mt-9">
         <SectionLabel>{rt.classroomGames}</SectionLabel>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-stretch">
+        <div className="grid grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-3 items-stretch">
           <LiveGameHero
             emoji="📺"
             title={t.classShowTitle}

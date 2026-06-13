@@ -82,7 +82,7 @@ export default function TrueFalseGame({
 
   return (
     <div
-      className="max-w-lg mx-auto px-4 select-none"
+      className="max-w-lg lg:max-w-2xl mx-auto px-4 select-none"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
