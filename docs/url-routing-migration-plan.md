@@ -113,8 +113,15 @@ in-memory object). It splits into two halves:
 ### Slice 4 — Stateful sub-views (the real work)
 Views that today rely on transient state and are bounced by `useViewGuards`
 when it's missing. Each needs a URL param + a re-hydration path (re-fetch
-the object from the id in the URL), **or** an explicit decision to keep the
-guard-bounce (not deep-linkable).
+the object from the id in the URL — or find it in an already-loaded array),
+**or** an explicit decision to keep the guard-bounce (not deep-linkable).
+
+- ✅ STARTED — `class-show` re-hydrates from `?assignmentId=<id>`
+  (`useClassShowDeepLink.ts`): the projector restores its assignment from the
+  teacher's already-loaded `teacherAssignments` (no new fetch). READ side
+  only — wiring the reverse (view → URL on in-app nav) lands with the
+  back-trap rework in Slice 5, the same split used in Slice 3. e2e:
+  `rehydrate.auth.spec.ts`. `worksheet` is the next copy-paste (same shape).
 - `create-assignment` → `?classId=` → reload class (`useViewGuards.ts:118`)
 - `game` → needs `activeAssignment` (`useViewGuards.ts:81`)
 - `live-challenge`, `live-challenge-class-select` → need `selectedClass`
