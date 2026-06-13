@@ -1,10 +1,11 @@
 import { useState, Suspense } from "react";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, LogOut, RefreshCw, Printer } from "lucide-react";
+import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, RefreshCw, Printer } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { THEMES } from "../constants/game";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
+import QuickPlayEndgameCard from "../components/QuickPlayEndgameCard";
 import RatingPrompt from "../components/RatingPrompt";
 import { useLanguage } from "../hooks/useLanguage";
 import { gameFinishedT } from "../locales/student/game-finished";
@@ -46,6 +47,7 @@ export default function GameFinishedView({
     setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
     setWordAttempts, setHiddenOptions, setSpellingInput,
     setAssignmentWords, setShowModeSelection, setView,
+    qpLeaderboard, targetLanguage, speakWord,
   } = useGameRoute();
   const isGuest = !!user?.isGuest;
 
@@ -247,36 +249,28 @@ export default function GameFinishedView({
             right one?" hesitation teachers reported. */}
         <div className="flex flex-col gap-3">
           {isGuest ? (
-            // Quick Play guest layout — same shape as authenticated
-            // students: one big primary button + tiny exit link below.
-            <>
-              <button
-                onClick={() => {
-                  resetRound();
-                  setShowModeSelection(true);
-                }}
-                disabled={isSaving}
-                type="button"
-                style={{ touchAction: 'manipulation' }}
-                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white px-6 py-5 rounded-xl font-black text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
-              >
-                <Grid3X3 size={22} />
-                {tt.backToModes}
-              </button>
-              <button
-                onClick={() => {
-                  resetRound();
-                  if (onQuickPlayExit) onQuickPlayExit();
-                }}
-                disabled={isSaving}
-                type="button"
-                style={{ touchAction: 'manipulation' }}
-                className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-xs transition-all disabled:opacity-50 ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-stone-400 hover:text-stone-700 hover:bg-stone-50'}`}
-              >
-                <LogOut size={12} />
-                {tt.exitQuickPlay}
-              </button>
-            </>
+            // Quick Play endgame (open-issues §D): score + rank from the
+            // session leaderboard, missed words to practice, then the
+            // Play again / Back to home pair.  "Play again" routes to
+            // the mode picker — same one-extra-tap trade-off as the
+            // authenticated Back-to-Modes redesign above.
+            <QuickPlayEndgameCard
+              leaderboard={qpLeaderboard}
+              mistakes={mistakes}
+              gameWords={gameWords}
+              targetLanguage={targetLanguage}
+              isDark={isDark}
+              disabled={isSaving}
+              speakWord={speakWord}
+              onPlayAgain={() => {
+                resetRound();
+                setShowModeSelection(true);
+              }}
+              onBackToHome={() => {
+                resetRound();
+                if (onQuickPlayExit) onQuickPlayExit();
+              }}
+            />
           ) : (
             <>
               {/* PRIMARY — Back to Modes.  Filling 100% width, py-5,

@@ -837,6 +837,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
     showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
     gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
     score, xp, streak, badges, mistakes, gameWords, quickPlayActiveSession,
+    qpLeaderboard: quickPlaySocket.leaderboard,
     isSaving, saveError, toasts, confirmDialog, setConfirmDialog,
     setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
     setWordAttempts, setHiddenOptions, setSpellingInput, setAssignmentWords,

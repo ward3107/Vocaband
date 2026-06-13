@@ -48,6 +48,15 @@ export interface GameFinishedT {
   confirmActionTitle: string;
   cancel: string;
   confirm: string;
+  /** Quick Play endgame (2026-06-11) — celebratory rank banner +
+   *  "Words to practice" list on the guest finish screen.  Keys are
+   *  APPENDED (here and in each language block) so concurrent locale
+   *  PRs merge without conflicts. */
+  qpScoredXp: (xp: number) => string;
+  qpRankOf: (rank: number, total: number) => string;
+  wordsToPractice: string;
+  playAgain: string;
+  backToHome: string;
 }
 
 export const gameFinishedT: Record<Language, GameFinishedT> = {
@@ -91,6 +100,17 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     confirmActionTitle: "Confirm Action",
     cancel: "Cancel",
     confirm: "Confirm",
+    qpScoredXp: (xp) => `🎉 You scored ${xp} XP`,
+    // English ordinal suffix (1st / 2nd / 3rd / 4th…) — the teens
+    // (11th–13th) are the only irregulars, handled by the v-20 check.
+    qpRankOf: (rank, total) => {
+      const s = ["th", "st", "nd", "rd"];
+      const v = rank % 100;
+      return `${rank}${s[(v - 20) % 10] || s[v] || s[0]} of ${total} students`;
+    },
+    wordsToPractice: "Words to practice 📚",
+    playAgain: "Play again",
+    backToHome: "Back to home",
   },
 
   he: {
@@ -133,6 +153,11 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     confirmActionTitle: "אישור פעולה",
     cancel: "ביטול",
     confirm: "אישור",
+    qpScoredXp: (xp) => `🎉 צברת ${xp} XP`,
+    qpRankOf: (rank, total) => `מקום ${rank} מתוך ${total} תלמידים`,
+    wordsToPractice: "מילים לתרגול 📚",
+    playAgain: "שחק שוב",
+    backToHome: "חזרה לדף הבית",
   },
 
   ar: {
@@ -175,6 +200,11 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     confirmActionTitle: "تأكيد الإجراء",
     cancel: "إلغاء",
     confirm: "تأكيد",
+    qpScoredXp: (xp) => `🎉 حصلت على ${xp} XP`,
+    qpRankOf: (rank, total) => `المركز ${rank} من ${total} طالبًا`,
+    wordsToPractice: "كلمات للتدريب 📚",
+    playAgain: "العب مرة أخرى",
+    backToHome: "العودة إلى الصفحة الرئيسية",
   },
 
   ru: {
@@ -217,5 +247,16 @@ export const gameFinishedT: Record<Language, GameFinishedT> = {
     confirmActionTitle: "Confirm Action",
     cancel: "Cancel",
     confirm: "Confirm",
+    // The ru block mirrors EN throughout this file (see entries above) —
+    // keeping that convention so the screen isn't a mix of languages.
+    qpScoredXp: (xp) => `🎉 You scored ${xp} XP`,
+    qpRankOf: (rank, total) => {
+      const s = ["th", "st", "nd", "rd"];
+      const v = rank % 100;
+      return `${rank}${s[(v - 20) % 10] || s[v] || s[0]} of ${total} students`;
+    },
+    wordsToPractice: "Words to practice 📚",
+    playAgain: "Play again",
+    backToHome: "Back to home",
   },
 };
