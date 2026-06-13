@@ -42,6 +42,12 @@ export interface GameActiveStrings {
    *  correctly but ran a multi-word phrase together (e.g. "allover"
    *  for "all over"). Helps them learn it's a phrase, not one word. */
   missingSpaceHint: string;
+  /** Affordance hint under the prompt word — tells kids the word + the
+   *  speaker button can be tapped to hear it (Classic/Reverse heroes). */
+  tapToHear: string;
+  /** Listening-mode hero subtitle — there's no visible word, just the
+   *  pulsing speaker orb, so this nudges the student to use their ears. */
+  listenCarefully: string;
 
   // FlashcardsGame
   stillLearning: string;
@@ -140,6 +146,8 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     dismissError: "Dismiss error message",
     typeInEnglish: "Type in English...",
     typeTheWord: "Type the word...",
+    tapToHear: "tap to hear it",
+    listenCarefully: "listen carefully",
     checkAnswer: "Check Answer",
     translationLabel: "Translation:",
     missingSpaceHint: "💡 Almost! Don't forget the space — it's more than one word.",
@@ -217,6 +225,8 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     dismissError: "סגור הודעת שגיאה",
     typeInEnglish: "הקלד באנגלית...",
     typeTheWord: "הקלד את המילה...",
+    tapToHear: "הקישו כדי לשמוע",
+    listenCarefully: "הקשיבו היטב",
     checkAnswer: "בדוק תשובה",
     translationLabel: "תרגום:",
     missingSpaceHint: "💡 כמעט! אל תשכחו את הרווח — זה יותר ממילה אחת.",
@@ -294,6 +304,8 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     dismissError: "إغلاق رسالة الخطأ",
     typeInEnglish: "اكتب بالإنجليزية...",
     typeTheWord: "اكتب الكلمة...",
+    tapToHear: "اضغط للاستماع",
+    listenCarefully: "استمع جيدًا",
     checkAnswer: "تحقق من الإجابة",
     translationLabel: "الترجمة:",
     missingSpaceHint: "💡 تقريبًا! لا تنسَ المسافة — إنها أكثر من كلمة واحدة.",
@@ -371,6 +383,8 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     dismissError: "Dismiss error message",
     typeInEnglish: "Type in English...",
     typeTheWord: "Type the word...",
+    tapToHear: "tap to hear it",
+    listenCarefully: "listen carefully",
     checkAnswer: "Check Answer",
     translationLabel: "Translation:",
     missingSpaceHint: "💡 Almost! Don't forget the space — it's more than one word.",

@@ -156,7 +156,7 @@ const FillBlankGame = React.memo(({
         <span>{before}</span>
         {sentinelIdx >= 0 && (
           <span
-            className="inline-flex items-center justify-center align-middle min-w-[64px] sm:min-w-[88px] h-9 sm:h-12 px-3 sm:px-4 mx-1 sm:mx-1.5 rounded-lg border-2 border-dashed border-lime-500 bg-white text-lime-600 font-black text-xl sm:text-3xl"
+            className="inline-flex items-center justify-center align-middle min-w-[64px] sm:min-w-[88px] h-9 sm:h-12 px-3 sm:px-4 mx-1 sm:mx-1.5 rounded-lg border-2 border-dashed border-lime-500 bg-white text-lime-600 font-black text-xl sm:text-3xl shadow-[0_0_16px_rgba(132,204,22,0.55)] ring-2 ring-lime-300/50"
             aria-label={language === 'he' ? 'מלא את החסר' : language === 'ar' ? 'املأ الفراغ' : 'Fill in the blank'}
           >
             ?
