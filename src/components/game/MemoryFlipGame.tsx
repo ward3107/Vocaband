@@ -148,7 +148,7 @@ export default function MemoryFlipGame({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="w-full max-w-2xl grid grid-cols-4 gap-2 sm:gap-3"
+        className="w-full max-w-2xl lg:max-w-4xl grid grid-cols-4 gap-2 sm:gap-3 lg:gap-4"
       >
         <AnimatePresence>
           {matchingPairs

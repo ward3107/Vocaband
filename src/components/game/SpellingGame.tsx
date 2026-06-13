@@ -135,7 +135,7 @@ export default function SpellingGame({
   };
 
   return (
-    <form onSubmit={onSpellingSubmit} className="max-w-md mx-auto px-2">
+    <form onSubmit={onSpellingSubmit} className="max-w-md lg:max-w-xl mx-auto px-2">
       {/* Translation prompt — bigger, theme-tinted hero card. */}
       {isSpelling && (
         <div
