@@ -9,6 +9,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.ts',
+  // *.auth.spec.ts belong to playwright.auth.config.ts — they need the
+  // Supabase-mock build (VITE_SUPABASE_URL=test) to drive logged-in flows.
+  // This default suite builds with VITE_SUPABASE_URL="" (config-error path),
+  // where a seeded session can't restore, so they'd fail here. Excluded.
+  testIgnore: '**/*.auth.spec.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
