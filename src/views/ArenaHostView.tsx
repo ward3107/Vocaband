@@ -23,6 +23,7 @@ import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
+import LobbyRoster from "../components/game/LobbyRoster";
 import ArenaCanvas from "../components/game/ArenaCanvas";
 import SpeedWordPicker from "../components/game/SpeedWordPicker";
 import { primeAudio } from "../utils/primeAudio";
@@ -108,6 +109,9 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   }, [status, observeAsTeacher]);
 
   const arenaActive = !!currentArena;
+  // Latches once the first hunt starts so the pre-game waiting room gives
+  // way to the leaderboard (which then doubles as the post-game results).
+  const [hasStarted, setHasStarted] = useState(false);
 
   // Teacher-controlled background music — plays on THIS screen (the
   // projector/dashboard) only, never on student phones. Default on; the
@@ -164,6 +168,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
     primeAudio();
     playRoundStart();
     startArena(seeds, { roundSeconds }, tokenRef.current);
+    setHasStarted(true);
     setPresenting(true);
   };
 
@@ -280,13 +285,26 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               </section>
             )}
 
-            <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
-              <h2 className="text-sm font-black uppercase tracking-widest text-indigo-500 mb-4 flex items-center gap-2">
-                <Users size={18} /> {t.leaderboard}
-                <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
-              </h2>
-              <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large />
-            </section>
+            {/* Before the first hunt it's a waiting room; once started the
+                leaderboard takes over (and stays as the post-game results). */}
+            {hasStarted ? (
+              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
+                <h2 className="text-sm font-black uppercase tracking-widest text-indigo-500 mb-4 flex items-center gap-2">
+                  <Users size={18} /> {t.leaderboard}
+                  <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
+                </h2>
+                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large />
+              </section>
+            ) : (
+              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
+                <LobbyRoster
+                  players={sorted}
+                  countLabel={t.inRoom}
+                  emptyLabel={t.noStudents}
+                  accent="from-indigo-500 to-violet-600"
+                />
+              </section>
+            )}
           </div>
 
           {/* Sidebar: join + setup controls */}

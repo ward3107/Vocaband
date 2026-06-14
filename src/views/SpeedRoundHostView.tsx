@@ -25,6 +25,7 @@ import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
+import LobbyRoster from "../components/game/LobbyRoster";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
@@ -352,22 +353,35 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               )}
             </AnimatePresence>
 
-            <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
-              <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
-                <Users size={18} /> {t.leaderboard}
-                <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
-              </h2>
-              {/* Re-key the podium on roundId so it visibly re-animates each
-                  word; winner highlight is layered via the wrapper ring. */}
-              <div key={endedRoundId ?? "lobby"}>
-                <CategoryRacePodium entries={podiumEntries} emptyText={t.noStudents} large />
-              </div>
-              {winnerClientId && !roundActive && (
-                <p className="mt-4 text-center text-sm font-black text-amber-600">
-                  ⚡ {t.firstWinner(sorted.find(e => e.clientId === winnerClientId)?.nickname ?? "")}
-                </p>
-              )}
-            </section>
+            {/* Pre-game it's a waiting room (students popping in); once a word
+                has been played the leaderboard takes over. */}
+            {hasRunRound || roundActive ? (
+              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
+                <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
+                  <Users size={18} /> {t.leaderboard}
+                  <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
+                </h2>
+                {/* Re-key the podium on roundId so it visibly re-animates each
+                    word; winner highlight is layered via the wrapper ring. */}
+                <div key={endedRoundId ?? "lobby"}>
+                  <CategoryRacePodium entries={podiumEntries} emptyText={t.noStudents} large />
+                </div>
+                {winnerClientId && !roundActive && (
+                  <p className="mt-4 text-center text-sm font-black text-amber-600">
+                    ⚡ {t.firstWinner(sorted.find(e => e.clientId === winnerClientId)?.nickname ?? "")}
+                  </p>
+                )}
+              </section>
+            ) : (
+              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
+                <LobbyRoster
+                  players={sorted}
+                  countLabel={t.inRoom}
+                  emptyLabel={t.noStudents}
+                  accent="from-amber-400 to-orange-500"
+                />
+              </section>
+            )}
           </div>
 
           {/* Sidebar: join + setup controls */}
