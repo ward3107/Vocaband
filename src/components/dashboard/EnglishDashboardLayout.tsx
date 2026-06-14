@@ -68,9 +68,9 @@ const WHEEL_HERO = {
 // Race card). Kept inline so this layout doesn't have to thread new
 // keys through the shared teacher-dashboard locale.
 const LIVE_GAMES_STRINGS = {
-  en: { liveGames: "Live games", live: "Live", classroomGames: "Classroom tools", classBadge: "Class", raceTitle: "Category Race", raceDescription: "Pick a letter, race the class to fill the categories.", raceStart: "Start", speedTitle: "Speed Round", speedDescription: "Drop one word on the class — fastest correct answer wins.", arenaTitle: "Word Hunt Arena", arenaDescription: "Students run around a shared map and race to grab words." },
-  he: { liveGames: "משחקים חיים", live: "חי", classroomGames: "כלים לכיתה", classBadge: "כיתה", raceTitle: "מרוץ קטגוריות", raceDescription: "אות אחת — כל הכיתה מתחרה למלא את הקטגוריות.", raceStart: "התחל", speedTitle: "סבב מהיר", speedDescription: "מילה אחת לכל הכיתה — התשובה הנכונה המהירה מנצחת.", arenaTitle: "זירת ציד מילים", arenaDescription: "התלמידים רצים במפה משותפת ומתחרים לתפוס מילים." },
-  ar: { liveGames: "ألعاب مباشرة", live: "مباشر", classroomGames: "أدوات الصف", classBadge: "الصف", raceTitle: "سباق الفئات", raceDescription: "حرف واحد — يتسابق الصف لملء الفئات.", raceStart: "ابدأ", speedTitle: "جولة سريعة", speedDescription: "كلمة واحدة للصف — الإجابة الصحيحة الأسرع تفوز.", arenaTitle: "ساحة صيد الكلمات", arenaDescription: "يركض الطلاب في خريطة مشتركة ويتسابقون لالتقاط الكلمات." },
+  en: { liveGames: "Live games", live: "Live", classroomGames: "Classroom tools", classBadge: "Class", raceTitle: "Category Race", raceDescription: "Pick a letter, race the class to fill the categories.", raceStart: "Start", speedTitle: "Speed Round", speedDescription: "Drop one word on the class — fastest correct answer wins.", arenaTitle: "Word Hunt Arena", arenaDescription: "Students run around a shared map and race to grab words.", qpHint: "Great for a quick warm-up", raceHint: "Best with 8+ players", speedHint: "Fastest finger wins", arenaHint: "Best with 6–30 players" },
+  he: { liveGames: "משחקים חיים", live: "חי", classroomGames: "כלים לכיתה", classBadge: "כיתה", raceTitle: "מרוץ קטגוריות", raceDescription: "אות אחת — כל הכיתה מתחרה למלא את הקטגוריות.", raceStart: "התחל", speedTitle: "סבב מהיר", speedDescription: "מילה אחת לכל הכיתה — התשובה הנכונה המהירה מנצחת.", arenaTitle: "זירת ציד מילים", arenaDescription: "התלמידים רצים במפה משותפת ומתחרים לתפוס מילים.", qpHint: "מצוין לחימום מהיר", raceHint: "הכי טוב עם 8+ שחקנים", speedHint: "האצבע המהירה מנצחת", arenaHint: "הכי טוב עם 6–30 שחקנים" },
+  ar: { liveGames: "ألعاب مباشرة", live: "مباشر", classroomGames: "أدوات الصف", classBadge: "الصف", raceTitle: "سباق الفئات", raceDescription: "حرف واحد — يتسابق الصف لملء الفئات.", raceStart: "ابدأ", speedTitle: "جولة سريعة", speedDescription: "كلمة واحدة للصف — الإجابة الصحيحة الأسرع تفوز.", arenaTitle: "ساحة صيد الكلمات", arenaDescription: "يركض الطلاب في خريطة مشتركة ويتسابقون لالتقاط الكلمات.", qpHint: "ممتاز للإحماء السريع", raceHint: "الأفضل مع 8+ لاعبين", speedHint: "الأسرع يفوز", arenaHint: "الأفضل مع 6–30 لاعبًا" },
 } as const;
 
 // Mirrors the WhatsApp share text the legacy section produced — the
@@ -204,6 +204,9 @@ export default function EnglishDashboardLayout({
             onStart={onQuickPlayClick}
             isRTL={isRTL}
             dataTour="quick-play"
+            motif="ring"
+            live
+            hint={rt.qpHint}
             {...QP_HERO}
           />
           <LiveGameHero
@@ -215,6 +218,8 @@ export default function EnglishDashboardLayout({
             onStart={onCategoryRaceClick}
             isRTL={isRTL}
             dataTour="category-race"
+            motif="tiles"
+            hint={rt.raceHint}
             {...RACE_HERO}
           />
           <LiveGameHero
@@ -226,6 +231,8 @@ export default function EnglishDashboardLayout({
             onStart={onSpeedRoundClick}
             isRTL={isRTL}
             dataTour="speed-round"
+            motif="buzzer"
+            hint={rt.speedHint}
             {...SPEED_HERO}
           />
           <LiveGameHero
@@ -237,6 +244,8 @@ export default function EnglishDashboardLayout({
             onStart={onArenaClick}
             isRTL={isRTL}
             dataTour="word-hunt-arena"
+            motif="arena"
+            hint={rt.arenaHint}
             {...ARENA_HERO}
           />
         </div>
