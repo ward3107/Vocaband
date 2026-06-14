@@ -1,5 +1,10 @@
 import { ArrowRight } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import FrostedEmoji from "./FrostedEmoji";
+
+/** Per-game decorative motion. Each live game gets its own motif so the
+ *  four cards read as distinct experiences, not one repeated button. */
+export type LiveGameMotif = "ring" | "tiles" | "buzzer" | "arena";
 
 interface LiveGameHeroProps {
   emoji: string;
@@ -20,19 +25,27 @@ interface LiveGameHeroProps {
   isRTL?: boolean;
   /** Optional product-tour anchor. */
   dataTour?: string;
+  /** Per-game animated motif painted behind the content. */
+  motif?: LiveGameMotif;
+  /** When true the badge gains a pulsing dot — used for a live/instant
+   *  signal. Decorative; real session counts wire in separately. */
+  live?: boolean;
+  /** Short context chip (e.g. "Best with 8+ players", "Last: 6B · 3d").
+   *  Renders in its own row above the CTA, on phones too. */
+  hint?: string;
 }
 
 /**
- * LiveGameHero — the shared "Live games" tab used by BOTH Quick Play and
- * Category Race on the English teacher dashboard. Rendered two-up in a
- * grid (side by side on desktop, stacked on mobile), so the two are
- * pixel-identical in layout — frosted icon, badge, title, description,
- * full-width CTA pinned to the bottom, decorative blobs, radius — and
- * differ ONLY in colour, emoji, and copy.
+ * LiveGameHero — the shared "Live games" tile used by Quick Play,
+ * Category Race, Speed Round and Word Hunt Arena on the English teacher
+ * dashboard. Rendered in a grid so all four are pixel-identical in
+ * layout — frosted icon, badge, title, description, hint, full-width CTA
+ * pinned to the bottom — and differ in colour, emoji, copy, and their
+ * per-game `motif` animation.
  *
- * Vertical layout (not the old wide row) so each tab reads cleanly at
- * half width. `h-full` + the flex-1 description keep both tabs the same
- * height with their CTAs aligned even when the copy length differs.
+ * Vertical layout so each tile reads cleanly at quarter/half width.
+ * `h-full` + the flex-1 description keep tiles the same height with
+ * their CTAs aligned even when copy length differs.
  */
 export default function LiveGameHero({
   emoji,
@@ -47,7 +60,12 @@ export default function LiveGameHero({
   ctaShadow,
   isRTL = false,
   dataTour,
+  motif,
+  live = false,
+  hint,
 }: LiveGameHeroProps) {
+  const reduce = useReducedMotion();
+
   return (
     <button
       type="button"
@@ -78,6 +96,12 @@ export default function LiveGameHero({
           background: "radial-gradient(circle, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0) 70%)",
         }}
       />
+
+      {/* Per-game animated motif — sits above the blobs, below content
+          (content is `relative`, so it paints on top). Skipped entirely
+          for reduced-motion users. */}
+      {motif && !reduce && <GameMotif motif={motif} isRTL={isRTL} />}
+
       {/* Grain dot overlay */}
       <svg aria-hidden className="absolute inset-0 h-full w-full opacity-[0.08] mix-blend-soft-light">
         <defs>
@@ -105,7 +129,13 @@ export default function LiveGameHero({
           so the badge is hidden < sm to keep the header from wrapping. */}
       <div className="relative flex items-center justify-between gap-3 mb-2 sm:mb-3">
         <FrostedEmoji emoji={emoji} size={44} tone="gradient" />
-        <span className="hidden sm:inline-flex items-center rounded-full border border-white/35 bg-white/20 px-[10px] py-1 text-[11px] font-bold uppercase tracking-[0.08em] backdrop-blur-md">
+        <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-white/20 px-[10px] py-1 text-[11px] font-bold uppercase tracking-[0.08em] backdrop-blur-md">
+          {live && (
+            <span
+              aria-hidden
+              className={`inline-block h-2 w-2 rounded-full bg-white ${reduce ? "" : "animate-pulse"}`}
+            />
+          )}
           {badge}
         </span>
       </div>
@@ -120,6 +150,16 @@ export default function LiveGameHero({
         {description}
       </p>
 
+      {/* Context chip — kept visible on phones too (where the description
+          is hidden) so each tile still carries a distinguishing hint. */}
+      {hint && (
+        <div className="relative mt-2 flex items-center">
+          <span className="inline-flex items-center rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[10.5px] font-semibold backdrop-blur-md">
+            {hint}
+          </span>
+        </div>
+      )}
+
       <div
         className="relative mt-2 sm:mt-3.5 flex w-full items-center justify-center gap-1.5 sm:gap-2 rounded-full px-3 py-1.5 sm:px-5 sm:py-2.5 font-bold text-xs sm:text-base"
         // The hero is a fixed vivid gradient in every theme, so the CTA pill
@@ -132,5 +172,78 @@ export default function LiveGameHero({
         <ArrowRight size={18} className={isRTL ? "-scale-x-100" : ""} />
       </div>
     </button>
+  );
+}
+
+/** Decorative, per-game looping animation. Pointer-events-none and
+ *  aria-hidden throughout — purely visual character for each tile. */
+function GameMotif({ motif, isRTL }: { motif: LiveGameMotif; isRTL: boolean }) {
+  if (motif === "ring") {
+    // Quick Play — a breathing "instant" ring in the top-end corner.
+    return (
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute -top-10 -end-10 h-40 w-40 rounded-full border-[14px] border-white/20"
+        animate={{ scale: [1, 1.12, 1], opacity: [0.5, 0.9, 0.5] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      />
+    );
+  }
+
+  if (motif === "tiles") {
+    // Category Race — three letter tiles flipping in sequence.
+    return (
+      <div aria-hidden className="pointer-events-none absolute top-3.5 end-3.5 flex gap-1.5">
+        {["A", "R", "T"].map((ch, i) => (
+          <motion.span
+            key={ch}
+            className="grid h-7 w-[26px] place-items-center rounded-md bg-white/20 text-sm font-black"
+            animate={{ rotateX: [0, 0, 180, 0] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
+          >
+            {ch}
+          </motion.span>
+        ))}
+      </div>
+    );
+  }
+
+  if (motif === "buzzer") {
+    // Speed Round — a charging buzzer that pulses bright.
+    return (
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute bottom-16 end-5 h-14 w-14 rounded-full"
+        style={{ background: "radial-gradient(circle at 35% 30%, #fff, rgba(255,255,255,0.4))" }}
+        animate={{ scale: [0.85, 1.05, 0.85], opacity: [0.4, 0.8, 0.4] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+      />
+    );
+  }
+
+  // Word Hunt Arena — dot-grid map with two runners roaming.
+  const dir = isRTL ? -1 : 1;
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        className="absolute inset-0 opacity-50"
+        style={{
+          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.35) 2px, transparent 2px)",
+          backgroundSize: "22px 22px",
+        }}
+      />
+      <motion.span
+        className="absolute h-3 w-3 rounded-full bg-white"
+        style={{ top: "30%", left: "15%" }}
+        animate={{ x: [0, dir * 90, 0], y: [0, 40, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+      />
+      <motion.span
+        className="absolute h-3 w-3 rounded-full bg-white"
+        style={{ top: "65%", left: "35%" }}
+        animate={{ x: [0, dir * 70, 0], y: [0, -46, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+      />
+    </div>
   );
 }
