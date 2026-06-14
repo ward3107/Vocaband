@@ -29,6 +29,7 @@ import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { CATEGORIES, categoryLabel, LETTER_POOL } from "../data/category-race-bank";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import LobbyRoster from "../components/game/LobbyRoster";
+import GameResults from "../components/game/GameResults";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
@@ -148,6 +149,8 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  // Show the celebratory results overlay when ending a game that has scores.
+  const [showResults, setShowResults] = useState(false);
   // Presentation mode hides ALL teacher chrome (sidebar + header actions)
   // for a clean projector — just the leaderboard + live round.
   const [presenting, setPresenting] = useState(false);
@@ -219,10 +222,18 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
     if (currentRace && tokenRef.current) endRaceRound(currentRace.roundId, tokenRef.current);
   };
 
-  const handleEnd = async () => {
+  // The actual exit — ends the live session and returns to the dashboard.
+  const leaveToDashboard = async () => {
     if (tokenRef.current) endSession(tokenRef.current);
     try { await supabase.rpc("end_quick_play_session", { p_session_code: liveCode }); } catch { /* best-effort */ }
     setView("teacher-dashboard");
+  };
+
+  const handleEnd = () => {
+    // If the class actually played, send them off with a celebratory
+    // results screen first; otherwise just leave.
+    if (hasRunRound && sorted.length > 0) setShowResults(true);
+    else void leaveToDashboard();
   };
 
   // End the current session and immediately spin up a fresh one, staying
@@ -536,6 +547,13 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
           >
             <Square size={20} /> {t.endRound}
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Celebratory results — shown when ending a game that has scores. */}
+      <AnimatePresence>
+        {showResults && (
+          <GameResults entries={sorted} onBack={leaveToDashboard} accent="from-fuchsia-500 to-pink-600" />
         )}
       </AnimatePresence>
 
