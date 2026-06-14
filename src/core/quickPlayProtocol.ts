@@ -55,6 +55,13 @@ export const QP_EVENTS = {
   TEACHER_BONUS:   "qp:teacher:bonus",
   // A teacher ending the session — everyone in the room gets notified.
   TEACHER_END:     "qp:teacher:end",
+  // A teacher toggling Red vs Blue team mode on/off for the session.
+  // When enabled the server stamps each student a balanced team; off
+  // clears them. In-memory only (like round config — never persisted).
+  TEACHER_TEAM_MODE: "qp:teacher:teammode",
+  // A student switching their team (the hybrid "Switch team" button).
+  // Honoured only when the move keeps the two teams balanced (±1).
+  TEAM_SWITCH:     "qp:student:team:switch",
 
   // ─── Category Race (synchronized live round) ──────────────────────
   // A teacher starting a round: the server rolls ONE letter for the
@@ -113,6 +120,10 @@ export const QP_SERVER_EVENTS = {
   KICKED:          "qp:kicked",
   // Sent to everyone: teacher ended the session.
   SESSION_ENDED:   "qp:session:ended",
+  // Team mode turned on/off for the session. Just the on/off signal —
+  // each student's actual team rides on their leaderboard entry, and the
+  // host sums Red vs Blue from the (unioned) leaderboard itself.
+  TEAM_MODE:       "qp:teammode",
   // Tier C: broadcast a single emoji reaction to everyone in the room.
   // Fire-and-forget — server holds no state for these, it just relays.
   REACTION:        "qp:reaction",
@@ -168,6 +179,10 @@ export const QP_SERVER_EVENTS = {
   ARENA_ENDED:        "qp:arena:ended",
 } as const;
 
+/** Red vs Blue team mode. A student's team rides on their leaderboard
+ *  entry; the host sums each side from the unioned leaderboard. */
+export type QpTeam = "red" | "blue";
+
 // ─── Client → server payloads ───────────────────────────────────────────
 
 export interface QpStudentJoinPayload {
@@ -190,6 +205,9 @@ export interface QpStudentJoinPayload {
    *  V2 teachers reported as "I ended the session and nothing landed
    *  in the database"). */
   authUid?: string;
+  /** Team mode: the team this client wants (carried across reconnects so
+   *  a refresh keeps a switched team). Ignored when team mode is off. */
+  team?: QpTeam;
 }
 
 export interface QpScoreUpdatePayload {
@@ -267,6 +285,20 @@ export interface QpTeacherEndPayload {
   token: string;
 }
 
+/** Teacher toggles Red vs Blue team mode for the whole session. */
+export interface QpTeacherTeamModePayload {
+  sessionCode: string;
+  token: string;
+  enabled: boolean;
+}
+
+/** Student taps "Switch team" — honoured only if it keeps teams balanced. */
+export interface QpTeamSwitchPayload {
+  sessionCode: string;
+  clientId: string;
+  team: QpTeam;
+}
+
 // ─── Server → client payloads ───────────────────────────────────────────
 
 export interface QpStudentEntry {
@@ -287,10 +319,21 @@ export interface QpStudentEntry {
    *  update was a mode-finish with zero mistakes, cleared by the server
    *  immediately after the next broadcast. */
   perfectRound?: boolean;
+  /** Red vs Blue team mode: which team this student is on, or undefined
+   *  when team mode is off. Broadcast so the host can sum each side and
+   *  tint medallions; the host computes totals from the unioned roster. */
+  team?: QpTeam;
   /** Supabase auth user id when known.  Server-private — never
    *  broadcast back to other clients (the LEADERBOARD payload omits
    *  it).  Used only for the persist-on-end progress writes. */
   authUid?: string;
+}
+
+/** Server → room: team mode flipped on/off. The on/off signal only —
+ *  each student's team travels on their leaderboard entry. */
+export interface QpTeamModePayload {
+  sessionCode: string;
+  enabled: boolean;
 }
 
 export interface QpJoinedPayload {
