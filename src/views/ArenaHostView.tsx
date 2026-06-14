@@ -25,6 +25,8 @@ import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import LobbyRoster from "../components/game/LobbyRoster";
 import GameResults from "../components/game/GameResults";
+import TeamScoreBar from "../components/game/TeamScoreBar";
+import TeamModeToggle from "../components/game/TeamModeToggle";
 import ArenaCanvas from "../components/game/ArenaCanvas";
 import SpeedWordPicker from "../components/game/SpeedWordPicker";
 import { primeAudio } from "../utils/primeAudio";
@@ -60,6 +62,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const {
     status, currentArena, arenaPositionsRef, leaderboard,
     observeAsTeacher, startArena, endArena, endSession,
+    teamMode, setTeamMode,
   } = qp;
 
   // The teacher's own word list (typed / picked from the library) — the
@@ -294,6 +297,9 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               </section>
             )}
 
+            {/* Live Red vs Blue total — only in team mode. */}
+            {teamMode && <TeamScoreBar entries={sorted} />}
+
             {/* Before the first hunt it's a waiting room; once started the
                 leaderboard takes over (and stays as the post-game results). */}
             {hasStarted ? (
@@ -347,6 +353,14 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 </div>
               </div>
             </section>
+
+            <TeamModeToggle
+              teamMode={teamMode}
+              onToggle={(en) => tokenRef.current && setTeamMode(en, tokenRef.current)}
+              headingClass="text-indigo-500"
+              idleClass={pillIdle}
+              cardClass={cardCls}
+            />
 
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               {/* The teacher's word list — typed / picked from the library. */}
