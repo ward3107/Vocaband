@@ -15,6 +15,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ArrowRight, Printer, Download, ListOrdered, Shuffle } from "lucide-react";
 import html2pdf from "html2pdf.js";
+import { requestWorksheetPdf } from "../lib/pdf/requestWorksheetPdf";
 import { HEBREW_LEMMAS } from "../data/vocabulary-hebrew";
 import { HEBREW_PACKS_BY_KIND, lemmasInPack } from "../data/hebrew-packs";
 import type { HebrewLemma } from "../data/types-hebrew";
@@ -113,20 +114,56 @@ export default function HebrewWorksheetView({
     setSelectedIds((prev) => (allOn ? prev.filter((x) => !ids.includes(x)) : Array.from(new Set([...prev, ...ids]))));
   }
 
+  const pdfFilename = () => `${title.replace(/[^\p{L}\d\s\-]/gu, "_") || "worksheet"}.pdf`;
+
+  // Legacy client-side render (html2canvas → jsPDF). Kept for the match-up
+  // layout, the Hebrew-only word list, and as a fallback if the server
+  // render is unreachable.
+  async function legacyHtml2Pdf() {
+    if (!printRef.current) return;
+    await html2pdf()
+      .from(printRef.current)
+      .set({
+        margin: 12,
+        filename: pdfFilename(),
+        image: { type: "jpeg", quality: 0.95 } as { type: "jpeg" | "png" | "webp"; quality: number },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
+      })
+      .save();
+  }
+
   async function exportPdf() {
-    if (!printRef.current || selectedLemmas.length === 0) return;
+    if (selectedLemmas.length === 0) return;
     setExporting(true);
     try {
-      await html2pdf()
-        .from(printRef.current)
-        .set({
-          margin: 12,
-          filename: `${title.replace(/[^\p{L}\d\s\-]/gu, "_") || "worksheet"}.pdf`,
-          image: { type: "jpeg", quality: 0.95 } as { type: "jpeg" | "png" | "webp"; quality: number },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
-        })
-        .save();
+      // Tri-lingual word lists render on the server via real Chromium
+      // (POST /api/pdf): connected Arabic, RTL Hebrew with niqqud, crisp
+      // vector text. Match-up and Hebrew-only keep the legacy path.
+      if (template === "word-list" && showTranslations) {
+        await requestWorksheetPdf(
+          {
+            title,
+            subtitle: "VocaHebrew · אוצר מילים",
+            instructions: "קראו כל מילה בעברית ואת התרגום שלה לאנגלית ולערבית בקול.",
+            lang: "he",
+            headword: "he",
+            showSentenceColumn: false,
+            words: selectedLemmas.map((l) => ({
+              en: l.translationEn,
+              he: showNiqqud ? l.lemmaNiqqud : l.lemmaPlain,
+              ar: l.translationAr,
+            })),
+          },
+          pdfFilename(),
+        );
+      } else {
+        await legacyHtml2Pdf();
+      }
+    } catch {
+      // Server unreachable (offline / cold start) — fall back so the teacher
+      // still gets a PDF instead of an error.
+      await legacyHtml2Pdf();
     } finally {
       setExporting(false);
     }

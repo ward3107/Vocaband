@@ -40,6 +40,11 @@ export interface WorksheetData {
   instructions?: string;
   /** Base reading direction of the sheet chrome (headings/labels). */
   lang?: WorksheetLang;
+  /** Which language is the bold lead column. Default 'en'. Hebrew
+   *  worksheets pass 'he' so the Hebrew word leads (RTL-appropriate). */
+  headword?: 'en' | 'he';
+  /** Show the "write a sentence" blank column. Default true. */
+  showSentenceColumn?: boolean;
   words: WorksheetWord[];
   /** When present, renders an answer key on its own page. */
   answers?: WorksheetAnswer[];
@@ -71,16 +76,35 @@ export function worksheetFontFaceCss(
   `;
 }
 
-function rowsHtml(words: WorksheetWord[]): string {
+type LangCol = 'en' | 'he' | 'ar';
+
+// Per-language column metadata. `dir`/`lang` are set on RTL cells so the
+// browser shapes Hebrew/Arabic correctly; the headword column is bolded.
+const COL_META: Record<LangCol, { header: string; cls: string; rtl: boolean }> = {
+  en: { header: 'English', cls: 'en', rtl: false },
+  he: { header: 'עברית', cls: 'he', rtl: true },
+  ar: { header: 'العربية', cls: 'ar', rtl: true },
+};
+
+function cell(w: WorksheetWord, col: LangCol, isHead: boolean): string {
+  const m = COL_META[col];
+  const attrs = m.rtl ? ` dir="rtl" lang="${col}"` : '';
+  return `<td class="${m.cls}${isHead ? ' head' : ''}"${attrs}>${esc(w[col])}</td>`;
+}
+
+function rowsHtml(
+  words: WorksheetWord[],
+  cols: LangCol[],
+  head: LangCol,
+  showSentence: boolean,
+): string {
   return words
     .map(
       (w, i) => `
       <tr>
         <td class="num">${i + 1}</td>
-        <td class="en">${esc(w.en)}</td>
-        <td class="he" dir="rtl" lang="he">${esc(w.he)}</td>
-        <td class="ar" dir="rtl" lang="ar">${esc(w.ar)}</td>
-        <td class="blank"></td>
+        ${cols.map((c) => cell(w, c, c === head)).join('')}
+        ${showSentence ? '<td class="blank"></td>' : ''}
       </tr>`,
     )
     .join('');
@@ -111,7 +135,12 @@ export function buildWorksheetHtml(
   const dir = data.lang === 'he' || data.lang === 'ar' ? 'rtl' : 'ltr';
   const instructions =
     data.instructions ??
-    'Read each English word and its translations aloud. Then write one sentence using the word.';
+    'Read each word and its translations aloud. Then write one sentence using the word.';
+  const headword: LangCol = data.headword ?? 'en';
+  const showSentence = data.showSentenceColumn ?? true;
+  // Lead with the headword language; keep the other two in a stable order.
+  const cols: LangCol[] =
+    headword === 'he' ? ['he', 'en', 'ar'] : ['en', 'he', 'ar'];
 
   return `<!doctype html>
 <html lang="${esc(data.lang ?? 'en')}" dir="${dir}">
@@ -152,9 +181,10 @@ export function buildWorksheetHtml(
   tbody td:first-child { border-left:1px solid #f3e8ff; border-radius:10px 0 0 10px; }
   tbody td:last-child  { border-right:1px solid #f3e8ff; border-radius:0 10px 10px 0; }
   .num { color:#a78bfa; font-weight:700; width:30px; text-align:center; }
-  .en  { font-weight:600; color:#1e1b4b; width:150px; }
+  .en  { color:#1e1b4b; width:150px; }
   .he  { font-family:'NotoHe'; font-size:18px; text-align:right; width:150px; color:#5b21b6; }
   .ar  { font-family:'NotoAr'; font-size:18px; text-align:right; width:150px; color:#be185d; }
+  .head { font-weight:800; } /* the lead (headword) column in each row */
   .blank { border-bottom:2px dotted #c4b5fd; }
 
   .answers { break-before:page; }
@@ -187,9 +217,9 @@ export function buildWorksheetHtml(
 
   <table>
     <thead>
-      <tr><th>#</th><th>English</th><th>עברית</th><th>العربية</th><th>Write a sentence ✍️</th></tr>
+      <tr><th>#</th>${cols.map((c) => `<th>${COL_META[c].header}</th>`).join('')}${showSentence ? '<th>Write a sentence ✍️</th>' : ''}</tr>
     </thead>
-    <tbody>${rowsHtml(data.words)}</tbody>
+    <tbody>${rowsHtml(data.words, cols, headword, showSentence)}</tbody>
   </table>
 
   ${data.answers && data.answers.length ? answersHtml(data.answers) : ''}
