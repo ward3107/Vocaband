@@ -37,23 +37,19 @@ export interface PdfRenderOptions {
 export interface PdfDocument {
   html: string;
   pdf: PdfRenderOptions;
+  /** Render with JavaScript disabled — set for `html` documents (client-
+   *  provided HTML) so any embedded <script> can't execute. */
+  disableJs?: boolean;
 }
 
 const WORKSHEET_FOOTER =
   `<div style="width:100%;font-size:8px;color:#94a3b8;font-family:sans-serif;padding:0 12mm;box-sizing:border-box;display:flex;justify-content:space-between;"><span>vocaband.com</span><span>Page <span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`;
 
-// Strip <script>, inline event handlers and javascript: URLs from app-
-// generated HTML before rendering it in the isolated browser. Defence in
-// depth: the HTML is built by our own generators, but custom word lists are
-// user-supplied text spliced into it.
-function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
-    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
-    .replace(/javascript:/gi, '');
-}
-
+// Note: client-provided `html` documents are rendered with JavaScript
+// DISABLED in the Worker (see handlePdf → setJavaScriptEnabled(false)), so
+// any embedded <script> / inline handler is neutralised at the engine level.
+// That's far more robust than regex HTML sanitisation (which is always
+// evadable), so we deliberately do NOT regex-strip the markup here.
 export function buildPdfDocument(data: PdfDocData): PdfDocument {
   switch (data.kind) {
     case 'certificate':
@@ -69,16 +65,17 @@ export function buildPdfDocument(data: PdfDocData): PdfDocument {
         throw new Error('html document missing `html`');
       }
       // The generated `.sheet` CSS drives pagination + page size; force every
-      // sheet visible (the in-page nav script that toggles them is stripped),
-      // keep margins at 0 so each sheet fills the page.
+      // sheet visible (the in-page nav script that would toggle them never
+      // runs — JS is disabled), keep margins at 0 so each sheet fills the page.
       return {
-        html: `<!doctype html><html><head><meta charset="utf-8"><style>.sheet{display:block!important}</style></head><body style="margin:0">${sanitizeHtml(data.html)}</body></html>`,
+        html: `<!doctype html><html><head><meta charset="utf-8"><style>.sheet{display:block!important}</style></head><body style="margin:0">${data.html}</body></html>`,
         pdf: {
           printBackground: true,
           format: 'A4',
           landscape: data.orientation === 'landscape',
           margin: { top: '0', right: '0', bottom: '0', left: '0' },
         },
+        disableJs: true,
       };
     }
 

@@ -325,13 +325,21 @@ async function handlePdf(request: Request, env: Env): Promise<Response> {
   const browser = await puppeteer.launch(env.BROWSER as never);
   try {
     const page = await browser.newPage();
+    // For client-provided HTML (kind:"html") disable JavaScript so any
+    // embedded <script> can't run — robust engine-level neutralisation
+    // instead of regex sanitisation. Must precede setContent (a navigation).
+    if (doc.disableJs) {
+      await page.setJavaScriptEnabled(false);
+    }
     await page.setContent(doc.html, { waitUntil: "networkidle0" });
-    // Belt-and-suspenders with networkidle0: make sure the web fonts are
-    // loaded before printing, else the first render can fall back to a
-    // glyphless default.
-    await page.evaluate(async () => {
-      await document.fonts.ready;
-    });
+    // Make sure web fonts are laid out before printing. document.fonts.ready
+    // needs JS, so only when JS is enabled; with JS off, networkidle0 has
+    // already waited for the font network requests to settle.
+    if (!doc.disableJs) {
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+      });
+    }
     // Per-document page geometry (margins / footer / orientation) comes from
     // buildPdfDocument, so a full-bleed certificate isn't clipped by the
     // worksheet's margins.
