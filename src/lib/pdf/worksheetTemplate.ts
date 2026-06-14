@@ -51,8 +51,9 @@ export interface WorksheetData {
 }
 
 export interface WorksheetRenderOptions {
-  /** A complete @font-face CSS block defining Fredoka/Heebo/NotoHe/NotoAr. */
-  fontCss: string;
+  /** A complete @font-face CSS block. Defaults to URL-based faces served
+   *  from /fonts/ (worksheetFontFaceCss); tests pass base64 data-URI faces. */
+  fontCss?: string;
 }
 
 const esc = (s: string | undefined): string =>
@@ -130,8 +131,9 @@ function answersHtml(answers: WorksheetAnswer[]): string {
 
 export function buildWorksheetHtml(
   data: WorksheetData,
-  opts: WorksheetRenderOptions,
+  opts: WorksheetRenderOptions = {},
 ): string {
+  const fontCss = opts.fontCss ?? worksheetFontFaceCss();
   const dir = data.lang === 'he' || data.lang === 'ar' ? 'rtl' : 'ltr';
   const instructions =
     data.instructions ??
@@ -148,7 +150,7 @@ export function buildWorksheetHtml(
 <meta charset="utf-8">
 <title>${esc(data.title)} — Vocaband</title>
 <style>
-  ${opts.fontCss}
+  ${fontCss}
   * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   body { margin:0; font-family:'Heebo','Helvetica Neue',sans-serif; color:#1e1b4b; }
   h1,h2 { font-family:'Fredoka','Heebo',sans-serif; margin:0; }

@@ -20,11 +20,7 @@
 
 import { downloadZip } from "client-zip";
 import puppeteer from "@cloudflare/puppeteer";
-import {
-  buildWorksheetHtml,
-  worksheetFontFaceCss,
-  type WorksheetData,
-} from "../src/lib/pdf/worksheetTemplate";
+import { buildPdfHtml, type PdfDocData } from "../src/lib/pdf/buildPdfHtml";
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
@@ -308,23 +304,23 @@ async function handlePdf(request: Request, env: Env): Promise<Response> {
   if (raw.length > 256 * 1024) {
     return new Response("Payload too large", { status: 413 });
   }
-  let data: WorksheetData;
+  let data: PdfDocData;
   try {
-    data = JSON.parse(raw) as WorksheetData;
+    data = JSON.parse(raw) as PdfDocData;
   } catch {
     return new Response("Invalid JSON", { status: 400 });
   }
-  if (
-    !data ||
-    typeof data.title !== "string" ||
-    !Array.isArray(data.words) ||
-    data.words.length === 0 ||
-    data.words.length > 200
-  ) {
-    return new Response("Invalid worksheet data", { status: 400 });
+  if (!data || typeof data !== "object") {
+    return new Response("Invalid document data", { status: 400 });
   }
-
-  const html = buildWorksheetHtml(data, { fontCss: worksheetFontFaceCss() });
+  let html: string;
+  try {
+    // buildPdfHtml dispatches by data.kind and throws on unknown / malformed
+    // shapes — turn that into a 400 rather than a 500 or a garbage render.
+    html = buildPdfHtml(data);
+  } catch {
+    return new Response("Invalid document data", { status: 400 });
+  }
 
   const browser = await puppeteer.launch(env.BROWSER as never);
   try {
