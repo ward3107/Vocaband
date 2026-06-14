@@ -28,6 +28,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { CATEGORIES, categoryLabel, LETTER_POOL } from "../data/category-race-bank";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
+import LobbyRoster from "../components/game/LobbyRoster";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
@@ -87,6 +88,7 @@ const STRINGS = {
     roundLive: "Round in progress", letterLabel: "Letter",
     leaderboard: "Leaderboard", noStudents: "Waiting for students to join…",
     end: "End race", endNew: "New race", seconds: (n: number) => `${n}s`, players: (n: number) => `${n} playing`,
+    inRoom: (n: number) => `${n} in the room`,
     pickOne: "Pick at least one category.",
     copy: "Copy link", copied: "Copied!", enlarge: "Enlarge", hide: "Hide", show: "Show QR code",
     darkOn: "Dark", darkOff: "Light", restarting: "Starting new race…",
@@ -100,6 +102,7 @@ const STRINGS = {
     roundLive: "סבב מתבצע", letterLabel: "אות",
     leaderboard: "טבלת מובילים", noStudents: "ממתינים שתלמידים יצטרפו…",
     end: "סיים מרוץ", endNew: "מרוץ חדש", seconds: (n: number) => `${n} שנ'`, players: (n: number) => `${n} משחקים`,
+    inRoom: (n: number) => `${n} בחדר`,
     pickOne: "בחרו לפחות קטגוריה אחת.",
     copy: "העתק קישור", copied: "הועתק!", enlarge: "הגדל", hide: "הסתר", show: "הצג קוד QR",
     darkOn: "כהה", darkOff: "בהיר", restarting: "מתחיל מרוץ חדש…",
@@ -113,6 +116,7 @@ const STRINGS = {
     roundLive: "الجولة جارية", letterLabel: "حرف",
     leaderboard: "لوحة المتصدرين", noStudents: "في انتظار انضمام الطلاب…",
     end: "إنهاء السباق", endNew: "سباق جديد", seconds: (n: number) => `${n} ث`, players: (n: number) => `${n} يلعبون`,
+    inRoom: (n: number) => `${n} في الغرفة`,
     pickOne: "اختر فئة واحدة على الأقل.",
     copy: "نسخ الرابط", copied: "تم النسخ!", enlarge: "تكبير", hide: "إخفاء", show: "إظهار رمز QR",
     darkOn: "داكن", darkOff: "فاتح", restarting: "بدء سباق جديد…",
@@ -357,14 +361,27 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               )}
             </AnimatePresence>
 
-            {/* The leaderboard — projector scale */}
-            <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
-              <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
-                <Users size={18} /> {t.leaderboard}
-                <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
-              </h2>
-              <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large />
-            </section>
+            {/* Before the first round it's a waiting room — show the joined
+                students popping in. Once a round has run, the leaderboard
+                (with scores) takes over as the dominant element. */}
+            {hasRunRound || roundActive ? (
+              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
+                <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
+                  <Users size={18} /> {t.leaderboard}
+                  <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
+                </h2>
+                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large />
+              </section>
+            ) : (
+              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
+                <LobbyRoster
+                  players={sorted}
+                  countLabel={t.inRoom}
+                  emptyLabel={t.noStudents}
+                  accent="from-fuchsia-500 to-pink-600"
+                />
+              </section>
+            )}
           </div>
 
           {/* Sidebar: join + setup controls (compact) — hidden in
