@@ -97,6 +97,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.0",
+    "@cloudflare/puppeteer": "^1.1.0",
     "@cloudflare/vite-plugin": "^1.40.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
