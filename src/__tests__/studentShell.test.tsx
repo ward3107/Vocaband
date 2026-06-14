@@ -178,6 +178,7 @@ describe('landable authenticated views (routes.ts, Slice 3)', () => {
     ['manager-dashboard', '/manager'],
     ['class-show', '/class-show'],
     ['worksheet', '/worksheet'],
+    ['create-assignment', '/create-assignment'],
   ] as const;
 
   for (const [view, path] of AUTHED) {

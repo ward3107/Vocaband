@@ -750,7 +750,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   useViewGuards({
     view, setView, user, loading,
     activeAssignment, quickPlayActiveSession,
-    selectedClass,
+    selectedClass, classes, setSelectedClass,
   });
 
   // Warn before leaving while a score save is in flight.
