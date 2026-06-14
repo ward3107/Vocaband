@@ -1,24 +1,30 @@
 # Slice 5 — Reconcile the back-button trap with real URLs
 
-> **Status:** **Part 1 implemented behind a build-time flag** (`URL_ROUTING_PUSH`,
-> `src/utils/urlRouting.ts`) — **OFF in prod, so it ships dark**. The trap now
-> pushes the canonical path for **non-parametric** authed views (§3A); the
-> **parametric handler pushes (§3B)** and the **mandatory real-device QA** remain
-> before the flag is enabled in production. This slice edits a **safety-critical,
-> treat-as-protected** file (`src/hooks/useBackButtonTrap.ts`) and **cannot be
-> fully validated in CI** — Android Chrome edge-swipe + iOS PWA testing is
-> required before flipping the flag on (see §6).
+> **Status:** **Implemented behind a build-time flag** (`URL_ROUTING_PUSH`,
+> `src/utils/urlRouting.ts`) — **OFF in prod, so it ships dark**. The trap
+> attaches the canonical path on in-app navigation (§3A), and the parametric
+> sub-views push their `?id=` URL from their nav handlers (§3B). Only the
+> **mandatory real-device QA** remains before the flag is enabled in production.
+> This slice edits a **safety-critical, treat-as-protected** file
+> (`src/hooks/useBackButtonTrap.ts`) and **cannot be fully validated in CI** —
+> Android Chrome edge-swipe + iOS PWA testing is required before flipping the
+> flag on (see §6).
 >
-> **Done so far (flag-gated, merged-safe):**
+> **Done (flag-gated, merged-safe):**
 > - `URL_ROUTING_PUSH` build flag; the auth e2e build sets it ON.
-> - Trap view-change push attaches `pathForView(view)` for non-parametric authed
->   views; parametric views + path-less views pass `undefined` (unchanged URL).
+> - §3A — trap view-change push attaches `pathForView(view)` for non-parametric
+>   authed views; path-less views pass `undefined` (unchanged URL).
+> - §3B — `class-show` / `worksheet` (`TeacherDashboardSection`) and
+>   `create-assignment` (`startAssignClassFlow`) push their `?id=` URL before
+>   `setView`; the trap skips its own push (state.view already matches). These
+>   are the parametric views the trap deliberately leaves alone.
 > - e2e: `url-push.auth.spec.ts` (in-app nav → URL + refresh-stable); the floor
->   net (`back-button.auth.spec.ts`) re-runs **with the flag ON** → no regression.
+>   net (`back-button.auth.spec.ts`) re-runs **with the flag ON** → no regression
+>   (32/32). Note: the §3B teacher-nav push is logic-verified + regression-safe
+>   but not click-driven in e2e (the teacher action cards are awkward to drive);
+>   the real-device checklist covers it.
 >
-> **Still TODO:** §3B (handler pushes for class-show / worksheet /
-> create-assignment), the real-device checklist (§6), then flip the flag on and
-> remove it.
+> **Still TODO:** the real-device checklist (§6), then flip the flag on + remove it.
 
 Parent: [`url-routing-migration-plan.md`](./url-routing-migration-plan.md) (Fix 2).
 

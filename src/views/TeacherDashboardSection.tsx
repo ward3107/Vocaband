@@ -16,6 +16,7 @@ const ClassRosterModal = lazyWithRetry(() => import('../components/ClassRosterMo
 const RosterModalV2 = lazyWithRetry(() => import('../components/roster/v2/RosterModalV2'));
 import SvgArrowLeftRight from '../components/svg/SvgArrowLeftRight';
 import { logAudit } from '../utils/audit';
+import { URL_ROUTING_PUSH } from '../utils/urlRouting';
 import {
   deleteAssignmentWithUndo,
   deleteAssignmentImmediate,
@@ -181,11 +182,19 @@ export function TeacherDashboardSection(): ReactNode {
         onProjectAssignmentToClass={(a) => {
           setActivityNavOrigin(null);
           setClassShowAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
+          // Slice 5b: push the real URL so a refresh re-hydrates this assignment
+          // (useAssignmentViewDeepLink reads ?assignmentId=). Flag-gated; trap skips.
+          if (URL_ROUTING_PUSH) {
+            try { window.history.pushState({ view: 'class-show' }, '', `/class-show?assignmentId=${encodeURIComponent(a.id)}`); } catch { /* best-effort */ }
+          }
           setView('class-show');
         }}
         onPrintAssignmentWorksheet={(a) => {
           setActivityNavOrigin(null);
           setWorksheetAssignment({ title: a.title, wordIds: a.wordIds, customWords: a.words });
+          if (URL_ROUTING_PUSH) {
+            try { window.history.pushState({ view: 'worksheet' }, '', `/worksheet?assignmentId=${encodeURIComponent(a.id)}`); } catch { /* best-effort */ }
+          }
           setView('worksheet');
         }}
         onNewClass={() => setShowCreateClassModal(true)}
