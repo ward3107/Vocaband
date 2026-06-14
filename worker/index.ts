@@ -19,6 +19,12 @@
  */
 
 import { downloadZip } from "client-zip";
+import puppeteer from "@cloudflare/puppeteer";
+import {
+  buildWorksheetHtml,
+  worksheetFontFaceCss,
+  type WorksheetData,
+} from "../src/lib/pdf/worksheetTemplate";
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
@@ -37,6 +43,11 @@ interface Env {
   // re-wrapping that request breaks the WebSocket upgrade (see /socket.io/
   // handler below).
   CLOUDFLARE_ORIGIN_SECRET?: string;
+  // Browser Rendering binding (declared in wrangler.jsonc as `browser`).
+  // Used by /api/pdf to render worksheet HTML to PDF via headless Chromium.
+  // Typed as `unknown` + cast at the launch call so the DOM-lib tsc check
+  // doesn't need @cloudflare/workers-types — mirrors the HTMLRewriter shim.
+  BROWSER?: unknown;
 }
 
 // Build a Request to the Fly origin, injecting the Cloudflare-origin shared
@@ -274,6 +285,79 @@ async function handleAudioPack(request: Request, env: Env): Promise<Response> {
   });
 }
 
+/**
+ * POST /api/pdf
+ *
+ * Renders a Vocaband worksheet to PDF with Cloudflare Browser Rendering
+ * (real Chromium). The browser builds the PDF — not the client — so every
+ * device gets identical output with correctly-shaped Hebrew/Arabic and
+ * selectable vector text. Replaces the client-side html2pdf/jsPDF path,
+ * which has no text-shaping or bidi engine.
+ *
+ * The client sends STRUCTURED DATA, never HTML; we build + escape the HTML
+ * here (worksheetTemplate) so a malicious word/title can't inject markup.
+ */
+async function handlePdf(request: Request, env: Env): Promise<Response> {
+  if (!env.BROWSER) {
+    return new Response("PDF rendering not configured", { status: 503 });
+  }
+
+  // Cap the payload and validate shape — never trust client input, and bound
+  // the render cost (a browser render is far heavier than a proxied request).
+  const raw = await request.text();
+  if (raw.length > 256 * 1024) {
+    return new Response("Payload too large", { status: 413 });
+  }
+  let data: WorksheetData;
+  try {
+    data = JSON.parse(raw) as WorksheetData;
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+  if (
+    !data ||
+    typeof data.title !== "string" ||
+    !Array.isArray(data.words) ||
+    data.words.length === 0 ||
+    data.words.length > 200
+  ) {
+    return new Response("Invalid worksheet data", { status: 400 });
+  }
+
+  const html = buildWorksheetHtml(data, { fontCss: worksheetFontFaceCss() });
+
+  const browser = await puppeteer.launch(env.BROWSER as never);
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+    // Belt-and-suspenders with networkidle0: make sure the @font-face web
+    // fonts (Heebo/Noto Hebrew/Noto Arabic) are loaded before printing,
+    // otherwise the first render can fall back to a glyphless default.
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      displayHeaderFooter: true,
+      headerTemplate: "<div></div>",
+      footerTemplate:
+        `<div style="width:100%;font-size:8px;color:#94a3b8;font-family:sans-serif;padding:0 12mm;box-sizing:border-box;display:flex;justify-content:space-between;"><span>vocaband.com</span><span>Page <span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`,
+      margin: { top: "14mm", bottom: "16mm", left: "12mm", right: "12mm" },
+    });
+    return new Response(pdf as unknown as BodyInit, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": 'attachment; filename="vocaband-worksheet.pdf"',
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } finally {
+    await browser.close();
+  }
+}
+
 // Endpoints we feel safe edge-caching: GET-only, fully public payloads
 // (no PII, no per-user variance).  Cached at the edge for 60 s with a
 // stale-while-revalidate window so a brief Fly cold-start can still
@@ -404,6 +488,13 @@ export default {
     // and return a 404.
     if (url.pathname === "/api/audio-pack") {
       return handleAudioPack(request, env);
+    }
+
+    // Worksheet PDF render (Browser Rendering / Chromium). Edge-handled, so
+    // it must precede the /api/* proxy fallthrough or it'd be forwarded to
+    // Fly.io and 404.
+    if (url.pathname === "/api/pdf" && request.method === "POST") {
+      return handlePdf(request, env);
     }
 
     // Public, GET-only, no-PII endpoints get the Cloudflare edge cache.
