@@ -122,7 +122,11 @@ the object from the id in the URL — or find it in an already-loaded array),
   fetch). READ side only — wiring the reverse (view → URL on in-app nav) lands
   with the back-trap rework in Slice 5, the same split used in Slice 3. e2e:
   `rehydrate.auth.spec.ts` (2 views × 2 viewports).
-- `create-assignment` → `?classId=` → reload class (`useViewGuards.ts:118`)
+- ✅ DONE — `create-assignment` re-hydrates from `?classId=<id>`:
+  `useViewGuards` Guard 4 now selects the class from the already-loaded
+  `classes` (instead of bouncing to the dashboard) when the id matches. The
+  re-hydration lives INSIDE the guard, so there's no race with the bounce; a
+  missing/unknown id still bounces as before. e2e: `rehydrate.auth.spec.ts`.
 - `game` → needs `activeAssignment` (`useViewGuards.ts:81`)
 - `live-challenge`, `live-challenge-class-select` → need `selectedClass`
 - `class-show`, `worksheet` → need an assignment object
@@ -148,15 +152,37 @@ preserving the role-aware guarantees above. This is the highest-risk slice.
   (`url-routing.spec.ts`) also exists. Still TODO before the trap rework:
   extend the matrix with in-app back BETWEEN authenticated views (CASE C)
   as those views gain URLs in Slices 3–4, and wire `test:e2e:auth` into CI.
-- The trap rework itself + mandatory **real-phone testing** (Android
-  edge-swipe, iOS PWA) remain the body of this slice.
+- 🟢 IMPLEMENTED behind the `URL_ROUTING_PUSH` build flag (OFF in prod → ships
+  dark): §3A the trap pushes `pathForView(view)` for non-parametric authed
+  views, and §3B the parametric sub-views (class-show / worksheet /
+  create-assignment) push their `?id=` URL from their nav handlers. e2e
+  `url-push.auth.spec.ts` proves in-app nav updates the URL + survives refresh;
+  the floor net re-runs with the flag ON (32/32, no regression). Full design +
+  kid-safety invariants + the **mandatory real-device checklist** are in
+  [`slice-5-back-trap-plan.md`](./slice-5-back-trap-plan.md).
+- Still TODO: the **real-phone QA** (Android edge-swipe, iOS PWA), then flip the
+  flag on in prod and remove it.
 
 ### Slice 6 — Auth restore respects the URL (PROTECTED)
 `useAuthRestore.ts` should hydrate to the URL's view instead of forcing the
 dashboard (still falling back to dashboard for non-landable URLs).
-- **PROTECTED zone — explicit per-file sign-off required.** A regression
-  here locks every teacher and student out.
-- Ship last, behind a thorough auth e2e pass.
+- ✅ LARGELY ALREADY ACHIEVED — the MAIN restore paths already gate their
+  `setView(dashboard)` on `shouldPreserveView(role, currentView)` (10+ call
+  sites: ~lines 280/320/404/421/470/581/598/639). Because the landable views
+  are in `shouldPreserveView`'s keep-sets (`authViews.ts`), a deep-link /
+  refresh is preserved through restore — this is exactly the mechanism Slices
+  3–4 rely on, and it's harness-tested.
+- Remaining gap (low priority): a few EDGE restore branches force the dashboard
+  unconditionally — the persisted-login fallback (`vocaband_student_login`,
+  ~515/545) and brand-new-teacher creation (~681). Making those respect
+  `shouldPreserveView` is the same proven guard pattern, but those paths are
+  NOT exercised by the auth harness, so they need a dedicated persisted-login
+  fixture first. **Deliberately deferred** rather than edit the auth-lockout
+  file blind for a marginal, rare-path gain.
+- **PROTECTED zone — explicit per-file sign-off required.** A regression here
+  locks every teacher and student out.
+- (Real dashboard URLs — role-dependent — would also live here; the dashboard
+  floor staying at `/` is acceptable for now.)
 
 ---
 

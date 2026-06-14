@@ -11,6 +11,7 @@ import { ALL_GAME_MODES } from '../constants/game';
 import type { SavedTask } from '../hooks/useSavedTasks';
 import type { View } from '../core/views';
 import { createCategoryRaceSession, createSpeedRoundSession, createWordHuntArenaSession } from './quickPlaySession';
+import { URL_ROUTING_PUSH } from '../utils/urlRouting';
 
 export interface QuickPlayClickDeps {
   cleanupSessionData: () => void;
@@ -164,6 +165,14 @@ export interface AssignClassDeps {
  */
 export function startAssignClassFlow(c: ClassData, deps: AssignClassDeps): void {
   deps.setSelectedClass(c);
+  // Slice 5b: push the canonical URL so a refresh re-hydrates this class's
+  // wizard via Guard 4 (?classId=). Flag-gated; the back-trap then skips its
+  // own push (history.state.view already matches). No-op when the flag is off.
+  if (URL_ROUTING_PUSH) {
+    try {
+      window.history.pushState({ view: 'create-assignment' }, '', `/create-assignment?classId=${encodeURIComponent(c.id)}`);
+    } catch { /* best-effort — fall back to the trap's URL-less push */ }
+  }
   deps.setView('create-assignment');
   deps.setAssignmentStep(1);
   deps.setSelectedWords([]);

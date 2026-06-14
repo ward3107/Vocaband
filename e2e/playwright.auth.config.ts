@@ -50,7 +50,9 @@ export default defineConfig({
     // Build a bundle pointed at the MOCK Supabase URL (not the empty-env
     // build the default config uses) so the route mock actually intercepts
     // the client's calls and the auth fixture's seeded session restores.
-    command: `PLAYWRIGHT_TEST=true VITE_SUPABASE_URL="${TEST_SUPABASE_URL}" VITE_SUPABASE_ANON_KEY="test-anon-key" VITE_API_URL="" npm run build && npx vite preview --port ${PORT} --strictPort`,
+    // VITE_URL_ROUTING_PUSH=true exercises Slice 5 (view → URL push) under the
+    // authed harness; prod ships with it OFF until real-device QA passes.
+    command: `PLAYWRIGHT_TEST=true VITE_URL_ROUTING_PUSH="true" VITE_SUPABASE_URL="${TEST_SUPABASE_URL}" VITE_SUPABASE_ANON_KEY="test-anon-key" VITE_API_URL="" npm run build && npx vite preview --port ${PORT} --strictPort`,
     port: PORT,
     cwd: path.resolve(__dirname, '..'),
     reuseExistingServer: !process.env.CI,
