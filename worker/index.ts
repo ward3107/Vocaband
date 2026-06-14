@@ -350,6 +350,8 @@ async function handlePdf(request: Request, env: Env): Promise<Response> {
         "Content-Type": "application/pdf",
         "Content-Disposition": 'attachment; filename="vocaband-worksheet.pdf"',
         "Cache-Control": "private, no-store",
+        // Allow the cross-origin Vocabagrut app to read the rendered PDF.
+        "Access-Control-Allow-Origin": "*",
       },
     });
   } finally {
@@ -491,7 +493,20 @@ export default {
 
     // Worksheet PDF render (Browser Rendering / Chromium). Edge-handled, so
     // it must precede the /api/* proxy fallthrough or it'd be forwarded to
-    // Fly.io and 404.
+    // Fly.io and 404. CORS-enabled so the separate Vocabagrut app (its own
+    // origin) can render exam papers through the same engine. The endpoint is
+    // already public, so CORS only governs cross-origin *response* reads.
+    if (url.pathname === "/api/pdf" && request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Max-Age": "86400",
+        },
+      });
+    }
     if (url.pathname === "/api/pdf" && request.method === "POST") {
       return handlePdf(request, env);
     }
