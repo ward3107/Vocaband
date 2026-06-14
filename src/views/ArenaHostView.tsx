@@ -24,6 +24,7 @@ import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import LobbyRoster from "../components/game/LobbyRoster";
+import GameResults from "../components/game/GameResults";
 import ArenaCanvas from "../components/game/ArenaCanvas";
 import SpeedWordPicker from "../components/game/SpeedWordPicker";
 import { primeAudio } from "../utils/primeAudio";
@@ -72,6 +73,8 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const [roundSeconds, setRoundSeconds] = useState<number>(10);
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
+  // Celebratory results overlay when ending a played hunt.
+  const [showResults, setShowResults] = useState(false);
   const [presenting, setPresenting] = useState(false);
   const [buildError, setBuildError] = useState(false);
   const tokenRef = useRef<string | null>(null);
@@ -176,10 +179,16 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
     if (arenaActive && tokenRef.current) endArena(tokenRef.current);
   };
 
-  const handleEnd = async () => {
+  const leaveToDashboard = async () => {
     if (tokenRef.current) endSession(tokenRef.current);
     try { await supabase.rpc("end_quick_play_session", { p_session_code: sessionCode }); } catch { /* best-effort */ }
     setView("teacher-dashboard");
+  };
+
+  const handleEnd = () => {
+    // Celebrate the result first if the class actually played the hunt.
+    if (hasStarted && sorted.length > 0) setShowResults(true);
+    else void leaveToDashboard();
   };
 
   const handleCopy = async () => {
@@ -448,6 +457,13 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           >
             <Square size={20} /> {t.endArena}
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Celebratory results — shown when ending a hunt that has scores. */}
+      <AnimatePresence>
+        {showResults && (
+          <GameResults entries={sorted} onBack={leaveToDashboard} accent="from-indigo-500 to-violet-600" />
         )}
       </AnimatePresence>
 
