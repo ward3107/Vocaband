@@ -148,7 +148,7 @@ export default function QuickPlayHelpButton({ onAlertTeacher, onLeave }: Props) 
                   type="button"
                   aria-label={c.close}
                   onClick={() => setOpen(false)}
-                  className="p-2 -mr-2 -mt-1 text-on-surface-variant hover:text-on-surface"
+                  className="p-2 -me-2 -mt-1 text-on-surface-variant hover:text-on-surface"
                 >
                   <X className="w-5 h-5" />
                 </button>
