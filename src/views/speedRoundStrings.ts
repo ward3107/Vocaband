@@ -31,6 +31,7 @@ interface HostStrings {
   leaderboard: string; noStudents: string;
   end: string; endRound: string;
   seconds: (n: number) => string; players: (n: number) => string;
+  inRoom: (n: number) => string;
   copy: string; copied: string; enlarge: string; hide: string;
   present: string; controls: string;
   tfTrue: string; tfFalse: string;
@@ -59,6 +60,7 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     leaderboard: "Leaderboard", noStudents: "Waiting for students to join…",
     end: "End game", endRound: "End word",
     seconds: (n) => `${n}s`, players: (n) => `${n} playing`,
+    inRoom: (n) => `${n} in the room`,
     copy: "Copy link", copied: "Copied!", enlarge: "Enlarge", hide: "Hide",
     present: "Present", controls: "Controls",
     tfTrue: "True", tfFalse: "False",
@@ -89,6 +91,7 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     leaderboard: "טבלת מובילים", noStudents: "ממתינים שתלמידים יצטרפו…",
     end: "סיים משחק", endRound: "סיים מילה",
     seconds: (n) => `${n} שנ'`, players: (n) => `${n} משחקים`,
+    inRoom: (n) => `${n} בחדר`,
     copy: "העתק קישור", copied: "הועתק!", enlarge: "הגדל", hide: "הסתר",
     present: "מצגת", controls: "פקדים",
     tfTrue: "נכון", tfFalse: "לא נכון",
@@ -119,6 +122,7 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     leaderboard: "لوحة المتصدرين", noStudents: "في انتظار انضمام الطلاب…",
     end: "إنهاء اللعبة", endRound: "إنهاء الكلمة",
     seconds: (n) => `${n} ث`, players: (n) => `${n} يلعبون`,
+    inRoom: (n) => `${n} في الغرفة`,
     copy: "نسخ الرابط", copied: "تم النسخ!", enlarge: "تكبير", hide: "إخفاء",
     present: "عرض", controls: "أدوات",
     tfTrue: "صحيح", tfFalse: "خطأ",

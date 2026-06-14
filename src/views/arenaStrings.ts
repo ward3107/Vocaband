@@ -20,6 +20,7 @@ interface ArenaHostStrings {
   leaderboard: string; noStudents: string;
   end: string; endArena: string;
   seconds: (n: number) => string; players: (n: number) => string;
+  inRoom: (n: number) => string;
   copy: string; copied: string; enlarge: string; hide: string;
   present: string; controls: string;
   musicOn: string; musicOff: string;
@@ -41,6 +42,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     leaderboard: "Leaderboard", noStudents: "Waiting for students to join…",
     end: "End game", endArena: "End arena",
     seconds: (n) => `${n}s`, players: (n) => `${n} playing`,
+    inRoom: (n) => `${n} in the room`,
     copy: "Copy link", copied: "Copied!", enlarge: "Enlarge", hide: "Hide",
     present: "Present", controls: "Controls",
     musicOn: "Turn music on", musicOff: "Turn music off",
@@ -64,6 +66,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     leaderboard: "טבלת מובילים", noStudents: "ממתינים שתלמידים יצטרפו…",
     end: "סיים משחק", endArena: "סיים זירה",
     seconds: (n) => `${n} שנ'`, players: (n) => `${n} משחקים`,
+    inRoom: (n) => `${n} בחדר`,
     copy: "העתק קישור", copied: "הועתק!", enlarge: "הגדל", hide: "הסתר",
     present: "מצגת", controls: "פקדים",
     musicOn: "הפעל מוזיקה", musicOff: "כבה מוזיקה",
@@ -87,6 +90,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     leaderboard: "لوحة المتصدرين", noStudents: "في انتظار انضمام الطلاب…",
     end: "إنهاء اللعبة", endArena: "إنهاء الساحة",
     seconds: (n) => `${n} ث`, players: (n) => `${n} يلعبون`,
+    inRoom: (n) => `${n} في الغرفة`,
     copy: "نسخ الرابط", copied: "تم النسخ!", enlarge: "تكبير", hide: "إخفاء",
     present: "عرض", controls: "أدوات",
     musicOn: "تشغيل الموسيقى", musicOff: "إيقاف الموسيقى",
