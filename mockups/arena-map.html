@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Word Hunt Arena — map mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; background: #0f172a; color: #fff; padding: 22px; }
+  .frame { max-width: 1040px; margin: 0 auto; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; font-weight: 800; }
+  .live { background: linear-gradient(135deg,#6366f1,#a855f7); box-shadow: 0 8px 24px rgba(168,85,247,.4); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #fff; animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  .timer { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.25); font-variant-numeric: tabular-nums; }
+  .teams { display: flex; gap: 10px; align-items: center; font-weight: 900; font-size: 18px; }
+  .red { color: #fb7185; } .blue { color: #60a5fa; }
+
+  /* The map */
+  .map { position: relative; height: 560px; border-radius: 30px; overflow: hidden;
+    background: radial-gradient(circle at 30% 20%, #c7d2fe, transparent 60%),
+                radial-gradient(circle at 80% 80%, #fbcfe8, transparent 55%),
+                linear-gradient(135deg,#e0e7ff,#ede9fe,#fae8ff);
+    border: 1px solid rgba(255,255,255,.4); box-shadow: 0 20px 60px rgba(79,70,229,.35); }
+  .map::before { content:""; position:absolute; inset:0;
+    background-image: radial-gradient(circle, rgba(99,102,241,.18) 2px, transparent 2px);
+    background-size: 30px 30px; }
+
+  .word { position: absolute; transform: translate(-50%,-50%); padding: 11px 20px; border-radius: 999px;
+    font-weight: 900; font-size: 19px; white-space: nowrap; box-shadow: 0 8px 20px rgba(0,0,0,.18); display:flex; align-items:center; gap:7px; }
+  .avail { background: linear-gradient(135deg,#fbbf24,#f97316); color:#fff; animation: float 2.4s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translate(-50%,calc(-50% - 7px)); } }
+  .locked { background: rgba(120,113,108,.85); color:#fff; opacity:.75; }
+  .taken { background: #d1fae5; color:#059669; opacity:.55; }
+
+  .avatar { position: absolute; transform: translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:3px; z-index:5; }
+  .face { width: 50px; height: 50px; border-radius: 50%; display:grid; place-items:center; font-size: 26px;
+    background: rgba(255,255,255,.75); border: 2px solid #fff; box-shadow: 0 6px 16px rgba(0,0,0,.2); backdrop-filter: blur(4px); }
+  .name { font-size: 11px; font-weight: 900; color:#3730a3; background: rgba(255,255,255,.8); padding: 1px 8px; border-radius: 999px; }
+  .me .face { border-color:#e879f9; box-shadow: 0 0 0 4px rgba(232,121,249,.4); }
+  .trail { position:absolute; width:7px; height:7px; border-radius:50%; background: rgba(232,121,249,.5); transform: translate(-50%,-50%); }
+
+  .legend { position:absolute; left:18px; bottom:16px; display:flex; gap:14px; font-size:13px; font-weight:800; color:#3730a3;
+    background: rgba(255,255,255,.78); padding: 9px 16px; border-radius: 999px; box-shadow: 0 6px 16px rgba(0,0,0,.12); backdrop-filter: blur(4px); }
+  .legend span { display:flex; align-items:center; gap:6px; }
+  .swatch { width:14px; height:14px; border-radius:50%; }
+
+  /* phone joystick note card */
+  .joystick { position:absolute; right:20px; bottom:18px; width:110px; height:110px; border-radius:50%;
+    background: rgba(255,255,255,.45); border:2px solid rgba(255,255,255,.8); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  .stick { position:absolute; left:50%; top:50%; transform: translate(-30%,-60%); width:48px; height:48px; border-radius:50%;
+    background: linear-gradient(135deg,#6366f1,#a855f7); box-shadow: 0 6px 14px rgba(99,102,241,.5); }
+
+  .caption { margin-top: 14px; text-align:center; font-size:13px; color:#94a3b8; }
+  .tag { position:absolute; top:14px; left:18px; background: rgba(255,255,255,.8); color:#6d28d9; font-weight:900; font-size:12px; padding:6px 14px; border-radius:999px; letter-spacing:.04em; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="topbar">
+    <span class="pill live"><span class="dot"></span>🏟️ Word Hunt Arena · LIVE</span>
+    <span class="pill timer">⏱️ 1:24</span>
+    <div class="teams"><span class="red">Red 12</span><span style="opacity:.5">vs</span><span class="blue">Blue 9</span> words</div>
+  </div>
+
+  <div class="map">
+    <div class="tag">PROJECTOR VIEW</div>
+
+    <!-- words scattered -->
+    <div class="word avail" style="left:24%; top:26%;">brave</div>
+    <div class="word avail" style="left:62%; top:20%;">rescue</div>
+    <div class="word avail" style="left:78%; top:54%;">gentle</div>
+    <div class="word avail" style="left:40%; top:66%;">shadow</div>
+    <div class="word locked" style="left:18%; top:62%;">🔒 ancient</div>
+    <div class="word locked" style="left:84%; top:30%;">🔒 wander</div>
+    <div class="word taken" style="left:50%; top:42%;">✅ river</div>
+    <div class="word taken" style="left:30%; top:44%;">✅ calm</div>
+
+    <!-- kids roaming -->
+    <div class="avatar me" style="left:34%; top:36%;">
+      <div class="trail" style="left:30px; top:36px;"></div>
+      <div class="face">🦊</div><div class="name">You · Noa</div>
+    </div>
+    <div class="avatar" style="left:58%; top:30%;"><div class="face">🐼</div><div class="name">Adam</div></div>
+    <div class="avatar" style="left:70%; top:60%;"><div class="face">🐯</div><div class="name">Lior</div></div>
+    <div class="avatar" style="left:46%; top:58%;"><div class="face">🐸</div><div class="name">Maya</div></div>
+    <div class="avatar" style="left:22%; top:50%;"><div class="face">🐵</div><div class="name">Sami</div></div>
+
+    <div class="legend">
+      <span><span class="swatch" style="background:linear-gradient(135deg,#fbbf24,#f97316)"></span> grab it</span>
+      <span><span class="swatch" style="background:#78716c"></span> locked</span>
+      <span><span class="swatch" style="background:#a7f3d0"></span> taken</span>
+    </div>
+  </div>
+
+  <div class="caption">Throwaway mockup · the projector shows the whole class roaming. On a kid's phone, the same map appears with a joystick (bottom-right) to steer their avatar and run over words to grab them.</div>
+</div>
+</body>
+</html>
