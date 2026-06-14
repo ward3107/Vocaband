@@ -12,7 +12,7 @@ import React, { useState, useRef, useCallback, useEffect, useLayoutEffect, useMe
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Check, AlertTriangle, Sparkles, Upload, Camera,
-  ChevronRight, Loader2, X, Search, Package, FolderOpen,
+  ChevronRight, Loader2, X, Search, FolderOpen,
   BookOpen, Plus, Trash2, Pencil
 } from 'lucide-react';
 import { Word } from '../../data/vocabulary';
@@ -28,6 +28,7 @@ import {
 } from '../../utils/spellSuggest';
 import InPageCamera from '../InPageCamera';
 import LibrarySetsPanel from '../../views/library/LibrarySetsPanel';
+import PickerSheet from './PickerSheet';
 import { useLanguage } from '../../hooks/useLanguage';
 import { wordInputStepT } from '../../locales/teacher/word-input-step';
 
@@ -1020,42 +1021,23 @@ const OcrModal: React.FC<OcrModalProps> = ({
 }) => {
   const TEXT = useStepTexts();
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-[var(--vb-surface)] rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-rose-300 to-fuchsia-400 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white">
-            <Camera className="w-5 h-5" />
-            <span className="font-bold">{TEXT.ocr}</span>
-          </div>
-          <button
-            onClick={onClose}
-            type="button"
-            className="text-white/80 hover:text-white"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="p-6">
-          {/* Upload State */}
+    <PickerSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      emoji="📷"
+      gradient="from-rose-400 to-fuchsia-500"
+      title={TEXT.ocr}
+      subtitle={state === 'idle' ? TEXT.ocrSubtitle : undefined}
+      maxWidthClass="sm:max-w-md"
+      closeAria={TEXT.cancel}
+    >
+        <div className="p-5 sm:p-6">
+          {/* Upload State — two large, tappable source cards (camera +
+              gallery) instead of thin buttons, so the primary action is
+              comfortable on a phone. */}
           {state === 'idle' && (
-            <div className="text-center">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-rose-100 to-fuchsia-100 flex items-center justify-center">
-                <Camera className="w-10 h-10 text-rose-500" />
-              </div>
-              <p className="text-[var(--vb-text-secondary)] font-medium mb-4">
-                {TEXT.ocrSubtitle}
-              </p>
-
+            <div>
               {/*
                 Gallery file <input> lives in the parent component
                 (see WordInputStep2026 below the OcrModal mount) so
@@ -1064,26 +1046,33 @@ const OcrModal: React.FC<OcrModalProps> = ({
                 duplicating the input.  We just call onOpenGallery,
                 which fires the parent's input.click().
               */}
-
-              <div className="flex gap-3">
-                <button
+              <div className="grid grid-cols-2 gap-3">
+                <motion.button
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={onOpenCamera}
                   type="button"
-                  className="flex-1 bg-gradient-to-r from-rose-300 to-fuchsia-400 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+                  className="flex flex-col items-center gap-3 rounded-3xl bg-gradient-to-br from-rose-400 to-fuchsia-500 px-4 py-6 text-white shadow-lg shadow-rose-500/20"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
-                  <Camera className="w-5 h-5" />
-                  {TEXT.camera}
-                </button>
-                <button
+                  <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/20">
+                    <Camera className="h-7 w-7" />
+                  </div>
+                  <span className="font-bold">{TEXT.camera}</span>
+                </motion.button>
+                <motion.button
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={onOpenGallery}
                   type="button"
-                  className="flex-1 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+                  className="flex flex-col items-center gap-3 rounded-3xl border border-[var(--vb-border)] bg-[var(--vb-surface)] px-4 py-6 text-[var(--vb-text-secondary)] transition-colors hover:border-fuchsia-300"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                 >
-                  <Upload className="w-5 h-5" />
-                  {TEXT.gallery}
-                </button>
+                  <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-rose-100 to-fuchsia-100 text-fuchsia-600">
+                    <Upload className="h-7 w-7" />
+                  </div>
+                  <span className="font-bold">{TEXT.gallery}</span>
+                </motion.button>
               </div>
             </div>
           )}
@@ -1189,8 +1178,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
             </div>
           )}
         </div>
-      </motion.div>
-    </div>
+    </PickerSheet>
   );
 };
 
@@ -1250,34 +1238,38 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60]">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-[var(--vb-surface)] rounded-t-xl sm:rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 text-white">
-            <span className="text-2xl">{pack.icon}</span>
-            <span className="font-bold">{pack.name}</span>
-          </div>
+    <PickerSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      onBack={onClose}
+      emoji={pack.icon}
+      gradient="from-emerald-400 to-teal-500"
+      title={pack.name}
+      subtitle={`${pack.words.length} ${TEXT.words}`}
+      maxWidthClass="sm:max-w-lg"
+      zClass="z-[60]"
+      closeAria={TEXT.cancel}
+      backAria={TEXT.cancel}
+      footer={
+        <div className="p-4">
           <button
-            onClick={onClose}
+            onClick={handleAddSelected}
+            disabled={selectedForAdd.size === 0}
             type="button"
-            className="text-white/80 hover:text-white"
+            className="w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-3.5 font-bold text-white shadow-lg shadow-emerald-500/20 transition-opacity disabled:opacity-40"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
           >
-            <X className="w-6 h-6" />
+            {selectedForAdd.size > 0 ? `${TEXT.addSelected} (${selectedForAdd.size})` : TEXT.addSelected}
           </button>
         </div>
-
+      }
+    >
         {/* Select All / Deselect All */}
-        <div className="px-4 py-3 border-b border-[var(--vb-border)] flex gap-2">
+        <div className="sticky top-0 z-10 flex gap-2 border-b border-[var(--vb-border)] bg-[var(--vb-surface)] px-4 py-3">
           <button
             onClick={selectAll}
             type="button"
-            className="flex-1 py-2 bg-[var(--vb-accent-soft)] text-[var(--vb-accent)] text-sm font-semibold rounded-lg hover:opacity-80 transition-colors"
+            className="flex-1 rounded-xl bg-[var(--vb-accent-soft)] py-2 text-sm font-semibold text-[var(--vb-accent)] transition-colors hover:opacity-80"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
           >
             {TEXT.allWords}
@@ -1285,7 +1277,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
           <button
             onClick={deselectAll}
             type="button"
-            className="flex-1 py-2 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] text-sm font-semibold rounded-lg hover:opacity-80 transition-colors"
+            className="flex-1 rounded-xl bg-[var(--vb-surface-alt)] py-2 text-sm font-semibold text-[var(--vb-text-secondary)] transition-colors hover:opacity-80"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
           >
             {TEXT.cancel}
@@ -1293,8 +1285,8 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
         </div>
 
         {/* Words List */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-2 max-h-80">
+        <div className="p-4">
+          <div className="space-y-2">
             {pack.words.map((word) => {
               const isAlreadyAdded = selectedWordIds.has(word.id);
               const isSelected = selectedForAdd.has(word.id);
@@ -1341,26 +1333,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
             })}
           </div>
         </div>
-
-        {/* Footer */}
-        {selectedForAdd.size > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 border-t border-[var(--vb-border)] shrink-0"
-          >
-            <button
-              onClick={handleAddSelected}
-              type="button"
-              className="w-full bg-gradient-to-r from-emerald-400 to-teal-500 text-white font-bold py-3 px-6 rounded-lg"
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-            >
-              {TEXT.addSelected} ({selectedForAdd.size})
-            </button>
-          </motion.div>
-        )}
-      </motion.div>
-    </div>
+    </PickerSheet>
   );
 };
 
@@ -1396,68 +1369,50 @@ const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
     setSelectedPack(pack);
   };
 
-  if (!isOpen) return null;
-
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-[var(--vb-surface)] rounded-t-xl sm:rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
-        >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2 text-white">
-              <Package className="w-5 h-5" />
-              <span className="font-bold">{TEXT.topicPacks}</span>
-            </div>
-            <button
-              onClick={onClose}
+      <PickerSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        emoji="🧩"
+        gradient="from-emerald-400 to-teal-500"
+        title={TEXT.topicPacks}
+        subtitle={`${packsWithCounts.length} ${TEXT.packs}`}
+        closeAria={TEXT.cancel}
+      >
+        {/* Content — each pack is a tappable card with a gradient
+            medallion, count, and a "+N new" pill so teachers can see
+            at a glance how much a pack adds to their current list. */}
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
+          {packsWithCounts.map((pack) => (
+            <motion.button
+              key={pack.name}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handlePackClick(pack)}
               type="button"
-              className="text-white/80 hover:text-white"
+              className="group flex items-center gap-3 rounded-2xl border border-[var(--vb-border)] bg-[var(--vb-surface)] p-3.5 text-start transition-[transform,box-shadow] hover:border-emerald-300 hover:shadow-md"
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
             >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="p-4 overflow-y-auto flex-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {packsWithCounts.map((pack) => (
-                <motion.button
-                  key={pack.name}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handlePackClick(pack)}
-                  type="button"
-                  className="p-4 rounded-lg border-2 border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-emerald-300 text-center transition-all"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{pack.icon}</span>
-                        <span className="font-bold text-[var(--vb-text-primary)]">{pack.name}</span>
-                      </div>
-                      <p className="mt-1 text-sm text-[var(--vb-text-muted)]">
-                        {pack.words.length} {TEXT.words}
-                        {pack.newCount > 0 && (
-                          <span className="text-emerald-600 ml-2">
-                            (+{pack.newCount} {TEXT.new})
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-[var(--vb-text-muted)] shrink-0" />
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-      </div>
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 text-2xl">
+                {pack.icon}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold text-[var(--vb-text-primary)]">{pack.name}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <span className="text-sm text-[var(--vb-text-muted)]">{pack.words.length} {TEXT.words}</span>
+                  {pack.newCount > 0 && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                      +{pack.newCount} {TEXT.new}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 shrink-0 text-[var(--vb-text-muted)] transition-transform group-hover:translate-x-0.5" />
+            </motion.button>
+          ))}
+        </div>
+      </PickerSheet>
 
       {/* Pack Words Modal */}
       <PackWordsModal
@@ -1509,49 +1464,37 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
     });
   }, [savedGroups, allWords, selectedWordIds]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-[var(--vb-surface)] rounded-t-xl sm:rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-4 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 text-white">
-            <FolderOpen className="w-5 h-5" />
-            <span className="font-bold">{TEXT.savedGroups}</span>
-          </div>
-          <button
-            onClick={onClose}
-            type="button"
-            className="text-white/80 hover:text-white"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
+    <PickerSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      emoji="💾"
+      gradient="from-amber-400 to-orange-500"
+      title={TEXT.savedGroups}
+      subtitle={groupsWithCounts.length > 0 ? `${groupsWithCounts.length} ${TEXT.groups}` : undefined}
+      maxWidthClass="sm:max-w-lg"
+      closeAria={TEXT.cancel}
+    >
         {/* Content */}
-        <div className="p-4 overflow-y-auto flex-1">
+        <div className="p-4">
           {groupsWithCounts.length === 0 ? (
-            <div className="text-center py-12">
-              <FolderOpen className="w-16 h-16 text-[var(--vb-border)] mx-auto mb-4" />
-              <p className="text-[var(--vb-text-muted)]">{TEXT.noSavedGroups}</p>
-              <p className="text-sm text-[var(--vb-text-muted)] mt-1">
+            <div className="py-12 text-center">
+              <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-amber-100 to-orange-100">
+                <FolderOpen className="h-8 w-8 text-orange-500" />
+              </div>
+              <p className="font-bold text-[var(--vb-text-primary)]">{TEXT.noSavedGroups}</p>
+              <p className="mx-auto mt-1 max-w-xs text-sm text-[var(--vb-text-muted)]">
                 {TEXT.saveGroupHint}
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {groupsWithCounts.map((group) => {
                 const isEditing = editingId === group.id;
                 return (
                   <div
                     key={group.id}
-                    className="w-full p-4 rounded-lg border border-[var(--vb-border)] bg-[var(--vb-surface)] hover:border-amber-300 transition-colors"
+                    className="w-full rounded-2xl border border-[var(--vb-border)] bg-[var(--vb-surface)] p-3.5 transition-colors hover:border-amber-300 hover:shadow-md"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -1600,18 +1543,23 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                               onAddWords(newWords);
                               onClose();
                             }}
-                            className="text-left w-full"
+                            className="flex w-full items-center gap-3 text-start"
                             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
                           >
-                            <p className="font-bold text-[var(--vb-text-primary)] truncate">{group.name}</p>
-                            <p className="mt-1 text-sm text-[var(--vb-text-muted)]">
-                              {group.words.length} {TEXT.words}
-                              {group.newCount > 0 && (
-                                <span className="text-emerald-600 ml-2">
-                                  (+{group.newCount} {TEXT.new})
-                                </span>
-                              )}
-                            </p>
+                            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100">
+                              <FolderOpen className="h-6 w-6 text-orange-500" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-bold text-[var(--vb-text-primary)]">{group.name}</p>
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                <span className="text-sm text-[var(--vb-text-muted)]">{group.words.length} {TEXT.words}</span>
+                                {group.newCount > 0 && (
+                                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                                    +{group.newCount} {TEXT.new}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </button>
                         )}
                       </div>
@@ -1660,8 +1608,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
             </div>
           )}
         </div>
-      </motion.div>
-    </div>
+    </PickerSheet>
   );
 };
 

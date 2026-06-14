@@ -17,9 +17,9 @@
  *     numeric id matching the Word interface contract.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { X, ArrowLeft, BookMarked, Plus, Loader2, FileText } from "lucide-react";
+import { Plus, Loader2, FileText } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
+import PickerSheet from "../../components/setup/PickerSheet";
 import type { Word } from "../../data/vocabulary";
 import {
   listAllSets,
@@ -81,7 +81,7 @@ export default function LibrarySetsPanel({
   allWords,
   onAddWords,
 }: LibrarySetsPanelProps) {
-  const { language, isRTL, dir } = useLanguage();
+  const { language, isRTL } = useLanguage();
   const t = useMemo(() => copy[language] ?? copy.en, [language]);
 
   const [loading, setLoading] = useState(false);
@@ -153,144 +153,101 @@ export default function LibrarySetsPanel({
     }
   }, [selectedSet, previewWords, allWordsById, selectedIds, onAddWords, onClose]);
 
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        dir={dir}
-        className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t.title}
-      >
-        <motion.div
-          initial={{ y: 24, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 24, opacity: 0 }}
-          transition={{ type: "spring", damping: 24, stiffness: 240 }}
-          className="bg-[var(--vb-surface)] w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden"
-        >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-5 py-4 flex items-center justify-between shrink-0 text-white">
-            <div className="flex items-center gap-2">
-              {selectedSet && (
-                <button
-                  type="button"
-                  onClick={() => { setSelectedSet(null); setPreviewWords(null); }}
-                  aria-label={t.back}
-                  className="p-1.5 -ml-1.5 rounded-full hover:bg-white/15"
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                >
-                  <ArrowLeft className={`w-5 h-5 ${isRTL ? "rotate-180" : ""}`} />
-                </button>
-              )}
-              <BookMarked className="w-5 h-5" />
-              <span className="font-bold">{selectedSet?.name ?? t.title}</span>
-            </div>
+    <PickerSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      onBack={selectedSet ? () => { setSelectedSet(null); setPreviewWords(null); } : undefined}
+      emoji={selectedSet?.emoji ?? "📚"}
+      gradient="from-indigo-500 via-violet-500 to-fuchsia-500"
+      title={selectedSet?.name ?? t.title}
+      subtitle={selectedSet ? t.setMeta(selectedSet.wordCount) : undefined}
+      closeAria={t.closeAria}
+      backAria={t.back}
+      footer={
+        selectedSet && previewWords && previewWords.length > 0 ? (
+          <div className="flex items-center justify-between gap-3 px-5 py-3">
+            <span className="text-xs text-[var(--vb-text-secondary)]">
+              {t.addCount(previewWords.filter((w) => {
+                const candidate = toPickerWord(w, allWordsById);
+                return !selectedIds.has(candidate.id);
+              }).length, previewWords.length)}
+            </span>
             <button
               type="button"
-              onClick={onClose}
-              aria-label={t.closeAria}
-              className="p-1.5 -mr-1.5 rounded-full hover:bg-white/15"
+              onClick={handleAddFromPreview}
+              disabled={adding}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/20 hover:opacity-95 disabled:opacity-50"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >
-              <X className="w-5 h-5" />
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              {t.addToSelection}
             </button>
           </div>
-
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto">
-            {/* List of sets */}
-            {!selectedSet && (
-              <div className="p-4">
-                {loading ? (
-                  <ListSkeleton />
-                ) : sets.length === 0 ? (
-                  <EmptyState title={t.emptyTitle} blurb={t.emptyBlurb} />
-                ) : (
-                  <ul className="divide-y divide-[var(--vb-border)]">
-                    {sets.map((s) => (
-                      <li key={s.id}>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenSet(s)}
-                          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                          className={`w-full ${isRTL ? "text-right" : "text-left"} px-3 py-3 hover:bg-[var(--vb-surface-alt)] transition-colors flex items-center gap-3`}
-                        >
-                          <span className="text-2xl shrink-0" aria-hidden>{s.emoji ?? "📄"}</span>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-[var(--vb-text-primary)] truncate">{s.name}</p>
-                            <p className="text-xs text-[var(--vb-text-secondary)]">{t.setMeta(s.wordCount)}</p>
-                          </div>
-                          <span className="text-xs text-[var(--vb-text-muted)]">{">"}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            {/* Detail — preview of one set's words */}
-            {selectedSet && (
-              <div className="p-4">
-                {previewLoading ? (
-                  <ListSkeleton />
-                ) : previewWords && previewWords.length > 0 ? (
-                  <ul className="divide-y divide-[var(--vb-border)]">
-                    {previewWords.map((w) => (
-                      <li key={w.id} className="px-3 py-2 flex items-center gap-3">
-                        <span className="font-mono text-xs text-[var(--vb-text-muted)] w-8">
-                          {w.position + 1}.
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-sm text-[var(--vb-text-primary)] truncate">
-                            {w.english}
-                          </p>
-                          {(w.hebrew || w.arabic) && (
-                            <p className="text-xs text-[var(--vb-text-secondary)] truncate" dir="auto">
-                              {[w.hebrew, w.arabic].filter(Boolean).join(" · ")}
-                            </p>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <EmptyState title={t.emptySetTitle} blurb={t.emptySetBlurb} />
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Footer — Add button shows only on detail view with words */}
-          {selectedSet && previewWords && previewWords.length > 0 && (
-            <div className="border-t border-[var(--vb-border)] px-5 py-3 bg-[var(--vb-surface-alt)] flex items-center justify-between gap-3 shrink-0">
-              <span className="text-xs text-[var(--vb-text-secondary)]">
-                {t.addCount(previewWords.filter((w) => {
-                  const candidate = toPickerWord(w, allWordsById);
-                  return !selectedIds.has(candidate.id);
-                }).length, previewWords.length)}
-              </span>
+        ) : undefined
+      }
+    >
+      {/* List of sets — each set is a card with a frosted emoji tile */}
+      {!selectedSet && (
+        <div className="space-y-2.5 p-4">
+          {loading ? (
+            <ListSkeleton />
+          ) : sets.length === 0 ? (
+            <EmptyState title={t.emptyTitle} blurb={t.emptyBlurb} />
+          ) : (
+            sets.map((s) => (
               <button
+                key={s.id}
                 type="button"
-                onClick={handleAddFromPreview}
-                disabled={adding}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-700 disabled:opacity-50"
+                onClick={() => handleOpenSet(s)}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className={`flex w-full items-center gap-3 rounded-2xl border border-[var(--vb-border)] bg-[var(--vb-surface)] p-3.5 transition-[transform,box-shadow] hover:border-violet-300 hover:shadow-md ${isRTL ? "text-right" : "text-left"}`}
               >
-                {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                {t.addToSelection}
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-100 to-fuchsia-100 text-2xl" aria-hidden>
+                  {s.emoji ?? "📄"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold text-[var(--vb-text-primary)]">{s.name}</p>
+                  <p className="mt-0.5 text-sm text-[var(--vb-text-muted)]">{t.setMeta(s.wordCount)}</p>
+                </div>
+                <span className={`shrink-0 text-[var(--vb-text-muted)] ${isRTL ? "rotate-180" : ""}`}>›</span>
               </button>
-            </div>
+            ))
           )}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+        </div>
+      )}
+
+      {/* Detail — preview of one set's words */}
+      {selectedSet && (
+        <div className="p-4">
+          {previewLoading ? (
+            <ListSkeleton />
+          ) : previewWords && previewWords.length > 0 ? (
+            <ul className="space-y-1.5">
+              {previewWords.map((w) => (
+                <li key={w.id} className="flex items-center gap-3 rounded-xl bg-[var(--vb-surface-alt)] px-3 py-2.5">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[var(--vb-surface)] font-mono text-xs font-bold text-[var(--vb-text-muted)]">
+                    {w.position + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[var(--vb-text-primary)]">
+                      {w.english}
+                    </p>
+                    {(w.hebrew || w.arabic) && (
+                      <p className="truncate text-xs text-[var(--vb-text-secondary)]" dir="auto">
+                        {[w.hebrew, w.arabic].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState title={t.emptySetTitle} blurb={t.emptySetBlurb} />
+          )}
+        </div>
+      )}
+    </PickerSheet>
   );
 }
 
