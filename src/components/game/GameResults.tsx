@@ -23,6 +23,7 @@ export interface ResultEntry {
   avatar?: string;
   score: number;
   streak?: number;
+  team?: "red" | "blue";
 }
 
 interface GameResultsProps {
@@ -35,9 +36,9 @@ interface GameResultsProps {
 }
 
 const STRINGS = {
-  en: { title: "Final results", wins: (n: string) => `${n} wins!`, topScorer: "Top scorer", bestStreak: "Best streak", noOne: "No scores yet", back: "Back to dashboard", points: "pts", streakUnit: "in a row" },
-  he: { title: "תוצאות סופיות", wins: (n: string) => `${n} ניצח/ה!`, topScorer: "המוביל/ה", bestStreak: "הרצף הטוב ביותר", noOne: "אין עדיין ניקוד", back: "חזרה ללוח", points: "נק'", streakUnit: "ברצף" },
-  ar: { title: "النتائج النهائية", wins: (n: string) => `فاز ${n}!`, topScorer: "المتصدّر", bestStreak: "أفضل سلسلة", noOne: "لا نقاط بعد", back: "العودة إلى اللوحة", points: "نقطة", streakUnit: "متتالية" },
+  en: { title: "Final results", wins: (n: string) => `${n} wins!`, topScorer: "Top scorer", bestStreak: "Best streak", noOne: "No scores yet", back: "Back to dashboard", points: "pts", streakUnit: "in a row", red: "Red", blue: "Blue", teamWins: (n: string) => `${n} team wins!`, teamTie: "It's a tie!" },
+  he: { title: "תוצאות סופיות", wins: (n: string) => `${n} ניצח/ה!`, topScorer: "המוביל/ה", bestStreak: "הרצף הטוב ביותר", noOne: "אין עדיין ניקוד", back: "חזרה ללוח", points: "נק'", streakUnit: "ברצף", red: "אדום", blue: "כחול", teamWins: (n: string) => `קבוצת ${n} ניצחה!`, teamTie: "תיקו!" },
+  ar: { title: "النتائج النهائية", wins: (n: string) => `فاز ${n}!`, topScorer: "المتصدّر", bestStreak: "أفضل سلسلة", noOne: "لا نقاط بعد", back: "العودة إلى اللوحة", points: "نقطة", streakUnit: "متتالية", red: "أحمر", blue: "أزرق", teamWins: (n: string) => `فاز فريق ${n}!`, teamTie: "تعادل!" },
 } as const;
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -53,6 +54,16 @@ export default function GameResults({ entries, onBack, accent = "from-fuchsia-50
     null,
   );
   const top3 = entries.slice(0, 3);
+
+  // Team mode: total each side and pick a winner (only when anyone's on a team).
+  let redTotal = 0, blueTotal = 0, hasTeams = false;
+  for (const e of entries) {
+    if (e.team === "red") { redTotal += e.score; hasTeams = true; }
+    else if (e.team === "blue") { blueTotal += e.score; hasTeams = true; }
+  }
+  const teamWinner: "red" | "blue" | "tie" | null = !hasTeams
+    ? null
+    : redTotal === blueTotal ? "tie" : redTotal > blueTotal ? "red" : "blue";
 
   // One celebratory burst on mount — this screen only appears at the end.
   useEffect(() => { if (winner) celebrate("big"); }, [winner]);
@@ -77,6 +88,25 @@ export default function GameResults({ entries, onBack, accent = "from-fuchsia-50
           <Trophy size={22} />
           <span className="text-sm font-black uppercase tracking-[0.2em]">{t.title}</span>
         </div>
+
+        {/* Team banner — winning side first, with both totals. */}
+        {teamWinner && (
+          <motion.div
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 240, damping: 18 }}
+            className="mb-5 rounded-2xl border border-stone-200 bg-stone-50 p-4"
+          >
+            <div className="text-lg sm:text-xl font-black text-stone-900">
+              {teamWinner === "tie" ? `🤝 ${t.teamTie}` : teamWinner === "red" ? `🟥 ${t.teamWins(t.red)}` : `🟦 ${t.teamWins(t.blue)}`}
+            </div>
+            <div className="mt-1 flex items-center justify-center gap-3 font-black">
+              <span className="text-rose-600">{t.red} {redTotal}</span>
+              <span className="text-stone-300">·</span>
+              <span className="text-sky-600">{blueTotal} {t.blue}</span>
+            </div>
+          </motion.div>
+        )}
 
         {winner ? (
           <>
