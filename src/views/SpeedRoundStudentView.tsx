@@ -19,6 +19,7 @@ import QPAvatar from "../components/QPAvatar";
 import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
 import QuickPlayErrorScreen from "../components/QuickPlayErrorScreen";
 import SpeedBuzzer, { CountUp } from "../components/game/SpeedBuzzer";
+import TeamSwitcher from "../components/game/TeamSwitcher";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
 import { playGood, playGentle, playFanfare } from "../utils/raceSfx";
@@ -46,6 +47,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
     currentSpeed, leaderboard, clientId, joinedSessionCode, lastError,
     joinAsStudent, submitSpeedAnswer, sendReaction,
     onSpeedResult, onSpeedEnded, onSessionEnded, onKicked,
+    teamMode, myTeam, switchTeam,
   } = qp;
 
   const forgetGame = useCallback(() => {
@@ -327,6 +329,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
             {t.rank(myIndex + 1)} · {t.points(myEntry.score)}
           </div>
         )}
+        {teamMode && <TeamSwitcher team={myTeam} onSwitch={switchTeam} className="mt-5" />}
         <div className="mt-6 flex items-center justify-center gap-1.5">
           {[0, 1, 2].map(i => (
             <motion.span key={i} className="w-2.5 h-2.5 rounded-full bg-fuchsia-400"

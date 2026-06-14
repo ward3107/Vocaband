@@ -141,6 +141,11 @@ const MUSIC_TRACKS = [
   { name: 'Funky Groove', icon: '🎸', file: 'bgm-funky-groove' },
   { name: 'Space Explorer', icon: '🚀', file: 'bgm-space-explorer' },
   { name: 'Victory March', icon: '🏆', file: 'bgm-victory-march' },
+  { name: 'Steady Gains', icon: '📈', file: 'bgm-steady-gains' },
+  { name: 'Clear The Lane', icon: '🏀', file: 'bgm-clear-the-lane' },
+  { name: 'Watch It Ignite', icon: '🔥', file: 'bgm-watch-it-ignite' },
+  { name: 'Victory Lap', icon: '🏁', file: 'bgm-victory-lap' },
+  { name: 'Kinetic Lock', icon: '🔒', file: 'bgm-kinetic-lock' },
 ];
 
 const getMusicUrl = (file: string): string => {

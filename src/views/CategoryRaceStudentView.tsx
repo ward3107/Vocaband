@@ -23,6 +23,7 @@ import { Hourglass, Trophy, Check, X, RotateCw, Crown, ArrowRight, Loader2 } fro
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import CategoryRaceFocusCard from "../components/game/CategoryRaceFocusCard";
+import TeamSwitcher from "../components/game/TeamSwitcher";
 import QPAvatarPicker from "../components/QPAvatarPicker";
 import QPAvatar from "../components/QPAvatar";
 import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
@@ -126,6 +127,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     currentRace, leaderboard, clientId, joinedSessionCode, lastError,
     joinAsStudent, submitRaceAnswers, sendReaction,
     onRaceResult, onRaceEnded, onSessionEnded, onKicked,
+    teamMode, myTeam, switchTeam,
   } = qp;
 
   // Forget this race for THIS tab once it's over for the student (they left,
@@ -616,6 +618,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
             {t.rank(myIndex + 1)} · {t.points(myEntry.score)}
           </div>
         )}
+        {teamMode && <TeamSwitcher team={myTeam} onSwitch={switchTeam} className="mt-5" />}
         <div className="mt-6 flex items-center justify-center gap-1.5">
           {[0, 1, 2].map(i => (
             <motion.span key={i} className="w-2.5 h-2.5 rounded-full bg-fuchsia-400"
