@@ -26,6 +26,7 @@ import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import LobbyRoster from "../components/game/LobbyRoster";
+import GameResults from "../components/game/GameResults";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
@@ -78,6 +79,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const [hasRunRound, setHasRunRound] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
+  // Celebratory results overlay when ending a played game.
+  const [showResults, setShowResults] = useState(false);
   const [presenting, setPresenting] = useState(false);
   const [buildError, setBuildError] = useState(false);
   // Auto-play: once the teacher starts the first word, each ended word
@@ -257,10 +260,16 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
     if (currentSpeed && tokenRef.current) endSpeedRound(currentSpeed.roundId, tokenRef.current);
   };
 
-  const handleEnd = async () => {
+  const leaveToDashboard = async () => {
     if (tokenRef.current) endSession(tokenRef.current);
     try { await supabase.rpc("end_quick_play_session", { p_session_code: sessionCode }); } catch { /* best-effort */ }
     setView("teacher-dashboard");
+  };
+
+  const handleEnd = () => {
+    // Celebrate the result first if the class actually played.
+    if (hasRunRound && sorted.length > 0) setShowResults(true);
+    else void leaveToDashboard();
   };
 
   const handleCopy = async () => {
@@ -588,6 +597,13 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
           >
             <Square size={20} /> {t.endRound}
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Celebratory results — shown when ending a game that has scores. */}
+      <AnimatePresence>
+        {showResults && (
+          <GameResults entries={sorted} onBack={leaveToDashboard} accent="from-amber-400 to-orange-500" />
         )}
       </AnimatePresence>
 
