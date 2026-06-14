@@ -39,6 +39,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Download, Printer, X, Award, Share2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { Language } from "../hooks/useLanguage";
+import { fetchPdfBlob } from "../lib/pdf/requestWorksheetPdf";
+import type { CertificateData } from "../lib/pdf/certificateTemplate";
 
 interface CertificateModalProps {
   open: boolean;
@@ -222,18 +224,39 @@ export default function CertificateModal({
   // pages because its automatic break detection thought the gold
   // frame was a sensible boundary.  Forcing avoid-all keeps the
   // whole certificate on the first page (it already fits A4).
-  const buildPdfBlob = async (): Promise<Blob | null> => {
+  // Structured data for the server (Chromium) renderer. i18n stays here;
+  // the template (certificateTemplate) is pure layout. Words-mastered is
+  // omitted when 0 so a new student doesn't headline a "0 mastered" tile.
+  const buildCertData = (): CertificateData => ({
+    kind: 'certificate',
+    dir,
+    brand: t.brand,
+    brandTagline: t.brandTagline,
+    certTitle: t.certTitle,
+    certSubtitle: t.certSubtitle,
+    awardedTo: t.awardedTo,
+    studentName,
+    ofClass: t.ofClass(className),
+    body: t.body,
+    stats: [
+      { value: String(attempts), label: t.gamesPlayed },
+      { value: `${avgScore}%`, label: t.avgScore },
+      ...(wordsMastered != null && wordsMastered > 0
+        ? [{ value: String(wordsMastered), label: t.wordsMastered }]
+        : []),
+    ],
+    teacherName: teacherName || t.yourTeacher,
+    issuedByLabel: t.issuedBy,
+    date: today,
+    dateLabel: t.date,
+    sealLabel: t.signatureSeal,
+  });
+
+  // Legacy client-side render (html2canvas → jsPDF). Kept as a fallback if
+  // the server render is unreachable so the teacher still gets a PDF.
+  const buildLegacyPdfBlob = async (): Promise<Blob | null> => {
     if (!printRef.current) return null;
     const html2pdf = (await import('html2pdf.js')).default;
-    // html2pdf's fluent API extends Promise via a Worker class, so
-    // awaiting it directly unwraps a Worker (not a Blob).  Drop into
-    // the raw worker chain and call .output('blob') after .save()
-    // would lose the buffer — use .outputPdf('blob') which is the
-    // documented escape hatch for "give me the PDF, don't save it".
-    // `pagebreak` isn't in html2pdf.js's TS types but is a documented
-    // runtime option — without `avoid-all` the certificate spills onto
-    // a second blank page on some Chrome versions.  Cast to bypass the
-    // narrow Html2PdfOptions surface.
     const opts = {
       margin: 0,
       filename: `${safeFilename(studentName)}-certificate.pdf`,
@@ -244,6 +267,16 @@ export default function CertificateModal({
     };
     const worker = html2pdf().from(printRef.current).set(opts as never);
     return (await worker.outputPdf('blob')) as Blob;
+  };
+
+  // Render on the server (real Chromium → crisp vector text, correct
+  // Hebrew/Arabic student names), falling back to the legacy path on error.
+  const buildPdfBlob = async (): Promise<Blob | null> => {
+    try {
+      return await fetchPdfBlob(buildCertData());
+    } catch {
+      return buildLegacyPdfBlob();
+    }
   };
 
   const handleDownload = async () => {
