@@ -140,6 +140,9 @@ import {
   type QpTeacherKickPayload,
   type QpTeacherBonusPayload,
   type QpTeacherEndPayload,
+  type QpTeacherTeamModePayload,
+  type QpTeamSwitchPayload,
+  type QpTeam,
   type QpStudentEntry,
   type QpErrorCode,
   type QpRaceStartPayload,
@@ -1783,6 +1786,10 @@ async function startServer() {
     // the leaderboard reincarnated them.  Lives only as long as the
     // in-memory session does (cleared on TEACHER_END / idle sweep).
     kickedClientIds: Set<string>;
+    // Red vs Blue team mode. Off by default — when off the engine behaves
+    // exactly as before (no team stamped, no team signal sent). Toggled
+    // live by the teacher; in-memory only, like the round config.
+    teamMode: boolean;
     // Active Category Race round, if any. Only set for race sessions
     // (allowed_modes === ['category-race']); regular vocab sessions
     // never touch it. Holds the shared letter + categories + the single
@@ -2600,6 +2607,7 @@ async function startServer() {
         teacherSockets: new Set(),
         lastTeacherSeenAt: Date.now(),
         kickedClientIds: new Set(),
+        teamMode: false,
         currentRace: null,
         currentSpeed: null,
         currentArena: null,
@@ -2607,6 +2615,34 @@ async function startServer() {
       qpSessions.set(sessionCode, s);
     }
     return s;
+  }
+
+  // ─── Red vs Blue team helpers ───────────────────────────────────────
+  /** Per-team head count on THIS VM. Single-VM classrooms (the common
+   *  case) see the whole class; across VMs each side is approximate,
+   *  which only nudges balance and never affects scoring. */
+  function qpTeamCounts(state: QpSessionState): { red: number; blue: number } {
+    let red = 0, blue = 0;
+    for (const e of state.students.values()) {
+      if (e.team === "red") red++;
+      else if (e.team === "blue") blue++;
+    }
+    return { red, blue };
+  }
+
+  /** The team a joiner should land on to keep teams balanced — the
+   *  smaller side, ties go to Red. */
+  function qpBalancedTeam(state: QpSessionState): QpTeam {
+    const { red, blue } = qpTeamCounts(state);
+    return red <= blue ? "red" : "blue";
+  }
+
+  /** Stamp a balanced team on every student missing one — used when the
+   *  teacher flips team mode ON mid-session. */
+  function qpAssignTeamsToAll(state: QpSessionState): void {
+    for (const e of state.students.values()) {
+      if (e.team !== "red" && e.team !== "blue") e.team = qpBalancedTeam(state);
+    }
   }
 
   // ─── Connection handler ─────────────────────────────────────────────
@@ -2734,6 +2770,15 @@ async function startServer() {
         lastSeen: now,
         authUid: incomingAuthUid ?? prev?.authUid,
       });
+      // Team mode: honour a team the client carries (a switch surviving a
+      // refresh) or their previous team, else auto-balance onto the
+      // smaller side. No-op when team mode is off.
+      if (state.teamMode) {
+        const joined = state.students.get(clientId)!;
+        const carried: QpTeam | undefined =
+          payload.team === "red" || payload.team === "blue" ? payload.team : prev?.team;
+        joined.team = carried ?? qpBalancedTeam(state);
+      }
       state.socketToClient.set(socket.id, clientId);
       // Stamp role + clientId on the socket so the adapter-aware
       // `fetchSockets()` (whole room, across VMs) can count connected
@@ -3041,6 +3086,62 @@ async function startServer() {
         `[QP TEACHER_BONUS] session=${sessionCode} client=${clientId} ` +
         `+${delta} → ${next}`,
       );
+      qpScheduleBroadcast(sessionCode);
+    });
+
+    // Toggle Red vs Blue team mode for the session — teacher-authoritative.
+    // Enabling stamps balanced teams onto everyone already in the room;
+    // disabling clears them. Either way the on/off signal goes to the room
+    // and a fresh leaderboard (carrying teams) is broadcast.
+    socket.on(QP_EVENTS.TEACHER_TEAM_MODE, async (payload: QpTeacherTeamModePayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, token, enabled } = payload;
+      if (!isValidSessionCode(sessionCode) || typeof enabled !== "boolean") {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_TEAM_MODE, "invalid_payload", "bad payload");
+      }
+      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_TEAM_MODE, "rate_limited", "too many teacher actions");
+      }
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_TEAM_MODE, verify.reason, "access denied");
+
+      const state = qpSessions.get(sessionCode);
+      if (!state) return;
+      state.teamMode = enabled;
+      if (enabled) qpAssignTeamsToAll(state);
+      else for (const e of state.students.values()) e.team = undefined;
+      console.log(`[QP TEAM_MODE] session=${sessionCode} enabled=${enabled}`);
+
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.TEAM_MODE, { sessionCode, enabled });
+      qpScheduleBroadcast(sessionCode);
+    });
+
+    // Student "Switch team" (the hybrid choice). Honoured only when team
+    // mode is on, the socket owns the clientId, and the move keeps the two
+    // teams balanced (the chosen side may not end up more than 1 ahead).
+    socket.on(QP_EVENTS.TEAM_SWITCH, (payload: QpTeamSwitchPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, clientId, team } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
+      if (team !== "red" && team !== "blue") return;
+      if (!qpScoreLimiter.checkLimit(socket.id)) return;
+      const state = qpSessions.get(sessionCode);
+      if (!state || !state.teamMode) return;
+      if (state.socketToClient.get(socket.id) !== clientId) return;
+      const entry = state.students.get(clientId);
+      if (!entry || entry.team === team) return;
+      // Count the other students per side, then require the chosen side to
+      // stay within 1 of the other once this student lands on it.
+      let red = 0, blue = 0;
+      for (const e of state.students.values()) {
+        if (e.clientId === clientId) continue;
+        if (e.team === "red") red++;
+        else if (e.team === "blue") blue++;
+      }
+      const after = team === "red" ? { red: red + 1, blue } : { red, blue: blue + 1 };
+      if (Math.abs(after.red - after.blue) > 1) return; // would unbalance — refuse
+      entry.team = team;
+      entry.lastSeen = Date.now();
       qpScheduleBroadcast(sessionCode);
     });
 
