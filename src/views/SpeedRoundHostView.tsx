@@ -27,6 +27,8 @@ import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import LobbyRoster from "../components/game/LobbyRoster";
 import GameResults from "../components/game/GameResults";
+import TeamScoreBar from "../components/game/TeamScoreBar";
+import TeamModeToggle from "../components/game/TeamModeToggle";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
@@ -59,7 +61,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const vocab = useVocabularyLazy(true);
 
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
-  const { status, currentSpeed, leaderboard, observeAsTeacher, startSpeedRound, endSpeedRound, endSession, onSpeedEnded } = qp;
+  const { status, currentSpeed, leaderboard, observeAsTeacher, startSpeedRound, endSpeedRound, endSession, onSpeedEnded, teamMode, setTeamMode } = qp;
 
   // The teacher's own word list (typed / picked from the library) — the
   // question pool AND the preferred distractor source. Replaces the old
@@ -362,6 +364,9 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               )}
             </AnimatePresence>
 
+            {/* Live Red vs Blue total — only in team mode. */}
+            {teamMode && <TeamScoreBar entries={sorted} />}
+
             {/* Pre-game it's a waiting room (students popping in); once a word
                 has been played the leaderboard takes over. */}
             {hasRunRound || roundActive ? (
@@ -424,6 +429,13 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 </div>
               </div>
             </section>
+
+            <TeamModeToggle
+              teamMode={teamMode}
+              onToggle={(en) => tokenRef.current && setTeamMode(en, tokenRef.current)}
+              idleClass={pillIdle}
+              cardClass={cardCls}
+            />
 
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               {/* The teacher's word list — typed / picked from the library. */}
