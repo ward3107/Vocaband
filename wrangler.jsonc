@@ -40,5 +40,12 @@
   },
   "compatibility_flags": [
     "nodejs_compat"
-  ]
+  ],
+  // Browser Rendering binding — powers POST /api/pdf (worker/index.ts
+  // handlePdf), which renders worksheet HTML to a real PDF via headless
+  // Chromium. Available on the Workers Paid plan. No secret needed; the
+  // binding is ambient on the account.
+  "browser": {
+    "binding": "BROWSER"
+  }
 }
