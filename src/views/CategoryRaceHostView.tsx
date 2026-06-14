@@ -30,6 +30,7 @@ import { CATEGORIES, categoryLabel, LETTER_POOL } from "../data/category-race-ba
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import LobbyRoster from "../components/game/LobbyRoster";
 import GameResults from "../components/game/GameResults";
+import TeamScoreBar from "../components/game/TeamScoreBar";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
@@ -94,6 +95,7 @@ const STRINGS = {
     copy: "Copy link", copied: "Copied!", enlarge: "Enlarge", hide: "Hide", show: "Show QR code",
     darkOn: "Dark", darkOff: "Light", restarting: "Starting new race…",
     present: "Present", controls: "Controls",
+    teams: "Teams", teamsOn: "Red vs Blue", teamsOff: "Solo",
     untimed: "Untimed", answerWhenReady: "Answer when ready", endRound: "End round",
   },
   he: {
@@ -108,6 +110,7 @@ const STRINGS = {
     copy: "העתק קישור", copied: "הועתק!", enlarge: "הגדל", hide: "הסתר", show: "הצג קוד QR",
     darkOn: "כהה", darkOff: "בהיר", restarting: "מתחיל מרוץ חדש…",
     present: "מצגת", controls: "פקדים",
+    teams: "קבוצות", teamsOn: "אדום נגד כחול", teamsOff: "יחידני",
     untimed: "ללא זמן", answerWhenReady: "ענו כשמוכנים", endRound: "סיים סבב",
   },
   ar: {
@@ -122,6 +125,7 @@ const STRINGS = {
     copy: "نسخ الرابط", copied: "تم النسخ!", enlarge: "تكبير", hide: "إخفاء", show: "إظهار رمز QR",
     darkOn: "داكن", darkOff: "فاتح", restarting: "بدء سباق جديد…",
     present: "عرض", controls: "أدوات",
+    teams: "فرق", teamsOn: "أحمر ضد أزرق", teamsOff: "فردي",
     untimed: "بدون وقت", answerWhenReady: "أجب عند الاستعداد", endRound: "إنهاء الجولة",
   },
 } as const;
@@ -135,7 +139,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const [liveCode, setLiveCode] = useState(sessionCode);
 
   const qp = useQuickPlaySocket({ sessionCode: liveCode, enabled: true });
-  const { status, currentRace, leaderboard, observeAsTeacher, startRaceRound, endRaceRound, endSession, onRaceEnded } = qp;
+  const { status, currentRace, leaderboard, observeAsTeacher, startRaceRound, endRaceRound, endSession, onRaceEnded, teamMode, setTeamMode } = qp;
 
   const [selectedCats, setSelectedCats] = useState<string[]>([...DEFAULT_CATEGORY_IDS]);
   const [roundSeconds, setRoundSeconds] = useState<number>(60);
@@ -372,6 +376,9 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               )}
             </AnimatePresence>
 
+            {/* Live Red vs Blue total — only in team mode. */}
+            {teamMode && <TeamScoreBar entries={sorted} />}
+
             {/* Before the first round it's a waiting room — show the joined
                 students popping in. Once a round has run, the leaderboard
                 (with scores) takes over as the dominant element. */}
@@ -428,6 +435,29 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                     {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
                   </button>
                 </div>
+              </div>
+            </section>
+
+            {/* Teams toggle — Solo vs Red/Blue (in-memory, per session) */}
+            <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+              <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mb-3">{t.teams}</h2>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => tokenRef.current && setTeamMode(false, tokenRef.current)}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${!teamMode ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : pillIdle}`}
+                >
+                  {t.teamsOff}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => tokenRef.current && setTeamMode(true, tokenRef.current)}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${teamMode ? "bg-gradient-to-r from-rose-500 to-sky-600 text-white border-transparent shadow-md" : pillIdle}`}
+                >
+                  🟥🟦 {t.teamsOn}
+                </button>
               </div>
             </section>
 

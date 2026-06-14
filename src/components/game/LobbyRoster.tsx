@@ -16,7 +16,15 @@ export interface LobbyPlayer {
   clientId: string;
   nickname: string;
   avatar: string;
+  /** Team mode: tints the medallion red/blue when present. */
+  team?: "red" | "blue";
 }
+
+/** Per-team medallion gradient — used instead of `accent` in team mode. */
+const TEAM_ACCENT: Record<"red" | "blue", string> = {
+  red: "from-rose-500 to-red-600",
+  blue: "from-sky-500 to-blue-600",
+};
 
 interface LobbyRosterProps {
   players: LobbyPlayer[];
@@ -82,7 +90,7 @@ export default function LobbyRoster({
                 className="flex flex-col items-center gap-1 w-[68px] sm:w-20"
               >
                 <div
-                  className={`flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${accent} text-white shadow-md`}
+                  className={`flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${p.team ? TEAM_ACCENT[p.team] : accent} text-white shadow-md`}
                 >
                   <span className="flex items-center justify-center w-[42px] h-[42px] sm:w-[54px] sm:h-[54px] rounded-full bg-white/90">
                     <QPAvatar value={p.avatar} iconSize={26} className="text-fuchsia-600" />

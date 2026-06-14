@@ -22,7 +22,7 @@
  *   - clientId is persisted in localStorage so a full page refresh
  *     lands the same identity back on the leaderboard.
  */
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { Socket } from "socket.io-client";
 import { loadSocketIO } from "../utils/lazyLoad";
 import {
@@ -32,6 +32,8 @@ import {
   type QpStudentEntry,
   type QpJoinedPayload,
   type QpLeaderboardPayload,
+  type QpTeam,
+  type QpTeamModePayload,
   type QpKickedPayload,
   type QpSessionEndedPayload,
   type QpReactionPayload,
@@ -226,6 +228,15 @@ export interface QuickPlaySocketApi {
    *  on the server, bounded by QP_MAX_BONUS_AMOUNT. */
   bonusStudent: (clientId: string, amount: number, token: string) => void;
   endSession: (token: string) => void;
+  /** Red vs Blue team mode — true while the teacher has it switched on. */
+  teamMode: boolean;
+  /** This client's own team, when team mode is on (from the leaderboard
+   *  entry, falling back to a just-switched value before the next tick). */
+  myTeam?: QpTeam;
+  /** Teacher: toggle team mode for the whole session. */
+  setTeamMode: (enabled: boolean, token: string) => void;
+  /** Student: request to switch team (server honours it only if balanced). */
+  switchTeam: (team: QpTeam) => void;
 
   // ─── Events ─────────────────────────────────────────────────────────
   /** Fires once when the server signals "you were kicked". Replaces
@@ -382,6 +393,11 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
 
   const [status, setStatus] = useState<QuickPlaySocketStatus>("idle");
   const [leaderboard, setLeaderboard] = useState<QpStudentEntry[]>([]);
+  // Red vs Blue team mode (driven by the TEAM_MODE server signal).
+  const [teamMode, setTeamModeState] = useState(false);
+  // This client's own team — kept in a ref so it rides on every (re)join
+  // payload, letting a switched team survive a refresh / reconnect.
+  const myTeamRef = useRef<QpTeam | undefined>(undefined);
   const [lastReaction, setLastReaction] = useState<QpReactionPayload | null>(null);
   const [lastError, setLastError] = useState<QuickPlaySocketApi["lastError"]>(null);
   const [joinedSessionCode, setJoinedSessionCode] = useState<string | null>(null);
@@ -405,8 +421,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   // "New race") so last session's students don't bleed into the next board.
   useEffect(() => {
     leaderboardBySourceRef.current = new Map();
+    myTeamRef.current = undefined;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clears stale board when the session changes; matches existing convention in this hook
     setLeaderboard([]);
+    setTeamModeState(false);
   }, [sessionCode]);
 
   const socketRef = useRef<Socket | null>(null);
@@ -485,6 +503,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
             nickname: lastJoinRef.current.nickname,
             avatar: lastJoinRef.current.avatar,
             authUid,
+            ...(myTeamRef.current ? { team: myTeamRef.current } : {}),
           });
         }
       };
@@ -525,8 +544,13 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         setJoinedSessionCode(null);
         kickedRef.current?.(p);
       };
+      const onTeamMode = (p: QpTeamModePayload) => {
+        if (p?.sessionCode === sessionCode) setTeamModeState(!!p.enabled);
+      };
       const onSessionEnded = (p: QpSessionEndedPayload) => {
         setJoinedSessionCode(null);
+        setTeamModeState(false);
+        myTeamRef.current = undefined;
         setCurrentRace(null);
         setCurrentSpeed(null);
         setCurrentArena(null);
@@ -633,6 +657,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.LEADERBOARD,   onLeaderboard);
       socket.on(QP_SERVER_EVENTS.KICKED,        onKicked);
       socket.on(QP_SERVER_EVENTS.SESSION_ENDED, onSessionEnded);
+      socket.on(QP_SERVER_EVENTS.TEAM_MODE,     onTeamMode);
       socket.on(QP_SERVER_EVENTS.REACTION,      onReaction);
       socket.on(QP_SERVER_EVENTS.ERROR,         onErr);
       socket.on(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
@@ -658,6 +683,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.LEADERBOARD,   onLeaderboard);
         socket.off(QP_SERVER_EVENTS.KICKED,        onKicked);
         socket.off(QP_SERVER_EVENTS.SESSION_ENDED, onSessionEnded);
+        socket.off(QP_SERVER_EVENTS.TEAM_MODE,     onTeamMode);
         socket.off(QP_SERVER_EVENTS.REACTION,      onReaction);
         socket.off(QP_SERVER_EVENTS.ERROR,         onErr);
         socket.off(QP_SERVER_EVENTS.RACE_ROUND,    onRaceRound);
@@ -726,6 +752,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     const authUid = session?.user?.id;
     socketRef.current.emit(QP_EVENTS.STUDENT_JOIN, {
       sessionCode, clientId: idForThisJoin, nickname, avatar, authUid,
+      ...(myTeamRef.current ? { team: myTeamRef.current } : {}),
     });
   }, [sessionCode, clientId]);
 
@@ -825,6 +852,30 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     if (!sessionCode || !socketRef.current) return;
     socketRef.current.emit(QP_EVENTS.TEACHER_END, { sessionCode, token });
   }, [sessionCode]);
+
+  // Teacher: toggle Red vs Blue team mode for the whole session.
+  const setTeamMode = useCallback((enabled: boolean, token: string) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.TEACHER_TEAM_MODE, { sessionCode, token, enabled });
+  }, [sessionCode]);
+
+  // Student: request a team switch. Remember it locally (so a refresh
+  // carries it on rejoin) and ask the server, which only honours the move
+  // if it keeps the two teams balanced.
+  const switchTeam = useCallback((team: QpTeam) => {
+    if (!sessionCode || !socketRef.current) return;
+    myTeamRef.current = team;
+    const id = readStoredClientId() ?? clientIdRef.current;
+    socketRef.current.emit(QP_EVENTS.TEAM_SWITCH, { sessionCode, clientId: id, team });
+  }, [sessionCode]);
+
+  // This client's own team — read off the leaderboard entry, so it always
+  // reflects the SERVER's truth (a switch the balance guard rejected never
+  // changes the board, so it correctly won't flip the UI).
+  const myTeam = useMemo(
+    () => leaderboard.find(e => e.clientId === clientId)?.team,
+    [leaderboard, clientId],
+  );
 
   const onKicked = useCallback((cb: (p: QpKickedPayload) => void) => {
     kickedRef.current = cb;
@@ -973,6 +1024,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     kickStudent,
     bonusStudent,
     endSession,
+    teamMode,
+    myTeam,
+    setTeamMode,
+    switchTeam,
     onKicked,
     onSessionEnded,
     currentRace,
