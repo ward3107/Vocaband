@@ -32,6 +32,8 @@
 import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { supabase, hasTeacherAccess, type AppUser } from '../core/supabase';
 import type { View } from '../core/views';
+import { pathForView } from '../utils/routes';
+import { URL_ROUTING_PUSH } from '../utils/urlRouting';
 
 // Views that a logged-in user should never land on via back button.
 // If popstate would navigate to one of these, we block it.
@@ -60,6 +62,11 @@ const PUBLIC_VIEWS = new Set<string>([
   'student-account-login',
   'oauth-class-code', 'oauth-callback',
 ]);
+
+// Views whose canonical URL carries a query param (?assignmentId=, ?classId=).
+// Their own nav handler pushes the full URL (Slice 5b), so the trap leaves the
+// URL alone for them rather than push a param-less path.
+const PARAMETRIC_VIEWS = new Set<string>(['class-show', 'worksheet', 'create-assignment']);
 
 // Number of padding entries pushed beneath the dashboard.  Bumped
 // from 10 → 20 because Android Chrome's edge-swipe gesture can
@@ -216,7 +223,17 @@ export function useBackButtonTrap(
 
     // Normal in-app navigation — single pushState so the back button
     // walks naturally between pages (dashboard ← wizard, etc.).
-    window.history.pushState({ view }, '');
+    //
+    // Slice 5 (behind URL_ROUTING_PUSH, real-device gated): attach the view's
+    // canonical path so in-app nav updates the address bar and a refresh
+    // re-resolves. Views with no registry path — and the parametric sub-views
+    // whose ?id= URL is pushed by their own handler — pass `undefined`, leaving
+    // the URL unchanged (exactly today's behavior). The floor / pad / popstate
+    // logic is deliberately untouched.
+    const url = URL_ROUTING_PUSH && !PARAMETRIC_VIEWS.has(view)
+      ? (pathForView(view) ?? undefined)
+      : undefined;
+    window.history.pushState({ view }, '', url);
   }, [view, pushDashboardTrap]);
 
   // ─── The popstate handler — attached once on mount ────────────────

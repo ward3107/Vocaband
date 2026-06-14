@@ -1,10 +1,24 @@
 # Slice 5 — Reconcile the back-button trap with real URLs
 
-> **Status:** PLAN / awaiting sign-off. This slice edits a **safety-critical,
+> **Status:** **Part 1 implemented behind a build-time flag** (`URL_ROUTING_PUSH`,
+> `src/utils/urlRouting.ts`) — **OFF in prod, so it ships dark**. The trap now
+> pushes the canonical path for **non-parametric** authed views (§3A); the
+> **parametric handler pushes (§3B)** and the **mandatory real-device QA** remain
+> before the flag is enabled in production. This slice edits a **safety-critical,
 > treat-as-protected** file (`src/hooks/useBackButtonTrap.ts`) and **cannot be
-> fully validated in CI** — it needs real-device testing (Android Chrome
-> edge-swipe, iOS PWA). Do not start implementation until the owner signs off
-> on this plan and the protected-file change.
+> fully validated in CI** — Android Chrome edge-swipe + iOS PWA testing is
+> required before flipping the flag on (see §6).
+>
+> **Done so far (flag-gated, merged-safe):**
+> - `URL_ROUTING_PUSH` build flag; the auth e2e build sets it ON.
+> - Trap view-change push attaches `pathForView(view)` for non-parametric authed
+>   views; parametric views + path-less views pass `undefined` (unchanged URL).
+> - e2e: `url-push.auth.spec.ts` (in-app nav → URL + refresh-stable); the floor
+>   net (`back-button.auth.spec.ts`) re-runs **with the flag ON** → no regression.
+>
+> **Still TODO:** §3B (handler pushes for class-show / worksheet /
+> create-assignment), the real-device checklist (§6), then flip the flag on and
+> remove it.
 
 Parent: [`url-routing-migration-plan.md`](./url-routing-migration-plan.md) (Fix 2).
 

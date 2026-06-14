@@ -152,13 +152,16 @@ preserving the role-aware guarantees above. This is the highest-risk slice.
   (`url-routing.spec.ts`) also exists. Still TODO before the trap rework:
   extend the matrix with in-app back BETWEEN authenticated views (CASE C)
   as those views gain URLs in Slices 3–4, and wire `test:e2e:auth` into CI.
-- The trap rework itself + mandatory **real-phone testing** (Android
-  edge-swipe, iOS PWA) remain the body of this slice.
-- 📋 **Detailed implementation plan ready for sign-off:**
-  [`slice-5-back-trap-plan.md`](./slice-5-back-trap-plan.md) — the exact
-  (additive) changes, the kid-safety invariants that must not change, a
-  feature-flag rollout, the e2e matrix additions, and the real-device
-  checklist. Awaiting owner approval before the protected-file edit.
+- 🟡 IN PROGRESS — **Part 1 implemented behind the `URL_ROUTING_PUSH` build
+  flag** (OFF in prod → ships dark): the trap now pushes `pathForView(view)` for
+  non-parametric authed views; e2e `url-push.auth.spec.ts` proves in-app nav
+  updates the URL + survives refresh, and the floor net re-runs with the flag
+  ON (no regression). Full design + the kid-safety invariants + the
+  **mandatory real-device checklist** are in
+  [`slice-5-back-trap-plan.md`](./slice-5-back-trap-plan.md).
+- Still TODO: §3B handler pushes (class-show / worksheet / create-assignment
+  carry their `?id=`), the **real-phone QA** (Android edge-swipe, iOS PWA),
+  then flip the flag on in prod and remove it.
 
 ### Slice 6 — Auth restore respects the URL (PROTECTED)
 `useAuthRestore.ts` should hydrate to the URL's view instead of forcing the
