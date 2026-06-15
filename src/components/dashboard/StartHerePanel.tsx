@@ -85,15 +85,18 @@ export default function StartHerePanel({
   const goToClassesOrCreate = () =>
     hasClasses ? scrollToDashboardSection(DASHBOARD_SECTION.myClasses) : onNewClass();
 
+  // Chips use short, purpose-built labels (chip*) rather than the long
+  // titles/questions above — the latter overflow the small chip grid on
+  // narrow phones and get truncated with an ellipsis.
   const chips: { id: ChipId; label: string; run: () => void }[] = [
-    { id: "play", label: t.playTitle, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames) },
-    { id: "gamesDiff", label: t.qGamesDiff, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools) },
-    { id: "setup", label: t.setupTitle, run: goToClassesOrCreate },
-    { id: "login", label: t.qLogin, run: () => scrollToDashboardSection(DASHBOARD_SECTION.myClasses) },
-    { id: "homework", label: t.homeworkTitle, run: goToClassesOrCreate },
-    { id: "progress", label: t.progressTitle, run: onClassroomClick },
+    { id: "play", label: t.chipPlay, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames) },
+    { id: "gamesDiff", label: t.chipGames, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools) },
+    { id: "setup", label: t.chipSetup, run: goToClassesOrCreate },
+    { id: "login", label: t.chipLogin, run: () => scrollToDashboardSection(DASHBOARD_SECTION.myClasses) },
+    { id: "homework", label: t.chipHomework, run: goToClassesOrCreate },
+    { id: "progress", label: t.chipProgress, run: onClassroomClick },
     ...(pendingStudentsCount > 0
-      ? [{ id: "approvals" as const, label: t.progressApprovalsBtn, run: onApprovalsClick }]
+      ? [{ id: "approvals" as const, label: t.chipApprovals, run: onApprovalsClick }]
       : []),
   ];
 
