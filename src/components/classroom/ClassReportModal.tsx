@@ -163,6 +163,113 @@ function buildSummaries(
   return { students, topWords, activity: { dayTotals, busiestDayIdx } };
 }
 
+// Self-contained HTML for the server (Chromium) render. The 3 Recharts
+// charts are reproduced as CSS bars (vector text, no html2canvas raster).
+// Labels arrive pre-resolved so the helper has no i18n coupling.
+function buildClassReportHtml(p: {
+  dir: 'ltr' | 'rtl';
+  title: string;
+  subtitle: string;
+  totals: { students: number; plays: number; avg: number; mistakes: number };
+  students: StudentSummary[];
+  topWords: WordCount[];
+  activityData: { day: string; plays: number }[];
+  hasActivity: boolean;
+  activitySubtitle: string;
+  statusLabels: Record<StudentSummary['status'], string>;
+  labels: {
+    cardStudents: string; cardPlays: string; cardAvg: string; cardMistakes: string;
+    perStudentTitle: string; perStudentSubtitle: string;
+    topWordsTitle: string; topWordsSubtitle: string; topWordsEmpty: string;
+    activityTitle: string; tableHeading: string;
+    colStudent: string; colPlays: string; colAvg: string; colMistakes: string; colStatus: string; colReview: string;
+    noReview: string;
+    legendTitle: string; legendStatus: string; legendScores: string; legendWords: string;
+  };
+}): string {
+  const esc = (s: string | number | null | undefined): string =>
+    String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const SB: Record<StudentSummary["status"], string> = { green: "#d1fae5", amber: "#fef3c7", red: "#fee2e2" };
+  const ST: Record<StudentSummary["status"], string> = { green: "#065f46", amber: "#92400e", red: "#991b1b" };
+  const accentFor = (avg: number) => (avg >= 80 ? "#10b981" : avg >= 60 ? "#f59e0b" : "#f43f5e");
+  const card = (label: string, value: string | number, accent: string) =>
+    `<div class="card"><div class="cv" style="color:${accent}">${esc(value)}</div><div class="cl">${esc(label)}</div></div>`;
+
+  const perStudent = p.students
+    .map((s) => `<div class="hb"><div class="hbl">${esc(s.studentName)}</div><div class="hbt"><div class="hbf" style="width:${s.avgScore}%;background:${STATUS_COLOR[s.status]}"></div></div><div class="hbv">${s.avgScore}%</div></div>`)
+    .join("");
+
+  const maxCount = Math.max(1, ...p.topWords.map((w) => w.count));
+  const topWordsBars = p.topWords.length === 0
+    ? `<p class="empty">${esc(p.labels.topWordsEmpty)}</p>`
+    : p.topWords
+        .map((w) => `<div class="hb"><div class="hbl">${esc(w.word)}</div><div class="hbt"><div class="hbf" style="width:${(w.count / maxCount) * 100}%;background:#f43f5e"></div></div><div class="hbv">${w.count}</div></div>`)
+        .join("");
+
+  const maxPlays = Math.max(1, ...p.activityData.map((d) => d.plays));
+  const activityBars = p.activityData
+    .map((d) => `<div class="vc"><div class="vb" style="height:${(d.plays / maxPlays) * 100}%"></div><div class="vl">${esc(d.day)}</div></div>`)
+    .join("");
+
+  const rows = p.students
+    .map(
+      (s, i) => `<tr style="background:${i % 2 ? "#faf9f7" : "#fff"}"><td class="b">${esc(s.studentName)}</td><td class="c">${esc(s.plays)}</td><td class="c" style="font-weight:700;color:${STATUS_COLOR[s.status]}">${esc(s.avgScore)}%</td><td class="c">${esc(s.totalMistakes)}</td><td class="c"><span class="badge" style="background:${SB[s.status]};color:${ST[s.status]}">${esc(p.statusLabels[s.status])}</span></td><td dir="auto">${s.topMissed.length ? esc(s.topMissed.join(", ")) : esc(p.labels.noReview)}</td></tr>`,
+    )
+    .join("");
+
+  return `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Heebo:wght@400;700;800&family=Cairo:wght@400;700;800&display=swap">
+<style>
+  *{box-sizing:border-box}
+  .sheet{width:210mm;min-height:297mm;padding:14mm;font-family:'Inter','Heebo','Cairo',sans-serif;color:#1c1917;direction:${p.dir}}
+  h1{font-size:18pt;font-weight:900;color:#4338ca;margin:0}
+  .sub{font-size:9pt;color:#78716c;margin:1mm 0 6mm}
+  .cards{display:flex;gap:3mm;margin-bottom:7mm}
+  .card{flex:1;border:1px solid #e7e5e4;border-radius:9px;padding:3.5mm;text-align:center}
+  .cv{font-size:18pt;font-weight:900;line-height:1}
+  .cl{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#78716c;margin-top:1.5mm}
+  .chart{border:1px solid #e7e5e4;border-radius:10px;padding:5mm;margin-bottom:6mm}
+  .chart.keep{break-inside:avoid}
+  .chart h3{font-size:11pt;font-weight:800;margin:0}
+  .csub{font-size:8pt;color:#78716c;margin:1mm 0 4mm}
+  .hb{display:flex;align-items:center;gap:3mm;margin:1.6mm 0;font-size:9pt}
+  .hbl{width:40mm;text-align:${p.dir === "rtl" ? "left" : "right"};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151}
+  .hbt{flex:1;background:#f5f5f4;border-radius:3px;height:5mm;overflow:hidden}
+  .hbf{height:100%;border-radius:3px}
+  .hbv{width:12mm;font-weight:700;color:#57534e}
+  .empty{font-size:9pt;font-style:italic;color:#a8a29e;text-align:center;padding:6mm}
+  .vbars{display:flex;align-items:flex-end;gap:3mm;height:38mm;padding-top:2mm}
+  .vc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+  .vb{width:55%;min-height:1px;background:#6366f1;border-radius:3px 3px 0 0}
+  .vl{font-size:8pt;color:#57534e;margin-top:1.5mm}
+  table{width:100%;border-collapse:collapse;font-size:9pt}
+  thead{display:table-header-group}
+  th{background:#f5f5f4;color:#57534e;text-transform:uppercase;font-size:7pt;font-weight:700;padding:2.2mm;text-align:${p.dir === "rtl" ? "right" : "left"}}
+  th.c,td.c{text-align:center}
+  td{padding:2.2mm;border-bottom:1px solid #f0efed;vertical-align:top}
+  td.b{font-weight:600}
+  .badge{display:inline-block;padding:.4mm 2mm;border-radius:8px;font-size:7.5pt;font-weight:700}
+  .legend{border:1px solid #e7e5e4;border-radius:10px;padding:4mm;font-size:8pt;line-height:1.7;break-inside:avoid;margin-top:4mm}
+  .legend b{display:block;margin-bottom:1mm}
+</style>
+<div class="sheet">
+  <h1>${esc(p.title)}</h1>
+  <div class="sub">${esc(p.subtitle)}</div>
+  <div class="cards">
+    ${card(p.labels.cardStudents, p.totals.students, "#4f46e5")}
+    ${card(p.labels.cardPlays, p.totals.plays, "#7c3aed")}
+    ${card(p.labels.cardAvg, `${p.totals.avg}%`, accentFor(p.totals.avg))}
+    ${card(p.labels.cardMistakes, p.totals.mistakes, "#f43f5e")}
+  </div>
+  <div class="chart"><h3>${esc(p.labels.perStudentTitle)}</h3><div class="csub">${esc(p.labels.perStudentSubtitle)}</div>${perStudent}</div>
+  <div class="chart keep"><h3>${esc(p.labels.topWordsTitle)}</h3><div class="csub">${esc(p.labels.topWordsSubtitle)}</div>${topWordsBars}</div>
+  ${p.hasActivity ? `<div class="chart keep"><h3>${esc(p.labels.activityTitle)}</h3><div class="csub">${esc(p.activitySubtitle)}</div><div class="vbars">${activityBars}</div></div>` : ""}
+  <div class="chart"><h3>${esc(p.labels.tableHeading)}</h3>
+    <table><thead><tr><th>${esc(p.labels.colStudent)}</th><th class="c">${esc(p.labels.colPlays)}</th><th class="c">${esc(p.labels.colAvg)}</th><th class="c">${esc(p.labels.colMistakes)}</th><th class="c">${esc(p.labels.colStatus)}</th><th>${esc(p.labels.colReview)}</th></tr></thead><tbody>${rows}</tbody></table>
+  </div>
+  <div class="legend"><b>${esc(p.labels.legendTitle)}</b>${esc(p.labels.legendStatus)}<br>${esc(p.labels.legendScores)}<br>${esc(p.labels.legendWords)}</div>
+</div>`;
+}
+
 export default function ClassReportModal({
   open,
   onClose,
@@ -222,23 +329,69 @@ export default function ClassReportModal({
   );
 
   const handleDownload = async () => {
-    if (!printRef.current || busy) return;
+    if (busy) return;
     setBusy('pdf');
+    const filename = `vocaband-report-${classCode || 'all'}.pdf`;
     try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const opts = {
-        margin: [8, 8, 8, 8],
-        filename: `vocaband-report-${classCode || 'all'}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
-        pagebreak: { mode: ['avoid-all', 'css'] },
-      };
-      await html2pdf().from(printRef.current).set(opts as never).save();
+      // Server render (Chromium): vector charts + selectable text. Charts are
+      // rebuilt as CSS bars from the same data the on-screen Recharts use.
+      const html = buildClassReportHtml({
+        dir,
+        title: t.reportModalTitle,
+        subtitle: `${t.reportModalSubtitle(className)} · ${todayStr}`,
+        totals,
+        students,
+        topWords,
+        activityData,
+        hasActivity,
+        activitySubtitle: hasActivity
+          ? `${at.busiestDayLabel} ${at.dayLabels[activity.busiestDayIdx as number]}`
+          : '',
+        statusLabels,
+        labels: {
+          cardStudents: t.reportSummaryStudents, cardPlays: t.reportSummaryPlays,
+          cardAvg: t.reportSummaryAvg, cardMistakes: t.reportSummaryMistakes,
+          perStudentTitle: t.reportPerStudentTitle, perStudentSubtitle: t.reportPerStudentSubtitle,
+          topWordsTitle: t.reportTopWordsTitle, topWordsSubtitle: t.reportTopWordsSubtitle,
+          topWordsEmpty: t.reportTopWordsEmpty, activityTitle: at.activityPattern,
+          tableHeading: t.reportStatusTableHeading,
+          colStudent: t.pdfColStudent, colPlays: t.pdfColPlays, colAvg: t.pdfColAvg,
+          colMistakes: t.pdfColMistakes, colStatus: t.excelColStatus, colReview: t.wordsToReview,
+          noReview: t.noWordsToReview,
+          legendTitle: t.legendTitle, legendStatus: t.legendStatusLine,
+          legendScores: t.legendScoresLine, legendWords: t.legendWordsLine,
+        },
+      });
+      const { fetchPdfBlob } = await import('../../lib/pdf/requestWorksheetPdf');
+      const blob = await fetchPdfBlob({ kind: 'html', html, orientation: 'portrait' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
       showToast(t.reportPdfSuccess, 'success');
-    } catch (err) {
-      console.error('[report] PDF export failed', err);
-      showToast(t.reportPdfFailed, 'error');
+    } catch {
+      // Server unreachable — fall back to the legacy html2pdf rasteriser.
+      try {
+        if (!printRef.current) throw new Error('no print ref');
+        const html2pdf = (await import('html2pdf.js')).default;
+        const opts = {
+          margin: [8, 8, 8, 8],
+          filename,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+          pagebreak: { mode: ['avoid-all', 'css'] },
+        };
+        await html2pdf().from(printRef.current).set(opts as never).save();
+        showToast(t.reportPdfSuccess, 'success');
+      } catch (err) {
+        console.error('[report] PDF export failed', err);
+        showToast(t.reportPdfFailed, 'error');
+      }
     } finally {
       setBusy(null);
     }

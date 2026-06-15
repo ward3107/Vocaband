@@ -12,6 +12,7 @@ import WordFlow from '../components/WordFlow';
 import PassageCard from '../components/PassageCard';
 import PromptEditor from '../components/PromptEditor';
 import BagrutPaper from '../components/BagrutPaper';
+import { buildBagrutHtml } from '../lib/bagrutHtml';
 import type { UnitLevel, VocabWord, ReadingPassage, WritingPrompt } from '../core/types';
 
 // One step of an assembled mock exam.
@@ -112,6 +113,7 @@ export default function BuildBagrutView({
   const [step, setStep] = useState(0);
   const [vocabScore, setVocabScore] = useState<{ known: number; total: number } | null>(null);
   const [includeKey, setIncludeKey] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   // A regenerated paper would be stale if the level changed underneath it.
   useEffect(() => { setAi(null); }, [level]);
@@ -175,6 +177,41 @@ export default function BuildBagrutView({
     setSource(s);
     setGenError(null);
     if (s === 'bank') setAi(null);
+  };
+
+  // Server render via vocaband.com/api/pdf (real Chromium) — a clean one-click
+  // PDF with consistent margins/page-breaks, instead of the browser's print
+  // dialog. Falls back to window.print() if the render service is unreachable.
+  const downloadPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      const html = buildBagrutHtml({ level, words: selWords, passages: selPassages, prompts: selPrompts, includeKey });
+      const res = await fetch('https://vocaband.com/api/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'html',
+          html,
+          orientation: 'portrait',
+          margins: { top: '16mm', right: '14mm', bottom: '16mm', left: '14mm' },
+        }),
+      });
+      if (!res.ok) throw new Error(`PDF ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bagrut-practice.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch {
+      window.print(); // fallback to the browser print dialog
+    } finally {
+      setPdfBusy(false);
+    }
   };
 
   // ── Build phase ─────────────────────────────────────────────────────────
@@ -309,7 +346,14 @@ export default function BuildBagrutView({
               <input type="checkbox" checked={includeKey} onChange={(e) => setIncludeKey(e.target.checked)} className="h-4 w-4" />
               {t(language, 'include_key')}
             </label>
-            <Primary onClick={() => window.print()}>🖨️ {t(language, 'print_btn')}</Primary>
+            <Primary onClick={downloadPdf}>{pdfBusy ? '⏳ …' : '⬇️ PDF'}</Primary>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="rounded-2xl bg-slate-100 px-5 py-3 font-bold text-slate-700 transition hover:bg-slate-200"
+            >
+              🖨️ {t(language, 'print_btn')}
+            </button>
             <span className="text-xs text-slate-400">{t(language, 'export_hint')}</span>
           </div>
         </div>

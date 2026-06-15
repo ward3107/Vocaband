@@ -14,6 +14,9 @@ export interface HtmlDocData {
   kind: 'html';
   html: string;
   orientation?: 'portrait' | 'landscape';
+  /** Page margins for flowing (non-.sheet) documents like the Bagrut exam.
+   *  Default 0 — the Free Resources .sheet generators size their own pages. */
+  margins?: { top: string; right: string; bottom: string; left: string };
 }
 
 export type PdfDocData =
@@ -73,7 +76,7 @@ export function buildPdfDocument(data: PdfDocData): PdfDocument {
           printBackground: true,
           format: 'A4',
           landscape: data.orientation === 'landscape',
-          margin: { top: '0', right: '0', bottom: '0', left: '0' },
+          margin: data.margins ?? { top: '0', right: '0', bottom: '0', left: '0' },
         },
         disableJs: true,
       };
