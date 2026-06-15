@@ -5,10 +5,10 @@
  *    English dashboard ("What do you want to do?") with four
  *    plain-language goals that expand into a short explainer + the
  *    buttons that take the teacher to the right tool.
- *  - TeacherHelpAssistant — the floating "Need help?" guided helper
- *    that answers the same goals (plus "how do students log in?" and
- *    "what's the difference between the games?") by tapping a question
- *    or typing / speaking it. No AI backend — pure rule-based routing.
+ *  - HelpAskBox — the "ask me anything" box inside that same card. A
+ *    typed / spoken question is answered by the Gemini-backed assistant
+ *    (with an offline keyword fallback that also covers "how do students
+ *    log in?" and "what's the difference between the games?").
  *
  * Answers are written as multi-line, step-by-step text (rendered with
  * `whitespace-pre-line`) so a teacher who isn't "techy" gets a concrete
@@ -81,7 +81,7 @@ export interface StartHereStrings {
 
 const en: StartHereStrings = {
   heading: "What do you want to do?",
-  sub: "Tap a goal — we'll take you straight to the right tool.",
+  sub: "Ask me anything, or tap a goal — I'll take you straight to the right tool.",
   hide: "Hide",
   show: "What do you want to do?",
 
@@ -139,7 +139,7 @@ const en: StartHereStrings = {
 
 const he: StartHereStrings = {
   heading: "מה תרצו לעשות?",
-  sub: "הקישו על מטרה — ניקח אתכם ישר לכלי הנכון.",
+  sub: "שאלו אותי כל דבר, או הקישו על מטרה — ניקח אתכם ישר לכלי הנכון.",
   hide: "הסתר",
   show: "מה תרצו לעשות?",
 
@@ -197,7 +197,7 @@ const he: StartHereStrings = {
 
 const ar: StartHereStrings = {
   heading: "ماذا تريد أن تفعل؟",
-  sub: "اضغط على هدف — سنأخذك مباشرة إلى الأداة المناسبة.",
+  sub: "اسألني أي شيء، أو اضغط على هدف — سنأخذك مباشرة إلى الأداة المناسبة.",
   hide: "إخفاء",
   show: "ماذا تريد أن تفعل؟",
 
