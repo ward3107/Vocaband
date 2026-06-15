@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown, Compass } from "lucide-react";
 import type { Language } from "../../hooks/useLanguage";
 import { startHereT } from "../../locales/teacher/start-here";
@@ -8,14 +7,7 @@ import HelpAskBox from "./HelpAskBox";
 
 const STORAGE_KEY = "vocaband_starthere_collapsed";
 
-type GoalId = "play" | "setup" | "homework" | "progress";
-
-interface GoalAction {
-  label: string;
-  run: () => void;
-  /** Primary actions get the filled accent treatment. */
-  primary?: boolean;
-}
+type ChipId = "play" | "gamesDiff" | "setup" | "login" | "homework" | "progress" | "approvals";
 
 interface StartHerePanelProps {
   language: Language;
@@ -27,33 +19,36 @@ interface StartHerePanelProps {
   onApprovalsClick: () => void;
 }
 
-// Soft per-goal emoji-tile tints so the four goals read as distinct at a
-// glance while staying inside the indigo→violet→fuchsia→amber→emerald
-// brand family. Foreground stays the theme text token.
-const GOAL_TINT: Record<GoalId, string> = {
+// Soft per-chip tints so each shortcut reads as distinct at a glance
+// while staying inside the indigo→violet→fuchsia→amber→emerald brand
+// family. Foreground text stays the theme token.
+const CHIP_TINT: Record<ChipId, string> = {
   play: "linear-gradient(135deg,#EDE9FE 0%,#DDD6FE 100%)",
+  gamesDiff: "linear-gradient(135deg,#FCE7F3 0%,#FBCFE8 100%)",
   setup: "linear-gradient(135deg,#DBEAFE 0%,#C7D8FF 100%)",
+  login: "linear-gradient(135deg,#E0E7FF 0%,#C7D2FE 100%)",
   homework: "linear-gradient(135deg,#FEF3C7 0%,#FDE68A 100%)",
   progress: "linear-gradient(135deg,#D1FAE5 0%,#A7F3D0 100%)",
+  approvals: "linear-gradient(135deg,#CCFBF1 0%,#99F6E4 100%)",
 };
 
-const GOAL_EMOJI: Record<GoalId, string> = {
+const CHIP_EMOJI: Record<ChipId, string> = {
   play: "🎮",
+  gamesDiff: "🎲",
   setup: "👥",
+  login: "🔑",
   homework: "📝",
   progress: "📊",
+  approvals: "✅",
 };
 
 /**
  * Intent-based launcher pinned to the top of the English teacher
- * dashboard. Answers "where do I even start?" for a teacher who isn't
- * comfortable with software: four plain-language goals, each of which
- * expands into a one-paragraph explainer plus the buttons that take
- * them straight to the right tool. The existing card sections below
- * stay as the familiar "all tools" view.
- *
- * Routing is by section id (see dashboardScroll) so the real cards
- * remain the single source of truth — this panel never duplicates them.
+ * dashboard. Two helpers in one card: an "ask anything" box (type or
+ * speak → the AI answers and routes), and a row of small one-tap
+ * shortcut chips that jump straight to the matching tool. No nested
+ * dropdowns — every chip is a single tap that scrolls to (and flashes)
+ * the real card below, which stays the single source of truth.
  */
 export default function StartHerePanel({
   language,
@@ -65,7 +60,6 @@ export default function StartHerePanel({
   onApprovalsClick,
 }: StartHerePanelProps) {
   const t = startHereT[language];
-  const [open, setOpen] = useState<GoalId | null>(null);
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem(STORAGE_KEY) === "true";
@@ -83,48 +77,24 @@ export default function StartHerePanel({
     }
   };
 
-  const goals: { id: GoalId; title: string; blurb: string; explainer: string; actions: GoalAction[] }[] = [
-    {
-      id: "play",
-      title: t.playTitle,
-      blurb: t.playBlurb,
-      explainer: t.playExplainer,
-      actions: [
-        { label: t.playLiveBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames), primary: true },
-        { label: t.playRoomBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools) },
-      ],
-    },
-    {
-      id: "setup",
-      title: t.setupTitle,
-      blurb: t.setupBlurb,
-      explainer: t.setupExplainer,
-      actions: [
-        { label: t.setupCreateBtn, run: onNewClass, primary: true },
-        { label: t.setupClassesBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.myClasses) },
-      ],
-    },
-    {
-      id: "homework",
-      title: t.homeworkTitle,
-      blurb: t.homeworkBlurb,
-      explainer: t.homeworkExplainer,
-      actions: hasClasses
-        ? [{ label: t.homeworkClassesBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.myClasses), primary: true }]
-        : [{ label: t.homeworkCreateBtn, run: onNewClass, primary: true }],
-    },
-    {
-      id: "progress",
-      title: t.progressTitle,
-      blurb: t.progressBlurb,
-      explainer: t.progressExplainer,
-      actions: [
-        { label: t.progressClassroomBtn, run: onClassroomClick, primary: true },
-        ...(pendingStudentsCount > 0
-          ? [{ label: t.progressApprovalsBtn, run: onApprovalsClick }]
-          : []),
-      ],
-    },
+  // One tap → jump straight to the right tool. Setup + homework start at
+  // "create a class" until the teacher has one (you can't assign work or
+  // share a join code without a class); "how students log in" lands on
+  // My Classes, where the class code / QR / join link live. The
+  // approvals chip only appears when students are actually waiting.
+  const goToClassesOrCreate = () =>
+    hasClasses ? scrollToDashboardSection(DASHBOARD_SECTION.myClasses) : onNewClass();
+
+  const chips: { id: ChipId; label: string; run: () => void }[] = [
+    { id: "play", label: t.playTitle, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames) },
+    { id: "gamesDiff", label: t.qGamesDiff, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools) },
+    { id: "setup", label: t.setupTitle, run: goToClassesOrCreate },
+    { id: "login", label: t.qLogin, run: () => scrollToDashboardSection(DASHBOARD_SECTION.myClasses) },
+    { id: "homework", label: t.homeworkTitle, run: goToClassesOrCreate },
+    { id: "progress", label: t.progressTitle, run: onClassroomClick },
+    ...(pendingStudentsCount > 0
+      ? [{ id: "approvals" as const, label: t.progressApprovalsBtn, run: onApprovalsClick }]
+      : []),
   ];
 
   return (
@@ -175,8 +145,7 @@ export default function StartHerePanel({
       {!collapsed && (
         <>
           {/* Ask box — type or speak a question; the AI answers inline
-              and offers a jump button. The guided goal tiles sit just
-              below so both helpers live in this one card. */}
+              and offers a jump button. */}
           <HelpAskBox
             language={language}
             isRTL={isRTL}
@@ -187,117 +156,39 @@ export default function StartHerePanel({
             onApprovalsClick={onApprovalsClick}
           />
 
-          {/* Goal grid — compact two-up tiles. On phones the emoji is
-              smaller and the chevron / blurb are hidden so the title
-              gets the width it needs and stops wrapping word-by-word. */}
-          <div className="mt-3.5 grid grid-cols-2 gap-2 sm:gap-3">
-            {goals.map((g) => {
-              const isActive = open === g.id;
-              return (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => setOpen(isActive ? null : g.id)}
-                  style={{
-                    touchAction: "manipulation",
-                    WebkitTapHighlightColor: "transparent",
-                    background: isActive ? "var(--vb-accent-soft)" : "var(--vb-surface-alt)",
-                    border: `1.5px solid ${isActive ? "var(--vb-accent)" : "var(--vb-border)"}`,
-                  }}
-                  className="flex items-center gap-2.5 sm:gap-3 rounded-2xl sm:rounded-3xl px-2.5 py-2.5 sm:px-3.5 sm:py-3.5 text-start hover:-translate-y-0.5 transition-transform"
-                  aria-expanded={isActive}
+          {/* Shortcut chips — small emoji + short label squares. One tap
+              jumps straight to the matching tool (and flashes it). No
+              expanding dropdowns: the only thing that "opens" is the AI
+              answer area above. */}
+          <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
+            {chips.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={c.run}
+                style={{
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent",
+                  background: "var(--vb-surface-alt)",
+                  border: "1.5px solid var(--vb-border)",
+                }}
+                className="flex items-center gap-2.5 rounded-2xl px-2.5 py-2.5 sm:px-3 sm:py-3 text-start hover:-translate-y-0.5 active:scale-[0.98] transition-transform"
+              >
+                <span
+                  className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-[19px] sm:text-[21px] leading-none"
+                  style={{ background: CHIP_TINT[c.id] }}
                 >
-                  <span
-                    className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-[19px] sm:text-[22px] leading-none"
-                    style={{ background: GOAL_TINT[g.id] }}
-                  >
-                    {GOAL_EMOJI[g.id]}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className="block text-[13px] sm:text-[15px] font-bold leading-snug tracking-[-0.01em] line-clamp-2"
-                      style={{ color: "var(--vb-text-primary)" }}
-                    >
-                      {g.title}
-                    </span>
-                    <span
-                      className="mt-0.5 hidden sm:block text-[12px] leading-snug"
-                      style={{ color: "var(--vb-text-muted)" }}
-                    >
-                      {g.blurb}
-                    </span>
-                  </span>
-                  <ChevronDown
-                    size={16}
-                    className={`hidden sm:block shrink-0 transition-transform ${isActive ? "rotate-180" : ""}`}
-                    style={{ color: "var(--vb-text-muted)" }}
-                  />
-                </button>
-              );
-            })}
+                  {CHIP_EMOJI[c.id]}
+                </span>
+                <span
+                  className="min-w-0 flex-1 text-[12.5px] sm:text-[13px] font-bold leading-snug tracking-[-0.01em] line-clamp-2"
+                  style={{ color: "var(--vb-text-primary)" }}
+                >
+                  {c.label}
+                </span>
+              </button>
+            ))}
           </div>
-
-          {/* Expanded explainer + actions for the selected goal */}
-          <AnimatePresence initial={false} mode="wait">
-            {open && (() => {
-              const g = goals.find((x) => x.id === open)!;
-              return (
-                <motion.div
-                  key={g.id}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <div
-                    className="mt-3 rounded-3xl p-4 sm:p-[18px]"
-                    style={{ background: "var(--vb-surface-alt)", border: "1.5px solid var(--vb-border)" }}
-                  >
-                    <p
-                      className="whitespace-pre-line text-[13px] sm:text-sm leading-relaxed"
-                      style={{ color: "var(--vb-text-secondary)" }}
-                    >
-                      {g.explainer}
-                    </p>
-                    <div className={`mt-3.5 flex flex-wrap gap-2.5 ${isRTL ? "justify-end" : ""}`}>
-                      {g.actions.map((a) => (
-                        <button
-                          key={a.label}
-                          type="button"
-                          onClick={() => {
-                            a.run();
-                            setOpen(null);
-                          }}
-                          style={
-                            a.primary
-                              ? {
-                                  touchAction: "manipulation",
-                                  WebkitTapHighlightColor: "transparent",
-                                  background:
-                                    "linear-gradient(135deg, var(--vb-accent) 0%, color-mix(in srgb, var(--vb-accent), #000 28%) 100%)",
-                                  color: "var(--vb-accent-text)",
-                                  boxShadow: "0 10px 22px -10px color-mix(in srgb, var(--vb-accent), transparent 45%)",
-                                }
-                              : {
-                                  touchAction: "manipulation",
-                                  WebkitTapHighlightColor: "transparent",
-                                  background: "var(--vb-surface)",
-                                  color: "var(--vb-text-primary)",
-                                  border: "1.5px solid var(--vb-border)",
-                                }
-                          }
-                          className="inline-flex items-center rounded-full px-[18px] py-2.5 text-[13px] sm:text-sm font-bold active:scale-95 transition-transform"
-                        >
-                          {a.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })()}
-          </AnimatePresence>
         </>
       )}
     </section>
