@@ -137,23 +137,23 @@ export default function StartHerePanel({
       data-tour="start-here"
     >
       {/* Header — Compass mark + heading + collapse toggle. */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+            className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-2xl"
             style={{ background: "var(--vb-accent-soft)", color: "var(--vb-accent)" }}
           >
-            <Compass size={20} />
+            <Compass size={18} />
           </div>
           <div className="min-w-0">
             <div
-              className="text-[17px] sm:text-lg font-extrabold tracking-[-0.01em] truncate"
+              className="text-[15px] sm:text-lg font-extrabold tracking-[-0.01em] leading-tight"
               style={{ color: "var(--vb-text-primary)" }}
             >
               {t.heading}
             </div>
             {!collapsed && (
-              <div className="text-[12px] sm:text-[13px]" style={{ color: "var(--vb-text-muted)" }}>
+              <div className="mt-0.5 text-[12px] sm:text-[13px] leading-snug" style={{ color: "var(--vb-text-muted)" }}>
                 {t.sub}
               </div>
             )}
@@ -163,7 +163,7 @@ export default function StartHerePanel({
           type="button"
           onClick={() => setCollapsedPersisted(!collapsed)}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: "var(--vb-text-muted)" }}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold hover:opacity-80 transition-opacity"
+          className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold hover:opacity-80 transition-opacity"
           aria-expanded={!collapsed}
         >
           {collapsed ? t.show : t.hide}
@@ -173,8 +173,10 @@ export default function StartHerePanel({
 
       {!collapsed && (
         <>
-          {/* Goal grid */}
-          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
+          {/* Goal grid — compact two-up tiles. On phones the emoji is
+              smaller and the chevron / blurb are hidden so the title
+              gets the width it needs and stops wrapping word-by-word. */}
+          <div className="mt-3.5 grid grid-cols-2 gap-2 sm:gap-3">
             {goals.map((g) => {
               const isActive = open === g.id;
               return (
@@ -188,18 +190,18 @@ export default function StartHerePanel({
                     background: isActive ? "var(--vb-accent-soft)" : "var(--vb-surface-alt)",
                     border: `1.5px solid ${isActive ? "var(--vb-accent)" : "var(--vb-border)"}`,
                   }}
-                  className="flex items-center gap-3 rounded-3xl px-3.5 py-3.5 text-start hover:-translate-y-0.5 transition-transform"
+                  className="flex items-center gap-2.5 sm:gap-3 rounded-2xl sm:rounded-3xl px-2.5 py-2.5 sm:px-3.5 sm:py-3.5 text-start hover:-translate-y-0.5 transition-transform"
                   aria-expanded={isActive}
                 >
                   <span
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-[22px] leading-none"
+                    className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-[19px] sm:text-[22px] leading-none"
                     style={{ background: GOAL_TINT[g.id] }}
                   >
                     {GOAL_EMOJI[g.id]}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span
-                      className="block text-[14px] sm:text-[15px] font-bold leading-tight tracking-[-0.01em]"
+                      className="block text-[13px] sm:text-[15px] font-bold leading-snug tracking-[-0.01em] line-clamp-2"
                       style={{ color: "var(--vb-text-primary)" }}
                     >
                       {g.title}
@@ -213,7 +215,7 @@ export default function StartHerePanel({
                   </span>
                   <ChevronDown
                     size={16}
-                    className={`shrink-0 transition-transform ${isActive ? "rotate-180" : ""}`}
+                    className={`hidden sm:block shrink-0 transition-transform ${isActive ? "rotate-180" : ""}`}
                     style={{ color: "var(--vb-text-muted)" }}
                   />
                 </button>
@@ -239,7 +241,7 @@ export default function StartHerePanel({
                     style={{ background: "var(--vb-surface-alt)", border: "1.5px solid var(--vb-border)" }}
                   >
                     <p
-                      className="text-[13px] sm:text-sm leading-relaxed"
+                      className="whitespace-pre-line text-[13px] sm:text-sm leading-relaxed"
                       style={{ color: "var(--vb-text-secondary)" }}
                     >
                       {g.explainer}
