@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, ArrowRight, Mic, Send, Sparkles, X } from "lucide-react";
 import type { Language } from "../../hooks/useLanguage";
+import { supabase } from "../../core/supabase";
 import { startHereT } from "../../locales/teacher/start-here";
 import { scrollToDashboardSection, DASHBOARD_SECTION } from "./dashboardScroll";
 
@@ -136,6 +137,10 @@ export default function TeacherHelpAssistant({
   const [query, setQuery] = useState("");
   const [noMatch, setNoMatch] = useState(false);
   const [listening, setListening] = useState(false);
+  // Live AI answer (from /api/teacher-assistant). Distinct from `active`
+  // (a tapped preset) so the two answer views can look different.
+  const [aiResponse, setAiResponse] = useState<{ answer: string; action: string } | null>(null);
+  const [thinking, setThinking] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
@@ -149,6 +154,8 @@ export default function TeacherHelpAssistant({
     setActive(null);
     setNoMatch(false);
     setQuery("");
+    setAiResponse(null);
+    setThinking(false);
   };
 
   const toClasses: TopicAction = {
@@ -218,18 +225,75 @@ export default function TeacherHelpAssistant({
     return null;
   };
 
-  const submitQuery = (text: string) => {
-    const id = matchTopic(text);
-    if (id) {
-      setActive(id);
-      setNoMatch(false);
-      // Clear the composer once we've answered so the next question
-      // starts fresh (teachers reported the spoken text lingering).
-      setQuery("");
-    } else {
-      setActive(null);
-      setNoMatch(true);
+  // Maps the AI's chosen destination to a real navigation button. The
+  // server only ever returns one of these ids, so an unknown value (or
+  // "none") simply yields no button — the answer text still shows.
+  const actionToButton = (action: string): TopicAction | null => {
+    switch (action) {
+      case "live_games":
+        return { label: t.playLiveBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames), primary: true };
+      case "classroom_tools":
+        return { label: t.playRoomBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools), primary: true };
+      case "create_class":
+        return { label: t.setupCreateBtn, run: onNewClass, primary: true };
+      case "my_classes":
+        return { label: t.setupClassesBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.myClasses), primary: true };
+      case "classroom":
+        return { label: t.progressClassroomBtn, run: onClassroomClick, primary: true };
+      case "approvals":
+        return { label: t.progressApprovalsBtn, run: onApprovalsClick, primary: true };
+      default:
+        return null;
     }
+  };
+
+  // Ask the Gemini-backed endpoint. Returns null on any failure (no
+  // session, network/API down, bad payload) so the caller can fall back
+  // to the offline keyword router.
+  const askAI = async (text: string): Promise<{ answer: string; action: string } | null> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return null;
+      const res = await fetch("/api/teacher-assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: text, language, context: { hasClasses, pendingStudentsCount } }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { answer?: string; action?: string };
+      if (!data.answer) return null;
+      return { answer: data.answer, action: data.action ?? "none" };
+    } catch {
+      return null;
+    }
+  };
+
+  // Free-typed / spoken questions go to the AI first (genuine HE/AR/EN
+  // understanding); on any failure we fall back to keyword routing so
+  // the helper still works offline. Tapping a preset question skips this
+  // entirely (handled inline) and stays instant + free.
+  const submitQuery = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || thinking) return;
+    setQuery("");
+    setActive(null);
+    setNoMatch(false);
+    setAiResponse(null);
+    setThinking(true);
+
+    const ai = await askAI(trimmed);
+    if (ai) {
+      setAiResponse(ai);
+      setThinking(false);
+      return;
+    }
+
+    // Offline / error fallback.
+    setThinking(false);
+    const id = matchTopic(trimmed);
+    if (id) setActive(id);
+    else setNoMatch(true);
   };
 
   // Close on Escape while the panel is open.
@@ -241,6 +305,8 @@ export default function TeacherHelpAssistant({
         setActive(null);
         setNoMatch(false);
         setQuery("");
+        setAiResponse(null);
+        setThinking(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -269,7 +335,7 @@ export default function TeacherHelpAssistant({
         const transcript = e.results?.[0]?.[0]?.transcript ?? "";
         if (transcript) {
           setQuery(transcript);
-          submitQuery(transcript);
+          void submitQuery(transcript);
         }
       };
       rec.onend = () => setListening(false);
@@ -362,7 +428,78 @@ export default function TeacherHelpAssistant({
 
               {/* Body */}
               <div className="flex-1 overflow-y-auto px-4 py-4">
-                {activeTopic ? (
+                {thinking ? (
+                  <div className="flex items-center gap-3 px-1 py-4">
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-[18px] leading-none"
+                      style={{ background: "var(--vb-accent-soft)" }}
+                    >
+                      <Sparkles size={18} style={{ color: "var(--vb-accent)" }} />
+                    </span>
+                    <span className="flex items-center gap-1">
+                      {[0, 1, 2].map((i) => (
+                        <span
+                          key={i}
+                          className="inline-block h-2 w-2 rounded-full animate-bounce"
+                          style={{ background: "var(--vb-accent)", animationDelay: `${i * 0.15}s` }}
+                        />
+                      ))}
+                    </span>
+                  </div>
+                ) : aiResponse ? (
+                  (() => {
+                    const btn = actionToButton(aiResponse.action);
+                    return (
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setAiResponse(null)}
+                          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: "var(--vb-accent)" }}
+                          className="mb-3 inline-flex items-center gap-1.5 text-xs font-bold hover:opacity-80 transition-opacity"
+                        >
+                          <BackIcon size={14} />
+                          {t.helperBack}
+                        </button>
+                        <div className="flex items-start gap-2.5">
+                          <span
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-[18px] leading-none"
+                            style={{ background: "var(--vb-accent-soft)" }}
+                          >
+                            <Sparkles size={18} style={{ color: "var(--vb-accent)" }} />
+                          </span>
+                          <p
+                            className="whitespace-pre-line rounded-2xl px-3.5 py-3 text-[13px] leading-relaxed flex-1"
+                            style={{ background: "var(--vb-surface-alt)", color: "var(--vb-text-secondary)" }}
+                          >
+                            {aiResponse.answer}
+                          </p>
+                        </div>
+                        {btn && (
+                          <div className="mt-4 flex flex-wrap gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                btn.run();
+                                closePanel();
+                              }}
+                              style={{
+                                touchAction: "manipulation",
+                                WebkitTapHighlightColor: "transparent",
+                                background:
+                                  "linear-gradient(135deg, var(--vb-accent) 0%, color-mix(in srgb, var(--vb-accent), #000 28%) 100%)",
+                                color: "var(--vb-accent-text)",
+                                boxShadow: "0 10px 22px -10px color-mix(in srgb, var(--vb-accent), transparent 45%)",
+                              }}
+                              className="inline-flex items-center rounded-full px-4 py-2.5 text-[13px] font-bold active:scale-95 transition-transform"
+                            >
+                              {btn.label}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                ) : activeTopic ? (
                   <div>
                     <button
                       type="button"
@@ -488,20 +625,22 @@ export default function TeacherHelpAssistant({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") submitQuery(query);
+                    if (e.key === "Enter") void submitQuery(query);
                   }}
+                  disabled={thinking}
                   placeholder={listening ? t.helperListening : t.helperInputPlaceholder}
                   style={{
                     background: "var(--vb-surface)",
                     border: "1.5px solid var(--vb-border)",
                     color: "var(--vb-text-primary)",
                   }}
-                  className="min-w-0 flex-1 rounded-full px-4 py-2.5 text-[13px] outline-none focus:border-[var(--vb-accent)]"
+                  className="min-w-0 flex-1 rounded-full px-4 py-2.5 text-[13px] outline-none focus:border-[var(--vb-accent)] disabled:opacity-60"
                 />
                 {SpeechRecognitionCtor && (
                   <button
                     type="button"
                     onClick={startListening}
+                    disabled={thinking}
                     aria-label={t.helperMicLabel}
                     style={{
                       touchAction: "manipulation",
@@ -510,14 +649,15 @@ export default function TeacherHelpAssistant({
                       color: listening ? "var(--vb-accent-text)" : "var(--vb-text-secondary)",
                       border: "1.5px solid var(--vb-border)",
                     }}
-                    className={`shrink-0 rounded-full p-2.5 transition-transform active:scale-95 ${listening ? "animate-pulse" : ""}`}
+                    className={`shrink-0 rounded-full p-2.5 transition-transform active:scale-95 disabled:opacity-60 ${listening ? "animate-pulse" : ""}`}
                   >
                     <Mic size={16} />
                   </button>
                 )}
                 <button
                   type="button"
-                  onClick={() => submitQuery(query)}
+                  onClick={() => void submitQuery(query)}
+                  disabled={thinking}
                   aria-label={t.helperFab}
                   style={{
                     touchAction: "manipulation",
@@ -525,7 +665,7 @@ export default function TeacherHelpAssistant({
                     background: "linear-gradient(135deg, var(--vb-accent) 0%, color-mix(in srgb, var(--vb-accent), #000 28%) 100%)",
                     color: "var(--vb-accent-text)",
                   }}
-                  className="shrink-0 rounded-full p-2.5 active:scale-95 transition-transform"
+                  className="shrink-0 rounded-full p-2.5 active:scale-95 transition-transform disabled:opacity-60"
                 >
                   <Send size={16} className={isRTL ? "-scale-x-100" : ""} />
                 </button>
