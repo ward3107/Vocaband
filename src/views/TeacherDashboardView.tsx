@@ -20,6 +20,7 @@ import TeacherQuickActions from "../components/dashboard/TeacherQuickActions";
 import NetworkDiagnosticButton from "../components/dashboard/NetworkDiagnosticButton";
 import TeacherClassesSection from "../components/dashboard/TeacherClassesSection";
 import EnglishDashboardLayout from "../components/dashboard/EnglishDashboardLayout";
+import TeacherHelpAssistant from "../components/dashboard/TeacherHelpAssistant";
 import { useCompetitionsForClassIds } from "../hooks/useCompetitions";
 import SavedTasksSection from "../components/dashboard/SavedTasksSection";
 import CreateClassModal from "../components/dashboard/CreateClassModal";
@@ -583,6 +584,23 @@ export default function TeacherDashboardView({
         </button>
       {showThemeMenu && (
         <TeacherThemeMenu user={user} setUser={setUser} onClose={() => setShowThemeMenu(false)} />
+      )}
+
+      {/* Guided help assistant — floating "Need help?" concierge that
+          answers "what do I choose?" in plain language and routes the
+          teacher to the right tool (tap a question, or type / speak it).
+          No AI backend; rule-based. English dashboard only — VocaHebrew
+          keeps its own layout for now. */}
+      {subject === "english" && (
+        <TeacherHelpAssistant
+          language={effectiveLanguage}
+          isRTL={dir === "rtl"}
+          hasClasses={classes.length > 0}
+          pendingStudentsCount={pendingStudentsCount}
+          onNewClass={onNewClass}
+          onClassroomClick={onClassroomClick}
+          onApprovalsClick={onApprovalsClick}
+        />
       )}
 
       {/* One-time "what's new" intro for the Vocabulary Library.

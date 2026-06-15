@@ -7,6 +7,8 @@ import type { Language } from "../../hooks/useLanguage";
 import LiveGameHero from "./LiveGameHero";
 import MgmtCard from "./MgmtCard";
 import FrostedEmoji from "./FrostedEmoji";
+import StartHerePanel from "./StartHerePanel";
+import { DASHBOARD_SECTION } from "./dashboardScroll";
 import { accentForClass, HERO_AURORA } from "./dashboardAccents";
 
 // "Cool Paper" direction: every live-games card keeps its vivid radial
@@ -189,10 +191,24 @@ export default function EnglishDashboardLayout({
           the parent view) so this component stays focused on the
           three big blocks below. */}
 
+      {/* ─── Start here ─── Intent-based launcher that answers "where do
+          I begin?" for a non-technical teacher: four plain-language goals
+          that explain themselves and route to the sections below. Owns
+          no tools of its own — it scrolls to the real cards by id. */}
+      <StartHerePanel
+        language={language}
+        isRTL={isRTL}
+        hasClasses={hasClasses}
+        pendingStudentsCount={pendingStudentsCount}
+        onNewClass={onNewClass}
+        onClassroomClick={onClassroomClick}
+        onApprovalsClick={onApprovalsClick}
+      />
+
       {/* ─── Live games ─── Quick Play + Category Race, paired so the
           two live, join-by-code experiences sit together (separate from
           the Management utilities below). */}
-      <section>
+      <section id={DASHBOARD_SECTION.liveGames}>
         <SectionLabel>{rt.liveGames}</SectionLabel>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3 items-stretch">
           <LiveGameHero
@@ -256,7 +272,7 @@ export default function EnglishDashboardLayout({
           (no per-student phone needed).  Promoted to their own dashboard
           tiles so they're reachable in one tap, mirroring the live games
           above, instead of being buried in the New Activity tab strip. */}
-      <section className="mt-7 sm:mt-9">
+      <section id={DASHBOARD_SECTION.classroomTools} className="mt-7 sm:mt-9">
         <SectionLabel>{rt.classroomGames}</SectionLabel>
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-3 items-stretch">
           <LiveGameHero
@@ -296,7 +312,7 @@ export default function EnglishDashboardLayout({
       </section>
 
       {/* ─── Management ─── */}
-      <section className="mt-7 sm:mt-9">
+      <section id={DASHBOARD_SECTION.management} className="mt-7 sm:mt-9">
         <SectionLabel>{t.managementHeading}</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-[14px]">
           <MgmtCard
@@ -342,7 +358,7 @@ export default function EnglishDashboardLayout({
       </section>
 
       {/* ─── My classes ─── */}
-      <section className="mt-7 sm:mt-9" data-tour="my-classes">
+      <section id={DASHBOARD_SECTION.myClasses} className="mt-7 sm:mt-9" data-tour="my-classes">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <SectionLabel>{t.myClassesHeading}</SectionLabel>
