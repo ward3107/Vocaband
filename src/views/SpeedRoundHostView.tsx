@@ -37,6 +37,7 @@ import { QP_SPEED_ROUND_SECONDS, QP_SPEED_MODES, type QpSpeedMode } from "../cor
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import SpeedWordPicker from "../components/game/SpeedWordPicker";
+import GameMusicPlayer from "../components/game/GameMusicPlayer";
 import { SPEED_HOST_STRINGS, SPEED_MODE_META } from "./speedRoundStrings";
 
 /** Enough words for distractor options (questions need 2–4 choices). */
@@ -335,6 +336,11 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
             </div>
           )}
         </header>
+
+        {/* Background music — teacher can play/pause, skip, and adjust volume
+            for the room while the round runs. Hidden in presentation mode to
+            keep the projector clean. */}
+        {!presenting && <GameMusicPlayer language={language} />}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Main: live word banner + the big leaderboard */}
