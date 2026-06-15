@@ -28,6 +28,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { CATEGORIES, categoryLabel, LETTER_POOL } from "../data/category-race-bank";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
+import GameMusicPlayer from "../components/game/GameMusicPlayer";
 import LobbyRoster from "../components/game/LobbyRoster";
 import GameResults from "../components/game/GameResults";
 import TeamScoreBar from "../components/game/TeamScoreBar";
@@ -334,6 +335,11 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             </div>
           )}
         </header>
+
+        {/* Background music — teacher can play/pause, skip, and adjust volume
+            for the room while the race runs. Hidden in presentation mode to
+            keep the projector clean. */}
+        {!presenting && <GameMusicPlayer language={language} />}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Main: round banner (only while live) + the big leaderboard */}
