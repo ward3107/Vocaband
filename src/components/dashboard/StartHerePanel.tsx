@@ -4,6 +4,7 @@ import { ChevronDown, Compass } from "lucide-react";
 import type { Language } from "../../hooks/useLanguage";
 import { startHereT } from "../../locales/teacher/start-here";
 import { scrollToDashboardSection, DASHBOARD_SECTION } from "./dashboardScroll";
+import HelpAskBox from "./HelpAskBox";
 
 const STORAGE_KEY = "vocaband_starthere_collapsed";
 
@@ -173,6 +174,19 @@ export default function StartHerePanel({
 
       {!collapsed && (
         <>
+          {/* Ask box — type or speak a question; the AI answers inline
+              and offers a jump button. The guided goal tiles sit just
+              below so both helpers live in this one card. */}
+          <HelpAskBox
+            language={language}
+            isRTL={isRTL}
+            hasClasses={hasClasses}
+            pendingStudentsCount={pendingStudentsCount}
+            onNewClass={onNewClass}
+            onClassroomClick={onClassroomClick}
+            onApprovalsClick={onApprovalsClick}
+          />
+
           {/* Goal grid — compact two-up tiles. On phones the emoji is
               smaller and the chevron / blurb are hidden so the title
               gets the width it needs and stops wrapping word-by-word. */}
