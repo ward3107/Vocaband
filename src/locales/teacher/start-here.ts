@@ -66,6 +66,16 @@ export interface StartHereStrings {
   /** Tiny prompt shown above the question list. */
   helperPickPrompt: string;
 
+  /** Short one/two-word labels for the shortcut chips (the long
+   *  titles/questions above get truncated in the small chip grid). */
+  chipPlay: string;
+  chipGames: string;
+  chipSetup: string;
+  chipLogin: string;
+  chipHomework: string;
+  chipProgress: string;
+  chipApprovals: string;
+
   /** Helper question labels. */
   qPlay: string;
   qSetup: string;
@@ -123,6 +133,14 @@ const en: StartHereStrings = {
   helperClose: "Close",
   helperBack: "Back to questions",
   helperPickPrompt: "Popular questions",
+
+  chipPlay: "Play a game",
+  chipGames: "Compare games",
+  chipSetup: "Set up class",
+  chipLogin: "Student login",
+  chipHomework: "Homework",
+  chipProgress: "Student progress",
+  chipApprovals: "Approvals",
 
   qPlay: "I want to play a game",
   qSetup: "How do I add my students?",
@@ -182,6 +200,14 @@ const he: StartHereStrings = {
   helperBack: "חזרה לשאלות",
   helperPickPrompt: "שאלות נפוצות",
 
+  chipPlay: "לשחק משחק",
+  chipGames: "השוואת משחקים",
+  chipSetup: "הקמת כיתה",
+  chipLogin: "התחברות תלמידים",
+  chipHomework: "שיעורי בית",
+  chipProgress: "התקדמות תלמידים",
+  chipApprovals: "אישורים",
+
   qPlay: "אני רוצה לשחק משחק",
   qSetup: "איך מוסיפים תלמידים?",
   qLogin: "איך התלמידים מתחברים?",
@@ -239,6 +265,14 @@ const ar: StartHereStrings = {
   helperClose: "إغلاق",
   helperBack: "العودة إلى الأسئلة",
   helperPickPrompt: "أسئلة شائعة",
+
+  chipPlay: "العب لعبة",
+  chipGames: "قارن الألعاب",
+  chipSetup: "إعداد الصف",
+  chipLogin: "دخول الطلاب",
+  chipHomework: "الواجبات",
+  chipProgress: "تقدّم الطلاب",
+  chipApprovals: "الموافقات",
 
   qPlay: "أريد أن ألعب لعبة",
   qSetup: "كيف أضيف طلابي؟",
