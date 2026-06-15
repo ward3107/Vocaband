@@ -18,9 +18,6 @@ interface Topic {
   question: string;
   answer: string;
   actions: TopicAction[];
-  /** Lowercase keywords for free-text / voice matching. Order of the
-   *  topic list decides ties. */
-  keywords: string[];
 }
 
 interface TeacherHelpAssistantProps {
@@ -59,6 +56,56 @@ const RECOGNITION_LANG: Record<Language, string> = {
   he: "he-IL",
   ar: "ar-SA",
   ru: "ru-RU",
+};
+
+// A friendly face per topic — shown on the question rows and as the
+// avatar above each answer so the panel reads as a chat, not a FAQ.
+const TOPIC_EMOJI: Record<TopicId, string> = {
+  play: "🎮",
+  setup: "👥",
+  login: "🔑",
+  homework: "📝",
+  progress: "📊",
+  gamesDiff: "🎲",
+};
+
+// Language-independent keyword bank (English + Hebrew + Arabic roots in
+// one list per topic) so a teacher gets matched whatever language they
+// type or speak in — even if it differs from the current UI language.
+// Matching is plain lowercase substring (`includes`), so entries are
+// short roots that survive prefixes/suffixes. Topic order (below) breaks
+// ties, so the more specific topics (gamesDiff, login) come first.
+const KEYWORDS: Record<TopicId, string[]> = {
+  gamesDiff: [
+    "differ", "between", " vs ", "which game", "kind of game", "type of game", "compare",
+    "הבדל", "בין המשחק", "איזה משחק", "סוג משחק", "להשוות",
+    "الفرق", "فرق", "بين الألعاب", "أي لعبة", "نوع اللعبة", "مقارنة",
+  ],
+  login: [
+    "log in", "login", "sign in", "pin", "qr", "scan", "password", "join code", "class code", "connect",
+    "מתחבר", "התחבר", "להתחבר", "כניס", "סיסמ", "קוד כיתה", "סורק",
+    "تسجيل", "دخول", "كلمة المرور", "ينضم", "انضمام", "رمز الفصل", "مسح",
+  ],
+  homework: [
+    "homework", "assign", "worksheet", "print", "pdf", "practice", "task", "sheet",
+    "שיעור", "מטל", "משימ", "דף עבוד", "להדפיס", "הדפס", "תרגול", "תרגיל",
+    "واجب", "مهم", "ورقة", "طباعة", "طبع", "تمرين", "تدريب",
+  ],
+  progress: [
+    "progress", "score", "doing", "report", "analytic", "grade", "result", "how are", "struggl", "data", "statistic",
+    "ציון", "התקדמ", "מתקדמ", "דוח", "נתונ", "תוצא", "מתקש", "סטטיסט",
+    "تقدم", "درج", "تقرير", "نتائج", "بيانات", "إحصاء", "يعاني",
+  ],
+  setup: [
+    "add student", "student", "roster", "create class", "new class", "enroll", "set up", "setup", "add my", "class",
+    "תלמיד", "כית", "להוסיף", "רשימ", "להקים", "ליצור", "רישום",
+    "طالب", "طلاب", "صف", "إنشاء", "قائمة", "إعداد", "إضاف",
+  ],
+  play: [
+    "play", "game", "fun", "activity", "warm", "race", "quiz", "live",
+    "לשחק", "משחק", "כיף", "פעיל", "מרוץ", "חידון", "תחרות",
+    "لعب", "لعبة", "ألعاب", "مرح", "نشاط", "سباق", "مباشر", "مسابقة",
+  ],
 };
 
 /**
@@ -110,12 +157,13 @@ export default function TeacherHelpAssistant({
   };
   const createClass: TopicAction = { label: t.setupCreateBtn, run: onNewClass, primary: true };
 
+  // Topic order also decides match ties — keep the specific topics
+  // (gamesDiff, login) ahead of the broad ones (setup, play).
   const topics: Topic[] = [
     {
       id: "gamesDiff",
       question: t.qGamesDiff,
       answer: t.aGamesDiff,
-      keywords: ["differ", "between", "vs", "which game", "kind of game", "type of game"],
       actions: [
         { label: t.playLiveBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames), primary: true },
         { label: t.playRoomBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools) },
@@ -125,14 +173,12 @@ export default function TeacherHelpAssistant({
       id: "login",
       question: t.qLogin,
       answer: t.aLogin,
-      keywords: ["log in", "login", "sign in", "pin", "qr", "scan", "password", "join code", "class code"],
       actions: hasClasses ? [toClasses] : [createClass],
     },
     {
       id: "homework",
       question: t.qHomework,
       answer: t.homeworkExplainer,
-      keywords: ["homework", "assign", "worksheet", "print", "pdf", "practice", "task", "sheet"],
       actions: hasClasses
         ? [{ ...toClasses, primary: true }]
         : [createClass],
@@ -141,7 +187,6 @@ export default function TeacherHelpAssistant({
       id: "progress",
       question: t.qProgress,
       answer: t.progressExplainer,
-      keywords: ["progress", "score", "doing", "report", "analytic", "grade", "result", "how are", "struggl", "data"],
       actions: [
         { label: t.progressClassroomBtn, run: onClassroomClick, primary: true },
         ...(pendingStudentsCount > 0 ? [{ label: t.progressApprovalsBtn, run: onApprovalsClick }] : []),
@@ -151,14 +196,12 @@ export default function TeacherHelpAssistant({
       id: "setup",
       question: t.qSetup,
       answer: t.setupExplainer,
-      keywords: ["add student", "student", "roster", "create class", "new class", "enroll", "set up", "setup", "add my"],
       actions: [createClass, toClasses],
     },
     {
       id: "play",
       question: t.qPlay,
       answer: t.playExplainer,
-      keywords: ["play", "game", "fun", "activity", "warm", "race", "quiz", "live"],
       actions: [
         { label: t.playLiveBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames), primary: true },
         { label: t.playRoomBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools) },
@@ -167,10 +210,10 @@ export default function TeacherHelpAssistant({
   ];
 
   const matchTopic = (text: string): TopicId | null => {
-    const q = text.toLowerCase().trim();
-    if (!q) return null;
+    const q = ` ${text.toLowerCase().trim()} `;
+    if (!q.trim()) return null;
     for (const topic of topics) {
-      if (topic.keywords.some((k) => q.includes(k))) return topic.id;
+      if (KEYWORDS[topic.id].some((k) => q.includes(k))) return topic.id;
     }
     return null;
   };
@@ -180,6 +223,9 @@ export default function TeacherHelpAssistant({
     if (id) {
       setActive(id);
       setNoMatch(false);
+      // Clear the composer once we've answered so the next question
+      // starts fresh (teachers reported the spoken text lingering).
+      setQuery("");
     } else {
       setActive(null);
       setNoMatch(true);
@@ -327,13 +373,26 @@ export default function TeacherHelpAssistant({
                       <BackIcon size={14} />
                       {t.helperBack}
                     </button>
-                    <div
-                      className="text-[15px] font-extrabold tracking-[-0.01em] mb-2"
-                      style={{ color: "var(--vb-text-primary)" }}
-                    >
-                      {activeTopic.question}
+                    {/* Avatar + question, then the answer as a soft chat
+                        bubble so the multi-line steps read clearly. */}
+                    <div className="flex items-center gap-2.5 mb-2.5">
+                      <span
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-[20px] leading-none"
+                        style={{ background: "var(--vb-accent-soft)" }}
+                      >
+                        {TOPIC_EMOJI[activeTopic.id]}
+                      </span>
+                      <div
+                        className="text-[14px] font-extrabold tracking-[-0.01em] leading-snug"
+                        style={{ color: "var(--vb-text-primary)" }}
+                      >
+                        {activeTopic.question}
+                      </div>
                     </div>
-                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--vb-text-secondary)" }}>
+                    <p
+                      className="whitespace-pre-line rounded-2xl px-3.5 py-3 text-[13px] leading-relaxed"
+                      style={{ background: "var(--vb-surface-alt)", color: "var(--vb-text-secondary)" }}
+                    >
                       {activeTopic.answer}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2.5">
@@ -372,12 +431,19 @@ export default function TeacherHelpAssistant({
                   </div>
                 ) : (
                   <div>
-                    {noMatch && (
+                    {noMatch ? (
                       <div
                         className="mb-3 rounded-2xl px-3.5 py-2.5 text-[12px] font-semibold"
                         style={{ background: "var(--vb-accent-soft)", color: "var(--vb-text-secondary)" }}
                       >
                         {t.helperNoMatch}
+                      </div>
+                    ) : (
+                      <div
+                        className="mb-2.5 px-1 text-[11px] font-extrabold uppercase tracking-[0.12em]"
+                        style={{ color: "var(--vb-text-muted)" }}
+                      >
+                        {t.helperPickPrompt}
                       </div>
                     )}
                     <div className="flex flex-col gap-2">
@@ -396,9 +462,15 @@ export default function TeacherHelpAssistant({
                             border: "1.5px solid var(--vb-border)",
                             color: "var(--vb-text-primary)",
                           }}
-                          className="flex items-center justify-between gap-2 rounded-2xl px-4 py-3 text-start text-[13px] font-semibold hover:-translate-y-0.5 transition-transform"
+                          className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-start text-[13px] font-semibold hover:-translate-y-0.5 transition-transform"
                         >
-                          <span>{topic.question}</span>
+                          <span
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[17px] leading-none"
+                            style={{ background: "var(--vb-accent-soft)" }}
+                          >
+                            {TOPIC_EMOJI[topic.id]}
+                          </span>
+                          <span className="min-w-0 flex-1">{topic.question}</span>
                           <ArrowRight size={15} className={`shrink-0 opacity-50 ${isRTL ? "-scale-x-100" : ""}`} />
                         </button>
                       ))}
