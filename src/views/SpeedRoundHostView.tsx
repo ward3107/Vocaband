@@ -97,6 +97,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   // chains into the next after a short podium beat — no per-word click.
   const [autoPlay, setAutoPlay] = useState(true);
   const [autoCountdown, setAutoCountdown] = useState<number | null>(null);
+  // Set when the teacher ends a word by hand, so auto-play doesn't relaunch.
+  const endedManuallyRef = useRef(false);
   const tokenRef = useRef<string | null>(null);
   // Each word plays once PER PASS — when a pass is exhausted the list cycles
   // again (reshuffled) until `passes` passes are done, then the run is over
@@ -217,6 +219,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
     primeAudio();
     playRoundStart();
     setWinnerClientId(null);
+    endedManuallyRef.current = false;
     startSpeedRound({ ...question, roundSeconds }, tokenRef.current);
     if (!hasRunRound) setPresenting(true);
     setHasRunRound(true);
@@ -246,7 +249,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const handleStartRef = useRef(handleStart);
   useEffect(() => { handleStartRef.current = handleStart; });
   useEffect(() => {
-    if (!autoPlay || roundActive || !hasRunRound || pickedWords.length < MIN_WORDS || allPlayed) {
+    if (!autoPlay || roundActive || !hasRunRound || pickedWords.length < MIN_WORDS || allPlayed || endedManuallyRef.current) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- cancels a pending countdown when auto-play conditions break
       setAutoCountdown(null);
       return;
@@ -267,6 +270,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   }, [autoPlay, roundActive, hasRunRound, pickedWords.length, allPlayed]);
 
   const handleEndRound = () => {
+    // A manual End must stop — don't let auto-play relaunch the next word.
+    endedManuallyRef.current = true;
     if (currentSpeed && tokenRef.current) endSpeedRound(currentSpeed.roundId, tokenRef.current);
   };
 

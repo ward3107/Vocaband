@@ -164,11 +164,17 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
     return seeds;
   };
 
+  // Set when the teacher ENDS a hunt by hand, so auto-play doesn't instantly
+  // relaunch it (the whole point of "End" is to stop). Cleared on the next
+  // manual Start.
+  const endedManuallyRef = useRef(false);
+
   const handleStart = () => {
     if (!tokenRef.current || arenaActive || !canStart) return;
     const seeds = buildBatch();
     if (seeds.length === 0) { setBuildError(true); return; }
     setBuildError(false);
+    endedManuallyRef.current = false;
     // The Start tap is a user gesture — prime + play the jingle.
     primeAudio();
     playRoundStart();
@@ -180,14 +186,15 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   // Auto-play: after the first hunt, launch the next wave once the podium
   // beat passes. Armed only between hunts (hasStarted && !arenaActive) so the
   // teacher always starts the FIRST hunt explicitly; the countdown feeds the
-  // start buttons below.
+  // start buttons below. Suppressed after a manual End.
   const autoCountdown = useAutoAdvance(
-    autoPlay && hasStarted && !arenaActive && canStart,
+    autoPlay && hasStarted && !arenaActive && canStart && !endedManuallyRef.current,
     AUTO_ADVANCE_SECONDS,
     handleStart,
   );
 
   const handleEndArena = () => {
+    endedManuallyRef.current = true;
     if (arenaActive && tokenRef.current) endArena(tokenRef.current);
   };
 
