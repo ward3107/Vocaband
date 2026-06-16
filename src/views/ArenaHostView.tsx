@@ -16,10 +16,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Play, Users, LogOut, Check, Copy, Maximize2, X, Monitor, Minimize2, Square } from "lucide-react";
+import { Play, Users, LogOut, Check, Copy, Maximize2, X, Monitor, Minimize2, Square, Zap } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
+import { useAutoAdvance } from "../hooks/useAutoAdvance";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
@@ -51,6 +52,8 @@ interface ArenaHostViewProps {
 
 /** Enough words for distractor options (questions need 2–4 choices). */
 const MIN_WORDS = 4;
+/** Podium beat between auto-played hunts (mirrors Speed Round). */
+const AUTO_ADVANCE_SECONDS = 5;
 
 export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewProps) {
   const { language, dir } = useLanguage();
@@ -84,6 +87,9 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const [buildError, setBuildError] = useState(false);
   // Student pending removal (clientId + nickname) — drives the confirm modal.
   const [confirmKick, setConfirmKick] = useState<{ clientId: string; nickname: string } | null>(null);
+  // Auto-play: once the first hunt runs, each finished hunt chains into the
+  // next wave after a short podium beat — no per-hunt click.
+  const [autoPlay, setAutoPlay] = useState(true);
   const tokenRef = useRef<string | null>(null);
 
   const canStart = pickedWords.length >= MIN_WORDS && enabledModes.size > 0;
@@ -166,6 +172,16 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
     setHasStarted(true);
     setPresenting(true);
   };
+
+  // Auto-play: after the first hunt, launch the next wave once the podium
+  // beat passes. Armed only between hunts (hasStarted && !arenaActive) so the
+  // teacher always starts the FIRST hunt explicitly; the countdown feeds the
+  // start buttons below.
+  const autoCountdown = useAutoAdvance(
+    autoPlay && hasStarted && !arenaActive && canStart,
+    AUTO_ADVANCE_SECONDS,
+    handleStart,
+  );
 
   const handleEndArena = () => {
     if (arenaActive && tokenRef.current) endArena(tokenRef.current);
@@ -401,6 +417,21 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 })}
               </div>
 
+              {/* Auto-play toggle — hunts chain themselves after the first. */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoPlay}
+                onClick={() => setAutoPlay(v => !v)}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? "bg-indigo-50 border-indigo-300" : pillIdle}`}
+              >
+                <span className={`font-black text-xs ${autoPlay ? "text-indigo-700" : ""}`}>⚡ {t.autoPlayLabel}</span>
+                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? "bg-indigo-500" : "bg-stone-300"}`}>
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${autoPlay ? "start-[18px]" : "start-0.5"}`} />
+                </span>
+              </button>
+
               {buildError && <p className="mt-3 text-xs font-bold text-rose-600">{t.buildError}</p>}
 
               {arenaActive ? (
@@ -408,7 +439,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   type="button"
                   onClick={handleEndArena}
                   style={{ touchAction: "manipulation" }}
-                  className="mt-5 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
                 >
                   <Square size={18} /> {t.endArena}
                 </button>
@@ -418,9 +449,11 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   onClick={handleStart}
                   disabled={!canStart}
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`mt-5 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${!canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-indigo-500 to-violet-600 shadow-indigo-500/30 active:scale-[0.98]"}`}
+                  className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${!canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-indigo-500 to-violet-600 shadow-indigo-500/30 active:scale-[0.98]"}`}
                 >
-                  <Play size={18} /> {t.start}
+                  {autoCountdown !== null
+                    ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
+                    : <><Play size={18} /> {hasStarted ? t.restart : t.start}</>}
                 </button>
               )}
             </section>
@@ -439,7 +472,9 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             style={{ touchAction: "manipulation" }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl shadow-indigo-500/40 bg-gradient-to-r from-indigo-500 to-violet-600 active:scale-[0.98] transition disabled:opacity-60"
           >
-            <Play size={20} /> {t.start}
+            {autoCountdown !== null
+              ? <><Zap size={20} /> {t.autoNextIn(autoCountdown)}</>
+              : <><Play size={20} /> {hasStarted ? t.restart : t.start}</>}
           </motion.button>
         )}
       </AnimatePresence>

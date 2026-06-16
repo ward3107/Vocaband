@@ -26,6 +26,7 @@ interface ArenaHostStrings {
   tfTrue: string; tfFalse: string;
   buildError: string; loadingWords: string; pickMode: string;
   wordsLeft: (n: number) => string;
+  autoPlayLabel: string; autoNextIn: (n: number) => string;
   modeNames: ModeNames;
 }
 
@@ -48,6 +49,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     buildError: "Couldn't build questions — try different words or modes.",
     loadingWords: "Loading words…", pickMode: "Pick at least one mode.",
     wordsLeft: (n) => `${n} words left`,
+    autoPlayLabel: "Auto-start next hunt", autoNextIn: (n) => `Next hunt in ${n}…`,
     modeNames: {
       "true-false": "True / False", "classic": "Classic", "reverse": "Reverse",
       "listening": "Listening", "idiom": "Idioms", "letter-sounds": "Letter Sounds",
@@ -71,6 +73,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     buildError: "לא ניתן לבנות שאלות — נסו מילים או מצבים אחרים.",
     loadingWords: "טוען מילים…", pickMode: "בחרו לפחות מצב אחד.",
     wordsLeft: (n) => `נותרו ${n} מילים`,
+    autoPlayLabel: "התחל זירה הבאה אוטומטית", autoNextIn: (n) => `זירה הבאה בעוד ${n}…`,
     modeNames: {
       "true-false": "נכון / לא נכון", "classic": "קלאסי", "reverse": "הפוך",
       "listening": "האזנה", "idiom": "ביטויים", "letter-sounds": "צלילי אותיות",
@@ -94,6 +97,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     buildError: "تعذّر إنشاء الأسئلة — جرّبوا كلمات أو أوضاعًا أخرى.",
     loadingWords: "جارٍ تحميل الكلمات…", pickMode: "اختر وضعًا واحدًا على الأقل.",
     wordsLeft: (n) => `تبقّى ${n} كلمات`,
+    autoPlayLabel: "بدء الساحة التالية تلقائيًا", autoNextIn: (n) => `الساحة التالية خلال ${n}…`,
     modeNames: {
       "true-false": "صح / خطأ", "classic": "كلاسيكي", "reverse": "عكسي",
       "listening": "استماع", "idiom": "تعابير", "letter-sounds": "أصوات الحروف",
