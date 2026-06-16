@@ -119,6 +119,20 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = landingPageT[language];
+  // "Join a live game by code" — for students without a QR to scan. Typing a
+  // valid 6-char session code navigates to /?session=CODE, which the existing
+  // Quick Play bootstrap picks up (so this needs no new routing).
+  const [gameCode, setGameCode] = useState('');
+  const gc = ({
+    en: { placeholder: 'GAME CODE', go: 'Join', hint: 'Have a game code? Type it to join a live game.' },
+    he: { placeholder: 'קוד משחק', go: 'הצטרף', hint: 'יש לך קוד משחק? הקלידו אותו כדי להצטרף למשחק חי.' },
+    ar: { placeholder: 'رمز اللعبة', go: 'انضمام', hint: 'لديك رمز لعبة؟ اكتبه للانضمام إلى لعبة مباشرة.' },
+    ru: { placeholder: 'GAME CODE', go: 'Join', hint: 'Have a game code? Type it to join a live game.' },
+  } as const)[language] ?? { placeholder: 'GAME CODE', go: 'Join', hint: 'Have a game code? Type it to join a live game.' };
+  const onJoinByCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (gameCode.length === 6) window.location.href = `/?session=${gameCode}`;
+  };
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
@@ -343,6 +357,29 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   {t.heroV2.studentCta}
                 </button>
                 <p className="text-center text-xs sm:text-sm text-white/55 mt-2 md:tall:mt-3">{t.heroV2.studentNote}</p>
+
+                {/* Join a live game by code — for students without a QR. */}
+                <form onSubmit={onJoinByCode} className="mt-3 flex items-center gap-2" dir={dir}>
+                  <input
+                    type="text"
+                    inputMode="text"
+                    autoCapitalize="characters"
+                    value={gameCode}
+                    onChange={(e) => setGameCode(e.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 6))}
+                    placeholder={gc.placeholder}
+                    aria-label={gc.placeholder}
+                    className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-white/15 border-2 border-white/25 focus:border-amber-300 text-white placeholder:text-white/45 font-black tracking-[0.2em] text-center uppercase outline-none transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    disabled={gameCode.length !== 6}
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    className={`px-4 py-2.5 rounded-xl font-black text-sm transition ${gameCode.length === 6 ? 'bg-amber-400 text-stone-900 active:scale-95' : 'bg-white/10 text-white/40 cursor-not-allowed'}`}
+                  >
+                    {gc.go}
+                  </button>
+                </form>
+                <p className="text-center text-[11px] text-white/45 mt-1">{gc.hint}</p>
               </div>
             </div>
 
