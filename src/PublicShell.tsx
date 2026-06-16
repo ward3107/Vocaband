@@ -1,7 +1,6 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import type { View } from "./core/views";
 import { lazyWithRetry } from "./utils/lazyWithRetry";
-import { captureInviteFromUrl } from "./utils/betaInvite";
 import { renderPublicView } from "./views/PublicViews";
 import { resolveInitialView } from "./utils/resolveInitialView";
 import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
@@ -27,10 +26,6 @@ export default function PublicShell() {
   const [view, setView] = useState<View>(resolveInitialView);
   const [prevView, setPrevView] = useState<View>("public-landing");
   const [showDemo, setShowDemo] = useState(false);
-
-  // Capture an `?invite=CODE` beta link before any OAuth redirect drops the
-  // query string — useAuthRestore redeems it after sign-in. See utils/betaInvite.
-  useEffect(() => { captureInviteFromUrl(); }, []);
   // Once set, the full App takes over and renders this target view.
   const [enterApp, setEnterApp] = useState<View | null>(null);
 
