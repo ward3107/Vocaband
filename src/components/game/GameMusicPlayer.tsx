@@ -49,12 +49,32 @@ const STRINGS = {
   ar: { label: "موسيقى الخلفية", prev: "المقطع السابق", next: "المقطع التالي", play: "تشغيل", pause: "إيقاف مؤقت", volume: "مستوى صوت الموسيقى" },
 } as const;
 
+// Accent theme. Category Race / Speed Round use the brand fuchsia; Word
+// Hunt Arena asked for a calmer, grayer look — same bar, slate accents.
+type MusicTheme = "fuchsia" | "slate";
+
+const THEMES: Record<MusicTheme, { playIdle: string; playActive: string; slider: string }> = {
+  fuchsia: {
+    playIdle: "bg-gradient-to-br from-fuchsia-500 to-pink-600 shadow-md",
+    playActive: "bg-fuchsia-500/80 shadow-inner",
+    slider: "accent-fuchsia-500",
+  },
+  slate: {
+    playIdle: "bg-gradient-to-br from-slate-500 to-slate-700 shadow-md",
+    playActive: "bg-slate-500/80 shadow-inner",
+    slider: "accent-slate-500",
+  },
+};
+
 interface GameMusicPlayerProps {
   language: Language;
+  /** Accent color. Defaults to the brand fuchsia used by the other hosts. */
+  theme?: MusicTheme;
 }
 
-export default function GameMusicPlayer({ language }: GameMusicPlayerProps) {
+export default function GameMusicPlayer({ language, theme = "fuchsia" }: GameMusicPlayerProps) {
   const tr = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
+  const accent = THEMES[theme];
 
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(() => {
@@ -177,7 +197,7 @@ export default function GameMusicPlayer({ language }: GameMusicPlayerProps) {
           type="button"
           onClick={toggleMusic}
           className={`p-2 rounded-full text-white transition-all active:scale-90 ${
-            musicPlaying ? "bg-fuchsia-500/80 shadow-inner" : "bg-gradient-to-br from-fuchsia-500 to-pink-600 shadow-md"
+            musicPlaying ? accent.playActive : accent.playIdle
           }`}
           style={{ touchAction: "manipulation" }}
           title={musicPlaying ? tr.pause : tr.play}
@@ -218,7 +238,7 @@ export default function GameMusicPlayer({ language }: GameMusicPlayerProps) {
           value={musicVolume}
           onChange={e => setMusicVolume(parseFloat(e.target.value))}
           onWheel={handleVolumeWheel}
-          className="w-14 sm:w-20 h-1.5 accent-fuchsia-500 cursor-pointer"
+          className={`w-14 sm:w-20 h-1.5 cursor-pointer ${accent.slider}`}
           title={`Volume: ${Math.round(musicVolume * 100)}% — scroll to adjust`}
         />
       </div>
