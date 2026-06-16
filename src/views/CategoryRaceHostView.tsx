@@ -176,6 +176,8 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   // Auto-play: once the first round is launched, each finished round chains
   // into the next after a short podium beat — no per-round click.
   const [autoPlay, setAutoPlay] = useState(true);
+  // Set when the teacher ends a round by hand, so auto-play doesn't relaunch.
+  const endedManuallyRef = useRef(false);
   const tokenRef = useRef<string | null>(null);
 
   // Fetch the teacher token + observe whenever the socket (re)connects OR
@@ -237,6 +239,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
     // a teacher who later taps "Controls" to tweak categories isn't yanked
     // back into presentation every subsequent round.
     if (!hasRunRound) setPresenting(true);
+    endedManuallyRef.current = false;
     setHasRunRound(true);
   };
 
@@ -245,12 +248,14 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   // teacher always launches the FIRST round explicitly; the countdown feeds
   // the start buttons below.
   const autoCountdown = useAutoAdvance(
-    autoPlay && hasRunRound && !roundActive && selectedCats.length > 0,
+    autoPlay && hasRunRound && !roundActive && selectedCats.length > 0 && !endedManuallyRef.current,
     AUTO_ADVANCE_SECONDS,
     handleStart,
   );
 
   const handleEndRound = () => {
+    // A manual End must stop — don't let auto-play relaunch the next round.
+    endedManuallyRef.current = true;
     if (currentRace && tokenRef.current) endRaceRound(currentRace.roundId, tokenRef.current);
   };
 

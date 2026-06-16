@@ -23,6 +23,8 @@ export interface PodiumEntry {
   nickname: string;
   avatar?: string;
   score: number;
+  /** Red vs Blue team mode — colours the lane so the split is visible. */
+  team?: "red" | "blue";
 }
 
 interface CategoryRacePodiumProps {
@@ -122,6 +124,12 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
           const pct = Math.max(2, Math.min(100, (e.score / leaderScore) * 100));
           const isLeader = i === 0;
           const gain = gains.get(e.clientId);
+          // Team mode: paint the lane red/blue so the split reads at a glance.
+          const teamFill = e.team === "red"
+            ? "bg-gradient-to-r from-rose-500 to-red-600 shadow-rose-500/40"
+            : e.team === "blue"
+              ? "bg-gradient-to-r from-sky-500 to-blue-600 shadow-sky-500/40"
+              : null;
           return (
             <motion.li
               key={e.clientId}
@@ -187,9 +195,11 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                   className={`relative h-full rounded-full flex items-center justify-end text-white font-black shadow-md ${
                     large ? "px-5 text-2xl min-[1280px]:text-4xl" : "px-3 text-sm"
                   } ${
-                    isLeader
-                      ? "bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 shadow-fuchsia-500/40"
-                      : "bg-gradient-to-r from-fuchsia-400 to-pink-500 shadow-fuchsia-400/30"
+                    teamFill
+                      ? teamFill
+                      : isLeader
+                        ? "bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 shadow-fuchsia-500/40"
+                        : "bg-gradient-to-r from-fuchsia-400 to-pink-500 shadow-fuchsia-400/30"
                   }`}
                 >
                   <span className={`tabular-nums ${large && isLeader ? "me-9" : large ? "me-2" : ""}`}>
