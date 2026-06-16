@@ -36,6 +36,10 @@ interface LobbyRosterProps {
    *  e.g. "from-fuchsia-500 to-pink-600". */
   accent?: string;
   className?: string;
+  /** Projector mode — scales every medallion + name way up (with an extra
+   *  min-[1700px] tier) so a class reading the waiting room from the back of
+   *  the room can make out who's joined. Defaults off for compact use. */
+  large?: boolean;
 }
 
 export default function LobbyRoster({
@@ -44,8 +48,23 @@ export default function LobbyRoster({
   emptyLabel,
   accent = "from-fuchsia-500 to-pink-600",
   className = "",
+  large = false,
 }: LobbyRosterProps) {
   const empty = players.length === 0;
+
+  // Projector vs compact sizing for each medallion. The min-[1700px] tier
+  // only kicks in on true projector resolutions, so a laptop control view is
+  // unaffected.
+  const cell = large ? "w-24 sm:w-28 min-[1700px]:w-40" : "w-[68px] sm:w-20";
+  const ring = large
+    ? "w-20 h-20 sm:w-24 sm:h-24 min-[1700px]:w-32 min-[1700px]:h-32"
+    : "w-12 h-12 sm:w-16 sm:h-16";
+  const inner = large
+    ? "w-[60px] h-[60px] sm:w-[76px] sm:h-[76px] min-[1700px]:w-[104px] min-[1700px]:h-[104px]"
+    : "w-[42px] h-[42px] sm:w-[54px] sm:h-[54px]";
+  const nameCls = large
+    ? "text-base sm:text-xl min-[1700px]:text-3xl"
+    : "text-[11px] sm:text-xs";
 
   return (
     <div className={`flex flex-col ${className}`}>
@@ -77,7 +96,7 @@ export default function LobbyRoster({
           <p className="text-base font-bold text-stone-400">{emptyLabel}</p>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-3 sm:gap-4">
+        <div className={`flex flex-wrap ${large ? "gap-4 sm:gap-6" : "gap-3 sm:gap-4"}`}>
           <AnimatePresence mode="popLayout">
             {players.map((p) => (
               <motion.div
@@ -87,16 +106,16 @@ export default function LobbyRoster({
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                className="flex flex-col items-center gap-1 w-[68px] sm:w-20"
+                className={`flex flex-col items-center gap-1 ${cell}`}
               >
                 <div
-                  className={`flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${p.team ? TEAM_ACCENT[p.team] : accent} text-white shadow-md`}
+                  className={`flex items-center justify-center ${ring} rounded-full bg-gradient-to-br ${p.team ? TEAM_ACCENT[p.team] : accent} text-white shadow-md`}
                 >
-                  <span className="flex items-center justify-center w-[42px] h-[42px] sm:w-[54px] sm:h-[54px] rounded-full bg-white/90">
-                    <QPAvatar value={p.avatar} iconSize={26} className="text-fuchsia-600" />
+                  <span className={`flex items-center justify-center ${inner} rounded-full bg-white/90`}>
+                    <QPAvatar value={p.avatar} iconSize={large ? 44 : 26} className="text-fuchsia-600" />
                   </span>
                 </div>
-                <span className="max-w-full truncate text-[11px] sm:text-xs font-black text-stone-600">
+                <span className={`max-w-full truncate font-black text-stone-600 ${nameCls}`}>
                   {p.nickname}
                 </span>
               </motion.div>

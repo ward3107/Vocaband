@@ -404,6 +404,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                   countLabel={t.inRoom}
                   emptyLabel={t.noStudents}
                   accent="from-fuchsia-500 to-pink-600"
+                  large={presenting}
                 />
               </section>
             )}

@@ -289,6 +289,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   countLabel={t.inRoom}
                   emptyLabel={t.noStudents}
                   accent="from-indigo-500 to-violet-600"
+                  large={presenting}
                 />
               </section>
             )}

@@ -400,6 +400,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                   countLabel={t.inRoom}
                   emptyLabel={t.noStudents}
                   accent="from-amber-400 to-orange-500"
+                  large={presenting}
                 />
               </section>
             )}
