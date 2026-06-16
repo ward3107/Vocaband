@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import {
   ArrowLeft, Bot, Database, Activity, Server, ShieldAlert, Users, School,
   Search, ScrollText, TrendingUp, ShieldCheck, Flag, Megaphone, Lock, BarChart3,
-  CreditCard, GraduationCap, RefreshCw, FileText, LayoutGrid,
+  CreditCard, GraduationCap, RefreshCw, FileText, LayoutGrid, Building2,
 } from "lucide-react";
 import { hasAdminAccess, type AppUser } from "../core/supabase";
 import type { View } from "../core/views";
@@ -25,6 +25,7 @@ import DevTrialFunnelPanel from "./developer/DevTrialFunnelPanel";
 import DevDataRequestsPanel from "./developer/DevDataRequestsPanel";
 import DevFeatureFlagsPanel from "./developer/DevFeatureFlagsPanel";
 import DevAnnouncementsPanel from "./developer/DevAnnouncementsPanel";
+import DevSchoolInquiriesPanel from "./developer/DevSchoolInquiriesPanel";
 import DevSecurityChecklistPanel from "./developer/DevSecurityChecklistPanel";
 import DevAuthzFailuresPanel from "./developer/DevAuthzFailuresPanel";
 import DevModerationPanel from "./developer/DevModerationPanel";
@@ -40,7 +41,7 @@ interface Props {
 type Tab =
   | "home"
   | "users" | "entitlements" | "classes" | "schools"
-  | "ai" | "trials" | "insights" | "broadcast"
+  | "ai" | "trials" | "insights" | "broadcast" | "inquiries"
   | "privacy" | "audit" | "security" | "moderation"
   | "system" | "flags" | "infra";
 
@@ -56,6 +57,7 @@ const TABS: { id: Tab; label: string; icon: typeof Bot; group: Group }[] = [
   { id: "trials",    label: "Trial funnel",  icon: TrendingUp, group: "Growth" },
   { id: "insights",  label: "Insights",      icon: BarChart3,  group: "Growth" },
   { id: "broadcast", label: "Broadcast",     icon: Megaphone,  group: "Growth" },
+  { id: "inquiries", label: "School leads",  icon: Building2,  group: "Growth" },
 
   { id: "privacy",    label: "Privacy requests", icon: ShieldCheck, group: "Safety & privacy" },
   { id: "moderation", label: "Content review",   icon: FileText,    group: "Safety & privacy" },
@@ -244,6 +246,7 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
           {tab === "trials"       && <DevTrialFunnelPanel showToast={showToast} />}
           {tab === "insights"     && <DevInsightsPanel showToast={showToast} />}
           {tab === "broadcast"    && <DevAnnouncementsPanel showToast={showToast} />}
+          {tab === "inquiries"    && <DevSchoolInquiriesPanel showToast={showToast} />}
           {tab === "privacy"      && <DevDataRequestsPanel showToast={showToast} />}
           {tab === "moderation"   && <DevModerationPanel showToast={showToast} />}
           {tab === "audit"        && <DevAuditLogPanel showToast={showToast} />}
