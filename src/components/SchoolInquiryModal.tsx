@@ -210,7 +210,7 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
                     <h2 className="text-lg sm:text-xl font-black text-white leading-tight">{t.title}</h2>
                   </div>
                 </div>
-                <p className="text-white/80 text-xs leading-snug" dir={dir}>{t.subtitle}</p>
+                <p className="text-white/90 text-sm sm:text-base leading-snug" dir={dir}>{t.subtitle}</p>
               </div>
 
               {/* Body */}
@@ -225,10 +225,10 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
                     <h3 className="text-lg font-bold text-gray-800 mb-2">{t.success}</h3>
                   </motion.div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-3">
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     {/* School Name */}
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1">
+                      <label className="flex items-center gap-1.5 text-sm sm:text-base font-bold text-gray-800 mb-1.5">
                         <GraduationCap size={16} className="text-orange-500" />
                         {t.schoolName} <span className="text-red-500">*</span>
                       </label>
@@ -238,14 +238,14 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
                         placeholder={t.schoolNamePlaceholder}
                         value={formData.schoolName}
                         onChange={(e) => handleChange("schoolName", e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-lg border-2 border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-base placeholder:text-gray-400"
                         dir={dir}
                       />
                     </div>
 
                     {/* Contact Name */}
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1">
+                      <label className="flex items-center gap-1.5 text-sm sm:text-base font-bold text-gray-800 mb-1.5">
                         <Users size={16} className="text-orange-500" />
                         {t.contactName} <span className="text-red-500">*</span>
                       </label>
@@ -255,14 +255,14 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
                         placeholder={t.contactNamePlaceholder}
                         value={formData.contactName}
                         onChange={(e) => handleChange("contactName", e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-lg border-2 border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-base placeholder:text-gray-400"
                         dir={dir}
                       />
                     </div>
 
                     {/* Email */}
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1">
+                      <label className="flex items-center gap-1.5 text-sm sm:text-base font-bold text-gray-800 mb-1.5">
                         <Mail size={16} className="text-orange-500" />
                         {t.email} <span className="text-red-500">*</span>
                       </label>
@@ -272,14 +272,14 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
                         placeholder={t.emailPlaceholder}
                         value={formData.email}
                         onChange={(e) => handleChange("email", e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-lg border-2 border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-base placeholder:text-gray-400"
                         dir="ltr"
                       />
                     </div>
 
                     {/* WhatsApp */}
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1">
+                      <label className="flex items-center gap-1.5 text-sm sm:text-base font-bold text-gray-800 mb-1.5">
                         <Phone size={16} className="text-orange-500" />
                         {t.whatsapp} <span className="text-red-500">*</span>
                       </label>
@@ -289,14 +289,14 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
                         placeholder={t.whatsappPlaceholder}
                         value={formData.whatsapp}
                         onChange={(e) => handleChange("whatsapp", e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-lg border-2 border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-base placeholder:text-gray-400"
                         dir="ltr"
                       />
                     </div>
 
                     {/* Students Count */}
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1">
+                      <label className="flex items-center gap-1.5 text-sm sm:text-base font-bold text-gray-800 mb-1.5">
                         <Users size={16} className="text-orange-500" />
                         {t.studentsCount} <span className="text-red-500">*</span>
                       </label>
@@ -307,14 +307,14 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
                         placeholder={t.studentsCountPlaceholder}
                         value={formData.studentsCount}
                         onChange={(e) => handleChange("studentsCount", e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-lg border-2 border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-base placeholder:text-gray-400"
                         dir="ltr"
                       />
                     </div>
 
                     {/* Teachers Count */}
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1">
+                      <label className="flex items-center gap-1.5 text-sm sm:text-base font-bold text-gray-800 mb-1.5">
                         <GraduationCap size={16} className="text-orange-500" />
                         {t.teachersCount} <span className="text-red-500">*</span>
                       </label>
@@ -325,7 +325,7 @@ const SchoolInquiryModal: React.FC<SchoolInquiryModalProps> = ({ isOpen, onClose
                         placeholder={t.teachersCountPlaceholder}
                         value={formData.teachersCount}
                         onChange={(e) => handleChange("teachersCount", e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-lg border-2 border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-base placeholder:text-gray-400"
                         dir="ltr"
                       />
                     </div>
