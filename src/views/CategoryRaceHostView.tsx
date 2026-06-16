@@ -22,14 +22,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Play, Clock, Users, LogOut, Check, Copy, Maximize2, Plus, X, Monitor, Minimize2, Square, Infinity as InfinityIcon } from "lucide-react";
+import { Play, Clock, Users, LogOut, Check, Copy, Maximize2, Plus, X, Monitor, Minimize2, Square, Zap, Infinity as InfinityIcon } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
+import { useAutoAdvance } from "../hooks/useAutoAdvance";
 import { CATEGORIES, categoryLabel, LETTER_POOL } from "../data/category-race-bank";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import GameMusicPlayer from "../components/game/GameMusicPlayer";
 import LobbyRoster from "../components/game/LobbyRoster";
+import KickConfirmModal from "../components/game/KickConfirmModal";
 import GameResults from "../components/game/GameResults";
 import TeamScoreBar from "../components/game/TeamScoreBar";
 import { celebrate } from "../utils/celebrate";
@@ -47,6 +49,9 @@ interface CategoryRaceHostViewProps {
 // deliberately (product call 2026-06-11; the old six-category default made
 // teachers launch rounds with categories they never chose).
 const DEFAULT_CATEGORY_IDS: string[] = [];
+
+/** Podium beat between auto-played rounds (mirrors Speed Round). */
+const AUTO_ADVANCE_SECONDS = 5;
 
 /**
  * SlotLetter — projector letter reveal. On each new round (keyed by
@@ -98,6 +103,7 @@ const STRINGS = {
     present: "Present", controls: "Controls",
     teams: "Teams", teamsOn: "Red vs Blue", teamsOff: "Solo",
     untimed: "Untimed", answerWhenReady: "Answer when ready", endRound: "End round",
+    autoPlayLabel: "Auto-start next round", autoNextIn: (n: number) => `Next round in ${n}…`,
   },
   he: {
     title: "מרוץ קטגוריות", joinHeading: "התלמידים מצטרפים כאן", code: "קוד כיתה",
@@ -113,6 +119,7 @@ const STRINGS = {
     present: "מצגת", controls: "פקדים",
     teams: "קבוצות", teamsOn: "אדום נגד כחול", teamsOff: "יחידני",
     untimed: "ללא זמן", answerWhenReady: "ענו כשמוכנים", endRound: "סיים סבב",
+    autoPlayLabel: "התחל סבב הבא אוטומטית", autoNextIn: (n: number) => `סבב הבא בעוד ${n}…`,
   },
   ar: {
     title: "سباق الفئات", joinHeading: "ينضم الطلاب هنا", code: "رمز الصف",
@@ -128,6 +135,7 @@ const STRINGS = {
     present: "عرض", controls: "أدوات",
     teams: "فرق", teamsOn: "أحمر ضد أزرق", teamsOff: "فردي",
     untimed: "بدون وقت", answerWhenReady: "أجب عند الاستعداد", endRound: "إنهاء الجولة",
+    autoPlayLabel: "بدء الجولة التالية تلقائيًا", autoNextIn: (n: number) => `الجولة التالية خلال ${n}…`,
   },
 } as const;
 
@@ -159,6 +167,11 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   // Presentation mode hides ALL teacher chrome (sidebar + header actions)
   // for a clean projector — just the leaderboard + live round.
   const [presenting, setPresenting] = useState(false);
+  // Student pending removal (clientId + nickname) — drives the confirm modal.
+  const [confirmKick, setConfirmKick] = useState<{ clientId: string; nickname: string } | null>(null);
+  // Auto-play: once the first round is launched, each finished round chains
+  // into the next after a short podium beat — no per-round click.
+  const [autoPlay, setAutoPlay] = useState(true);
   const tokenRef = useRef<string | null>(null);
 
   // Fetch the teacher token + observe whenever the socket (re)connects OR
@@ -223,6 +236,16 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
     setHasRunRound(true);
   };
 
+  // Auto-play: after the first round, chain the next one once the podium beat
+  // passes. Armed only between rounds (hasRunRound && !roundActive) so the
+  // teacher always launches the FIRST round explicitly; the countdown feeds
+  // the start buttons below.
+  const autoCountdown = useAutoAdvance(
+    autoPlay && hasRunRound && !roundActive && selectedCats.length > 0,
+    AUTO_ADVANCE_SECONDS,
+    handleStart,
+  );
+
   const handleEndRound = () => {
     if (currentRace && tokenRef.current) endRaceRound(currentRace.roundId, tokenRef.current);
   };
@@ -278,6 +301,12 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const headingCls = "text-on-surface";
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
   const iconBtn = "bg-surface text-fuchsia-600 hover:bg-surface-container border border-outline-variant";
+
+  // Remove-student affordance — only in the Controls view, never on the
+  // clean projected board (a misfire in front of the class can't be undone).
+  const onKick = presenting
+    ? undefined
+    : (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
 
   return (
     <div className="min-h-[100dvh] transition-colors" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
@@ -337,9 +366,10 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
         </header>
 
         {/* Background music — teacher can play/pause, skip, and adjust volume
-            for the room while the race runs. Hidden in presentation mode to
-            keep the projector clean. */}
-        {!presenting && <GameMusicPlayer language={language} />}
+            for the room while the race runs. In presentation mode it docks to
+            a compact corner pill (kept mounted, so the music never cuts out
+            when the race starts). */}
+        <GameMusicPlayer language={language} floating={presenting} />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Main: round banner (only while live) + the big leaderboard */}
@@ -394,7 +424,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                   <Users size={18} /> {t.leaderboard}
                   <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
                 </h2>
-                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large />
+                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large onKick={onKick} />
               </section>
             ) : (
               <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
@@ -403,6 +433,8 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                   countLabel={t.inRoom}
                   emptyLabel={t.noStudents}
                   accent="from-fuchsia-500 to-pink-600"
+                  large={presenting}
+                  onKick={onKick}
                 />
               </section>
             )}
@@ -523,16 +555,33 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 <p className="mt-3 text-xs font-bold text-rose-600">{t.pickOne}</p>
               )}
 
+              {/* Auto-play toggle — rounds chain themselves after the first. */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoPlay}
+                onClick={() => setAutoPlay(v => !v)}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? "bg-fuchsia-50 border-fuchsia-300" : pillIdle}`}
+              >
+                <span className={`font-black text-xs ${autoPlay ? "text-fuchsia-700" : ""}`}>⚡ {t.autoPlayLabel}</span>
+                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? "bg-fuchsia-500" : "bg-stone-300"}`}>
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${autoPlay ? "start-[18px]" : "start-0.5"}`} />
+                </span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleStart}
                 disabled={selectedCats.length === 0 || roundActive}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`mt-5 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || selectedCats.length === 0 ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]"}`}
+                className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || selectedCats.length === 0 ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]"}`}
               >
                 {roundActive
                   ? <><Clock size={18} /> {t.roundLive}{currentRace?.untimed ? "" : ` · ${secondsLeft}s`}</>
-                  : <><Play size={18} /> {hasRunRound ? t.nextRound : t.start}</>}
+                  : autoCountdown !== null
+                    ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
+                    : <><Play size={18} /> {hasRunRound ? t.nextRound : t.start}</>}
               </button>
               {roundActive && (
                 <button
@@ -563,7 +612,9 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             style={{ touchAction: "manipulation" }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl shadow-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500 to-pink-600 active:scale-[0.98] transition disabled:opacity-60"
           >
-            <Play size={20} /> {hasRunRound ? t.nextRound : t.start}
+            {autoCountdown !== null
+              ? <><Zap size={20} /> {t.autoNextIn(autoCountdown)}</>
+              : <><Play size={20} /> {hasRunRound ? t.nextRound : t.start}</>}
           </motion.button>
         )}
       </AnimatePresence>
@@ -585,6 +636,17 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
           </motion.button>
         )}
       </AnimatePresence>
+
+      {/* Confirm before removing a student from the session. */}
+      <KickConfirmModal
+        name={confirmKick?.nickname ?? null}
+        language={language}
+        onCancel={() => setConfirmKick(null)}
+        onConfirm={() => {
+          if (confirmKick && tokenRef.current) qp.kickStudent(confirmKick.clientId, tokenRef.current);
+          setConfirmKick(null);
+        }}
+      />
 
       {/* Celebratory results — shown when ending a game that has scores. */}
       <AnimatePresence>
