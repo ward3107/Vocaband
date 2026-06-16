@@ -318,6 +318,23 @@ export interface DevAnnouncement {
   dismissed_count: number;
 }
 
+/** One lead from the public "School inquiry" landing form
+ *  (admin_list_school_inquiries). handled_at/handled_by are set when an admin
+ *  triages it; null while it still needs follow-up. */
+export interface DevSchoolInquiry {
+  id: string;
+  school_name: string;
+  contact_name: string;
+  email: string;
+  whatsapp: string;
+  students_count: number;
+  teachers_count: number;
+  language: string | null;
+  created_at: string;
+  handled_at: string | null;
+  handled_by: string | null;
+}
+
 /** Subset of fields the user-facing banner needs (no admin-only stats). */
 export interface ActiveAnnouncement {
   id: string;
