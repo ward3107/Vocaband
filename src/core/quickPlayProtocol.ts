@@ -994,6 +994,13 @@ export function isValidSpeedRoundSeconds(v: unknown): v is number {
  *  arena instead of the regular game — same pattern as QP_SPEED_MODE. */
 export const QP_ARENA_MODE = "word-hunt-arena";
 
+/** allowed_modes sentinel that marks a quick_play_sessions row as a
+ *  VocabWheel "live" session. Students join only to register their name +
+ *  avatar (the wheel runs on the teacher's board); the student bootstrap
+ *  branches on this to show the lightweight "you're in, watch the board"
+ *  screen — same wordless pattern as QP_ARENA_MODE. */
+export const QP_WHEEL_MODE = "vocab-wheel";
+
 /** Arena dimensions in LOGICAL units (not pixels) — every client maps
  *  logical → its own canvas size, so phones and the projector agree on
  *  where everything is regardless of screen. 10:7 fits both a landscape
