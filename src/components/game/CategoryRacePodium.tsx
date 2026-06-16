@@ -33,9 +33,8 @@ interface CategoryRacePodiumProps {
    *  who's who. Defaults off for any compact/preview use. */
   large?: boolean;
   /** When set, each lane shows a "remove" button that calls this with the
-   *  student's clientId + nickname. Hosts pass it only in the Controls view
-   *  (not the clean projected board) so a kick can't misfire in front of
-   *  the class. */
+   *  student's clientId + nickname (guarded by a confirm modal in the host).
+   *  Available in both the Controls and the live/projected view. */
   onKick?: (clientId: string, nickname: string) => void;
 }
 
@@ -133,24 +132,24 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
               <div className={`flex items-center mb-1.5 ${large ? "gap-3" : "gap-2"}`}>
                 {/* Top three get medals; everyone else a numbered chip. */}
                 {i < 3 ? (
-                  <span className={`inline-flex items-center justify-center ${large ? "w-9 h-9 text-3xl min-[1700px]:w-14 min-[1700px]:h-14 min-[1700px]:text-5xl" : "w-6 h-6 text-lg"}`} aria-label={`Rank ${i + 1}`}>
+                  <span className={`inline-flex items-center justify-center ${large ? "w-9 h-9 text-3xl min-[1280px]:w-14 min-[1280px]:h-14 min-[1280px]:text-5xl" : "w-6 h-6 text-lg"}`} aria-label={`Rank ${i + 1}`}>
                     {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
                   </span>
                 ) : (
                   <span
                     className={`inline-flex items-center justify-center rounded-full font-black bg-surface-container text-on-surface-variant ${
-                      large ? "w-9 h-9 text-lg min-[1700px]:w-14 min-[1700px]:h-14 min-[1700px]:text-3xl" : "w-6 h-6 text-xs"
+                      large ? "w-9 h-9 text-lg min-[1280px]:w-14 min-[1280px]:h-14 min-[1280px]:text-3xl" : "w-6 h-6 text-xs"
                     }`}
                   >
                     {i + 1}
                   </span>
                 )}
-                <span className={`flex items-center justify-center ${large ? "text-3xl min-[1700px]:text-5xl" : "text-lg"}`}>
-                  <QPAvatar value={e.avatar || "🦊"} iconSize={large ? 34 : 18} />
+                <span className={`flex items-center justify-center ${large ? "text-3xl min-[1280px]:text-5xl" : "text-lg"}`}>
+                  <QPAvatar value={e.avatar || "🦊"} iconSize={large ? 44 : 18} />
                 </span>
                 <span
                   className={`font-black truncate min-w-0 flex-1 text-on-surface ${
-                    large ? "text-2xl sm:text-3xl min-[1700px]:text-5xl" : "text-sm"
+                    large ? "text-2xl sm:text-3xl min-[1280px]:text-5xl" : "text-sm"
                   }`}
                   dir="auto"
                 >
@@ -174,7 +173,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                   end of the leader's fill so it travels with whoever
                   is in front. */}
               <div
-                className={`relative rounded-full overflow-hidden bg-surface-container ${large ? "h-12 min-[1700px]:h-16" : "h-8"}`}
+                className={`relative rounded-full overflow-hidden bg-surface-container ${large ? "h-12 min-[1280px]:h-16" : "h-8"}`}
                 style={gain ? { boxShadow: "0 0 0 2px rgba(16,185,129,0.55)" } : undefined}
               >
                 <motion.div
@@ -182,7 +181,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                   animate={{ width: `${pct}%` }}
                   transition={{ type: "spring", stiffness: 220, damping: 28 }}
                   className={`relative h-full rounded-full flex items-center justify-end text-white font-black shadow-md ${
-                    large ? "px-5 text-2xl min-[1700px]:text-4xl" : "px-3 text-sm"
+                    large ? "px-5 text-2xl min-[1280px]:text-4xl" : "px-3 text-sm"
                   } ${
                     isLeader
                       ? "bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 shadow-fuchsia-500/40"
@@ -220,7 +219,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                       exit={{ opacity: 0, scale: 0.6 }}
                       transition={{ type: "spring", stiffness: 380, damping: 22 }}
                       className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-white shadow-md ring-2 ring-amber-300 pointer-events-none ${
-                        large ? "end-2 w-10 h-10 min-[1700px]:w-14 min-[1700px]:h-14" : "end-1.5 w-7 h-7"
+                        large ? "end-2 w-10 h-10 min-[1280px]:w-14 min-[1280px]:h-14" : "end-1.5 w-7 h-7"
                       }`}
                       aria-hidden
                     >

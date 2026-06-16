@@ -296,11 +296,10 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
 
   const startLabel = hasRunRound ? t.nextWord : t.start;
 
-  // Remove-student affordance — only in the Controls view, never on the
-  // clean projected board (a misfire in front of the class can't be undone).
-  const onKick = presenting
-    ? undefined
-    : (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
+  // Remove a student — available both in Controls and on the live/projected
+  // board, since teachers need to drop a disruptive kid mid-game. The confirm
+  // modal guards against an accidental tap in front of the class.
+  const onKick = (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
 
   return (
     <div className="min-h-[100dvh] transition-colors" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>

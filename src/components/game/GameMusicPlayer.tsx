@@ -83,9 +83,11 @@ export default function GameMusicPlayer({ language, theme = "fuchsia", floating 
   const tr = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
   const accent = THEMES[theme];
 
-  // Floating dock starts collapsed to a single button so it doesn't cover
-  // the projected board until the teacher opens it.
-  const [expanded, setExpanded] = useState(false);
+  // Floating dock starts EXPANDED so the teacher can see the music control the
+  // moment a game enters presentation mode (a collapsed pill was too easy to
+  // miss — teachers thought the player had disappeared). They can minimize it
+  // to a corner button to keep the projected board clean.
+  const [expanded, setExpanded] = useState(true);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(() => {
     try { return parseInt(localStorage.getItem("vocaband-music-track") || "0") || 0; } catch { return 0; }
