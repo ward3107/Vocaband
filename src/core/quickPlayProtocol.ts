@@ -108,6 +108,15 @@ export const QP_EVENTS = {
   ARENA_GRAB:      "qp:student:arena:grab",
   // A teacher ending the arena round (back to the lobby).
   ARENA_END:       "qp:teacher:arena:end",
+
+  // ─── VocabWheel (live, phone-answer mode) ─────────────────────────
+  // A teacher pushing the current wheel question to the ONE student the
+  // wheel landed on. The server relays it to that student's socket only;
+  // the correct answer is NOT sent (the host scores the reply).
+  WHEEL_ASK:       "qp:teacher:wheel:ask",
+  // The picked student's chosen option index, relayed back to the
+  // teacher's observer sockets so the host can score + drive the wheel.
+  WHEEL_ANSWER:    "qp:student:wheel:answer",
 } as const;
 
 /** Server → client events. */
@@ -177,7 +186,49 @@ export const QP_SERVER_EVENTS = {
   ARENA_GRAB_DENIED:  "qp:arena:grab:denied",
   // The teacher closed the arena — clients drop to the podium.
   ARENA_ENDED:        "qp:arena:ended",
+
+  // ─── VocabWheel (live, phone-answer mode) ─────────────────────────
+  // Sent to ONE student: "the wheel landed on you — here's the question".
+  WHEEL_QUESTION:     "qp:wheel:question",
+  // Relayed to the teacher's observer sockets: the picked student's reply.
+  WHEEL_ANSWER:       "qp:wheel:answer",
 } as const;
+
+/** Teacher → server: push the wheel question to one student. The correct
+ *  answer is intentionally omitted — the host scores the reply. */
+export interface QpWheelAskPayload {
+  sessionCode: string;
+  /** Supabase access token — verified server-side (teacher action). */
+  token: string;
+  /** clientId of the student the wheel landed on. */
+  clientId: string;
+  /** Correlates the reply to this specific ask (ignore stale answers). */
+  askId: string;
+  prompt: string;
+  /** "audio" → the student sees a 🔊 prompt instead of text. */
+  promptKind?: "text" | "audio";
+  options: string[];
+}
+
+/** server → the whole room (WHEEL_QUESTION); each student renders it only
+ *  if `targetClientId` is theirs. Broadcasting + self-filtering keeps the
+ *  targeting cross-VM-safe (no per-VM socket lookup) and the question has no
+ *  correct-answer marker, so a non-target client seeing it is harmless. */
+export interface QpWheelQuestionPayload {
+  targetClientId: string;
+  askId: string;
+  prompt: string;
+  promptKind?: "text" | "audio";
+  options: string[];
+}
+export interface QpWheelAnswerPayload {
+  sessionCode: string;
+  askId: string;
+  /** Index into options the student tapped (-1 = timed out / no answer). */
+  choiceIndex: number;
+  /** Filled server-side when relaying to the teacher. */
+  clientId?: string;
+}
 
 /** Red vs Blue team mode. A student's team rides on their leaderboard
  *  entry; the host sums each side from the unioned leaderboard. */

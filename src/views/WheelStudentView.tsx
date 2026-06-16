@@ -21,6 +21,7 @@ import QPAvatar from "../components/QPAvatar";
 import { primeAudio } from "../utils/primeAudio";
 import { containsProfanity } from "../utils/nicknameProfanity";
 import type { View } from "../core/views";
+import type { QpWheelQuestionPayload } from "../core/quickPlayProtocol";
 
 interface WheelStudentViewProps {
   sessionCode: string;
@@ -40,6 +41,7 @@ const STRINGS = {
     joinFailed: "Couldn't join — check the code and try again.",
     inTitle: "You're in! 🎡", inBody: "Watch the board — when the wheel lands on your name, it's your turn!",
     ended: "The game ended. See you next time! 👋",
+    yourTurn: "Your turn! Tap your answer 👇", answerSent: "Answer sent! ✓",
   },
   he: {
     title: "הצטרפו לגלגל", subtitle: "הקלידו את שמכם — הוא יופיע על הגלגל!",
@@ -48,6 +50,7 @@ const STRINGS = {
     joinFailed: "לא הצלחנו להצטרף — בדקו את הקוד ונסו שוב.",
     inTitle: "אתם בפנים! 🎡", inBody: "צפו בלוח — כשהגלגל נוחת על שמכם, זה תורכם!",
     ended: "המשחק הסתיים. נתראה בפעם הבאה! 👋",
+    yourTurn: "תורך! בחרו תשובה 👇", answerSent: "התשובה נשלחה! ✓",
   },
   ar: {
     title: "انضم إلى العجلة", subtitle: "اكتب اسمك — سيظهر على العجلة!",
@@ -56,6 +59,7 @@ const STRINGS = {
     joinFailed: "تعذّر الانضمام — تحقق من الرمز وحاول مجددًا.",
     inTitle: "أنت في اللعبة! 🎡", inBody: "راقب اللوحة — عندما تقف العجلة على اسمك، حان دورك!",
     ended: "انتهت اللعبة. إلى اللقاء! 👋",
+    yourTurn: "دورك! اختر إجابتك 👇", answerSent: "تم إرسال الإجابة! ✓",
   },
 } as const;
 
@@ -64,7 +68,12 @@ export default function WheelStudentView({ sessionCode, setView }: WheelStudentV
   const t = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
 
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
-  const { joinedSessionCode, lastError, joinAsStudent, onKicked, onSessionEnded } = qp;
+  const { clientId, joinedSessionCode, lastError, joinAsStudent, onKicked, onSessionEnded, onWheelQuestion, answerWheel } = qp;
+
+  // Phone-answer: the question pushed when the wheel lands on THIS student,
+  // and the option index they tapped (null = not answered yet).
+  const [question, setQuestion] = useState<QpWheelQuestionPayload | null>(null);
+  const [answered, setAnswered] = useState<number | null>(null);
 
   const [phase, setPhase] = useState<Phase>("join");
   const [name, setName] = useState("");
@@ -142,11 +151,66 @@ export default function WheelStudentView({ sessionCode, setView }: WheelStudentV
   useEffect(() => onKicked(() => { setPhase("kicked"); forget(); setView("public-landing"); }), [onKicked, forget, setView]);
   useEffect(() => onSessionEnded(() => { setPhase("ended"); forget(); }), [onSessionEnded, forget]);
 
+  // The wheel landed on me → show the question (self-filter by targetClientId,
+  // since WHEEL_QUESTION is broadcast to the whole room).
+  useEffect(() => onWheelQuestion((p) => {
+    if (p.targetClientId !== clientId) return;
+    setQuestion(p);
+    setAnswered(null);
+  }), [onWheelQuestion, clientId]);
+
+  const submitAnswer = (choiceIndex: number) => {
+    if (!question || answered !== null) return;
+    setAnswered(choiceIndex);
+    primeAudio();
+    answerWheel(question.askId, choiceIndex);
+  };
+
   if (phase === "ended" || phase === "kicked") {
     return (
       <div dir={dir} className="min-h-[100dvh] flex flex-col items-center justify-center gap-4 px-6 text-center bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white">
         <Sparkles size={48} />
         <p className="text-2xl font-black">{t.ended}</p>
+      </div>
+    );
+  }
+
+  // Phone-answer: the wheel landed on me — show the question + options.
+  if (phase === "watching" && question) {
+    return (
+      <div dir={dir} className="min-h-[100dvh] flex flex-col items-center justify-center gap-5 px-5 py-8 text-center bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white">
+        {answered === null ? (
+          <>
+            <p className="text-lg font-black text-white/90">{t.yourTurn}</p>
+            <div className="w-full max-w-sm rounded-2xl bg-white/15 border border-white/30 px-5 py-5">
+              <p className="text-3xl font-black break-words" dir="auto">
+                {question.promptKind === "audio" ? "🔊 ?" : question.prompt}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+              {question.options.map((opt, i) => (
+                <button
+                  key={`${opt}-${i}`}
+                  type="button"
+                  onClick={() => submitAnswer(i)}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  dir="auto"
+                  className="px-3 py-5 rounded-2xl bg-white text-violet-900 font-black text-2xl shadow-lg active:scale-[0.97] transition"
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center gap-4">
+            <div className="flex items-center justify-center w-24 h-24 rounded-full bg-white/20">
+              <Sparkles size={44} />
+            </div>
+            <p className="text-2xl font-black">{t.answerSent}</p>
+            <p className="text-base font-medium text-white/80">{t.inBody}</p>
+          </motion.div>
+        )}
       </div>
     );
   }
