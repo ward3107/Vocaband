@@ -45,6 +45,7 @@ import {
   readIntendedRole,
   clearIntendedRole,
 } from '../utils/oauthIntent';
+import { takePendingInvite } from '../utils/betaInvite';
 import { disconnectQuickPlaySocket } from './useQuickPlaySocket';
 import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
@@ -572,7 +573,22 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
             const { data: isAllowedEarly } = await supabase.rpc('is_teacher_allowed', {
               check_email: supabaseUser.email ?? "",
             });
-            if (!isAllowedEarly) {
+            let allowed = !!isAllowedEarly;
+            // Beta invite path: a holder of a valid invite code can self-grant
+            // teacher access without an admin pre-allowlisting their email. The
+            // RPC adds THIS user's own email to teacher_allowlist server-side,
+            // so the normal teacher-creation flow + users_insert RLS below then
+            // proceed unchanged. (Code captured pre-redirect; see betaInvite.)
+            if (!allowed) {
+              const inviteCode = takePendingInvite();
+              if (inviteCode) {
+                try {
+                  const { data: redeemed } = await supabase.rpc('redeem_beta_invite', { p_code: inviteCode });
+                  allowed = (redeemed as { ok?: boolean } | null)?.ok === true;
+                } catch { /* fall through to sign-out below */ }
+              }
+            }
+            if (!allowed) {
               try { await supabase.auth.signOut(); } catch { /* best-effort */ }
               setUser(null);
               setError(
