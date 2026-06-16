@@ -12,6 +12,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import QPAvatar from "../QPAvatar";
+import type { GameTheme } from "../../constants/gameThemes";
 
 export interface LobbyPlayer {
   clientId: string;
@@ -38,13 +39,16 @@ interface LobbyRosterProps {
   accent?: string;
   className?: string;
   /** When set, each medallion shows a "remove" badge that calls this with
-   *  the student's clientId + nickname. Hosts pass it only in the Controls
-   *  view (not the clean projected board). */
+   *  the student's clientId + nickname (guarded by a confirm modal in the
+   *  host). Available in both the Controls and the live/projected view. */
   onKick?: (clientId: string, nickname: string) => void;
   /** Projector mode — scales every medallion + name way up (with an extra
-   *  min-[1700px] tier) so a class reading the waiting room from the back of
+   *  min-[1280px] tier) so a class reading the waiting room from the back of
    *  the room can make out who's joined. Defaults off for compact use. */
   large?: boolean;
+  /** Live-game skin. Re-colours the name + count text; defaults to the stone
+   *  palette when omitted. */
+  theme?: GameTheme;
 }
 
 export default function LobbyRoster({
@@ -55,21 +59,24 @@ export default function LobbyRoster({
   className = "",
   large = false,
   onKick,
+  theme,
 }: LobbyRosterProps) {
   const empty = players.length === 0;
+  const nameColor = theme ? theme.name : "text-stone-600";
+  const mutedColor = theme ? theme.muted : "text-stone-500";
 
-  // Projector vs compact sizing for each medallion. The min-[1700px] tier
-  // only kicks in on true projector resolutions, so a laptop control view is
-  // unaffected.
-  const cell = large ? "w-24 sm:w-28 min-[1700px]:w-40" : "w-[68px] sm:w-20";
+  // Projector vs compact sizing for each medallion. The min-[1280px] tier
+  // scales up on laptop/projector widths; phones + the compact preview keep
+  // the small sizes.
+  const cell = large ? "w-28 sm:w-32 min-[1280px]:w-44" : "w-[68px] sm:w-20";
   const ring = large
-    ? "w-20 h-20 sm:w-24 sm:h-24 min-[1700px]:w-32 min-[1700px]:h-32"
+    ? "w-24 h-24 sm:w-28 sm:h-28 min-[1280px]:w-36 min-[1280px]:h-36"
     : "w-12 h-12 sm:w-16 sm:h-16";
   const inner = large
-    ? "w-[60px] h-[60px] sm:w-[76px] sm:h-[76px] min-[1700px]:w-[104px] min-[1700px]:h-[104px]"
+    ? "w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] min-[1280px]:w-[116px] min-[1280px]:h-[116px]"
     : "w-[42px] h-[42px] sm:w-[54px] sm:h-[54px]";
   const nameCls = large
-    ? "text-base sm:text-xl min-[1700px]:text-3xl"
+    ? "text-xl sm:text-2xl min-[1280px]:text-4xl"
     : "text-[11px] sm:text-xs";
 
   return (
@@ -80,7 +87,7 @@ export default function LobbyRoster({
           <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
           <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
         </span>
-        <span className="text-sm sm:text-base font-black uppercase tracking-widest text-stone-500">
+        <span className={`text-sm sm:text-base font-black uppercase tracking-widest ${mutedColor}`}>
           {countLabel(players.length)}
         </span>
       </div>
@@ -118,7 +125,7 @@ export default function LobbyRoster({
                   className={`flex items-center justify-center ${ring} rounded-full bg-gradient-to-br ${p.team ? TEAM_ACCENT[p.team] : accent} text-white shadow-md`}
                 >
                   <span className={`flex items-center justify-center ${inner} rounded-full bg-white/90`}>
-                    <QPAvatar value={p.avatar} iconSize={large ? 44 : 26} className="text-fuchsia-600" />
+                    <QPAvatar value={p.avatar} iconSize={large ? 60 : 26} className="text-fuchsia-600" />
                   </span>
                 </div>
                 {onKick && (
@@ -133,7 +140,7 @@ export default function LobbyRoster({
                     <X size={large ? 16 : 12} strokeWidth={3} />
                   </button>
                 )}
-                <span className={`max-w-full truncate font-black text-stone-600 ${nameCls}`}>
+                <span className={`max-w-full truncate font-black ${nameColor} ${nameCls}`}>
                   {p.nickname}
                 </span>
               </motion.div>

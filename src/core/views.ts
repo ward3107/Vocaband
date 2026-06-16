@@ -74,6 +74,9 @@ export type View =
   | "word-hunt-arena-student"
   | "hot-seat"
   | "wheel"
+  // VocabWheel live mode: students scan a QR + enter their name to populate
+  // the teacher's wheel; this is their lightweight "watch the board" screen.
+  | "wheel-student"
   | "class-show"
   | "worksheet"
   | "vocabagrut"

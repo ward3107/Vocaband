@@ -31,8 +31,12 @@ import {
   Languages, MessageSquareQuote, CheckCircle2,
   Camera, Loader2, AlertTriangle, Image as ImageIcon,
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage, type Language } from '../hooks/useLanguage';
 import { useVocabularyLazy } from '../hooks/useVocabularyLazy';
+import { useQuickPlaySocket } from '../hooks/useQuickPlaySocket';
+import { supabase } from '../core/supabase';
+import { QP_WHEEL_MODE } from '../core/quickPlayProtocol';
 import type { Word } from '../data/vocabulary';
 import {
   buildClassicQuestion,
@@ -280,6 +284,12 @@ const STRINGS: Record<Language, {
   playersPlaceholder: string;
   playersHint: string;
   needTwo: string;
+  modeManual: string;
+  modeLive: string;
+  liveJoinTitle: string;
+  liveJoinHint: string;
+  liveStarting: string;
+  liveCount: (n: number) => string;
 
   wordsLabel: string;
   sourcePaste: string;
@@ -355,6 +365,9 @@ const STRINGS: Record<Language, {
 }> = {
   en: {
     title: 'Vocab Wheel',
+    modeManual: 'Type names', modeLive: 'Live (QR)',
+    liveJoinTitle: 'Students scan to join', liveJoinHint: 'Names appear on the wheel as they join.',
+    liveStarting: 'Starting…', liveCount: (n) => `${n} joined`,
     subtitle: 'Spin the wheel — pick a student, pick a challenge.',
     exitBtn: 'Back',
     playersLabel: 'Players (one name per line)',
@@ -428,6 +441,9 @@ const STRINGS: Record<Language, {
   },
   he: {
     title: 'גלגל המילים',
+    modeManual: 'הקלדת שמות', modeLive: 'חי (QR)',
+    liveJoinTitle: 'התלמידים סורקים כדי להצטרף', liveJoinHint: 'השמות מופיעים על הגלגל עם ההצטרפות.',
+    liveStarting: 'מתחיל…', liveCount: (n) => `${n} הצטרפו`,
     subtitle: 'סובבו את הגלגל — בוחר תלמיד, בוחר אתגר.',
     exitBtn: 'חזור',
     playersLabel: 'שחקנים (שם אחד בכל שורה)',
@@ -501,6 +517,9 @@ const STRINGS: Record<Language, {
   },
   ar: {
     title: 'عجلة المفردات',
+    modeManual: 'كتابة الأسماء', modeLive: 'مباشر (QR)',
+    liveJoinTitle: 'يمسح الطلاب للانضمام', liveJoinHint: 'تظهر الأسماء على العجلة عند الانضمام.',
+    liveStarting: 'يبدأ…', liveCount: (n) => `${n} انضموا`,
     subtitle: 'أدر العجلة — اختر طالبًا، اختر تحديًا.',
     exitBtn: 'رجوع',
     playersLabel: 'اللاعبون (اسم واحد في كل سطر)',
@@ -574,6 +593,9 @@ const STRINGS: Record<Language, {
   },
   ru: {
     title: 'Vocab Wheel',
+    modeManual: 'Type names', modeLive: 'Live (QR)',
+    liveJoinTitle: 'Students scan to join', liveJoinHint: 'Names appear on the wheel as they join.',
+    liveStarting: 'Starting…', liveCount: (n) => `${n} joined`,
     subtitle: 'Spin the wheel — pick a student, pick a challenge.',
     exitBtn: 'Back',
     playersLabel: 'Players (one name per line)',
@@ -661,6 +683,63 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, clas
   const [playersText, setPlayersText] = useState(() =>
     initialPlayerNames && initialPlayerNames.length > 0 ? initialPlayerNames.join('\n') : '',
   );
+
+  // ── Live mode ───────────────────────────────────────────────────────
+  // 'manual' = teacher types the names (original behaviour). 'live' =
+  // students scan a QR + enter their name, and the roster auto-fills the
+  // wheel. The wheel itself still runs on the teacher's board.
+  const [wheelMode, setWheelMode] = useState<'manual' | 'live'>('manual');
+  const [liveCode, setLiveCode] = useState<string | null>(null);
+  const [creatingLive, setCreatingLive] = useState(false);
+  const liveTokenRef = useRef<string | null>(null);
+  const qpLive = useQuickPlaySocket({ sessionCode: liveCode ?? '', enabled: !!liveCode });
+  const liveJoinUrl = liveCode ? `${window.location.origin}/?session=${liveCode}&mode=wheel` : '';
+
+  // Create a wordless wheel session (allowed_modes = [QP_WHEEL_MODE]) so
+  // students who scan the QR land on the lightweight WheelStudentView.
+  const startLive = useCallback(async () => {
+    if (creatingLive || liveCode) return;
+    setCreatingLive(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      liveTokenRef.current = session?.access_token ?? null;
+      const { data, error } = await supabase.rpc('create_quick_play_session', {
+        p_word_ids: null, p_custom_words: null, p_allowed_modes: [QP_WHEEL_MODE],
+      });
+      if (error || !data) throw error ?? new Error('no session');
+      setLiveCode((data as { session_code: string }).session_code);
+    } catch (e) {
+      console.error('[Wheel live] create session failed', e);
+    } finally {
+      setCreatingLive(false);
+    }
+  }, [creatingLive, liveCode]);
+
+  // Observe as teacher once the socket connects, so the roster (students
+  // who joined) streams into qpLive.leaderboard.
+  useEffect(() => {
+    if (!liveCode || qpLive.status !== 'connected') return;
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token || cancelled) return;
+      liveTokenRef.current = token;
+      qpLive.observeAsTeacher(token);
+    })();
+    return () => { cancelled = true; };
+  }, [liveCode, qpLive.status, qpLive.observeAsTeacher]);
+
+  // Joined student names → the wheel's player list (live mode only).
+  const liveNames = useMemo(
+    () => qpLive.leaderboard.map(e => e.nickname).filter((n): n is string => !!n),
+    [qpLive.leaderboard],
+  );
+  useEffect(() => {
+    if (wheelMode !== 'live') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors the live roster into the wheel's name list
+    setPlayersText(liveNames.join('\n'));
+  }, [wheelMode, liveNames]);
   const [targetLang, setTargetLang] = useState<TargetLang>('hebrew');
   const [sourceKind, setSourceKind] = useState<SourceKind>('paste');
   const [wordsText, setWordsText] = useState('');
@@ -1186,26 +1265,66 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, clas
       >
         <div className="rounded-2xl bg-white shadow-lg border border-violet-100 overflow-hidden">
             <div className="px-6 py-6 space-y-5">
-              <ClassRosterPicker
-                classes={classes ?? []}
-                initialClassId={initialClassId}
-                onNamesLoaded={(names) => setPlayersText(names.join('\n'))}
-                fallbackNamesByCode={fallbackNamesByCode}
-                accent="violet"
-              />
-              {/* Players */}
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-2">{t.playersLabel}</label>
-                <textarea
-                  value={playersText}
-                  onChange={e => setPlayersText(e.target.value)}
-                  placeholder={t.playersPlaceholder}
-                  rows={6}
-                  dir={dir}
-                  className="w-full rounded-lg border-2 border-stone-200 focus:border-violet-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
-                />
-                <p className="mt-1 text-xs text-stone-500">{t.playersHint}</p>
+              {/* Players source: type manually, or go live with a QR */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWheelMode('manual')}
+                  style={{ touchAction: 'manipulation' }}
+                  className={`flex items-center justify-center gap-1.5 py-3 rounded-lg font-black text-sm border-2 transition-all ${wheelMode === 'manual' ? 'bg-violet-500 text-white border-violet-500 shadow-sm' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
+                >
+                  ✍️ {t.modeManual}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWheelMode('live'); if (!liveCode) void startLive(); }}
+                  style={{ touchAction: 'manipulation' }}
+                  className={`flex items-center justify-center gap-1.5 py-3 rounded-lg font-black text-sm border-2 transition-all ${wheelMode === 'live' ? 'bg-violet-500 text-white border-violet-500 shadow-sm' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
+                >
+                  📱 {t.modeLive}
+                </button>
               </div>
+
+              {wheelMode === 'manual' ? (
+                <>
+                  <ClassRosterPicker
+                    classes={classes ?? []}
+                    initialClassId={initialClassId}
+                    onNamesLoaded={(names) => setPlayersText(names.join('\n'))}
+                    fallbackNamesByCode={fallbackNamesByCode}
+                    accent="violet"
+                  />
+                  {/* Players */}
+                  <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-2">{t.playersLabel}</label>
+                    <textarea
+                      value={playersText}
+                      onChange={e => setPlayersText(e.target.value)}
+                      placeholder={t.playersPlaceholder}
+                      rows={6}
+                      dir={dir}
+                      className="w-full rounded-lg border-2 border-stone-200 focus:border-violet-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
+                    />
+                    <p className="mt-1 text-xs text-stone-500">{t.playersHint}</p>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-xl border-2 border-violet-200 bg-violet-50 p-4 text-center">
+                  <p className="text-sm font-bold text-violet-700 mb-3">{t.liveJoinTitle}</p>
+                  {liveCode ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="bg-white p-3 rounded-2xl shadow-sm">
+                        <QRCodeSVG value={liveJoinUrl} size={160} />
+                      </div>
+                      <div className="text-3xl font-black tracking-[0.15em] text-stone-900">{liveCode}</div>
+                      <div className="text-sm font-black text-emerald-600">● {t.liveCount(liveNames.length)}</div>
+                      <p className="text-xs text-stone-500">{t.liveJoinHint}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm font-bold text-stone-500 py-6">{t.liveStarting}</p>
+                  )}
+                </div>
+              )}
 
               {/* Words source */}
               <div>
