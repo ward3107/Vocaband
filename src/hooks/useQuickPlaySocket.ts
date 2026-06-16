@@ -45,6 +45,8 @@ import {
   type QpSpeedRoundPayload,
   type QpSpeedResultPayload,
   type QpSpeedEndedPayload,
+  type QpWheelQuestionPayload,
+  type QpWheelAnswerPayload,
   type QpSpeedStartPayload,
   type QpArenaStartPayload,
   type QpArenaStatePayload,
@@ -282,6 +284,16 @@ export interface QuickPlaySocketApi {
   /** Fires when the active word closes — reveals the answer + winner. */
   onSpeedEnded: (cb: (p: QpSpeedEndedPayload) => void) => () => void;
 
+  // ─── VocabWheel (live, phone-answer mode) ───────────────────────────
+  /** Teacher: push the current wheel question to the picked student. */
+  askWheelQuestion: (p: { token: string; clientId: string; askId: string; prompt: string; options: string[]; promptKind?: "text" | "audio" }) => void;
+  /** Student: send back the option index they tapped (-1 = no answer). */
+  answerWheel: (askId: string, choiceIndex: number) => void;
+  /** Student: fires when the wheel landed on THEM with a question. */
+  onWheelQuestion: (cb: (p: QpWheelQuestionPayload) => void) => () => void;
+  /** Teacher: fires with the picked student's reply. */
+  onWheelAnswer: (cb: (p: QpWheelAnswerPayload) => void) => () => void;
+
   // ─── Word Hunt Arena ─────────────────────────────────────────────────
   /** The live arena (latest ARENA_STATE, words patched in-place on each
    *  ARENA_WORD), or null when no arena is running. Word entries never
@@ -453,6 +465,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const arenaGrabGrantedRef = useRef<((p: QpArenaGrabGrantedPayload) => void) | null>(null);
   const arenaGrabDeniedRef = useRef<((p: QpArenaGrabDeniedPayload) => void) | null>(null);
   const arenaEndedRef = useRef<((p: QpArenaEndedPayload) => void) | null>(null);
+  const wheelQuestionRef = useRef<((p: QpWheelQuestionPayload) => void) | null>(null);
+  const wheelAnswerRef = useRef<((p: QpWheelAnswerPayload) => void) | null>(null);
 
   // Last known student-side join payload — replayed on reconnect so a
   // dropped connection doesn't kick the kid off the board.
@@ -598,6 +612,17 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         speedEndedRef.current?.(p);
       };
 
+      // VocabWheel phone-answer. WHEEL_QUESTION is room-scoped (no sessionCode
+      // on the payload) — room membership guarantees it's ours, and the
+      // student view self-filters by targetClientId. WHEEL_ANSWER carries the
+      // sessionCode, so filter it like the rest.
+      const onWheelQuestion = (p: QpWheelQuestionPayload) => {
+        wheelQuestionRef.current?.(p);
+      };
+      const onWheelAnswer = (p: QpWheelAnswerPayload) => {
+        if (p?.sessionCode === sessionCode) wheelAnswerRef.current?.(p);
+      };
+
       const onArenaState = (p: QpArenaStatePayload) => {
         if (p?.sessionCode !== sessionCode || !Array.isArray(p.words)) return;
         setCurrentArena(p);
@@ -672,6 +697,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.ARENA_GRAB_GRANTED, onArenaGrabGranted);
       socket.on(QP_SERVER_EVENTS.ARENA_GRAB_DENIED,  onArenaGrabDenied);
       socket.on(QP_SERVER_EVENTS.ARENA_ENDED,        onArenaEnded);
+      socket.on(QP_SERVER_EVENTS.WHEEL_QUESTION,     onWheelQuestion);
+      socket.on(QP_SERVER_EVENTS.WHEEL_ANSWER,       onWheelAnswer);
 
       if (socket.connected) onConnect();
 
@@ -698,6 +725,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.ARENA_GRAB_GRANTED, onArenaGrabGranted);
         socket.off(QP_SERVER_EVENTS.ARENA_GRAB_DENIED,  onArenaGrabDenied);
         socket.off(QP_SERVER_EVENTS.ARENA_ENDED,        onArenaEnded);
+        socket.off(QP_SERVER_EVENTS.WHEEL_QUESTION,     onWheelQuestion);
+        socket.off(QP_SERVER_EVENTS.WHEEL_ANSWER,       onWheelAnswer);
       };
     });
 
@@ -956,6 +985,28 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     return () => { speedEndedRef.current = null; };
   }, []);
 
+  // ─── VocabWheel (live, phone-answer mode) ───────────────────────────
+
+  const askWheelQuestion = useCallback((p: { token: string; clientId: string; askId: string; prompt: string; options: string[]; promptKind?: "text" | "audio" }) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.WHEEL_ASK, { ...p, sessionCode });
+  }, [sessionCode]);
+
+  const answerWheel = useCallback((askId: string, choiceIndex: number) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.WHEEL_ANSWER, { sessionCode, askId, choiceIndex });
+  }, [sessionCode]);
+
+  const onWheelQuestion = useCallback((cb: (p: QpWheelQuestionPayload) => void) => {
+    wheelQuestionRef.current = cb;
+    return () => { wheelQuestionRef.current = null; };
+  }, []);
+
+  const onWheelAnswer = useCallback((cb: (p: QpWheelAnswerPayload) => void) => {
+    wheelAnswerRef.current = cb;
+    return () => { wheelAnswerRef.current = null; };
+  }, []);
+
   // ─── Word Hunt Arena ─────────────────────────────────────────────────
 
   const startArena = useCallback((
@@ -1042,6 +1093,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     submitSpeedAnswer,
     onSpeedResult,
     onSpeedEnded,
+    askWheelQuestion,
+    answerWheel,
+    onWheelQuestion,
+    onWheelAnswer,
     currentArena,
     arenaPositionsRef,
     startArena,

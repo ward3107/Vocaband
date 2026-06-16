@@ -138,6 +138,8 @@ import {
   type QpStudentLeavePayload,
   type QpTeacherObservePayload,
   type QpTeacherKickPayload,
+  type QpWheelAskPayload,
+  type QpWheelAnswerPayload,
   type QpTeacherBonusPayload,
   type QpTeacherEndPayload,
   type QpTeacherTeamModePayload,
@@ -3072,6 +3074,56 @@ async function startServer() {
         }
       }
       qpScheduleBroadcast(sessionCode);
+    });
+
+    // ─── VocabWheel phone-answer relay ────────────────────────────────
+    // Teacher pushes the current wheel question to the ONE student the
+    // wheel landed on. We broadcast to the room with a targetClientId and
+    // let each student render it only if it's theirs (cross-VM-safe — no
+    // per-VM socket lookup). The correct answer is never sent; the host
+    // scores the reply.
+    socket.on(QP_EVENTS.WHEEL_ASK, async (payload: QpWheelAskPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, token, clientId, askId, prompt, promptKind, options } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) {
+        return qpEmitError(socket, QP_EVENTS.WHEEL_ASK, "invalid_payload", "bad payload");
+      }
+      if (typeof askId !== "string" || askId.length > 64
+        || typeof prompt !== "string" || prompt.length > 300
+        || !Array.isArray(options) || options.length < 2 || options.length > 6
+        || options.some((o) => typeof o !== "string" || o.length > 200)) {
+        return qpEmitError(socket, QP_EVENTS.WHEEL_ASK, "invalid_payload", "bad question");
+      }
+      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+        return qpEmitError(socket, QP_EVENTS.WHEEL_ASK, "rate_limited", "too many teacher actions");
+      }
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.WHEEL_ASK, verify.reason, "access denied");
+
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.WHEEL_QUESTION, {
+        targetClientId: clientId,
+        askId,
+        prompt,
+        promptKind: promptKind === "audio" ? "audio" : "text",
+        options,
+      });
+    });
+
+    // The picked student's reply. Relayed to the whole room (the host
+    // listens; other students have no WHEEL_ANSWER handler, so they ignore
+    // it). Only a joined student of this session may answer.
+    socket.on(QP_EVENTS.WHEEL_ANSWER, (payload: QpWheelAnswerPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, askId, choiceIndex } = payload;
+      if (!isValidSessionCode(sessionCode)) return;
+      if (typeof askId !== "string" || askId.length > 64 || typeof choiceIndex !== "number") return;
+      const state = qpSessions.get(sessionCode);
+      if (!state) return;
+      const clientId = state.socketToClient.get(socket.id);
+      if (!clientId) return; // not a joined student of this session
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.WHEEL_ANSWER, {
+        sessionCode, askId, choiceIndex, clientId,
+      });
     });
 
     // Manual bonus points — teacher-authoritative, bypasses the
