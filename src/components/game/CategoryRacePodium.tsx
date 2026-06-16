@@ -14,7 +14,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Trophy } from "lucide-react";
+import { Trophy, X } from "lucide-react";
 import QPAvatar from "../QPAvatar";
 
 export interface PodiumEntry {
@@ -32,6 +32,11 @@ interface CategoryRacePodiumProps {
    *  class reading the board from the back of the room can make out
    *  who's who. Defaults off for any compact/preview use. */
   large?: boolean;
+  /** When set, each lane shows a "remove" button that calls this with the
+   *  student's clientId + nickname. Hosts pass it only in the Controls view
+   *  (not the clean projected board) so a kick can't misfire in front of
+   *  the class. */
+  onKick?: (clientId: string, nickname: string) => void;
 }
 
 // easeOutCubic count-up so a +10 visibly ticks up instead of snapping.
@@ -56,7 +61,7 @@ function AnimatedScore({ value }: { value: number }) {
   return <>{display}</>;
 }
 
-export default function CategoryRacePodium({ entries, emptyText, large = false }: CategoryRacePodiumProps) {
+export default function CategoryRacePodium({ entries, emptyText, large = false, onKick }: CategoryRacePodiumProps) {
   // Detect score increases between renders to fire a "+N" burst.
   const prev = useRef<Map<string, number>>(new Map());
   const gainId = useRef(0);
@@ -151,6 +156,18 @@ export default function CategoryRacePodium({ entries, emptyText, large = false }
                 >
                   {e.nickname}
                 </span>
+                {onKick && (
+                  <button
+                    type="button"
+                    onClick={() => onKick(e.clientId, e.nickname)}
+                    style={{ touchAction: "manipulation" }}
+                    className={`shrink-0 inline-flex items-center justify-center rounded-full bg-rose-100 text-rose-600 opacity-70 hover:opacity-100 hover:bg-rose-200 transition active:scale-90 ${large ? "w-8 h-8" : "w-6 h-6"}`}
+                    aria-label={`Remove ${e.nickname}`}
+                    title={`Remove ${e.nickname}`}
+                  >
+                    <X size={large ? 18 : 14} strokeWidth={3} />
+                  </button>
+                )}
               </div>
 
               {/* Track + fill — the race itself. Trophy sits at the

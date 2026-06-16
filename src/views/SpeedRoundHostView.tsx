@@ -38,6 +38,7 @@ import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import SpeedWordPicker from "../components/game/SpeedWordPicker";
 import GameMusicPlayer from "../components/game/GameMusicPlayer";
+import KickConfirmModal from "../components/game/KickConfirmModal";
 import { SPEED_HOST_STRINGS, SPEED_MODE_META } from "./speedRoundStrings";
 
 /** Enough words for distractor options (questions need 2–4 choices). */
@@ -86,6 +87,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const [showResults, setShowResults] = useState(false);
   const [presenting, setPresenting] = useState(false);
   const [buildError, setBuildError] = useState(false);
+  // Student pending removal (clientId + nickname) — drives the confirm modal.
+  const [confirmKick, setConfirmKick] = useState<{ clientId: string; nickname: string } | null>(null);
   // Auto-play: once the teacher starts the first word, each ended word
   // chains into the next after a short podium beat — no per-word click.
   const [autoPlay, setAutoPlay] = useState(true);
@@ -293,6 +296,12 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
 
   const startLabel = hasRunRound ? t.nextWord : t.start;
 
+  // Remove-student affordance — only in the Controls view, never on the
+  // clean projected board (a misfire in front of the class can't be undone).
+  const onKick = presenting
+    ? undefined
+    : (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
+
   return (
     <div className="min-h-[100dvh] transition-colors" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -385,7 +394,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 {/* Re-key the podium on roundId so it visibly re-animates each
                     word; winner highlight is layered via the wrapper ring. */}
                 <div key={endedRoundId ?? "lobby"}>
-                  <CategoryRacePodium entries={podiumEntries} emptyText={t.noStudents} large />
+                  <CategoryRacePodium entries={podiumEntries} emptyText={t.noStudents} large onKick={onKick} />
                 </div>
                 {winnerClientId && !roundActive && (
                   <p className="mt-4 text-center text-sm font-black text-amber-600">
@@ -401,6 +410,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                   emptyLabel={t.noStudents}
                   accent="from-amber-400 to-orange-500"
                   large={presenting}
+                  onKick={onKick}
                 />
               </section>
             )}
@@ -619,6 +629,17 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
           </motion.button>
         )}
       </AnimatePresence>
+
+      {/* Confirm before removing a student from the session. */}
+      <KickConfirmModal
+        name={confirmKick?.nickname ?? null}
+        language={language}
+        onCancel={() => setConfirmKick(null)}
+        onConfirm={() => {
+          if (confirmKick && tokenRef.current) qp.kickStudent(confirmKick.clientId, tokenRef.current);
+          setConfirmKick(null);
+        }}
+      />
 
       {/* Celebratory results — shown when ending a game that has scores. */}
       <AnimatePresence>

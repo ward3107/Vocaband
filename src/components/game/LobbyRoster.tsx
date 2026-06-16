@@ -10,6 +10,7 @@
  * or backend coupling — purely a presentation of data already on screen.
  */
 import { motion, AnimatePresence } from "motion/react";
+import { X } from "lucide-react";
 import QPAvatar from "../QPAvatar";
 
 export interface LobbyPlayer {
@@ -36,6 +37,10 @@ interface LobbyRosterProps {
    *  e.g. "from-fuchsia-500 to-pink-600". */
   accent?: string;
   className?: string;
+  /** When set, each medallion shows a "remove" badge that calls this with
+   *  the student's clientId + nickname. Hosts pass it only in the Controls
+   *  view (not the clean projected board). */
+  onKick?: (clientId: string, nickname: string) => void;
   /** Projector mode — scales every medallion + name way up (with an extra
    *  min-[1700px] tier) so a class reading the waiting room from the back of
    *  the room can make out who's joined. Defaults off for compact use. */
@@ -49,6 +54,7 @@ export default function LobbyRoster({
   accent = "from-fuchsia-500 to-pink-600",
   className = "",
   large = false,
+  onKick,
 }: LobbyRosterProps) {
   const empty = players.length === 0;
 
@@ -106,7 +112,7 @@ export default function LobbyRoster({
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                className={`flex flex-col items-center gap-1 ${cell}`}
+                className={`relative flex flex-col items-center gap-1 ${cell}`}
               >
                 <div
                   className={`flex items-center justify-center ${ring} rounded-full bg-gradient-to-br ${p.team ? TEAM_ACCENT[p.team] : accent} text-white shadow-md`}
@@ -115,6 +121,18 @@ export default function LobbyRoster({
                     <QPAvatar value={p.avatar} iconSize={large ? 44 : 26} className="text-fuchsia-600" />
                   </span>
                 </div>
+                {onKick && (
+                  <button
+                    type="button"
+                    onClick={() => onKick(p.clientId, p.nickname)}
+                    style={{ touchAction: "manipulation" }}
+                    className={`absolute -top-1 end-0 inline-flex items-center justify-center rounded-full bg-rose-500 text-white shadow-md ring-2 ring-white opacity-80 hover:opacity-100 transition active:scale-90 ${large ? "w-7 h-7" : "w-5 h-5"}`}
+                    aria-label={`Remove ${p.nickname}`}
+                    title={`Remove ${p.nickname}`}
+                  >
+                    <X size={large ? 16 : 12} strokeWidth={3} />
+                  </button>
+                )}
                 <span className={`max-w-full truncate font-black text-stone-600 ${nameCls}`}>
                   {p.nickname}
                 </span>

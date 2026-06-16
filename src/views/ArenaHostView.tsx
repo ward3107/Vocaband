@@ -25,6 +25,7 @@ import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import GameMusicPlayer from "../components/game/GameMusicPlayer";
 import LobbyRoster from "../components/game/LobbyRoster";
+import KickConfirmModal from "../components/game/KickConfirmModal";
 import GameResults from "../components/game/GameResults";
 import TeamScoreBar from "../components/game/TeamScoreBar";
 import TeamModeToggle from "../components/game/TeamModeToggle";
@@ -81,6 +82,8 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const [showResults, setShowResults] = useState(false);
   const [presenting, setPresenting] = useState(false);
   const [buildError, setBuildError] = useState(false);
+  // Student pending removal (clientId + nickname) — drives the confirm modal.
+  const [confirmKick, setConfirmKick] = useState<{ clientId: string; nickname: string } | null>(null);
   const tokenRef = useRef<string | null>(null);
 
   const canStart = pickedWords.length >= MIN_WORDS && enabledModes.size > 0;
@@ -201,6 +204,12 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
   const iconBtn = "bg-surface text-indigo-600 hover:bg-surface-container border border-outline-variant";
 
+  // Remove-student affordance — only in the Controls view, never on the
+  // clean projected board (a misfire in front of the class can't be undone).
+  const onKick = presenting
+    ? undefined
+    : (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
+
   return (
     <div className="min-h-[100dvh] transition-colors" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -280,7 +289,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   <Users size={18} /> {t.leaderboard}
                   <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
                 </h2>
-                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large />
+                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large onKick={onKick} />
               </section>
             ) : (
               <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
@@ -290,6 +299,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   emptyLabel={t.noStudents}
                   accent="from-indigo-500 to-violet-600"
                   large={presenting}
+                  onKick={onKick}
                 />
               </section>
             )}
@@ -446,6 +456,17 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           </motion.button>
         )}
       </AnimatePresence>
+
+      {/* Confirm before removing a student from the session. */}
+      <KickConfirmModal
+        name={confirmKick?.nickname ?? null}
+        language={language}
+        onCancel={() => setConfirmKick(null)}
+        onConfirm={() => {
+          if (confirmKick && tokenRef.current) qp.kickStudent(confirmKick.clientId, tokenRef.current);
+          setConfirmKick(null);
+        }}
+      />
 
       {/* Celebratory results — shown when ending a hunt that has scores. */}
       <AnimatePresence>
