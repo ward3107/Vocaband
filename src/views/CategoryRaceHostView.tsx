@@ -32,6 +32,8 @@ import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import GameMusicPlayer from "../components/game/GameMusicPlayer";
 import LobbyRoster from "../components/game/LobbyRoster";
 import KickConfirmModal from "../components/game/KickConfirmModal";
+import GameThemePicker from "../components/game/GameThemePicker";
+import { useGameTheme } from "../hooks/useGameTheme";
 import GameResults from "../components/game/GameResults";
 import TeamScoreBar from "../components/game/TeamScoreBar";
 import { celebrate } from "../utils/celebrate";
@@ -142,6 +144,8 @@ const STRINGS = {
 export default function CategoryRaceHostView({ sessionCode, setView }: CategoryRaceHostViewProps) {
   const { language, dir } = useLanguage();
   const t = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
+  // Teacher-selected board skin (persisted, shared across live games).
+  const { themeId, theme, setThemeId } = useGameTheme();
 
   // Local session code so "New race" can swap to a fresh session in place
   // without bouncing back to the dashboard.
@@ -308,10 +312,10 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const onKick = (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
 
   return (
-    <div className="min-h-[100dvh] transition-colors" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className="min-h-[100dvh] transition-colors" dir={dir} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
         <header className="flex items-center justify-between gap-2 mb-5">
-          <h1 className={`min-w-0 text-xl sm:text-3xl font-black flex items-center gap-2 ${headingCls}`}>
+          <h1 className={`min-w-0 text-xl sm:text-3xl font-black flex items-center gap-2 ${presenting ? theme.name : headingCls}`}>
             <span className="text-2xl sm:text-3xl flex-shrink-0">🌍</span>
             <span className="truncate">{t.title}</span>
           </h1>
@@ -418,15 +422,15 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 students popping in. Once a round has run, the leaderboard
                 (with scores) takes over as the dominant element. */}
             {hasRunRound || roundActive ? (
-              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
+              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
                 <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
                   <Users size={18} /> {t.leaderboard}
                   <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
                 </h2>
-                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large onKick={onKick} />
+                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large onKick={onKick} theme={presenting ? theme : undefined} />
               </section>
             ) : (
-              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
+              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
                 <LobbyRoster
                   players={sorted}
                   countLabel={t.inRoom}
@@ -434,6 +438,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                   accent="from-fuchsia-500 to-pink-600"
                   large={presenting}
                   onKick={onKick}
+                  theme={presenting ? theme : undefined}
                 />
               </section>
             )}
@@ -474,6 +479,8 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 </div>
               </div>
             </section>
+
+            <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
 
             {/* Teams toggle — Solo vs Red/Blue (in-memory, per session) */}
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>

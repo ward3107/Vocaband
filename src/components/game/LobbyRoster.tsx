@@ -12,6 +12,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import QPAvatar from "../QPAvatar";
+import type { GameTheme } from "../../constants/gameThemes";
 
 export interface LobbyPlayer {
   clientId: string;
@@ -45,6 +46,9 @@ interface LobbyRosterProps {
    *  min-[1280px] tier) so a class reading the waiting room from the back of
    *  the room can make out who's joined. Defaults off for compact use. */
   large?: boolean;
+  /** Live-game skin. Re-colours the name + count text; defaults to the stone
+   *  palette when omitted. */
+  theme?: GameTheme;
 }
 
 export default function LobbyRoster({
@@ -55,8 +59,11 @@ export default function LobbyRoster({
   className = "",
   large = false,
   onKick,
+  theme,
 }: LobbyRosterProps) {
   const empty = players.length === 0;
+  const nameColor = theme ? theme.name : "text-stone-600";
+  const mutedColor = theme ? theme.muted : "text-stone-500";
 
   // Projector vs compact sizing for each medallion. The min-[1280px] tier
   // scales up on laptop/projector widths; phones + the compact preview keep
@@ -80,7 +87,7 @@ export default function LobbyRoster({
           <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
           <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
         </span>
-        <span className="text-sm sm:text-base font-black uppercase tracking-widest text-stone-500">
+        <span className={`text-sm sm:text-base font-black uppercase tracking-widest ${mutedColor}`}>
           {countLabel(players.length)}
         </span>
       </div>
@@ -133,7 +140,7 @@ export default function LobbyRoster({
                     <X size={large ? 16 : 12} strokeWidth={3} />
                   </button>
                 )}
-                <span className={`max-w-full truncate font-black text-stone-600 ${nameCls}`}>
+                <span className={`max-w-full truncate font-black ${nameColor} ${nameCls}`}>
                   {p.nickname}
                 </span>
               </motion.div>

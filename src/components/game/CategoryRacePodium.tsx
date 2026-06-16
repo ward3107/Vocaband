@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Trophy, X } from "lucide-react";
 import QPAvatar from "../QPAvatar";
+import type { GameTheme } from "../../constants/gameThemes";
 
 export interface PodiumEntry {
   clientId: string;
@@ -36,6 +37,9 @@ interface CategoryRacePodiumProps {
    *  student's clientId + nickname (guarded by a confirm modal in the host).
    *  Available in both the Controls and the live/projected view. */
   onKick?: (clientId: string, nickname: string) => void;
+  /** Live-game skin. Re-colours the name / track / empty text; defaults to
+   *  the dashboard's semantic tokens when omitted. */
+  theme?: GameTheme;
 }
 
 // easeOutCubic count-up so a +10 visibly ticks up instead of snapping.
@@ -60,7 +64,7 @@ function AnimatedScore({ value }: { value: number }) {
   return <>{display}</>;
 }
 
-export default function CategoryRacePodium({ entries, emptyText, large = false, onKick }: CategoryRacePodiumProps) {
+export default function CategoryRacePodium({ entries, emptyText, large = false, onKick, theme }: CategoryRacePodiumProps) {
   // Detect score increases between renders to fire a "+N" burst.
   const prev = useRef<Map<string, number>>(new Map());
   const gainId = useRef(0);
@@ -98,7 +102,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
 
   if (entries.length === 0) {
     return (
-      <p className={`font-semibold text-center text-on-surface-variant ${large ? "text-2xl py-20" : "text-sm py-10"}`}>
+      <p className={`font-semibold text-center ${theme ? theme.muted : "text-on-surface-variant"} ${large ? "text-2xl py-20" : "text-sm py-10"}`}>
         {emptyText}
       </p>
     );
@@ -148,7 +152,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                   <QPAvatar value={e.avatar || "🦊"} iconSize={large ? 44 : 18} />
                 </span>
                 <span
-                  className={`font-black truncate min-w-0 flex-1 text-on-surface ${
+                  className={`font-black truncate min-w-0 flex-1 ${theme ? theme.name : "text-on-surface"} ${
                     large ? "text-2xl sm:text-3xl min-[1280px]:text-5xl" : "text-sm"
                   }`}
                   dir="auto"
@@ -173,7 +177,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                   end of the leader's fill so it travels with whoever
                   is in front. */}
               <div
-                className={`relative rounded-full overflow-hidden bg-surface-container ${large ? "h-12 min-[1280px]:h-16" : "h-8"}`}
+                className={`relative rounded-full overflow-hidden ${theme ? theme.track : "bg-surface-container"} ${large ? "h-12 min-[1280px]:h-16" : "h-8"}`}
                 style={gain ? { boxShadow: "0 0 0 2px rgba(16,185,129,0.55)" } : undefined}
               >
                 <motion.div
