@@ -59,10 +59,6 @@ export interface TeacherLoginT {
   trustCurriculum: string;
   /** Smaller Microsoft fallback link under the dominant Google button. */
   microsoftFallback: string;
-  /** Optional beta invite-code field — self-serve teacher access. */
-  inviteCodeLabel: string;
-  inviteCodePlaceholder: string;
-  inviteCodeHint: string;
 }
 
 export const teacherLoginT: Record<Language, TeacherLoginT> = {
@@ -99,9 +95,6 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     trustEu: "EU-hosted",
     trustCurriculum: "MoE Set 1 / 2 / 3",
     microsoftFallback: "Sign in with Microsoft instead",
-    inviteCodeLabel: "Invite code (optional)",
-    inviteCodePlaceholder: "e.g. VOCABAND-BETA",
-    inviteCodeHint: "Have a beta invite code? Enter it for instant teacher access.",
   },
   he: {
     heading: "התחברות ל-Vocaband",
@@ -136,9 +129,6 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     trustEu: "מאוחסן באירופה",
     trustCurriculum: "משרד החינוך 1 / 2 / 3",
     microsoftFallback: "התחברו עם Microsoft במקום",
-    inviteCodeLabel: "קוד הזמנה (אופציונלי)",
-    inviteCodePlaceholder: "לדוגמה VOCABAND-BETA",
-    inviteCodeHint: "יש לך קוד הזמנה לבטא? הזן אותו לקבלת גישת מורה מיידית.",
   },
   ar: {
     heading: "تسجيل الدخول إلى Vocaband",
@@ -173,9 +163,6 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     trustEu: "مستضاف في الاتحاد الأوروبي",
     trustCurriculum: "وزارة التربية 1 / 2 / 3",
     microsoftFallback: "سجّل الدخول بحساب Microsoft بدلاً من ذلك",
-    inviteCodeLabel: "رمز الدعوة (اختياري)",
-    inviteCodePlaceholder: "مثال VOCABAND-BETA",
-    inviteCodeHint: "هل لديك رمز دعوة تجريبي؟ أدخله للحصول على وصول المعلم فورًا.",
   },
   ru: {
     heading: "Sign in to Vocaband",
@@ -210,8 +197,5 @@ export const teacherLoginT: Record<Language, TeacherLoginT> = {
     trustEu: "EU-hosted",
     trustCurriculum: "MoE Set 1 / 2 / 3",
     microsoftFallback: "Sign in with Microsoft instead",
-    inviteCodeLabel: "Invite code (optional)",
-    inviteCodePlaceholder: "e.g. VOCABAND-BETA",
-    inviteCodeHint: "Have a beta invite code? Enter it for instant teacher access.",
   },
 };

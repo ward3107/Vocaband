@@ -23,7 +23,6 @@ import { useLanguage } from "../hooks/useLanguage";
 import { teacherLoginT } from "../locales/student/teacher-login";
 import { useTeacherOtpAuth } from "../hooks/useTeacherOtpAuth";
 import { writeIntendedRole } from "../utils/oauthIntent";
-import { getPendingInvite, setPendingInvite } from "../utils/betaInvite";
 
 interface TeacherLoginCardProps {
   /** Optional close-button hook, e.g. to navigate back to the
@@ -60,23 +59,13 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
   const [emailInput, setEmailInput] = useState(initialRemembered.email);
   const [rememberEmail, setRememberEmail] = useState(initialRemembered.remember);
   const [codeInput, setCodeInput] = useState("");
-  // Optional beta invite code — prefilled from an `?invite=` link if present.
-  // Persisted to localStorage on submit so it survives the OAuth redirect and
-  // useAuthRestore can redeem it after sign-in (self-serve teacher access).
-  const [inviteCode, setInviteCode] = useState(() => getPendingInvite() ?? "");
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [microsoftSubmitting, setMicrosoftSubmitting] = useState(false);
-
-  // Stash the invite code before any redirect/OTP send so it outlives this page.
-  const persistInvite = () => {
-    if (inviteCode.trim()) setPendingInvite(inviteCode);
-  };
 
   const handleGoogle = async () => {
     if (googleSubmitting) return;
     setGoogleSubmitting(true);
     try {
-      persistInvite();
       writeIntendedRole("teacher");
       await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -94,7 +83,6 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
     if (microsoftSubmitting) return;
     setMicrosoftSubmitting(true);
     try {
-      persistInvite();
       writeIntendedRole("teacher");
       await supabase.auth.signInWithOAuth({
         provider: "azure",
@@ -121,7 +109,6 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
         localStorage.removeItem(REMEMBER_EMAIL_KEY);
       }
     } catch { /* ignore quota / private-mode errors */ }
-    persistInvite();
     writeIntendedRole("teacher");
     void otp.sendCode(emailInput);
   };
@@ -305,26 +292,6 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
                 )}
                 <span>{tt.signInWithMicrosoft}</span>
               </button>
-
-              {/* Optional beta invite code — lets a tester self-grant teacher
-                  access. Prefilled from an ?invite= link; persisted on submit. */}
-              <div className="mt-4">
-                <label htmlFor="teacher-invite" className="block text-xs font-bold uppercase tracking-widest text-stone-500 mb-1.5">
-                  {tt.inviteCodeLabel}
-                </label>
-                <input
-                  id="teacher-invite"
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder={tt.inviteCodePlaceholder}
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  className="w-full px-4 py-2.5 rounded-lg border-2 border-stone-200 focus:border-primary focus:outline-none text-sm font-semibold tracking-wide uppercase disabled:bg-stone-50"
-                  style={{ touchAction: "manipulation" }}
-                />
-                <p className="mt-1 text-[11px] text-stone-400 leading-snug">{tt.inviteCodeHint}</p>
-              </div>
 
               {/* Divider */}
               <div className="flex items-center gap-3 my-5 text-stone-400 text-xs uppercase tracking-widest font-bold">
