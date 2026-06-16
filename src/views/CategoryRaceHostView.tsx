@@ -337,9 +337,10 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
         </header>
 
         {/* Background music — teacher can play/pause, skip, and adjust volume
-            for the room while the race runs. Hidden in presentation mode to
-            keep the projector clean. */}
-        {!presenting && <GameMusicPlayer language={language} />}
+            for the room while the race runs. In presentation mode it docks to
+            a compact corner pill (kept mounted, so the music never cuts out
+            when the race starts). */}
+        <GameMusicPlayer language={language} floating={presenting} />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Main: round banner (only while live) + the big leaderboard */}

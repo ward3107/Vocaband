@@ -16,7 +16,7 @@
  */
 import { useEffect, useRef, useState, type WheelEvent } from "react";
 import { Howl } from "howler";
-import { SkipBack, SkipForward, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { SkipBack, SkipForward, Play, Pause, Volume2, VolumeX, Music, Minimize2 } from "lucide-react";
 import type { Language } from "../../hooks/useLanguage";
 
 // Instrumental background loops in public/game-music/. Mirrors the Quick
@@ -44,9 +44,9 @@ const getMusicUrl = (file: string): string => `/game-music/${file}.mp3`;
 const AUTO_SHUFFLE_MS = 2 * 60 * 1000; // swap tracks every 2 min so the loop doesn't go stale
 
 const STRINGS = {
-  en: { label: "Background Music", prev: "Previous track", next: "Next track", play: "Play", pause: "Pause", volume: "Background music volume" },
-  he: { label: "מוזיקת רקע", prev: "רצועה קודמת", next: "רצועה הבאה", play: "נגן", pause: "השהה", volume: "עוצמת מוזיקת רקע" },
-  ar: { label: "موسيقى الخلفية", prev: "المقطع السابق", next: "المقطع التالي", play: "تشغيل", pause: "إيقاف مؤقت", volume: "مستوى صوت الموسيقى" },
+  en: { label: "Background Music", prev: "Previous track", next: "Next track", play: "Play", pause: "Pause", volume: "Background music volume", collapse: "Minimize music" },
+  he: { label: "מוזיקת רקע", prev: "רצועה קודמת", next: "רצועה הבאה", play: "נגן", pause: "השהה", volume: "עוצמת מוזיקת רקע", collapse: "מזער נגן" },
+  ar: { label: "موسيقى الخلفية", prev: "المقطع السابق", next: "المقطع التالي", play: "تشغيل", pause: "إيقاف مؤقت", volume: "مستوى صوت الموسيقى", collapse: "تصغير المشغل" },
 } as const;
 
 // Accent theme. Category Race / Speed Round use the brand fuchsia; Word
@@ -70,12 +70,22 @@ interface GameMusicPlayerProps {
   language: Language;
   /** Accent color. Defaults to the brand fuchsia used by the other hosts. */
   theme?: MusicTheme;
+  /** Presentation mode — instead of the inline bar, dock the player as a
+   *  compact, collapsible pill in the top-end corner so the projector stays
+   *  clean but the music keeps playing and the teacher keeps control. The
+   *  component stays mounted across the lobby→present switch, so the audio
+   *  never cuts out (the old `{!presenting && …}` gate unmounted it, which
+   *  is exactly why music "stopped" when a game started). */
+  floating?: boolean;
 }
 
-export default function GameMusicPlayer({ language, theme = "fuchsia" }: GameMusicPlayerProps) {
+export default function GameMusicPlayer({ language, theme = "fuchsia", floating = false }: GameMusicPlayerProps) {
   const tr = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
   const accent = THEMES[theme];
 
+  // Floating dock starts collapsed to a single button so it doesn't cover
+  // the projected board until the teacher opens it.
+  const [expanded, setExpanded] = useState(false);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(() => {
     try { return parseInt(localStorage.getItem("vocaband-music-track") || "0") || 0; } catch { return 0; }
@@ -170,8 +180,8 @@ export default function GameMusicPlayer({ language, theme = "fuchsia" }: GameMus
 
   const track = MUSIC_TRACKS[currentTrack];
 
-  return (
-    <div className="flex items-center gap-2 w-full rounded-xl px-3 py-2 mb-5 bg-[var(--vb-surface)] border border-[var(--vb-border)] shadow-sm">
+  const bar = (
+    <>
       {/* Now playing */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <span className="text-lg shrink-0">{track.icon}</span>
@@ -242,6 +252,46 @@ export default function GameMusicPlayer({ language, theme = "fuchsia" }: GameMus
           title={`Volume: ${Math.round(musicVolume * 100)}% — scroll to adjust`}
         />
       </div>
+    </>
+  );
+
+  // Presentation mode: a corner dock. Collapsed = one round button (pulses
+  // while playing); expanded = the full transport pill. Kept mounted either
+  // way so the audio rides through the lobby→present switch.
+  if (floating) {
+    return expanded ? (
+      <div className="fixed top-4 end-4 z-40 flex items-center gap-2 rounded-2xl px-3 py-2 w-[min(92vw,340px)] bg-[var(--vb-surface)] border border-[var(--vb-border)] shadow-xl">
+        {bar}
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="p-1.5 rounded-full text-[var(--vb-text-primary)] opacity-60 hover:opacity-100 transition-opacity shrink-0"
+          style={{ touchAction: "manipulation" }}
+          title={tr.collapse}
+          aria-label={tr.collapse}
+        >
+          <Minimize2 size={14} />
+        </button>
+      </div>
+    ) : (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className={`fixed top-4 end-4 z-40 w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 transition-all ${
+          musicPlaying ? `${accent.playIdle} animate-pulse` : accent.playIdle
+        }`}
+        style={{ touchAction: "manipulation" }}
+        title={tr.label}
+        aria-label={tr.label}
+      >
+        <Music size={20} fill={musicPlaying ? "currentColor" : "none"} />
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 w-full rounded-xl px-3 py-2 mb-5 bg-[var(--vb-surface)] border border-[var(--vb-border)] shadow-sm">
+      {bar}
     </div>
   );
 }

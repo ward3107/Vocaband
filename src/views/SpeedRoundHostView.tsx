@@ -338,9 +338,10 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
         </header>
 
         {/* Background music — teacher can play/pause, skip, and adjust volume
-            for the room while the round runs. Hidden in presentation mode to
-            keep the projector clean. */}
-        {!presenting && <GameMusicPlayer language={language} />}
+            for the room while the round runs. In presentation mode it docks
+            to a compact corner pill (kept mounted, so the music never cuts
+            out when the game starts). */}
+        <GameMusicPlayer language={language} floating={presenting} />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Main: live word banner + the big leaderboard */}

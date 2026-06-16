@@ -247,9 +247,10 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
 
         {/* Background music — teacher can play/pause, skip, and adjust volume
             for the room while the hunt runs. Slate accents keep it calmer than
-            the brand-fuchsia bar on the other live games. Hidden in
-            presentation mode to keep the projector clean. */}
-        {!presenting && <GameMusicPlayer language={language} theme="slate" />}
+            the brand-fuchsia bar on the other live games. In presentation mode
+            it docks to a compact corner pill (kept mounted, so the music never
+            cuts out when the hunt starts). */}
+        <GameMusicPlayer language={language} theme="slate" floating={presenting} />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Main: the live map (when running) + the big leaderboard */}
