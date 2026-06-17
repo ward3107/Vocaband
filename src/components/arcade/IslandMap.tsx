@@ -51,8 +51,36 @@ export default function IslandMap({
     recommendedIndex >= 0 ? advancePetTravel(assignmentId, recommendedIndex) : null
   );
 
+  const height = mapHeight(islands.length);
+  // Dashed trail connecting the stations top-to-bottom, drawn behind the
+  // medallions. viewBox x runs 0–100 (matches xPct) and y in px (matches
+  // the layout's px y); preserveAspectRatio="none" stretches it to the
+  // responsive width, and non-scaling-stroke keeps the dashes crisp.
+  const trail = positions.length > 1
+    ? positions.map((p, i) => `${i === 0 ? "M" : "L"} ${p.xPct} ${p.y}`).join(" ")
+    : "";
+
   return (
-    <div className="relative w-full" style={{ height: mapHeight(islands.length) }}>
+    <div className="relative w-full" style={{ height }}>
+      {trail && (
+        <svg
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-0 h-full w-full"
+          viewBox={`0 0 100 ${height}`}
+          preserveAspectRatio="none"
+        >
+          <path
+            d={trail}
+            fill="none"
+            stroke="rgba(255,255,255,0.28)"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="2 9"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      )}
       {islands.map((isl, i) => (
         <ModeIsland
           key={isl.id}
