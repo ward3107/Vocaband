@@ -156,8 +156,12 @@ if ('speechSynthesis' in window) {
 const speakWithTTS = (text: string, lang: AudioLang = 'en', rateOverride?: number): void => {
   if (!('speechSynthesis' in window)) return;
 
-  // Cancel any ongoing speech
+  // Cancel any ongoing speech — both the robotic queue AND the recorded
+  // MP3. Without stopping the MP3, a TTS fallback fired while a recorded
+  // clip is still playing produces TWO overlapping voices (the classic
+  // "double voice" bug). Only ever one voice at a time.
   window.speechSynthesis.cancel();
+  currentWord?.stop();
 
   let speakText = text;
 
@@ -645,6 +649,12 @@ export const useAudio = (options: UseAudioOptions = {}) => {
 
     // Add error handler for playback failures - fall back to TTS
     const handleAudioError = () => {
+      // Howler can emit a spurious play/load error (e.g. a CORS-blocked
+      // decode attempt) even though the html5 <audio> element is actually
+      // playing the recorded clip fine. Firing TTS then layers the robotic
+      // voice on top of the recorded one — the "double voice" bug. Only
+      // fall back to TTS when the clip is genuinely NOT playing.
+      if (sound.playing()) return
       console.warn(`[Audio] Playback failed for ${key}, using TTS fallback:`, fallbackText)
       if (fallbackText) {
         speakWithTTS(fallbackText, lang)
