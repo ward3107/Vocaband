@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Mic, Send, Sparkles, X } from "lucide-react";
+import { Languages, Mic, Send, Sparkles, X } from "lucide-react";
 import type { Language } from "../../hooks/useLanguage";
 import { supabase } from "../../core/supabase";
 import { startHereT } from "../../locales/teacher/start-here";
@@ -57,6 +57,25 @@ const RECOGNITION_LANG: Record<Language, string> = {
   he: "he-IL",
   ar: "ar-SA",
   ru: "ru-RU",
+};
+
+// Speak-language picker labels. The Web Speech API can't auto-detect the
+// spoken language — it must be told before listening — so the teacher
+// picks which language they're about to speak. Defaults to the dashboard
+// language but can differ (e.g. an English-dashboard teacher speaking
+// Arabic). The transcript then drives the AI's reply language.
+const SPEAK_LANGS: Language[] = ["en", "he", "ar", "ru"];
+const SPEAK_LANG_LABEL: Record<Language, string> = {
+  en: "English",
+  he: "עברית",
+  ar: "العربية",
+  ru: "Русский",
+};
+const SPEAK_LANG_SHORT: Record<Language, string> = {
+  en: "EN",
+  he: "עב",
+  ar: "ع",
+  ru: "RU",
 };
 
 // Language-independent keyword bank (English + Hebrew + Arabic roots in
@@ -124,6 +143,10 @@ export default function HelpAskBox({
   const [aiResponse, setAiResponse] = useState<{ answer: string; action: string } | null>(null);
   const [active, setActive] = useState<TopicId | null>(null);
   const [noMatch, setNoMatch] = useState(false);
+  // Which language the teacher will SPEAK into the mic. Seeded from the
+  // dashboard language but independently selectable (see SPEAK_LANGS).
+  const [micLang, setMicLang] = useState<Language>(language);
+  const [showLangMenu, setShowLangMenu] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const SpeechRecognitionCtor = useMemo(() => getSpeechRecognition(), []);
@@ -207,7 +230,7 @@ export default function HelpAskBox({
 
   // Returns null on any failure (no session, network/API down, bad
   // payload) so the caller can fall back to the offline keyword router.
-  const askAI = async (text: string): Promise<{ answer: string; action: string } | null> => {
+  const askAI = async (text: string, langHint: Language): Promise<{ answer: string; action: string } | null> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
@@ -215,7 +238,7 @@ export default function HelpAskBox({
       const res = await fetch("/api/teacher-assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: text, language, context: { hasClasses, pendingStudentsCount } }),
+        body: JSON.stringify({ message: text, language: langHint, context: { hasClasses, pendingStudentsCount } }),
       });
       if (!res.ok) return null;
       const data = (await res.json()) as { answer?: string; action?: string };
@@ -232,14 +255,18 @@ export default function HelpAskBox({
     setNoMatch(false);
   };
 
-  const submitQuery = async (text: string) => {
+  // `spokenLang` is set when the question came from the mic, so the AI
+  // gets the language the teacher actually spoke as its hint. Typed
+  // questions fall back to the dashboard language (the server also
+  // detects language from the text itself).
+  const submitQuery = async (text: string, spokenLang?: Language) => {
     const trimmed = text.trim();
     if (!trimmed || thinking) return;
     setQuery("");
     clearAnswer();
     setThinking(true);
 
-    const ai = await askAI(trimmed);
+    const ai = await askAI(trimmed, spokenLang ?? language);
     if (ai) {
       setAiResponse(ai);
       setThinking(false);
@@ -275,14 +302,14 @@ export default function HelpAskBox({
     if (!SpeechRecognitionCtor || listening) return;
     try {
       const rec = new SpeechRecognitionCtor();
-      rec.lang = RECOGNITION_LANG[language];
+      rec.lang = RECOGNITION_LANG[micLang];
       rec.interimResults = false;
       rec.maxAlternatives = 1;
       rec.onresult = (e) => {
         const transcript = e.results?.[0]?.[0]?.transcript ?? "";
         if (transcript) {
           setQuery(transcript);
-          void submitQuery(transcript);
+          void submitQuery(transcript, micLang);
         }
       };
       rec.onend = () => setListening(false);
@@ -337,6 +364,70 @@ export default function HelpAskBox({
           style={{ background: "transparent", color: "var(--vb-text-primary)" }}
           className="min-w-0 flex-1 px-1 py-1.5 text-[13px] outline-none disabled:opacity-60"
         />
+        {SpeechRecognitionCtor && (
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowLangMenu((v) => !v)}
+              disabled={thinking}
+              aria-label={t.helperMicLangLabel}
+              aria-expanded={showLangMenu}
+              style={{
+                touchAction: "manipulation",
+                WebkitTapHighlightColor: "transparent",
+                background: "var(--vb-surface)",
+                color: "var(--vb-text-secondary)",
+                border: "1.5px solid var(--vb-border)",
+              }}
+              className="flex items-center gap-1 rounded-full px-2.5 py-2 text-[11px] font-bold disabled:opacity-60"
+            >
+              <Languages size={14} />
+              {SPEAK_LANG_SHORT[micLang]}
+            </button>
+            {showLangMenu && (
+              <>
+                {/* Click-away backdrop. */}
+                <button
+                  type="button"
+                  aria-hidden
+                  tabIndex={-1}
+                  onClick={() => setShowLangMenu(false)}
+                  className="fixed inset-0 z-10 cursor-default"
+                  style={{ background: "transparent" }}
+                />
+                <div
+                  className="absolute bottom-full end-0 z-20 mb-1.5 min-w-[140px] overflow-hidden rounded-xl"
+                  style={{
+                    background: "var(--vb-surface-elevated)",
+                    border: "1.5px solid var(--vb-border)",
+                    boxShadow: "var(--vb-shadow-elevated)",
+                  }}
+                >
+                  {SPEAK_LANGS.map((lng) => (
+                    <button
+                      key={lng}
+                      type="button"
+                      onClick={() => {
+                        setMicLang(lng);
+                        setShowLangMenu(false);
+                      }}
+                      dir={lng === "he" || lng === "ar" ? "rtl" : "ltr"}
+                      style={{
+                        touchAction: "manipulation",
+                        WebkitTapHighlightColor: "transparent",
+                        background: lng === micLang ? "var(--vb-accent-soft)" : "transparent",
+                        color: "var(--vb-text-primary)",
+                      }}
+                      className="block w-full px-3 py-2 text-start text-[13px] font-semibold hover:opacity-75"
+                    >
+                      {SPEAK_LANG_LABEL[lng]}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
         {SpeechRecognitionCtor && (
           <button
             type="button"

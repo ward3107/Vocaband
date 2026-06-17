@@ -59,6 +59,7 @@ export interface StartHereStrings {
   helperSub: string;
   helperInputPlaceholder: string;
   helperMicLabel: string;
+  helperMicLangLabel: string;
   helperListening: string;
   helperNoMatch: string;
   helperClose: string;
@@ -128,6 +129,7 @@ const en: StartHereStrings = {
   helperSub: "Ask me anything, or pick a question below.",
   helperInputPlaceholder: "Type your question…",
   helperMicLabel: "Speak",
+  helperMicLangLabel: "Choose the language you'll speak",
   helperListening: "Listening…",
   helperNoMatch: "I didn't quite catch that. Here's what I can help with:",
   helperClose: "Close",
@@ -194,6 +196,7 @@ const he: StartHereStrings = {
   helperSub: "שאלו אותי כל דבר, או בחרו שאלה למטה.",
   helperInputPlaceholder: "הקלידו שאלה…",
   helperMicLabel: "דברו",
+  helperMicLangLabel: "בחרו את השפה שתדברו",
   helperListening: "מקשיב…",
   helperNoMatch: "לא הבנתי בדיוק. הנה במה אני יכול לעזור:",
   helperClose: "סגור",
@@ -260,6 +263,7 @@ const ar: StartHereStrings = {
   helperSub: "اسألني أي شيء، أو اختر سؤالًا بالأسفل.",
   helperInputPlaceholder: "اكتب سؤالك…",
   helperMicLabel: "تحدّث",
+  helperMicLangLabel: "اختر اللغة التي ستتحدّث بها",
   helperListening: "أستمع…",
   helperNoMatch: "لم أفهم ذلك تمامًا. إليك ما يمكنني المساعدة فيه:",
   helperClose: "إغلاق",
