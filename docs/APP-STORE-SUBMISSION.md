@@ -130,7 +130,8 @@ flags it; the honest answer is "infra logs, not used for location."*
 - **Supabase** (database, EU/Frankfurt) — profiles, progress
 - **Sentry** (crash diagnostics, EU/Germany) — errors + opaque UID, **PII scrubbed**
 - **Cloudflare** (CDN) — request metadata
-- **Google Fonts** (Hebrew/Arabic fonts only) — request metadata
+- *(Google Fonts is no longer contacted on the student side — fonts are now
+  self-hosted; see §7.)*
 
 **Target audience / Families policy:** This app targets **children and adults**
 (grades 4–9). Expect to complete the **Families / Designed for Families** section.
@@ -219,13 +220,15 @@ submission). A cheap/old Android device is the most realistic for school use.
 
 ## 7. Known minor items (not blockers)
 
-- **Hebrew/Arabic fonts** still load from Google Fonts (English fonts are
-  self-hosted). For a strict kids posture, self-host the RTL fonts too. Cosmetic,
-  not a submission blocker.
 - **No 30-day deletion grace period** — deletion is immediate. Google *prefers* a
   grace period but does not require it.
 - **iOS build needs a Mac** (Xcode) or a cloud builder (Codemagic / EAS-style). No
   Mac is required for Android.
+
+> **Resolved 2026-06-11:** the Hebrew/Arabic fonts (Heebo + Fredoka) are now
+> self-hosted from `/public/fonts`, so **no student-facing request reaches Google
+> Fonts**. (Google Fonts is still used by the teacher-only worksheet PDF
+> generator, which the student app never reaches.)
 
 ---
 
