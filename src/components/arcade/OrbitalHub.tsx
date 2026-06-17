@@ -80,7 +80,7 @@ export default function OrbitalHub({ center, items }: OrbitalHubProps) {
   return (
     <div
       dir={dir}
-      className="relative mx-auto aspect-square w-[min(94vw,34rem)] select-none"
+      className="relative mx-auto aspect-square w-[min(94vw,30rem)] select-none sm:w-[min(90vw,36rem)] lg:w-[min(80vw,42rem)] xl:w-[46rem]"
     >
       {/* Decorative orbit path — a dashed ring that slowly rotates. Its
           edge sits at exactly R, so every circle CENTER lands on the
@@ -141,7 +141,7 @@ export default function OrbitalHub({ center, items }: OrbitalHubProps) {
                 aria-label={labels[item.key]}
                 whileHover={reduced || item.disabled ? undefined : { scale: 1.08 }}
                 whileTap={reduced || item.disabled ? undefined : { scale: 0.92 }}
-                className={`${gradient} ${ARCADE_BUTTON_TOUCH} relative flex h-16 w-16 items-center justify-center rounded-full text-3xl shadow-lg ring-2 sm:h-20 sm:w-20 sm:text-4xl ${
+                className={`${gradient} ${ARCADE_BUTTON_TOUCH} relative flex h-16 w-16 items-center justify-center rounded-full text-3xl shadow-lg ring-2 sm:h-20 sm:w-20 sm:text-4xl lg:h-24 lg:w-24 lg:text-5xl ${
                   isPlay ? "ring-amber-300/80 shadow-cyan-500/40" : "ring-white/30"
                 } ${item.disabled ? "opacity-40 grayscale" : ""}`}
               >
@@ -159,7 +159,7 @@ export default function OrbitalHub({ center, items }: OrbitalHubProps) {
               </motion.button>
               {/* Label floats below the circle without affecting its
                   centring (absolute → zero layout height). */}
-              <span className="pointer-events-none absolute left-1/2 top-full mt-1 w-16 -translate-x-1/2 text-center text-[10px] font-bold leading-tight text-white/90 sm:text-xs">
+              <span className="pointer-events-none absolute left-1/2 top-full mt-1 w-20 -translate-x-1/2 text-center text-[10px] font-bold leading-tight text-white/90 sm:text-xs lg:mt-1.5 lg:text-sm">
                 {labels[item.key]}
               </span>
             </motion.div>
