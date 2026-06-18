@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"Segoe UI",system-ui,sans-serif}
+  body{background:#dfe5ef;padding:24px;display:flex;gap:28px;align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .label{font-weight:900;font-size:13px;color:#1e293b}
+  .phone{width:300px;height:600px;border-radius:30px;overflow:hidden;border:6px solid #1e293b;box-shadow:0 16px 40px rgba(0,0,0,.28);position:relative}
+  .hud{position:absolute;top:11px;left:11px;right:11px;display:flex;justify-content:space-between;z-index:8}
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.93);box-shadow:0 1px 4px rgba(0,0,0,.18);font-weight:900;font-size:11px;color:#4338ca}
+  .legend{width:340px;background:#fff;border-radius:18px;box-shadow:0 10px 26px rgba(0,0,0,.12);padding:18px 18px 10px;direction:rtl}
+  .legend h3{font-size:15px;font-weight:900;color:#1e293b;margin-bottom:12px}
+  .row{display:flex;gap:10px;align-items:flex-start;margin-bottom:11px}
+  .ic{flex:0 0 34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;background:#f1f5f9;box-shadow:inset 0 0 0 1px #e2e8f0}
+  .tx{font-size:12px;line-height:1.35}
+  .tx b{font-weight:900;color:#0f172a}
+  .tx span{color:#64748b;font-weight:600}
+  /* on-map badge */
+  .b{position:absolute;width:34px;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:18px;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.25);z-index:5}
+  .pin{position:absolute;z-index:6;display:flex;flex-direction:column;align-items:center}
+  .pinchip{display:flex;align-items:center;gap:4px;padding:5px 11px;border-radius:999px;font-weight:900;font-size:14px;color:#fff;box-shadow:0 3px 8px rgba(0,0,0,.25)}
+  .gold{background:linear-gradient(90deg,#f7b733,#fc4a1a);box-shadow:0 3px 10px rgba(247,183,51,.5),0 0 0 2px #fff}
+  .glow{box-shadow:0 0 0 4px rgba(255,255,255,.5),0 0 16px 4px rgba(124,58,237,.6)}
+</style></head>
+<body>
+
+<div class="col">
+  <div class="label">סגנון A · מפה מלאה אינטראקציה והפתעות</div>
+  <div class="phone" id="ph">
+    <svg width="300" height="600" viewBox="0 0 600 1200">
+      <defs>
+        <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7ed0ee"/><stop offset=".5" stop-color="#4eb6e6"/><stop offset="1" stop-color="#2f9fd8"/></linearGradient>
+        <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9be88f"/><stop offset="1" stop-color="#5fc269"/></linearGradient>
+        <radialGradient id="vig" cx="50%" cy="45%" r="78%"><stop offset="60%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#0b3a52" stop-opacity=".24"/></radialGradient>
+        <filter id="ds" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="9" stdDeviation="12" flood-color="#0a3147" flood-opacity=".3"/></filter>
+        <g id="tree"><rect x="-2.5" y="2" width="5" height="12" rx="2" fill="#7a4a22"/><circle cx="0" cy="-6" r="13" fill="#2f8f4e"/><circle cx="-7" cy="0" r="9" fill="#37a059"/><circle cx="7" cy="-1" r="9" fill="#37a059"/></g>
+        <g id="mtn"><path d="M-40 32 L0 -40 L40 32 Z" fill="#8b94a0"/><path d="M0 -40 L12 -14 L0 -8 L-9 -20 Z" fill="#f4f8fc"/></g>
+      </defs>
+      <rect width="600" height="1200" fill="url(#sea)"/>
+      <!-- coin trail in the sea -->
+      <g fill="#fcd34d" stroke="#b45309" stroke-width="2"><circle cx="430" cy="300" r="7"/><circle cx="465" cy="340" r="7"/><circle cx="500" cy="385" r="7"/><circle cx="528" cy="438" r="7"/></g>
+      <!-- two landmasses -->
+      <g filter="url(#ds)"><path d="M40 300 C210 240,330 320,320 480 C360 650,300 840,200 900 C90 940,40 800,40 660 C0 520,15 360,40 300Z" fill="#f6e4b0"/></g>
+      <path d="M62 320 C210 264,310 338,300 480 C338 642,288 818,200 872 C104 912,60 786,60 658 C24 528,40 380,62 320Z" fill="url(#grass)"/>
+      <g filter="url(#ds)"><ellipse cx="470" cy="640" rx="92" ry="72" fill="#f6e4b0"/></g><ellipse cx="470" cy="640" rx="70" ry="52" fill="url(#grass)"/>
+      <g filter="url(#ds)"><ellipse cx="430" cy="1030" rx="80" ry="60" fill="#f6e4b0"/></g><ellipse cx="430" cy="1030" rx="60" ry="42" fill="url(#grass)"/>
+      <!-- river + features -->
+      <path d="M150 360 C 180 470, 120 560, 200 650 C 250 730, 180 820, 220 880" fill="none" stroke="#5bc7ef" stroke-width="18" stroke-linecap="round"/>
+      <use href="#mtn" x="110" y="430" transform="scale(1.1)"/>
+      <use href="#tree" x="250" y="780"/><use href="#tree" x="285" y="800" transform="scale(1.1)"/><use href="#tree" x="455" y="630"/>
+      <rect width="600" height="1200" fill="url(#vig)"/>
+    </svg>
+
+    <div class="hud"><span class="chip">🗺️ Word Hunt</span><span class="chip" style="color:#334155">👑 #1 · 120</span></div>
+
+    <!-- WORD label (normal) + GOLDEN word (rare) -->
+    <div class="pin" style="left:118px;top:215px;transform:translate(-50%,-50%)"><div class="pinchip" style="background:#fff;color:#1f2937;box-shadow:0 3px 8px rgba(0,0,0,.2)"><span style="width:9px;height:9px;border-radius:9px;background:#f59e0b;display:inline-block"></span>forest</div></div>
+    <div class="pin" style="left:230px;top:330px;transform:translate(-50%,-50%)"><div class="pinchip gold">⭐ ocean ⏱️</div></div>
+
+    <!-- interactive badges on the map -->
+    <div class="b" style="left:175px;top:430px">🎁</div>
+    <div class="b" style="left:250px;top:560px">❓</div>
+    <div class="b glow" style="left:300px;top:300px">🔮</div>
+    <div class="b" style="left:455px;top:760px">🌀</div>
+    <div class="b" style="left:120px;top:560px;background:#dbeafe">⚡</div>
+    <div class="b" style="left:430px;top:1015px">🚩</div>
+    <div class="b" style="left:520px;top:520px;background:#fee2e2">🐙</div>
+
+    <!-- player -->
+    <div class="b" style="left:150px;top:480px;width:42px;height:42px;border:3px solid #e879f9;font-size:24px">🦊</div>
+  </div>
+  <div class="label" style="font-weight:700;color:#64748b;font-size:11px">דוגמה — לא הכול יופיע בו-זמנית</div>
+</div>
+
+<div class="legend">
+  <h3>🎲 אינטראקציה והפתעות על המפה</h3>
+  <div class="row"><div class="ic">⭐</div><div class="tx"><b>מילת זהב</b> <span>— נדירה, שווה הרבה יותר נקודות, נעלמת אחרי כמה שניות (⏱️). מי שמהיר תופס.</span></div></div>
+  <div class="row"><div class="ic">🎁</div><div class="tx"><b>תיבת אוצר</b> <span>— נוגעים ומקבלים בונוס: XP, מטבעות, או פאוור-אפ אקראי.</span></div></div>
+  <div class="row"><div class="ic">❓</div><div class="tx"><b>תיבת הפתעה</b> <span>— אקראי לגמרי: יכול להיות פרס... או מלכוד קטן. סיכון מול סיכוי.</span></div></div>
+  <div class="row"><div class="ic">🔮</div><div class="tx"><b>פאוור-אפ</b> <span>— מגנט (מושך מילים), מגן, הקפאת יריבים, או "חושף מפה".</span></div></div>
+  <div class="row"><div class="ic">🌀</div><div class="tx"><b>שער טלפורט</b> <span>— קופץ אותך לאזור אחר במפה. הפתעה + קיצור דרך.</span></div></div>
+  <div class="row"><div class="ic">⚡</div><div class="tx"><b>זרם מהירות</b> <span>— אזור שמאיץ אותך; 🐌 ביצה מאטה; ⛰️ הר חוסם.</span></div></div>
+  <div class="row"><div class="ic">🐙</div><div class="tx"><b>מפלצת ים</b> <span>— נוגעת בך = מסחררת לרגע. להתחמק!</span></div></div>
+  <div class="row"><div class="ic">🪙</div><div class="tx"><b>שובל מטבעות</b> <span>— שביל מטבעות בים שמוביל למקום מעניין.</span></div></div>
+  <div class="row"><div class="ic">🚩</div><div class="tx"><b>דגל/נקודת ציון</b> <span>— יעד מיוחד, בונוס לקבוצה שמגיעה ראשונה.</span></div></div>
+</div>
+
+</body></html>

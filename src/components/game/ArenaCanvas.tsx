@@ -563,12 +563,23 @@ export default function ArenaCanvas({
   );
 }
 
+/** Tree spots on the map (world units) — [x, y, scale]. */
+const MAP_TREES: [number, number, number][] = [
+  [175, 300, 1.05], [150, 338, 0.9], [200, 342, 0.95], [173, 378, 0.8],
+  [300, 500, 1.0], [332, 522, 1.1], [276, 528, 0.85],
+  [770, 345, 0.95], [802, 362, 0.85], [700, 600, 0.8],
+];
+/** Mountain spots on the map (world units) — [x, y, scale]. */
+const MAP_MTNS: [number, number, number][] = [[250, 285, 1.25], [198, 318, 0.85], [712, 585, 0.7]];
+
 /**
- * WorldMapBackground — a stylized "world map" rendered as one inline SVG
- * (ocean gradient, blobby continents, faint lat/long grid). preserveAspectRatio
- * "none" stretches it to the world box so it lines up 1:1 with word/avatar
- * logical coords. Decorative + static: zero per-frame cost, no external assets
- * (keeps the design's low-end-Android budget).
+ * WorldMapBackground — the illustrated "style A" world map as one static
+ * inline SVG: ocean with depth gradient + waves + a boat, landmasses that
+ * cast a soft shadow (so they read as raised) with sandy beaches and a
+ * shallow-water ring, forests, snow-capped mountains, a river, and a gentle
+ * vignette. preserveAspectRatio "none" stretches it to the world box so it
+ * lines up 1:1 with word/avatar logical coords. Decorative + static: zero
+ * per-frame cost, no external assets (keeps the low-end-Android budget).
  */
 function WorldMapBackground() {
   return (
@@ -579,38 +590,90 @@ function WorldMapBackground() {
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="arena-ocean" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#bae6fd" />
-          <stop offset="55%" stopColor="#7dd3fc" />
-          <stop offset="100%" stopColor="#38bdf8" />
+        <linearGradient id="arena-ocean" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#7ed0ee" />
+          <stop offset="55%" stopColor="#4eb6e6" />
+          <stop offset="100%" stopColor="#2f9fd8" />
         </linearGradient>
+        <radialGradient id="arena-glow" cx="42%" cy="28%" r="85%">
+          <stop offset="0%" stopColor="#bdeaf8" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#bdeaf8" stopOpacity="0" />
+        </radialGradient>
         <linearGradient id="arena-land" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#86efac" />
-          <stop offset="100%" stopColor="#4ade80" />
+          <stop offset="0%" stopColor="#9be88f" />
+          <stop offset="100%" stopColor="#5fc269" />
         </linearGradient>
+        <radialGradient id="arena-vig" cx="50%" cy="45%" r="78%">
+          <stop offset="62%" stopColor="#000000" stopOpacity="0" />
+          <stop offset="100%" stopColor="#0b3a52" stopOpacity="0.22" />
+        </radialGradient>
+        <filter id="arena-shadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="8" stdDeviation="11" floodColor="#0a3147" floodOpacity="0.32" />
+        </filter>
+        <g id="arena-tree">
+          <rect x="-3" y="2" width="6" height="13" rx="2" fill="#7a4a22" />
+          <circle cx="0" cy="-7" r="14" fill="#2f8f4e" />
+          <circle cx="-8" cy="0" r="10" fill="#37a059" />
+          <circle cx="8" cy="-1" r="10" fill="#37a059" />
+          <circle cx="-3" cy="-10" r="8" fill="#54bd72" />
+        </g>
+        <g id="arena-mtn">
+          <path d="M-46 36 L0 -44 L46 36 Z" fill="#8b94a0" />
+          <path d="M0 -44 L18 0 L0 8 L-14 -6 Z" fill="#aeb6c2" />
+          <path d="M0 -44 L13 -16 L0 -10 L-10 -22 Z" fill="#f4f8fc" />
+          <path d="M-46 36 L0 -44 L-8 36 Z" fill="#717b88" fillOpacity="0.55" />
+        </g>
       </defs>
 
-      {/* Ocean */}
+      {/* Ocean + light glow */}
       <rect x="0" y="0" width={QP_ARENA_WIDTH} height={QP_ARENA_HEIGHT} fill="url(#arena-ocean)" />
+      <rect x="0" y="0" width={QP_ARENA_WIDTH} height={QP_ARENA_HEIGHT} fill="url(#arena-glow)" />
 
-      {/* Faint lat/long grid for a chart-like feel */}
-      <g stroke="#ffffff" strokeOpacity="0.18" strokeWidth="1.5">
-        {[140, 280, 420, 560, 700, 840].map(x => <line key={`v${x}`} x1={x} y1="0" x2={x} y2={QP_ARENA_HEIGHT} />)}
-        {[117, 234, 351, 468, 585].map(y => <line key={`h${y}`} x1="0" y1={y} x2={QP_ARENA_WIDTH} y2={y} />)}
+      {/* Waves */}
+      <g stroke="#ffffff" strokeOpacity="0.3" strokeWidth="3" fill="none" strokeLinecap="round">
+        {[[120, 110], [560, 130], [620, 470], [150, 560], [880, 520], [470, 250]].map(([x, y], i) => (
+          <path key={i} d={`M${x} ${y} q10 -8 20 0 q10 8 20 0`} />
+        ))}
       </g>
 
-      {/* Continents — loose blobs, not geography. Soft coastline via a wider
-          translucent stroke underneath the fill. */}
-      <g stroke="#fde68a" strokeOpacity="0.6" strokeWidth="6" fill="url(#arena-land)">
-        {/* "Americas" — left tall landmass */}
-        <path d="M150 70 C 230 60, 250 150, 210 210 C 260 250, 230 360, 170 400 C 120 440, 90 520, 130 600 C 70 590, 60 470, 95 400 C 60 330, 80 220, 130 180 C 110 130, 110 90, 150 70 Z" />
-        {/* "Eurasia" — wide top-right */}
-        <path d="M520 80 C 640 50, 800 70, 900 120 C 940 160, 900 210, 820 220 C 740 250, 640 230, 560 250 C 500 250, 470 190, 500 140 C 490 110, 500 90, 520 80 Z" />
-        {/* "Africa" — center-lower */}
-        <path d="M560 300 C 640 290, 700 330, 690 410 C 680 490, 620 560, 560 560 C 520 520, 510 440, 530 380 C 530 340, 540 310, 560 300 Z" />
-        {/* "Australia" — small bottom-right */}
-        <path d="M810 470 C 880 460, 930 500, 915 555 C 880 590, 800 585, 770 545 C 760 505, 780 480, 810 470 Z" />
+      {/* Sailboat */}
+      <g transform="translate(905,135)">
+        <path d="M-16 6 L16 6 L10 16 L-10 16 Z" fill="#b5651d" />
+        <rect x="-1" y="-22" width="2" height="28" fill="#6b4423" />
+        <path d="M1 -20 L16 2 L1 2 Z" fill="#ffffff" />
       </g>
+
+      {/* Landmasses — shadowed sand (raised look) + shallow ring + grass */}
+      <g filter="url(#arena-shadow)">
+        <path d="M70 140 C 230 90, 380 150, 400 300 C 440 460, 360 580, 230 600 C 110 610, 50 500, 55 380 C 30 270, 40 190, 70 140 Z" fill="#f6e4b0" />
+        <ellipse cx="780" cy="360" rx="150" ry="115" fill="#f6e4b0" />
+        <ellipse cx="700" cy="600" rx="110" ry="74" fill="#f6e4b0" />
+      </g>
+      <g fill="none" stroke="#bfeaf6" strokeWidth="10" strokeOpacity="0.5">
+        <path d="M70 140 C 230 90, 380 150, 400 300 C 440 460, 360 580, 230 600 C 110 610, 50 500, 55 380 C 30 270, 40 190, 70 140 Z" />
+        <ellipse cx="780" cy="360" rx="150" ry="115" />
+        <ellipse cx="700" cy="600" rx="110" ry="74" />
+      </g>
+      <g fill="url(#arena-land)">
+        <path d="M95 165 C 235 120, 365 175, 384 300 C 420 450, 348 558, 232 576 C 124 586, 72 488, 76 380 C 54 280, 66 210, 95 165 Z" />
+        <ellipse cx="780" cy="360" rx="124" ry="92" />
+        <ellipse cx="700" cy="600" rx="86" ry="54" />
+      </g>
+
+      {/* River on the left continent */}
+      <path d="M180 170 C 210 290, 150 370, 220 460 C 270 530, 210 585, 250 600" fill="none" stroke="#5bc7ef" strokeWidth="16" strokeLinecap="round" />
+      <path d="M180 170 C 210 290, 150 370, 220 460 C 270 530, 210 585, 250 600" fill="none" stroke="#9fe2f6" strokeWidth="6" strokeLinecap="round" strokeOpacity="0.8" />
+
+      {/* Mountains + forests */}
+      {MAP_MTNS.map(([x, y, s], i) => (
+        <use key={`m${i}`} href="#arena-mtn" transform={`translate(${x},${y}) scale(${s})`} />
+      ))}
+      {MAP_TREES.map(([x, y, s], i) => (
+        <use key={`t${i}`} href="#arena-tree" transform={`translate(${x},${y}) scale(${s})`} />
+      ))}
+
+      {/* Gentle vignette for depth */}
+      <rect x="0" y="0" width={QP_ARENA_WIDTH} height={QP_ARENA_HEIGHT} fill="url(#arena-vig)" />
     </svg>
   );
 }
